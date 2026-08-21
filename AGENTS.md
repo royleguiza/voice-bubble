@@ -176,7 +176,7 @@ Después de cada push que toque código Dart o el workflow:
 > **Actualizar esta sección al final de cada hito completado.**
 
 - [x] Planificación (README + plan + design + agents)
-- [ ] Hito 0 – Setup *(en curso: CI corregido tras auditoría; falta build verde + APK instalado en teléfono)*
+- [x] Hito 0 – Setup
 - [ ] Hito 1 – Transcripción básica
 - [ ] Hito 2 – UX y robustez
 - [ ] Hito 3 – Burbuja flotante
