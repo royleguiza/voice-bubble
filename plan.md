@@ -54,7 +54,17 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 * No añadir todavía dependencias pesadas de STT.
 
 **Decisión de stack (completar aquí):**  
-`\[ ] Flutter   \[ ] Kotlin nativo`
+`\[X] Flutter   \[ ] Kotlin nativo`
+
+### Decisiones tomadas (Hito 0 – 2026-08-21)
+
+* **Stack**: Flutter.
+  * Motivo: desarrollo rápido, packages maduros de STT local (`sherpa\_onnx`), builds de APK triviales. El overlay y Accessibility (Hitos 3-4) se harán con código nativo Kotlin vía platform channels.
+* **Package name**: `com.royleguiza.voicebubblestt`
+* **minSdkVersion**: 28 (Android 9+)
+* **targetSdkVersion**: la más actual disponible al configurar el proyecto
+* **Ubicación del proyecto**: subcarpeta `voice_bubble_stt/` dentro de este repo (el repo raíz queda para docs: README.md, plan.md)
+* **Entorno de build**: sin dispositivo/emulador en la máquina de desarrollo → los APK se generan acá y se prueban manualmente en un teléfono físico.
 
 \---
 
