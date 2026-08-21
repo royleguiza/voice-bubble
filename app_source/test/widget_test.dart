@@ -11,6 +11,6 @@ void main() {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pump();
 
-    expect(find.text('Grabando…'), findsOneWidget);
+    expect(find.text('Grabando...'), findsOneWidget);
   });
 }

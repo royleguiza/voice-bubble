@@ -1,0 +1,41 @@
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../models/transcription.dart';
+
+class StorageService {
+  static const String _key = 'transcriptions';
+  static const int _maxItems = 20;
+
+  List<Transcription> _transcriptions = [];
+
+  List<Transcription> get transcriptions =>
+      List.unmodifiable(_transcriptions);
+
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = prefs.getStringList(_key) ?? [];
+    _transcriptions = jsonList
+        .map((json) => Transcription.fromJson(jsonDecode(json)))
+        .toList();
+  }
+
+  Future<void> add(Transcription transcription) async {
+    _transcriptions.insert(0, transcription);
+    if (_transcriptions.length > _maxItems) {
+      _transcriptions = _transcriptions.sublist(0, _maxItems);
+    }
+    await _save();
+  }
+
+  Future<void> clear() async {
+    _transcriptions.clear();
+    await _save();
+  }
+
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList =
+        _transcriptions.map((t) => jsonEncode(t.toJson())).toList();
+    await prefs.setStringList(_key, jsonList);
+  }
+}
