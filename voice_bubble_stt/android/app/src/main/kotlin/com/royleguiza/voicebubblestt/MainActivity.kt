@@ -1,4 +1,4 @@
-package com.royleguiza.voice_bubble_stt
+package com.royleguiza.voicebubblestt
 
 import io.flutter.embedding.android.FlutterActivity
 
