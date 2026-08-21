@@ -35,7 +35,10 @@ voice-bubble/                  ← raíz del repo git
 ├── plan.md                    ← plan de ejecución por hitos (LA FUENTE DE VERDAD del qué y cuándo)
 ├── design.md                  ← sistema de diseño Liquid Glass (LA FUENTE DE VERDAD del cómo se ve)
 ├── AGENTS.md                  ← este archivo
-└── voice_bubble_stt/          ← proyecto Flutter (se crea en Hito 0)
+├── app_source/                ← FUENTE DE EDICIÓN de la app (pubspec, analysis_options, lib/, test/)
+├── voice_bubble_stt/          ← proyecto Flutter que compila el CI; android/ generado por CI,
+│                                 el resto SINCRONIZADO desde app_source en cada run
+└── .github/workflows/android.yml  ← pipeline CI: scaffold → sync → analyze → test → build APK
 ```
 
 ## 4. Flujo de trabajo obligatorio
@@ -55,7 +58,8 @@ Ver sección "Estado" al final de este archivo y los checkboxes de `plan.md`.
 
 ### Código
 
-- Seguir las [convenciones oficiales de Dart](https://dart.dev/effective-dart) y `flutter analyze` sin warnings.
+- Seguir las [convenciones oficiales de Dart](https://dart.dev/effective-dart) y `flutter analyze` ESTRICTO (sin `--no-fatal-*`): infos y warnings también rompen el CI.
+- Todo widget test que use widgets Material importa explícitamente `package:flutter/material.dart` (flutter_test NO lo re-exporta).
 - Estructura de carpetas sugerida por hito: ver `plan.md` § "Estructura de carpetas sugerida (Flutter)". No inventar estructuras paralelas.
 - Comentarios solo cuando aporten contexto no obvio. En inglés o español, consistente.
 - Sin lógica de UI dentro de widgets: servicios separados (`transcription_service`, `local_stt_service`, etc.).
@@ -92,8 +96,9 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 **Estrategia de build (decisión tomada):**
 
 - El APK se compila con **GitHub Actions** (`.github/workflows/android.yml`) en runners ubuntu x86_64.
-- La fuente de la app vive en `app_source/`; el primer run de CI la scaffoldingea a `voice_bubble_stt/` vía `flutter create`, aplica parches (minSdk 28, RECORD_AUDIO) y commitea el scaffold.
-- Cada push a `main` (que toque código) ejecuta: pub get → analyze → test → `flutter build apk --debug` → sube el artefacto `voice-bubble-debug-apk`.
+- La fuente de la app vive en `app_source/`; el primer run de CI la scaffoldingea a `voice_bubble_stt/` vía `flutter create`, aplica parches (minSdk 28, RECORD_AUDIO, label) y commitea el scaffold.
+- **Cada run sincroniza incondicionalmente** `app_source/{pubspec,analysis_options,lib,test}` → `voice_bubble_stt/` antes de compilar: `app_source/` es la única fuente de edición.
+- Cada push a `main` (que toque código) ejecuta: pub get → analyze (estricto) → test → `flutter build apk --debug` → sube el artefacto `voice-bubble-debug-apk-r<N>` (retención 7 días).
 - El usuario descarga el APK desde GitHub → Actions → run → Artifacts, y lo prueba en el teléfono físico ("Instalar apps desconocidas").
 - No intentar correr emuladores ni builds locales. Los unit tests de Dart corren en CI.
 
@@ -117,12 +122,59 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 
 ---
 
+## 9. Lecciones aprendidas y best practices (CI + Flutter)
+
+> Sección viva: cada build rojo agrega una fila al log y su lección a las reglas. Leer antes de tocar CI o código Dart.
+
+### 9.1 Log de errores
+
+| # | Síntoma en CI | Causa raíz | Fix aplicado |
+|---|---|---|---|
+| 1 | `The name 'MyApp' isn't a class` (analyze) | El workflow copiaba `lib/` pero NO `test/`: quedó el test generado por `flutter create` | Copiar `test/` propio + paso de sincronización incondicional `app_source → voice_bubble_stt` |
+| 2 | `Undefined name 'FloatingActionButton'` (analyze) | flutter_test **NO** re-exporta material.dart; el test usaba widgets sin importarlos | Import explícito de material en tests |
+| 3 | pubspec.lock inconsistente (detectado en auditoría, antes de romper) | Constraint `^5.0.0` vs lock resuelto a 6.0.0 (el bot commiteó el lock antes de sobrescribir el pubspec) | Alinear constraint a `^6.0.0` en ambos pubspecs |
+| 4 | Cambios en app_source no llegarían al build (trampa estructural) | El scaffold solo corría si faltaba `android/`; después, el CI ignoraba app_source | Paso "Sincronizar fuente" incondicional en cada run |
+
+### 9.2 Reglas duras para agentes
+
+1. Editar SOLO en `app_source/`. Nunca editar directamente `voice_bubble_stt/{lib,test,pubspec.yaml,analysis_options.yaml}` (el CI los pisa).
+2. flutter_test no exporta material.dart: import explícito siempre que un test use widgets Material.
+3. Ningún flag de analyze perdona errores de compilación; los flags solo modulan infos/warnings. La única salida es código correcto.
+4. `flutter analyze` corre ESTRICTO. Arreglar código o ajustar la regla puntual en analysis_options, nunca bajar severidad global.
+5. Prohibido enmascarar fallos con `|| true` / `|| echo` en steps críticos del CI.
+6. Todo parche por sed sobre scaffolds lleva guard posterior (`grep -q ... || exit 1`).
+7. Antes de pushear Dart: releer el diff completo buscando imports faltantes y símbolos inexistentes (no hay análisis local posible en Termux).
+8. Un push = un run esperado: verificar Actions antes de avanzar de hito (ver 9.4).
+
+### 9.3 Best practices aplicadas al workflow
+
+| Práctica | Fuente |
+|---|---|
+| concurrency group + cancel-in-progress (mata runs obsoletos) | docs.github.com — workflow syntax #concurrency |
+| timeout-minutes: 40 (el default es 360) | docs.github.com — workflow syntax #timeout-minutes |
+| cache Gradle integrado en setup-java (`cache: gradle`) | github.com/actions/setup-java #caching |
+| cache del SDK + pub vía subosito/flutter-action (`cache: true`) | github.com/subosito/flutter-action #caching |
+| aceptación defensiva de licencias SDK (ubuntu-latest suele traerlas OK) | github.com/actions/runner-images issues #7506 |
+| AGP ≥8 requiere JDK 17 → setup-java temurin 17 antes del build | developer.android.com/build/jdks |
+| artefacto con nombre único por run, retention-days 7, compression-level 0 para APKs, if-no-files-found: error (v4 = inmutables) | github.com/actions/upload-artifact |
+| pushes con GITHUB_TOKEN no disparan otros workflows (sin loops infinitos) | docs.github.com/actions/security-guides |
+| pump() puntual mejor que pumpAndSettle() cuando no hay animaciones pendientes | api.flutter.dev — WidgetTester.pumpAndSettle |
+
+### 9.4 Ritual post-push (obligatorio)
+
+Después de cada push que toque código Dart o el workflow:
+1. Verificar en Actions que el run quedó ✓ verde (~5-10 min primer build, ~2-3 min con caches calientes).
+2. Si rojo: identificar el step exacto, corregir, re-revisar contra 9.2 antes del push siguiente.
+3. Si verde: descargar `voice-bubble-debug-apk-r<N>` desde Artifacts e instalar en teléfono cuando corresponda probar físicamente.
+
+---
+
 ## Estado del proyecto
 
 > **Actualizar esta sección al final de cada hito completado.**
 
 - [x] Planificación (README + plan + design + agents)
-- [x] Hito 0 – Setup: decisiones documentadas, CI configurado; falta primer build verde + APK instalado en teléfono
+- [ ] Hito 0 – Setup *(en curso: CI corregido tras auditoría; falta build verde + APK instalado en teléfono)*
 - [ ] Hito 1 – Transcripción básica
 - [ ] Hito 2 – UX y robustez
 - [ ] Hito 3 – Burbuja flotante

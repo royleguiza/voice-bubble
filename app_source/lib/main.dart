@@ -47,8 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('VoiceBubble STT'),
+      appBar: const AppBar(
+        title: Text('VoiceBubble STT'),
         centerTitle: true,
       ),
       body: Center(
