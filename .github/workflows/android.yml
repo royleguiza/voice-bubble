@@ -32,11 +32,11 @@ jobs:
       - name: Aceptar licencias Android SDK (defensivo)
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
-      - name: Flutter (stable 3.47.1 + cache pub)
+      - name: Flutter (stable 3.47.0 + cache pub)
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.47.1
+          flutter-version: 3.47.0
           cache: true
 
       - name: Scaffold del proyecto (solo si falta)
@@ -65,6 +65,8 @@ jobs:
 
             sed -i 's|android:label="voice_bubble_stt"|android:label="VoiceBubble STT"|' \
               voice_bubble_stt/android/app/src/main/AndroidManifest.xml
+            grep -q 'VoiceBubble STT' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
+              || { echo '::error::sed label no aplicado'; exit 1; }
 
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
