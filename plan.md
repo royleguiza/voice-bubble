@@ -42,10 +42,10 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 
 ### Criterios de aceptación
 
-* \[ ] Proyecto crea y compila sin errores.
-* \[ ] Se genera un APK (`app-debug.apk` o equivalente).
-* \[ ] El APK se instala y abre en un teléfono Android real.
-* \[ ] Decisión de stack documentada.
+* [x] Proyecto crea y compila sin errores.
+* [x] Se genera un APK (`app-debug.apk` o equivalente).
+* [x] El APK se instala y abre en un teléfono Android real.
+* [x] Decisión de stack documentada.
 
 ### Notas técnicas para IA
 
