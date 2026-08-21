@@ -134,6 +134,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 2 | `Undefined name 'FloatingActionButton'` (analyze) | flutter_test **NO** re-exporta material.dart; el test usaba widgets sin importarlos | Import explícito de material en tests |
 | 3 | pubspec.lock inconsistente (detectado en auditoría, antes de romper) | Constraint `^5.0.0` vs lock resuelto a 6.0.0 (el bot commiteó el lock antes de sobrescribir el pubspec) | Alinear constraint a `^6.0.0` en ambos pubspecs |
 | 4 | Cambios en app_source no llegarían al build (trampa estructural) | El scaffold solo corría si faltaba `android/`; después, el CI ignoraba app_source | Paso "Sincronizar fuente" incondicional en cada run |
+| 5 | `Invalid workflow file ... yaml syntax on line 92` (el run ni arranca) | `: ` (dos puntos + espacio) dentro del nombre de un step → YAML lo interpreta como mapeo anidado inválido | Sin `: ` en valores plain; validar YAML localmente con python3-yaml antes de pushear workflows |
 
 ### 9.2 Reglas duras para agentes
 
@@ -144,7 +145,8 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 5. Prohibido enmascarar fallos con `|| true` / `|| echo` en steps críticos del CI.
 6. Todo parche por sed sobre scaffolds lleva guard posterior (`grep -q ... || exit 1`).
 7. Antes de pushear Dart: releer el diff completo buscando imports faltantes y símbolos inexistentes (no hay análisis local posible en Termux).
-8. Un push = un run esperado: verificar Actions antes de avanzar de hito (ver 9.4).
+8. Nunca usar `: ` dentro de nombres o valores plain en YAML (rompe el parseo). Validar SIEMPRE el workflow localmente antes de pushear: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/android.yml'))"` (paquete `python3-yaml` ya instalado).
+9. Un push = un run esperado: verificar Actions antes de avanzar de hito (ver 9.4).
 
 ### 9.3 Best practices aplicadas al workflow
 
