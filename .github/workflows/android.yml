@@ -1,0 +1,78 @@
+name: Android Debug APK
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.1
+          cache: true
+
+      - name: Scaffold del proyecto (solo si falta)
+        run: |
+          if [ ! -d voice_bubble_stt/android ]; then
+            flutter create voice_bubble_stt \
+              --platforms android \
+              --org com.royleguiza \
+              --project-name voice_bubble_stt
+
+            cp app_source/pubspec.yaml voice_bubble_stt/pubspec.yaml
+            cp app_source/analysis_options.yaml voice_bubble_stt/analysis_options.yaml
+            rm -rf voice_bubble_stt/lib
+            cp -r app_source/lib voice_bubble_stt/lib
+
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 28/' \
+              voice_bubble_stt/android/app/build.gradle.kts
+
+            sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <application|' \
+              voice_bubble_stt/android/app/src/main/AndroidManifest.xml
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add voice_bubble_stt
+            git commit -m "Hito 0: scaffold Flutter generado por CI" && git push || echo "sin cambios que commitear"
+          fi
+
+      - name: Pub get
+        working-directory: voice_bubble_stt
+        run: flutter pub get
+
+      - name: Analyze
+        working-directory: voice_bubble_stt
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Test
+        working-directory: voice_bubble_stt
+        run: flutter test
+
+      - name: Build APK debug
+        working-directory: voice_bubble_stt
+        run: flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-bubble-debug-apk
+          path: voice_bubble_stt/build/app/outputs/flutter-apk/app-debug.apk
