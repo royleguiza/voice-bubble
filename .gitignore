@@ -1,0 +1,41 @@
+# Dependencies
+*.apk
+*.aab
+*.ipa
+*.app
+
+# Environment and secrets
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+
+# Dart/Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+**/android/**/build/
+**/android/key.properties
+**/android/*.jks
+**/android/*.keystore
+
+# Logs
+*.log
