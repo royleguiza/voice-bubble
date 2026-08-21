@@ -64,7 +64,7 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 * **minSdkVersion**: 28 (Android 9+)
 * **targetSdkVersion**: la más actual disponible al configurar el proyecto
 * **Ubicación del proyecto**: subcarpeta `voice_bubble_stt/` dentro de este repo (el repo raíz queda para docs: README.md, plan.md)
-* **Entorno de build**: sin dispositivo/emulador en la máquina de desarrollo → los APK se generan acá y se prueban manualmente en un teléfono físico.
+* **Entorno de build**: la máquina de desarrollo es un teléfono Android (Termux/proot, ARM64) sin Flutter ni Android SDK locales → los APK se generan con **GitHub Actions** (workflow `.github/workflows/android.yml`) y se instalan manualmente en el teléfono físico desde los artefactos de Actions.
 
 \---
 

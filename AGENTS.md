@@ -84,18 +84,18 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 
 | Recurso | Realidad |
 |---|---|
-| CPU | 8 núcleos |
-| RAM | ~3.6 GB total (~1 GB libre) → builds lentos; ajustar `-Xmx` de Gradle si hace falta |
-| Disco | ~13 GB libres → cuidar caches de Gradle |
-| Emulador | **NO viable** (sin KVM/RAM suficiente) |
-| Dispositivo | Ninguno conectado; el usuario prueba APKs en su teléfono físico |
+| Máquina de desarrollo | **Termux/proot sobre Android (aarch64)** — no hay PC x86_64 |
+| Flutter local | **NO disponible** (no existe build ARM64 del SDK) |
+| Android SDK local | **NO instalable** (binarios solo para x86_64) |
+| RAM / Disco | ~3.6 GB total, ~13 GB libres → no intentar builds locales |
 
-Implicaciones:
+**Estrategia de build (decisión tomada):**
 
-- Generar siempre **APK debug** para testing (release recién en Hito 5).
-- No intentar correr emuladores ni tests de integración que requieran dispositivo.
-- Los unit tests puros de Dart sí corren: usarlos para lógica (ej.: límite FIFO de 20 ítems).
-- Tras cada build, indicar la ruta exacta del APK para que el usuario lo instale ("Orígenes desconocidos").
+- El APK se compila con **GitHub Actions** (`.github/workflows/android.yml`) en runners ubuntu x86_64.
+- La fuente de la app vive en `app_source/`; el primer run de CI la scaffoldingea a `voice_bubble_stt/` vía `flutter create`, aplica parches (minSdk 28, RECORD_AUDIO) y commitea el scaffold.
+- Cada push a `main` (que toque código) ejecuta: pub get → analyze → test → `flutter build apk --debug` → sube el artefacto `voice-bubble-debug-apk`.
+- El usuario descarga el APK desde GitHub → Actions → run → Artifacts, y lo prueba en el teléfono físico ("Instalar apps desconocidas").
+- No intentar correr emuladores ni builds locales. Los unit tests de Dart corren en CI.
 
 ## 7. Convenciones de Git
 
@@ -122,7 +122,7 @@ Implicaciones:
 > **Actualizar esta sección al final de cada hito completado.**
 
 - [x] Planificación (README + plan + design + agents)
-- [ ] Hito 0 – Setup stack y proyecto base *(en curso: decisiones documentadas, falta instalar toolchain)*
+- [x] Hito 0 – Setup: decisiones documentadas, CI configurado; falta primer build verde + APK instalado en teléfono
 - [ ] Hito 1 – Transcripción básica
 - [ ] Hito 2 – UX y robustez
 - [ ] Hito 3 – Burbuja flotante
