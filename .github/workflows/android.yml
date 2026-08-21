@@ -89,7 +89,7 @@ jobs:
         working-directory: voice_bubble_stt
         run: flutter pub get
 
-      - name: Analyze (estricto: infos y warnings son fatales)
+      - name: Analyze estricto (infos y warnings fatales)
         working-directory: voice_bubble_stt
         run: flutter analyze
 
