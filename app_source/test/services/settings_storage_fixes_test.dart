@@ -86,6 +86,21 @@ class FakeFlutterSecureStorage implements FlutterSecureStorage {
   }) async {
     _store.clear();
   }
+
+  @override
+  Future<bool> isCupertinoProtectedDataAvailable() async => false;
+
+  @override
+  void registerListener({
+    required String key,
+    required void Function(String value) listener,
+  }) {}
+
+  @override
+  void unregisterAllListenersForKey({required String key}) {}
+
+  @override
+  void unregisterAllListeners() {}
 }
 
 Transcription _makeTranscription(String text, {bool isLocal = true}) {

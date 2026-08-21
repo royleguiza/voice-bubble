@@ -30,10 +30,7 @@ class TranscriptionService {
   set mode(TranscriptionMode newMode) => _mode = newMode;
 
   Future<bool> requestPermissions() async {
-    if (await _recorder.hasPermission()) {
-      return true;
-    }
-    return await _recorder.requestPermission();
+    return await _recorder.hasPermission();
   }
 
   Future<void> startRecording(String path) async {

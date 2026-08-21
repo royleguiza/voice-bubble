@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:record/record.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
@@ -9,12 +8,6 @@ import 'package:voice_bubble_stt/services/local_stt_service.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/ui/design_tokens.dart';
-
-class MockCloudSttService extends Mock implements CloudSttService {}
-
-class MockLocalSttService extends Mock implements LocalSttService {}
-
-class MockStorageService extends Mock implements StorageService {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -46,19 +39,13 @@ void main() {
 
   group('cleanupTempFile', () {
     late TranscriptionService service;
-    late MockCloudSttService mockCloud;
-    late MockLocalSttService mockLocal;
-    late MockStorageService mockStorage;
     late Directory tempDir;
 
     setUp(() {
-      mockCloud = MockCloudSttService();
-      mockLocal = MockLocalSttService();
-      mockStorage = MockStorageService();
       service = TranscriptionService(
-        cloudService: mockCloud,
-        localService: mockLocal,
-        storageService: mockStorage,
+        cloudService: const CloudSttService(apiKey: 'test'),
+        localService: LocalSttService(),
+        storageService: StorageService(),
       );
       tempDir = Directory.systemTemp.createTempSync('voice_bubble_test_');
     });

@@ -35,7 +35,7 @@ void main() {
 
     test('does not have Brightness.dark', () {
       final theme = buildLightTheme();
-      expect(theme.colorScheme!.brightness, isNot(Brightness.dark));
+      expect(theme.colorScheme.brightness, isNot(Brightness.dark));
     });
   });
 
@@ -57,7 +57,7 @@ void main() {
 
     test('has Brightness.dark', () {
       final theme = buildDarkTheme();
-      expect(theme.colorScheme!.brightness, Brightness.dark);
+      expect(theme.colorScheme.brightness, Brightness.dark);
     });
   });
 
