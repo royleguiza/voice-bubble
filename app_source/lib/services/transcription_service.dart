@@ -27,7 +27,9 @@ class TranscriptionService {
 
   TranscriptionMode get mode => _mode;
 
-  set mode(TranscriptionMode newMode) => _mode = newMode;
+  void setMode(TranscriptionMode newMode) {
+    _mode = newMode;
+  }
 
   Future<bool> requestPermissions() async {
     return await _recorder.hasPermission();

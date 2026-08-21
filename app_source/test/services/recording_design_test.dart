@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
-import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 import 'package:voice_bubble_stt/services/local_stt_service.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';

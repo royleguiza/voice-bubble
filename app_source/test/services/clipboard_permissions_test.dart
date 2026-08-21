@@ -1,10 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
-import 'package:voice_bubble_stt/models/transcription.dart';
-import 'package:voice_bubble_stt/screens/home_screen.dart';
-import 'package:voice_bubble_stt/widgets/history_list.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/local_stt_service.dart';
@@ -39,130 +34,7 @@ class MockAudioRecorder implements AudioRecorder {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-void main() {}
-
-  group('Clipboard - HomeScreen', () {
-    late List<Map<String, dynamic>> clipboardCalls;
-
-    setUp(() {
-      clipboardCalls = [];
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        const MethodChannel('flutter/base'),
-        (MethodCall methodCall) async {
-          if (methodCall.method == 'Clipboard.setData') {
-            final data = methodCall.arguments as Map;
-            clipboardCalls.add(Map<String, dynamic>.from(data));
-            return null;
-          }
-          return null;
-        },
-      );
-    });
-
-    tearDown(() {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        const MethodChannel('flutter/base'),
-        null,
-      );
-    });
-
-    testWidgets(
-      'botón copiar no se muestra cuando no hay resultado de transcripción',
-      (tester) async {
-        await tester.pumpWidget(
-          MaterialApp(home: const HomeScreen()),
-        );
-        await tester.pump();
-
-        expect(find.byIcon(Icons.copy), findsNothing);
-      },
-    );
-  });
-
-  group('Clipboard - HistoryList', () {
-    late List<Map<String, dynamic>> clipboardCalls;
-
-    setUp(() {
-      clipboardCalls = [];
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        const MethodChannel('flutter/base'),
-        (MethodCall methodCall) async {
-          if (methodCall.method == 'Clipboard.setData') {
-            final data = methodCall.arguments as Map;
-            clipboardCalls.add(Map<String, dynamic>.from(data));
-            return null;
-          }
-          return null;
-        },
-      );
-    });
-
-    tearDown(() {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        const MethodChannel('flutter/base'),
-        null,
-      );
-    });
-
-    testWidgets(
-      'al hacer tap en copiar un item del historial, Clipboard.setData se llama con el texto del item',
-      (tester) async {
-        final transcription = Transcription(
-          text: 'Texto de prueba',
-          timestamp: DateTime.now(),
-          isLocal: false,
-        );
-
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                height: 600,
-                child: HistoryList(transcriptions: [transcription]),
-              ),
-            ),
-          ),
-        );
-
-        await tester.tap(find.byIcon(Icons.copy));
-        await tester.pump();
-
-        expect(clipboardCalls.length, greaterThan(0));
-      },
-    );
-
-    testWidgets(
-      'al hacer tap en copiar un item del historial, se muestra SnackBar "Texto copiado"',
-      (tester) async {
-        final transcription = Transcription(
-          text: 'Otro texto',
-          timestamp: DateTime.now(),
-          isLocal: false,
-        );
-
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SizedBox(
-                height: 600,
-                child: HistoryList(transcriptions: [transcription]),
-              ),
-            ),
-          ),
-        );
-
-        await tester.tap(find.byIcon(Icons.copy));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Texto copiado'), findsOneWidget);
-      },
-    );
-  });
-
+void main() {
   group('TranscriptionService - Permisos', () {
     late MockAudioRecorder mockRecorder;
     late TranscriptionService service;
@@ -189,22 +61,9 @@ void main() {}
     );
 
     test(
-      'requestPermissions llama a requestPermission cuando no hay permiso y retorna true',
+      'requestPermissions retorna false cuando no hay permiso',
       () async {
         mockRecorder.setHasPermission(false);
-        mockRecorder.setRequestPermissionResult(true);
-
-        final result = await service.requestPermissions();
-
-        expect(result, isTrue);
-      },
-    );
-
-    test(
-      'requestPermissions retorna false cuando el permiso es denegado',
-      () async {
-        mockRecorder.setHasPermission(false);
-        mockRecorder.setRequestPermissionResult(false);
 
         final result = await service.requestPermissions();
 

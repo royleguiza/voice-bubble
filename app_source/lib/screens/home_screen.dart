@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
               selected: {_transcriptionService.mode},
               onSelectionChanged: (modes) {
                 setState(() {
-                  _transcriptionService.mode = modes.first;
+                  _transcriptionService.setMode(modes.first);
                   _currentMode =
                       modes.first == TranscriptionMode.cloud ? 'Cloud' : 'Local';
                 });

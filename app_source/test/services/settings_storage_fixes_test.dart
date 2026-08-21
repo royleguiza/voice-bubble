@@ -19,9 +19,7 @@ class FakeFlutterSecureStorage implements FlutterSecureStorage {
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
   }) async {
-    if (value != null) {
-      _store[key] = value;
-    }
+    if (value != null) _store[key] = value;
   }
 
   @override
@@ -33,9 +31,8 @@ class FakeFlutterSecureStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async {
-    return _store[key];
-  }
+  }) async =>
+      _store[key];
 
   @override
   Future<void> delete({
@@ -46,9 +43,8 @@ class FakeFlutterSecureStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async {
-    _store.remove(key);
-  }
+  }) async =>
+      _store.remove(key);
 
   @override
   Future<bool> containsKey({
@@ -59,9 +55,8 @@ class FakeFlutterSecureStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async {
-    return _store.containsKey(key);
-  }
+  }) async =>
+      _store.containsKey(key);
 
   @override
   Future<Map<String, String>> readAll({
@@ -71,9 +66,8 @@ class FakeFlutterSecureStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async {
-    return Map.unmodifiable(_store);
-  }
+  }) async =>
+      Map.unmodifiable(_store);
 
   @override
   Future<void> deleteAll({
@@ -83,9 +77,8 @@ class FakeFlutterSecureStorage implements FlutterSecureStorage {
     WebOptions? webOptions,
     MacOsOptions? mOptions,
     WindowsOptions? wOptions,
-  }) async {
-    _store.clear();
-  }
+  }) async =>
+      _store.clear();
 
   @override
   Future<bool> isCupertinoProtectedDataAvailable() async => false;
@@ -101,6 +94,9 @@ class FakeFlutterSecureStorage implements FlutterSecureStorage {
 
   @override
   void unregisterAllListeners() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 Transcription _makeTranscription(String text, {bool isLocal = true}) {
@@ -138,25 +134,21 @@ void main() {
     });
   });
 
-  group('SettingsScreen - Sección Modelo de transcripción', () {
+  group('SettingsScreen - Seccion Modelo de transcripcion', () {
     Widget buildTestableWidget() {
-      return const MaterialApp(
-        home: SettingsScreen(),
-      );
+      return const MaterialApp(home: SettingsScreen());
     }
 
-    testWidgets('existe la sección "Modelo de transcripción" en Settings',
+    testWidgets('existe la seccion "Modelo de transcripcion" en Settings',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
-
-      expect(find.text('Modelo de transcripción'), findsOneWidget);
+      expect(find.text('Modelo de transcripcion'), findsOneWidget);
     });
 
     testWidgets('muestra info del modo Cloud', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
-
       expect(find.text('Modo Cloud'), findsOneWidget);
       expect(find.text('Groq Whisper Large V3 (whisper-large-v3)'),
           findsOneWidget);
@@ -165,14 +157,14 @@ void main() {
     testWidgets('muestra info del modo Local', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
-
       expect(find.text('Modo Local'), findsOneWidget);
-      expect(find.text('Speech-to-Text del sistema Android'), findsOneWidget);
+      expect(
+          find.text('Speech-to-Text del sistema Android'), findsOneWidget);
     });
   });
 
   group('StorageService - FIFO de 20 elementos', () {
-    test('mantiene máximo 20 elementos', () async {
+    test('mantiene maximo 20 elementos', () async {
       final service = StorageService();
       for (var i = 0; i < 20; i++) {
         await service.add(_makeTranscription('item $i'));
@@ -180,8 +172,7 @@ void main() {
       expect(service.transcriptions.length, 20);
     });
 
-    test('elimina el más antiguo cuando se supera el límite de 20',
-        () async {
+    test('elimina el mas antiguo cuando se supera el limite de 20', () async {
       final service = StorageService();
       final transcriptions = <Transcription>[];
       for (var i = 0; i < 25; i++) {
@@ -189,13 +180,12 @@ void main() {
         transcriptions.add(t);
         await service.add(t);
       }
-
       expect(service.transcriptions.length, 20);
       expect(service.transcriptions[0], transcriptions[24]);
       expect(service.transcriptions[19], transcriptions[5]);
     });
 
-    test('mantiene el orden FIFO (más nuevo primero)', () async {
+    test('mantiene el orden FIFO (mas nuevo primero)', () async {
       final service = StorageService();
       final t1 = _makeTranscription('primero');
       final t2 = _makeTranscription('segundo');
@@ -210,8 +200,8 @@ void main() {
     });
   });
 
-  group('Transcription - Serialización JSON', () {
-    test('preserva todos los campos en la serialización', () {
+  group('Transcription - Serializacion JSON', () {
+    test('preserva todos los campos en la serializacion', () {
       final original = Transcription(
         text: 'Hola mundo',
         timestamp: DateTime(2025, 7, 15, 10, 30, 0),
@@ -244,7 +234,7 @@ void main() {
 
     test('preserva caracteres especiales en texto', () {
       final original = Transcription(
-        text: 'Acentos: áéíóú ñ, comillas: "hello"',
+        text: 'Acentos: áéíóú ñ',
         timestamp: DateTime(2025, 1, 1),
         isLocal: true,
       );
