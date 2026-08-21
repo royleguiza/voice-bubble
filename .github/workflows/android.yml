@@ -10,20 +10,29 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Java 17
+      - name: Java 17 (con cache de Gradle)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+          cache: gradle
 
-      - name: Flutter
+      - name: Aceptar licencias Android SDK (defensivo)
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Flutter (stable 3.47.1 + cache pub)
         uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -41,28 +50,48 @@ jobs:
             cp app_source/pubspec.yaml voice_bubble_stt/pubspec.yaml
             cp app_source/analysis_options.yaml voice_bubble_stt/analysis_options.yaml
             rm -rf voice_bubble_stt/lib voice_bubble_stt/test
-            cp -r app_source/lib voice_bubble_stt/lib
-            cp -r app_source/test voice_bubble_stt/test
+            cp -r app_source/lib voice_bubble_stt/
+            cp -r app_source/test voice_bubble_stt/
 
             sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 28/' \
               voice_bubble_stt/android/app/build.gradle.kts
+            grep -q 'minSdk = 28' voice_bubble_stt/android/app/build.gradle.kts \
+              || { echo '::error::sed minSdk no aplicado'; exit 1; }
 
             sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <application|' \
+              voice_bubble_stt/android/app/src/main/AndroidManifest.xml
+            grep -q 'RECORD_AUDIO' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
+              || { echo '::error::permiso RECORD_AUDIO no insertado'; exit 1; }
+
+            sed -i 's|android:label="voice_bubble_stt"|android:label="VoiceBubble STT"|' \
               voice_bubble_stt/android/app/src/main/AndroidManifest.xml
 
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add voice_bubble_stt
-            git commit -m "Hito 0: scaffold Flutter generado por CI" && git push || echo "sin cambios que commitear"
+            if git diff --cached --quiet; then
+              echo "Sin cambios que commitear"
+            else
+              git commit -m "Hito 0: scaffold Flutter generado por CI"
+              git pull --rebase origin main
+              git push
+            fi
           fi
+
+      - name: Sincronizar fuente (app_source -> voice_bubble_stt)
+        run: |
+          cp app_source/pubspec.yaml app_source/analysis_options.yaml voice_bubble_stt/
+          rm -rf voice_bubble_stt/lib voice_bubble_stt/test
+          cp -r app_source/lib voice_bubble_stt/
+          cp -r app_source/test voice_bubble_stt/
 
       - name: Pub get
         working-directory: voice_bubble_stt
         run: flutter pub get
 
-      - name: Analyze
+      - name: Analyze (estricto: infos y warnings son fatales)
         working-directory: voice_bubble_stt
-        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        run: flutter analyze
 
       - name: Test
         working-directory: voice_bubble_stt
@@ -75,5 +104,8 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: voice-bubble-debug-apk
+          name: voice-bubble-debug-apk-r${{ github.run_number }}
           path: voice_bubble_stt/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
