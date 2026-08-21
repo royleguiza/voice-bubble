@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.royleguiza.voice_bubble_stt"
+    namespace = "com.royleguiza.voicebubblestt"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.royleguiza.voice_bubble_stt"
+        applicationId = "com.royleguiza.voicebubblestt"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 28
