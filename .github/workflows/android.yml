@@ -40,8 +40,9 @@ jobs:
 
             cp app_source/pubspec.yaml voice_bubble_stt/pubspec.yaml
             cp app_source/analysis_options.yaml voice_bubble_stt/analysis_options.yaml
-            rm -rf voice_bubble_stt/lib
+            rm -rf voice_bubble_stt/lib voice_bubble_stt/test
             cp -r app_source/lib voice_bubble_stt/lib
+            cp -r app_source/test voice_bubble_stt/test
 
             sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 28/' \
               voice_bubble_stt/android/app/build.gradle.kts
