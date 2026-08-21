@@ -188,9 +188,9 @@ void main() {
     test('not equal to a non-Transcription object', () {
       final t = createSut();
 
-      expect(t == 'not a transcription', false);
-      expect(t == 42, false);
-      expect(t == null, false);
+      expect(t == 'not a transcription', isFalse);
+      expect(t == 42, isFalse);
+      expect(t == null, isFalse);
     });
 
     test('not equal when only text differs', () {

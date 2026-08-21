@@ -61,12 +61,14 @@ class HistoryList extends StatelessWidget {
                   icon: const Icon(Icons.copy, size: 18),
                   onPressed: () async {
                     await Clipboard.setData(ClipboardData(text: t.text));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Texto copiado'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Texto copiado'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
                 ),
                 contentPadding:

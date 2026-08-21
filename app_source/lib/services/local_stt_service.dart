@@ -29,9 +29,9 @@ class LocalSttService {
 
     _speech.listen(
       onResult: (SpeechRecognitionResult result) {
-        if (result.finalWords.isNotEmpty && !completer.isCompleted) {
+        if (result.recognizedWords.isNotEmpty && !completer.isCompleted) {
           completer.complete(Transcription(
-            text: result.finalWords,
+            text: result.recognizedWords,
             timestamp: DateTime.now(),
             isLocal: true,
           ));

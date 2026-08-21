@@ -16,7 +16,6 @@ class RecordButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isActive = isRecording || isTranscribing;
 
     return SizedBox(
       width: 80,
