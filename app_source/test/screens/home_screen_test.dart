@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
-import 'package:voice_bubble_stt/ui/design_tokens.dart';
 
 void main() {
   setUp(() {

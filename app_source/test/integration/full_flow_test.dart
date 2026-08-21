@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:voice_bubble_stt/main.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
