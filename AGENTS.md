@@ -141,6 +141,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 9 | Build nativo: `Could not find method jcenter()` evaluando speech_to_text | speech_to_text 6.6.0 usa `jcenter()`, eliminado en Gradle moderno | Subir a ^7.x (los ajustes Android se corrigieron en 7.0.0); migrar params deprecados de listen() a SpeechListenOptions |
 | 10 | kernel_snapshot: `RecordLinux missing implementations` (startStream/hasPermission) | La línea record 5.x tiene una combinación transitiva rota publicada (platform_interface 1.6.0 vs record_linux 0.7.2); sin pubspec.lock commiteado, cada resolve flota a la última | Subir record a ^7.1.1 (sub-paquetes alineados por upstream); evaluar commitear pubspec.lock |
 | 11 | Tests fallan "after test completion" con MissingPluginException método `create` | record 7.x: el CONSTRUCTOR de AudioRecorder() ya invoca `create` al canal | Mockear canales llfbandit en TODO archivo de test que construya TranscriptionService sin recorder inyectado |
+| 12 | Error 400 de Groq al transcribir en dispositivo real | Grabación con pcm16bits produce bytes WAV pero el path era `.m4a`: Groq valida la extensión de la parte multipart (caso idéntico documentado en vercel/ai#8846) | Extensión `.wav` para grabaciones PCM + propagar el mensaje real del body de error en respuestas no-200 (`_serverErrorDetail`) |
 
 ### 9.2 Reglas duras para agentes
 
