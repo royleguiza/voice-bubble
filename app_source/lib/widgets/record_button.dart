@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../ui/design_tokens.dart';
-import '../ui/glass_container.dart';
 
 /// Botón de grabar principal: círculo glass Ø104 en la zona inferior.
 /// Estados: idle (glass + mic acento), recording (rojo kRecording + glow +
