@@ -4,6 +4,11 @@ import '../ui/design_tokens.dart';
 /// Botón de grabar principal: círculo glass Ø104 en la zona inferior.
 /// Estados: idle (glass + mic acento), recording (rojo kRecording + glow +
 /// anillo pulsante), transcribing (spinner, deshabilitado).
+///
+/// El morph animado SOLO ocurre al ENTRAR en recording. Al salir
+/// (recording → transcribing) el cambio es instantáneo: interpolar la
+/// decoración roja con easeOutBack extrapolaba colores/sombras fuera de
+/// rango y producía artefactos visibles durante ~1 s sobre el botón.
 enum RecordButtonState { idle, recording, transcribing }
 
 class RecordButton extends StatefulWidget {
@@ -80,6 +85,10 @@ class _RecordButtonState extends State<RecordButton>
     final motionSafe = !MediaQuery.of(context).disableAnimations;
     final isRecording = widget.state == RecordButtonState.recording;
     final isTranscribing = widget.state == RecordButtonState.transcribing;
+    // Solo animar la entrada a recording. Al salir, swap instantáneo:
+    // ningún frame intermedio mezclando decoraciones rojas.
+    final morphDuration =
+        isRecording ? kAnimMorph : Duration.zero;
 
     final fill = isRecording
         ? recordingColor.withValues(alpha: 0.92)
@@ -130,8 +139,10 @@ class _RecordButtonState extends State<RecordButton>
                       ? () => widget.onHoldEnd!()
                       : null,
               child: AnimatedContainer(
-                duration: kAnimMorph,
-                curve: Curves.easeOutBack,
+                // easeOut (sin overshoot): easeOutBack extrapola los
+                // colores/sombras más allá del objetivo (t > 1).
+                duration: morphDuration,
+                curve: Curves.easeOut,
                 width: kRecordButtonSize,
                 height: kRecordButtonSize,
                 decoration: BoxDecoration(

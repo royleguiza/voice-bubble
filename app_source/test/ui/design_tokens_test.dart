@@ -73,8 +73,8 @@ void main() {
     });
 
     test('record cluster sits above the gesture inset', () {
-      expect(kRecordClusterBottomFactor, 0.30);
-      expect(kHistoryPillBottomGap, 20.0);
+      expect(kRecordClusterBottomFactor, 0.45);
+      expect(kHistoryPillBottomGap, 36.0);
     });
   });
 
