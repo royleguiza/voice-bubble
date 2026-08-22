@@ -142,6 +142,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 10 | kernel_snapshot: `RecordLinux missing implementations` (startStream/hasPermission) | La línea record 5.x tiene una combinación transitiva rota publicada (platform_interface 1.6.0 vs record_linux 0.7.2); sin pubspec.lock commiteado, cada resolve flota a la última | Subir record a ^7.1.1 (sub-paquetes alineados por upstream); evaluar commitear pubspec.lock |
 | 11 | Tests fallan "after test completion" con MissingPluginException método `create` | record 7.x: el CONSTRUCTOR de AudioRecorder() ya invoca `create` al canal | Mockear canales llfbandit en TODO archivo de test que construya TranscriptionService sin recorder inyectado |
 | 12 | Error 400 de Groq al transcribir en dispositivo real | Grabación con pcm16bits produce bytes WAV pero el path era `.m4a`: Groq valida la extensión de la parte multipart (caso idéntico documentado en vercel/ai#8846) | Extensión `.wav` para grabaciones PCM + propagar el mensaje real del body de error en respuestas no-200 (`_serverErrorDetail`) |
+| 13 | Persiste el 400: `could not be processed - is it a valid media file?` con extension .wav correcta | `pcm16bits` en record Android usa RawContainer: PCM CRUDO sin cabecera RIFF (extensión sugerida por el plugin: `.pcm`); `wav` = "pcm16bit with headers" via WaveContainer | Usar `AudioEncoder.wav` (mismo PCM 16 bits pero con cabecera válida). Lección: verificar qué contenedor escribe REALMENTE cada encoder contra el código Kotlin del plugin |
 
 ### 9.2 Reglas duras para agentes
 
