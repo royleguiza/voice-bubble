@@ -236,3 +236,47 @@ Además:
 - [ ] ¿Las esquinas son concéntricas y consistentes?
 - [ ] ¿Hay animación fluida en cada cambio de estado (sin cortes)?
 - [ ] ¿El elemento más importante de la pantalla es evidente en 1 segundo?
+
+---
+
+## 12. Extensión: Modo Teclado (hitos K1–K5)
+
+> El teclado es UI **nativa Kotlin**: estos tokens traducen el sistema Liquid Glass a
+> recursos nativos (`res/values/colors.xml` + `dimens.xml`). Rigen las mismas reglas de
+> jerarquía funcional/contenido (§2), variantes (§3), modo del sistema (§4) y
+> accesibilidad (§9). Spec funcional completa: `teclado-voice.md`.
+
+### Tokens de color (recursos nativos)
+
+| Token | Claro | Oscuro | Uso |
+|---|---|---|---|
+| `kb_surface` | vidrio Regular: blur σ10–14 + fill blanco ~75% + borde blanco .55 | fill negro ~55% + borde blanco .18 | Fondo completo del teclado |
+| `kb_key_bg` | blanco ~85% opacidad | `#2C2C2E` ~85% | Tecla normal |
+| `kb_key_bg_alt` | `#E5E5EA` | `#3A3A3C` | Shift, backspace, cambiador de capa |
+| `kb_key_bg_accent` | `tintAccent #007AFF` | `#0A84FF` | Enter y tecla de capa activa |
+| `kb_label` | `labelPrimary` | `labelPrimary` | Glifos de teclas |
+| `kb_label_secondary` | `labelSecondary` | `labelSecondary` | Hints de capa superior (shift/symbols) |
+| `kb_recording` | `tintRecord #FF3B30` | `#FF453A` | Anillo del micrófono grabando (único rojo, semántico) |
+
+### Métricas
+
+| Medida | Valor | Nota |
+|---|---|---|
+| Altura de tecla | 42–48 dp | 4 filas QWERTY; gap entre teclas 6 dp |
+| Radio de tecla | 8 dp | concéntrico con el surface (16 dp) |
+| Fila terminal | misma altura que teclas | TAB/ESC/CTRL/ALT/flechas visible en TODAS las capas |
+| Target táctil mínimo | 44×44 dp | regla §9 innegociable |
+| Estado presionado | escala 0.96→1.0 + háptico `KEYBOARD_TAP` | sonido de tecla OFF por defecto |
+
+### Movimiento
+
+- Cambio de capa (letras ↔ código ↔ snippets): crossfade + slide sutil 150–200 ms.
+- Micrófono: anillo pulsante solo mientras graba (spring suave); procesando = spinner.
+- Reduced Motion: crossfades directos sin rebote y anillo estático (igual que §9).
+
+### Reglas específicas del teclado
+
+- Vidrio **Regular siempre**: el fondo detrás es arbitrario (cualquier app); la variante Clear queda prohibida aquí.
+- Las teclas (elementos pequeños) pueden flip claro/oscuro según el modo del sistema; nunca toggle manual.
+- Campos de contraseña: micrófono oculto, snippets deshabilitados, cero sugerencias visuales.
+- Prohibido por alcance (anti-patrones `teclado-voice.md` §8): temas, emojis, autocorrector predictivo, glide typing, portapapeles multinivel.
