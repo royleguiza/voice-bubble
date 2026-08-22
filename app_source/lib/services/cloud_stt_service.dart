@@ -101,8 +101,23 @@ class CloudSttService {
           'Límite de solicitudes alcanzado. Espera un momento e intenta de nuevo.');
     }
 
-    throw TranscriptionException(
-        'Error del servidor Groq (${response.statusCode}). Intenta de nuevo.');
+    throw TranscriptionException(_serverErrorDetail(response.statusCode, body));
+  }
+
+  /// Propaga el motivo exacto que devuelve Groq en el body (ej. 400:
+  /// formato de archivo inválido) para diagnóstico directo en la app.
+  String _serverErrorDetail(int statusCode, String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        final error = decoded['error'];
+        final message = error is Map ? error['message'] : null;
+        if (message is String && message.isNotEmpty) {
+          return 'Error $statusCode de Groq: $message';
+        }
+      }
+    } catch (_) {}
+    return 'Error del servidor Groq ($statusCode). Intenta de nuevo.';
   }
 }
 

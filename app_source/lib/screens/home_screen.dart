@@ -83,8 +83,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startRecording() async {
     try {
       final dir = await getTemporaryDirectory();
+      // Extensión .wav: el encoder pcm16bits produce un contenedor WAV.
+      // Groq valida la extensión de la parte multipart y rechaza con 400
+      // si los bytes WAV viajan como .m4a.
       final path =
-          '${dir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+          '${dir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.wav';
       await _transcriptionService.startRecording(path);
       if (mounted) {
         setState(() => _isRecording = true);
