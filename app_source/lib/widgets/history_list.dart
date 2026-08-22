@@ -39,65 +39,48 @@ class HistoryList extends StatelessWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            'Historial',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+    return ListView.separated(
+      controller: scrollController,
+      // Overscroll siempre disponible: con pocos ítems también se
+      // puede arrastrar el sheet hacia su snap superior.
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: transcriptions.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final t = transcriptions[index];
+        return ListTile(
+          leading: Icon(
+            t.isLocal ? Icons.phone_android : Icons.cloud,
+            size: 20,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: ListView.separated(
-            controller: scrollController,
-            // Overscroll siempre disponible: con pocos ítems también se
-            // puede arrastrar el sheet hacia su snap superior.
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: transcriptions.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final t = transcriptions[index];
-              return ListTile(
-                leading: Icon(
-                  t.isLocal ? Icons.phone_android : Icons.cloud,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                title: Text(
-                  t.text,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  _formatTimestamp(t.timestamp),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.copy, size: 18),
-                  onPressed: () async {
-                    await Clipboard.setData(ClipboardData(text: t.text));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Texto copiado'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  },
-                ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              );
+          title: Text(
+            t.text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          subtitle: Text(
+            _formatTimestamp(t.timestamp),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.copy, size: 18),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: t.text));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Texto copiado'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
             },
           ),
-        ),
-      ],
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        );
+      },
     );
   }
 

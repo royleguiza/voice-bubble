@@ -67,13 +67,13 @@ void main() {
   });
 
   group('Home v2 layout tokens', () {
-    test('history sheet can expand to 90% with 50% initial snap', () {
+    test('history sheet can expand to 90% with 90% initial factor', () {
       expect(kHistorySheetMaxFactor, 0.90);
-      expect(kHistorySheetInitialFactor, 0.50);
+      expect(kHistorySheetInitialFactor, 0.90);
     });
 
     test('record cluster sits above the gesture inset', () {
-      expect(kRecordClusterBottomFactor, 0.36);
+      expect(kRecordClusterBottomFactor, 0.32);
       expect(kHistoryPillBottomGap, 72.0);
     });
   });

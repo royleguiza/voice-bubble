@@ -280,14 +280,13 @@ const double kPopupMaxHeightFactor = 0.35;
 /// Altura máxima del sheet de historial como fracción del alto de pantalla.
 const double kHistorySheetMaxFactor = 0.90;
 
-/// Altura inicial (y primer snap) del sheet de historial.
-const double kHistorySheetInitialFactor = 0.50;
+/// Altura inicial (y primer snap) del sheet de historial (se despliega al 90%).
+const double kHistorySheetInitialFactor = 0.90;
 
 /// Fracción del alto del body desde el borde inferior hasta el cluster
-/// del botón de grabar. 0.36 sitúa todo el botón (Ø104) y el texto de estado
-/// por debajo de la mitad vertical de la pantalla en cualquier dispositivo,
-/// dejando espacio amplio y cómodo sobre el pill de historial.
-const double kRecordClusterBottomFactor = 0.36;
+/// del botón de grabar. 0.32 sitúa todo el botón (Ø104) y el texto de estado
+/// en la zona óptima de alcance del pulgar (bajado un 10% adicional).
+const double kRecordClusterBottomFactor = 0.32;
 
 /// Holgura extra sobre el inset del sistema para el pill de historial.
 /// 72.0 dp asegura que el botón quede totalmente despegado de la barra de
