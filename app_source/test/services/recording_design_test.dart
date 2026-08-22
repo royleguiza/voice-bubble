@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
@@ -30,6 +31,25 @@ class _RecordingMockAudioRecorder implements AudioRecorder {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // record 7.x: el constructor de AudioRecorder invoca 'create' en el canal;
+  // sin mock lanza MissingPluginException y contamina los tests siguientes.
+  for (final channel in [
+    'com.llfbandit.record',
+    'com.llfbandit.record/messages',
+  ]) {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      MethodChannel(channel),
+      (MethodCall methodCall) async {
+        final m = methodCall.method.toLowerCase();
+        if (m.contains('permission')) {
+          return true;
+        }
+        return null;
+      },
+    );
+  }
 
   group('Encoder PCM 16 bits (WAV)', () {
     test('startRecording usa encoder AudioEncoder.pcm16bits', () async {
