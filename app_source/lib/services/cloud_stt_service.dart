@@ -61,8 +61,28 @@ class CloudSttService {
       throw const TranscriptionException('Sin conexión a internet.');
     }
 
+    final String body;
+    try {
+      body = await response.stream.bytesToString();
+    } on SocketException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on http.ClientException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on HttpException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on HandshakeException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on TlsException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on TimeoutException {
+      throw const TranscriptionException(
+          'Tiempo de espera agotado al conectar con el servidor.');
+    } catch (e) {
+      if (e is TranscriptionException) rethrow;
+      throw const TranscriptionException('Sin conexión a internet.');
+    }
+
     if (response.statusCode == 200) {
-      final body = await response.stream.bytesToString();
       final decoded = jsonDecode(body) as Map<String, dynamic>;
       final text = decoded['text'] as String;
       return Transcription(

@@ -32,8 +32,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveApiKey() async {
     final key = _apiKeyController.text.trim();
     await _secureStorage.write(key: 'groq_api_key', value: key);
-    setState(() => _hasApiKey = key.isNotEmpty);
     if (mounted) {
+      setState(() => _hasApiKey = key.isNotEmpty);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('API key guardada')),
       );
@@ -42,9 +42,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _clearApiKey() async {
     await _secureStorage.delete(key: 'groq_api_key');
-    _apiKeyController.clear();
-    setState(() => _hasApiKey = false);
     if (mounted) {
+      _apiKeyController.clear();
+      setState(() => _hasApiKey = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('API key eliminada')),
       );

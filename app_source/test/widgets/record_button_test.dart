@@ -152,5 +152,24 @@ void main() {
       final widget = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
       expect(widget.onPressed, isNotNull);
     });
+
+    testWidgets('icons have size 36', (tester) async {
+      await tester.pumpWidget(buildTestWidget(isRecording: false));
+      final micIcon = tester.widget<Icon>(find.byIcon(Icons.mic_rounded));
+      expect(micIcon.size, 36);
+
+      await tester.pumpWidget(buildTestWidget(isRecording: true));
+      final stopIcon = tester.widget<Icon>(find.byIcon(Icons.stop_rounded));
+      expect(stopIcon.size, 36);
+    });
+
+    testWidgets('CircularProgressIndicator uses onPrimary color', (tester) async {
+      await tester.pumpWidget(buildTestWidget(isTranscribing: true));
+
+      final indicator = tester.widget<CircularProgressIndicator>(
+        find.byType(CircularProgressIndicator),
+      );
+      expect(indicator.color, isNotNull);
+    });
   });
 }
