@@ -138,6 +138,9 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 6 | 6 tests de grabación fallan: el botón nunca pasa de mic a stop | Los mocks usaban canales inventados (`com.llcgram.*`); el plugin record 5.x usa `com.llfbandit.record` y `/messages` | Verificar el nombre EXACTO del canal contra el código fuente del plugin antes de mockear |
 | 7 | Clipboard.getData devuelve null y el SnackBar nunca aparece | El canal `flutter/platform` no tiene implementación nativa en tests → MissingPluginException en setData/getData | Mockear SystemChannels.platform con un store en memoria |
 | 8 | `find.text('item 19')` encuentra 0 widgets con una lista de 20 | ListView es lazy: los ítems fuera del viewport NO se construyen | Hacer scroll (dragUntilVisible) antes del expect |
+| 9 | Build nativo: `Could not find method jcenter()` evaluando speech_to_text | speech_to_text 6.6.0 usa `jcenter()`, eliminado en Gradle moderno | Subir a ^7.x (los ajustes Android se corrigieron en 7.0.0); migrar params deprecados de listen() a SpeechListenOptions |
+| 10 | kernel_snapshot: `RecordLinux missing implementations` (startStream/hasPermission) | La línea record 5.x tiene una combinación transitiva rota publicada (platform_interface 1.6.0 vs record_linux 0.7.2); sin pubspec.lock commiteado, cada resolve flota a la última | Subir record a ^7.1.1 (sub-paquetes alineados por upstream); evaluar commitear pubspec.lock |
+| 11 | Tests fallan "after test completion" con MissingPluginException método `create` | record 7.x: el CONSTRUCTOR de AudioRecorder() ya invoca `create` al canal | Mockear canales llfbandit en TODO archivo de test que construya TranscriptionService sin recorder inyectado |
 
 ### 9.2 Reglas duras para agentes
 
