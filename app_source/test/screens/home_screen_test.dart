@@ -71,26 +71,6 @@ void main() {
     }
 
     for (final channel in [
-      'plugin.speech_to_text',
-      'plugin.speech_to_text.android',
-      'plugin.speech_to_text.ios',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async {
-          switch (methodCall.method) {
-            case 'initialize':
-            case 'hasPermission':
-              return true;
-            default:
-              return null;
-          }
-        },
-      );
-    }
-
-    for (final channel in [
       'com.royleguiza.voicebubblestt/floating_bubble',
     ]) {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -112,9 +92,6 @@ void main() {
       'plugins.flutter.io/path_provider_macos',
       'plugins.flutter.io/path_provider_linux',
       'plugins.flutter.io/path_provider_windows',
-      'plugin.speech_to_text',
-      'plugin.speech_to_text.android',
-      'plugin.speech_to_text.ios',
       'plugins.it_nomads.com/flutter_secure_storage',
       'plugins.flutter.io/shared_preferences',
     ]) {
