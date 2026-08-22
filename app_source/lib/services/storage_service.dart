@@ -13,10 +13,22 @@ class StorageService {
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     final jsonList = prefs.getStringList(_key) ?? [];
-    _transcriptions = jsonList
-        .map((json) => Transcription.fromJson(jsonDecode(json)))
-        .toList();
+    final loaded = <Transcription>[];
+    for (final json in jsonList) {
+      try {
+        final decoded = jsonDecode(json);
+        if (decoded is Map) {
+          loaded.add(
+            Transcription.fromJson(Map<String, dynamic>.from(decoded)),
+          );
+        }
+      } catch (_) {
+        // Ignore corrupt entry gracefully
+      }
+    }
+    _transcriptions = loaded;
   }
 
   Future<void> add(Transcription transcription) async {

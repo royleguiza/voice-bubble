@@ -38,13 +38,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _storageService = widget.storageService ?? StorageService();
-    _transcriptionService = widget.transcriptionService ??
-        TranscriptionService(
-          cloudService: const CloudSttService(apiKey: ''),
-          localService: LocalSttService(),
-          storageService: _storageService,
-        );
+    if (widget.transcriptionService != null) {
+      _transcriptionService = widget.transcriptionService!;
+      _storageService = widget.storageService ?? _transcriptionService.storageService;
+    } else {
+      _storageService = widget.storageService ?? StorageService();
+      _transcriptionService = TranscriptionService(
+        cloudService: const CloudSttService(apiKey: ''),
+        localService: LocalSttService(),
+        storageService: _storageService,
+      );
+    }
     _init();
   }
 

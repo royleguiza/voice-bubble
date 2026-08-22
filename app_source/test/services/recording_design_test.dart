@@ -8,6 +8,26 @@ import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/ui/design_tokens.dart';
 
+class _RecordingMockAudioRecorder implements AudioRecorder {
+  RecordConfig? lastConfig;
+  String? lastPath;
+
+  @override
+  Future<bool> hasPermission() async => true;
+
+  @override
+  Future<void> start(RecordConfig config, {required String path}) async {
+    lastConfig = config;
+    lastPath = path;
+  }
+
+  @override
+  Future<String?> stop() async => lastPath;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -33,6 +53,24 @@ void main() {
 
       expect(config.sampleRate, 16000);
       expect(config.numChannels, 1);
+    });
+
+    test('TranscriptionService.startRecording pasa configuración PCM 16 bits mono 16kHz al grabador', () async {
+      final mockRecorder = _RecordingMockAudioRecorder();
+      final service = TranscriptionService(
+        cloudService: const CloudSttService(apiKey: 'test'),
+        localService: LocalSttService(),
+        storageService: StorageService(),
+        recorder: mockRecorder,
+      );
+
+      await service.startRecording('/tmp/test_recording.wav');
+
+      expect(mockRecorder.lastConfig, isNotNull);
+      expect(mockRecorder.lastConfig!.encoder, AudioEncoder.pcm16bits);
+      expect(mockRecorder.lastConfig!.sampleRate, 16000);
+      expect(mockRecorder.lastConfig!.numChannels, 1);
+      expect(mockRecorder.lastPath, '/tmp/test_recording.wav');
     });
   });
 

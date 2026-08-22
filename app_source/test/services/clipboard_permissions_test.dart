@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
@@ -31,10 +32,29 @@ class MockAudioRecorder implements AudioRecorder {
   }
 
   @override
+  Future<bool> isRecording() async => _started;
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> resume() async {}
+
+  @override
+  Future<void> cancel() async {
+    _started = false;
+  }
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('TranscriptionService - Permisos', () {
     late MockAudioRecorder mockRecorder;
     late TranscriptionService service;
@@ -100,5 +120,30 @@ void main() {
         expect(mockRecorder.lastStartedPath, '/tmp/test.m4a');
       },
     );
+  });
+
+  group('Clipboard Service & Channels', () {
+    test('Clipboard.setData guarda texto y Clipboard.getData lo recupera', () async {
+      const testText = 'Texto de transcripción para portapapeles';
+      await Clipboard.setData(const ClipboardData(text: testText));
+
+      final result = await Clipboard.getData(Clipboard.kTextPlain);
+      expect(result?.text, testText);
+    });
+
+    test('Clipboard maneja texto con caracteres especiales y acentos', () async {
+      const complexText = 'Acentos: áéíóú ñ, emojis: 🎤🚀, comillas: "test"';
+      await Clipboard.setData(const ClipboardData(text: complexText));
+
+      final result = await Clipboard.getData(Clipboard.kTextPlain);
+      expect(result?.text, complexText);
+    });
+
+    test('Clipboard maneja texto vacío', () async {
+      await Clipboard.setData(const ClipboardData(text: ''));
+
+      final result = await Clipboard.getData(Clipboard.kTextPlain);
+      expect(result?.text, '');
+    });
   });
 }

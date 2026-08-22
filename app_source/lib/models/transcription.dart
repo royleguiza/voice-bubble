@@ -11,9 +11,11 @@ class Transcription {
 
   factory Transcription.fromJson(Map<String, dynamic> json) {
     return Transcription(
-      text: json['text'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      isLocal: json['isLocal'] as bool,
+      text: (json['text'] as String?) ?? '',
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'] as String)
+          : DateTime.now(),
+      isLocal: (json['isLocal'] as bool?) ?? false,
     );
   }
 
@@ -36,4 +38,8 @@ class Transcription {
 
   @override
   int get hashCode => Object.hash(text, timestamp, isLocal);
+
+  @override
+  String toString() =>
+      'Transcription(text: $text, timestamp: $timestamp, isLocal: $isLocal)';
 }

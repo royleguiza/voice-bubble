@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 
@@ -33,7 +35,7 @@ void main() {
 
     test('jsonDecode maneja caracteres especiales en español', () {
       const responseBody =
-          '{"text": "Acentos: áéíóú ñ, signos: ¿? @#\$%, unicode: \u00e1\u00e9\u00ed\u00f3\u00fa"}';
+          '{"text": "Acentos: áéíóú ñ, signos: ¿? @#\$%, unicode: \\u00e1\\u00e9\\u00ed\\u00f3\\u00fa"}';
       final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
       final text = decoded['text'] as String;
 
@@ -90,8 +92,7 @@ void main() {
       expect(transcription.timestamp, isA<DateTime>());
     });
 
-    test('jsonDecode extrae correctamente campo text del JSON de Groq',
-        () {
+    test('jsonDecode extrae correctamente campo text del JSON de Groq', () {
       const responseBody = '{"text": " audio content ", "x_groq": {}}';
       final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
 
@@ -101,8 +102,7 @@ void main() {
   });
 
   group('Fix 2: Manejo de SocketException (sin conexión a internet)', () {
-    test('TranscriptionException con mensaje de sin conexión es lanzado',
-        () {
+    test('TranscriptionException con mensaje de sin conexión es lanzado', () {
       const expectedMessage = 'Sin conexión a internet.';
       const exception = TranscriptionException(expectedMessage);
 
@@ -133,18 +133,89 @@ void main() {
 
     test('servicio lanza TranscriptionException al recibir SocketException',
         () async {
-      const service = CloudSttService(apiKey: 'test-key');
-      expect(
-        () => service.transcribe(tempAudioFile.path),
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw const SocketException('Connection failed');
+      });
+      final service = CloudSttService(apiKey: 'test-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
         throwsA(
           isA<TranscriptionException>().having(
             (e) => e.message,
             'message',
-            anyOf(
-              equals('Sin conexión a internet.'),
-              contains('Error del servidor'),
-              contains('Archivo de audio'),
-            ),
+            'Sin conexión a internet.',
+          ),
+        ),
+      );
+    });
+
+    test('servicio lanza TranscriptionException al recibir ClientException',
+        () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw http.ClientException('Connection reset');
+      });
+      final service = CloudSttService(apiKey: 'test-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Sin conexión a internet.',
+          ),
+        ),
+      );
+    });
+
+    test('servicio lanza TranscriptionException al recibir HttpException',
+        () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw const HttpException('Connection closed');
+      });
+      final service = CloudSttService(apiKey: 'test-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Sin conexión a internet.',
+          ),
+        ),
+      );
+    });
+
+    test('servicio lanza TranscriptionException al recibir HandshakeException',
+        () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw const HandshakeException('Handshake error');
+      });
+      final service = CloudSttService(apiKey: 'test-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Sin conexión a internet.',
+          ),
+        ),
+      );
+    });
+
+    test('servicio lanza TranscriptionException al recibir TlsException',
+        () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw const TlsException('TLS error');
+      });
+      final service = CloudSttService(apiKey: 'test-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Sin conexión a internet.',
           ),
         ),
       );
@@ -194,6 +265,72 @@ void main() {
       expect(uniqueMessages.length, messages.length,
           reason: 'Cada tipo de error debe tener un mensaje único');
     });
+
+    test(
+        'servicio lanza TranscriptionException con mensaje de API key inválida al recibir 401',
+        () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('{"error": "Invalid API Key"}')),
+          401,
+        );
+      });
+      final service =
+          CloudSttService(apiKey: 'invalid-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'API key inválida. Verifica tu clave en Settings.',
+          ),
+        ),
+      );
+    });
+
+    test(
+        'servicio lanza TranscriptionException con mensaje de rate limit al recibir 429',
+        () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('{"error": "Rate limit exceeded"}')),
+          429,
+        );
+      });
+      final service = CloudSttService(apiKey: 'test-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Límite de solicitudes alcanzado. Espera un momento e intenta de nuevo.',
+          ),
+        ),
+      );
+    });
+
+    test('servicio lanza TranscriptionException al recibir error 500',
+        () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('{"error": "Internal Server Error"}')),
+          500,
+        );
+      });
+      final service = CloudSttService(apiKey: 'test-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Error del servidor Groq (500). Intenta de nuevo.',
+          ),
+        ),
+      );
+    });
   });
 
   group('Manejo de timeout (30 segundos)', () {
@@ -203,14 +340,13 @@ void main() {
         return 'done';
       });
 
-      expect(
-        () => slowFuture.timeout(const Duration(milliseconds: 100)),
+      await expectLater(
+        slowFuture.timeout(const Duration(milliseconds: 100)),
         throwsA(isA<TimeoutException>()),
       );
     });
 
-    test('Future.timeout completa exitosamente si termina a tiempo',
-        () async {
+    test('Future.timeout completa exitosamente si termina a tiempo', () async {
       final fastFuture = Future.value('resultado');
 
       final result = await fastFuture.timeout(const Duration(seconds: 30));
@@ -220,6 +356,24 @@ void main() {
     test('timeout de 30 segundos es el configurado en el servicio', () {
       const timeoutDuration = Duration(seconds: 30);
       expect(timeoutDuration.inSeconds, 30);
+    });
+
+    test('servicio lanza TranscriptionException al ocurrir TimeoutException',
+        () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw TimeoutException('Request timeout');
+      });
+      final service = CloudSttService(apiKey: 'test-key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Tiempo de espera agotado al conectar con el servidor.',
+          ),
+        ),
+      );
     });
   });
 
@@ -232,8 +386,8 @@ void main() {
 
     test('servicio lanza error si API key está vacía', () async {
       const service = CloudSttService(apiKey: '');
-      expect(
-        () => service.transcribe('/any/path.wav'),
+      await expectLater(
+        service.transcribe('/any/path.wav'),
         throwsA(
           isA<TranscriptionException>().having(
             (e) => e.message,
@@ -279,8 +433,7 @@ void main() {
       expect(requestFields['language'], 'es');
     });
 
-    test('header Authorization formateado correctamente con Bearer token',
-        () {
+    test('header Authorization formateado correctamente con Bearer token', () {
       const apiKey = 'gsk_test_api_key_abc123';
       final authHeader = 'Bearer $apiKey';
 
@@ -300,12 +453,11 @@ void main() {
       expect(bytes.length, greaterThanOrEqualTo(1024));
     });
 
-    test(
-        'servicio lanza error si archivo de audio no existe para multipart',
+    test('servicio lanza error si archivo de audio no existe para multipart',
         () async {
       const service = CloudSttService(apiKey: 'test-key');
-      expect(
-        () => service.transcribe('/nonexistent/audio.wav'),
+      await expectLater(
+        service.transcribe('/nonexistent/audio.wav'),
         throwsA(
           isA<TranscriptionException>().having(
             (e) => e.message,
@@ -318,10 +470,11 @@ void main() {
   });
 
   group('Integración de fixes - comportamiento del servicio', () {
-    test('servicio con API key vacía falla antes de intentar conexión', () {
+    test('servicio con API key vacía falla antes de intentar conexión',
+        () async {
       const service = CloudSttService(apiKey: '');
-      expect(
-        () => service.transcribe(tempAudioFile.path),
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
         throwsA(
           isA<TranscriptionException>().having(
             (e) => e.message,
@@ -332,12 +485,11 @@ void main() {
       );
     });
 
-    test(
-        'servicio con archivo inexistente falla antes de intentar conexión',
-        () {
+    test('servicio con archivo inexistente falla antes de intentar conexión',
+        () async {
       const service = CloudSttService(apiKey: 'valid-key');
-      expect(
-        () => service.transcribe('/no/existe.wav'),
+      await expectLater(
+        service.transcribe('/no/existe.wav'),
         throwsA(
           isA<TranscriptionException>().having(
             (e) => e.message,
@@ -349,13 +501,28 @@ void main() {
     });
 
     test(
-        'servicio con API key y archivo válido procede a hacer request HTTP',
+        'servicio con API key y archivo válido procede a hacer request HTTP y retorna transcripción',
         () async {
-      const service = CloudSttService(apiKey: 'valid-key');
-      expect(
-        () => service.transcribe(tempAudioFile.path),
-        throwsA(isA<TranscriptionException>()),
-      );
+      var requestSent = false;
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        requestSent = true;
+        expect(request.url.toString(),
+            'https://api.groq.com/openai/v1/audio/transcriptions');
+        expect(request.headers['Authorization'], 'Bearer valid-key');
+        return http.StreamedResponse(
+          Stream.value(utf8.encode('{"text": "Transcripción completada"}')),
+          200,
+        );
+      });
+
+      final service =
+          CloudSttService(apiKey: 'valid-key', client: mockClient);
+      final result = await service.transcribe(tempAudioFile.path);
+
+      expect(requestSent, isTrue);
+      expect(result.text, 'Transcripción completada');
+      expect(result.isLocal, isFalse);
+      expect(result.timestamp, isA<DateTime>());
     });
 
     test('TranscriptionException implementa Exception correctamente', () {
@@ -364,16 +531,14 @@ void main() {
       expect(exception, isA<TranscriptionException>());
     });
 
-    test('código de error 401 produce TranscriptionException específica',
-        () {
+    test('código de error 401 produce TranscriptionException específica', () {
       const exception = TranscriptionException(
           'API key inválida. Verifica tu clave en Settings.');
       expect(exception.message, contains('API key'));
       expect(exception.message, contains('Settings'));
     });
 
-    test('código de error 429 produce TranscriptionException específica',
-        () {
+    test('código de error 429 produce TranscriptionException específica', () {
       const exception = TranscriptionException(
           'Límite de solicitudes alcanzado. Espera un momento e intenta de nuevo.');
       expect(exception.message, contains('Límite'));

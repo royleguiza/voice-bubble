@@ -251,4 +251,37 @@ void main() {
       expect(t1.hashCode, isNot(t2.hashCode));
     });
   });
+
+  group('toString', () {
+    test('produces readable string representation', () {
+      final dt = DateTime(2025, 7, 15, 10, 30, 0);
+      final t = Transcription(text: 'Prueba', timestamp: dt, isLocal: true);
+
+      expect(t.toString(), 'Transcription(text: Prueba, timestamp: $dt, isLocal: true)');
+    });
+  });
+
+  group('Defensive JSON deserialization', () {
+    test('handles missing or null fields gracefully', () {
+      final json = <String, dynamic>{};
+      final t = Transcription.fromJson(json);
+
+      expect(t.text, '');
+      expect(t.isLocal, false);
+      expect(t.timestamp, isA<DateTime>());
+    });
+
+    test('handles null values for nullable keys in map', () {
+      final json = <String, dynamic>{
+        'text': null,
+        'timestamp': null,
+        'isLocal': null,
+      };
+      final t = Transcription.fromJson(json);
+
+      expect(t.text, '');
+      expect(t.isLocal, false);
+      expect(t.timestamp, isA<DateTime>());
+    });
+  });
 }

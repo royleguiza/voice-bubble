@@ -14,6 +14,8 @@ Transcription _makeTranscription(String text, {bool isLocal = true}) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
@@ -40,6 +42,23 @@ void main() {
       expect(service.transcriptions.length, 2);
       expect(service.transcriptions[0], t1);
       expect(service.transcriptions[1], t2);
+    });
+
+    test('load() gracefully ignores corrupt JSON entries', () async {
+      final t1 = _makeTranscription('valid');
+      SharedPreferences.setMockInitialValues({
+        'transcriptions': [
+          jsonEncode(t1.toJson()),
+          'not valid json',
+          '{invalid json}',
+        ],
+      });
+
+      final service = StorageService();
+      await service.load();
+
+      expect(service.transcriptions.length, 1);
+      expect(service.transcriptions[0], t1);
     });
 
     test('add() adds a transcription to the list', () async {

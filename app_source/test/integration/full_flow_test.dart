@@ -18,15 +18,23 @@ void main() {
     for (final channel in [
       'com.llcgram.record',
       'com.llcgram.record/messages',
+      'com.llcgram.record/events',
+      'com.llcgram.record_android',
+      'com.llcgram.record_linux',
+      'com.llcgram.record_windows',
+      'com.llcgram.record_darwin',
+      'com.llcgram.record_web',
+      'net.chemirea.record',
     ]) {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
         MethodChannel(channel),
         (MethodCall methodCall) async {
+          final m = methodCall.method.toLowerCase();
+          if (m.contains('permission')) {
+            return true;
+          }
           switch (methodCall.method) {
-            case 'hasPermission':
-            case 'isPermissionGranted':
-              return true;
             case 'start':
             case 'create':
             case 'dispose':
@@ -37,46 +45,84 @@ void main() {
             case 'stop':
               return '/tmp/recording.m4a';
             case 'isRecording':
+            case 'is_recording':
               return true;
+            case 'isPaused':
+            case 'is_paused':
+              return false;
+            case 'getAmplitude':
+              return {'current': -160.0, 'max': -160.0};
+            case 'listInputDevices':
+              return <Map<String, dynamic>>[];
+            default:
+              return true;
+          }
+        },
+      );
+    }
+
+    for (final channel in [
+      'plugins.flutter.io/path_provider',
+      'plugins.flutter.io/path_provider_android',
+      'plugins.flutter.io/path_provider_ios',
+      'plugins.flutter.io/path_provider_macos',
+      'plugins.flutter.io/path_provider_linux',
+      'plugins.flutter.io/path_provider_windows',
+    ]) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        MethodChannel(channel),
+        (MethodCall methodCall) async => '/tmp',
+      );
+    }
+
+    for (final channel in [
+      'plugin.speech_to_text',
+      'plugin.speech_to_text.android',
+      'plugin.speech_to_text.ios',
+    ]) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        MethodChannel(channel),
+        (MethodCall methodCall) async {
+          switch (methodCall.method) {
+            case 'initialize':
+            case 'hasPermission':
+              return true;
+            case 'listen':
+            case 'stop':
+            case 'cancel':
+              return null;
             default:
               return null;
           }
         },
       );
     }
-
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async => '/tmp',
-    );
-
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      const MethodChannel('plugin.speech_to_text'),
-      (MethodCall methodCall) async {
-        switch (methodCall.method) {
-          case 'initialize':
-          case 'hasPermission':
-            return true;
-          case 'listen':
-          case 'stop':
-          case 'cancel':
-            return null;
-          default:
-            return null;
-        }
-      },
-    );
   });
 
   tearDown(() {
     for (final channel in [
       'com.llcgram.record',
       'com.llcgram.record/messages',
+      'com.llcgram.record/events',
+      'com.llcgram.record_android',
+      'com.llcgram.record_linux',
+      'com.llcgram.record_windows',
+      'com.llcgram.record_darwin',
+      'com.llcgram.record_web',
+      'net.chemirea.record',
       'plugins.flutter.io/path_provider',
+      'plugins.flutter.io/path_provider_android',
+      'plugins.flutter.io/path_provider_ios',
+      'plugins.flutter.io/path_provider_macos',
+      'plugins.flutter.io/path_provider_linux',
+      'plugins.flutter.io/path_provider_windows',
       'plugin.speech_to_text',
+      'plugin.speech_to_text.android',
+      'plugin.speech_to_text.ios',
       'plugins.it_nomads.com/flutter_secure_storage',
+      'plugins.flutter.io/shared_preferences',
     ]) {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(MethodChannel(channel), null);
@@ -221,8 +267,8 @@ void main() {
         expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
         expect(find.text('Listo para transcribir'), findsOneWidget);
 
-        await tester.tap(find.byIcon(Icons.mic_rounded));
-        await tester.pumpAndSettle();
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pump();
 
         expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
         expect(find.text('Grabando...'), findsOneWidget);

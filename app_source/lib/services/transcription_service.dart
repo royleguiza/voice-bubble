@@ -26,6 +26,7 @@ class TranscriptionService {
         _recorder = recorder ?? AudioRecorder();
 
   TranscriptionMode get mode => _mode;
+  StorageService get storageService => _storageService;
 
   void setMode(TranscriptionMode newMode) {
     _mode = newMode;
