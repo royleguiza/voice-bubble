@@ -159,6 +159,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 15 | `dependOnInheritedWidgetOfExactType<MediaQuery>() called before initState completed` | MediaQuery.of dentro de initState del widget | Mover a didChangeDependencies |
 | 16 | analyze: `The setter 'physicalSizeTested' isn't defined for the type 'TestFlutterView'` | API vieja de TestWindow (`*TestValue`/`*Tested`) confundida con la moderna | En Flutter actual: `tester.view.physicalSize = ...` y `tester.view.devicePixelRatio = ...`, con `addTearDown(tester.view.reset)` |
 | 17 | `enterText` falla con `Bad state: No element` en tests que navegan a Settings | Al crecer la página (tarjeta del teclado), el TextField quedó bajo el pliegue del ListView lazy: no se construye si no es visible (ver §9.1-8) | Agrandar superficie en TODOS los tests que rendericen la pantalla (`tester.view.physicalSize`), no solo en los que hacen scroll explícito |
+| 18 | Gradle/Kotlin: ~25 errores en cascada (`Unresolved reference 'input'`, `'currentInputConnection'`, `'resources'`, etc.) | Un typo en un import (`android.input.methodservice` vs `android.inputmethodservice`): la clase deja de resolver su superclase y todos sus miembros | Verificar la ruta EXACTA del paquete Android contra developer.android.com antes de pushear Kotlin; ante errores en cascada, buscar PRIMERO imports rotos |
 
 ### 9.2 Reglas duras para agentes
 
