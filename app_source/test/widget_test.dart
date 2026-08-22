@@ -99,7 +99,7 @@ void main() {
 
       // 2. Iniciar grabación: tap en el botón de grabar
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       // Verificación: estado grabando activo
       expect(find.text('Grabando...'), findsOneWidget);
@@ -108,7 +108,7 @@ void main() {
 
       // 3. Detener grabación: segundo tap alterna a detener
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       // Verificación: grabación detenida, vuelve al estado inicial
       expect(find.text('Grabando...'), findsNothing);
