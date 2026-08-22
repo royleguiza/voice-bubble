@@ -73,8 +73,8 @@ void main() {
   }) {
     // Superficie alta (800x2000 logicos) para que toda la pagina de Settings
     // sea visible sin scroll: la tarjeta del teclado alargo la lista.
-    tester.view.physicalSizeTested = const Size(1600, 4000);
-    tester.view.devicePixelRatioTested = 2.0;
+    tester.view.physicalSize = const Size(1600, 4000);
+    tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
     return MaterialApp(
       home: SettingsScreen(
