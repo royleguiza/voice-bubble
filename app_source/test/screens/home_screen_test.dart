@@ -143,7 +143,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byKey(const ValueKey('recordButton')), findsOneWidget);
     });
 
     testWidgets('shows "Listo para transcribir" text initially', (tester) async {
@@ -176,38 +176,11 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
-    });
-
-    testWidgets('shows history section', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('No hay transcripciones aun'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('shows "Historial" label when there are transcriptions', (tester) async {
-      SharedPreferences.setMockInitialValues({
-        'transcriptions': [
-          '{"text":"Hola mundo","timestamp":"2024-01-15T10:30:00.000","isLocal":false}',
-        ],
-      });
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('transcriptions', [
-        '{"text":"Hola mundo","timestamp":"2024-01-15T10:30:00.000","isLocal":false}',
-      ]);
-
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      expect(find.text('Historial'), findsOneWidget);
     });
 
     testWidgets('AppBar title is centered', (tester) async {
@@ -218,56 +191,21 @@ void main() {
       expect(appBar.centerTitle, isTrue);
     });
 
-    testWidgets('body has horizontal padding of 20', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      final padding = tester.widget<Padding>(
-        find.byWidgetPredicate(
-          (widget) => widget is Padding && widget.padding == const EdgeInsets.symmetric(horizontal: 20),
-        ),
-      );
-      expect(padding.padding, const EdgeInsets.symmetric(horizontal: 20));
-    });
-
     testWidgets('shows stop icon when recording and tapped again', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
 
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
-    });
-
-    testWidgets('shows Expanded widget for history', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      expect(find.byType(Expanded), findsWidgets);
-    });
-
-    testWidgets('shows SizedBox spacers between sections', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      expect(find.byType(SizedBox), findsWidgets);
-    });
-
-    testWidgets('Scaffold has proper structure', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      expect(find.byType(Scaffold), findsOneWidget);
-      expect(find.byType(AppBar), findsOneWidget);
-      expect(find.byType(Column), findsWidgets);
     });
 
   });

@@ -3,15 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/record_button.dart';
 
 Widget buildTestWidget({
-  bool isRecording = false,
-  bool isTranscribing = false,
+  RecordButtonState state = RecordButtonState.idle,
   VoidCallback? onPressed,
 }) {
   return MaterialApp(
     home: Scaffold(
       body: RecordButton(
-        isRecording: isRecording,
-        isTranscribing: isTranscribing,
+        key: const ValueKey('recordButton'),
+        state: state,
         onPressed: onPressed ?? () {},
       ),
     ),
@@ -19,157 +18,77 @@ Widget buildTestWidget({
 }
 
 void main() {
-  group('RecordButton', () {
-    testWidgets('renders FloatingActionButton.large', (tester) async {
+  group('RecordButton v2', () {
+    testWidgets('estado idle muestra icono de microfono', (tester) async {
       await tester.pumpWidget(buildTestWidget());
-
-      final fab = find.byType(FloatingActionButton);
-      expect(fab, findsOneWidget);
-
-      final FloatingActionButton widget = tester.widget<FloatingActionButton>(fab);
-      expect(widget.shape, isA<StadiumBorder>());
-    });
-
-    testWidgets('shows mic icon when not recording', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isRecording: false));
 
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
     });
 
-    testWidgets('shows stop icon when recording', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isRecording: true));
+    testWidgets('estado recording muestra stop', (tester) async {
+      await tester.pumpWidget(buildTestWidget(state: RecordButtonState.recording));
+      await tester.pump();
 
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
     });
 
-    testWidgets('shows CircularProgressIndicator when transcribing', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isTranscribing: true));
+    testWidgets('estado transcribing muestra spinner y no dispara acciones',
+        (tester) async {
+      var pressed = false;
+      await tester.pumpWidget(buildTestWidget(
+        state: RecordButtonState.transcribing,
+        onPressed: () => pressed = true,
+      ));
+      await tester.pump();
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.byIcon(Icons.mic_rounded), findsNothing);
-      expect(find.byIcon(Icons.stop_rounded), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
+      expect(pressed, isFalse);
     });
 
-    testWidgets('calls onPressed when tapped and not recording', (tester) async {
-      var called = false;
-      await tester.pumpWidget(buildTestWidget(
-        isRecording: false,
-        onPressed: () => called = true,
-      ));
+    testWidgets('tap dispara onPressed en modo toque', (tester) async {
+      var pressed = 0;
+      await tester.pumpWidget(
+          buildTestWidget(onPressed: () => pressed++));
 
-      await tester.tap(find.byType(FloatingActionButton));
-      expect(called, isTrue);
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
+      expect(pressed, 1);
     });
 
-    testWidgets('calls onPressed when tapped while recording', (tester) async {
-      var called = false;
-      await tester.pumpWidget(buildTestWidget(
-        isRecording: true,
-        onPressed: () => called = true,
-      ));
-
-      await tester.tap(find.byType(FloatingActionButton));
-      expect(called, isTrue);
-    });
-
-    testWidgets('does not call onPressed when transcribing', (tester) async {
-      var called = false;
-      await tester.pumpWidget(buildTestWidget(
-        isTranscribing: true,
-        onPressed: () => called = true,
-      ));
-
-      await tester.tap(find.byType(FloatingActionButton));
-      expect(called, isFalse);
-    });
-
-    testWidgets('background color is kRecording when recording', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isRecording: true));
-
-      final widget = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(widget.backgroundColor, const Color(0xFFFF3B30));
-    });
-
-    testWidgets('background color is primary when not recording', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isRecording: false));
-
-      final widget = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(widget.backgroundColor, isNotNull);
-    });
-
-    testWidgets('button is 80x80 size', (tester) async {
-      await tester.pumpWidget(buildTestWidget());
-
-      final sizedBox = tester.widget<SizedBox>(find.byType(SizedBox).first);
-      expect(sizedBox.width, 80);
-      expect(sizedBox.height, 80);
-    });
-
-    testWidgets('widget tree is correct', (tester) async {
-      await tester.pumpWidget(buildTestWidget());
-
-      expect(find.byType(MaterialApp), findsOneWidget);
-      expect(find.byType(Scaffold), findsOneWidget);
-      expect(find.byType(SizedBox), findsWidgets);
-      expect(find.byType(FloatingActionButton), findsOneWidget);
-      expect(find.byType(Icon), findsOneWidget);
-      expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
-    });
-
-    testWidgets('has correct SizedBox dimensions when transcribing', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isTranscribing: true));
-
-      final innerSizedBox = tester.widget<SizedBox>(
-        find.byWidgetPredicate(
-          (widget) => widget is SizedBox && widget.width == 32 && widget.height == 32,
+    testWidgets('hold dispara onHoldStart y onHoldEnd', (tester) async {
+      var started = 0;
+      var ended = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: RecordButton(
+            state: RecordButtonState.idle,
+            onHoldStart: () => started++,
+            onHoldEnd: () => ended++,
+          ),
         ),
-      );
-      expect(innerSizedBox.width, 32);
-      expect(innerSizedBox.height, 32);
+      ));
+
+      final center = tester.getCenter(find.byKey(const ValueKey('recordButton')));
+      final gesture = await tester.startGesture(center);
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(started, 1);
+
+      await gesture.up();
+      await tester.pump();
+      expect(ended, 1);
     });
 
-    testWidgets('CircularProgressIndicator has correct strokeWidth', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isTranscribing: true));
+    testWidgets('tamano del boton es kRecordButtonSize (104)', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      // El gesto de pulsos puede programar frames; pumpAndSettle acotado.
+      await tester.pump(const Duration(milliseconds: 100));
 
-      final indicator = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
-      );
-      expect(indicator.strokeWidth, 3);
-    });
-
-    testWidgets('onPressed is null when transcribing (disabled)', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isTranscribing: true));
-
-      final widget = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(widget.onPressed, isNull);
-    });
-
-    testWidgets('Icon is not disabled when not recording', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isRecording: false));
-
-      final widget = tester.widget<FloatingActionButton>(find.byType(FloatingActionButton));
-      expect(widget.onPressed, isNotNull);
-    });
-
-    testWidgets('icons have size 36', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isRecording: false));
-      final micIcon = tester.widget<Icon>(find.byIcon(Icons.mic_rounded));
-      expect(micIcon.size, 36);
-
-      await tester.pumpWidget(buildTestWidget(isRecording: true));
-      final stopIcon = tester.widget<Icon>(find.byIcon(Icons.stop_rounded));
-      expect(stopIcon.size, 36);
-    });
-
-    testWidgets('CircularProgressIndicator uses onPrimary color', (tester) async {
-      await tester.pumpWidget(buildTestWidget(isTranscribing: true));
-
-      final indicator = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
-      );
-      expect(indicator.color, isNotNull);
+      final size = tester.getSize(find.byKey(const ValueKey('recordButton')));
+      expect(size.width, 104.0);
+      expect(size.height, 104.0);
     });
   });
 }

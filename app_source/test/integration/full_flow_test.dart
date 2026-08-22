@@ -177,7 +177,7 @@ void main() {
         expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
         expect(find.text('Listo para transcribir'), findsOneWidget);
 
-        await tester.tap(find.byType(FloatingActionButton));
+        await tester.tap(find.byKey(const ValueKey('recordButton')));
         await tester.pump();
 
         expect(find.byIcon(Icons.stop_rounded), findsOneWidget);

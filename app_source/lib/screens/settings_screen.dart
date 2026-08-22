@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../services/storage_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,12 +12,27 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
   final _secureStorage = const FlutterSecureStorage();
+  final StorageService _storageService = StorageService();
   bool _hasApiKey = false;
+  String _recordMode = StorageService.defaultRecordMode;
 
   @override
   void initState() {
     super.initState();
     _loadApiKey();
+    _loadRecordMode();
+  }
+
+  Future<void> _loadRecordMode() async {
+    try {
+      final mode = await _storageService.loadRecordMode();
+      if (mounted) setState(() => _recordMode = mode);
+    } catch (_) {}
+  }
+
+  Future<void> _saveRecordMode(String mode) async {
+    await _storageService.saveRecordMode(mode);
+    if (mounted) setState(() => _recordMode = mode);
   }
 
   Future<void> _loadApiKey() async {
@@ -146,6 +162,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+          ),
+
+          const SizedBox(height: 32),
+
+          // Recording interaction mode
+          Text(
+            'Modo de grabación',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: 'tap', label: Text('Toque')),
+              ButtonSegment(value: 'hold', label: Text('Mantener')),
+            ],
+            selected: {_recordMode},
+            onSelectionChanged: (modes) => _saveRecordMode(modes.first),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _recordMode == 'hold'
+                ? 'Mantén presionado para grabar y suelta para transcribir.'
+                : 'Toca para iniciar y vuelve a tocar para transcribir.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
 
           const SizedBox(height: 32),
