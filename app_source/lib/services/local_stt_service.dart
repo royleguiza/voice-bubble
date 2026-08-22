@@ -37,9 +37,11 @@ class LocalSttService {
           ));
         }
       },
-      listenFor: const Duration(seconds: 30),
-      pauseFor: const Duration(seconds: 3),
-      localeId: 'es_ES',
+      listenOptions: SpeechListenOptions(
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 3),
+        localeId: 'es_ES',
+      ),
     );
 
     Future.delayed(const Duration(seconds: 35), () {
