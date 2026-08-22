@@ -5,11 +5,25 @@ import '../models/transcription.dart';
 class StorageService {
   static const String _key = 'transcriptions';
   static const int _maxItems = 20;
+  static const String _recordModeKey = 'recording_mode';
+  static const String defaultRecordMode = 'tap';
 
   List<Transcription> _transcriptions = [];
 
   List<Transcription> get transcriptions =>
       List.unmodifiable(_transcriptions);
+
+  /// Modo de interacción del botón: 'tap' (toque inicia/detiene)
+  /// o 'hold' (mantener presionado graba, soltar transcribe).
+  Future<String> loadRecordMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_recordModeKey) ?? defaultRecordMode;
+  }
+
+  Future<void> saveRecordMode(String mode) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_recordModeKey, mode);
+  }
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
