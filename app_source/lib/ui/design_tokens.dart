@@ -260,3 +260,37 @@ ThemeData buildDarkTheme() {
     ),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Home v2 – Layout & Motion (Hito 2)
+// ---------------------------------------------------------------------------
+
+/// Diámetro del botón de grabar principal.
+const double kRecordButtonSize = 104.0;
+
+/// Tamaño del glifo dentro del botón de grabar.
+const double kRecordIconSize = 42.0;
+
+/// Ancho máximo de la tarjeta emergente de transcripción.
+const double kPopupMaxWidth = 480.0;
+
+/// Altura máxima de la tarjeta emergente como fracción del alto de pantalla.
+const double kPopupMaxHeightFactor = 0.35;
+
+/// Altura máxima del sheet de historial como fracción del alto de pantalla.
+const double kHistorySheetMaxFactor = 0.70;
+
+/// Duración de expansión de la tarjeta emergente.
+const Duration kAnimPopupExpand = Duration(milliseconds: 320);
+
+/// Duración del fade-in del texto transcripto.
+const Duration kAnimPopupTextFade = Duration(milliseconds: 260);
+
+/// Micro-animación (Reduced Motion / feedback rápido).
+const Duration kAnimMicro = Duration(milliseconds: 150);
+
+/// Morph entre estados del botón de grabar.
+const Duration kAnimMorph = Duration(milliseconds: 350);
+
+/// Scrim sobre el contenido cuando hay sheet abierto.
+const Color kScrimColor = Color(0x4D000000); // black 30%

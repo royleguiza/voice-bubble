@@ -98,7 +98,7 @@ void main() {
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
 
       // 2. Iniciar grabación: tap en el botón de grabar
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pump();
 
       // Verificación: estado grabando activo
@@ -107,7 +107,7 @@ void main() {
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
 
       // 3. Detener grabación: segundo tap alterna a detener
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pump();
 
       // Verificación: grabación detenida, vuelve al estado inicial
