@@ -284,11 +284,13 @@ const double kHistorySheetMaxFactor = 0.90;
 const double kHistorySheetInitialFactor = 0.50;
 
 /// Fracción del alto del body desde el borde inferior hasta el cluster
-/// del botón de grabar (sube el control de la zona de gestos).
-const double kRecordClusterBottomFactor = 0.30;
+/// del botón de grabar. 0.45 deja el control en zona del pulgar alta
+/// (feedback del dueño: 0.30 quedaba demasiado abajo en pantalla).
+const double kRecordClusterBottomFactor = 0.45;
 
 /// Holgura extra sobre el inset del sistema para el pill de historial.
-const double kHistoryPillBottomGap = 20.0;
+/// Evita que se solape con la barra de navegación por gestos.
+const double kHistoryPillBottomGap = 36.0;
 
 /// Duración de expansión de la tarjeta emergente.
 const Duration kAnimPopupExpand = Duration(milliseconds: 320);

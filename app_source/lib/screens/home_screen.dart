@@ -314,7 +314,13 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                   Expanded(
-                    child: HistoryList(transcriptions: transcriptions),
+                    child: HistoryList(
+                      transcriptions: transcriptions,
+                      // El ListView DEBE usar el controller del sheet:
+                      // sin él, arrastrar la lista no expande el sheet
+                      // y nunca se llega al snap del 90%.
+                      scrollController: scrollController,
+                    ),
                   ),
                 ],
               ),
