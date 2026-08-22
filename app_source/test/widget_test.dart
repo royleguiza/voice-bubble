@@ -13,16 +13,10 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
 
+    // Canales reales del paquete record 5.x (llfbandit)
     for (final channel in [
-      'com.llcgram.record',
-      'com.llcgram.record/messages',
-      'com.llcgram.record/events',
-      'com.llcgram.record_android',
-      'com.llcgram.record_linux',
-      'com.llcgram.record_windows',
-      'com.llcgram.record_darwin',
-      'com.llcgram.record_web',
-      'net.chemirea.record',
+      'com.llfbandit.record',
+      'com.llfbandit.record/messages',
     ]) {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
@@ -101,15 +95,8 @@ void main() {
 
   tearDown(() {
     for (final channel in [
-      'com.llcgram.record',
-      'com.llcgram.record/messages',
-      'com.llcgram.record/events',
-      'com.llcgram.record_android',
-      'com.llcgram.record_linux',
-      'com.llcgram.record_windows',
-      'com.llcgram.record_darwin',
-      'com.llcgram.record_web',
-      'net.chemirea.record',
+      'com.llfbandit.record',
+      'com.llfbandit.record/messages',
       'plugins.flutter.io/path_provider',
       'plugins.flutter.io/path_provider_android',
       'plugins.flutter.io/path_provider_ios',

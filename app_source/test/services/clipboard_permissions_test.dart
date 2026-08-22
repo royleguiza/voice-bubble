@@ -55,6 +55,25 @@ class MockAudioRecorder implements AudioRecorder {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // Backend en memoria para Clipboard: el canal flutter/platform no tiene
+  // implementación nativa en tests y sin mock getData() devuelve null.
+  String? clipboardStore;
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    SystemChannels.platform,
+    (MethodCall call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboardStore = (call.arguments as Map)['text'] as String?;
+          return null;
+        case 'Clipboard.getData':
+          return <String, String?>{'text': clipboardStore};
+        default:
+          return null;
+      }
+    },
+  );
+
   group('TranscriptionService - Permisos', () {
     late MockAudioRecorder mockRecorder;
     late TranscriptionService service;
