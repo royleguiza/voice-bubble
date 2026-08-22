@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
+import '../services/keyboard_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final StorageService? storageService;
   final FlutterSecureStorage? secureStorage;
   final FloatingBubbleService? floatingBubbleService;
+  final KeyboardService? keyboardService;
 
   const SettingsScreen({
     super.key,
     this.storageService,
     this.secureStorage,
     this.floatingBubbleService,
+    this.keyboardService,
   });
 
   @override
@@ -24,10 +27,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final FlutterSecureStorage _secureStorage;
   late final StorageService _storageService;
   late final FloatingBubbleService _floatingBubbleService;
+  late final KeyboardService _keyboardService;
 
   bool _hasApiKey = false;
   String _recordMode = StorageService.defaultRecordMode;
   bool _isBubbleEnabled = false;
+  bool _isKeyboardEnabled = false;
+  bool _isKeyboardSelected = false;
 
   @override
   void initState() {
@@ -36,9 +42,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _storageService = widget.storageService ?? StorageService();
     _floatingBubbleService =
         widget.floatingBubbleService ?? FloatingBubbleService();
+    _keyboardService = widget.keyboardService ?? KeyboardService();
     _loadApiKey();
     _loadRecordMode();
     _loadBubbleState();
+    _loadKeyboardStatus();
+  }
+
+  Future<void> _loadKeyboardStatus() async {
+    try {
+      final enabled = await _keyboardService.isKeyboardEnabled();
+      final selected = await _keyboardService.isKeyboardSelected();
+      if (mounted) {
+        setState(() {
+          _isKeyboardEnabled = enabled;
+          _isKeyboardSelected = selected;
+        });
+      }
+    } catch (_) {}
+  }
+
+  String get _keyboardStatusText {
+    if (_isKeyboardEnabled && _isKeyboardSelected) return 'Activo';
+    if (_isKeyboardEnabled) return 'Habilitado, falta seleccionarlo';
+    return 'No habilitado';
+  }
+
+  Future<void> _openKeyboardSettings() async {
+    await _keyboardService.openKeyboardSettings();
   }
 
   Future<void> _loadBubbleState() async {
@@ -166,6 +197,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             value: _isBubbleEnabled,
             onChanged: _toggleBubble,
+          ),
+
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+
+          // Keyboard section
+          Text(
+            'Teclado VoiceBubble',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.keyboard,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _keyboardStatusText,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: _loadKeyboardStatus,
+                        tooltip: 'Actualizar',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Usa VoiceBubble como teclado del sistema en cualquier app.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.settings),
+                    label: const Text('Abrir ajustes del sistema'),
+                    onPressed: _openKeyboardSettings,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Guía: activa "VoiceBubble Keyboard" en Administrar teclados y luego selecciónalo al escribir.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
           ),
 
           const SizedBox(height: 24),

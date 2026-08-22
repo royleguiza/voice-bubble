@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
+import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
 void main() {
@@ -12,15 +13,18 @@ void main() {
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   const channel = MethodChannel(FloatingBubbleService.channelName);
+  const keyboardChannel = MethodChannel(KeyboardService.channelName);
 
   late StorageService storageService;
   late List<MethodCall> bubbleLog;
+  late List<MethodCall> keyboardLog;
 
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
     storageService = StorageService();
     bubbleLog = <MethodCall>[];
+    keyboardLog = <MethodCall>[];
 
     messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
       bubbleLog.add(call);
@@ -43,22 +47,48 @@ void main() {
 
   tearDown(() {
     messenger.setMockMethodCallHandler(channel, null);
+    messenger.setMockMethodCallHandler(keyboardChannel, null);
   });
 
-  Widget buildTestableWidget({
+  void mockKeyboardChannel({bool enabled = false, bool selected = false}) {
+    messenger.setMockMethodCallHandler(keyboardChannel, (MethodCall call) async {
+      keyboardLog.add(call);
+      switch (call.method) {
+        case 'isKeyboardEnabled':
+          return enabled;
+        case 'isKeyboardSelected':
+          return selected;
+        case 'openKeyboardSettings':
+          return true;
+        default:
+          return null;
+      }
+    });
+  }
+
+  Widget buildTestableWidget(
+    WidgetTester tester, {
     FloatingBubbleService? bubbleService,
+    KeyboardService? keyboardService,
   }) {
+    // Superficie alta (800x2000 logicos) para que toda la pagina de Settings
+    // sea visible sin scroll: la tarjeta del teclado alargo la lista.
+    tester.view.physicalSizeTested = const Size(1600, 4000);
+    tester.view.devicePixelRatioTested = 2.0;
+    addTearDown(tester.view.reset);
     return MaterialApp(
       home: SettingsScreen(
         storageService: storageService,
         floatingBubbleService: bubbleService ?? FloatingBubbleService(),
+        keyboardService:
+            keyboardService ?? KeyboardService(channel: keyboardChannel),
       ),
     );
   }
 
   group('SettingsScreen - API Key & General', () {
     testWidgets('renders AppBar with "Configuración" title', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.text('Configuración'), findsOneWidget);
@@ -66,14 +96,14 @@ void main() {
     });
 
     testWidgets('shows "API Key de Groq" section header', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.text('API Key de Groq'), findsOneWidget);
     });
 
     testWidgets('shows description text about Groq', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(
@@ -84,7 +114,7 @@ void main() {
     });
 
     testWidgets('shows TextField for API key input', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.byType(TextField), findsOneWidget);
@@ -92,7 +122,7 @@ void main() {
     });
 
     testWidgets('shows save button with Icons.save', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.save), findsOneWidget);
@@ -101,7 +131,7 @@ void main() {
     testWidgets('shows delete button when API key exists', (tester) async {
       FlutterSecureStorage.setMockInitialValues(
           {'groq_api_key': 'existing_key'});
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
@@ -109,14 +139,14 @@ void main() {
 
     testWidgets('does not show delete button when no API key', (tester) async {
       FlutterSecureStorage.setMockInitialValues({});
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.delete_outline), findsNothing);
     });
 
     testWidgets('shows "Acerca de" section', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.drag(find.byType(ListView), const Offset(0, -600));
@@ -126,7 +156,7 @@ void main() {
     });
 
     testWidgets('shows version "VoiceBubble STT v0.1.0"', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.drag(find.byType(ListView), const Offset(0, -600));
@@ -136,7 +166,7 @@ void main() {
     });
 
     testWidgets('shows app description text', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.drag(find.byType(ListView), const Offset(0, -600));
@@ -149,7 +179,7 @@ void main() {
     });
 
     testWidgets('TextField accepts text input', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       final textField = find.byType(TextField);
@@ -161,7 +191,7 @@ void main() {
 
     testWidgets('save button stores the API key in FlutterSecureStorage',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), 'my_secret_key');
@@ -176,7 +206,7 @@ void main() {
         (tester) async {
       FlutterSecureStorage.setMockInitialValues(
           {'groq_api_key': 'key_to_delete'});
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
@@ -191,7 +221,7 @@ void main() {
 
   group('SettingsScreen - Floating Bubble Toggle & Permissions', () {
     testWidgets('shows Floating Bubble switch tile', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.text('Burbuja flotante'), findsOneWidget);
@@ -201,7 +231,7 @@ void main() {
 
     testWidgets('toggling switch ON starts bubble when permission granted',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       final switchFinder = find.byType(Switch);
@@ -224,7 +254,7 @@ void main() {
         return null;
       });
 
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byType(Switch));
@@ -250,7 +280,7 @@ void main() {
       });
       await storageService.saveFloatingBubbleEnabled(true);
 
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       final switchFinder = find.byType(Switch);
@@ -262,6 +292,83 @@ void main() {
       expect(tester.widget<Switch>(switchFinder).value, isFalse);
       expect(bubbleLog.map((c) => c.method), contains('stopBubble'));
       expect(await storageService.loadFloatingBubbleEnabled(), isFalse);
+    });
+  });
+
+  group('SettingsScreen - Teclado VoiceBubble', () {
+    testWidgets('renderiza seccion de teclado con estado y boton de ajustes',
+        (tester) async {
+      mockKeyboardChannel();
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Teclado VoiceBubble'), findsOneWidget);
+      expect(find.text('Abrir ajustes del sistema'), findsOneWidget);
+      expect(find.byIcon(Icons.keyboard), findsOneWidget);
+    });
+
+    testWidgets('muestra "No habilitado" cuando el teclado esta apagado',
+        (tester) async {
+      mockKeyboardChannel(enabled: false, selected: false);
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No habilitado'), findsOneWidget);
+    });
+
+    testWidgets('muestra "Activo" cuando esta habilitado y seleccionado',
+        (tester) async {
+      mockKeyboardChannel(enabled: true, selected: true);
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Activo'), findsOneWidget);
+    });
+
+    testWidgets('muestra estado intermedio habilitado sin seleccionar',
+        (tester) async {
+      mockKeyboardChannel(enabled: true, selected: false);
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Habilitado, falta seleccionarlo'), findsOneWidget);
+    });
+
+    testWidgets('el boton abre los ajustes del sistema', (tester) async {
+      mockKeyboardChannel();
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Abrir ajustes del sistema'));
+      await tester.pumpAndSettle();
+
+      expect(keyboardLog.map((c) => c.method),
+          contains('openKeyboardSettings'));
+    });
+
+    testWidgets('consulta el estado inicial del teclado al montar la pantalla',
+        (tester) async {
+      mockKeyboardChannel(enabled: true, selected: true);
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(keyboardLog.map((c) => c.method), contains('isKeyboardEnabled'));
+      expect(
+          keyboardLog.map((c) => c.method), contains('isKeyboardSelected'));
+    });
+
+    testWidgets('el boton refrescar vuelve a consultar el estado',
+        (tester) async {
+      mockKeyboardChannel(enabled: false);
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      final consultasIniciales = keyboardLog.length;
+      await tester.tap(find.byIcon(Icons.refresh));
+      await tester.pumpAndSettle();
+
+      expect(keyboardLog.length, greaterThan(consultasIniciales));
+      expect(find.text('No habilitado'), findsOneWidget);
     });
   });
 }

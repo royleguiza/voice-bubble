@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tokens Liquid Glass del teclado - modo claro (design.md §12) -->
+    <color name="kb_surface">#F0F2F2F7</color>
+    <color name="kb_key_bg">#F2FFFFFF</color>
+    <color name="kb_key_bg_alt">#FFE5E5EA</color>
+    <color name="kb_key_bg_accent">#FF007AFF</color>
+    <color name="kb_label">#FF000000</color>
+    <color name="kb_label_secondary">#FF663C3C43</color>
+    <color name="kb_label_on_accent">#FFFFFFFF</color>
+    <color name="kb_key_pressed">#FFD1D1D6</color>
+    <color name="kb_accent_pressed">#FF0062CC</color>
+</resources>
