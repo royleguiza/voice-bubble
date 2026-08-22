@@ -109,7 +109,7 @@ void main() {
       // 3. Detener grabación: segundo tap alterna a detener
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pump(const Duration(milliseconds: 100));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 400));
 
       // Verificación: grabación detenida, vuelve al estado inicial
       expect(find.text('Grabando...'), findsNothing);
