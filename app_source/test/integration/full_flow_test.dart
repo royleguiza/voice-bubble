@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
-import 'package:voice_bubble_stt/services/transcription_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -70,29 +69,6 @@ void main() {
       );
     }
 
-    for (final channel in [
-      'plugin.speech_to_text',
-      'plugin.speech_to_text.android',
-      'plugin.speech_to_text.ios',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async {
-          switch (methodCall.method) {
-            case 'initialize':
-            case 'hasPermission':
-              return true;
-            case 'listen':
-            case 'stop':
-            case 'cancel':
-              return null;
-            default:
-              return null;
-          }
-        },
-      );
-    }
   });
 
   tearDown(() {
@@ -105,9 +81,6 @@ void main() {
       'plugins.flutter.io/path_provider_macos',
       'plugins.flutter.io/path_provider_linux',
       'plugins.flutter.io/path_provider_windows',
-      'plugin.speech_to_text',
-      'plugin.speech_to_text.android',
-      'plugin.speech_to_text.ios',
       'plugins.it_nomads.com/flutter_secure_storage',
       'plugins.flutter.io/shared_preferences',
     ]) {
@@ -135,57 +108,7 @@ void main() {
     );
 
     testWidgets(
-      '2. Default mode is Cloud',
-      (WidgetTester tester) async {
-        await tester.pumpWidget(buildTestApp());
-        await tester.pumpAndSettle();
-
-        final segmentedButton = tester.widget<SegmentedButton<TranscriptionMode>>(
-          find.byType(SegmentedButton<TranscriptionMode>),
-        );
-        expect(segmentedButton.selected, contains(TranscriptionMode.cloud));
-        expect(find.text('Cloud'), findsOneWidget);
-        expect(find.text('Local'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      '3. User can switch to Local mode',
-      (WidgetTester tester) async {
-        await tester.pumpWidget(buildTestApp());
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text('Local'));
-        await tester.pumpAndSettle();
-
-        final segmentedButton = tester.widget<SegmentedButton<TranscriptionMode>>(
-          find.byType(SegmentedButton<TranscriptionMode>),
-        );
-        expect(segmentedButton.selected, contains(TranscriptionMode.local));
-      },
-    );
-
-    testWidgets(
-      '4. User can switch back to Cloud mode',
-      (WidgetTester tester) async {
-        await tester.pumpWidget(buildTestApp());
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text('Local'));
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.text('Cloud'));
-        await tester.pumpAndSettle();
-
-        final segmentedButton = tester.widget<SegmentedButton<TranscriptionMode>>(
-          find.byType(SegmentedButton<TranscriptionMode>),
-        );
-        expect(segmentedButton.selected, contains(TranscriptionMode.cloud));
-      },
-    );
-
-    testWidgets(
-      '5. Settings button opens SettingsScreen',
+      '2. Settings button opens SettingsScreen',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp());
         await tester.pumpAndSettle();
@@ -199,7 +122,7 @@ void main() {
     );
 
     testWidgets(
-      '6. SettingsScreen shows API key input',
+      '3. SettingsScreen shows API key input',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp(home: const SettingsScreen()));
         await tester.pumpAndSettle();
@@ -211,7 +134,7 @@ void main() {
     );
 
     testWidgets(
-      '7. User can enter and save API key',
+      '4. User can enter and save API key',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp(home: const SettingsScreen()));
         await tester.pumpAndSettle();
@@ -229,7 +152,7 @@ void main() {
     );
 
     testWidgets(
-      '8. Back button returns to HomeScreen',
+      '5. Back button returns to HomeScreen',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp());
         await tester.pumpAndSettle();
@@ -246,7 +169,7 @@ void main() {
     );
 
     testWidgets(
-      '9. Record button shows recording state',
+      '6. Record button shows recording state',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp());
         await tester.pumpAndSettle();
@@ -317,29 +240,6 @@ void main() {
 
         expect(find.byType(HomeScreen), findsOneWidget);
         expect(find.byType(SettingsScreen), findsNothing);
-      },
-    );
-  });
-
-  group('Mode switching persistence', () {
-    testWidgets(
-      'Switching mode updates the displayed mode label',
-      (WidgetTester tester) async {
-        await tester.pumpWidget(buildTestApp());
-        await tester.pumpAndSettle();
-
-        final segmentedBefore = tester.widget<SegmentedButton<TranscriptionMode>>(
-          find.byType(SegmentedButton<TranscriptionMode>),
-        );
-        expect(segmentedBefore.selected, contains(TranscriptionMode.cloud));
-
-        await tester.tap(find.text('Local'));
-        await tester.pumpAndSettle();
-
-        final segmentedAfter = tester.widget<SegmentedButton<TranscriptionMode>>(
-          find.byType(SegmentedButton<TranscriptionMode>),
-        );
-        expect(segmentedAfter.selected, contains(TranscriptionMode.local));
       },
     );
   });

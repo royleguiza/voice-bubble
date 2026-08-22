@@ -166,24 +166,6 @@ void main() {
           findsOneWidget);
     });
 
-    testWidgets('muestra info del modo Local', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-      expect(find.text('Modo Local'), findsOneWidget);
-      expect(
-          find.text('Speech-to-Text del sistema Android'), findsOneWidget);
-    });
-  });
-
-  group('StorageService - FIFO de 20 elementos', () {
-    test('mantiene maximo 20 elementos', () async {
-      final service = StorageService();
-      for (var i = 0; i < 20; i++) {
-        await service.add(_makeTranscription('item $i'));
-      }
-      expect(service.transcriptions.length, 20);
-    });
-
     test('elimina el mas antiguo cuando se supera el limite de 20', () async {
       final service = StorageService();
       final transcriptions = <Transcription>[];

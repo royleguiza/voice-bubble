@@ -92,7 +92,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Transcripción de voz a texto con modo Cloud (Groq) y Local (dispositivo).'),
+        find.text('Transcripción de voz a texto con Groq Whisper.'),
         findsOneWidget,
       );
     });

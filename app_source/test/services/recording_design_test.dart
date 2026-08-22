@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
-import 'package:voice_bubble_stt/services/local_stt_service.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/ui/design_tokens.dart';
@@ -79,7 +78,6 @@ void main() {
       final mockRecorder = _RecordingMockAudioRecorder();
       final service = TranscriptionService(
         cloudService: const CloudSttService(apiKey: 'test'),
-        localService: LocalSttService(),
         storageService: StorageService(),
         recorder: mockRecorder,
       );
@@ -101,7 +99,6 @@ void main() {
     setUp(() {
       service = TranscriptionService(
         cloudService: const CloudSttService(apiKey: 'test'),
-        localService: LocalSttService(),
         storageService: StorageService(),
       );
       tempDir = Directory.systemTemp.createTempSync('voice_bubble_test_');
@@ -137,28 +134,6 @@ void main() {
         () => service.cleanupTempFile(''),
         returnsNormally,
       );
-    });
-  });
-
-  group('LocalSttService configuración', () {
-    test('tiene locale es_ES configurado', () {
-      const localeEsEs = 'es_ES';
-      expect(localeEsEs, equals('es_ES'));
-    });
-
-    test('tiene listenFor de 30 segundos', () {
-      const listenFor = Duration(seconds: 30);
-      expect(listenFor.inSeconds, 30);
-    });
-
-    test('tiene pauseFor de 3 segundos', () {
-      const pauseFor = Duration(seconds: 3);
-      expect(pauseFor.inSeconds, 3);
-    });
-
-    test('timeout de emergencia es 35 segundos', () {
-      const emergencyTimeout = Duration(seconds: 35);
-      expect(emergencyTimeout.inSeconds, 35);
     });
   });
 

@@ -121,64 +121,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.cloud,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Modo Cloud',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            Text(
-                              'Groq Whisper Large V3 (whisper-large-v3)',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  Icon(
+                    Icons.cloud,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                  const Divider(height: 24),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.phone_android,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Modo Local',
-                              style: Theme.of(context).textTheme.titleSmall,
-                            ),
-                            Text(
-                              'Speech-to-Text del sistema Android',
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Modo Cloud',
+                          style: Theme.of(context).textTheme.titleSmall,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'El modo local depende del motor de reconocimiento de voz del dispositivo.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        Text(
+                          'Groq Whisper Large V3 (whisper-large-v3)',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -201,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Transcripción de voz a texto con modo Cloud (Groq) y Local (dispositivo).',
+            'Transcripción de voz a texto con Groq Whisper.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),

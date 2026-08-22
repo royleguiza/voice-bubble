@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/main.dart';
-import 'package:voice_bubble_stt/services/transcription_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -68,29 +67,6 @@ void main() {
       );
     }
 
-    for (final channel in [
-      'plugin.speech_to_text',
-      'plugin.speech_to_text.android',
-      'plugin.speech_to_text.ios',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async {
-          switch (methodCall.method) {
-            case 'initialize':
-            case 'hasPermission':
-              return true;
-            case 'listen':
-            case 'stop':
-            case 'cancel':
-              return null;
-            default:
-              return null;
-          }
-        },
-      );
-    }
   });
 
   tearDown(() {
@@ -103,9 +79,6 @@ void main() {
       'plugins.flutter.io/path_provider_macos',
       'plugins.flutter.io/path_provider_linux',
       'plugins.flutter.io/path_provider_windows',
-      'plugin.speech_to_text',
-      'plugin.speech_to_text.android',
-      'plugin.speech_to_text.ios',
       'plugins.it_nomads.com/flutter_secure_storage',
       'plugins.flutter.io/shared_preferences',
     ]) {
@@ -140,35 +113,6 @@ void main() {
       // Verificación: grabación detenida, vuelve al estado inicial
       expect(find.text('Grabando...'), findsNothing);
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
-    });
-
-    testWidgets('La app muestra selector de modo y permite alternar entre Cloud y Local', (tester) async {
-      await tester.pumpWidget(const VoiceBubbleApp());
-      await tester.pumpAndSettle();
-
-      // Modo por defecto es Cloud
-      final segmentedButton = tester.widget<SegmentedButton<TranscriptionMode>>(
-        find.byType(SegmentedButton<TranscriptionMode>),
-      );
-      expect(segmentedButton.selected, contains(TranscriptionMode.cloud));
-
-      // Alternar a Local
-      await tester.tap(find.text('Local'));
-      await tester.pumpAndSettle();
-
-      final segmentedButtonLocal = tester.widget<SegmentedButton<TranscriptionMode>>(
-        find.byType(SegmentedButton<TranscriptionMode>),
-      );
-      expect(segmentedButtonLocal.selected, contains(TranscriptionMode.local));
-
-      // Alternar de vuelta a Cloud
-      await tester.tap(find.text('Cloud'));
-      await tester.pumpAndSettle();
-
-      final segmentedButtonCloud = tester.widget<SegmentedButton<TranscriptionMode>>(
-        find.byType(SegmentedButton<TranscriptionMode>),
-      );
-      expect(segmentedButtonCloud.selected, contains(TranscriptionMode.cloud));
     });
 
     testWidgets('La app navega a Configuración y permite volver a la pantalla principal', (tester) async {

@@ -2,35 +2,22 @@ import 'dart:io';
 import 'package:record/record.dart';
 import '../models/transcription.dart';
 import 'cloud_stt_service.dart';
-import 'local_stt_service.dart';
 import 'storage_service.dart';
-
-enum TranscriptionMode { cloud, local }
 
 class TranscriptionService {
   CloudSttService _cloudService;
-  final LocalSttService _localService;
   final StorageService _storageService;
   final AudioRecorder _recorder;
 
-  TranscriptionMode _mode = TranscriptionMode.cloud;
-
   TranscriptionService({
     required CloudSttService cloudService,
-    required LocalSttService localService,
     required StorageService storageService,
     AudioRecorder? recorder,
   })  : _cloudService = cloudService,
-        _localService = localService,
         _storageService = storageService,
         _recorder = recorder ?? AudioRecorder();
 
-  TranscriptionMode get mode => _mode;
   StorageService get storageService => _storageService;
-
-  void setMode(TranscriptionMode newMode) {
-    _mode = newMode;
-  }
 
   Future<bool> requestPermissions() async {
     try {
@@ -67,13 +54,7 @@ class TranscriptionService {
 
   Future<Transcription> transcribe(String audioPath) async {
     try {
-      final Transcription result;
-
-      if (_mode == TranscriptionMode.cloud) {
-        result = await _cloudService.transcribe(audioPath);
-      } else {
-        result = await _localService.transcribe();
-      }
+      final result = await _cloudService.transcribe(audioPath);
 
       if (result.text.isNotEmpty) {
         await _storageService.add(result);

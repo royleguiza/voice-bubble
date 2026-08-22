@@ -139,27 +139,6 @@ void main() {
       expect(find.byIcon(Icons.settings), findsOneWidget);
     });
 
-    testWidgets('shows SegmentedButton with Cloud and Local options', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      expect(find.byType(SegmentedButton<TranscriptionMode>), findsOneWidget);
-      expect(find.text('Cloud'), findsOneWidget);
-      expect(find.text('Local'), findsOneWidget);
-      expect(find.byIcon(Icons.cloud), findsOneWidget);
-      expect(find.byIcon(Icons.phone_android), findsOneWidget);
-    });
-
-    testWidgets('default mode is Cloud', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      final segmentedButton = tester.widget<SegmentedButton<TranscriptionMode>>(
-        find.byType(SegmentedButton<TranscriptionMode>),
-      );
-      expect(segmentedButton.selected, contains(TranscriptionMode.cloud));
-    });
-
     testWidgets('shows RecordButton widget', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
@@ -268,17 +247,6 @@ void main() {
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
     });
 
-    testWidgets('shows SegmentedButton before record button', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      final segmentedButton = find.byType(SegmentedButton<TranscriptionMode>);
-      final fab = find.byType(FloatingActionButton);
-
-      expect(segmentedButton, findsOneWidget);
-      expect(fab, findsOneWidget);
-    });
-
     testWidgets('shows Expanded widget for history', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
@@ -302,18 +270,5 @@ void main() {
       expect(find.byType(Column), findsWidgets);
     });
 
-    testWidgets('mode selector shows Cloud icon', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      expect(find.byIcon(Icons.cloud), findsOneWidget);
-    });
-
-    testWidgets('mode selector shows Local icon', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
-      await tester.pumpAndSettle();
-
-      expect(find.byIcon(Icons.phone_android), findsOneWidget);
-    });
   });
 }
