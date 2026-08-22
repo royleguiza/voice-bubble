@@ -176,7 +176,7 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 
 ### Criterios de aceptación
 
-* [ ] No queda rastro funcional del modo Local; CI verde (analyze estricto + tests).
+* [x] No queda rastro funcional del modo Local; CI verde (analyze estricto + tests). (CI verde en `144abaf`, 2026-08-22. Deuda cosmética NO bloqueante: registros muertos de canales `plugin.speech_to_text.*` en `home_screen_test.dart`, sin dependencia ni efecto funcional — limpieza pendiente.)
 * [x] Audios largos (~5 min) transcriben sin timeout.
 * [x] Fallo de red deja el audio pendiente y permite reintentar sin regrabar.
 * [x] El botón de grabar está en la mitad inferior, accesible con el pulgar.
@@ -218,9 +218,13 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 * Usar `FOREGROUND\_SERVICE\_MICROPHONE` en Android 14+.
 * Probar exhaustivamente en Xiaomi / Samsung (son los más agresivos con battery optimization).
 
+> **Verificación del dueño (2026-08-22)**: burbuja estable en dispositivo real con el APK del run `144abaf`; usada para dictar contenido real sin fallos. Hito 3 CERRADO.
+
 \---
 
 ## Hito 4 – Pegado Inteligente con Accessibility Service
+
+> **ESTADO (2026-08-22)**: **CONGELADO por decisión del dueño.** La secuencia del plan continúa con la conversión a teclado según `teclado-voice.md` (hitos T0 → K5), cuyo dictado inserta directamente en el cursor sin necesidad de Accessibility. Reevaluar este hito tras K3.
 
 **Objetivo**: Que el texto se inserte automáticamente en el campo de texto enfocado de la app que el usuario está usando.
 
