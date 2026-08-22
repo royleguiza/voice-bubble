@@ -211,5 +211,43 @@ void main() {
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
     });
 
+    testWidgets('floating bubble tap triggers recording start and state updates',
+        (tester) async {
+      final bubbleService = FloatingBubbleService();
+      await tester.pumpWidget(MaterialApp(
+        home: HomeScreen(
+          floatingBubbleService: bubbleService,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
+
+      // Simulate native bubble tap
+      bubbleService.onBubbleTap?.call();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
+    });
+
+    testWidgets('floating bubble close updates preference in storage',
+        (tester) async {
+      final storage = StorageService();
+      await storage.saveFloatingBubbleEnabled(true);
+      final bubbleService = FloatingBubbleService();
+
+      await tester.pumpWidget(MaterialApp(
+        home: HomeScreen(
+          storageService: storage,
+          floatingBubbleService: bubbleService,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      bubbleService.onBubbleClose?.call();
+      await tester.pumpAndSettle();
+
+      expect(await storage.loadFloatingBubbleEnabled(), isFalse);
+    });
   });
 }

@@ -175,5 +175,22 @@ void main() {
       expect(service2.transcriptions[1],
           _makeTranscription('alpha', isLocal: true));
     });
+
+    test('floating bubble setting defaults to false', () async {
+      final service = StorageService();
+      final enabled = await service.loadFloatingBubbleEnabled();
+      expect(enabled, isFalse);
+    });
+
+    test('floating bubble setting persists correctly', () async {
+      final service = StorageService();
+      await service.saveFloatingBubbleEnabled(true);
+      final enabled = await service.loadFloatingBubbleEnabled();
+      expect(enabled, isTrue);
+
+      await service.saveFloatingBubbleEnabled(false);
+      final disabled = await service.loadFloatingBubbleEnabled();
+      expect(disabled, isFalse);
+    });
   });
 }

@@ -64,7 +64,8 @@ class HistoryList extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           trailing: IconButton(
-            icon: const Icon(Icons.copy, size: 18),
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            tooltip: 'Copiar texto',
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: t.text));
               if (context.mounted) {
