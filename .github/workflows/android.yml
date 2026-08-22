@@ -32,11 +32,10 @@ jobs:
       - name: Aceptar licencias Android SDK (defensivo)
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
-      - name: Flutter (stable 3.47.0 + cache pub)
+      - name: Flutter (stable + cache pub)
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.47.0
           cache: true
 
       - name: Scaffold del proyecto (solo si falta)
@@ -58,10 +57,12 @@ jobs:
             grep -q 'minSdk = 28' voice_bubble_stt/android/app/build.gradle.kts \
               || { echo '::error::sed minSdk no aplicado'; exit 1; }
 
-            sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <application|' \
+            sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <application|' \
               voice_bubble_stt/android/app/src/main/AndroidManifest.xml
             grep -q 'RECORD_AUDIO' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
               || { echo '::error::permiso RECORD_AUDIO no insertado'; exit 1; }
+            grep -q 'INTERNET' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
+              || { echo '::error::permiso INTERNET no insertado'; exit 1; }
 
             sed -i 's|android:label="voice_bubble_stt"|android:label="VoiceBubble STT"|' \
               voice_bubble_stt/android/app/src/main/AndroidManifest.xml

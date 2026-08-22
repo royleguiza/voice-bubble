@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -9,8 +10,12 @@ class CloudSttService {
   static const String _model = 'whisper-large-v3';
 
   final String apiKey;
+  final http.Client? client;
 
-  const CloudSttService({required this.apiKey});
+  const CloudSttService({
+    required this.apiKey,
+    this.client,
+  });
 
   Future<Transcription> transcribe(String audioPath) async {
     if (apiKey.isEmpty) {
@@ -31,10 +36,28 @@ class CloudSttService {
 
     http.StreamedResponse response;
     try {
-      response = await request.send().timeout(
+      final effectiveClient = client;
+      final future = effectiveClient != null
+          ? effectiveClient.send(request)
+          : request.send();
+      response = await future.timeout(
         const Duration(seconds: 30),
       );
     } on SocketException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on http.ClientException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on HttpException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on HandshakeException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on TlsException {
+      throw const TranscriptionException('Sin conexión a internet.');
+    } on TimeoutException {
+      throw const TranscriptionException(
+          'Tiempo de espera agotado al conectar con el servidor.');
+    } catch (e) {
+      if (e is TranscriptionException) rethrow;
       throw const TranscriptionException('Sin conexión a internet.');
     }
 

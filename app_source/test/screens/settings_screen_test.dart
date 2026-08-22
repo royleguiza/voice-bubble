@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
   });
 
   Widget buildTestableWidget() {
-    return MaterialApp(
-      home: const SettingsScreen(),
+    return const MaterialApp(
+      home: SettingsScreen(),
     );
   }
 
@@ -56,7 +58,7 @@ void main() {
     });
 
     testWidgets('shows delete button when API key exists', (tester) async {
-      SharedPreferences.setMockInitialValues({'groq_api_key': 'existing_key'});
+      FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'existing_key'});
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
@@ -64,7 +66,7 @@ void main() {
     });
 
     testWidgets('does not show delete button when no API key', (tester) async {
-      SharedPreferences.setMockInitialValues({});
+      FlutterSecureStorage.setMockInitialValues({});
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
@@ -106,7 +108,7 @@ void main() {
       expect(find.text('test_api_key_123'), findsOneWidget);
     });
 
-    testWidgets('save button stores the API key in SharedPreferences', (tester) async {
+    testWidgets('save button stores the API key in FlutterSecureStorage', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
@@ -114,12 +116,12 @@ void main() {
       await tester.tap(find.byIcon(Icons.save));
       await tester.pumpAndSettle();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('groq_api_key'), 'my_secret_key');
+      const storage = FlutterSecureStorage();
+      expect(await storage.read(key: 'groq_api_key'), 'my_secret_key');
     });
 
-    testWidgets('delete button clears the API key from SharedPreferences', (tester) async {
-      SharedPreferences.setMockInitialValues({'groq_api_key': 'key_to_delete'});
+    testWidgets('delete button clears the API key from FlutterSecureStorage', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'key_to_delete'});
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
@@ -128,8 +130,8 @@ void main() {
       await tester.tap(find.byIcon(Icons.delete_outline));
       await tester.pumpAndSettle();
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('groq_api_key'), isNull);
+      const storage = FlutterSecureStorage();
+      expect(await storage.read(key: 'groq_api_key'), isNull);
     });
   });
 }

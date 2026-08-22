@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
@@ -108,6 +109,13 @@ Transcription _makeTranscription(String text, {bool isLocal = true}) {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
   group('FlutterSecureStorage - API key', () {
     late FakeFlutterSecureStorage fakeStorage;
 

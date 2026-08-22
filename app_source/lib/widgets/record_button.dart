@@ -24,6 +24,7 @@ class RecordButton extends StatelessWidget {
         onPressed: isTranscribing ? null : onPressed,
         backgroundColor: isRecording ? kRecording : cs.primary,
         foregroundColor: cs.onPrimary,
+        shape: const StadiumBorder(),
         child: isTranscribing
             ? SizedBox(
                 width: 32,
