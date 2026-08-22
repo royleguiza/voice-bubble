@@ -31,9 +31,11 @@ class _RecordButtonState extends State<RecordButton>
     duration: const Duration(milliseconds: 1600),
   );
 
+  bool _pulseActive = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _syncPulse();
   }
 
@@ -46,11 +48,13 @@ class _RecordButtonState extends State<RecordButton>
   void _syncPulse() {
     final active = widget.state == RecordButtonState.recording &&
         !MediaQuery.of(context).disableAnimations;
-    if (active) {
+    if (active && !_pulseActive) {
       _pulse.repeat();
-    } else {
+      _pulseActive = true;
+    } else if (!active && _pulseActive) {
       _pulse.stop();
       _pulse.value = 0.0;
+      _pulseActive = false;
     }
   }
 

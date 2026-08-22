@@ -177,7 +177,8 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      await tester.pumpAndSettle();
+      // El anillo pulsante es infinito: pump fijo, no settle.
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
@@ -196,13 +197,15 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      await tester.pumpAndSettle();
+      // El anillo pulsante es infinito: pump fijo, no settle.
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      await tester.pumpAndSettle();
+      // El anillo pulsante es infinito: pump fijo, no settle.
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
