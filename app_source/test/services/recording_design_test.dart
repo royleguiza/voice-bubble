@@ -52,14 +52,14 @@ void main() {
   }
 
   group('Encoder PCM 16 bits (WAV)', () {
-    test('startRecording usa encoder AudioEncoder.pcm16bits', () async {
+    test('startRecording usa encoder AudioEncoder.wav (PCM 16 bits con cabecera RIFF)', () async {
       final config = RecordConfig(
         sampleRate: 16000,
         numChannels: 1,
-        encoder: AudioEncoder.pcm16bits,
+        encoder: AudioEncoder.wav,
       );
 
-      expect(config.encoder, AudioEncoder.pcm16bits);
+      expect(config.encoder, AudioEncoder.wav);
       expect(config.sampleRate, 16000);
       expect(config.numChannels, 1);
     });
@@ -68,7 +68,7 @@ void main() {
       final config = RecordConfig(
         sampleRate: 16000,
         numChannels: 1,
-        encoder: AudioEncoder.pcm16bits,
+        encoder: AudioEncoder.wav,
       );
 
       expect(config.sampleRate, 16000);
@@ -87,7 +87,7 @@ void main() {
       await service.startRecording('/tmp/test_recording.wav');
 
       expect(mockRecorder.lastConfig, isNotNull);
-      expect(mockRecorder.lastConfig!.encoder, AudioEncoder.pcm16bits);
+      expect(mockRecorder.lastConfig!.encoder, AudioEncoder.wav);
       expect(mockRecorder.lastConfig!.sampleRate, 16000);
       expect(mockRecorder.lastConfig!.numChannels, 1);
       expect(mockRecorder.lastPath, '/tmp/test_recording.wav');
