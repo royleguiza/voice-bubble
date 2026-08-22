@@ -102,7 +102,7 @@ void main() {
       await tester.pumpWidget(wrap(HistoryList(
         transcriptions: [makeT('tap test')],
       )));
-      await tester.tap(find.byIcon(Icons.copy));
+      await tester.tap(find.byIcon(Icons.copy_rounded));
       await tester.pumpAndSettle();
       expect(find.text('Texto copiado'), findsOneWidget);
     });
@@ -112,7 +112,7 @@ void main() {
         transcriptions: [makeT('only')],
       )));
       expect(find.text('only'), findsOneWidget);
-      expect(find.byIcon(Icons.copy), findsOneWidget);
+      expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     });
 
     testWidgets('handles maximum items (20)', (tester) async {

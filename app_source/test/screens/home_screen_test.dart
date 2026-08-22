@@ -205,8 +205,8 @@ void main() {
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      // El anillo pulsante es infinito: pump fijo, no settle.
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
