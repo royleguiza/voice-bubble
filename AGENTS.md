@@ -157,6 +157,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 13 | Persiste el 400: `could not be processed - is it a valid media file?` con extension .wav correcta | `pcm16bits` en record Android usa RawContainer: PCM CRUDO sin cabecera RIFF (extensión sugerida por el plugin: `.pcm`); `wav` = "pcm16bit with headers" via WaveContainer | Usar `AudioEncoder.wav` (mismo PCM 16 bits pero con cabecera válida). Lección: verificar qué contenedor escribe REALMENTE cada encoder contra el código Kotlin del plugin |
 | 14 | pumpAndSettle timeout tras entrar en estado recording | Animaciones infinitas (anillo pulsante) impiden el settle | pump(duracion fija) en tests tras activar animaciones repetitivas |
 | 15 | `dependOnInheritedWidgetOfExactType<MediaQuery>() called before initState completed` | MediaQuery.of dentro de initState del widget | Mover a didChangeDependencies |
+| 16 | analyze: `The setter 'physicalSizeTested' isn't defined for the type 'TestFlutterView'` | API vieja de TestWindow (`*TestValue`/`*Tested`) confundida con la moderna | En Flutter actual: `tester.view.physicalSize = ...` y `tester.view.devicePixelRatio = ...`, con `addTearDown(tester.view.reset)` |
 
 ### 9.2 Reglas duras para agentes
 

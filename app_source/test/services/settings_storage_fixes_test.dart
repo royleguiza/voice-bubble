@@ -149,8 +149,8 @@ void main() {
   group('SettingsScreen - Seccion Modelo de transcripcion', () {
     Widget buildTestableWidget(WidgetTester tester) {
       // Superficie alta para ver toda la pagina sin scroll (hay tarjeta nueva).
-      tester.view.physicalSizeTested = const Size(1600, 4000);
-      tester.view.devicePixelRatioTested = 2.0;
+      tester.view.physicalSize = const Size(1600, 4000);
+      tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       return const MaterialApp(home: SettingsScreen());
     }
