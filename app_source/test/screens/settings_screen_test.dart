@@ -91,12 +91,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      // El About queda bajo el pliegue del ListView lazy: scrollear primero.
-      await tester.scrollUntilVisible(
-        find.text('Transcripción de voz a texto con Groq Whisper.'),
-        200,
-      );
-      await tester.pump();
+      // El About queda bajo el pliegue del ListView lazy: drag manual.
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
 
       expect(
         find.text('Transcripción de voz a texto con Groq Whisper.'),

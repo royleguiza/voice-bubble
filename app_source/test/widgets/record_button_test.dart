@@ -64,6 +64,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: RecordButton(
+            key: const ValueKey('recordButton'),
             state: RecordButtonState.idle,
             onHoldStart: () => started++,
             onHoldEnd: () => ended++,
