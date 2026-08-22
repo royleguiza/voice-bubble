@@ -153,7 +153,7 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 ### Decisiones tomadas (Hito 2 – 2026-08-22, aprobadas por el dueño)
 * **Modo Local REMOVIDO**: se elimina `local_stt_service.dart`, la dependencia `speech_to_text` y todo el flujo de UI. Motivo: no funcionaba en el dispositivo y el motor del sistema no garantiza privacidad offline. Restaurable desde git history. El campo `isLocal` del modelo se conserva (compatibilidad con historial viejo).
 * **Único motor**: Cloud Groq `whisper-large-v3`.
-* **Layout v2** (spec Liquid Glass derivada de design.md): botón grabar Ø104 elevado (~36% del alto desde el borde inferior, asegurando que quede completamente debajo de la mitad de la pantalla; pill de historial elevado a 72 dp sobre el inset para no interferir con la barra de gestos); tarjeta emergente glass sobre él; historial oculto tras gesto vertical (sheet glass inicial 50%, arrastrable hasta 90%).
+* **Layout v2** (spec Liquid Glass derivada de design.md): botón grabar Ø104 posicionado (~32% del alto desde el borde inferior, optimizado para alcance de pulgar y debajo de la mitad de pantalla; pill de historial elevado a 72 dp sobre el inset para no interferir con la barra de gestos); tarjeta emergente glass sobre él; historial desplegable desde franja inferior completa (sheet glass al 90% con animación suave y título único).
 * **Modos de interacción** configurables: Toque (tap inicia/detiene) y Mantener (hold-to-talk, soltar transcribe). Persistido en SharedPreferences.
 
 ### Tareas

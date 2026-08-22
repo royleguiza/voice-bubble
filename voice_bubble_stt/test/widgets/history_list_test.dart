@@ -48,9 +48,9 @@ void main() {
       expect(find.text('No hay transcripciones aun'), findsOneWidget);
     });
 
-    testWidgets('shows Historial title when list has items', (tester) async {
+    testWidgets('renders items when list has items', (tester) async {
       await tester.pumpWidget(wrap(HistoryList(transcriptions: [makeT('hola')])));
-      expect(find.text('Historial'), findsOneWidget);
+      expect(find.text('hola'), findsOneWidget);
     });
 
     testWidgets('renders correct number of items', (tester) async {

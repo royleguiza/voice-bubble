@@ -311,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen>
           maxChildSize: kHistorySheetMaxFactor,
           snap: true,
           snapSizes: const [
-            kHistorySheetInitialFactor,
+            0.50,
             kHistorySheetMaxFactor,
           ],
           builder: (_, scrollController) {
@@ -435,25 +435,32 @@ class _HomeScreenState extends State<HomeScreen>
               constraints.maxHeight * kRecordClusterBottomFactor;
           return Stack(
             children: [
+              // Zona de gesto inferior para desplegar el historial.
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: historyBottom,
+                bottom: 0,
+                height: historyBottom + 52,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _openHistory,
                   onVerticalDragEnd: (details) {
-                    if ((details.primaryVelocity ?? 0) < -200) {
+                    if ((details.primaryVelocity ?? 0) < -100) {
                       _openHistory();
                     }
                   },
-                  child: Center(
-                    child: Semantics(
-                      button: true,
-                      label: 'Abrir historial',
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                  onVerticalDragUpdate: (details) {
+                    if (details.delta.dy < -8) {
+                      _openHistory();
+                    }
+                  },
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Semantics(
+                        button: true,
+                        label: 'Abrir historial',
                         child: GlassContainer(
                           borderRadius: kBorderRadiusCapsule,
                           small: true,
