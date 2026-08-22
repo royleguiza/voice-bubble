@@ -278,7 +278,17 @@ const double kPopupMaxWidth = 480.0;
 const double kPopupMaxHeightFactor = 0.35;
 
 /// Altura máxima del sheet de historial como fracción del alto de pantalla.
-const double kHistorySheetMaxFactor = 0.70;
+const double kHistorySheetMaxFactor = 0.90;
+
+/// Altura inicial (y primer snap) del sheet de historial.
+const double kHistorySheetInitialFactor = 0.50;
+
+/// Fracción del alto del body desde el borde inferior hasta el cluster
+/// del botón de grabar (sube el control de la zona de gestos).
+const double kRecordClusterBottomFactor = 0.30;
+
+/// Holgura extra sobre el inset del sistema para el pill de historial.
+const double kHistoryPillBottomGap = 20.0;
 
 /// Duración de expansión de la tarjeta emergente.
 const Duration kAnimPopupExpand = Duration(milliseconds: 320);

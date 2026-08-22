@@ -95,13 +95,16 @@ class _RecordButtonState extends State<RecordButton>
         height: kRecordButtonSize,
         child: Stack(
           alignment: Alignment.center,
+          clipBehavior: Clip.hardEdge,
           children: [
             if (isRecording && motionSafe)
               FadeTransition(
                 opacity: Tween(begin: 0.35, end: 0.0).animate(_pulse),
                 child: ScaleTransition(
+                  // Escala hacia adentro para no desbordar el Ø104
+                  // (el overflow amarillo/negro de Flutter se veía sobre el rojo).
                   scale:
-                      Tween(begin: 1.0, end: 1.12).animate(_pulse),
+                      Tween(begin: 0.88, end: 1.0).animate(_pulse),
                   child: Container(
                     width: kRecordButtonSize,
                     height: kRecordButtonSize,

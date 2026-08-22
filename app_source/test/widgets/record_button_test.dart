@@ -82,6 +82,18 @@ void main() {
       expect(ended, 1);
     });
 
+    testWidgets('estado recording no desborda el boton (sin overflow amarillo)',
+        (tester) async {
+      await tester.pumpWidget(buildTestWidget(state: RecordButtonState.recording));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+
+      expect(tester.takeException(), isNull);
+      final size = tester.getSize(find.byKey(const ValueKey('recordButton')));
+      expect(size.width, 104.0);
+      expect(size.height, 104.0);
+    });
+
     testWidgets('tamano del boton es kRecordButtonSize (104)', (tester) async {
       await tester.pumpWidget(buildTestWidget());
       // El gesto de pulsos puede programar frames; pumpAndSettle acotado.
