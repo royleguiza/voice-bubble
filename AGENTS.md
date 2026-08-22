@@ -158,6 +158,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 14 | pumpAndSettle timeout tras entrar en estado recording | Animaciones infinitas (anillo pulsante) impiden el settle | pump(duracion fija) en tests tras activar animaciones repetitivas |
 | 15 | `dependOnInheritedWidgetOfExactType<MediaQuery>() called before initState completed` | MediaQuery.of dentro de initState del widget | Mover a didChangeDependencies |
 | 16 | analyze: `The setter 'physicalSizeTested' isn't defined for the type 'TestFlutterView'` | API vieja de TestWindow (`*TestValue`/`*Tested`) confundida con la moderna | En Flutter actual: `tester.view.physicalSize = ...` y `tester.view.devicePixelRatio = ...`, con `addTearDown(tester.view.reset)` |
+| 17 | `enterText` falla con `Bad state: No element` en tests que navegan a Settings | Al crecer la página (tarjeta del teclado), el TextField quedó bajo el pliegue del ListView lazy: no se construye si no es visible (ver §9.1-8) | Agrandar superficie en TODOS los tests que rendericen la pantalla (`tester.view.physicalSize`), no solo en los que hacen scroll explícito |
 
 ### 9.2 Reglas duras para agentes
 
