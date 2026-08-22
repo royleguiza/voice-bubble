@@ -95,7 +95,7 @@ void main() {
       await tester.pumpWidget(wrap(HistoryList(
         transcriptions: [makeT('copy test')],
       )));
-      expect(find.byIcon(Icons.copy), findsOneWidget);
+      expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
     });
 
     testWidgets('copy button shows snackbar when tapped', (tester) async {

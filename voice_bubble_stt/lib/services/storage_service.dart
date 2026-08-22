@@ -20,9 +20,16 @@ class StorageService {
     return prefs.getString(_recordModeKey) ?? defaultRecordMode;
   }
 
-  Future<void> saveRecordMode(String mode) async {
+  static const String _floatingBubbleKey = 'floating_bubble_enabled';
+
+  Future<bool> loadFloatingBubbleEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_recordModeKey, mode);
+    return prefs.getBool(_floatingBubbleKey) ?? false;
+  }
+
+  Future<void> saveFloatingBubbleEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_floatingBubbleKey, enabled);
   }
 
   Future<void> load() async {

@@ -95,25 +95,28 @@ class TranscriptionPopup extends StatelessWidget {
                           ),
                         ],
                       ),
-                      InkWell(
-                        onTap: onCopy,
-                        borderRadius:
-                            BorderRadius.circular(kBorderRadiusCapsule),
-                        child: GlassContainer(
-                          borderRadius: kBorderRadiusCapsule,
-                          small: true,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.copy_rounded,
-                                  size: 18, color: accent),
-                              const SizedBox(width: 6),
-                              Text('Copiar',
-                                  style:
-                                      kTextCallout.copyWith(color: accent)),
-                            ],
+                      Tooltip(
+                        message: 'Copiar al portapapeles',
+                        child: InkWell(
+                          onTap: onCopy,
+                          borderRadius:
+                              BorderRadius.circular(kBorderRadiusCapsule),
+                          child: GlassContainer(
+                            borderRadius: kBorderRadiusCapsule,
+                            small: true,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.copy_rounded,
+                                    size: 18, color: accent),
+                                const SizedBox(width: 6),
+                                Text('Copiar',
+                                    style:
+                                        kTextCallout.copyWith(color: accent)),
+                              ],
+                            ),
                           ),
                         ),
                       ),

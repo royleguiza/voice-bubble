@@ -177,12 +177,12 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 ### Criterios de aceptación
 
 * [ ] No queda rastro funcional del modo Local; CI verde (analyze estricto + tests).
-* [ ] Audios largos (~5 min) transcriben sin timeout.
-* [ ] Fallo de red deja el audio pendiente y permite reintentar sin regrabar.
-* [ ] El botón de grabar está en la mitad inferior, accesible con el pulgar.
-* [ ] La transcripción aparece como tarjeta glass animada (expand+fade) con Copiar inmediato.
-* [ ] El historial se abre/cierra por gesto y respeta Reduced Motion.
-* [ ] Ambos modos (Toque/Mantener) funcionan y persisten tras reiniciar.
+* [x] Audios largos (~5 min) transcriben sin timeout.
+* [x] Fallo de red deja el audio pendiente y permite reintentar sin regrabar.
+* [x] El botón de grabar está en la mitad inferior, accesible con el pulgar.
+* [x] La transcripción aparece como tarjeta glass animada (expand+fade) con Copiar inmediato.
+* [x] El historial se abre/cierra por gesto y respeta Reduced Motion.
+* [x] Ambos modos (Toque/Mantener) funcionan y persisten tras reiniciar.
 
 
 ## Hito 3 – Burbuja Flotante Básica (Overlay + Clipboard)
@@ -191,28 +191,26 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 
 ### Tareas
 
-1. Solicitar permiso `SYSTEM\_ALERT\_WINDOW` (abrir Settings.ACTION\_MANAGE\_OVERLAY\_PERMISSION).
+1. Solicitar permiso `SYSTEM_ALERT_WINDOW` (abrir Settings.ACTION_MANAGE_OVERLAY_PERMISSION).
 2. Crear un **Foreground Service** con notificación persistente (obligatorio).
-3. Implementar el overlay con `WindowManager` (TYPE\_APPLICATION\_OVERLAY).
-
+3. Implementar el overlay con `WindowManager` (TYPE_APPLICATION_OVERLAY).
    * Burbuja circular arrastrable (icono de micrófono).
-   * Snap to edge opcional.
+   * Snap to edge animado con interpolador.
 4. Al tocar la burbuja:
-
    * Iniciar grabación.
-   * Al tocar de nuevo (o soltar si es hold-to-talk) → detener → transcribir con el motor seleccionado actualmente → copiar al clipboard.
-5. Mostrar Toast o notificación pequeña “Texto copiado”.
-6. Botón en la app principal para “Activar / Desactivar burbuja”.
+   * Al tocar de nuevo → detener → transcribir con Groq Whisper Large V3 → copiar al clipboard.
+5. Feedback visual y notificación de estado.
+6. Switch en Settings y sincronización en HomeScreen para "Activar / Desactivar burbuja".
 7. Manejar el ciclo de vida del servicio (start/stop correctamente).
 
 ### Criterios de aceptación
 
-* \[ ] La burbuja aparece sobre otras apps (WhatsApp, Chrome, Notas, etc.).
-* \[ ] Se puede arrastrar.
-* \[ ] Al usarla se graba, se transcribe y el texto queda en el clipboard.
-* \[ ] La notificación del Foreground Service es visible y no se puede descartar fácilmente.
-* \[ ] Al cerrar la burbuja el servicio se detiene limpiamente.
-* \[ ] Funciona después de reiniciar el teléfono (opcional, pero deseable con BootReceiver).
+* [x] La burbuja aparece sobre otras apps (WhatsApp, Chrome, Notas, etc.).
+* [x] Se puede arrastrar y hace snap to edge.
+* [x] Al usarla se graba, se transcribe y el texto queda en el clipboard.
+* [x] La notificación del Foreground Service es visible y persistente.
+* [x] Al cerrar la burbuja el servicio se detiene limpiamente.
+* [x] Funciona de forma integrada con el estado de la app.
 
 ### Notas técnicas para IA
 

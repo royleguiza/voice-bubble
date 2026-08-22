@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/transcription_service.dart';
 import '../services/storage_service.dart';
 import '../services/cloud_stt_service.dart';
+import '../services/floating_bubble_service.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import 'settings_screen.dart';
@@ -16,11 +17,13 @@ import 'package:path_provider/path_provider.dart';
 class HomeScreen extends StatefulWidget {
   final TranscriptionService? transcriptionService;
   final StorageService? storageService;
+  final FloatingBubbleService? floatingBubbleService;
 
   const HomeScreen({
     super.key,
     this.transcriptionService,
     this.storageService,
+    this.floatingBubbleService,
   });
 
   @override
@@ -31,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin {
   late final TranscriptionService _transcriptionService;
   late final StorageService _storageService;
+  late final FloatingBubbleService _floatingBubbleService;
   final _secureStorage = const FlutterSecureStorage();
 
   bool _isRecording = false;
@@ -51,9 +55,15 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _floatingBubbleService =
+        widget.floatingBubbleService ?? FloatingBubbleService();
+    _floatingBubbleService.onBubbleTap = _handleBubbleTap;
+    _floatingBubbleService.onBubbleClose = _handleBubbleClose;
+
     if (widget.transcriptionService != null) {
       _transcriptionService = widget.transcriptionService!;
-      _storageService = widget.storageService ?? _transcriptionService.storageService;
+      _storageService =
+          widget.storageService ?? _transcriptionService.storageService;
     } else {
       _storageService = widget.storageService ?? StorageService();
       _transcriptionService = TranscriptionService(
@@ -62,6 +72,19 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }
     _init();
+  }
+
+  Future<void> _handleBubbleTap() async {
+    if (_isTranscribing || _isStartingRecording || _isStoppingRecording) return;
+    if (_isRecording) {
+      await _stopRecording();
+    } else {
+      await _startRecording();
+    }
+  }
+
+  void _handleBubbleClose() {
+    _storageService.saveFloatingBubbleEnabled(false);
   }
 
   Future<void> _loadApiKey() async {
@@ -87,6 +110,17 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {}
     await _loadApiKey();
     await _loadRecordMode();
+    try {
+      final bubbleEnabled = await _storageService.loadFloatingBubbleEnabled();
+      if (bubbleEnabled) {
+        final hasPermission = await _floatingBubbleService.canDrawOverlays();
+        if (hasPermission) {
+          await _floatingBubbleService.startBubble();
+        } else {
+          await _storageService.saveFloatingBubbleEnabled(false);
+        }
+      }
+    } catch (_) {}
     if (mounted) {
       setState(() {});
     }
@@ -141,6 +175,8 @@ class _HomeScreenState extends State<HomeScreen>
       final path =
           '${dir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.wav';
       await _transcriptionService.startRecording(path);
+      await _floatingBubbleService
+          .updateBubbleState(BubbleVisualState.recording);
       if (mounted) {
         setState(() {
           _isStartingRecording = false;
@@ -158,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (e) {
       _isStartingRecording = false;
       _shouldStopAfterStart = false;
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
@@ -180,6 +217,7 @@ class _HomeScreenState extends State<HomeScreen>
         if (path != null) {
           await _transcriptionService.cleanupTempFile(path);
         }
+        await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
         if (mounted) setState(() => _isRecording = false);
       }
     }
@@ -195,6 +233,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
     _isStoppingRecording = true;
     _hapticStop();
+    await _floatingBubbleService
+        .updateBubbleState(BubbleVisualState.transcribing);
 
     // Pasar a "Procesando" de inmediato: no dejar un frame de botón rojo
     // con overflow mientras se cierra el recorder.
@@ -208,6 +248,7 @@ class _HomeScreenState extends State<HomeScreen>
     _isStoppingRecording = false;
 
     if (path == null) {
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() => _isTranscribing = false);
       }
@@ -219,6 +260,7 @@ class _HomeScreenState extends State<HomeScreen>
     final file = File(path);
     if (!file.existsSync() || file.lengthSync() < 1000) {
       await _transcriptionService.cleanupTempFile(path);
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() => _isTranscribing = false);
       }
@@ -227,6 +269,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     try {
       final result = await _transcriptionService.transcribe(path);
+      await Clipboard.setData(ClipboardData(text: result.text));
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() {
           _resultText = result.text;
@@ -239,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
       }
     } catch (e) {
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       // Conservar el audio para reintento sin regrabar.
       if (mounted) {
         setState(() {
@@ -264,8 +309,12 @@ class _HomeScreenState extends State<HomeScreen>
     final path = _pendingAudioPath;
     if (path == null || _isTranscribing || _isRecording) return;
     setState(() => _isTranscribing = true);
+    await _floatingBubbleService
+        .updateBubbleState(BubbleVisualState.transcribing);
     try {
       final result = await _transcriptionService.transcribe(path);
+      await Clipboard.setData(ClipboardData(text: result.text));
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() {
           _resultText = result.text;
@@ -279,6 +328,7 @@ class _HomeScreenState extends State<HomeScreen>
         }
       }
     } catch (e) {
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() => _isTranscribing = false);
         ScaffoldMessenger.of(context)
@@ -420,7 +470,12 @@ class _HomeScreenState extends State<HomeScreen>
             onPressed: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                MaterialPageRoute(
+                  builder: (_) => SettingsScreen(
+                    storageService: _storageService,
+                    floatingBubbleService: _floatingBubbleService,
+                  ),
+                ),
               );
               await _loadApiKey();
               await _loadRecordMode();

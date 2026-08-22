@@ -1,9 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/storage_service.dart';
+import '../services/floating_bubble_service.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  final StorageService? storageService;
+  final FlutterSecureStorage? secureStorage;
+  final FloatingBubbleService? floatingBubbleService;
+
+  const SettingsScreen({
+    super.key,
+    this.storageService,
+    this.secureStorage,
+    this.floatingBubbleService,
+  });
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -11,16 +21,75 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _apiKeyController = TextEditingController();
-  final _secureStorage = const FlutterSecureStorage();
-  final StorageService _storageService = StorageService();
+  late final FlutterSecureStorage _secureStorage;
+  late final StorageService _storageService;
+  late final FloatingBubbleService _floatingBubbleService;
+
   bool _hasApiKey = false;
   String _recordMode = StorageService.defaultRecordMode;
+  bool _isBubbleEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
+    _storageService = widget.storageService ?? StorageService();
+    _floatingBubbleService =
+        widget.floatingBubbleService ?? FloatingBubbleService();
     _loadApiKey();
     _loadRecordMode();
+    _loadBubbleState();
+  }
+
+  Future<void> _loadBubbleState() async {
+    try {
+      final enabled = await _storageService.loadFloatingBubbleEnabled();
+      final isRunning = await _floatingBubbleService.isBubbleRunning();
+      if (mounted) {
+        setState(() => _isBubbleEnabled = enabled && isRunning);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleBubble(bool enable) async {
+    if (enable) {
+      final hasPermission = await _floatingBubbleService.canDrawOverlays();
+      if (!hasPermission) {
+        if (!mounted) return;
+        final grant = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Permiso de superposición'),
+            content: const Text(
+              'Para mostrar la burbuja sobre otras apps, VoiceBubble necesita el permiso de mostrar sobre otras aplicaciones.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Configurar'),
+              ),
+            ],
+          ),
+        );
+        if (grant == true) {
+          await _floatingBubbleService.requestOverlayPermission();
+        }
+        return;
+      }
+      final started = await _floatingBubbleService.startBubble();
+      if (started) {
+        await _storageService.saveFloatingBubbleEnabled(true);
+        if (mounted) setState(() => _isBubbleEnabled = true);
+      }
+    } else {
+      await _floatingBubbleService.stopBubble();
+      await _storageService.saveFloatingBubbleEnabled(false);
+      if (mounted) setState(() => _isBubbleEnabled = false);
+    }
   }
 
   Future<void> _loadRecordMode() async {
@@ -83,6 +152,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Floating Bubble section
+          Text(
+            'Burbuja flotante',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Activar burbuja flotante'),
+            subtitle: const Text(
+              'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
+            ),
+            value: _isBubbleEnabled,
+            onChanged: _toggleBubble,
+          ),
+
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+
           // API Key section
           Text(
             'API Key de Groq',
