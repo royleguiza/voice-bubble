@@ -66,6 +66,18 @@ void main() {
     });
   });
 
+  group('Home v2 layout tokens', () {
+    test('history sheet can expand to 90% with 50% initial snap', () {
+      expect(kHistorySheetMaxFactor, 0.90);
+      expect(kHistorySheetInitialFactor, 0.50);
+    });
+
+    test('record cluster sits above the gesture inset', () {
+      expect(kRecordClusterBottomFactor, 0.30);
+      expect(kHistoryPillBottomGap, 20.0);
+    });
+  });
+
   group('Border radius tokens', () {
     test('border radius values match design specifications', () {
       expect(kBorderRadiusCapsule, 100.0);

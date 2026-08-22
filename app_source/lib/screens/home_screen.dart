@@ -156,13 +156,15 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _stopRecording() async {
     _hapticStop();
-    final path = await _transcriptionService.stopRecording();
+    // Pasar a "Procesando" de inmediato: no dejar un frame de botón rojo
+    // con overflow mientras se cierra el recorder.
     if (mounted) {
       setState(() {
         _isRecording = false;
         _isTranscribing = true;
       });
     }
+    final path = await _transcriptionService.stopRecording();
 
     if (path == null) {
       if (mounted) {
@@ -252,11 +254,14 @@ class _HomeScreenState extends State<HomeScreen>
       barrierColor: kScrimColor,
       builder: (sheetContext) {
         return DraggableScrollableSheet(
-          initialChildSize: 0.50,
+          initialChildSize: kHistorySheetInitialFactor,
           minChildSize: 0.25,
           maxChildSize: kHistorySheetMaxFactor,
           snap: true,
-          snapSizes: const [0.50],
+          snapSizes: const [
+            kHistorySheetInitialFactor,
+            kHistorySheetMaxFactor,
+          ],
           builder: (_, scrollController) {
             return GlassContainer(
               borderRadius: kBorderRadiusSheet,
@@ -365,102 +370,104 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Zona de gesto del historial (franja inferior completa).
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: insets.bottom + 56,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _openHistory,
-              onVerticalDragEnd: (details) {
-                if ((details.primaryVelocity ?? 0) < -200) _openHistory();
-              },
-              child: Center(
-                child: Semantics(
-                  button: true,
-                  label: 'Abrir historial',
-                  child: GlassContainer(
-                    borderRadius: kBorderRadiusCapsule,
-                    small: true,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.history_rounded,
-                            size: 18, color: labelSecondary),
-                        const SizedBox(width: 6),
-                        Text('Historial',
-                            style:
-                                kTextFootnote.copyWith(color: labelSecondary)),
-                      ],
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final historyBottom = insets.bottom + kHistoryPillBottomGap;
+          final recordBottom =
+              constraints.maxHeight * kRecordClusterBottomFactor;
+          return Stack(
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: historyBottom,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _openHistory,
+                  onVerticalDragEnd: (details) {
+                    if ((details.primaryVelocity ?? 0) < -200) {
+                      _openHistory();
+                    }
+                  },
+                  child: Center(
+                    child: Semantics(
+                      button: true,
+                      label: 'Abrir historial',
+                      child: GlassContainer(
+                        borderRadius: kBorderRadiusCapsule,
+                        small: true,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.history_rounded,
+                                size: 18, color: labelSecondary),
+                            const SizedBox(width: 6),
+                            Text('Historial',
+                                style: kTextFootnote.copyWith(
+                                    color: labelSecondary)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-          // Contenido inferior: estado + tarjeta emergente + botón.
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: SingleChildScrollView(
-              reverse: true,
-              padding: EdgeInsets.only(bottom: insets.bottom + 72),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_resultText.isNotEmpty && !_isTranscribing)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: TranscriptionPopup(
-                        text: _resultText,
-                        timestamp: DateTime.now(),
-                        controller: _popupCtrl,
-                        motionSafe: motionSafe,
-                        onCopy: _copyToClipboard,
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: recordBottom,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_resultText.isNotEmpty && !_isTranscribing)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: TranscriptionPopup(
+                          text: _resultText,
+                          timestamp: DateTime.now(),
+                          controller: _popupCtrl,
+                          motionSafe: motionSafe,
+                          onCopy: _copyToClipboard,
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _statusText,
+                      style: kTextSubhead.copyWith(
+                        color: _isRecording ? kRecording : labelSecondary,
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _statusText,
-                    style: kTextSubhead.copyWith(
-                      color: _isRecording ? kRecording : labelSecondary,
+                    const SizedBox(height: 16),
+                    RecordButton(
+                      key: const ValueKey('recordButton'),
+                      state: _buttonState,
+                      onPressed:
+                          _recordMode == StorageService.defaultRecordMode
+                              ? _toggleRecording
+                              : null,
+                      onHoldStart: _recordMode == 'hold'
+                          ? () {
+                              _holdStartedAt = DateTime.now();
+                              _startRecording();
+                            }
+                          : null,
+                      onHoldEnd: _recordMode == 'hold'
+                          ? () async {
+                              await _cancelHoldIfTooShort();
+                              if (_holdStartedAt == null && _isRecording) {
+                                await _stopRecording();
+                              }
+                            }
+                          : null,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  RecordButton(
-                    key: const ValueKey('recordButton'),
-                    state: _buttonState,
-                    onPressed:
-                        _recordMode == StorageService.defaultRecordMode
-                            ? _toggleRecording
-                            : null,
-                    onHoldStart:
-                        _recordMode == 'hold'
-                            ? () {
-                                _holdStartedAt = DateTime.now();
-                                _startRecording();
-                              }
-                            : null,
-                    onHoldEnd:
-                        _recordMode == 'hold'
-                            ? () async {
-                                await _cancelHoldIfTooShort();
-                                if (_holdStartedAt == null && _isRecording) {
-                                  await _stopRecording();
-                                }
-                              }
-                            : null,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
