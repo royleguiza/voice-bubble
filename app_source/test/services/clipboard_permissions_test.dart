@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
-import 'package:voice_bubble_stt/services/local_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
 class MockAudioRecorder implements AudioRecorder {
@@ -82,7 +81,6 @@ void main() {
       mockRecorder = MockAudioRecorder();
       service = TranscriptionService(
         cloudService: const CloudSttService(apiKey: ''),
-        localService: LocalSttService(),
         storageService: StorageService(),
         recorder: mockRecorder,
       );

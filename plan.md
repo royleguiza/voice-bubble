@@ -130,12 +130,12 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 
 ### Criterios de aceptación
 
-* \[ ] Se puede grabar y transcribir en modo **Cloud** con API key válida.
-* \[ ] Se puede grabar y transcribir en modo **Local** (aunque sea lento).
-* \[ ] El botón “Copiar” pone el texto en el clipboard y notifica al usuario.
-* \[ ] Las últimas 20 transcripciones se guardan y se muestran correctamente tras reiniciar la app.
-* \[ ] No hay crashes al cambiar de modo o al fallar la red/API.
-* \[ ] APK de testing instalable y usable.
+* [x] Se puede grabar y transcribir en modo **Cloud** con API key válida. (verificado en dispositivo real, 2026-08-22)
+* [x] ~~Modo **Local**~~ → REMOVIDO por decisión del dueño (ver Hito 2, Decisiones).
+* [x] El botón "Copiar" pone el texto en el clipboard y notifica al usuario.
+* [x] Las últimas 20 transcripciones se guardan y se muestran correctamente tras reiniciar la app. (verificado en dispositivo real)
+* [x] No hay crashes al cambiar de modo o al fallar la red/API. (verificado en dispositivo real)
+* [x] APK de testing instalable y usable.
 
 ### Notas técnicas para IA
 
@@ -146,33 +146,44 @@ Cada hito tiene **objetivos claros**, **tareas concretas**, **criterios de acept
 
 \---
 
-## Hito 2 – Mejoras de UX y Robustez de la App Principal
+## Hito 2 – UX y Robustez de la App Principal (redefinido 2026-08-22)
 
-**Objetivo**: Hacer la app agradable y resistente a errores comunes.
+**Objetivo**: Rediseño Liquid Glass de la pantalla principal (botón en zona del pulgar, tarjeta emergente animada, historial por gesto), modos de interacción configurables, reintento sin regrabar y remoción del modo Local.
+
+### Decisiones tomadas (Hito 2 – 2026-08-22, aprobadas por el dueño)
+* **Modo Local REMOVIDO**: se elimina `local_stt_service.dart`, la dependencia `speech_to_text` y todo el flujo de UI. Motivo: no funcionaba en el dispositivo y el motor del sistema no garantiza privacidad offline. Restaurable desde git history. El campo `isLocal` del modelo se conserva (compatibilidad con historial viejo).
+* **Único motor**: Cloud Groq `whisper-large-v3`.
+* **Layout v2** (spec Liquid Glass derivada de design.md): botón grabar Ø104 bottom-center; tarjeta emergente glass sobre él; historial oculto tras gesto vertical (sheet glass máx. 70%).
+* **Modos de interacción** configurables: Toque (tap inicia/detiene) y Mantener (hold-to-talk, soltar transcribe). Persistido en SharedPreferences.
 
 ### Tareas
 
-1. Indicadores visuales claros:
+#### Backend / robustez
+1. Timeout adaptativo para transcripción (hoy: 30 s fijos → falla en audios largos; WAV 16kHz mono = 32 KB/s + procesamiento).
+2. Clasificar errores: **reintentables** (red, 5xx, 429, timeout) vs **no reintentables** (401 key inválida, 400 archivo inválido).
+3. Conservar el archivo temporal si la transcripción falla → **reintento sin regrabar**.
+4. UI de reintento: acción "Reintentar" en SnackBar y estado pendiente visible.
 
-   * Estado “Grabando…” (animación o color rojo).
-   * Estado “Transcribiendo…” (spinner + texto).
-   * Diferenciar visualmente Local vs Cloud.
-2. Feedback háptico al empezar/parar grabación (opcional pero recomendado).
-3. Manejo de permisos denegados (explicar por qué se necesita el micrófono y redirigir a Settings).
-4. Limpieza de archivos temporales de audio después de transcribir.
-5. Soporte básico de idioma (al menos español e inglés). Pasar el parámetro `language` al motor cuando sea posible.
-6. Botón “Borrar historial”.
-7. Mejorar el diseño (Material 3, tipografía legible, contraste alto).
-8. Probar en al menos 2 dispositivos reales (uno gama media/baja).
+#### Interacción
+5. Setting 'Modo de grabación' (Toque / Mantener) en SettingsScreen.
+6. Hold-to-talk: Listener pointer down/up, mínimo ~300 ms para descartar toques accidentales, hápticos al iniciar/detener.
+
+#### Layout y animaciones (design.md estricto)
+7. Nuevo Stack Home: botón Ø104 bottom-center (zona del pulgar), tarjeta emergente anclada sobre él, affordance pill 'Historial'.
+8. Tarjeta emergente glass: expand 320 ms easeOutBack + fade de texto 260 ms (bloque completo, NO palabra por palabra); botón Copiar disponible desde t=0; texto seleccionable y scrollable (máx. 35% pantalla); footer con timestamp.
+9. Historial: sheet glass por swipe-up desde la zona inferior (snap 50%/70%), scrim sutil, handle arrastrable; al cerrar vuelve todo a su posición.
+10. Reduced Motion respetado en todas las animaciones (design.md §9).
 
 ### Criterios de aceptación
 
-* \[ ] La UX es clara e intuitiva para un usuario no técnico.
-* \[ ] No quedan archivos de audio huérfanos en el almacenamiento.
-* \[ ] La app no crashea si se niega el permiso de micrófono.
-* \[ ] Historial se puede vaciar.
+* [ ] No queda rastro funcional del modo Local; CI verde (analyze estricto + tests).
+* [ ] Audios largos (~5 min) transcriben sin timeout.
+* [ ] Fallo de red deja el audio pendiente y permite reintentar sin regrabar.
+* [ ] El botón de grabar está en la mitad inferior, accesible con el pulgar.
+* [ ] La transcripción aparece como tarjeta glass animada (expand+fade) con Copiar inmediato.
+* [ ] El historial se abre/cierra por gesto y respeta Reduced Motion.
+* [ ] Ambos modos (Toque/Mantener) funcionan y persisten tras reiniciar.
 
-\---
 
 ## Hito 3 – Burbuja Flotante Básica (Overlay + Clipboard)
 

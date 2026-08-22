@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../services/transcription_service.dart';
 import '../services/storage_service.dart';
 import '../services/cloud_stt_service.dart';
-import '../services/local_stt_service.dart';
 import '../ui/design_tokens.dart';
 import 'settings_screen.dart';
 import '../widgets/record_button.dart';
@@ -33,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isRecording = false;
   bool _isTranscribing = false;
   String _resultText = '';
-  String _currentMode = 'Cloud';
 
   @override
   void initState() {
@@ -45,7 +43,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _storageService = widget.storageService ?? StorageService();
       _transcriptionService = TranscriptionService(
         cloudService: const CloudSttService(apiKey: ''),
-        localService: LocalSttService(),
         storageService: _storageService,
       );
     }
@@ -176,33 +173,6 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const SizedBox(height: 20),
 
-            // Mode selector
-            SegmentedButton<TranscriptionMode>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(
-                  value: TranscriptionMode.cloud,
-                  label: Text('Cloud'),
-                  icon: Icon(Icons.cloud),
-                ),
-                ButtonSegment(
-                  value: TranscriptionMode.local,
-                  label: Text('Local'),
-                  icon: Icon(Icons.phone_android),
-                ),
-              ],
-              selected: {_transcriptionService.mode},
-              onSelectionChanged: (modes) {
-                setState(() {
-                  _transcriptionService.setMode(modes.first);
-                  _currentMode =
-                      modes.first == TranscriptionMode.cloud ? 'Cloud' : 'Local';
-                });
-              },
-            ),
-
-            const SizedBox(height: 30),
-
             // Record button
             RecordButton(
               isRecording: _isRecording,
@@ -253,13 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text(
-                            _currentMode,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                ),
-                          ),
-                          const SizedBox(width: 12),
                           IconButton(
                             icon: const Icon(Icons.copy),
                             onPressed: _copyToClipboard,
