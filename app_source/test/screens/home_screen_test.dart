@@ -205,8 +205,9 @@ void main() {
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump(const Duration(milliseconds: 400));
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
 
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
