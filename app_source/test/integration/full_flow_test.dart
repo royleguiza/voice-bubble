@@ -236,6 +236,11 @@ void main() {
     testWidgets(
       'Home → Settings → Back preserves state',
       (WidgetTester tester) async {
+        // Superficie alta para ver toda la pagina sin scroll (hay tarjeta nueva).
+        tester.view.physicalSize = const Size(1600, 4000);
+        tester.view.devicePixelRatio = 2.0;
+        addTearDown(tester.view.reset);
+
         await tester.pumpWidget(buildTestApp());
         await tester.pumpAndSettle();
 
