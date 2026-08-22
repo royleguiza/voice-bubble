@@ -119,11 +119,17 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pumpAndSettle();
+
       expect(find.text('Acerca de'), findsOneWidget);
     });
 
     testWidgets('shows version "VoiceBubble STT v0.1.0"', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpAndSettle();
+
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
       await tester.pumpAndSettle();
 
       expect(find.text('VoiceBubble STT v0.1.0'), findsOneWidget);
