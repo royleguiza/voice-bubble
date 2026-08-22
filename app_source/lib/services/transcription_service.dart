@@ -53,7 +53,9 @@ class TranscriptionService {
       RecordConfig(
         sampleRate: 16000,
         numChannels: 1,
-        encoder: AudioEncoder.pcm16bits,
+        // AudioEncoder.wav = PCM 16 bits CON cabecera RIFF (WaveContainer).
+        // pcm16bits escribe PCM crudo sin cabecera y Groq lo rechaza con 400.
+        encoder: AudioEncoder.wav,
       ),
       path: path,
     );
