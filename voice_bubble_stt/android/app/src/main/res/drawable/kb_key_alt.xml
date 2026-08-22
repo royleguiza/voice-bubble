@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape>
+            <corners android:radius="@dimen/kb_key_radius" />
+            <solid android:color="@color/kb_key_pressed" />
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <corners android:radius="@dimen/kb_key_radius" />
+            <solid android:color="@color/kb_key_bg_alt" />
+        </shape>
+    </item>
+</selector>

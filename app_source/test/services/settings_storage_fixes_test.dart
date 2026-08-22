@@ -147,19 +147,23 @@ void main() {
   });
 
   group('SettingsScreen - Seccion Modelo de transcripcion', () {
-    Widget buildTestableWidget() {
+    Widget buildTestableWidget(WidgetTester tester) {
+      // Superficie alta para ver toda la pagina sin scroll (hay tarjeta nueva).
+      tester.view.physicalSizeTested = const Size(1600, 4000);
+      tester.view.devicePixelRatioTested = 2.0;
+      addTearDown(tester.view.reset);
       return const MaterialApp(home: SettingsScreen());
     }
 
     testWidgets('existe la seccion "Modelo de transcripcion" en Settings',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
       expect(find.text('Modelo de transcripcion'), findsOneWidget);
     });
 
     testWidgets('muestra info del modo Cloud', (tester) async {
-      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
       expect(find.text('Modo Cloud'), findsOneWidget);
       expect(find.text('Groq Whisper Large V3 (whisper-large-v3)'),

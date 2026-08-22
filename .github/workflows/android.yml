@@ -100,6 +100,13 @@ jobs:
         working-directory: voice_bubble_stt
         run: flutter test
 
+      - name: Guard archivos de teclado presentes
+        run: |
+          test -f voice_bubble_stt/android/app/src/main/res/xml/method.xml \
+            || { echo '::error::falta method.xml'; exit 1; }
+          grep -q 'VoiceKeyboardService' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
+            || { echo '::error::IME no declarado en manifest'; exit 1; }
+
       - name: Build APK debug
         working-directory: voice_bubble_stt
         run: flutter build apk --debug
