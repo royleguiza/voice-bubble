@@ -173,12 +173,45 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | pushes con GITHUB_TOKEN no disparan otros workflows (sin loops infinitos) | docs.github.com/actions/security-guides |
 | pump() puntual mejor que pumpAndSettle() cuando no hay animaciones pendientes | api.flutter.dev — WidgetTester.pumpAndSettle |
 
-### 9.4 Ritual post-push (obligatorio)
+### 9.4 Ritual post-push y Monitoreo de GitHub Actions (OBLIGATORIO)
 
-Después de cada push que toque código Dart o el workflow:
-1. Verificar en Actions que el run quedó ✓ verde (~5-10 min primer build, ~2-3 min con caches calientes).
-2. Si rojo: identificar el step exacto, corregir, re-revisar contra 9.2 antes del push siguiente.
-3. Si verde: descargar `voice-bubble-debug-apk-r<N>` desde Artifacts e instalar en teléfono cuando corresponda probar físicamente.
+Para asegurar la integridad de las compilaciones sin acceso local a SDK:
+- **Token de lectura de GitHub Actions**: Ubicado en `/root/.local/share/gh-actions/token` (permisos de solo lectura para workflows/runs/artefactos, vigencia temporal de 7 días).
+- **SEGURIDAD**: **NUNCA** exponer, imprimir en consola ni commitear el valor del token en ningún archivo o mensaje.
+
+#### Procedimiento obligatorio tras CADA push:
+1. **Monitorear el workflow en segundo plano** consultando la API de GitHub Actions hasta que el estado sea `completed`:
+   ```python
+   import urllib.request, json, time
+
+   token = open('/root/.local/share/gh-actions/token').read().strip()
+   commit_sha = '<SHORT_COMMIT_SHA>'
+
+   # 1. Obtener Run ID correspondiente al commit
+   req = urllib.request.Request(
+       'https://api.github.com/repos/royleguiza/voice-bubble/actions/runs?per_page=3',
+       headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json'}
+   )
+   runs = json.loads(urllib.request.urlopen(req).read()).get('workflow_runs', [])
+   run_id = next(r['id'] for r in runs if r['head_sha'].startswith(commit_sha))
+
+   # 2. Pollear estado cada 15 segundos
+   while True:
+       req_run = urllib.request.Request(
+           f'https://api.github.com/repos/royleguiza/voice-bubble/actions/runs/{run_id}',
+           headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json'}
+       )
+       run = json.loads(urllib.request.urlopen(req_run).read())
+       if run['status'] == 'completed':
+           break
+       time.sleep(15)
+   ```
+2. **Si el build falla (`conclusion == 'failure'`)**:
+   - Consultar los jobs y steps (`/actions/runs/{run_id}/jobs`).
+   - Mapear el step exacto que falló (ej. analyze, test o Gradle) y obtener los logs para corregir la causa raíz.
+3. **Si el build tiene éxito (`conclusion == 'success'`)**:
+   - Consultar los artefactos (`/actions/runs/{run_id}/artifacts`).
+   - Proveer al usuario el Run ID, enlace directo a GitHub y el nombre del APK generado (`voice-bubble-debug-apk-r<N>`).
 
 ---
 
