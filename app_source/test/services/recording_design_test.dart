@@ -13,7 +13,7 @@ class _RecordingMockAudioRecorder implements AudioRecorder {
   String? lastPath;
 
   @override
-  Future<bool> hasPermission() async => true;
+  Future<bool> hasPermission({bool request = true}) async => true;
 
   @override
   Future<void> start(RecordConfig config, {required String path}) async {
