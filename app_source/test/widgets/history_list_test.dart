@@ -1,9 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/history_list.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // Backend en memoria para Clipboard (sin mock, Clipboard.setData lanza
+  // MissingPluginException y el SnackBar nunca aparece).
+  String? clipboardStore;
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+    SystemChannels.platform,
+    (MethodCall call) async {
+      switch (call.method) {
+        case 'Clipboard.setData':
+          clipboardStore = (call.arguments as Map)['text'] as String?;
+          return null;
+        case 'Clipboard.getData':
+          return <String, String?>{'text': clipboardStore};
+        default:
+          return null;
+      }
+    },
+  );
+
   Widget wrap(Widget child) {
     return MaterialApp(
       home: Scaffold(
@@ -97,6 +119,14 @@ void main() {
       final items = List.generate(20, (i) => makeT('item $i'));
       await tester.pumpWidget(wrap(HistoryList(transcriptions: items)));
       expect(find.text('item 0'), findsOneWidget);
+      // ListView es lazy: los ítems fuera del viewport no se construyen,
+      // hay que hacer scroll hasta el último.
+      await tester.dragUntilVisible(
+        find.text('item 19'),
+        find.byType(ListView),
+        const Offset(0, -200),
+      );
+      await tester.pump();
       expect(find.text('item 19'), findsOneWidget);
     });
 

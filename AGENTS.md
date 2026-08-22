@@ -135,6 +135,9 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 3 | pubspec.lock inconsistente (detectado en auditoría, antes de romper) | Constraint `^5.0.0` vs lock resuelto a 6.0.0 (el bot commiteó el lock antes de sobrescribir el pubspec) | Alinear constraint a `^6.0.0` en ambos pubspecs |
 | 4 | Cambios en app_source no llegarían al build (trampa estructural) | El scaffold solo corría si faltaba `android/`; después, el CI ignoraba app_source | Paso "Sincronizar fuente" incondicional en cada run |
 | 5 | `Invalid workflow file ... yaml syntax on line 92` (el run ni arranca) | `: ` (dos puntos + espacio) dentro del nombre de un step → YAML lo interpreta como mapeo anidado inválido | Sin `: ` en valores plain; validar YAML localmente con python3-yaml antes de pushear workflows |
+| 6 | 6 tests de grabación fallan: el botón nunca pasa de mic a stop | Los mocks usaban canales inventados (`com.llcgram.*`); el plugin record 5.x usa `com.llfbandit.record` y `/messages` | Verificar el nombre EXACTO del canal contra el código fuente del plugin antes de mockear |
+| 7 | Clipboard.getData devuelve null y el SnackBar nunca aparece | El canal `flutter/platform` no tiene implementación nativa en tests → MissingPluginException en setData/getData | Mockear SystemChannels.platform con un store en memoria |
+| 8 | `find.text('item 19')` encuentra 0 widgets con una lista de 20 | ListView es lazy: los ítems fuera del viewport NO se construyen | Hacer scroll (dragUntilVisible) antes del expect |
 
 ### 9.2 Reglas duras para agentes
 
@@ -147,6 +150,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 7. Antes de pushear Dart: releer el diff completo buscando imports faltantes y símbolos inexistentes (no hay análisis local posible en Termux).
 8. Nunca usar `: ` dentro de nombres o valores plain en YAML (rompe el parseo). Validar SIEMPRE el workflow localmente antes de pushear: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/android.yml'))"` (paquete `python3-yaml` ya instalado).
 9. Un push = un run esperado: verificar Actions antes de avanzar de hito (ver 9.4).
+10. dart:io asíncrono (`await File.exists/delete`) se cuelga bajo fakeAsync (widget tests): usar variantes síncronas (`existsSync/deleteSync`) en rutas de limpieza que puedan ejecutarse en tests.
 
 ### 9.3 Best practices aplicadas al workflow
 

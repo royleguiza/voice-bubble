@@ -79,21 +79,23 @@ class TranscriptionService {
 
       return result;
     } finally {
-      // Clean up temp audio file safely
+      // Clean up temp audio file safely.
+      // IO sincrona: los futures de dart:io no corren bajo fakeAsync (tests).
       try {
         final file = File(audioPath);
-        if (await file.exists()) {
-          await file.delete();
+        if (file.existsSync()) {
+          file.deleteSync();
         }
       } catch (_) {}
     }
   }
 
   Future<void> cleanupTempFile(String path) async {
+    // IO sincrona: los futures de dart:io no corren bajo fakeAsync (tests).
     try {
       final file = File(path);
-      if (await file.exists()) {
-        await file.delete();
+      if (file.existsSync()) {
+        file.deleteSync();
       }
     } catch (_) {}
   }
