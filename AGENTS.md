@@ -8,10 +8,11 @@
 
 **VoiceBubble STT**: app Android de transcripción de voz a texto, extremadamente simple.
 
-- Dos motores: **Cloud** (API OpenAI/Groq) y **Local offline** (Whisper tiny/base vía sherpa-onnx o similar).
-- Historial de las últimas **20** transcripciones.
-- **Burbuja flotante** para transcribir desde cualquier otra app y copiar el resultado.
-- Nada más: no sumar features (no notas, no traducción, no resúmenes).
+- Motor **Cloud** único (Groq `whisper-large-v3`; compatible también con OpenAI). El modo **Local offline fue removido** en el Hito 2 (decisión del dueño, 2026-08-22; restaurable desde git history; su regreso está pospuesto — ver `teclado-voice.md` D4).
+- Historial de las últimas **20** transcripciones (FIFO).
+- **Burbuja flotante** para transcribir desde cualquier otra app y copiar el resultado (Hito 3, verificada en dispositivo real).
+- Próxima extensión planificada: **teclado del sistema con dictado** (`teclado-voice.md`, hitos T0–K5).
+- Nada más fuera de alcance (no notas, no traducción, no resúmenes).
 
 ## 2. Stack y decisiones tomadas (NO re-decidir)
 
@@ -34,6 +35,7 @@ voice-bubble/                  ← raíz del repo git
 ├── README.md                  ← spec funcional del producto
 ├── plan.md                    ← plan de ejecución por hitos (LA FUENTE DE VERDAD del qué y cuándo)
 ├── design.md                  ← sistema de diseño Liquid Glass (LA FUENTE DE VERDAD del cómo se ve)
+├── teclado-voice.md           ← plan del teclado del sistema (T0–K5); se integra a la secuencia desde la posición del Hito 4
 ├── AGENTS.md                  ← este archivo
 ├── app_source/                ← FUENTE DE EDICIÓN de la app (pubspec, analysis_options, lib/, test/)
 ├── voice_bubble_stt/          ← proyecto Flutter que compila el CI; android/ generado por CI,
@@ -67,7 +69,7 @@ Ver sección "Estado" al final de este archivo y los checkboxes de `plan.md`.
 ### Seguridad y privacidad (crítico)
 
 - **NUNCA hardcodear API keys ni secretos.** La key va en Settings, almacenada con `flutter_secure_storage`.
-- Modo **Local: el audio jamás sale del dispositivo.** Verificar que ningún camino de código envíe audio a la red en modo local.
+- El audio SOLO viaja a internet cuando el usuario inicia explícitamente una transcripción Cloud. Sin transcripción en curso = cero tráfico de red con audio.
 - Sin analytics, sin telemetría, sin permisos que no estén justificados en README.md.
 
 ### Permisos Android (solo los necesarios, declarar en manifest)
@@ -115,7 +117,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 - ❌ Toggle de tema claro/oscuro dentro de la app (seguir el sistema, siempre).
 - ❌ Añadir features fuera del alcance del README (la app hace UNA cosa).
 - ❌ Avanzar de hito sin criterios de aceptación completos.
-- ❌ Enviar audio a internet en modo local, aunque sea "para mejorar calidad".
+- ❌ Enviar audio a internet sin que el usuario haya iniciado explícitamente una transcripción.
 - ❌ Historial con límite distinto de exactamente 20 elementos FIFO.
 - ❌ Overriding de animaciones cuando el sistema pide Reduced Motion.
 - ❌ Subir binarios de modelos grandes al repo (usar descarga on-demand).
@@ -158,6 +160,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 8. Nunca usar `: ` dentro de nombres o valores plain en YAML (rompe el parseo). Validar SIEMPRE el workflow localmente antes de pushear: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/android.yml'))"` (paquete `python3-yaml` ya instalado).
 9. Un push = un run esperado: verificar Actions antes de avanzar de hito (ver 9.4).
 10. dart:io asíncrono (`await File.exists/delete`) se cuelga bajo fakeAsync (widget tests): usar variantes síncronas (`existsSync/deleteSync`) en rutas de limpieza que puedan ejecutarse en tests.
+11. **REGLA DEL DUEÑO (2026-08-22): ningún push sin la suite de testing completa al 100% en verde.** Como no existe runner local de Flutter en Termux, esto se materializa así: (a) diff re-leído completo antes del push (regla 7), (b) baseline anterior verde confirmada, (c) monitoreo CI obligatorio post-push (§9.4) y corrección inmediata si el run falla, antes de cualquier otra tarea.
 
 ### 9.3 Best practices aplicadas al workflow
 
@@ -218,12 +221,18 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 ## Estado del proyecto
 
 > **Actualizar esta sección al final de cada hito completado.**
+> Última actualización: 2026-08-22.
 
 - [x] Planificación (README + plan + design + agents)
 - [x] Hito 0 – Setup
-- [ ] Hito 1 – Transcripción básica
-- [ ] Hito 2 – UX y robustez
-- [ ] Hito 3 – Burbuja flotante
-- [ ] Hito 4 – Pegado inteligente (Accessibility)
-- [ ] Hito 5 – Optimización y pulido
-- [ ] Hito 6 – Testing final y entrega
+- [x] Hito 1 – Transcripción básica (Cloud verificado en dispositivo real, 2026-08-22)
+- [x] Hito 2 – UX y robustez (cerrado 2026-08-22; deuda cosmética menor: mocks muertos de speech_to_text en `home_screen_test.dart`, ver abajo)
+- [x] Hito 3 – Burbuja flotante (regresión verificada en dispositivo real por el dueño, 2026-08-22: usada para dictar contenido real sin fallos, APK del run `144abaf`)
+- [ ] Hito 4 – Pegado inteligente (Accessibility) → **CONGELADO**: el dictado desde el teclado nativo cubre la inserción en cursor; reevaluar tras K3
+- [ ] Hito 5 – Optimización y pulido → se ejecutará después del ciclo del teclado
+- [ ] Hito 6 – Testing final y entrega (tag `v1.0.0`)
+
+**Siguiente etapa**: integración de `teclado-voice.md` como nueva secuencia (T0 → K1…K5) desde la posición del Hito 4. Pendiente antes de T0: respuesta del dueño sobre seeds de snippets (K4).
+
+**Deuda técnica menor (no bloqueante)**:
+- Limpiar los registros muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` (~líneas 74–76 y 115–117).
