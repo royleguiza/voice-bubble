@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
@@ -12,30 +13,42 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
 
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      const MethodChannel('com.llcgram.record'),
-      (MethodCall methodCall) async {
-        switch (methodCall.method) {
-          case 'hasPermission':
-            return true;
-          case 'start':
-            return null;
-          case 'stop':
-            return null;
-          default:
-            return null;
-        }
-      },
-    );
+    for (final channel in [
+      'com.llcgram.record',
+      'com.llcgram.record/messages',
+    ]) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        MethodChannel(channel),
+        (MethodCall methodCall) async {
+          switch (methodCall.method) {
+            case 'hasPermission':
+            case 'isPermissionGranted':
+              return true;
+            case 'start':
+            case 'create':
+            case 'dispose':
+            case 'pause':
+            case 'resume':
+            case 'cancel':
+              return null;
+            case 'stop':
+              return '/tmp/recording.m4a';
+            case 'isRecording':
+              return true;
+            default:
+              return null;
+          }
+        },
+      );
+    }
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
       const MethodChannel('plugins.flutter.io/path_provider'),
-      (MethodCall methodCall) async {
-        return '/tmp';
-      },
+      (MethodCall methodCall) async => '/tmp',
     );
 
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -44,12 +57,11 @@ void main() {
       (MethodCall methodCall) async {
         switch (methodCall.method) {
           case 'initialize':
-            return true;
           case 'hasPermission':
             return true;
           case 'listen':
-            return null;
           case 'stop':
+          case 'cancel':
             return null;
           default:
             return null;
@@ -59,21 +71,16 @@ void main() {
   });
 
   tearDown(() {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      const MethodChannel('com.llcgram.record'),
-      null,
-    );
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      const MethodChannel('plugins.flutter.io/path_provider'),
-      null,
-    );
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      const MethodChannel('plugin.speech_to_text'),
-      null,
-    );
+    for (final channel in [
+      'com.llcgram.record',
+      'com.llcgram.record/messages',
+      'plugins.flutter.io/path_provider',
+      'plugin.speech_to_text',
+      'plugins.it_nomads.com/flutter_secure_storage',
+    ]) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(MethodChannel(channel), null);
+    }
   });
 
   Widget buildTestApp({Widget? home}) {

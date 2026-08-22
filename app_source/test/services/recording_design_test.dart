@@ -107,12 +107,14 @@ void main() {
   group('Design Tokens – Colores de acento', () {
     test('kAccentLight es válido y tiene alpha completo', () {
       expect(kAccentLight, isNotNull);
-      expect(kAccentLight.a, 0xFF);
+      expect(kAccentLight.a, 1.0);
+      expect(kAccentLight, const Color(0xFF007AFF));
     });
 
     test('kAccentDark es válido y tiene alpha completo', () {
       expect(kAccentDark, isNotNull);
-      expect(kAccentDark.a, 0xFF);
+      expect(kAccentDark.a, 1.0);
+      expect(kAccentDark, const Color(0xFF0A84FF));
     });
 
     test('kAccentLight y kAccentDark son diferentes', () {
@@ -123,12 +125,14 @@ void main() {
   group('Design Tokens – Colores de grabación', () {
     test('kRecording es válido y tiene alpha completo', () {
       expect(kRecording, isNotNull);
-      expect(kRecording.a, 0xFF);
+      expect(kRecording.a, 1.0);
+      expect(kRecording, const Color(0xFFFF3B30));
     });
 
     test('kRecordingDark es válido y tiene alpha completo', () {
       expect(kRecordingDark, isNotNull);
-      expect(kRecordingDark.a, 0xFF);
+      expect(kRecordingDark.a, 1.0);
+      expect(kRecordingDark, const Color(0xFFFF453A));
     });
 
     test('kRecording y kRecordingDark son diferentes', () {
@@ -162,14 +166,18 @@ void main() {
 
     test('kGlassBorderLight tiene transparencia parcial', () {
       expect(kGlassBorderLight, isNotNull);
-      expect(kGlassBorderLight.a, lessThan(0xFF));
-      expect(kGlassBorderLight.a, 0x8C);
+      expect(kGlassBorderLight.a, lessThan(1.0));
+      expect(kGlassBorderLight.a, greaterThan(0.0));
+      expect(kGlassBorderLight.a, closeTo(0x8C / 255.0, 0.001));
+      expect(kGlassBorderLight, const Color(0x8CFFFFFF));
     });
 
     test('kGlassBorderDark tiene transparencia parcial', () {
       expect(kGlassBorderDark, isNotNull);
-      expect(kGlassBorderDark.a, lessThan(0xFF));
-      expect(kGlassBorderDark.a, 0x2E);
+      expect(kGlassBorderDark.a, lessThan(1.0));
+      expect(kGlassBorderDark.a, greaterThan(0.0));
+      expect(kGlassBorderDark.a, closeTo(0x2E / 255.0, 0.001));
+      expect(kGlassBorderDark, const Color(0x2EFFFFFF));
     });
 
     test('kGlassShadowLight tiene blur y offset correctos', () {

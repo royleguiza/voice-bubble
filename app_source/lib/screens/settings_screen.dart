@@ -21,10 +21,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadApiKey() async {
     final key = await _secureStorage.read(key: 'groq_api_key') ?? '';
-    setState(() {
-      _apiKeyController.text = key;
-      _hasApiKey = key.isNotEmpty;
-    });
+    if (mounted) {
+      setState(() {
+        _apiKeyController.text = key;
+        _hasApiKey = key.isNotEmpty;
+      });
+    }
   }
 
   Future<void> _saveApiKey() async {
@@ -112,7 +114,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // Transcription model section
           Text(
-            'Modelo de transcripción',
+            'Modelo de transcripcion',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),

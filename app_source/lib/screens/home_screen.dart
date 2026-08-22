@@ -8,10 +8,18 @@ import '../ui/design_tokens.dart';
 import 'settings_screen.dart';
 import '../widgets/record_button.dart';
 import '../widgets/history_list.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final TranscriptionService? transcriptionService;
+  final StorageService? storageService;
+
+  const HomeScreen({
+    super.key,
+    this.transcriptionService,
+    this.storageService,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,6 +28,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final TranscriptionService _transcriptionService;
   late final StorageService _storageService;
+  final _secureStorage = const FlutterSecureStorage();
 
   bool _isRecording = false;
   bool _isTranscribing = false;
@@ -29,19 +38,34 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _storageService = StorageService();
-    _transcriptionService = TranscriptionService(
-      cloudService: const CloudSttService(apiKey: ''),
-      localService: LocalSttService(),
-      storageService: _storageService,
-    );
+    _storageService = widget.storageService ?? StorageService();
+    _transcriptionService = widget.transcriptionService ??
+        TranscriptionService(
+          cloudService: const CloudSttService(apiKey: ''),
+          localService: LocalSttService(),
+          storageService: _storageService,
+        );
     _init();
   }
 
+  Future<void> _loadApiKey() async {
+    try {
+      final key = await _secureStorage.read(key: 'groq_api_key') ?? '';
+      _transcriptionService.updateApiKey(key);
+    } catch (_) {}
+  }
+
   Future<void> _init() async {
-    await _storageService.load();
-    await _transcriptionService.requestPermissions();
-    setState(() {});
+    try {
+      await _storageService.load();
+    } catch (_) {}
+    try {
+      await _transcriptionService.requestPermissions();
+    } catch (_) {}
+    await _loadApiKey();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _toggleRecording() async {
@@ -53,12 +77,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _startRecording() async {
-    final dir = await getTemporaryDirectory();
-    final path =
-        '${dir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
     try {
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
       await _transcriptionService.startRecording(path);
-      setState(() => _isRecording = true);
+      if (mounted) {
+        setState(() => _isRecording = true);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -70,26 +96,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _stopRecording() async {
     final path = await _transcriptionService.stopRecording();
-    setState(() {
-      _isRecording = false;
-      _isTranscribing = true;
-    });
+    if (mounted) {
+      setState(() {
+        _isRecording = false;
+        _isTranscribing = true;
+      });
+    }
 
     if (path == null) {
-      setState(() => _isTranscribing = false);
+      if (mounted) {
+        setState(() => _isTranscribing = false);
+      }
       return;
     }
 
     try {
       final result = await _transcriptionService.transcribe(path);
-      setState(() {
-        _resultText = result.text;
-        _isTranscribing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _resultText = result.text;
+          _isTranscribing = false;
+        });
+      }
     } catch (e) {
       await _transcriptionService.cleanupTempFile(path);
-      setState(() => _isTranscribing = false);
       if (mounted) {
+        setState(() => _isTranscribing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
         );
@@ -127,6 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 context,
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
               );
+              await _loadApiKey();
             },
           ),
         ],
@@ -139,6 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Mode selector
             SegmentedButton<TranscriptionMode>(
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(
                   value: TranscriptionMode.cloud,

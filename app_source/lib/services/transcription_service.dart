@@ -8,7 +8,7 @@ import 'storage_service.dart';
 enum TranscriptionMode { cloud, local }
 
 class TranscriptionService {
-  final CloudSttService _cloudService;
+  CloudSttService _cloudService;
   final LocalSttService _localService;
   final StorageService _storageService;
   final AudioRecorder _recorder;
@@ -32,7 +32,15 @@ class TranscriptionService {
   }
 
   Future<bool> requestPermissions() async {
-    return await _recorder.hasPermission();
+    try {
+      return await _recorder.hasPermission();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void updateApiKey(String apiKey) {
+    _cloudService = CloudSttService(apiKey: apiKey);
   }
 
   Future<void> startRecording(String path) async {
@@ -70,11 +78,13 @@ class TranscriptionService {
 
       return result;
     } finally {
-      // Clean up temp audio file
-      final file = File(audioPath);
-      if (await file.exists()) {
-        await file.delete();
-      }
+      // Clean up temp audio file safely
+      try {
+        final file = File(audioPath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
     }
   }
 
