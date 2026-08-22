@@ -17,7 +17,7 @@ class MockAudioRecorder implements AudioRecorder {
   bool get started => _started;
 
   @override
-  Future<bool> hasPermission() async => _hasPermissionValue;
+  Future<bool> hasPermission({bool request = true}) async => _hasPermissionValue;
 
   @override
   Future<void> start(RecordConfig config, {required String path}) async {
