@@ -67,10 +67,20 @@ void main() {
       );
     }
 
+    for (final channel in [
+      'com.royleguiza.voicebubblestt/floating_bubble',
+    ]) {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        MethodChannel(channel),
+        (MethodCall methodCall) async => true,
+      );
+    }
   });
 
   tearDown(() {
     for (final channel in [
+      'com.royleguiza.voicebubblestt/floating_bubble',
       'com.llfbandit.record',
       'com.llfbandit.record/messages',
       'plugins.flutter.io/path_provider',
