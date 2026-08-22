@@ -25,6 +25,8 @@
 | targetSdkVersion | La más actual disponible al crear el proyecto |
 | Idioma de la UI | Español e inglés (mínimo) |
 | Diseño | Apple **Liquid Glass**, claro + oscuro → ver `design.md` |
+| Alcance dual | Burbuja (existente) + **teclado del sistema nativo Kotlin** — decisiones D1–D9 aprobadas en `teclado-voice.md` §3 (2026-08-22) |
+| Seeds de snippets | SÍ, 5 ejemplos precargados editables/borrables (`teclado-voice.md`, K4 tarea 7) |
 
 Estas decisiones están documentadas en `plan.md` (Hito 0). Si algún agente propone cambiarlas, requiere aprobación explícita del usuario.
 
@@ -70,6 +72,8 @@ Ver sección "Estado" al final de este archivo y los checkboxes de `plan.md`.
 
 - **NUNCA hardcodear API keys ni secretos.** La key va en Settings, almacenada con `flutter_secure_storage`.
 - El audio SOLO viaja a internet cuando el usuario inicia explícitamente una transcripción Cloud. Sin transcripción en curso = cero tráfico de red con audio.
+- **El teclado JAMÁS registra, guarda ni transmite texto tecleado** (ni en logs de debug). Sin dictado, snippets ni sugerencias en campos de contraseña.
+- **Exclusión mutua de micrófono burbuja↔teclado**: si uno está grabando, el otro muestra estado ocupado (flag en memoria del proceso + audio focus).
 - Sin analytics, sin telemetría, sin permisos que no estén justificados en README.md.
 
 ### Permisos Android (solo los necesarios, declarar en manifest)
@@ -121,6 +125,12 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 - ❌ Historial con límite distinto de exactamente 20 elementos FIFO.
 - ❌ Overriding de animaciones cuando el sistema pide Reduced Motion.
 - ❌ Subir binarios de modelos grandes al repo (usar descarga on-demand).
+- ❌ Registrar/guardar texto tecleado en el teclado (ni debug, ni analytics, jamás).
+- ❌ Dictado o snippets activos en campos de contraseña.
+- ❌ Segundo motor Flutter embebido en el teclado (descartado por diseño: ~100 MB extra de RAM).
+- ❌ Features de teclado genérico fuera de alcance: autocorrector predictivo, temas, emojis, glide typing, portapapeles multinivel.
+- ❌ Que el teclado dependa de que la Activity principal haya sido abierta alguna vez (defaults sensatos en cold start).
+- ❌ Mezclar cambios de burbuja y de teclado en el mismo commit/hito.
 
 ---
 
@@ -228,11 +238,17 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] Hito 1 – Transcripción básica (Cloud verificado en dispositivo real, 2026-08-22)
 - [x] Hito 2 – UX y robustez (cerrado 2026-08-22; deuda cosmética menor: mocks muertos de speech_to_text en `home_screen_test.dart`, ver abajo)
 - [x] Hito 3 – Burbuja flotante (regresión verificada en dispositivo real por el dueño, 2026-08-22: usada para dictar contenido real sin fallos, APK del run `144abaf`)
+- [x] T0 – Documentación de alcance dual (README + design + AGENTS actualizados con teclado, 2026-08-22)
+- [ ] K1 – Esqueleto del teclado funcional
+- [ ] K2 – Capa código y teclas terminales
+- [ ] K3 – Dictado por voz dentro del teclado
+- [ ] K4 – Snippets y comandos (con 5 seeds)
+- [ ] K5 – Pulido, robustez y entrega (tag `v0.9.0-keyboard-beta`)
 - [ ] Hito 4 – Pegado inteligente (Accessibility) → **CONGELADO**: el dictado desde el teclado nativo cubre la inserción en cursor; reevaluar tras K3
 - [ ] Hito 5 – Optimización y pulido → se ejecutará después del ciclo del teclado
 - [ ] Hito 6 – Testing final y entrega (tag `v1.0.0`)
 
-**Siguiente etapa**: integración de `teclado-voice.md` como nueva secuencia (T0 → K1…K5) desde la posición del Hito 4. Pendiente antes de T0: respuesta del dueño sobre seeds de snippets (K4).
+**Siguiente etapa**: **K1 – Esqueleto del teclado funcional** (servicio IME, QWERTY es/en, `method.xml`, manifest, guard CI, tarjeta de estado en Settings). T0 completado el 2026-08-22.
 
 **Deuda técnica menor (no bloqueante)**:
 - Limpiar los registros muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` (~líneas 74–76 y 115–117).
