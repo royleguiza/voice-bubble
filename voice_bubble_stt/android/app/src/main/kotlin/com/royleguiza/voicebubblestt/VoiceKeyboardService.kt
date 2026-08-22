@@ -2,7 +2,7 @@ package com.royleguiza.voicebubblestt
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.input.methodservice.InputMethodService
+import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.os.Looper
 import android.util.TypedValue
