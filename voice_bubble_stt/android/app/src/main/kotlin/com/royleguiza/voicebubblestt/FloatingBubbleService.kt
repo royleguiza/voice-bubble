@@ -50,7 +50,7 @@ class FloatingBubbleService : Service() {
 
     private var windowManager: WindowManager? = null
     private var bubbleView: BubbleCanvasView? = null
-    private lateinit var layoutParams: WindowManager.LayoutParams
+    private lateinit var windowLayoutParams: WindowManager.LayoutParams
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -141,7 +141,7 @@ class FloatingBubbleService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        layoutParams = WindowManager.LayoutParams(
+        windowLayoutParams = WindowManager.LayoutParams(
             bubbleSize,
             bubbleSize,
             layoutFlag,
@@ -166,8 +166,8 @@ class FloatingBubbleService : Service() {
                 override fun onTouch(v: View, event: MotionEvent): Boolean {
                     when (event.action) {
                         MotionEvent.ACTION_DOWN -> {
-                            initialX = layoutParams.x
-                            initialY = layoutParams.y
+                            initialX = windowLayoutParams.x
+                            initialY = windowLayoutParams.y
                             initialTouchX = event.rawX
                             initialTouchY = event.rawY
                             isClick = true
@@ -179,9 +179,9 @@ class FloatingBubbleService : Service() {
                             if (abs(dx) > 10 || abs(dy) > 10) {
                                 isClick = false
                             }
-                            layoutParams.x = initialX + dx
-                            layoutParams.y = initialY + dy
-                            windowManager?.updateViewLayout(bubbleView, layoutParams)
+                            windowLayoutParams.x = initialX + dx
+                            windowLayoutParams.y = initialY + dy
+                            windowManager?.updateViewLayout(bubbleView, windowLayoutParams)
                             return true
                         }
                         MotionEvent.ACTION_UP -> {
@@ -198,7 +198,7 @@ class FloatingBubbleService : Service() {
             })
         }
 
-        windowManager?.addView(bubbleView, layoutParams)
+        windowManager?.addView(bubbleView, windowLayoutParams)
     }
 
     private fun snapToNearestEdge() {
@@ -207,19 +207,19 @@ class FloatingBubbleService : Service() {
         val margin = (12 * density).toInt()
         val bubbleSize = bubbleView?.width ?: (64 * density).toInt()
 
-        val targetX = if (layoutParams.x + bubbleSize / 2 < screenWidth / 2) {
+        val targetX = if (windowLayoutParams.x + bubbleSize / 2 < screenWidth / 2) {
             margin
         } else {
             screenWidth - bubbleSize - margin
         }
 
-        val startX = layoutParams.x
+        val startX = windowLayoutParams.x
         val animator = ValueAnimator.ofInt(startX, targetX).apply {
             duration = 240
             interpolator = DecelerateInterpolator()
             addUpdateListener { animation ->
-                layoutParams.x = animation.animatedValue as Int
-                windowManager?.updateViewLayout(bubbleView, layoutParams)
+                windowLayoutParams.x = animation.animatedValue as Int
+                windowManager?.updateViewLayout(bubbleView, windowLayoutParams)
             }
         }
         animator.start()
