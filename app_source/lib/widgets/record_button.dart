@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
@@ -32,7 +31,6 @@ class _RecordButtonState extends State<RecordButton>
     vsync: this,
     duration: const Duration(milliseconds: 1600),
   );
-  StreamSubscription<void>? _pulseSub;
 
   @override
   void initState() {
@@ -49,12 +47,9 @@ class _RecordButtonState extends State<RecordButton>
   void _syncPulse() {
     final active = widget.state == RecordButtonState.recording &&
         !MediaQuery.of(context).disableAnimations;
-    if (active && _pulseSub == null) {
+    if (active) {
       _pulse.repeat();
-      _pulseSub = _pulse.stream.listen((_) {});
-    } else if (!active) {
-      _pulseSub?.cancel();
-      _pulseSub = null;
+    } else {
       _pulse.stop();
       _pulse.value = 0.0;
     }
@@ -62,7 +57,6 @@ class _RecordButtonState extends State<RecordButton>
 
   @override
   void dispose() {
-    _pulseSub?.cancel();
     _pulse.dispose();
     super.dispose();
   }
