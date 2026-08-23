@@ -28,6 +28,7 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import org.json.JSONObject
 
 /**
  * Teclado del sistema VoiceBubble.
@@ -793,25 +794,27 @@ class VoiceKeyboardService : InputMethodService() {
             )
             val raw = prefs.getStringSet("flutter.transcriptions", emptySet())
                 ?: emptySet()
-            val entries = raw.mapNotNull { entry ->
-                try { JSONObject(entry) } catch (_: Exception) { null }
+            val entries = ArrayList<JSONObject>()
+            for (entry in raw) {
+                try { entries.add(JSONObject(entry)) } catch (_: Exception) {}
             }
             val newEntry = JSONObject()
                 .put("text", text)
                 .put("timestamp", java.time.Instant.now().toString())
                 .put("isLocal", false)
-            val sorted = (entries + newEntry)
-                .sortedByDescending { json ->
-                    try {
-                        java.time.Instant.parse(json.optString("timestamp"))
-                    } catch (_: Exception) {
-                        java.time.Instant.EPOCH
-                    }
+            entries.add(newEntry)
+            val sorted = entries.sortedByDescending { obj ->
+                try {
+                    java.time.Instant.parse(obj.optString("timestamp"))
+                } catch (_: Exception) {
+                    java.time.Instant.EPOCH
                 }
-                .take(20)
-                .map { it.toString() }
-                .toSet()
-            prefs.edit().putStringSet("flutter.transcriptions", sorted).apply()
+            }
+            val out = LinkedHashSet<String>()
+            for (obj in sorted.take(20)) {
+                out.add(obj.toString())
+            }
+            prefs.edit().putStringSet("flutter.transcriptions", out).apply()
         } catch (_: Exception) {}
     }
 
