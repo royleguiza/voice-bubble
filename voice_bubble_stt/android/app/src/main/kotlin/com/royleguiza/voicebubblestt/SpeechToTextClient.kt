@@ -24,7 +24,10 @@ class SpeechToTextClient(private val context: Context) {
 
     companion object {
         const val SAMPLE_RATE = 16000
-        private const val MAX_SECONDS = 60
+
+        /** Tope de dictado: 5 minutos. Publico: el teclado arma su timeout desde aca. */
+        const val MAX_SECONDS = 300
+
         private const val WAV_HEADER_BYTES = 44
     }
 
@@ -179,7 +182,7 @@ class SpeechToTextClient(private val context: Context) {
                 conn.requestMethod = "POST"
                 conn.doOutput = true
                 conn.connectTimeout = 15000
-                conn.readTimeout = 120000
+                conn.readTimeout = 240000
                 conn.setRequestProperty("Authorization", "Bearer ${config.apiKey}")
                 conn.setRequestProperty(
                     "Content-Type", "multipart/form-data; boundary=$boundary",

@@ -15,6 +15,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.text.InputType
+import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -26,6 +27,7 @@ import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import android.widget.PopupWindow
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import org.json.JSONObject
@@ -591,7 +593,11 @@ class VoiceKeyboardService : InputMethodService() {
         attachLongPress(
             key,
             onLongPress = {
-                if (micState == MicState.RECORDING) cancelDictation()
+                when (micState) {
+                    MicState.RECORDING -> cancelDictation()
+                    MicState.IDLE, MicState.BUSY -> showHistoryPopup(key)
+                    MicState.PROCESSING -> { /* transcribiendo: ignorar */ }
+                }
             },
             onTapUp = { handleMicTap() },
         )
@@ -642,7 +648,7 @@ class VoiceKeyboardService : InputMethodService() {
         refreshMicVisual()
         val t = Runnable { if (micState == MicState.RECORDING) finishDictation() }
         timeoutRunnable = t
-        handler.postDelayed(t, 60_000L)
+        handler.postDelayed(t, SpeechToTextClient.MAX_SECONDS * 1000L)
     }
 
     private fun finishDictation() {
@@ -821,6 +827,119 @@ class VoiceKeyboardService : InputMethodService() {
             }
             prefs.edit().putStringSet("flutter.transcriptions", out).apply()
         } catch (_: Exception) {}
+    }
+
+    /**
+     * Ventana con las ultimas transcripciones del historial compartido para
+     * insertar una en el cursor (toque largo en el microfono en reposo u
+     * ocupado). Insertar NO agrega al historial: no es dictado nuevo.
+     * PRIVACIDAD: el contenido jamas se registra en Log; la ventana vive solo
+     * en memoria y se cierra al insertar o tocar afuera. Los campos de
+     * contrasena ya ocultan la tecla de microfono, asi que no hace falta un
+     * chequeo adicional aqui.
+     */
+    private fun showHistoryPopup(anchor: View) {
+        dismissPopup()
+        val entries = sharedHistoryEntries()
+        val pad = dimen(R.dimen.kb_popup_padding)
+        val content = LinearLayout(this)
+        content.orientation = LinearLayout.VERTICAL
+        var first = true
+        for (obj in entries) {
+            val text = obj.optString("text")
+            if (text.isBlank()) continue
+            if (!first) {
+                val sep = View(this)
+                sep.setBackgroundColor(ContextCompat.getColor(this, R.color.kb_key_stroke))
+                content.addView(
+                    sep,
+                    LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        TypedValue.applyDimension(
+                            TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics,
+                        ).toInt(),
+                    ),
+                )
+            }
+            first = false
+            val tv = TextView(this)
+            tv.text = text
+            tv.maxLines = 2
+            tv.ellipsize = TextUtils.TruncateAt.END
+            tv.isClickable = true
+            tv.isFocusable = true
+            tv.setPadding(pad * 2, pad, pad * 2, pad)
+            tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            tv.setOnClickListener {
+                commit(text)
+                dismissPopup()
+            }
+            content.addView(tv)
+        }
+        if (first) {
+            val empty = TextView(this)
+            empty.text = "Sin transcripciones todavía."
+            empty.setPadding(pad * 2, pad, pad * 2, pad)
+            empty.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+            empty.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            content.addView(empty)
+        }
+        val scroll = ScrollView(this)
+        scroll.addView(content)
+        val box = LinearLayout(this)
+        box.orientation = LinearLayout.VERTICAL
+        box.setBackgroundResource(R.drawable.kb_popup_bg)
+        box.setPadding(pad, pad, pad, pad)
+        box.addView(scroll)
+        // Medida natural y tope del area scrolleable (~40% de la pantalla):
+        // si el contenido excede el tope, el ScrollView recorta y scrollea.
+        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val maxContentHeight = (resources.displayMetrics.heightPixels * 0.4f).toInt()
+        val popupHeight = minOf(box.measuredHeight, maxContentHeight)
+        val popupWidth = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 300f, resources.displayMetrics,
+        ).toInt()
+        val popup = PopupWindow(box, popupWidth, popupHeight, true)
+        popup.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        popup.isOutsideTouchable = true
+        val loc = IntArray(2)
+        anchor.getLocationInWindow(loc)
+        activePopup = popup
+        popup.showAtLocation(
+            root,
+            Gravity.NO_GRAVITY,
+            loc[0],
+            loc[1] - popupHeight - dimen(R.dimen.kb_key_gap),
+        )
+    }
+
+    /**
+     * Historial compartido parseado con tolerancia (entradas corruptas se
+     * descartan) y ordenado por timestamp descendente: mismo criterio de
+     * lectura que addToSharedHistory y la app.
+     */
+    private fun sharedHistoryEntries(): List<JSONObject> {
+        return try {
+            val prefs = getSharedPreferences(
+                "FlutterSharedPreferences", Context.MODE_PRIVATE,
+            )
+            val raw = prefs.getStringSet("flutter.transcriptions", emptySet())
+                ?: emptySet()
+            val entries = ArrayList<JSONObject>()
+            for (entry in raw) {
+                try { entries.add(JSONObject(entry)) } catch (_: Exception) {}
+            }
+            entries.sortedByDescending { obj ->
+                try {
+                    java.time.Instant.parse(obj.optString("timestamp"))
+                } catch (_: Exception) {
+                    java.time.Instant.EPOCH
+                }
+            }.take(20)
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     /** Aviso inline no bloqueante; auto-descarta a los 3.5 s. */
