@@ -3,6 +3,7 @@ package com.royleguiza.voicebubblestt
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.TypedValue
@@ -12,6 +13,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.widget.LinearLayout
 import android.widget.PopupWindow
@@ -42,11 +44,38 @@ class VoiceKeyboardService : InputMethodService() {
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
-        val padH = dimen(R.dimen.kb_row_padding_h)
-        val padV = dimen(R.dimen.kb_row_padding_v)
-        root.setPadding(padH, padV, padH, padV)
+        applyBottomInsets()
         rebuild()
         return root
+    }
+
+    /**
+     * Con targetSdk edge-to-edge la ventana del teclado se extiende bajo la
+     * barra de gestos y los botones del sistema (flecha de minimizar, selector
+     * de IME). Se aplica el inset de navegacion como padding inferior para que
+     * la fila inferior quede siempre por encima.
+     */
+    private fun applyBottomInsets() {
+        val padH = dimen(R.dimen.kb_row_padding_h)
+        val padV = dimen(R.dimen.kb_row_padding_v)
+        root.setOnApplyWindowInsetsListener { view, insets ->
+            val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                insets.getInsets(
+                    WindowInsets.Type.navigationBars()
+                        or WindowInsets.Type.displayCutout()
+                ).bottom
+            } else {
+                @Suppress("DEPRECATION")
+                insets.systemWindowInsetBottom
+            }
+            view.setPadding(padH, padV, padH, padV + bottom)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowInsets.CONSUMED
+            } else {
+                @Suppress("DEPRECATION")
+                insets.consumeSystemWindowInsets()
+            }
+        }
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {

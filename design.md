@@ -277,6 +277,7 @@ Además:
 ### Reglas específicas del teclado
 
 - Vidrio **Regular siempre**: el fondo detrás es arbitrario (cualquier app); la variante Clear queda prohibida aquí.
+- **Insets obligatorios**: con targetSdk edge-to-edge, la vista del teclado aplica los insets de `navigationBars` + `displayCutout` como padding inferior — la fila inferior nunca queda bajo la barra de gestos ni bajo los controles del sistema (flecha minimizar, selector de IME). Prohibido compensar con porcentajes fijos.
 - Las teclas (elementos pequeños) pueden flip claro/oscuro según el modo del sistema; nunca toggle manual.
 - Campos de contraseña: micrófono oculto, snippets deshabilitados, cero sugerencias visuales.
 - Prohibido por alcance (anti-patrones `teclado-voice.md` §8): temas, emojis, autocorrector predictivo, glide typing, portapapeles multinivel.

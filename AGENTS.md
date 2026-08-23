@@ -161,6 +161,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 | 17 | `enterText` falla con `Bad state: No element` en tests que navegan a Settings | Al crecer la página (tarjeta del teclado), el TextField quedó bajo el pliegue del ListView lazy: no se construye si no es visible (ver §9.1-8) | Agrandar superficie en TODOS los tests que rendericen la pantalla (`tester.view.physicalSize`), no solo en los que hacen scroll explícito |
 | 18 | Gradle/Kotlin: ~25 errores en cascada (`Unresolved reference 'input'`, `'currentInputConnection'`, `'resources'`, etc.) | Un typo en un import (`android.input.methodservice` vs `android.inputmethodservice`): la clase deja de resolver su superclase y todos sus miembros | Verificar la ruta EXACTA del paquete Android contra developer.android.com antes de pushear Kotlin; ante errores en cascada, buscar PRIMERO imports rotos |
 | 19 | `mergeDebugResources`: `Invalid <color> for given resource value` + `Can not extract resource from ParsedResource` (criptico) | Color con 10 dígitos hex (`#FF663C3C43`) en vez de 8: AAPT2 solo acepta #RGB/#ARGB/#RRGGBB/#AARRGGBB; el mensaje no dice cuál línea es | Validar longitudes hex de TODOS los colores con un script local antes de pushear recursos nuevos |
+| 20 | En dispositivo real, fila inferior del teclado solapada por barra de gestos + flecha de minimizar + botón selector de IME (Enter tapado) | Con targetSdk moderno la ventana del IME va edge-to-edge: el sistema dibuja navegación ENCIMA de la parte baja de nuestra vista | Padding inferior = `navigationBars`+`displayCutout` insets vía `setOnApplyWindowInsetsListener` en la input view (patrón de FlorisBoard/Unexpected Keyboard); NO usar % fijos |
 
 ### 9.2 Reglas duras para agentes
 
@@ -243,7 +244,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] Hito 2 – UX y robustez (cerrado 2026-08-22; deuda cosmética menor: mocks muertos de speech_to_text en `home_screen_test.dart`, ver abajo)
 - [x] Hito 3 – Burbuja flotante (regresión verificada en dispositivo real por el dueño, 2026-08-22: usada para dictar contenido real sin fallos, APK del run `144abaf`)
 - [x] T0 – Documentación de alcance dual (README + design + AGENTS actualizados con teclado, 2026-08-22)
-- [ ] K1 – Esqueleto del teclado funcional → **implementado, CI verde** (run `32606850694`, APK `voice-bubble-debug-apk-r44`, 2026-08-22); PENDIENTE verificación del dueño en dispositivo físico (criterios de aceptación de `teclado-voice.md` §K1)
+- [ ] K1 – Esqueleto del teclado funcional → **implementado, CI verde** (run `32606850694`, APK `voice-bubble-debug-apk-r44`, 2026-08-22); instalado y configurado como teclado principal por el dueño. Fix de solape con barra de gestos aplicado (insets, lección §9.1-20), PENDIENTE reverificación en dispositivo (criterios de aceptación de `teclado-voice.md` §K1)
 - [ ] K2 – Capa código y teclas terminales
 - [ ] K3 – Dictado por voz dentro del teclado
 - [ ] K4 – Snippets y comandos (con 5 seeds)
