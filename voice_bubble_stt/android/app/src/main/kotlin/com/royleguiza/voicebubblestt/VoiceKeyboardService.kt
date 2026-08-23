@@ -762,7 +762,7 @@ class VoiceKeyboardService : InputMethodService() {
                 AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE,
             ).setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_VOICE_INPUT)
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build(),
             ).build()
