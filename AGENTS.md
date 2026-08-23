@@ -243,7 +243,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] Hito 2 – UX y robustez (cerrado 2026-08-22; deuda cosmética menor: mocks muertos de speech_to_text en `home_screen_test.dart`, ver abajo)
 - [x] Hito 3 – Burbuja flotante (regresión verificada en dispositivo real por el dueño, 2026-08-22: usada para dictar contenido real sin fallos, APK del run `144abaf`)
 - [x] T0 – Documentación de alcance dual (README + design + AGENTS actualizados con teclado, 2026-08-22)
-- [ ] K1 – Esqueleto del teclado funcional
+- [ ] K1 – Esqueleto del teclado funcional → **implementado, CI verde** (run `32606850694`, APK `voice-bubble-debug-apk-r44`, 2026-08-22); PENDIENTE verificación del dueño en dispositivo físico (criterios de aceptación de `teclado-voice.md` §K1)
 - [ ] K2 – Capa código y teclas terminales
 - [ ] K3 – Dictado por voz dentro del teclado
 - [ ] K4 – Snippets y comandos (con 5 seeds)
