@@ -6,6 +6,7 @@ import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -21,19 +22,27 @@ import android.widget.TextView
 import androidx.core.content.ContextCompat
 
 /**
- * Teclado del sistema VoiceBubble (Hito K1).
- * QWERTY es/en + capa de simbolos basicos. Sin dictado ni snippets (K3/K4).
+ * Teclado del sistema VoiceBubble.
+ * K1: QWERTY es/en + capa simbolos basicos + acentos por toque largo.
+ * K2: capa codigo con pares auto-cerrados + fila terminal permanente
+ *     (TAB/ESC/CTRL/ALT/flechas) con modificadores sticky para Termux.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
 class VoiceKeyboardService : InputMethodService() {
 
+    private enum class Layer { LETTERS, SYMBOLS, CODE }
+
+    private var layer = Layer.LETTERS
+    private var lastLettersLayer = Layer.LETTERS
     private var spanishMode = true
-    private var symbolsMode = false
     private var shiftActive = false
+    private var ctrlActive = false
+    private var altActive = false
 
     private lateinit var root: LinearLayout
     private val letterKeys = mutableListOf<Pair<TextView, Char>>()
     private val shiftKeyViews = mutableListOf<TextView>()
+    private val modifierKeyViews = mutableListOf<Pair<TextView, Boolean>>()
 
     private var activePopup: PopupWindow? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -51,9 +60,9 @@ class VoiceKeyboardService : InputMethodService() {
 
     /**
      * Con targetSdk edge-to-edge la ventana del teclado se extiende bajo la
-     * barra de gestos y los botones del sistema (flecha de minimizar, selector
-     * de IME). Se aplica el inset de navegacion como padding inferior para que
-     * la fila inferior quede siempre por encima.
+     * barra de gestos y los botones del sistema. Se aplica el inset de
+     * navegacion como padding inferior para que la fila inferior quede
+     * siempre por encima.
      */
     private fun applyBottomInsets() {
         val padH = dimen(R.dimen.kb_row_padding_h)
@@ -80,8 +89,11 @@ class VoiceKeyboardService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        symbolsMode = false
+        layer = Layer.LETTERS
+        lastLettersLayer = Layer.LETTERS
         shiftActive = false
+        ctrlActive = false
+        altActive = false
         rebuild()
     }
 
@@ -104,11 +116,67 @@ class VoiceKeyboardService : InputMethodService() {
         dismissPopup()
         letterKeys.clear()
         shiftKeyViews.clear()
+        modifierKeyViews.clear()
         root.removeAllViews()
-        if (symbolsMode) {
-            buildSymbolRows()
-        } else {
-            buildLetterRows()
+
+        addRow(buildTerminalRow())
+        when (layer) {
+            Layer.LETTERS -> buildLetterRows()
+            Layer.SYMBOLS -> buildSymbolRows()
+            Layer.CODE -> buildCodeRows()
+        }
+        addRow(buildBottomBar())
+
+        // Sincronizar estados visuales persistentes tras reconstruir la vista.
+        applyCase()
+        refreshModifierVisuals()
+    }
+
+    /** Fila terminal permanente en todas las capas (K2). */
+    private fun buildTerminalRow(): LinearLayout {
+        val row = horizontalRow()
+        row.addView(makeSpecialKey("TAB", R.drawable.kb_key_alt, 1.5f, "tab") {
+            sendKeyCode(KeyEvent.KEYCODE_TAB)
+        })
+        row.addView(makeSpecialKey("ESC", R.drawable.kb_key_alt, 1f, "escape") {
+            sendKeyCode(KeyEvent.KEYCODE_ESCAPE)
+        })
+        row.addView(makeModifierKey("CTRL", true, 1.25f))
+        row.addView(makeModifierKey("ALT", false, 1.25f))
+        row.addView(makeArrowKey("←", KeyEvent.KEYCODE_DPAD_LEFT))
+        row.addView(makeArrowKey("↑", KeyEvent.KEYCODE_DPAD_UP))
+        row.addView(makeArrowKey("↓", KeyEvent.KEYCODE_DPAD_DOWN))
+        row.addView(makeArrowKey("→", KeyEvent.KEYCODE_DPAD_RIGHT))
+        return row
+    }
+
+    private fun makeArrowKey(glyph: String, code: Int): TextView =
+        makeSpecialKey(glyph, R.drawable.kb_key_bg, 1f, null) {
+            sendKeyCode(code)
+        }
+
+    /** CTRL/ALT sticky: tap activa/desactiva; la proxima tecla los consume. */
+    private fun makeModifierKey(label: String, isCtrl: Boolean, weight: Float): TextView {
+        val key = makeSpecialKey(label, R.drawable.kb_key_alt, weight, null) {}
+        key.setOnClickListener {
+            haptic(key)
+            if (isCtrl) ctrlActive = !ctrlActive else altActive = !altActive
+            refreshModifierVisuals()
+        }
+        modifierKeyViews.add(Pair(key, isCtrl))
+        return key
+    }
+
+    private fun refreshModifierVisuals() {
+        for ((key, isCtrl) in modifierKeyViews) {
+            val active = if (isCtrl) ctrlActive else altActive
+            if (active) {
+                key.setBackgroundResource(R.drawable.kb_key_accent)
+                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
+            } else {
+                key.setBackgroundResource(R.drawable.kb_key_alt)
+                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+            }
         }
     }
 
@@ -125,12 +193,8 @@ class VoiceKeyboardService : InputMethodService() {
         for (c in "zxcvbnm") {
             row3.addView(makeLetterKey(c))
         }
-        row3.addView(makeSpecialKey("⌫", R.drawable.kb_key_alt, 1f, "borrar") {
-            handleBackspace()
-        })
+        row3.addView(makeBackspaceKey())
         addRow(row3)
-
-        addRow(buildBottomBar(if (spanishMode) "ES" else "EN", "?123"))
     }
 
     private fun buildSymbolRows() {
@@ -141,26 +205,38 @@ class VoiceKeyboardService : InputMethodService() {
         for (c in "=*\"':;!?") {
             row3.addView(makeSymbolKey(c.toString()))
         }
-        row3.addView(makeSpecialKey("⌫", R.drawable.kb_key_alt, 1f, "borrar") {
-            handleBackspace()
-        })
+        row3.addView(makeBackspaceKey())
         addRow(row3)
-
-        addRow(buildBottomBar(if (spanishMode) "ES" else "EN", "ABC"))
     }
 
-    private fun buildBottomBar(langLabel: String, symbolsLabel: String): LinearLayout {
+    /** Capa codigo (K2): simbolos por frecuencia + pares auto-cerrados. */
+    private fun buildCodeRows() {
+        addRow(codeRow("{}[]()<>;:"))
+        addRow(codeRow("'\"`\\|/!?=+"))
+
+        val row3 = horizontalRow()
+        for (c in "*&%\$#@^~_") {
+            row3.addView(makeCodeKey(c))
+        }
+        row3.addView(makeBackspaceKey())
+        addRow(row3)
+    }
+
+    private fun buildBottomBar(): LinearLayout {
         val row = horizontalRow()
-        row.addView(makeSpecialKey(symbolsLabel, R.drawable.kb_key_alt, 1.5f, "símbolos") {
-            symbolsMode = !symbolsMode
+        row.addView(makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, "símbolos") {
+            layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
             rebuild()
         })
-        row.addView(makeSpecialKey(langLabel, R.drawable.kb_key_alt, 1f, "cambiar idioma") {
+        row.addView(makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, "capa código") {
+            toggleCodeLayer()
+        })
+        row.addView(makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, "cambiar idioma") {
             spanishMode = !spanishMode
             rebuild()
         })
         row.addView(makeSymbolKey(","))
-        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 4f, "espacio") {
+        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 3f, "espacio") {
             commit(" ")
         })
         row.addView(makeSymbolKey("."))
@@ -169,6 +245,27 @@ class VoiceKeyboardService : InputMethodService() {
         })
         return row
     }
+
+    private fun symbolsToggleLabel(): String = when (layer) {
+        Layer.SYMBOLS -> "ABC"
+        else -> "?123"
+    }
+
+    /** Cambiador de capas con memoria de la ultima capa no-codigo. */
+    private fun toggleCodeLayer() {
+        if (layer == Layer.CODE) {
+            layer = lastLettersLayer
+        } else {
+            lastLettersLayer = if (layer == Layer.SYMBOLS) Layer.LETTERS else layer
+            layer = Layer.CODE
+        }
+        rebuild()
+    }
+
+    private fun makeBackspaceKey(): TextView =
+        makeSpecialKey("⌫", R.drawable.kb_key_alt, 1f, "borrar") {
+            handleBackspace()
+        }
 
     private fun horizontalRow(): LinearLayout {
         val row = LinearLayout(this)
@@ -192,6 +289,15 @@ class VoiceKeyboardService : InputMethodService() {
         return row
     }
 
+    private fun codeRow(chars: String): LinearLayout {
+        val row = horizontalRow()
+        for (c in chars) {
+            if (c == ' ') continue
+            row.addView(makeCodeKey(c))
+        }
+        return row
+    }
+
     private fun makeLetterKey(base: Char): TextView {
         val key = makeKey(
             displayFor(base),
@@ -209,10 +315,32 @@ class VoiceKeyboardService : InputMethodService() {
         return key
     }
 
-    private fun makeSymbolKey(label: String): TextView =
-        makeSpecialKey(label, R.drawable.kb_key_bg, 1f, null) {
-            commit(label)
-        }
+    private fun makeSymbolKey(label: String): TextView {
+        val key = makeKey(
+            label,
+            1f,
+            R.drawable.kb_key_bg,
+            R.color.kb_label,
+            dimen(R.dimen.kb_key_text_size_small),
+        )
+        key.contentDescription = label
+        key.setOnClickListener { commitSymbolText(label) }
+        return key
+    }
+
+    /** Tecla de capa codigo: toque corto el simbolo, toque largo el par cerrado. */
+    private fun makeCodeKey(ch: Char): TextView {
+        val key = makeKey(
+            ch.toString(),
+            1f,
+            R.drawable.kb_key_bg,
+            R.color.kb_label,
+            dimen(R.dimen.kb_key_text_size_small),
+        )
+        key.contentDescription = ch.toString()
+        attachPairLongPress(key, ch)
+        return key
+    }
 
     private fun makeSpecialKey(
         label: String,
@@ -304,6 +432,10 @@ class VoiceKeyboardService : InputMethodService() {
 
     private fun commitLetter(base: Char) {
         haptic(root)
+        if (ctrlActive || altActive) {
+            sendModifiedChar(base.lowercaseChar())
+            return
+        }
         currentInputConnection?.commitText(displayFor(base), 1)
         if (shiftActive) {
             shiftActive = false
@@ -311,8 +443,54 @@ class VoiceKeyboardService : InputMethodService() {
         }
     }
 
+    private fun commitSymbolText(text: String) {
+        haptic(root)
+        if ((ctrlActive || altActive) && text.length == 1) {
+            val c = text[0]
+            if (keyCodeFor(c) != null) {
+                sendModifiedChar(c)
+                return
+            }
+        }
+        currentInputConnection?.commitText(text, 1)
+        consumeModifiers()
+    }
+
     private fun commit(text: String) {
         currentInputConnection?.commitText(text, 1)
+    }
+
+    /** Envio del caracter con META_CTRL/META_ALT via KeyEvent (patron Hacker's Keyboard). */
+    private fun sendModifiedChar(c: Char) {
+        val code = keyCodeFor(c)
+        if (code == null) {
+            consumeModifiers()
+            return
+        }
+        var meta = 0
+        if (ctrlActive) meta = meta or KeyEvent.META_CTRL_ON
+        if (altActive) meta = meta or KeyEvent.META_ALT_ON
+        sendKeyEventWithMeta(code, meta)
+        consumeModifiers()
+    }
+
+    private fun sendKeyEventWithMeta(keyCode: Int, meta: Int) {
+        val ic = currentInputConnection ?: return
+        val now = SystemClock.uptimeMillis()
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
+    }
+
+    private fun sendKeyCode(keyCode: Int) {
+        haptic(root)
+        if (currentInputConnection == null) return
+        sendDownUpKeyEvents(keyCode)
+    }
+
+    private fun consumeModifiers() {
+        ctrlActive = false
+        altActive = false
+        refreshModifierVisuals()
     }
 
     private fun handleBackspace() {
@@ -342,8 +520,15 @@ class VoiceKeyboardService : InputMethodService() {
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
+    /** Codigo de tecla fisica para combinaciones modificadoras (a-z y corchetes). */
+    private fun keyCodeFor(c: Char): Int? = when {
+        c in 'a'..'z' -> KeyEvent.KEYCODE_A + (c - 'a')
+        c == '[' -> KeyEvent.KEYCODE_LEFT_BRACKET
+        else -> null
+    }
+
     // ------------------------------------------------------------------
-    // Acentos por toque largo (á é í ó ú ü ñ ç)
+    // Acentos por toque largo y pares auto-cerrados
     // ------------------------------------------------------------------
 
     private fun accentsFor(c: Char): List<String> = when (c) {
@@ -357,16 +542,33 @@ class VoiceKeyboardService : InputMethodService() {
         else -> emptyList()
     }
 
-    private fun attachAccentLongPress(key: TextView, base: Char) {
+    /** Par auto-cerrado para la capa codigo; null si no aplica. */
+    private fun pairCloseFor(open: Char): Char? = when (open) {
+        '{' -> '}'
+        '[' -> ']'
+        '(' -> ')'
+        '<' -> '>'
+        '"' -> '"'
+        '\'' -> '\''
+        '`' -> '`'
+        else -> null
+    }
+
+    /** Logica comun de toque largo: programa accion diferida y decide en UP. */
+    private fun attachLongPress(
+        key: TextView,
+        onLongPress: () -> Unit,
+        onTapUp: () -> Unit,
+    ) {
         var pending: Runnable? = null
-        var popupShown = false
+        var longPressFired = false
         key.setOnTouchListener { v, ev ->
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    popupShown = false
+                    longPressFired = false
                     val r = Runnable {
-                        popupShown = true
-                        showAccentPopup(v as TextView, base)
+                        longPressFired = true
+                        onLongPress()
                     }
                     pending = r
                     handler.postDelayed(r, LONG_PRESS_MILLIS)
@@ -375,9 +577,8 @@ class VoiceKeyboardService : InputMethodService() {
                 MotionEvent.ACTION_UP -> {
                     pending?.let { handler.removeCallbacks(it) }
                     pending = null
-                    val consumedByPopup = popupShown
-                    if (!consumedByPopup) {
-                        commitLetter(base)
+                    if (!longPressFired) {
+                        onTapUp()
                     }
                     v.isPressed = false
                     true
@@ -391,6 +592,28 @@ class VoiceKeyboardService : InputMethodService() {
                 else -> false
             }
         }
+    }
+
+    private fun attachAccentLongPress(key: TextView, base: Char) {
+        attachLongPress(
+            key,
+            onLongPress = { showAccentPopup(key, base) },
+            onTapUp = { commitLetter(base) },
+        )
+    }
+
+    private fun attachPairLongPress(key: TextView, ch: Char) {
+        val close = pairCloseFor(ch)
+        attachLongPress(
+            key,
+            onLongPress = {
+                if (close != null) {
+                    commit("$ch$close")
+                    sendKeyCode(KeyEvent.KEYCODE_DPAD_LEFT)
+                }
+            },
+            onTapUp = { commitSymbolText(ch.toString()) },
+        )
     }
 
     private fun showAccentPopup(anchor: View, base: Char) {

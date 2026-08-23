@@ -205,13 +205,12 @@ Tareas:
    (`ACTION_INPUT_METHOD_SETTINGS`) + mini guía de activación.
 
 Criterios de aceptación:
-- [ ] El teclado aparece en "Manage keyboards" y se puede seleccionar.
-- [ ] Se escribe texto correcto (mayúsculas/minúsculas, acentos es/en) en Chrome,
-      WhatsApp y Acode.
-- [ ] Enter y backspace funcionan en los tres casos.
-- [ ] Cambio de idioma es↔en visible y operativo.
-- [ ] En horizontal NO aparece el modo pantalla-completa de extracción.
-- [ ] CI verde + APK instalado en el dispositivo físico.
+- [x] El teclado aparece en "Manage keyboards" y se puede seleccionar. (verificado por el dueño, 2026-08-23: configurado como teclado principal)
+- [x] Se escribe texto correcto (mayúsculas/minúsculas, acentos es/en) en Chrome, WhatsApp y Acode. (verificado por el dueño, 2026-08-23)
+- [x] Enter y backspace funcionan en los tres casos. (verificado tras fix de insets r45)
+- [x] Cambio de idioma es↔en visible y operativo.
+- [x] En horizontal NO aparece el modo pantalla-completa de extracción. (`onEvaluateFullscreenMode=false`)
+- [x] CI verde + APK instalado en el dispositivo físico. (run `32608593576`, APK r45)
 
 Guion de prueba manual:
 1. Instalar APK → Ajustes del sistema → Manage keyboards → activar VoiceBubble Keyboard.

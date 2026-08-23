@@ -244,7 +244,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] Hito 2 – UX y robustez (cerrado 2026-08-22; deuda cosmética menor: mocks muertos de speech_to_text en `home_screen_test.dart`, ver abajo)
 - [x] Hito 3 – Burbuja flotante (regresión verificada en dispositivo real por el dueño, 2026-08-22: usada para dictar contenido real sin fallos, APK del run `144abaf`)
 - [x] T0 – Documentación de alcance dual (README + design + AGENTS actualizados con teclado, 2026-08-22)
-- [ ] K1 – Esqueleto del teclado funcional → **implementado, CI verde** (run `32606850694`, APK `voice-bubble-debug-apk-r44`, 2026-08-22); instalado y configurado como teclado principal por el dueño. Fix de solape con barra de gestos aplicado (insets, lección §9.1-20), PENDIENTE reverificación en dispositivo (criterios de aceptación de `teclado-voice.md` §K1)
+- [x] K1 – Esqueleto del teclado funcional (verificado por el dueño en dispositivo real, 2026-08-23: instalado como teclado principal; fix de solape con barra de gestos confirmado en APK r45)
+- [ ] K2 – Capa código y teclas terminales → **implementado**; PENDIENTE verificación del dueño en Termux/Acode (criterios de aceptación de `teclado-voice.md` §K2)
 - [ ] K2 – Capa código y teclas terminales
 - [ ] K3 – Dictado por voz dentro del teclado
 - [ ] K4 – Snippets y comandos (con 5 seeds)
@@ -253,7 +254,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [ ] Hito 5 – Optimización y pulido → se ejecutará después del ciclo del teclado
 - [ ] Hito 6 – Testing final y entrega (tag `v1.0.0`)
 
-**Siguiente etapa**: **K1 – Esqueleto del teclado funcional** (servicio IME, QWERTY es/en, `method.xml`, manifest, guard CI, tarjeta de estado en Settings). T0 completado el 2026-08-22.
+**Siguiente etapa**: verificación en dispositivo de **K2** (Termux: TAB/Ctrl+C/Ctrl+L/flechas; Acode: pares auto-cerrados) → luego **K3 – Dictado por voz dentro del teclado**.
 
 **Deuda técnica menor (no bloqueante)**:
 - Limpiar los registros muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` (~líneas 74–76 y 115–117).
