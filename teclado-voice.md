@@ -305,7 +305,7 @@ Tareas:
 
 Criterios de aceptación:
 - [ ] Dictado es/en en Chrome, WhatsApp y Acode deja el texto exacto en el cursor. (pendiente dispositivo)
-- [ ] Historial de la app muestra las transcripciones hechas desde el teclado. (contrato fijado por tests; pendiente dispositivo)
+- [x] Historial de la app muestra las transcripciones hechas desde el teclado. (verificado por el dueño 2026-08-23 con APK r55, tras fix de refresh + historial emergente del micrófono)
 - [ ] Si la burbuja está grabando, el teclado muestra estado ocupado (y viceversa). (tests Dart; pendiente dispositivo)
 - [ ] En un campo de contraseña no aparece el micrófono. (implementado; pendiente dispositivo)
 - [ ] Sin conexión: mensaje claro, sin crash, sin envíos parciales. (manejo de errores espeja CloudSttService; pendiente dispositivo)

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../models/snippet.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/keyboard_service.dart';
+import '../ui/design_tokens.dart';
+import '../ui/glass_container.dart';
 
 class SettingsScreen extends StatefulWidget {
   final StorageService? storageService;
@@ -23,6 +26,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  // Limites del contrato de snippets (StorageService K4). Se duplican aqui
+  // solo para mostrar el contador y validar en cliente antes de persistir;
+  // la fuente de verdad sigue siendo StorageService.
+  static const int _maxSnippets = 50;
+  static const int _maxSnippetContentLength = 2000;
+
   final _apiKeyController = TextEditingController();
   late final FlutterSecureStorage _secureStorage;
   late final StorageService _storageService;
@@ -37,6 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _showTerminalRow = true;
   bool _showCodeKey = true;
   bool _showLanguageKey = true;
+  List<Snippet> _snippets = [];
 
   @override
   void initState() {
@@ -53,6 +63,162 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadTerminalRowVisible();
     _loadCodeKeyVisible();
     _loadLanguageKeyVisible();
+    _initSnippets();
+  }
+
+  Future<void> _initSnippets() async {
+    try {
+      await _storageService.ensureSeeds();
+      await _reloadSnippets();
+    } catch (_) {}
+  }
+
+  Future<void> _reloadSnippets() async {
+    try {
+      final snippets = await _storageService.loadSnippets();
+      if (!mounted) return;
+      setState(() {
+        _snippets = snippets..sort((a, b) => a.orden.compareTo(b.orden));
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _moveSnippet(Snippet snippet, int delta) async {
+    final index = _snippets.indexWhere((s) => s.id == snippet.id);
+    final target = index + delta;
+    if (index == -1 || target < 0 || target >= _snippets.length) return;
+    final reordered = [..._snippets];
+    final item = reordered.removeAt(index);
+    reordered.insert(target, item);
+    await _storageService
+        .reorderSnippets(reordered.map((s) => s.id).toList());
+    await _reloadSnippets();
+  }
+
+  Future<void> _confirmDeleteSnippet(Snippet snippet) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Eliminar snippet'),
+        content: Text(
+          '¿Eliminar "${snippet.nombre}"? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _storageService.deleteSnippet(snippet.id);
+    await _reloadSnippets();
+  }
+
+  Future<void> _openSnippetSheet({Snippet? existing}) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: kScrimColor,
+      builder: (_) => _SnippetFormSheet(
+        existing: existing,
+        maxContentLength: _maxSnippetContentLength,
+        maxSnippets: _maxSnippets,
+        onSubmit: ({required String nombre, required String contenido}) {
+          if (existing == null) {
+            return _storageService.addSnippet(
+              nombre: nombre,
+              contenido: contenido,
+            );
+          }
+          return _storageService.updateSnippet(
+            existing.id,
+            nombre: nombre,
+            contenido: contenido,
+          );
+        },
+      ),
+    );
+    if (saved == true) {
+      await _reloadSnippets();
+    }
+  }
+
+  Widget _buildSnippetTile(Snippet snippet, int index) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    snippet.nombre,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    snippet.contenido,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  key: ValueKey('snippet-up-${snippet.id}'),
+                  icon: const Icon(Icons.arrow_upward_rounded),
+                  tooltip: 'Subir',
+                  visualDensity: VisualDensity.compact,
+                  onPressed:
+                      index > 0 ? () => _moveSnippet(snippet, -1) : null,
+                ),
+                IconButton(
+                  key: ValueKey('snippet-down-${snippet.id}'),
+                  icon: const Icon(Icons.arrow_downward_rounded),
+                  tooltip: 'Bajar',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: index < _snippets.length - 1
+                      ? () => _moveSnippet(snippet, 1)
+                      : null,
+                ),
+              ],
+            ),
+            IconButton(
+              key: ValueKey('snippet-edit-${snippet.id}'),
+              icon: const Icon(Icons.edit_rounded),
+              tooltip: 'Editar',
+              onPressed: () => _openSnippetSheet(existing: snippet),
+            ),
+            IconButton(
+              key: ValueKey('snippet-delete-${snippet.id}'),
+              icon: const Icon(Icons.delete_outline_rounded),
+              tooltip: 'Eliminar',
+              onPressed: () => _confirmDeleteSnippet(snippet),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loadTerminalRowVisible() async {
@@ -362,6 +528,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
+          // Snippets del teclado (K4): CRUD + reorden desde Ajustes.
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Snippets del teclado',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              Text(
+                '${_snippets.length} / $_maxSnippets',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+              IconButton(
+                key: const ValueKey('snippets-add-button'),
+                icon: const Icon(Icons.add),
+                tooltip: 'Agregar snippet',
+                onPressed: () => _openSnippetSheet(),
+              ),
+            ],
+          ),
+          if (_snippets.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Todavía no hay snippets. Toca + para crear el primero.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            )
+          else
+            for (var i = 0; i < _snippets.length; i++)
+              _buildSnippetTile(_snippets[i], i),
+
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
@@ -496,6 +700,175 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SnippetFormSheet extends StatefulWidget {
+  final Snippet? existing;
+  final int maxContentLength;
+  final int maxSnippets;
+  final Future<bool> Function({
+    required String nombre,
+    required String contenido,
+  }) onSubmit;
+
+  const _SnippetFormSheet({
+    required this.existing,
+    required this.maxContentLength,
+    required this.maxSnippets,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_SnippetFormSheet> createState() => _SnippetFormSheetState();
+}
+
+class _SnippetFormSheetState extends State<_SnippetFormSheet> {
+  late final TextEditingController _nombreController;
+  late final TextEditingController _contenidoController;
+  String? _nombreError;
+  String? _contenidoError;
+  String? _generalError;
+
+  bool get _isEditing => widget.existing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _nombreController =
+        TextEditingController(text: widget.existing?.nombre ?? '');
+    _contenidoController =
+        TextEditingController(text: widget.existing?.contenido ?? '');
+  }
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _contenidoController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final nombre = _nombreController.text.trim();
+    final contenido = _contenidoController.text;
+    final nombreError = nombre.isEmpty ? 'El nombre es obligatorio' : null;
+    final contenidoError = contenido.length > widget.maxContentLength
+        ? 'Máximo ${widget.maxContentLength} caracteres'
+        : null;
+    setState(() {
+      _nombreError = nombreError;
+      _contenidoError = contenidoError;
+      _generalError = null;
+    });
+    if (nombreError != null || contenidoError != null) return;
+
+    // La validación local ya pasó: un false aqui solo puede venir del
+    // límite de 50 snippets (creación) o de un id inexistente (edición).
+    final saved = await widget.onSubmit(nombre: nombre, contenido: contenido);
+    if (!mounted) return;
+    if (saved) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    setState(() {
+      _generalError = _isEditing
+          ? 'No se pudo guardar el snippet.'
+          : 'Límite de ${widget.maxSnippets} snippets alcanzado. '
+              'Elimina alguno para crear otro.';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelSecondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
+    final length = _contenidoController.text.length;
+    final overLimit = length > widget.maxContentLength;
+
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: GlassContainer(
+        borderRadius: kBorderRadiusSheet,
+        small: false,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _isEditing ? 'Editar snippet' : 'Nuevo snippet',
+              style: kTextTitle.copyWith(
+                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              key: const ValueKey('snippet-name-field'),
+              controller: _nombreController,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: 'Nombre',
+                border: const OutlineInputBorder(),
+                errorText: _nombreError,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('snippet-content-field'),
+              controller: _contenidoController,
+              keyboardType: TextInputType.multiline,
+              minLines: 3,
+              maxLines: 6,
+              decoration: InputDecoration(
+                labelText: 'Contenido',
+                alignLabelWithHint: true,
+                border: const OutlineInputBorder(),
+                errorText: _contenidoError,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '$length / ${widget.maxContentLength}',
+                style: kTextCaption.copyWith(
+                  color: overLimit
+                      ? Theme.of(context).colorScheme.error
+                      : labelSecondary,
+                ),
+              ),
+            ),
+            if (_generalError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _generalError!,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                ),
+              ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _submit,
+                  child: Text(_isEditing ? 'Guardar cambios' : 'Guardar'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
