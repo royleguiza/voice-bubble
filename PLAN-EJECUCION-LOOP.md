@@ -220,7 +220,9 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 | 3 | K5-O1 | K5-T1[B] ∥ T2/T3-Dart[A] | 2026-08-23 | 2026-08-23 | APROBADA (9.2 · 9.4) |
 | 4 | K5-O2 | T2/T3-Kotlin[B] ∥ K5-T7[A] ∥ K5-T8[docs] | 2026-08-23 | 2026-08-23 | APROBADA (9.1 · 9.8 · 9.4) |
 | 5 | K5-O3 | K5-T4+T5 [B único] | 2026-08-23 | 2026-08-23 | T4 REPROCESO r1 (8.4) → APROBADA r2 (9.3) · T5 APROBADA (9.0); T6 LIMPIO |
-| 6 | H5-O1 | T1/T3[B] ∥ T2/T4[docs] ∥ T5[A] | 2026-08-23 | 2026-08-23 | APROBADAS (8.7 · 9.1 · 9.5); T5 REPROCESO r1 (7.0, Matcher como bool ×14) → fix coordinador → re-auditar en cierre |
+| 6 | H5-O1 | T1/T3[B] ∥ T2/T4[docs] ∥ T5[A] | 2026-08-23 | 2026-08-23 | APROBADAS (8.7 · 9.1 · 9.5); T5 REPROCESO r1 (7.0, Matcher como bool ×14) → fix coordinador |
+| 7 | H6-O1 | H6-T1+T2 [docs] | 2026-08-23 | 2026-08-23 | COMPLETADA (coherencia cruzada + README final) |
+| 8 | CIERRE | push único + ritual CI | 2026-08-23 | 2026-08-23 | run `32633779972` failure (1 test) → fix-wave `c146c09` → run `32634338510` **success**, APK r57 · tags v0.9.0-keyboard-beta y v1.0.0 |
 
 ### 10.2 Estado de tarjetas
 
@@ -242,8 +244,11 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 | H5-T1 | Robustez Android 14/15 [B] | B | APROBADA | 1 | 8.7 |
 | H5-T3 | Icono adaptive + splash [B] | B | APROBADA | 1 | 9.1 |
 | H5-T2/T4 | INSTALL.md + batería [docs] | docs | APROBADA | 1 | 9.5 |
-| H5-T5 | Matriz de tests [A] | A | APROBADA (fix coordinador aplicado) | 1 | 7.0→fix |
-| H6-T1..T2 | ver §8 | docs | PENDIENTE | — | — |
+| H5-T5 | Matriz de tests [A] | A | APROBADA (fix coordinador + fix-wave CI) | 1 | 7.0→verde |
+| H6-T1 | Coherencia cruzada docs | docs | COMPLETADA | — | — |
+| H6-T2 | README final pulido | docs | COMPLETADA | — | — |
+
+**ESTADO DEL LOOP: CERRADO.** Todas las tarjetas APROBADAS, push único verde (`c146c09`, run `32634338510` success, 368 tests), tags `v0.9.0-keyboard-beta` y `v1.0.0` creados. Restante: verificación del dueño en dispositivo (§11).
 
 ### 10.3 Decisiones del coordinador
 
@@ -264,7 +269,10 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 
 ### 10.4 Incidencias
 
-(ninguna aún)
+| # | Fecha | Descripción | Resolución |
+|---|---|---|---|
+| 1 | 2026-08-23 | La sesión de orquestación anterior se cerró inesperadamente con la Oleada 1 en curso | Nueva sesión retomó el estado desde el working tree sin pérdida |
+| 2 | 2026-08-23 | CI run `32633779972` failure: 367 passed / 1 failed — `h5_matrix_test.dart` Punto 3 línea 405 (Fase C no arrancaba grabación) | Causa raíz: `pumpWidget` reutilizaba el State del HomeScreen entre fases. Fix: `KeyedSubtree(key: UniqueKey())` por fase en `pumpHome` (`c146c09`). Re-run `32634338510` success |
 
 ### 10.5 Veredictos de auditoría
 
