@@ -73,8 +73,19 @@ void main() {
 
       final service = StorageService();
       await service.load();
-      // El lote sembrado entra completo; el tope se aplica al agregar.
-      expect(service.transcriptions.length, 25);
+      // El invariante FIFO-20 tambien se aplica al cargar (contrato
+      // vigente): nunca mas de maxItems, conservando las mas recientes.
+      expect(service.transcriptions.length, StorageService.maxItems);
+      // Las 5 mas viejas (seed-1..seed-5) ya salieron durante la carga.
+      for (var i = 1; i <= 5; i++) {
+        expect(
+          service.transcriptions.any((t) => t.text == 'seed-$i'),
+          isFalse,
+          reason: 'seed-$i debe haber sido expulsada por el FIFO-20 al cargar',
+        );
+      }
+      expect(service.transcriptions.first.text, 'seed-25');
+      expect(service.transcriptions.last.text, 'seed-6');
 
       final nueva = Transcription(
         text: 'nueva-26',

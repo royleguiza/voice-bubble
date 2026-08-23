@@ -29,9 +29,12 @@ void main() {
     });
 
     test('round-trip toJson/fromJson preserva los campos', () {
+      // fromJson normaliza a hora local (contrato K3); DateTime.== exige
+      // igualdad de bandera isUtc, asi que el esperado se construye con la
+      // misma normalizacion y se compara como instante.
       final base = Transcription(
         text: 'hola mundo',
-        timestamp: DateTime.parse('2026-08-23T10:00:00Z'),
+        timestamp: DateTime.parse('2026-08-23T10:00:00Z').toLocal(),
       );
 
       final restored = Transcription.fromJson(base.toJson());

@@ -44,6 +44,23 @@ void main() {
           return null;
       }
     });
+    // Estado inicial reproducible y keyboardLog determinista para todos los
+    // tests que no registran su propio handler (mockKeyboardChannel lo
+    // reemplaza). En produccion el canal nativo siempre responde.
+    messenger.setMockMethodCallHandler(keyboardChannel,
+        (MethodCall call) async {
+      keyboardLog.add(call);
+      switch (call.method) {
+        case 'isKeyboardEnabled':
+          return false;
+        case 'isKeyboardSelected':
+          return false;
+        case 'openKeyboardSettings':
+          return true;
+        default:
+          return null;
+      }
+    });
   });
 
   tearDown(() {

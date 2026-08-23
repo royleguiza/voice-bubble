@@ -27,10 +27,12 @@ void main() {
     });
 
     test('load() restores previously saved transcriptions (desc)', () async {
-      final t1 =
-          Transcription(text: 'hello', timestamp: DateTime.utc(2026, 8, 23, 9));
+      // fromJson normaliza a hora local: los esperados se construyen con
+      // toLocal() para que DateTime.== compare igualdad de bandera isUtc.
+      final t1 = Transcription(
+          text: 'hello', timestamp: DateTime.utc(2026, 8, 23, 9).toLocal());
       final t2 = Transcription(
-          text: 'world', timestamp: DateTime.utc(2026, 8, 23, 10));
+          text: 'world', timestamp: DateTime.utc(2026, 8, 23, 10).toLocal());
       SharedPreferences.setMockInitialValues({
         'transcriptions': [
           jsonEncode(t1.toJson()),
