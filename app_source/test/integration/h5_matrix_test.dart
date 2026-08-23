@@ -216,9 +216,15 @@ void main() {
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(MaterialApp(
-      home: HomeScreen(
-        transcriptionService: service,
-        storageService: storage,
+      // Clave unica por fase: sin ella, pumpWidget con estructura identica
+      // REUTILIZA el State del HomeScreen anterior y la fase nueva hereda
+      // servicios/modo de la vieja (falla de aislamiento entre fases).
+      home: KeyedSubtree(
+        key: UniqueKey(),
+        child: HomeScreen(
+          transcriptionService: service,
+          storageService: storage,
+        ),
       ),
     ));
     await tester.pumpAndSettle();
