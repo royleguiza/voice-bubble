@@ -128,6 +128,11 @@ void main() {
     });
 
     testWidgets('La app navega a Configuración y permite volver a la pantalla principal', (tester) async {
+      // Superficie alta: la pagina de Settings es mas larga que el viewport
+      // por defecto y el ListView lazy no construye lo que queda fuera (9.1-17).
+      tester.view.physicalSize = const Size(1600, 4000);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(const VoiceBubbleApp());
       await tester.pumpAndSettle();
 
