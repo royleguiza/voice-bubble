@@ -1,5 +1,6 @@
 package com.royleguiza.voicebubblestt
 
+import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
@@ -119,7 +120,10 @@ class VoiceKeyboardService : InputMethodService() {
         modifierKeyViews.clear()
         root.removeAllViews()
 
-        addRow(buildTerminalRow())
+        // K2.1: fila terminal ocultable desde Ajustes de la app (default visible).
+        if (terminalRowVisible()) {
+            addRow(buildTerminalRow())
+        }
         when (layer) {
             Layer.LETTERS -> buildLetterRows()
             Layer.SYMBOLS -> buildSymbolRows()
@@ -670,6 +674,18 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun dimen(resId: Int): Int = resources.getDimensionPixelSize(resId)
+
+    /**
+     * Preferencia escrita por los Ajustes de la app (Flutter shared_preferences
+     * guarda con prefijo "flutter." en el archivo FlutterSharedPreferences).
+     * Parseo tolerante: ante cualquier error se muestra la fila (default true).
+     */
+    private fun terminalRowVisible(): Boolean = try {
+        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getBoolean("flutter.kb_terminal_row_visible", true)
+    } catch (_: Exception) {
+        true
+    }
 
     companion object {
         private const val LONG_PRESS_MILLIS = 350L

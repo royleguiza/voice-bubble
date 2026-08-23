@@ -232,11 +232,13 @@ Tareas:
 1. Tecla cambiador de capas (icono `</>`), con memoria de última capa usada.
 2. **Capa código**: `{ } [ ] ( ) < > ; : ' " \` \ | / ! ? = + * & % $ # @ ^ ~ _`
    organizadas por frecuencia; toque largo = par auto-cerrado (ej. `{` inserta `{}`).
-3. **Fila terminal permanente** (visible en todas las capas):
+3. **Fila terminal** (presente en todas las capas, ocultable desde Settings — K2.1):
    TAB, ESC, CTRL (toggle), ALT (toggle), flechas ↑ ↓ ← →.
 4. Envío correcto de modificadores: eventos con `META_CTRL_ON`/`META_ALT_ON`
-   (patrón Hacker's Keyboard, consumido por TerminalView de Termux) +
-   fallback `commitText` de caracteres de control para ROMs quisquillosas.
+   (patrón Hacker's Keyboard, consumido por TerminalView de Termux). El fallback
+   de `commitText` con caracteres de control se descartó en implementación:
+   enviar ambos caminos duplicaría la ejecución en Termux; la vía única de
+   meta-eventos es el patrón probado de Hacker's Keyboard.
 5. Flechas: `KEYCODE_DPAD_*` vía `sendKeyEvent`.
 6. Haptic feedback en todas las teclas (`KEYBOARD_TAP`).
 
@@ -255,8 +257,28 @@ Guion de prueba manual (Termux):
 4. Flecha ↑ repite comando anterior.
 5. En Acode escribir `{` (toque corto) y toque largo → verificar `{}` vs `{`.
 
-Riesgos específicos: diferencias entre ROMs con meta-keys (documentadas por Termux);
-mitigación: matriz de prueba en K2 y registro en AGENTS.md §9 si surge un caso raro.
+---
+
+### Hito K2.1 — Fila terminal configurable (~1 ciclo CI)
+
+**Objetivo**: permitir ocultar la fila terminal desde los Ajustes de la app
+(caso de uso: Termux ya trae sus propias teclas extra). Decisión del dueño
+(2026-08-23): toggle solo en Settings, sin auto-detección por app, implementado
+antes de K3.
+
+Tareas:
+1. Puente de preferencias Flutter↔Kotlin: `shared_preferences` guarda la clave
+   `kb_terminal_row_visible` con prefijo `flutter.` en el archivo
+   `FlutterSharedPreferences`; Kotlin la lee con `getBoolean(..., true)`.
+2. `VoiceKeyboardService.kt`: lectura tolerante en cada rebuild + fila condicional.
+3. Settings: switch "Fila terminal" dentro de la tarjeta del teclado.
+4. Tests Dart: persistencia, render y estado por defecto.
+
+Criterios de aceptación:
+- [x] El switch persiste entre aperturas de la app. (tests Dart)
+- [x] Instalación nueva = fila visible (default true). (tests Dart)
+- [ ] Con switch OFF el teclado abre sin la fila. (verificación en dispositivo)
+- [ ] CI verde.
 
 ---
 

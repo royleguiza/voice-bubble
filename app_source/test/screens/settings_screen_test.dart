@@ -220,13 +220,21 @@ void main() {
   });
 
   group('SettingsScreen - Floating Bubble Toggle & Permissions', () {
+    Finder bubbleSwitch() => find.descendant(
+          of: find.ancestor(
+            of: find.text('Activar burbuja flotante'),
+            matching: find.byType(SwitchListTile),
+          ),
+          matching: find.byType(Switch),
+        );
+
     testWidgets('shows Floating Bubble switch tile', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.text('Burbuja flotante'), findsOneWidget);
       expect(find.text('Activar burbuja flotante'), findsOneWidget);
-      expect(find.byType(SwitchListTile), findsOneWidget);
+      expect(bubbleSwitch(), findsOneWidget);
     });
 
     testWidgets('toggling switch ON starts bubble when permission granted',
@@ -234,7 +242,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      final switchFinder = find.byType(Switch);
+      final switchFinder = bubbleSwitch();
       expect(tester.widget<Switch>(switchFinder).value, isFalse);
 
       await tester.tap(switchFinder);
@@ -257,7 +265,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(Switch));
+      await tester.tap(bubbleSwitch());
       await tester.pumpAndSettle();
 
       expect(find.text('Permiso de superposición'), findsOneWidget);
@@ -283,7 +291,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      final switchFinder = find.byType(Switch);
+      final switchFinder = bubbleSwitch();
       expect(tester.widget<Switch>(switchFinder).value, isTrue);
 
       await tester.tap(switchFinder);
@@ -369,6 +377,53 @@ void main() {
 
       expect(keyboardLog.length, greaterThan(consultasIniciales));
       expect(find.text('No habilitado'), findsOneWidget);
+    });
+  });
+
+  group('SettingsScreen - Fila terminal del teclado', () {
+    Finder terminalSwitch() => find.descendant(
+          of: find.ancestor(
+            of: find.text('Fila terminal'),
+            matching: find.byType(SwitchListTile),
+          ),
+          matching: find.byType(Switch),
+        );
+
+    testWidgets('muestra el switch con estado por defecto visible',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fila terminal'), findsOneWidget);
+      expect(find.textContaining('Desactívala si usás Termux'),
+          findsOneWidget);
+      expect(terminalSwitch(), findsOneWidget);
+      expect(tester.widget<Switch>(terminalSwitch()).value, isTrue);
+    });
+
+    testWidgets('alternar el switch persiste la preferencia', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(terminalSwitch());
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(terminalSwitch()).value, isFalse);
+      expect(await storageService.loadKeyboardTerminalRowVisible(), isFalse);
+
+      await tester.tap(terminalSwitch());
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(terminalSwitch()).value, isTrue);
+      expect(await storageService.loadKeyboardTerminalRowVisible(), isTrue);
+    });
+
+    testWidgets('refleja el valor previamente guardado', (tester) async {
+      SharedPreferences.setMockInitialValues({'kb_terminal_row_visible': false});
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(terminalSwitch()).value, isFalse);
     });
   });
 }
