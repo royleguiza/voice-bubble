@@ -278,7 +278,7 @@ Criterios de aceptación:
 - [x] El switch persiste entre aperturas de la app. (tests Dart)
 - [x] Instalación nueva = fila visible (default true). (tests Dart)
 - [ ] Con switch OFF el teclado abre sin la fila. (verificación en dispositivo)
-- [ ] CI verde.
+- [x] CI verde. (run `32611294100`, APK r48; 266 tests pasando)
 
 ---
 

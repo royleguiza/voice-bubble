@@ -247,7 +247,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] T0 – Documentación de alcance dual (README + design + AGENTS actualizados con teclado, 2026-08-22)
 - [x] K1 – Esqueleto del teclado funcional (verificado por el dueño en dispositivo real, 2026-08-23: instalado como teclado principal; fix de solape con barra de gestos confirmado en APK r45)
 - [ ] K2 – Capa código y teclas terminales → **implementado**; PENDIENTE verificación del dueño en Termux/Acode (criterios de aceptación de `teclado-voice.md` §K2)
-- [ ] K2.1 – Fila terminal configurable desde Settings (decisión del dueño 2026-08-23: toggle manual, sin auto-detección) → **implementado**; primer uso del puente de preferencias Flutter↔Kotlin (`flutter.` en `FlutterSharedPreferences`) que reutilizará K3 para el espejo D7; PENDIENTE verificación en dispositivo
+- [ ] K2.1 – Fila terminal configurable desde Settings (decisión del dueño 2026-08-23: toggle manual, sin auto-detección) → **implementado, CI verde** (run `32611294100`, APK r48, 266 tests); primer uso del puente de preferencias Flutter↔Kotlin (`flutter.` en `FlutterSharedPreferences`) que reutilizará K3 para el espejo D7; PENDIENTE verificación en dispositivo
 - [ ] K2 – Capa código y teclas terminales
 - [ ] K3 – Dictado por voz dentro del teclado
 - [ ] K4 – Snippets y comandos (con 5 seeds)
