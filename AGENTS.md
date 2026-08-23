@@ -239,7 +239,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 ## Estado del proyecto
 
 > **Actualizar esta sección al final de cada hito completado.**
-> Última actualización: 2026-08-22.
+> Última actualización: 2026-08-23 (lote de pulido visual del teclado).
 
 - [x] Planificación (README + plan + design + agents)
 - [x] Hito 0 – Setup
@@ -253,13 +253,14 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [ ] K3 – Dictado por voz dentro del teclado → **implementado, CI verde** (run `32614903180`, APK r53, 284 tests); SpeechToTextClient.kt nativo WAV PCM16 + multipart Groq; estados mic idle/grabando/procesando/ocupado con anillo rojo que respeta Reduced Motion; avisos inline no bloqueantes con "abrir Ajustes"; timeout 60 s; cancelación por toque largo; exclusión mutua burbuja↔teclado bidireccional vía flag de proceso + canal `isKeyboardRecording` + audio focus transitorio exclusivo; mic oculto en campos de contraseña; historial FIFO-20 compartido reordenado por timestamp. PENDIENTE verificación del dueño en dispositivo
 - [ ] K2 – Capa código y teclas terminales
 - [ ] K3 – Dictado por voz dentro del teclado
+- [x] Lote de pulido visual del teclado (2026-08-23, avance de K5): switches en Ajustes para ocultar la tecla `</>` (`kb_code_key_visible`) y la de idioma ES/EN (`kb_language_key_visible`, puente Flutter↔Kotlin del patrón K2.1); pesos ampliados de ⇧/⌫/↵ (1.3f/1.3f/1.8f); contraste modo claro con `kb_key_bg_alt` #D6D6DC + stroke 1dp `kb_key_stroke`. CI verde run `32617334365`, APK **r54**, 302 tests. PENDIENTE verificación del dueño en dispositivo
 - [ ] K4 – Snippets y comandos (con 5 seeds)
 - [ ] K5 – Pulido, robustez y entrega (tag `v0.9.0-keyboard-beta`)
 - [ ] Hito 4 – Pegado inteligente (Accessibility) → **CONGELADO**: el dictado desde el teclado nativo cubre la inserción en cursor; reevaluar tras K3
 - [ ] Hito 5 – Optimización y pulido → se ejecutará después del ciclo del teclado
 - [ ] Hito 6 – Testing final y entrega (tag `v1.0.0`)
 
-**Siguiente etapa**: verificación en dispositivo de **K2 + K3** (Termux/Acode para teclas; dictado es/en en Chrome, WhatsApp, Acode; ocupación cruzada burbuja↔teclado; mic ausente en contraseñas) → luego **K4 – Snippets y comandos**.
+**Siguiente etapa**: verificación en dispositivo del **lote de pulido visual** (switches OFF → teclas ausentes y barra espaciadora más ancha; contraste claro; tamaños ⇧/⌫/↵) y de **K2 + K3** (Termux/Acode para teclas; dictado es/en en Chrome, WhatsApp, Acode; ocupación cruzada burbuja↔teclado; mic ausente en contraseñas) → luego **K4 – Snippets y comandos**.
 
 **Deuda técnica menor (no bloqueante)**:
 - Limpiar los registros muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` (~líneas 74–76 y 115–117).
