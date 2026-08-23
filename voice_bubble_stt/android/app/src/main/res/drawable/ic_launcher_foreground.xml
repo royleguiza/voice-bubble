@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glifo del icono VoiceBubble: anillo blanco (burbuja) + ondas de voz.
+     Canvas adaptativo 108dp; todo el trazo vive dentro de la zona segura
+     central de 66dp (21..87). Solo trazos geometricos simples. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Burbuja: circulo completo via dos arcos de medio giro -->
+    <path
+        android:pathData="M28,54 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="5" />
+    <!-- Ondas de voz: 3 barras verticales con extremos redondeados -->
+    <path
+        android:pathData="M43,48 L43,60 M54,42 L54,66 M65,48 L65,60"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="8"
+        android:strokeLineCap="round" />
+</vector>

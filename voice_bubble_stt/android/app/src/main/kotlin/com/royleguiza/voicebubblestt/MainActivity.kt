@@ -1,6 +1,8 @@
 package com.royleguiza.voicebubblestt
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -11,6 +13,10 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+
+    companion object {
+        private const val REQUEST_POST_NOTIFICATIONS = 2001
+    }
 
     private val CHANNEL = "com.royleguiza.voicebubblestt/floating_bubble"
     private val KEYBOARD_CHANNEL = "com.royleguiza.voicebubblestt/keyboard"
@@ -44,6 +50,7 @@ class MainActivity : FlutterActivity() {
                     }
                     "startBubble" -> {
                         try {
+                            ensurePostNotificationsPermission()
                             val intent = Intent(this@MainActivity, FloatingBubbleService::class.java)
                             ContextCompat.startForegroundService(this@MainActivity, intent)
                             result.success(true)
@@ -116,6 +123,22 @@ class MainActivity : FlutterActivity() {
                     methodChannel?.invokeMethod("onBubbleClose", null)
                 }
             }
+        }
+    }
+
+    /**
+     * Android 13+ pide POST_NOTIFICATIONS en runtime (fire-and-forget): la
+     * burbuja funciona aunque se deniegue; solo se ocultaria su notificacion
+     * de servicio en primer plano. En API < 33 no hace falta.
+     */
+    private fun ensurePostNotificationsPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                REQUEST_POST_NOTIFICATIONS
+            )
         }
     }
 

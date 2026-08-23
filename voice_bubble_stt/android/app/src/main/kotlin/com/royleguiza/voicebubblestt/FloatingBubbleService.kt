@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -65,7 +66,17 @@ class FloatingBubbleService : Service() {
         instance = this
         isRunning = true
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
+        // Android 14+ exige declarar el tipo de FGS en tiempo de inicio para que
+        // la burbuja mantenga acceso while-in-use al microfono en background.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                buildNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
         setupBubbleView()
     }
 

@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- Splash VoiceBubble (H5-T3): fondo solido de marca + glifo centrado.
+     Sin dependencias nuevas; el color resuelve solo claro/oscuro via
+     values/values-night, y el item width/height/gravity requiere API 23+
+     (minSdk 28). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+    <item android:drawable="@color/ic_launcher_background" />
+    <item
+        android:width="96dp"
+        android:height="96dp"
+        android:gravity="center"
+        android:drawable="@drawable/ic_launcher_foreground" />
 </layer-list>
