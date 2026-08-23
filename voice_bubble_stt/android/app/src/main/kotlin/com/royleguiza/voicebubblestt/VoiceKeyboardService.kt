@@ -21,11 +21,13 @@ import android.text.InputType
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.TypedValue
+import android.util.Xml
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
@@ -35,7 +37,13 @@ import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import org.json.JSONArray
 import org.json.JSONObject
+import org.xmlpull.v1.XmlPullParser
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStreamReader
+import kotlin.math.abs
 
 /**
  * Teclado del sistema VoiceBubble.
@@ -51,13 +59,19 @@ class VoiceKeyboardService : InputMethodService() {
 
     private enum class MicState { IDLE, RECORDING, PROCESSING, BUSY }
 
+    /** Shift en tres estados: momentaneo tras un tap, persistente tras doble pulso. */
+    private enum class ShiftState { OFF, MOMENTARY, CAPS_LOCK }
+
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
     // @Volatile: el cliente STT lo consulta desde su hilo de fondo para
     // localizar los avisos de error (K5-T4).
     @Volatile
     private var spanishMode = true
-    private var shiftActive = false
+    private var shiftState = ShiftState.OFF
+
+    /** Uptime del ultimo tap en shift; detecta el doble pulso (caps lock). */
+    private var lastShiftTapUptime = 0L
     private var ctrlActive = false
     private var altActive = false
 
@@ -154,7 +168,7 @@ class VoiceKeyboardService : InputMethodService() {
         currentIsPasswordField = isPasswordInput(info)
         layer = Layer.LETTERS
         lastLettersLayer = Layer.LETTERS
-        shiftActive = false
+        deactivateShift()
         ctrlActive = false
         altActive = false
         rebuild()
@@ -306,7 +320,13 @@ class VoiceKeyboardService : InputMethodService() {
         addRow(letterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
 
         val row3 = horizontalRow()
-        val shiftKey = makeSpecialKey("⇧", R.drawable.kb_key_alt, 1.3f, if (spanishMode) "mayúsculas" else "shift") {
+        val shiftKey = makeSpecialKey(
+            "⇧",
+            R.drawable.kb_key_alt,
+            1.3f,
+            if (spanishMode) "mayúsculas" else "shift",
+            dimen(R.dimen.kb_key_glyph_shift),
+        ) {
             toggleShift()
         }
         shiftKeyViews.add(shiftKey)
@@ -355,12 +375,6 @@ class VoiceKeyboardService : InputMethodService() {
                 toggleCodeLayer()
             })
         }
-        // K4: acceso a la capa snippets; oculto en campos de contrasena igual que el microfono.
-        if (!currentIsPasswordField) {
-            row.addView(makeSpecialKey("☰", R.drawable.kb_key_alt, 1f, "snippets") {
-                toggleSnippetsLayer()
-            })
-        }
         if (languageKeyVisible()) {
             row.addView(makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language") {
                 spanishMode = !spanishMode
@@ -373,16 +387,30 @@ class VoiceKeyboardService : InputMethodService() {
         } else {
             micKeyView = null
         }
-        row.addView(makeSymbolKey(","))
-        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 2.6f, if (spanishMode) "espacio" else "space") {
+        row.addView(makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct)))
+        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 3.0f, if (spanishMode) "espacio" else "space") {
             // En snippets el espacio alimenta el query, nunca el documento.
             if (layer == Layer.SNIPPETS) ensureSnippetSearchMode()
             commit(" ")
         })
-        row.addView(makeSymbolKey("."))
-        row.addView(makeSpecialKey("↵", R.drawable.kb_key_accent, 1.8f, "enter") {
-            handleEnter()
-        })
+        row.addView(makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct)))
+        // K4: acceso a la capa snippets; oculto en campos de contrasena igual que el microfono.
+        if (!currentIsPasswordField) {
+            row.addView(makeSpecialKey("☰", R.drawable.kb_key_alt, 1f, "snippets") {
+                toggleSnippetsLayer()
+            })
+        }
+        row.addView(
+            makeSpecialKey(
+                "↵",
+                R.drawable.kb_key_accent,
+                1.8f,
+                "enter",
+                dimen(R.dimen.kb_key_glyph_enter),
+            ) {
+                handleEnter()
+            },
+        )
         return row
     }
 
@@ -405,10 +433,15 @@ class VoiceKeyboardService : InputMethodService() {
         rebuild()
     }
 
-    private fun makeBackspaceKey(): TextView =
-        makeSpecialKey("⌫", R.drawable.kb_key_alt, 1.3f, if (spanishMode) "borrar" else "delete") {
+    private fun makeBackspaceKey(): TextView {
+        val key = makeSpecialKey("⌫", R.drawable.kb_key_alt, 1.3f, if (spanishMode) "borrar" else "delete") {
             handleBackspace()
         }
+        attachBackspaceGestures(key) {
+            handleBackspace()
+        }
+        return key
+    }
 
     private fun horizontalRow(): LinearLayout {
         val row = LinearLayout(this)
@@ -458,13 +491,16 @@ class VoiceKeyboardService : InputMethodService() {
         return key
     }
 
-    private fun makeSymbolKey(label: String): TextView {
+    private fun makeSymbolKey(
+        label: String,
+        textSizePx: Int = dimen(R.dimen.kb_key_text_size_small),
+    ): TextView {
         val key = makeKey(
             label,
             1f,
             R.drawable.kb_key_bg,
             R.color.kb_label,
-            dimen(R.dimen.kb_key_text_size_small),
+            textSizePx,
         )
         key.contentDescription = label
         key.setOnClickListener { commitSymbolText(label) }
@@ -490,6 +526,7 @@ class VoiceKeyboardService : InputMethodService() {
         bgRes: Int,
         weight: Float,
         description: String?,
+        textSizePx: Int = dimen(R.dimen.kb_key_text_size_small),
         onClick: () -> Unit,
     ): TextView {
         val key = makeKey(
@@ -497,7 +534,7 @@ class VoiceKeyboardService : InputMethodService() {
             weight,
             bgRes,
             R.color.kb_label,
-            dimen(R.dimen.kb_key_text_size_small),
+            textSizePx,
         )
         if (description != null) {
             key.contentDescription = description
@@ -551,19 +588,44 @@ class VoiceKeyboardService : InputMethodService() {
     // ------------------------------------------------------------------
 
     private fun displayFor(base: Char): String =
-        if (shiftActive) base.uppercaseChar().toString() else base.toString()
+        if (shiftState == ShiftState.OFF) base.toString() else base.uppercaseChar().toString()
 
+    /**
+     * Maquina de estados shift (P3): OFF -> MOMENTARY con un tap; doble pulso
+     * rapido (<= 300 ms entre taps) escala a CAPS_LOCK desde OFF o MOMENTARY.
+     * En CAPS_LOCK un solo tap vuelve directo a OFF. El emparejamiento es por
+     * intervalo entre taps consecutivos (patron estandar de teclados), y el
+     * timestamp se invalida al apagarse shift por via no-tactil para que un
+     * tap posterior nunca herede un par fantasma.
+     */
     private fun toggleShift() {
-        shiftActive = !shiftActive
+        val now = SystemClock.uptimeMillis()
+        val quickPair = now - lastShiftTapUptime <= SHIFT_DOUBLE_TAP_MILLIS
+        lastShiftTapUptime = now
+        shiftState = when {
+            shiftState == ShiftState.CAPS_LOCK -> ShiftState.OFF
+            quickPair -> ShiftState.CAPS_LOCK
+            shiftState == ShiftState.OFF -> ShiftState.MOMENTARY
+            else -> ShiftState.OFF
+        }
         applyCase()
     }
 
     private fun applyCase() {
+        val upper = shiftState != ShiftState.OFF
         for ((key, base) in letterKeys) {
             key.text = displayFor(base)
         }
         for (key in shiftKeyViews) {
-            if (shiftActive) {
+            // Caps lock comparte fondo accent pero se distingue por el glifo ⇪.
+            key.text = if (shiftState == ShiftState.CAPS_LOCK) "⇪" else "⇧"
+            key.contentDescription =
+                if (shiftState == ShiftState.CAPS_LOCK) {
+                    if (spanishMode) "bloqueo mayúsculas" else "caps lock"
+                } else {
+                    if (spanishMode) "mayúsculas" else "shift"
+                }
+            if (upper) {
                 key.setBackgroundResource(R.drawable.kb_key_accent)
                 key.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
             } else {
@@ -576,10 +638,7 @@ class VoiceKeyboardService : InputMethodService() {
     private fun commitLetter(base: Char) {
         haptic(root)
         if (routeToSnippetQuery(displayFor(base))) {
-            if (shiftActive) {
-                shiftActive = false
-                applyCase()
-            }
+            releaseMomentaryShift()
             return
         }
         if (ctrlActive || altActive) {
@@ -587,10 +646,21 @@ class VoiceKeyboardService : InputMethodService() {
             return
         }
         currentInputConnection?.commitText(displayFor(base), 1)
-        if (shiftActive) {
-            shiftActive = false
+        releaseMomentaryShift()
+    }
+
+    /** El shift momentaneo muere tras cada commit; caps lock persiste. */
+    private fun releaseMomentaryShift() {
+        if (shiftState == ShiftState.MOMENTARY) {
+            deactivateShift()
             applyCase()
         }
+    }
+
+    /** Apagado por via no-tactil: invalida tambien el par del doble pulso. */
+    private fun deactivateShift() {
+        shiftState = ShiftState.OFF
+        lastShiftTapUptime = 0L
     }
 
     private fun commitSymbolText(text: String) {
@@ -690,6 +760,48 @@ class VoiceKeyboardService : InputMethodService() {
         }
         if (!ic.deleteSurroundingText(1, 0)) {
             sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+        }
+    }
+
+    /**
+     * Borrado por palabra para el gesto deslizante de ⌫ (P6). En la capa
+     * snippets opera SIEMPRE sobre el query (nunca toca el documento); en el
+     * resto usa deleteSurroundingText con el limite de palabra calculado
+     * sobre una ventana previa. Si el cursor esta pegado a separadores,
+     * consume primero ese tramo; palabras mas largas que la ventana se
+     * recortan parciales (limite v1.1: no borra frases completas de golpe).
+     */
+    private fun deleteWordBeforeCursor() {
+        fun wordStart(text: CharSequence, from: Int): Int {
+            var start = from
+            if (start == 0) return start
+            val eatingWord = text[start - 1].isLetterOrDigit()
+            while (start > 0 && text[start - 1].isLetterOrDigit() == eatingWord) start--
+            return start
+        }
+        if (layer == Layer.SNIPPETS) {
+            ensureSnippetSearchMode()
+            val et = snippetSearchField ?: return
+            val text = et.text ?: return
+            val start = wordStart(text, text.length)
+            if (start < text.length) {
+                text.delete(start, text.length)
+                et.setSelection(start)
+                refreshSnippetGrid()
+            }
+            return
+        }
+        val ic = currentInputConnection ?: return
+        val before = try {
+            ic.getTextBeforeCursor(SWIPE_WORD_LOOKBACK_CHARS, 0)
+        } catch (_: Exception) {
+            null
+        }
+        if (before.isNullOrEmpty()) return
+        val start = wordStart(before, before.length)
+        val count = before.length - start
+        if (count > 0) {
+            ic.deleteSurroundingText(count, 0)
         }
     }
 
@@ -995,39 +1107,41 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /**
-     * Alta en el historial FIFO-20 compartido con la app. El plugin
-     * shared_preferences guarda la lista como Set nativo sin orden garantizado:
-     * se reordena por timestamp descendente (el mismo criterio semantico de la
-     * app: mas nuevo primero) para que el contrato sea determinista.
+     * Descartes de la ultima operacion sobre el historial (candidatos crudos
+     * que no produjeron un objeto JSON valido). Diagnostico EXCLUSIVAMENTE
+     * numerico: jamas contiene ni expone contenido ni claves (regla
+     * transversal 4).
+     */
+    @Volatile
+    private var lastHistoryDiscarded = 0
+
+    /**
+     * Alta en el historial FIFO-20 compartido con la app. La base de
+     * escritura es writableHistoryBase(): lectura fresca de disco mas las
+     * entradas de la cache cuyo timestamp no exista ya en disco (merge por
+     * timestamp parseado), asi el dictado recien aplicado (apply aun no
+     * volcado) nunca se pierde y las entradas borradas desde la app NO
+     * resucitan al proximo dictado. El plugin shared_preferences guarda la
+     * lista como Set nativo sin orden garantizado: se reordena por timestamp
+     * descendente (mismo criterio semantico de la app: mas nuevo primero).
      */
     private fun addToSharedHistory(text: String) {
         try {
-            val prefs = getSharedPreferences(
-                "FlutterSharedPreferences", Context.MODE_PRIVATE,
-            )
-            val raw = prefs.getStringSet("flutter.transcriptions", emptySet())
-                ?: emptySet()
-            val entries = ArrayList<JSONObject>()
-            for (entry in raw) {
-                try { entries.add(JSONObject(entry)) } catch (_: Exception) {}
-            }
+            val entries = writableHistoryBase()
             val newEntry = JSONObject()
                 .put("text", text)
                 .put("timestamp", java.time.Instant.now().toString())
                 .put("isLocal", false)
             entries.add(newEntry)
-            val sorted = entries.sortedByDescending { obj ->
-                try {
-                    java.time.Instant.parse(obj.optString("timestamp"))
-                } catch (_: Exception) {
-                    java.time.Instant.EPOCH
-                }
-            }
+            val sorted = entries.sortedByDescending { historyEntryInstant(it) }
             val out = LinkedHashSet<String>()
             for (obj in sorted.take(20)) {
                 out.add(obj.toString())
             }
-            prefs.edit().putStringSet("flutter.transcriptions", out).apply()
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .edit()
+                .putStringSet(SHARED_HISTORY_KEY, out)
+                .apply()
         } catch (_: Exception) {}
     }
 
@@ -1119,30 +1233,222 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /**
-     * Historial compartido parseado con tolerancia (entradas corruptas se
-     * descartan) y ordenado por timestamp descendente: mismo criterio de
-     * lectura que addToSharedHistory y la app.
+     * Historial compartido parseado para la ventana: tolerante (los candidatos
+     * que no son objetos JSON validos se descartan y quedan contados en
+     * [lastHistoryDiscarded], diagnostico solo numerico, jamas contenido),
+     * ordenado por timestamp descendente y con dedup por timestamp parseado
+     * (una misma entrada presente en dos serializaciones ocupa una sola fila;
+     * entradas con timestamp imposible no participan del dedup y nunca se
+     * pierden). Mismo criterio de lectura que addToSharedHistory y la app.
      */
     private fun sharedHistoryEntries(): List<JSONObject> {
-        return try {
-            val prefs = getSharedPreferences(
-                "FlutterSharedPreferences", Context.MODE_PRIVATE,
-            )
-            val raw = prefs.getStringSet("flutter.transcriptions", emptySet())
-                ?: emptySet()
-            val entries = ArrayList<JSONObject>()
-            for (entry in raw) {
-                try { entries.add(JSONObject(entry)) } catch (_: Exception) {}
+        var discarded = 0
+        val parsed = ArrayList<JSONObject>()
+        for (raw in sharedHistoryRaw()) {
+            try {
+                parsed.add(JSONObject(raw))
+            } catch (_: Exception) {
+                discarded++
             }
-            entries.sortedByDescending { obj ->
-                try {
-                    java.time.Instant.parse(obj.optString("timestamp"))
-                } catch (_: Exception) {
-                    java.time.Instant.EPOCH
-                }
-            }.take(20)
+        }
+        lastHistoryDiscarded = discarded
+        val seen = HashSet<java.time.Instant>()
+        val out = ArrayList<JSONObject>(20)
+        for (obj in parsed.sortedByDescending { historyEntryInstant(it) }) {
+            val ts = historyEntryInstantOrNull(obj)
+            if (ts != null && !seen.add(ts)) continue
+            out.add(obj)
+            if (out.size >= 20) break
+        }
+        return out
+    }
+
+    /**
+     * Candidatos crudos del historial con lectura fresca garantizada. El
+     * framework Android cachea el archivo por proceso y SharedPreferences no
+     * expone reload() publico, asi que se relee el XML directamente desde
+     * disco y se une a la vista cacheada del framework (la cache cubre
+     * escrituras apply() aun no volcadas; el disco, cambios externos). Ambas
+     * fuentes son copiadas a estructuras propias: el Set devuelto por
+     * getStringSet es la referencia interna viva y mutarlo corrompe la cache.
+     */
+    private fun sharedHistoryRaw(): Set<String> {
+        val merged = LinkedHashSet<String>()
+        try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getStringSet(SHARED_HISTORY_KEY, emptySet())
+                ?.let { cached -> merged.addAll(cached) }
         } catch (_: Exception) {
-            emptyList()
+            // Tipo almacenado inesperado: la lectura fresca de disco puede
+            // rescatar igualmente las entradas.
+        }
+        try {
+            readFreshHistoryFromDisk()?.let { fresh -> merged.addAll(fresh) }
+        } catch (_: Exception) {}
+        return expandHistoryCandidates(merged)
+    }
+
+    /**
+     * Base de ESCRITURA del historial (P5-F2): SOLO la lectura fresca de
+     * disco, mas de la cache del proceso las entradas cuyo timestamp parseado
+     * no exista ya en disco (las de timestamp imposible cuentan como "solo
+     * cache" unicamente si su texto crudo no esta en disco, para no duplicar
+     * el espejo cache-disco). Asi sobreviven las escrituras apply() aun no
+     * volcadas sin resucitar entradas borradas desde la app. Los descartes de
+     * ambas fuentes quedan contados en [lastHistoryDiscarded] (solo numeros).
+     */
+    private fun writableHistoryBase(): ArrayList<JSONObject> {
+        var discarded = 0
+        val diskRaw = try {
+            readFreshHistoryFromDisk()
+        } catch (_: Exception) {
+            null
+        } ?: emptySet()
+        val base = ArrayList<JSONObject>(diskRaw.size)
+        val diskTimes = HashSet<java.time.Instant>()
+        for (raw in diskRaw) {
+            try {
+                val obj = JSONObject(raw)
+                historyEntryInstantOrNull(obj)?.let { diskTimes.add(it) }
+                base.add(obj)
+            } catch (_: Exception) {
+                discarded++
+            }
+        }
+        try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getStringSet(SHARED_HISTORY_KEY, emptySet())
+                ?.let { cached ->
+                    // Copia defensiva antes de usar: el set interno vivo del
+                    // framework jamas se muta ni se retiene.
+                    for (raw in expandHistoryCandidates(cached.toList())) {
+                        val obj = try {
+                            JSONObject(raw)
+                        } catch (_: Exception) {
+                            discarded++
+                            continue
+                        }
+                        val ts = historyEntryInstantOrNull(obj)
+                        val alreadyOnDisk =
+                            (ts != null && diskTimes.contains(ts)) || diskRaw.contains(raw)
+                        if (!alreadyOnDisk) base.add(obj)
+                    }
+                }
+        } catch (_: Exception) {}
+        lastHistoryDiscarded = discarded
+        return base
+    }
+
+    /**
+     * Lectura directa del XML de preferencias compartidas, sin pasar por la
+     * cache del proceso. Tolerante al formato real almacenado por el plugin:
+     * <set> con hijos <string> (caso setStringList), <string> escalar bajo la
+     * clave, y ausencia total del archivo (devuelve null). Cualquier error de
+     * lectura se propaga al llamador, que captura todo.
+     */
+    private fun readFreshHistoryFromDisk(): Set<String>? {
+        val file = File(applicationInfo.dataDir, "shared_prefs/FlutterSharedPreferences.xml")
+        if (!file.exists()) return null
+        val parser = Xml.newPullParser()
+        InputStreamReader(FileInputStream(file), Charsets.UTF_8).use { reader ->
+            parser.setInput(reader)
+            val out = LinkedHashSet<String>()
+            val chunk = StringBuilder()
+            var inSet = false
+            var captureScalar = false
+            fun flushChunk() {
+                if (chunk.isNotEmpty()) {
+                    val value = chunk.toString()
+                    if (value.isNotBlank()) out.add(value)
+                    chunk.setLength(0)
+                }
+            }
+            var event = parser.eventType
+            while (event != XmlPullParser.END_DOCUMENT) {
+                when (event) {
+                    // Todo START_TAG cierra el texto previo (asi la sangria
+                    // entre elementos hijos nunca contamina una entrada).
+                    XmlPullParser.START_TAG -> {
+                        flushChunk()
+                        when {
+                            parser.name == "set" &&
+                                parser.getAttributeValue(null, "name") == SHARED_HISTORY_KEY -> {
+                                inSet = true
+                            }
+                            parser.name == "string" && !inSet && !captureScalar &&
+                                parser.getAttributeValue(null, "name") == SHARED_HISTORY_KEY -> {
+                                captureScalar = true
+                            }
+                        }
+                    }
+                    XmlPullParser.TEXT -> if (inSet || captureScalar) {
+                        chunk.append(parser.text)
+                    }
+                    XmlPullParser.END_TAG -> when (parser.name) {
+                        "set" -> if (inSet) {
+                            flushChunk()
+                            inSet = false
+                        }
+                        "string" -> if (captureScalar) {
+                            flushChunk()
+                            captureScalar = false
+                        }
+                    }
+                }
+                event = parser.next()
+            }
+            flushChunk()
+            return out
+        }
+    }
+
+    /**
+     * Tolerancia de formato: si algun candidato es un JSON array de strings,
+     * se expande a entradas individuales; cualquier otro valor se conserva
+     * tal cual para que el parseo posterior decida.
+     */
+    private fun expandHistoryCandidates(candidates: Collection<String>): LinkedHashSet<String> {
+        val out = LinkedHashSet<String>()
+        for (raw in candidates) {
+            val trimmed = raw.trim()
+            var expanded = false
+            if (trimmed.startsWith("[")) {
+                try {
+                    val arr = JSONArray(trimmed)
+                    for (i in 0 until arr.length()) {
+                        val item = arr.optString(i)
+                        if (!item.isNullOrBlank()) out.add(item)
+                    }
+                    expanded = true
+                } catch (_: Exception) {}
+            }
+            if (!expanded) out.add(raw)
+        }
+        return out
+    }
+
+    /**
+     * Timestamp normalizado para ordenar. La app guarda DateTime.now() en ISO
+     * local SIN zona ("2026-08-23T10:00:00.000"), que Instant.parse rechaza;
+     * se interpreta entonces como hora local. Si nada parsea cae a EPOCH.
+     */
+    private fun historyEntryInstant(obj: JSONObject): java.time.Instant =
+        historyEntryInstantOrNull(obj) ?: java.time.Instant.EPOCH
+
+    /**
+     * Timestamp normalizado o null si no es interpretable (ni UTC ni local).
+     * Esas entradas se tratan como "solo cache" en el merge de escritura y no
+     * participan del dedup por timestamp en la ventana.
+     */
+    private fun historyEntryInstantOrNull(obj: JSONObject): java.time.Instant? = try {
+        java.time.Instant.parse(obj.optString("timestamp"))
+    } catch (_: Exception) {
+        try {
+            java.time.LocalDateTime.parse(obj.optString("timestamp"))
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant()
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -1222,7 +1528,7 @@ class VoiceKeyboardService : InputMethodService() {
         rebuild()
     }
 
-    /** Fila de busqueda + grid scrolleable de chips (2 por fila). */
+    /** Fila de busqueda + grid scrolleable de chips (3 por fila). */
     private fun buildSnippetRows() {
         addRow(buildSnippetSearchRow())
         val scroll = ScrollView(this)
@@ -1234,7 +1540,7 @@ class VoiceKeyboardService : InputMethodService() {
         refreshSnippetGrid()
         val lp = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            dimen(R.dimen.kb_snippets_grid_height),
+            scaleV(dimen(R.dimen.kb_snippets_grid_height)),
         )
         lp.topMargin = rowGapPx()
         root.addView(scroll, lp)
@@ -1301,6 +1607,10 @@ class VoiceKeyboardService : InputMethodService() {
             ensureSnippetSearchMode()
             handleBackspace()
         }
+        attachBackspaceGestures(key) {
+            ensureSnippetSearchMode()
+            handleBackspace()
+        }
         val lp = key.layoutParams as LinearLayout.LayoutParams
         lp.height = snippetKeyHeightPx()
         key.layoutParams = lp
@@ -1326,7 +1636,7 @@ class VoiceKeyboardService : InputMethodService() {
         et.setHintTextColor(ContextCompat.getColor(this, R.color.kb_label_secondary))
         et.setBackgroundResource(R.drawable.kb_key_bg)
         et.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-        et.setPadding(pad * 2, pad, pad * 2, pad)
+        et.setPadding(pad, pad, pad, pad)
         // Filtra por nombre en tiempo real repoblando solo el grid, para no
         // reconstruir la vista y perder el foco del campo de busqueda.
         et.addTextChangedListener(object : TextWatcher {
@@ -1352,7 +1662,7 @@ class VoiceKeyboardService : InputMethodService() {
             snippetSearchActive = true
             applySnippetSearchVisual()
         }
-        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), 1f)
+        val lp = LinearLayout.LayoutParams(0, scaleV(dimen(R.dimen.kb_snippet_search_height)), 1f)
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, 0, m, 0)
         row.addView(et, lp)
@@ -1384,20 +1694,23 @@ class VoiceKeyboardService : InputMethodService() {
         }
         var i = 0
         while (i < filtered.size) {
+            val inRow = minOf(SNIPPET_GRID_COLUMNS, filtered.size - i)
             val row = horizontalRow()
-            row.addView(makeSnippetChip(filtered[i]))
-            if (i + 1 < filtered.size) {
-                row.addView(makeSnippetChip(filtered[i + 1]))
+            for (j in 0 until inRow) {
+                val chip = makeSnippetChip(filtered[i + j])
+                val lp = chip.layoutParams as LinearLayout.LayoutParams
+                lp.weight = SNIPPET_GRID_COLUMNS.toFloat() / inRow
+                row.addView(chip)
             }
             val lp = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                keyHeightPx(),
+                scaleV(dimen(R.dimen.kb_snippet_chip_height)),
             )
             if (container.childCount > 0) {
                 lp.topMargin = rowGapPx()
             }
             container.addView(row, lp)
-            i += 2
+            i += inRow
         }
     }
 
@@ -1427,7 +1740,7 @@ class VoiceKeyboardService : InputMethodService() {
             },
             onTapUp = { insertSnippet(snippet) },
         )
-        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), 1f)
+        val lp = LinearLayout.LayoutParams(0, scaleV(dimen(R.dimen.kb_snippet_chip_height)), 1f)
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, 0, m, 0)
         chip.layoutParams = lp
@@ -1548,44 +1861,134 @@ class VoiceKeyboardService : InputMethodService() {
         else -> null
     }
 
-    /** Logica comun de toque largo: programa accion diferida y decide en UP. */
+    /**
+     * Logica comun de toque largo: programa accion diferida y decide en UP.
+     * Modo autorrepeticion (onRepeat != null, usado por ⌫ / P6): al disparar
+     * el long press se ejecuta onLongPress UNA vez y arrancan repeticiones
+     * de onRepeat; la primera a REPEAT_INITIAL_DELAY_MS y en cada ciclo el
+     * intervalo se multiplica por REPEAT_ACCEL hasta el piso
+     * REPEAT_MIN_INTERVAL_MS. El haptic pertenece SOLO al long press
+     * inicial (lo pone el llamador); repeticiones y gesto son silenciosos.
+     * Politica de gesto deslizante (onSwipeStep != null, ⌫): si el dedo se
+     * mueve mas que touchSlop, la pulsacion pasa a modo gesto — cancela el
+     * long press pendiente y TODA repeticion para esa pulsacion, y cada
+     * SWIPE_DELETE_STEP_DP recorridos hacia la IZQUIERDA desde el ultimo
+     * umbral borra una palabra (arrastres largos = varias palabras). Un
+     * recorrido derecho/arriba solo anula tap y long press. En UP nunca hay
+     * onTapUp si hubo long press o gesto; un toque corto sin movimiento
+     * sigue siendo tap normal.
+     */
     private fun attachLongPress(
         key: TextView,
         onLongPress: () -> Unit,
         onTapUp: () -> Unit,
+        onRepeat: (() -> Unit)? = null,
+        onSwipeStep: (() -> Unit)? = null,
     ) {
         var pending: Runnable? = null
+        var repeating: Runnable? = null
+        var repeatIntervalMs = 0L
         var longPressFired = false
+        var swipeMode = false
+        var swipeAnchorX = 0f
+        val touchSlopPx = ViewConfiguration.get(key.context).scaledTouchSlop
+        val swipeStepPx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, SWIPE_DELETE_STEP_DP, resources.displayMetrics,
+        )
+
+        fun cancelPending() {
+            pending?.let { handler.removeCallbacks(it) }
+            pending = null
+        }
+
+        fun cancelRepeating() {
+            repeating?.let { handler.removeCallbacks(it) }
+            repeating = null
+        }
+
         key.setOnTouchListener { v, ev ->
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     longPressFired = false
+                    swipeMode = false
+                    swipeAnchorX = ev.rawX
                     val r = Runnable {
                         longPressFired = true
                         onLongPress()
+                        if (onRepeat != null && !swipeMode) {
+                            repeatIntervalMs = REPEAT_INITIAL_DELAY_MS
+                            val rr = object : Runnable {
+                                override fun run() {
+                                    // Doble guarda: el gesto puede entrar entre ciclos.
+                                    if (!longPressFired || swipeMode || repeating !== this) return
+                                    onRepeat?.invoke()
+                                    repeatIntervalMs = maxOf(
+                                        REPEAT_MIN_INTERVAL_MS,
+                                        (repeatIntervalMs * REPEAT_ACCEL).toLong(),
+                                    )
+                                    handler.postDelayed(this, repeatIntervalMs)
+                                }
+                            }
+                            repeating = rr
+                            handler.postDelayed(rr, repeatIntervalMs)
+                        }
                     }
                     pending = r
                     handler.postDelayed(r, LONG_PRESS_MILLIS)
                     false
                 }
+                MotionEvent.ACTION_MOVE -> {
+                    if (onSwipeStep != null) {
+                        if (!swipeMode && abs(ev.rawX - swipeAnchorX) > touchSlopPx) {
+                            // Deslizamiento confirmado: ya no es ni tap ni
+                            // repeticion; queda solo el borrado por umbral.
+                            cancelPending()
+                            cancelRepeating()
+                            swipeMode = true
+                        }
+                        if (swipeMode) {
+                            while (ev.rawX <= swipeAnchorX - swipeStepPx) {
+                                swipeAnchorX -= swipeStepPx
+                                onSwipeStep?.invoke()
+                            }
+                        }
+                    }
+                    false
+                }
                 MotionEvent.ACTION_UP -> {
-                    pending?.let { handler.removeCallbacks(it) }
-                    pending = null
-                    if (!longPressFired) {
+                    cancelPending()
+                    cancelRepeating()
+                    if (!longPressFired && !swipeMode) {
                         onTapUp()
                     }
                     v.isPressed = false
                     true
                 }
                 MotionEvent.ACTION_CANCEL -> {
-                    pending?.let { handler.removeCallbacks(it) }
-                    pending = null
+                    cancelPending()
+                    cancelRepeating()
                     v.isPressed = false
                     true
                 }
                 else -> false
             }
         }
+    }
+
+    /** Cablea una tecla ⌫ (P6): tap = 1 caracter, mantener = borrado
+     *  continuo acelerado con haptic unico, deslizar a la izquierda =
+     *  borrar palabra por umbral de distancia. */
+    private fun attachBackspaceGestures(key: TextView, action: () -> Unit) {
+        attachLongPress(
+            key,
+            onLongPress = {
+                haptic(key)
+                action()
+            },
+            onTapUp = action,
+            onRepeat = action,
+            onSwipeStep = { deleteWordBeforeCursor() },
+        )
     }
 
     private fun attachAccentLongPress(key: TextView, base: Char) {
@@ -1753,8 +2156,26 @@ class VoiceKeyboardService : InputMethodService() {
     companion object {
         private const val LONG_PRESS_MILLIS = 350L
 
+        /** Autorrepeticion de ⌫ (P6): primer ciclo y aceleracion geometrica
+         *  hasta el piso (250 -> 212 -> 180 ... -> 50 ms). */
+        private const val REPEAT_INITIAL_DELAY_MS = 250L
+        private const val REPEAT_MIN_INTERVAL_MS = 50L
+        private const val REPEAT_ACCEL = 0.85f
+
+        /** Gesto ⌫ (P6): recorrido izquierdo que borra una palabra completa. */
+        private const val SWIPE_DELETE_STEP_DP = 48f
+
+        /** Ventana previa examinada para hallar el limite de palabra. */
+        private const val SWIPE_WORD_LOOKBACK_CHARS = 64
+
+        /** Umbral de doble pulso sobre shift para activar caps lock (P3). */
+        private const val SHIFT_DOUBLE_TAP_MILLIS = 300L
+
         /** Tope del query de busqueda de snippets. */
         private const val SNIPPET_QUERY_MAX_CHARS = 50
+
+        /** Columnas del grid de chips de snippets. */
+        private const val SNIPPET_GRID_COLUMNS = 3
 
         /** Valores del perfil de altura escritos por Ajustes (K5-T2). */
         private const val HEIGHT_PROFILE_BAJA = "baja"
@@ -1769,5 +2190,8 @@ class VoiceKeyboardService : InputMethodService() {
         /** Exclusion mutua de microfono: visible para MainActivity/burbuja. */
         @Volatile
         var keyboardRecordingActive: Boolean = false
+
+        /** Clave del historial compartido con la app (prefijo flutter.). */
+        private const val SHARED_HISTORY_KEY = "flutter.transcriptions"
     }
 }
