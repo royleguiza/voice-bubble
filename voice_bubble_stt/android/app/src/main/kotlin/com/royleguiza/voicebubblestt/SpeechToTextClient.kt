@@ -19,8 +19,14 @@ import java.io.DataOutputStream
  * Sin dependencias nuevas. JAMAS guarda el audio ni el resultado mas alla
  * del ciclo de dictado; solo escribe en el historial compartido el texto
  * final (via VoiceKeyboardService).
+ * K5-T4: los mensajes de error se localizan es/en consultando el idioma
+ * activo del teclado via [spanishModeProvider] en el momento del fallo,
+ * sin estado propio que pueda quedar desincronizado a mitad de sesion.
  */
-class SpeechToTextClient(private val context: Context) {
+class SpeechToTextClient(
+    private val context: Context,
+    private val spanishModeProvider: () -> Boolean = { true },
+) {
 
     companion object {
         const val SAMPLE_RATE = 16000
@@ -211,7 +217,10 @@ class SpeechToTextClient(private val context: Context) {
                     onError(errorDetail(code, body))
                 }
             } catch (_: Exception) {
-                onError("Sin conexión a internet.")
+                onError(
+                    if (spanishModeProvider()) "Sin conexión a internet."
+                    else "No internet connection."
+                )
             }
         }.apply {
             name = "VbKeyboardStt"
@@ -219,16 +228,24 @@ class SpeechToTextClient(private val context: Context) {
         }
     }
 
-    /** Espeja la clasificacion de errores de CloudSttService (Dart). */
+    /**
+     * Espeja la clasificacion de errores de CloudSttService (Dart), con la
+     * variante es/en segun el idioma activo del teclado (K5-T4).
+     */
     private fun errorDetail(code: Int, body: String): String {
         val remoteMessage = try {
             JSONObject(body).optJSONObject("error")?.optString("message") ?: ""
         } catch (_: Exception) { "" }
+        val es = spanishModeProvider()
         return when {
-            code == 401 || code == 403 -> "API key inválida. Verificala en Ajustes."
-            code == 429 -> "Límite de solicitudes alcanzado. Esperá un momento."
+            code == 401 || code == 403 ->
+                if (es) "API key inválida. Verificala en Ajustes."
+                else "Invalid API key. Verify it in Settings."
+            code == 429 ->
+                if (es) "Límite de solicitudes alcanzado. Esperá un momento."
+                else "Request limit reached. Wait a moment."
             remoteMessage.isNotBlank() -> "Error $code: $remoteMessage"
-            else -> "Error del servidor ($code)."
+            else -> if (es) "Error del servidor ($code)." else "Server error ($code)."
         }
     }
 }

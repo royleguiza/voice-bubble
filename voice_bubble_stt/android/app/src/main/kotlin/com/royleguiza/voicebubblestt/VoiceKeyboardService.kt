@@ -53,6 +53,9 @@ class VoiceKeyboardService : InputMethodService() {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
+    // @Volatile: el cliente STT lo consulta desde su hilo de fondo para
+    // localizar los avisos de error (K5-T4).
+    @Volatile
     private var spanishMode = true
     private var shiftActive = false
     private var ctrlActive = false
@@ -81,6 +84,14 @@ class VoiceKeyboardService : InputMethodService() {
     private var snippetSearchActive = false
     private var snippetSearchField: EditText? = null
 
+    // --- Preferencias de aspecto (K5-T2/T3, puente Flutter) ---
+    // Se leen UNA VEZ por apertura (loadKeyboardPrefs en onCreateInputView y
+    // onStartInputView) y quedan cacheadas aca para no golpear SharedPreferences
+    // en cada tecla. heightFactor escala solo alturas propias del teclado,
+    // jamas el padding inferior por insets.
+    private var heightFactor = HEIGHT_FACTOR_MEDIA
+    private var hapticsEnabled = true
+
     private lateinit var root: LinearLayout
     private val letterKeys = mutableListOf<Pair<TextView, Char>>()
     private val shiftKeyViews = mutableListOf<TextView>()
@@ -92,8 +103,12 @@ class VoiceKeyboardService : InputMethodService() {
     override fun onEvaluateFullscreenMode(): Boolean = false
 
     override fun onCreateInputView(): View {
-        sttClient = SpeechToTextClient(this)
+        // K5-T5: recreacion de vista (ej. rotacion) nunca debe dejar una
+        // grabacion fantasma del cliente anterior colgada.
+        cancelDictationIfActive()
+        sttClient = SpeechToTextClient(this) { spanishMode }
         snippetStore = SnippetStore(this)
+        loadKeyboardPrefs()
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -133,6 +148,9 @@ class VoiceKeyboardService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        // K5-T5: defensa extra; nunca arrancar un campo con dictado vivo.
+        cancelDictationIfActive()
+        loadKeyboardPrefs()
         currentIsPasswordField = isPasswordInput(info)
         layer = Layer.LETTERS
         lastLettersLayer = Layer.LETTERS
@@ -151,6 +169,13 @@ class VoiceKeyboardService : InputMethodService() {
             variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
     }
 
+    /** K5-T5: al cerrarse el campo actual, corta dictado y popups vivos. */
+    override fun onFinishInputView(finishingInput: Boolean) {
+        cancelDictationIfActive()
+        dismissPopup()
+        super.onFinishInputView(finishingInput)
+    }
+
     override fun onWindowHidden() {
         super.onWindowHidden()
         dismissPopup()
@@ -159,6 +184,8 @@ class VoiceKeyboardService : InputMethodService() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         dismissPopup()
+        // K5-T5: destruccion del servicio con dictado vivo = grabacion fantasma.
+        cancelDictationIfActive()
         super.onDestroy()
     }
 
@@ -208,21 +235,50 @@ class VoiceKeyboardService : InputMethodService() {
         })
         row.addView(makeModifierKey("CTRL", true, 1.25f))
         row.addView(makeModifierKey("ALT", false, 1.25f))
-        row.addView(makeArrowKey("←", KeyEvent.KEYCODE_DPAD_LEFT))
-        row.addView(makeArrowKey("↑", KeyEvent.KEYCODE_DPAD_UP))
-        row.addView(makeArrowKey("↓", KeyEvent.KEYCODE_DPAD_DOWN))
-        row.addView(makeArrowKey("→", KeyEvent.KEYCODE_DPAD_RIGHT))
+        row.addView(
+            makeArrowKey(
+                "←", KeyEvent.KEYCODE_DPAD_LEFT,
+                if (spanishMode) "flecha izquierda" else "left arrow",
+            )
+        )
+        row.addView(
+            makeArrowKey(
+                "↑", KeyEvent.KEYCODE_DPAD_UP,
+                if (spanishMode) "flecha arriba" else "up arrow",
+            )
+        )
+        row.addView(
+            makeArrowKey(
+                "↓", KeyEvent.KEYCODE_DPAD_DOWN,
+                if (spanishMode) "flecha abajo" else "down arrow",
+            )
+        )
+        row.addView(
+            makeArrowKey(
+                "→", KeyEvent.KEYCODE_DPAD_RIGHT,
+                if (spanishMode) "flecha derecha" else "right arrow",
+            )
+        )
         return row
     }
 
-    private fun makeArrowKey(glyph: String, code: Int): TextView =
-        makeSpecialKey(glyph, R.drawable.kb_key_bg, 1f, null) {
+    private fun makeArrowKey(glyph: String, code: Int, description: String?): TextView =
+        makeSpecialKey(glyph, R.drawable.kb_key_bg, 1f, description) {
             sendKeyCode(code)
         }
 
     /** CTRL/ALT sticky: tap activa/desactiva; la proxima tecla los consume. */
     private fun makeModifierKey(label: String, isCtrl: Boolean, weight: Float): TextView {
-        val key = makeSpecialKey(label, R.drawable.kb_key_alt, weight, null) {}
+        val key = makeSpecialKey(
+            label,
+            R.drawable.kb_key_alt,
+            weight,
+            if (isCtrl) {
+                if (spanishMode) "tecla control" else "control key"
+            } else {
+                if (spanishMode) "tecla alt" else "alt key"
+            },
+        ) {}
         key.setOnClickListener {
             haptic(key)
             if (isCtrl) ctrlActive = !ctrlActive else altActive = !altActive
@@ -250,7 +306,7 @@ class VoiceKeyboardService : InputMethodService() {
         addRow(letterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
 
         val row3 = horizontalRow()
-        val shiftKey = makeSpecialKey("⇧", R.drawable.kb_key_alt, 1.3f, "mayúsculas") {
+        val shiftKey = makeSpecialKey("⇧", R.drawable.kb_key_alt, 1.3f, if (spanishMode) "mayúsculas" else "shift") {
             toggleShift()
         }
         shiftKeyViews.add(shiftKey)
@@ -289,13 +345,13 @@ class VoiceKeyboardService : InputMethodService() {
 
     private fun buildBottomBar(): LinearLayout {
         val row = horizontalRow()
-        row.addView(makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, "símbolos") {
+        row.addView(makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols") {
             layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
             rebuild()
         })
         // K2.2: teclas de capa codigo e idioma ocultables desde Ajustes (default visibles).
         if (codeKeyVisible()) {
-            row.addView(makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, "capa código") {
+            row.addView(makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, if (spanishMode) "capa código" else "code layer") {
                 toggleCodeLayer()
             })
         }
@@ -306,7 +362,7 @@ class VoiceKeyboardService : InputMethodService() {
             })
         }
         if (languageKeyVisible()) {
-            row.addView(makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, "cambiar idioma") {
+            row.addView(makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language") {
                 spanishMode = !spanishMode
                 rebuild()
             })
@@ -318,7 +374,9 @@ class VoiceKeyboardService : InputMethodService() {
             micKeyView = null
         }
         row.addView(makeSymbolKey(","))
-        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 2.6f, "espacio") {
+        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 2.6f, if (spanishMode) "espacio" else "space") {
+            // En snippets el espacio alimenta el query, nunca el documento.
+            if (layer == Layer.SNIPPETS) ensureSnippetSearchMode()
             commit(" ")
         })
         row.addView(makeSymbolKey("."))
@@ -348,7 +406,7 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun makeBackspaceKey(): TextView =
-        makeSpecialKey("⌫", R.drawable.kb_key_alt, 1.3f, "borrar") {
+        makeSpecialKey("⌫", R.drawable.kb_key_alt, 1.3f, if (spanishMode) "borrar" else "delete") {
             handleBackspace()
         }
 
@@ -470,7 +528,7 @@ class VoiceKeyboardService : InputMethodService() {
         key.setBackgroundResource(bgRes)
         key.setTextColor(ContextCompat.getColor(this, colorRes))
         key.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSizePx.toFloat())
-        val lp = LinearLayout.LayoutParams(0, dimen(R.dimen.kb_key_height), weight)
+        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), weight)
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, 0, m, 0)
         key.layoutParams = lp
@@ -483,7 +541,7 @@ class VoiceKeyboardService : InputMethodService() {
             ViewGroup.LayoutParams.WRAP_CONTENT,
         )
         if (root.childCount > 0) {
-            lp.topMargin = dimen(R.dimen.kb_key_gap)
+            lp.topMargin = rowGapPx()
         }
         root.addView(row, lp)
     }
@@ -537,6 +595,8 @@ class VoiceKeyboardService : InputMethodService() {
 
     private fun commitSymbolText(text: String) {
         haptic(root)
+        // Simbolos de la barra inferior (, .) en snippets: al query siempre.
+        if (layer == Layer.SNIPPETS) ensureSnippetSearchMode()
         if (routeToSnippetQuery(text)) return
         if ((ctrlActive || altActive) && text.length == 1) {
             val c = text[0]
@@ -650,7 +710,21 @@ class VoiceKeyboardService : InputMethodService() {
         applySnippetSearchVisual()
     }
 
+    /** Enciende el modo busqueda bajo demanda (teclado de la propia capa). */
+    private fun ensureSnippetSearchMode() {
+        if (!snippetSearchActive) {
+            snippetSearchActive = true
+            applySnippetSearchVisual()
+        }
+    }
+
+    /**
+     * Gate central de vibracion (K5-T3): un unico punto por donde pasa
+     * todo el feedback hapico del teclado. Si el usuario lo apago en Ajustes,
+     * retorna sin vibrar. Default ON cuando la clave no existe.
+     */
     private fun haptic(view: View) {
+        if (!hapticsEnabled) return
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
@@ -673,10 +747,11 @@ class VoiceKeyboardService : InputMethodService() {
             R.color.kb_label,
             dimen(R.dimen.kb_key_text_size_small),
         )
-        key.contentDescription = "dictar"
+        key.contentDescription = if (spanishMode) "dictar" else "dictate"
         attachLongPress(
             key,
             onLongPress = {
+                haptic(key)
                 when (micState) {
                     MicState.RECORDING -> cancelDictation()
                     MicState.IDLE, MicState.BUSY -> showHistoryPopup(key)
@@ -705,18 +780,26 @@ class VoiceKeyboardService : InputMethodService() {
         if (bubbleBusy()) {
             micState = MicState.BUSY
             refreshMicVisual()
-            showStatus("Ocupado: la burbuja está grabando.")
+            showStatus(if (spanishMode) "Ocupado: la burbuja está grabando." else "Busy: the bubble is recording.")
             return
         }
         val config = sttClient.loadConfig()
         if (config.apiKey.isBlank()) {
             micState = MicState.IDLE
             refreshMicVisual()
-            showStatus("Falta la API key. Toca este aviso para abrir Ajustes.", openSettingsOnClick = true)
+            showStatus(
+                if (spanishMode) "Falta la API key. Toca este aviso para abrir Ajustes."
+                else "Missing API key. Tap this notice to open Settings.",
+                openSettingsOnClick = true,
+            )
             return
         }
         if (!sttClient.hasMicPermission()) {
-            showStatus("Permiso de micrófono denegado. Concedelo desde Ajustes.", openSettingsOnClick = true)
+            showStatus(
+                if (spanishMode) "Permiso de micrófono denegado. Concedelo desde Ajustes."
+                else "Microphone permission denied. Allow it from Settings.",
+                openSettingsOnClick = true,
+            )
             return
         }
         keyboardRecordingActive = true
@@ -725,7 +808,7 @@ class VoiceKeyboardService : InputMethodService() {
         if (!started) {
             abandonAudioFocus()
             keyboardRecordingActive = false
-            showStatus("No se pudo iniciar la grabación.")
+            showStatus(if (spanishMode) "No se pudo iniciar la grabación." else "Could not start recording.")
             return
         }
         micState = MicState.RECORDING
@@ -748,7 +831,7 @@ class VoiceKeyboardService : InputMethodService() {
             if (sttClient.isEmptyCapture(wav)) {
                 runOnMain {
                     micIdle()
-                    showStatus("No se detectó voz.")
+                    showStatus(if (spanishMode) "No se detectó voz." else "No voice detected.")
                 }
                 return@Thread
             }
@@ -759,7 +842,7 @@ class VoiceKeyboardService : InputMethodService() {
                     runOnMain {
                         micIdle()
                         if (text.isNullOrBlank()) {
-                            showStatus("No se detectó voz.")
+                            showStatus(if (spanishMode) "No se detectó voz." else "No voice detected.")
                         } else {
                             commit(text)
                             addToSharedHistory(text)
@@ -786,6 +869,30 @@ class VoiceKeyboardService : InputMethodService() {
             abandonAudioFocus()
             keyboardRecordingActive = false
         }.start()
+    }
+
+    /**
+     * K5-T5: apagado defensivo del dictado para los escenarios hostiles
+     * (recreacion de vista, cambio de campo/app, destruccion). Idempotente:
+     * sin dictado activo no hace nada. La parte que puede bloquear (corte de
+     * captura y audio focus) corre en hilo de fondo con la referencia local
+     * del cliente, igual que cancelDictation.
+     */
+    private fun cancelDictationIfActive() {
+        if (micState == MicState.IDLE && !keyboardRecordingActive) return
+        val client = if (::sttClient.isInitialized) sttClient else null
+        keyboardRecordingActive = false
+        timeoutRunnable?.let { handler.removeCallbacks(it) }
+        timeoutRunnable = null
+        micIdle()
+        if (client != null) {
+            Thread {
+                try {
+                    client.cancelRecording()
+                } catch (_: Exception) {}
+                abandonAudioFocus()
+            }.start()
+        }
     }
 
     private fun micIdle() {
@@ -860,7 +967,18 @@ class VoiceKeyboardService : InputMethodService() {
                     .setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build(),
-            ).build()
+            ).setOnAudioFocusChangeListener { change ->
+                // K5-T5: llamada entrante u otro foco de audio. Perder el
+                // foco cancela el dictado y devuelve el microfono a IDLE
+                // (el listener llega en el looper del hilo que registro).
+                if (change == AudioManager.AUDIOFOCUS_LOSS ||
+                    change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
+                ) {
+                    if (micState == MicState.RECORDING) {
+                        cancelDictation()
+                    }
+                }
+            }.build()
             am.requestAudioFocus(request)
             focusRequest = request
         } catch (_: Exception) {}
@@ -953,9 +1071,11 @@ class VoiceKeyboardService : InputMethodService() {
             tv.isClickable = true
             tv.isFocusable = true
             tv.setPadding(pad * 2, pad, pad * 2, pad)
+            tv.setBackgroundResource(R.drawable.kb_menu_item)
             tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
             tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
             tv.setOnClickListener {
+                haptic(tv)
                 commit(text)
                 dismissPopup()
             }
@@ -963,7 +1083,7 @@ class VoiceKeyboardService : InputMethodService() {
         }
         if (first) {
             val empty = TextView(this)
-            empty.text = "Sin transcripciones todavía."
+            empty.text = if (spanishMode) "Sin transcripciones todavía." else "No transcriptions yet."
             empty.setPadding(pad * 2, pad, pad * 2, pad)
             empty.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
             empty.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
@@ -1116,8 +1236,81 @@ class VoiceKeyboardService : InputMethodService() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             dimen(R.dimen.kb_snippets_grid_height),
         )
-        lp.topMargin = dimen(R.dimen.kb_key_gap)
+        lp.topMargin = rowGapPx()
         root.addView(scroll, lp)
+        addSnippetLetterRows()
+    }
+
+    /**
+     * Filas QWERTY compactas dentro de la capa snippets (K5-T1): letras,
+     * espacio y backspace operan SIEMPRE sobre el query de busqueda
+     * (activan el modo si esta apagado) y jamas escriben en el documento.
+     */
+    private fun addSnippetLetterRows() {
+        addRow(snippetLetterRow("qwertyuiop"))
+        addRow(snippetLetterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
+        val row3 = horizontalRow()
+        for (c in "zxcvbnm") {
+            row3.addView(makeSnippetLetterKey(c))
+        }
+        row3.addView(makeSnippetBackspaceKey())
+        addRow(row3)
+    }
+
+    private fun snippetLetterRow(chars: String): LinearLayout {
+        val row = horizontalRow()
+        for (c in chars) {
+            row.addView(makeSnippetLetterKey(c))
+        }
+        return row
+    }
+
+    /** Tecla alfabetica compacta; mismo estilo que la capa letras. */
+    private fun makeSnippetLetterKey(base: Char): TextView {
+        val key = makeKey(
+            displayFor(base),
+            1f,
+            R.drawable.kb_key_bg,
+            R.color.kb_label,
+            dimen(R.dimen.kb_key_text_size),
+        )
+        val lp = key.layoutParams as LinearLayout.LayoutParams
+        lp.height = snippetKeyHeightPx()
+        key.layoutParams = lp
+        if (accentsFor(base).isEmpty()) {
+            key.setOnClickListener { commitSnippetLetter(base) }
+        } else {
+            attachLongPress(
+                key,
+                onLongPress = {
+                    haptic(key)
+                    ensureSnippetSearchMode()
+                    showAccentPopup(key, base)
+                },
+                onTapUp = { commitSnippetLetter(base) },
+            )
+        }
+        // Registro para que applyCase refleje el shift tambien en esta capa.
+        letterKeys.add(Pair(key, base))
+        return key
+    }
+
+    /** Backspace compacto: borra del query, nunca del documento destino. */
+    private fun makeSnippetBackspaceKey(): TextView {
+        val key = makeSpecialKey("⌫", R.drawable.kb_key_alt, 1.3f, if (spanishMode) "borrar" else "delete") {
+            ensureSnippetSearchMode()
+            handleBackspace()
+        }
+        val lp = key.layoutParams as LinearLayout.LayoutParams
+        lp.height = snippetKeyHeightPx()
+        key.layoutParams = lp
+        return key
+    }
+
+    /** Commit alfabetico con activacion garantizada del modo busqueda. */
+    private fun commitSnippetLetter(base: Char) {
+        ensureSnippetSearchMode()
+        commitLetter(base)
     }
 
     private fun buildSnippetSearchRow(): LinearLayout {
@@ -1159,7 +1352,7 @@ class VoiceKeyboardService : InputMethodService() {
             snippetSearchActive = true
             applySnippetSearchVisual()
         }
-        val lp = LinearLayout.LayoutParams(0, dimen(R.dimen.kb_key_height), 1f)
+        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), 1f)
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, 0, m, 0)
         row.addView(et, lp)
@@ -1198,10 +1391,10 @@ class VoiceKeyboardService : InputMethodService() {
             }
             val lp = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                dimen(R.dimen.kb_key_height),
+                keyHeightPx(),
             )
             if (container.childCount > 0) {
-                lp.topMargin = dimen(R.dimen.kb_key_gap)
+                lp.topMargin = rowGapPx()
             }
             container.addView(row, lp)
             i += 2
@@ -1228,10 +1421,13 @@ class VoiceKeyboardService : InputMethodService() {
         chip.contentDescription = snippet.nombre
         attachLongPress(
             chip,
-            onLongPress = { showSnippetMenu(chip, snippet) },
+            onLongPress = {
+                haptic(chip)
+                showSnippetMenu(chip, snippet)
+            },
             onTapUp = { insertSnippet(snippet) },
         )
-        val lp = LinearLayout.LayoutParams(0, dimen(R.dimen.kb_key_height), 1f)
+        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), 1f)
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, 0, m, 0)
         chip.layoutParams = lp
@@ -1279,6 +1475,7 @@ class VoiceKeyboardService : InputMethodService() {
             tv.isClickable = true
             tv.isFocusable = true
             tv.setPadding(pad * 2, pad * 2, pad * 2, pad * 2)
+            tv.setBackgroundResource(R.drawable.kb_menu_item)
             tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
             tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
             tv.setOnClickListener {
@@ -1394,7 +1591,10 @@ class VoiceKeyboardService : InputMethodService() {
     private fun attachAccentLongPress(key: TextView, base: Char) {
         attachLongPress(
             key,
-            onLongPress = { showAccentPopup(key, base) },
+            onLongPress = {
+                haptic(key)
+                showAccentPopup(key, base)
+            },
             onTapUp = { commitLetter(base) },
         )
     }
@@ -1429,9 +1629,11 @@ class VoiceKeyboardService : InputMethodService() {
             tv.isClickable = true
             tv.isFocusable = true
             tv.setPadding(pad * 2, pad, pad * 2, pad)
+            tv.setBackgroundResource(R.drawable.kb_menu_item)
             tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
             tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size).toFloat())
             tv.setOnClickListener {
+                haptic(it)
                 commit(opt)
                 dismissPopup()
             }
@@ -1504,11 +1706,65 @@ class VoiceKeyboardService : InputMethodService() {
         true
     }
 
+    /**
+     * K5-T2/T3: lectura unica por apertura de las preferencias de aspecto
+     * escritas por Ajustes (archivo FlutterSharedPreferences, claves con
+     * prefijo "flutter."). Parseo tolerante: valor desconocido o error
+     * cae al default (media / hapticos ON). El resultado queda cacheado
+     * en campos y no se re-lee hasta la proxima apertura.
+     */
+    private fun loadKeyboardPrefs() {
+        heightFactor = try {
+            when (
+                getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                    .getString("flutter.kb_height_profile", HEIGHT_PROFILE_MEDIA)
+            ) {
+                HEIGHT_PROFILE_BAJA -> HEIGHT_FACTOR_BAJA
+                HEIGHT_PROFILE_ALTA -> HEIGHT_FACTOR_ALTA
+                else -> HEIGHT_FACTOR_MEDIA
+            }
+        } catch (_: Exception) {
+            HEIGHT_FACTOR_MEDIA
+        }
+        hapticsEnabled = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getBoolean("flutter.kb_haptics_enabled", true)
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    /** Altura de tecla estandar escalada por el perfil activo. */
+    private fun keyHeightPx(): Int = scaleV(dimen(R.dimen.kb_key_height))
+
+    /** Altura compacta de las teclas QWERTY de la capa snippets. */
+    private fun snippetKeyHeightPx(): Int = scaleV(dimen(R.dimen.kb_snippet_key_height))
+
+    /** Margen vertical entre filas, escalado igual que las teclas. */
+    private fun rowGapPx(): Int = scaleV(dimen(R.dimen.kb_key_gap))
+
+    /**
+     * Escala una dimension vertical propia del contenido del teclado con el
+     * factor del perfil. NUNCA aplicar sobre insets ni paddings derivados de
+     * WindowInsets (leccion 9.1-20).
+     */
+    private fun scaleV(px: Int): Int = (px * heightFactor).toInt()
+
     companion object {
         private const val LONG_PRESS_MILLIS = 350L
 
         /** Tope del query de busqueda de snippets. */
         private const val SNIPPET_QUERY_MAX_CHARS = 50
+
+        /** Valores del perfil de altura escritos por Ajustes (K5-T2). */
+        private const val HEIGHT_PROFILE_BAJA = "baja"
+        private const val HEIGHT_PROFILE_MEDIA = "media"
+        private const val HEIGHT_PROFILE_ALTA = "alta"
+
+        /** Factores aplicados a alturas verticales propias del teclado. */
+        private const val HEIGHT_FACTOR_BAJA = 0.85f
+        private const val HEIGHT_FACTOR_MEDIA = 1f
+        private const val HEIGHT_FACTOR_ALTA = 1.15f
 
         /** Exclusion mutua de microfono: visible para MainActivity/burbuja. */
         @Volatile

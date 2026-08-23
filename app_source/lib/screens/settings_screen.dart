@@ -46,6 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _showTerminalRow = true;
   bool _showCodeKey = true;
   bool _showLanguageKey = true;
+  String _heightProfile = StorageService.defaultHeightProfile;
+  bool _hapticsEnabled = true;
   List<Snippet> _snippets = [];
 
   @override
@@ -63,6 +65,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadTerminalRowVisible();
     _loadCodeKeyVisible();
     _loadLanguageKeyVisible();
+    _loadHeightProfile();
+    _loadHapticsEnabled();
     _initSnippets();
   }
 
@@ -261,6 +265,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleKeyboardLanguageKey(bool visible) async {
     await _storageService.saveKeyboardLanguageKeyVisible(visible);
     if (mounted) setState(() => _showLanguageKey = visible);
+  }
+
+  Future<void> _loadHeightProfile() async {
+    try {
+      final profile = await _storageService.getHeightProfile();
+      if (mounted) setState(() => _heightProfile = profile);
+    } catch (_) {}
+  }
+
+  Future<void> _saveHeightProfile(String profile) async {
+    await _storageService.setHeightProfile(profile);
+    if (mounted) setState(() => _heightProfile = profile);
+  }
+
+  String get _heightProfileHint {
+    switch (_heightProfile) {
+      case 'baja':
+        return 'Teclas compactas para dejar más pantalla libre.';
+      case 'alta':
+        return 'Teclas más altas para dictar con menos errores.';
+      default:
+        return 'Altura equilibrada entre espacio y precisión.';
+    }
+  }
+
+  Future<void> _loadHapticsEnabled() async {
+    try {
+      final enabled = await _storageService.getHapticsEnabled();
+      if (mounted) setState(() => _hapticsEnabled = enabled);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleHaptics(bool enabled) async {
+    await _storageService.setHapticsEnabled(enabled);
+    if (mounted) setState(() => _hapticsEnabled = enabled);
   }
 
   Future<void> _loadKeyboardStatus() async {
@@ -509,6 +548,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     value: _showLanguageKey,
                     onChanged: _toggleKeyboardLanguageKey,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Altura del teclado',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<String>(
+                    key: const ValueKey('kb-height-profile-selector'),
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(value: 'baja', label: Text('Baja')),
+                      ButtonSegment(value: 'media', label: Text('Media')),
+                      ButtonSegment(value: 'alta', label: Text('Alta')),
+                    ],
+                    selected: {_heightProfile},
+                    onSelectionChanged: (profiles) =>
+                        _saveHeightProfile(profiles.first),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _heightProfileHint,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Vibración'),
+                    subtitle: Text(
+                      'Feedback háptico al tocar cada tecla.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    value: _hapticsEnabled,
+                    onChanged: _toggleHaptics,
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(

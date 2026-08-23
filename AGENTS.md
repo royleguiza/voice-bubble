@@ -262,4 +262,4 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 **Siguiente etapa**: **K4 – Snippets y comandos**, ejecutado con el sistema de orquestación de subagentes + auditoría definido en `PLAN-EJECUCION-LOOP.md` (sin push a `main` hasta completar TODO el alcance restante). Las verificaciones de dispositivo pendientes (casos borde K2/K3) se acumulan en el checklist del dueño dentro de ese plan y se cierran juntas al final.
 
 **Deuda técnica menor (no bloqueante)**:
-- Limpiar los registros muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` (~líneas 74–76 y 115–117).
+- (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
