@@ -32,10 +32,10 @@
 - Mantener ocultación de ☰ en campos de contraseña sin dejar huecos.
 
 **Criterios de aceptación (dispositivo)**:
-- [ ] ☰ queda entre . y ↵ en capas LETTERS/SYMBOLS/CODE.
-- [ ] Espacio visualmente más centrado que hoy.
-- [ ] Todas las funciones previas de la fila operan (?123, </>, ES/EN, 🎤, coma, punto, enter).
-- [ ] En campo de contraseña ☰ invisible y fila equilibrada.
+- [x] ☰ queda entre . y ↵ en capas LETTERS/SYMBOLS/CODE.
+- [x] Espacio visualmente más centrado que hoy.
+- [x] Todas las funciones previas de la fila operan (?123, </>, ES/EN, 🎤, coma, punto, enter).
+- [x] En campo de contraseña ☰ invisible y fila equilibrada.
 
 ## P2 — Panel de snippets: contenedor +20%, búsqueda compacta, chips densos, grid 3 columnas responsivo
 
@@ -50,11 +50,11 @@
 - Verificar que con la nueva altura se ven ~4–6 chips sin scrollear en pantalla típica.
 
 **Criterios de aceptación (dispositivo)**:
-- [ ] Contenedor claramente más alto (+20% mínimo) y escala con perfil baja/media/alta.
-- [ ] Búsqueda más chica pero usable.
-- [ ] Chips compactos; los 5 seeds casi sin scroll.
-- [ ] Con 5 seeds: filas de 3+2 full width; con 7: 3+3+1 full width.
-- [ ] Filtro en vivo OK; backspace borra query; nada escribe en el documento.
+- [x] Contenedor claramente más alto (+20% mínimo) y escala con perfil baja/media/alta.
+- [x] Búsqueda más chica pero usable.
+- [x] Chips compactos; los 5 seeds casi sin scroll.
+- [x] Con 5 seeds: filas de 3+2 full width; con 7: 3+3+1 full width.
+- [x] Filtro en vivo OK; backspace borra query; nada escribe en el documento.
 
 ## P3 — Shift: doble pulsación = CAPS LOCK persistente + glifo más grande
 
@@ -68,10 +68,10 @@
 - Glifo ⇧ +10–15% de tamaño interno (nuevo dimen tipo kb_key_glyph_shift; contenedor intacto).
 
 **Criterios de aceptación (dispositivo)**:
-- [ ] Tap simple: una mayúscula y vuelve (comportamiento actual intacto).
-- [ ] Doble tap rápido: mayúsculas persistentes; escribir MY_FUNC completo; tap posterior restaura.
-- [ ] Shift momentáneo y capsLock distinguibles a simple vista.
-- [ ] ⇧ claramente más grande/pesada sin romper la fila.
+- [x] Tap simple: una mayúscula y vuelve (comportamiento actual intacto).
+- [x] Doble tap rápido: mayúsculas persistentes; escribir MY_FUNC completo; tap posterior restaura.
+- [x] Shift momentáneo y capsLock distinguibles a simple vista.
+- [x] ⇧ claramente más grande/pesada sin romper la fila.
 
 ## P4 — Glifos internos: ↵ , . +10–15%
 
@@ -82,7 +82,7 @@
 - Centrado óptico verificado; ajustar padding solo si hace falta.
 
 **Criterios de aceptación (dispositivo)**:
-- [ ] ↵ , . claramente más grandes, sin tocar teclas vecinas ni desalinear filas.
+- [x] ↵ , . claramente más grandes, sin tocar teclas vecinas ni desalinear filas.
 
 ## P5 — Historial del micrófono: fix del modal vacío
 
@@ -98,10 +98,10 @@
 **Fix**: el que la evidencia respalde; mínimo esperado: lectura fresca garantizada + tolerancia de formato si aplica + conteo de descartes. Ventana con hasta 20 entradas por timestamp desc; tap inserta en cursor sin duplicar.
 
 **Criterios de aceptación (dispositivo)**:
-- [ ] Con historial existente (teclado y/o burbuja) la ventana muestra las entradas reales.
-- [ ] Insertar deposita el texto en el cursor y no duplica en historial.
-- [ ] Con historial genuinamente vacío dice "Sin transcripciones todavía".
-- [ ] Cero contenido en logs.
+- [x] Con historial existente (teclado y/o burbuja) la ventana muestra las entradas reales.
+- [x] Insertar deposita el texto en el cursor y no duplica en historial.
+- [x] Con historial genuinamente vacío dice "Sin transcripciones todavía".
+- [x] Cero contenido en logs.
 
 ## P6 — ⌫: autorrepetición por pulsación larga + gesto deslizante para borrar palabra
 
@@ -115,10 +115,10 @@
 4. i18n de contentDescription si cambia.
 
 **Criterios de aceptación (dispositivo)**:
-- [ ] Mantener presionado ⌫ borra continuo acelerado; soltar detiene al instante.
-- [ ] Deslizar a la izquierda durante la pulsación borra palabra por palabra según distancia.
-- [ ] Tap corto sigue borrando exactamente 1 carácter.
-- [ ] En búsqueda de snippets ambas modalidades operan sobre el query.
+- [x] Mantener presionado ⌫ borra continuo acelerado; soltar detiene al instante.
+- [x] Deslizar a la izquierda durante la pulsación borra palabra por palabra según distancia.
+- [x] Tap corto sigue borrando exactamente 1 carácter.
+- [x] En búsqueda de snippets ambas modalidades operan sobre el query.
 
 ---
 
@@ -148,7 +148,7 @@ Condiciones de vigilancia registradas por el auditor (no bloqueantes):
 - `lastHistoryDiscarded` es un gancho de diagnóstico pasivo sin consumidor aún.
 - Palabras >64 chars se recortan parciales en el gesto ⌫ (documentado v1.1).
 
-## Verificación del dueño (completar tras recibir APK)
+## Verificación del dueño (declarada completa por el dueño el 2026-08-23; validación física pendiente de su descarga del APK)
 
 **P1:** ☰ entre `.` y `↵` en LETTERS/SYMBOLS/CODE · espacio más centrado · toda la fila funciona · contraseña sin ☰ ni huecos.
 **P2:** contenedor claramente más alto y escala con perfil baja/media/alta · búsqueda compacta usable · chips compactos, 5 seeds casi sin scroll · 5 seeds = filas 3+2 full width; crear 7 = 3+3+1 · filtro vivo/backspace/nada al documento.
@@ -160,4 +160,4 @@ Condiciones de vigilancia registradas por el auditor (no bloqueantes):
 
 | # | Fecha | Tarjeta | Síntoma | App/contexto |
 |---|---|---|---|---|
-| | | | | |
+| — | 2026-08-23 | P1–P6 + auditoría total v1 (F1–F11) | Sin incidencias reportadas; dueño declaró todo completo antes de descargar r62 | APK r58/r62, CI verde runs `32655570378` y `32666610965` |
