@@ -254,6 +254,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [ ] K2 – Capa código y teclas terminales
 - [ ] K3 – Dictado por voz dentro del teclado
 - [x] Lote de pulido visual del teclado (2026-08-23, avance de K5): switches en Ajustes para ocultar la tecla `</>` (`kb_code_key_visible`) y la de idioma ES/EN (`kb_language_key_visible`, puente Flutter↔Kotlin del patrón K2.1); pesos ampliados de ⇧/⌫/↵ (1.3f/1.3f/1.8f); contraste modo claro con `kb_key_bg_alt` #D6D6DC + stroke 1dp `kb_key_stroke`. CI verde run `32617334365`, APK **r54**, 302 tests. Verificado por el dueño en dispositivo (2026-08-23): switches ocultan/revelan teclas, mejora visible en claro y oscuro, dictado sigue operativo
+- [x] Lote historial + audios largos del teclado (2026-08-23): FIX de historial que no mostraba dictados del teclado (HomeScreen ahora relee SharedPreferences al volver al primer plano vía WidgetsBindingObserver); historial emergente desde el teclado (toque largo en 🎤 en reposo → ventana con las últimas 20, tocar inserta en cursor, sin Log, sin duplicar entrada); tope de dictado subido de 60 s a 5 minutos (`SpeechToTextClient.MAX_SECONDS` como fuente única) y readTimeout HTTP a 240 s. CI verde run `32619043596`, APK **r55**, 304 tests. PENDIENTE verificación del dueño en dispositivo
 - [ ] K4 – Snippets y comandos (con 5 seeds)
 - [ ] K5 – Pulido, robustez y entrega (tag `v0.9.0-keyboard-beta`)
 - [ ] Hito 4 – Pegado inteligente (Accessibility) → **CONGELADO**: el dictado desde el teclado nativo cubre la inserción en cursor; reevaluar tras K3
