@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: android-${{ github.ref }}
@@ -21,6 +21,34 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Contrato de claves del puente
+        run: |
+          KT=voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt
+          test -d "$KT" || { echo '::error::falta el arbol Kotlin versionado del teclado'; exit 1; }
+          grep -rvhE '^[[:space:]]*import ' "$KT" \
+            | grep -ohE 'flutter\.[a-z_0-9]+' \
+            | sed 's/^flutter\.//' \
+            | sort -u > /tmp/claves-kotlin.txt
+          diff -u docs/contract-keys.txt /tmp/claves-kotlin.txt \
+            || { echo '::error::paridad de claves Kotlin-Dart rota (fuente de verdad docs/contract-keys.txt)'; exit 1; }
+
+      - name: Hex de colores valido
+        run: |
+          BAD=$(grep -rnoE '<color name="[^"]+">[^<]+</color>' voice_bubble_stt/android/app/src/main/res/values* \
+            | grep -vE '>(@[A-Za-z0-9_/]+|#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8}))</color>$')
+          if [ -n "$BAD" ]; then
+            echo "$BAD"
+            echo '::error::hex invalido en colors.xml'
+            exit 1
+          fi
+
+      - name: Sin contenido en Logs
+        run: |
+          if grep -rniE 'Log\.[a-z]+\(.*\b(texto|contenido|api_?key|token)\b' voice_bubble_stt/android/app/src/main/kotlin; then
+            echo '::error::posible filtracion de contenido en Log'
+            exit 1
+          fi
 
       - name: Java 17 (con cache de Gradle)
         uses: actions/setup-java@v4
@@ -37,49 +65,6 @@ jobs:
         with:
           channel: stable
           cache: true
-
-      - name: Scaffold del proyecto (solo si falta)
-        run: |
-          if [ ! -d voice_bubble_stt/android ]; then
-            flutter create voice_bubble_stt \
-              --platforms android \
-              --org com.royleguiza \
-              --project-name voice_bubble_stt
-
-            cp app_source/pubspec.yaml voice_bubble_stt/pubspec.yaml
-            cp app_source/analysis_options.yaml voice_bubble_stt/analysis_options.yaml
-            rm -rf voice_bubble_stt/lib voice_bubble_stt/test
-            cp -r app_source/lib voice_bubble_stt/
-            cp -r app_source/test voice_bubble_stt/
-
-            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 28/' \
-              voice_bubble_stt/android/app/build.gradle.kts
-            grep -q 'minSdk = 28' voice_bubble_stt/android/app/build.gradle.kts \
-              || { echo '::error::sed minSdk no aplicado'; exit 1; }
-
-            sed -i 's|<application|<uses-permission android:name="android.permission.RECORD_AUDIO"/>\n    <uses-permission android:name="android.permission.INTERNET"/>\n    <application|' \
-              voice_bubble_stt/android/app/src/main/AndroidManifest.xml
-            grep -q 'RECORD_AUDIO' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
-              || { echo '::error::permiso RECORD_AUDIO no insertado'; exit 1; }
-            grep -q 'INTERNET' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
-              || { echo '::error::permiso INTERNET no insertado'; exit 1; }
-
-            sed -i 's|android:label="voice_bubble_stt"|android:label="VoiceBubble STT"|' \
-              voice_bubble_stt/android/app/src/main/AndroidManifest.xml
-            grep -q 'VoiceBubble STT' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
-              || { echo '::error::sed label no aplicado'; exit 1; }
-
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add voice_bubble_stt
-            if git diff --cached --quiet; then
-              echo "Sin cambios que commitear"
-            else
-              git commit -m "Hito 0: scaffold Flutter generado por CI"
-              git pull --rebase origin main
-              git push
-            fi
-          fi
 
       - name: Sincronizar fuente (app_source -> voice_bubble_stt)
         run: |

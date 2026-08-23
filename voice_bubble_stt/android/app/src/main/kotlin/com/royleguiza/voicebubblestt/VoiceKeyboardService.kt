@@ -81,8 +81,15 @@ class VoiceKeyboardService : InputMethodService() {
     private var currentIsPasswordField = false
     private var micKeyView: TextView? = null
     private var statusRowView: TextView? = null
+    private var statusMessage: String? = null
     private var timeoutRunnable: Runnable? = null
     private var dismissStatusRunnable: Runnable? = null
+
+    // AT-A1: token de generacion del dictado. Cada cancelacion lo avanza;
+    // los callbacks onDone/onError capturan su valor y se abortan si difiere,
+    // asi un cambio de campo/app durante PROCESSING nunca comete texto en
+    // el campo equivocado.
+    private var transcriptionGeneration = 0
     private var focusRequest: AudioFocusRequest? = null
     private var pulseAnimators: List<ObjectAnimator> = emptyList()
 
@@ -99,14 +106,27 @@ class VoiceKeyboardService : InputMethodService() {
     private var snippetSearchField: EditText? = null
 
     // --- Preferencias de aspecto (K5-T2/T3, puente Flutter) ---
-    // Se leen UNA VEZ por apertura (loadKeyboardPrefs en onCreateInputView y
-    // onStartInputView) y quedan cacheadas aca para no golpear SharedPreferences
-    // en cada tecla. heightFactor escala solo alturas propias del teclado,
-    // jamas el padding inferior por insets.
+    // AT-A13: se leen UNA VEZ por ciclo del campo (loadKeyboardPrefs en
+    // onStartInputView, que siempre corre tras onCreateInputView) y quedan
+    // cacheadas aca para no golpear SharedPreferences en cada tecla.
+    // Caducidad honesta: un cambio hecho en Ajustes se aplica al abrirse el
+    // proximo campo, no en vivo. heightFactor escala solo alturas propias
+    // del teclado, jamas el padding inferior por insets.
     private var heightFactor = HEIGHT_FACTOR_MEDIA
     private var hapticsEnabled = true
 
+    // AT-A8: cache de visibilidad leida junto a lo anterior; rebuild jamas
+    // consulta SharedPreferences.
+    private var terminalRowVisiblePref = true
+    private var codeKeyVisiblePref = true
+    private var languageKeyVisiblePref = true
+
     private lateinit var root: LinearLayout
+
+    // AT-A9: vista vigente devuelta al sistema por onCreateInputView. Los
+    // avisos la comparan por identidad antes de tocar root, porque
+    // ::root.isInitialized no detecta que root ya fue reemplazado.
+    private var inputView: View? = null
     private val letterKeys = mutableListOf<Pair<TextView, Char>>()
     private val shiftKeyViews = mutableListOf<TextView>()
     private val modifierKeyViews = mutableListOf<Pair<TextView, Boolean>>()
@@ -122,12 +142,12 @@ class VoiceKeyboardService : InputMethodService() {
         cancelDictationIfActive()
         sttClient = SpeechToTextClient(this) { spanishMode }
         snippetStore = SnippetStore(this)
-        loadKeyboardPrefs()
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
         applyBottomInsets()
         rebuild()
+        inputView = root
         return root
     }
 
@@ -166,6 +186,9 @@ class VoiceKeyboardService : InputMethodService() {
         cancelDictationIfActive()
         loadKeyboardPrefs()
         currentIsPasswordField = isPasswordInput(info)
+        // AT-A4: BUSY es espejo del estado de la burbuja; si ella ya solto
+        // el microfono, el teclado arranca este campo en IDLE.
+        if (micState == MicState.BUSY && !bubbleBusy()) micIdle()
         layer = Layer.LETTERS
         lastLettersLayer = Layer.LETTERS
         deactivateShift()
@@ -179,6 +202,7 @@ class VoiceKeyboardService : InputMethodService() {
         if (info == null) return false
         val variation = info.inputType and InputType.TYPE_MASK_VARIATION
         return variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+            variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
             variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
             variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
     }
@@ -222,7 +246,7 @@ class VoiceKeyboardService : InputMethodService() {
         root.removeAllViews()
 
         // K2.1: fila terminal ocultable desde Ajustes de la app (default visible).
-        if (terminalRowVisible()) {
+        if (terminalRowVisiblePref) {
             addRow(buildTerminalRow())
         }
         when (layer) {
@@ -370,12 +394,12 @@ class VoiceKeyboardService : InputMethodService() {
             rebuild()
         })
         // K2.2: teclas de capa codigo e idioma ocultables desde Ajustes (default visibles).
-        if (codeKeyVisible()) {
+        if (codeKeyVisiblePref) {
             row.addView(makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, if (spanishMode) "capa código" else "code layer") {
                 toggleCodeLayer()
             })
         }
-        if (languageKeyVisible()) {
+        if (languageKeyVisiblePref) {
             row.addView(makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language") {
                 spanishMode = !spanishMode
                 rebuild()
@@ -396,7 +420,7 @@ class VoiceKeyboardService : InputMethodService() {
         row.addView(makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct)))
         // K4: acceso a la capa snippets; oculto en campos de contrasena igual que el microfono.
         if (!currentIsPasswordField) {
-            row.addView(makeSpecialKey("☰", R.drawable.kb_key_alt, 1f, "snippets") {
+            row.addView(makeSpecialKey("☰", R.drawable.kb_key_alt, 1f, if (spanishMode) "fragmentos" else "snippets") {
                 toggleSnippetsLayer()
             })
         }
@@ -405,7 +429,7 @@ class VoiceKeyboardService : InputMethodService() {
                 "↵",
                 R.drawable.kb_key_accent,
                 1.8f,
-                "enter",
+                if (spanishMode) "intro" else "enter",
                 dimen(R.dimen.kb_key_glyph_enter),
             ) {
                 handleEnter()
@@ -468,7 +492,6 @@ class VoiceKeyboardService : InputMethodService() {
     private fun codeRow(chars: String): LinearLayout {
         val row = horizontalRow()
         for (c in chars) {
-            if (c == ' ') continue
             row.addView(makeCodeKey(c))
         }
         return row
@@ -507,7 +530,8 @@ class VoiceKeyboardService : InputMethodService() {
         return key
     }
 
-    /** Tecla de capa codigo: toque corto el simbolo, toque largo el par cerrado. */
+    /** Tecla de capa codigo: toque corto el simbolo, toque largo el par cerrado
+     *  (solo si existe pareja; si no, tap plano). */
     private fun makeCodeKey(ch: Char): TextView {
         val key = makeKey(
             ch.toString(),
@@ -696,17 +720,24 @@ class VoiceKeyboardService : InputMethodService() {
         val editable = et.text
         if (editable.length >= SNIPPET_QUERY_MAX_CHARS) return true
         val remaining = SNIPPET_QUERY_MAX_CHARS - editable.length
-        val chunk = if (text.length > remaining) text.substring(0, remaining) else text
+        var chunk = if (text.length > remaining) text.substring(0, remaining) else text
+        // AT-A5: el recorte nunca deja un high surrogate suelto al final.
+        if (chunk.isNotEmpty() && Character.isHighSurrogate(chunk.last())) {
+            chunk = chunk.dropLast(1)
+        }
         editable.append(chunk)
         et.setSelection(editable.length)
         refreshSnippetGrid()
         return true
     }
 
-    /** Envio del caracter con META_CTRL/META_ALT via KeyEvent (patron Hacker's Keyboard). */
+    /** Envio del caracter con META_CTRL/META_ALT via KeyEvent (patron Hacker's
+     *  Keyboard). Sin codigo fisico (ej. ñ) la combinacion es imposible:
+     *  AT-A15 comite el caracter tal cual para no comerse la pulsacion. */
     private fun sendModifiedChar(c: Char) {
         val code = keyCodeFor(c)
         if (code == null) {
+            currentInputConnection?.commitText(c.toString(), 1)
             consumeModifiers()
             return
         }
@@ -742,7 +773,16 @@ class VoiceKeyboardService : InputMethodService() {
             val et = snippetSearchField ?: return
             val text = et.text
             if (!text.isNullOrEmpty()) {
-                text.delete(text.length - 1, text.length)
+                // AT-A5: un par surrogate (emoji) se borra entero, no de a medio.
+                val count = if (
+                    text.length >= 2 &&
+                    Character.isSurrogatePair(text[text.length - 2], text[text.length - 1])
+                ) {
+                    2
+                } else {
+                    1
+                }
+                text.delete(text.length - count, text.length)
                 et.setSelection(text.length)
                 refreshSnippetGrid()
             }
@@ -758,7 +798,21 @@ class VoiceKeyboardService : InputMethodService() {
             ic.commitText("", 1)
             return
         }
-        if (!ic.deleteSurroundingText(1, 0)) {
+        // AT-A5: mismo criterio sobre el documento via InputConnection.
+        val before = try {
+            ic.getTextBeforeCursor(2, 0)
+        } catch (_: Exception) {
+            null
+        }
+        val count = if (
+            before != null && before.length == 2 &&
+            Character.isSurrogatePair(before[0], before[1])
+        ) {
+            2
+        } else {
+            1
+        }
+        if (!ic.deleteSurroundingText(count, 0)) {
             sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         }
     }
@@ -936,12 +990,16 @@ class VoiceKeyboardService : InputMethodService() {
         micState = MicState.PROCESSING
         refreshMicVisual()
         val config = sttClient.loadConfig()
+        // AT-A1: los callbacks capturan la generacion vigente; si una
+        // cancelacion la avanza mientras transcribiamos, se abortan solos.
+        val generation = transcriptionGeneration
         Thread {
             val wav = sttClient.stopRecording()
             abandonAudioFocus()
             keyboardRecordingActive = false
             if (sttClient.isEmptyCapture(wav)) {
                 runOnMain {
+                    if (generation != transcriptionGeneration) return@runOnMain
                     micIdle()
                     showStatus(if (spanishMode) "No se detectó voz." else "No voice detected.")
                 }
@@ -951,18 +1009,25 @@ class VoiceKeyboardService : InputMethodService() {
                 wav,
                 config,
                 onDone = { text ->
+                    // AT-A3: historial (lectura de disco + XML + prefs) en el
+                    // hilo de fondo del cliente; sus callbacks jamas llegan
+                    // por el hilo principal.
+                    if (!text.isNullOrBlank()) addToSharedHistory(text)
                     runOnMain {
+                        if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
                         if (text.isNullOrBlank()) {
                             showStatus(if (spanishMode) "No se detectó voz." else "No voice detected.")
                         } else {
-                            commit(text)
-                            addToSharedHistory(text)
+                            // AT-A10: el dictado se comete directo en el campo
+                            // destino; jamas alimenta el query de snippets.
+                            currentInputConnection?.commitText(text, 1)
                         }
                     }
                 },
                 onError = { message ->
                     runOnMain {
+                        if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
                         showStatus(message)
                     }
@@ -996,6 +1061,7 @@ class VoiceKeyboardService : InputMethodService() {
         keyboardRecordingActive = false
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = null
+        transcriptionGeneration++
         micIdle()
         if (client != null) {
             Thread {
@@ -1017,6 +1083,11 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun refreshMicVisual() {
+        // AT-A4: sin cambio de campo no hay otro punto que reevalue la
+        // burbuja; si ella dejo de grabar, BUSY zombi vuelve a IDLE.
+        if (micState == MicState.BUSY && !bubbleBusy()) {
+            micState = MicState.IDLE
+        }
         micKeyView?.let { applyMicVisual(it) }
     }
 
@@ -1107,15 +1178,6 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /**
-     * Descartes de la ultima operacion sobre el historial (candidatos crudos
-     * que no produjeron un objeto JSON valido). Diagnostico EXCLUSIVAMENTE
-     * numerico: jamas contiene ni expone contenido ni claves (regla
-     * transversal 4).
-     */
-    @Volatile
-    private var lastHistoryDiscarded = 0
-
-    /**
      * Alta en el historial FIFO-20 compartido con la app. La base de
      * escritura es writableHistoryBase(): lectura fresca de disco mas las
      * entradas de la cache cuyo timestamp no exista ya en disco (merge por
@@ -1131,7 +1193,6 @@ class VoiceKeyboardService : InputMethodService() {
             val newEntry = JSONObject()
                 .put("text", text)
                 .put("timestamp", java.time.Instant.now().toString())
-                .put("isLocal", false)
             entries.add(newEntry)
             val sorted = entries.sortedByDescending { historyEntryInstant(it) }
             val out = LinkedHashSet<String>()
@@ -1223,35 +1284,33 @@ class VoiceKeyboardService : InputMethodService() {
         popup.isOutsideTouchable = true
         val loc = IntArray(2)
         anchor.getLocationInWindow(loc)
+        val gap = dimen(R.dimen.kb_key_gap)
         activePopup = popup
         popup.showAtLocation(
             root,
             Gravity.NO_GRAVITY,
             loc[0],
-            loc[1] - popupHeight - dimen(R.dimen.kb_key_gap),
+            // AT-A12: jamas Y negativo (fila superior + perfil alto); si no
+            // cabe arriba, se solapa con el ancla antes que salirse de pantalla.
+            maxOf(gap, loc[1] - popupHeight - gap),
         )
     }
 
     /**
      * Historial compartido parseado para la ventana: tolerante (los candidatos
-     * que no son objetos JSON validos se descartan y quedan contados en
-     * [lastHistoryDiscarded], diagnostico solo numerico, jamas contenido),
-     * ordenado por timestamp descendente y con dedup por timestamp parseado
+     * que no son objetos JSON validos se descartan en silencio), ordenado por
+     * timestamp descendente y con dedup por timestamp parseado
      * (una misma entrada presente en dos serializaciones ocupa una sola fila;
      * entradas con timestamp imposible no participan del dedup y nunca se
      * pierden). Mismo criterio de lectura que addToSharedHistory y la app.
      */
     private fun sharedHistoryEntries(): List<JSONObject> {
-        var discarded = 0
         val parsed = ArrayList<JSONObject>()
         for (raw in sharedHistoryRaw()) {
             try {
                 parsed.add(JSONObject(raw))
-            } catch (_: Exception) {
-                discarded++
-            }
+            } catch (_: Exception) {}
         }
-        lastHistoryDiscarded = discarded
         val seen = HashSet<java.time.Instant>()
         val out = ArrayList<JSONObject>(20)
         for (obj in parsed.sortedByDescending { historyEntryInstant(it) }) {
@@ -1294,11 +1353,9 @@ class VoiceKeyboardService : InputMethodService() {
      * no exista ya en disco (las de timestamp imposible cuentan como "solo
      * cache" unicamente si su texto crudo no esta en disco, para no duplicar
      * el espejo cache-disco). Asi sobreviven las escrituras apply() aun no
-     * volcadas sin resucitar entradas borradas desde la app. Los descartes de
-     * ambas fuentes quedan contados en [lastHistoryDiscarded] (solo numeros).
+     * volcadas sin resucitar entradas borradas desde la app.
      */
     private fun writableHistoryBase(): ArrayList<JSONObject> {
-        var discarded = 0
         val diskRaw = try {
             readFreshHistoryFromDisk()
         } catch (_: Exception) {
@@ -1311,9 +1368,7 @@ class VoiceKeyboardService : InputMethodService() {
                 val obj = JSONObject(raw)
                 historyEntryInstantOrNull(obj)?.let { diskTimes.add(it) }
                 base.add(obj)
-            } catch (_: Exception) {
-                discarded++
-            }
+            } catch (_: Exception) {}
         }
         try {
             getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
@@ -1325,7 +1380,6 @@ class VoiceKeyboardService : InputMethodService() {
                         val obj = try {
                             JSONObject(raw)
                         } catch (_: Exception) {
-                            discarded++
                             continue
                         }
                         val ts = historyEntryInstantOrNull(obj)
@@ -1335,7 +1389,6 @@ class VoiceKeyboardService : InputMethodService() {
                     }
                 }
         } catch (_: Exception) {}
-        lastHistoryDiscarded = discarded
         return base
     }
 
@@ -1454,8 +1507,13 @@ class VoiceKeyboardService : InputMethodService() {
 
     /** Aviso inline no bloqueante; auto-descarta a los 3.5 s. */
     private fun showStatus(message: String, openSettingsOnClick: Boolean = false) {
-        root.post {
-            if (!::root.isInitialized) return@post
+        val view = root
+        view.post {
+            // AT-A9: identidad contra la vista vigente; una vista vieja ya
+            // reemplazada nunca crea ni borra avisos.
+            if (view !== inputView) return@post
+            // AT-A9: un aviso identico aun vivo conserva su timer original.
+            if (message == statusMessage && statusRowView != null) return@post
             removeStatusRow()
             val tv = TextView(this)
             tv.text = message
@@ -1468,6 +1526,7 @@ class VoiceKeyboardService : InputMethodService() {
                 tv.isClickable = true
                 tv.setOnClickListener { openAppUi() }
             }
+            statusMessage = message
             statusRowView = tv
             val lp = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -1484,6 +1543,7 @@ class VoiceKeyboardService : InputMethodService() {
     private fun removeStatusRow() {
         dismissStatusRunnable?.let { handler.removeCallbacks(it) }
         dismissStatusRunnable = null
+        statusMessage = null
         statusRowView?.let {
             (it.parent as? ViewGroup)?.removeView(it)
         }
@@ -1522,7 +1582,7 @@ class VoiceKeyboardService : InputMethodService() {
             snippetsSeedAttempted = true
             snippetStore.seedIfFirstOpen()
         }
-        snippetStore.reload()
+        snippetStore.load()
         snippetQuery = ""
         layer = Layer.SNIPPETS
         rebuild()
@@ -1817,12 +1877,14 @@ class VoiceKeyboardService : InputMethodService() {
         box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val loc = IntArray(2)
         anchor.getLocationInWindow(loc)
+        val gap = dimen(R.dimen.kb_key_gap)
         activePopup = popup
         popup.showAtLocation(
             root,
             Gravity.NO_GRAVITY,
             loc[0],
-            loc[1] - box.measuredHeight - dimen(R.dimen.kb_key_gap),
+            // AT-A12: jamas Y negativo; si no cabe arriba se solapa con el ancla.
+            maxOf(gap, loc[1] - box.measuredHeight - gap),
         )
     }
 
@@ -1877,6 +1939,9 @@ class VoiceKeyboardService : InputMethodService() {
      * recorrido derecho/arriba solo anula tap y long press. En UP nunca hay
      * onTapUp si hubo long press o gesto; un toque corto sin movimiento
      * sigue siendo tap normal.
+     * AT-A16: PROHIBIDO setOnLongClickListener sobre teclas cableadas aqui —
+     * este touch listener consume el UP y dejaria zombi el chequeo de long
+     * press del framework.
      */
     private fun attachLongPress(
         key: TextView,
@@ -2002,15 +2067,19 @@ class VoiceKeyboardService : InputMethodService() {
         )
     }
 
+    /** AT-A11: sin pareja que insertar en toque largo, la tecla lleva un click
+     *  plano (mismo commit que el tap) sin maquinaria de long-press. */
     private fun attachPairLongPress(key: TextView, ch: Char) {
         val close = pairCloseFor(ch)
+        if (close == null) {
+            key.setOnClickListener { commitSymbolText(ch.toString()) }
+            return
+        }
         attachLongPress(
             key,
             onLongPress = {
-                if (close != null) {
-                    commit("$ch$close")
-                    sendKeyCode(KeyEvent.KEYCODE_DPAD_LEFT)
-                }
+                commit("$ch$close")
+                sendKeyCode(KeyEvent.KEYCODE_DPAD_LEFT)
             },
             onTapUp = { commitSymbolText(ch.toString()) },
         )
@@ -2053,12 +2122,14 @@ class VoiceKeyboardService : InputMethodService() {
         box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
         val loc = IntArray(2)
         anchor.getLocationInWindow(loc)
+        val gap = dimen(R.dimen.kb_key_gap)
         activePopup = popup
         popup.showAtLocation(
             root,
             Gravity.NO_GRAVITY,
             loc[0],
-            loc[1] - box.measuredHeight - dimen(R.dimen.kb_key_gap),
+            // AT-A12: jamas Y negativo; si no cabe arriba se solapa con el ancla.
+            maxOf(gap, loc[1] - box.measuredHeight - gap),
         )
     }
 
@@ -2110,11 +2181,13 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /**
-     * K5-T2/T3: lectura unica por apertura de las preferencias de aspecto
-     * escritas por Ajustes (archivo FlutterSharedPreferences, claves con
-     * prefijo "flutter."). Parseo tolerante: valor desconocido o error
-     * cae al default (media / hapticos ON). El resultado queda cacheado
-     * en campos y no se re-lee hasta la proxima apertura.
+     * K5-T2/T3 + AT-A8: lectura UNICA por ciclo del campo (onStartInputView)
+     * de las preferencias de aspecto escritas por Ajustes (archivo
+     * FlutterSharedPreferences, claves con prefijo "flutter."). Parseo
+     * tolerante: valor desconocido o error cae al default. Todo queda cacheado
+     * en campos (heightFactor, hapticsEnabled y las tres visibilidades) y ni
+     * rebuild ni ninguna tecla vuelven a tocar SharedPreferences; los cambios
+     * hechos en Ajustes se aplican al abrirse el proximo campo.
      */
     private fun loadKeyboardPrefs() {
         heightFactor = try {
@@ -2135,6 +2208,9 @@ class VoiceKeyboardService : InputMethodService() {
         } catch (_: Exception) {
             true
         }
+        terminalRowVisiblePref = terminalRowVisible()
+        codeKeyVisiblePref = codeKeyVisible()
+        languageKeyVisiblePref = languageKeyVisible()
     }
 
     /** Altura de tecla estandar escalada por el perfil activo. */

@@ -1,9 +1,8 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
-import 'package:voice_bubble_stt/services/transcription_service.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
+import 'package:voice_bubble_stt/services/transcription_service.dart';
 
 class MockAudioRecorder implements AudioRecorder {
   bool _hasPermissionValue = false;
@@ -52,26 +51,9 @@ class MockAudioRecorder implements AudioRecorder {
 }
 
 void main() {
+  // Determinismo ante la sonda de micrófono del teclado: con binding
+  // inicializado la sonda recibe MissingPluginException -> false controlado.
   TestWidgetsFlutterBinding.ensureInitialized();
-
-  // Backend en memoria para Clipboard: el canal flutter/platform no tiene
-  // implementación nativa en tests y sin mock getData() devuelve null.
-  String? clipboardStore;
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMethodCallHandler(
-    SystemChannels.platform,
-    (MethodCall call) async {
-      switch (call.method) {
-        case 'Clipboard.setData':
-          clipboardStore = (call.arguments as Map)['text'] as String?;
-          return null;
-        case 'Clipboard.getData':
-          return <String, String?>{'text': clipboardStore};
-        default:
-          return null;
-      }
-    },
-  );
 
   group('TranscriptionService - Permisos', () {
     late MockAudioRecorder mockRecorder;
@@ -114,7 +96,7 @@ void main() {
         mockRecorder.setHasPermission(false);
 
         expect(
-          () => service.startRecording('/tmp/test.m4a'),
+          () => service.startRecording('/tmp/test.wav'),
           throwsA(
             isA<TranscriptionException>().having(
               (e) => e.message,
@@ -131,36 +113,11 @@ void main() {
       () async {
         mockRecorder.setHasPermission(true);
 
-        await service.startRecording('/tmp/test.m4a');
+        await service.startRecording('/tmp/test.wav');
 
         expect(mockRecorder.started, isTrue);
-        expect(mockRecorder.lastStartedPath, '/tmp/test.m4a');
+        expect(mockRecorder.lastStartedPath, '/tmp/test.wav');
       },
     );
-  });
-
-  group('Clipboard Service & Channels', () {
-    test('Clipboard.setData guarda texto y Clipboard.getData lo recupera', () async {
-      const testText = 'Texto de transcripción para portapapeles';
-      await Clipboard.setData(const ClipboardData(text: testText));
-
-      final result = await Clipboard.getData(Clipboard.kTextPlain);
-      expect(result?.text, testText);
-    });
-
-    test('Clipboard maneja texto con caracteres especiales y acentos', () async {
-      const complexText = 'Acentos: áéíóú ñ, emojis: 🎤🚀, comillas: "test"';
-      await Clipboard.setData(const ClipboardData(text: complexText));
-
-      final result = await Clipboard.getData(Clipboard.kTextPlain);
-      expect(result?.text, complexText);
-    });
-
-    test('Clipboard maneja texto vacío', () async {
-      await Clipboard.setData(const ClipboardData(text: ''));
-
-      final result = await Clipboard.getData(Clipboard.kTextPlain);
-      expect(result?.text, '');
-    });
   });
 }

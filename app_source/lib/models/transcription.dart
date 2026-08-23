@@ -1,21 +1,21 @@
 class Transcription {
   final String text;
   final DateTime timestamp;
-  final bool isLocal;
 
   const Transcription({
     required this.text,
     required this.timestamp,
-    required this.isLocal,
   });
 
   factory Transcription.fromJson(Map<String, dynamic> json) {
     return Transcription(
       text: (json['text'] as String?) ?? '',
       timestamp: json['timestamp'] != null
-          ? DateTime.parse(json['timestamp'] as String)
+          // El teclado Kotlin serializa en UTC (Instant); toLocal() unifica
+          // con los dictados de la app (DateTime.now() local) para que el
+          // historial muestre siempre la hora real del usuario.
+          ? DateTime.parse(json['timestamp'] as String).toLocal()
           : DateTime.now(),
-      isLocal: (json['isLocal'] as bool?) ?? false,
     );
   }
 
@@ -23,7 +23,6 @@ class Transcription {
     return {
       'text': text,
       'timestamp': timestamp.toIso8601String(),
-      'isLocal': isLocal,
     };
   }
 
@@ -33,13 +32,11 @@ class Transcription {
       other is Transcription &&
           runtimeType == other.runtimeType &&
           text == other.text &&
-          timestamp == other.timestamp &&
-          isLocal == other.isLocal;
+          timestamp == other.timestamp;
 
   @override
-  int get hashCode => Object.hash(text, timestamp, isLocal);
+  int get hashCode => Object.hash(text, timestamp);
 
   @override
-  String toString() =>
-      'Transcription(text: $text, timestamp: $timestamp, isLocal: $isLocal)';
+  String toString() => 'Transcription(text: $text, timestamp: $timestamp)';
 }

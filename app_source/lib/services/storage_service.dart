@@ -6,17 +6,23 @@ import 'cloud_stt_service.dart';
 
 class StorageService {
   static const String _key = 'transcriptions';
-  static const int _maxItems = 20;
   static const String _recordModeKey = 'recording_mode';
   static const String defaultRecordMode = 'tap';
+
+  /// Limites y valores de contrato compartidos con screens/tests (F6/F10
+  /// importan estos nombres EXACTOS). Fuente unica, sin literales magicos.
+  static const int maxItems = 20;
+  static const int maxSnippets = 50;
+  static const int maxSnippetLength = 2000;
+  static const String recordModeHold = 'hold';
 
   List<Transcription> _transcriptions = [];
 
   List<Transcription> get transcriptions =>
       List.unmodifiable(_transcriptions);
 
-  /// Modo de interacción del botón: 'tap' (toque inicia/detiene)
-  /// o 'hold' (mantener presionado graba, soltar transcribe).
+  /// Modo de interaccion del boton: [defaultRecordMode] (toque inicia/detiene)
+  /// o [recordModeHold] (mantener presionado graba, soltar transcribe).
   Future<String> loadRecordMode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_recordModeKey) ?? defaultRecordMode;
@@ -123,7 +129,6 @@ class StorageService {
   // FlutterSharedPreferences. La API key vive aqui en texto plano dentro de
   // las preferencias PRIVADAS del paquete (inaccesibles para otras apps),
   // nunca en el repo ni en storage externo.
-  static const String _sttProviderKey = 'kb_stt_provider';
   static const String _sttUrlKey = 'kb_stt_url';
   static const String _sttModelKey = 'kb_stt_model';
   static const String _sttApiKeyKey = 'kb_stt_api_key';
@@ -131,7 +136,6 @@ class StorageService {
   Future<void> saveSttMirror({required String apiKey}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_sttApiKeyKey, apiKey);
-    await prefs.setString(_sttProviderKey, CloudSttService.provider);
     await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
     await prefs.setString(_sttModelKey, CloudSttService.model);
     await prefs.setString('kb_stt_language', CloudSttService.language);
@@ -140,15 +144,9 @@ class StorageService {
   Future<void> clearSttMirror() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sttApiKeyKey);
-    await prefs.remove(_sttProviderKey);
     await prefs.remove(_sttUrlKey);
     await prefs.remove(_sttModelKey);
     await prefs.remove('kb_stt_language');
-  }
-
-  Future<String?> loadSttMirroredApiKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_sttApiKeyKey);
   }
 
   // --- Snippets del teclado (K4) ---
@@ -158,8 +156,6 @@ class StorageService {
   // (int). El lado Kotlin lee estas mismas claves con prefijo "flutter.".
   static const String snippetsKey = 'voice_snippets_v1';
   static const String snippetsSeededKey = 'kb_snippets_seeded';
-  static const int _maxSnippets = 50;
-  static const int _maxSnippetLength = 2000;
 
   int _snippetIdCounter = 0;
 
@@ -211,16 +207,16 @@ class StorageService {
   }
 
   /// Agrega un snippet al final de la lista. Devuelve false si viola los
-  /// limites del contrato: nombre vacio, contenido mayor a 2000
-  /// caracteres o ya existen 50 snippets.
+  /// limites del contrato: nombre vacio, contenido mayor a
+  /// [maxSnippetLength] caracteres o ya existen [maxSnippets] snippets.
   Future<bool> addSnippet({
     required String nombre,
     required String contenido,
   }) async {
     if (nombre.trim().isEmpty) return false;
-    if (contenido.length > _maxSnippetLength) return false;
+    if (contenido.length > maxSnippetLength) return false;
     final current = await loadSnippets();
-    if (current.length >= _maxSnippets) return false;
+    if (current.length >= maxSnippets) return false;
     await saveSnippets([
       ...current,
       Snippet(
@@ -242,7 +238,7 @@ class StorageService {
     String? contenido,
   }) async {
     if (nombre != null && nombre.trim().isEmpty) return false;
-    if (contenido != null && contenido.length > _maxSnippetLength) {
+    if (contenido != null && contenido.length > maxSnippetLength) {
       return false;
     }
     final current = await loadSnippets();
@@ -347,19 +343,33 @@ class StorageService {
         // Ignore corrupt entry gracefully
       }
     }
-    _transcriptions = loaded;
+
+    // El lado Kotlin escribe un Set de strings (sin orden garantizado):
+    // el orden FIFO del historial se impone aqui por timestamp descendente.
+    loaded.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    // Merge conservador: una entrada en memoria cuyo timestamp no esta en
+    // disco sobrevive, para no pisar una transcripcion recien anadida
+    // durante un resume. Dedup por timestamp; ante colision gana la entrada
+    // recien leida del disco.
+    final byTimestamp = <DateTime, Transcription>{};
+    for (final t in loaded) {
+      byTimestamp.putIfAbsent(t.timestamp, () => t);
+    }
+    for (final t in _transcriptions) {
+      byTimestamp.putIfAbsent(t.timestamp, () => t);
+    }
+    final merged = byTimestamp.values.toList()
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    _transcriptions =
+        merged.length > maxItems ? merged.sublist(0, maxItems) : merged;
   }
 
   Future<void> add(Transcription transcription) async {
     _transcriptions.insert(0, transcription);
-    if (_transcriptions.length > _maxItems) {
-      _transcriptions = _transcriptions.sublist(0, _maxItems);
+    if (_transcriptions.length > maxItems) {
+      _transcriptions = _transcriptions.sublist(0, maxItems);
     }
-    await _save();
-  }
-
-  Future<void> clear() async {
-    _transcriptions.clear();
     await _save();
   }
 

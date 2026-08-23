@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.io.DataOutputStream
+import java.io.IOException
 
 /**
  * Cliente STT del teclado (K3): graba WAV PCM16 mono 16kHz y consulta el
@@ -130,7 +131,11 @@ class SpeechToTextClient(
         try { recordThread?.join(2500) } catch (_: Exception) {}
         recordThread = null
         audioRecord = null
-        val pcm = synchronized(pcmBuffer) { pcmBuffer.toByteArray() }
+        val pcm = synchronized(pcmBuffer) {
+            val bytes = pcmBuffer.toByteArray()
+            pcmBuffer.reset()
+            bytes
+        }
         return buildWav(pcm)
     }
 
@@ -211,15 +216,26 @@ class SpeechToTextClient(
                 val code = conn.responseCode
                 val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
                     ?.bufferedReader()?.use { it.readText() } ?: ""
+                // La respuesta puede llegar despues de que el usuario cancelo:
+                // el upload siguio corriendo. onDone(null) senala cancelacion.
+                if (cancelRequested) {
+                    onDone(null)
+                    return@Thread
+                }
                 if (code in 200..299) {
                     onDone(JSONObject(body).optString("text", ""))
                 } else {
                     onError(errorDetail(code, body))
                 }
-            } catch (_: Exception) {
+            } catch (_: IOException) {
                 onError(
                     if (spanishModeProvider()) "Sin conexión a internet."
                     else "No internet connection."
+                )
+            } catch (_: Exception) {
+                onError(
+                    if (spanishModeProvider()) "No se pudo procesar la respuesta."
+                    else "Could not process the response."
                 )
             }
         }.apply {

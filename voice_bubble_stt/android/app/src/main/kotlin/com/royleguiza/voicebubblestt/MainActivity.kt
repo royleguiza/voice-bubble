@@ -50,10 +50,24 @@ class MainActivity : FlutterActivity() {
                     }
                     "startBubble" -> {
                         try {
-                            ensurePostNotificationsPermission()
-                            val intent = Intent(this@MainActivity, FloatingBubbleService::class.java)
-                            ContextCompat.startForegroundService(this@MainActivity, intent)
-                            result.success(true)
+                            val hasMicPermission = ContextCompat.checkSelfPermission(
+                                this@MainActivity,
+                                Manifest.permission.RECORD_AUDIO
+                            ) == PackageManager.PERMISSION_GRANTED
+                            if (!hasMicPermission) {
+                                // Sin RECORD_AUDIO, un FGS tipo microphone crashea con
+                                // SecurityException en Android 14+: no arrancar nunca.
+                                result.error(
+                                    "MIC_PERMISSION_DENIED",
+                                    "VoiceBubble necesita el permiso de micrófono para iniciar la burbuja.",
+                                    null
+                                )
+                            } else {
+                                ensurePostNotificationsPermission()
+                                val intent = Intent(this@MainActivity, FloatingBubbleService::class.java)
+                                ContextCompat.startForegroundService(this@MainActivity, intent)
+                                result.success(true)
+                            }
                         } catch (e: Exception) {
                             result.error("START_ERROR", e.message, null)
                         }

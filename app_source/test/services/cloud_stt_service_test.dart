@@ -181,7 +181,6 @@ void main() {
       final result = await service.transcribe(tempAudioFile.path);
 
       expect(result.text, 'Transcripción completada con éxito');
-      expect(result.isLocal, isFalse);
       expect(result.timestamp, isA<DateTime>());
     });
 

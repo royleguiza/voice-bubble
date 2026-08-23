@@ -4,17 +4,6 @@ enum BubbleVisualState {
   idle,
   recording,
   transcribing;
-
-  String get nameString {
-    switch (this) {
-      case BubbleVisualState.recording:
-        return 'recording';
-      case BubbleVisualState.transcribing:
-        return 'transcribing';
-      case BubbleVisualState.idle:
-        return 'idle';
-    }
-  }
 }
 
 class FloatingBubbleService {
@@ -98,7 +87,7 @@ class FloatingBubbleService {
   Future<bool> updateBubbleState(BubbleVisualState state) async {
     try {
       final res = await _channel.invokeMethod<bool>('updateBubbleState', {
-        'state': state.nameString,
+        'state': state.name,
       });
       return res ?? false;
     } catch (_) {

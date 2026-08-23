@@ -156,7 +156,6 @@ class CloudSttService {
       return Transcription(
         text: text,
         timestamp: DateTime.now(),
-        isLocal: false,
       );
     }
 

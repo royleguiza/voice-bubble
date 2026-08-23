@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../models/snippet.dart';
@@ -26,12 +28,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Limites del contrato de snippets (StorageService K4). Se duplican aqui
-  // solo para mostrar el contador y validar en cliente antes de persistir;
-  // la fuente de verdad sigue siendo StorageService.
-  static const int _maxSnippets = 50;
-  static const int _maxSnippetContentLength = 2000;
-
   final _apiKeyController = TextEditingController();
   late final FlutterSecureStorage _secureStorage;
   late final StorageService _storageService;
@@ -58,23 +54,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _floatingBubbleService =
         widget.floatingBubbleService ?? FloatingBubbleService();
     _keyboardService = widget.keyboardService ?? KeyboardService();
-    _loadApiKey();
-    _loadRecordMode();
-    _loadBubbleState();
-    _loadKeyboardStatus();
-    _loadTerminalRowVisible();
-    _loadCodeKeyVisible();
-    _loadLanguageKeyVisible();
-    _loadHeightProfile();
-    _loadHapticsEnabled();
-    _initSnippets();
+    _loadInitialState();
   }
 
-  Future<void> _initSnippets() async {
+  /// Carga inicial de toda la pantalla: las lecturas corren en paralelo y
+  /// aplican UN único setState al terminar (antes: ~10 encadenados al abrir
+  /// Ajustes). Cada lectura captura su propio fallo de frontera de canal y
+  /// conserva el valor por defecto del campo, para que un canal ausente o un
+  /// keystore bloqueado no dejen la pantalla sin estado.
+  Future<void> _loadInitialState() async {
+    final apiKey = await _readStoredApiKey();
+    final results = await (
+      _storageService.loadRecordMode(),
+      _readBubbleEnabled(),
+      _readKeyboardStatus(),
+      _loadInitialSnippets(),
+      _storageService.loadKeyboardTerminalRowVisible(),
+      _storageService.loadKeyboardCodeKeyVisible(),
+      _storageService.loadKeyboardLanguageKeyVisible(),
+      _storageService.getHeightProfile(),
+      _storageService.getHapticsEnabled(),
+    ).wait;
+    // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
+    if (apiKey.isNotEmpty) {
+      try {
+        await _storageService.saveSttMirror(apiKey: apiKey);
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() {
+      _apiKeyController.text = apiKey;
+      _hasApiKey = apiKey.isNotEmpty;
+      _recordMode = results.$1;
+      _isBubbleEnabled = results.$2;
+      _isKeyboardEnabled = results.$3.$1;
+      _isKeyboardSelected = results.$3.$2;
+      _snippets = results.$4..sort((a, b) => a.orden.compareTo(b.orden));
+      _showTerminalRow = results.$5;
+      _showCodeKey = results.$6;
+      _showLanguageKey = results.$7;
+      _heightProfile = results.$8;
+      _hapticsEnabled = results.$9;
+    });
+  }
+
+  /// Lee la API key del secure storage. Frontera de canal: el keystore de
+  /// Android puede lanzar PlatformException (dispositivo recién restaurado o
+  /// bloqueado); sin clave legible se muestra el campo vacío en vez de crashear.
+  Future<String> _readStoredApiKey() async {
     try {
-      await _storageService.ensureSeeds();
-      await _reloadSnippets();
-    } catch (_) {}
+      return await _secureStorage.read(key: 'groq_api_key') ?? '';
+    } catch (_) {
+      return '';
+    }
   }
 
   Future<void> _reloadSnippets() async {
@@ -133,8 +165,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       barrierColor: kScrimColor,
       builder: (_) => _SnippetFormSheet(
         existing: existing,
-        maxContentLength: _maxSnippetContentLength,
-        maxSnippets: _maxSnippets,
+        maxContentLength: StorageService.maxSnippetLength,
+        maxSnippets: StorageService.maxSnippets,
         onSubmit: ({required String nombre, required String contenido}) {
           if (existing == null) {
             return _storageService.addSnippet(
@@ -225,27 +257,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _loadTerminalRowVisible() async {
-    try {
-      final visible = await _storageService.loadKeyboardTerminalRowVisible();
-      if (mounted) {
-        setState(() => _showTerminalRow = visible);
-      }
-    } catch (_) {}
-  }
-
   Future<void> _toggleTerminalRow(bool visible) async {
     await _storageService.saveKeyboardTerminalRowVisible(visible);
     if (mounted) setState(() => _showTerminalRow = visible);
-  }
-
-  Future<void> _loadCodeKeyVisible() async {
-    try {
-      final visible = await _storageService.loadKeyboardCodeKeyVisible();
-      if (mounted) {
-        setState(() => _showCodeKey = visible);
-      }
-    } catch (_) {}
   }
 
   Future<void> _toggleKeyboardCodeKey(bool visible) async {
@@ -253,25 +267,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => _showCodeKey = visible);
   }
 
-  Future<void> _loadLanguageKeyVisible() async {
-    try {
-      final visible = await _storageService.loadKeyboardLanguageKeyVisible();
-      if (mounted) {
-        setState(() => _showLanguageKey = visible);
-      }
-    } catch (_) {}
-  }
-
   Future<void> _toggleKeyboardLanguageKey(bool visible) async {
     await _storageService.saveKeyboardLanguageKeyVisible(visible);
     if (mounted) setState(() => _showLanguageKey = visible);
-  }
-
-  Future<void> _loadHeightProfile() async {
-    try {
-      final profile = await _storageService.getHeightProfile();
-      if (mounted) setState(() => _heightProfile = profile);
-    } catch (_) {}
   }
 
   Future<void> _saveHeightProfile(String profile) async {
@@ -290,29 +288,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _loadHapticsEnabled() async {
-    try {
-      final enabled = await _storageService.getHapticsEnabled();
-      if (mounted) setState(() => _hapticsEnabled = enabled);
-    } catch (_) {}
-  }
-
   Future<void> _toggleHaptics(bool enabled) async {
     await _storageService.setHapticsEnabled(enabled);
     if (mounted) setState(() => _hapticsEnabled = enabled);
   }
 
+  /// Relectura manual (botón Actualizar) del estado del teclado.
   Future<void> _loadKeyboardStatus() async {
+    final status = await _readKeyboardStatus();
+    if (mounted) {
+      setState(() {
+        _isKeyboardEnabled = status.$1;
+        _isKeyboardSelected = status.$2;
+      });
+    }
+  }
+
+  /// Preferencia + proceso vivo: la burbuja solo cuenta como activa si ambas.
+  Future<bool> _readBubbleEnabled() async {
+    try {
+      final enabled = await _storageService.loadFloatingBubbleEnabled();
+      final isRunning = await _floatingBubbleService.isBubbleRunning();
+      return enabled && isRunning;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Estado habilitado/seleccionado vía MethodChannel; defaults si el canal
+  /// no está disponible (tests o servicio ausente).
+  Future<(bool, bool)> _readKeyboardStatus() async {
     try {
       final enabled = await _keyboardService.isKeyboardEnabled();
       final selected = await _keyboardService.isKeyboardSelected();
-      if (mounted) {
-        setState(() {
-          _isKeyboardEnabled = enabled;
-          _isKeyboardSelected = selected;
-        });
-      }
-    } catch (_) {}
+      return (enabled, selected);
+    } catch (_) {
+      return (false, false);
+    }
+  }
+
+  /// Seeds idempotentes + lectura inicial de snippets.
+  Future<List<Snippet>> _loadInitialSnippets() async {
+    try {
+      await _storageService.ensureSeeds();
+      return await _storageService.loadSnippets();
+    } catch (_) {
+      return const <Snippet>[];
+    }
   }
 
   String get _keyboardStatusText {
@@ -323,16 +345,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _openKeyboardSettings() async {
     await _keyboardService.openKeyboardSettings();
-  }
-
-  Future<void> _loadBubbleState() async {
-    try {
-      final enabled = await _storageService.loadFloatingBubbleEnabled();
-      final isRunning = await _floatingBubbleService.isBubbleRunning();
-      if (mounted) {
-        setState(() => _isBubbleEnabled = enabled && isRunning);
-      }
-    } catch (_) {}
   }
 
   Future<void> _toggleBubble(bool enable) async {
@@ -376,32 +388,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _loadRecordMode() async {
-    try {
-      final mode = await _storageService.loadRecordMode();
-      if (mounted) setState(() => _recordMode = mode);
-    } catch (_) {}
-  }
-
   Future<void> _saveRecordMode(String mode) async {
     await _storageService.saveRecordMode(mode);
     if (mounted) setState(() => _recordMode = mode);
-  }
-
-  Future<void> _loadApiKey() async {
-    final key = await _secureStorage.read(key: 'groq_api_key') ?? '';
-    if (mounted) {
-      setState(() {
-        _apiKeyController.text = key;
-        _hasApiKey = key.isNotEmpty;
-      });
-    }
-    // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
-    if (key.isNotEmpty) {
-      try {
-        await _storageService.saveSttMirror(apiKey: key);
-      } catch (_) {}
-    }
   }
 
   Future<void> _saveApiKey() async {
@@ -617,7 +606,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
               Text(
-                '${_snippets.length} / $_maxSnippets',
+                '${_snippets.length} / ${StorageService.maxSnippets}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -641,6 +630,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             )
           else
+            // Lista inline dentro del ListView raíz (tope StorageService.maxSnippets).
+            // Hacerla lazy exigiría CustomScrollView + Slivers en toda la página,
+            // con riesgo alto de regresión en tests de viewport plegado (9.1-17/21);
+            // se documenta y se deja (AT-C14).
             for (var i = 0; i < _snippets.length; i++)
               _buildSnippetTile(_snippets[i], i),
 
@@ -740,15 +733,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SegmentedButton<String>(
             showSelectedIcon: false,
             segments: const [
-              ButtonSegment(value: 'tap', label: Text('Toque')),
-              ButtonSegment(value: 'hold', label: Text('Mantener')),
+              ButtonSegment(
+                  value: StorageService.defaultRecordMode,
+                  label: Text('Toque')),
+              ButtonSegment(
+                  value: StorageService.recordModeHold,
+                  label: Text('Mantener')),
             ],
             selected: {_recordMode},
             onSelectionChanged: (modes) => _saveRecordMode(modes.first),
           ),
           const SizedBox(height: 8),
           Text(
-            _recordMode == 'hold'
+            _recordMode == StorageService.recordModeHold
                 ? 'Mantén presionado para grabar y suelta para transcribir.'
                 : 'Toca para iniciar y vuelve a tocar para transcribir.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(

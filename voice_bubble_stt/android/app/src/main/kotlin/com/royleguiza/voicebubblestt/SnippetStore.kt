@@ -68,11 +68,6 @@ class SnippetStore(private val context: Context) {
         return parsed
     }
 
-    /** Fuerza relectura desde prefs y refresca el cache. */
-    fun reload() {
-        load()
-    }
-
     /** Devuelve el cache; carga perezosa si nunca se cargo. */
     fun get(): List<VbSnippet> {
         synchronized(cacheLock) { cache?.let { return it } }

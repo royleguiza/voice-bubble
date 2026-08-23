@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
+
+import '../helpers/mock_channels.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -13,91 +13,10 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
-
-    // Canales reales del paquete record 5.x (llfbandit)
-    for (final channel in [
-      'com.llfbandit.record',
-      'com.llfbandit.record/messages',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async {
-          final m = methodCall.method.toLowerCase();
-          if (m.contains('permission')) {
-            return true;
-          }
-          switch (methodCall.method) {
-            case 'start':
-            case 'create':
-            case 'dispose':
-            case 'pause':
-            case 'resume':
-            case 'cancel':
-              return null;
-            case 'stop':
-              return '/tmp/recording.m4a';
-            case 'isRecording':
-            case 'is_recording':
-              return true;
-            case 'isPaused':
-            case 'is_paused':
-              return false;
-            case 'getAmplitude':
-              return {'current': -160.0, 'max': -160.0};
-            case 'listInputDevices':
-              return <Map<String, dynamic>>[];
-            default:
-              return true;
-          }
-        },
-      );
-    }
-
-    for (final channel in [
-      'plugins.flutter.io/path_provider',
-      'plugins.flutter.io/path_provider_android',
-      'plugins.flutter.io/path_provider_ios',
-      'plugins.flutter.io/path_provider_macos',
-      'plugins.flutter.io/path_provider_linux',
-      'plugins.flutter.io/path_provider_windows',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async => '/tmp',
-      );
-    }
-
-    for (final channel in [
-      'com.royleguiza.voicebubblestt/floating_bubble',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async => true,
-      );
-    }
+    registerAppChannelMocks();
   });
 
-  tearDown(() {
-    for (final channel in [
-      'com.royleguiza.voicebubblestt/floating_bubble',
-      'com.llfbandit.record',
-      'com.llfbandit.record/messages',
-      'plugins.flutter.io/path_provider',
-      'plugins.flutter.io/path_provider_android',
-      'plugins.flutter.io/path_provider_ios',
-      'plugins.flutter.io/path_provider_macos',
-      'plugins.flutter.io/path_provider_linux',
-      'plugins.flutter.io/path_provider_windows',
-      'plugins.it_nomads.com/flutter_secure_storage',
-      'plugins.flutter.io/shared_preferences',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(MethodChannel(channel), null);
-    }
-  });
+  tearDown(unregisterAppChannelMocks);
 
   Widget buildTestApp({Widget? home}) {
     return MaterialApp(
@@ -107,7 +26,7 @@ void main() {
 
   group('Full user flow – VoiceBubble STT', () {
     testWidgets(
-      '1. App launches and shows HomeScreen',
+      'App launches and shows HomeScreen',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp());
         await tester.pumpAndSettle();
@@ -118,7 +37,7 @@ void main() {
     );
 
     testWidgets(
-      '2. Settings button opens SettingsScreen',
+      'Settings button opens SettingsScreen',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp());
         await tester.pumpAndSettle();
@@ -132,7 +51,7 @@ void main() {
     );
 
     testWidgets(
-      '3. SettingsScreen shows API key input',
+      'SettingsScreen shows API key input',
       (WidgetTester tester) async {
         // Superficie alta para ver toda la pagina sin scroll: la tarjeta del
         // teclado y la seccion de snippets alargan la lista (9.1-17 / 9.1-21).
@@ -149,7 +68,7 @@ void main() {
     );
 
     testWidgets(
-      '4. User can enter and save API key',
+      'User can enter and save API key',
       (WidgetTester tester) async {
         tester.view.physicalSize = const Size(1600, 4800);
         tester.view.devicePixelRatio = 2.0;
@@ -170,7 +89,7 @@ void main() {
     );
 
     testWidgets(
-      '5. Back button returns to HomeScreen',
+      'Back button returns to HomeScreen',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp());
         await tester.pumpAndSettle();
@@ -187,7 +106,7 @@ void main() {
     );
 
     testWidgets(
-      '6. Record button shows recording state',
+      'Record button shows recording state',
       (WidgetTester tester) async {
         await tester.pumpWidget(buildTestApp());
         await tester.pumpAndSettle();
@@ -200,35 +119,6 @@ void main() {
 
         expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
         expect(find.text('Grabando...'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      '10. Transcription model can be created and serialized',
-      (WidgetTester tester) async {
-        final timestamp = DateTime(2025, 7, 15, 10, 30, 0);
-        final transcription = Transcription(
-          text: 'Hola mundo',
-          timestamp: timestamp,
-          isLocal: false,
-        );
-
-        expect(transcription.text, 'Hola mundo');
-        expect(transcription.timestamp, timestamp);
-        expect(transcription.isLocal, false);
-
-        final json = transcription.toJson();
-        expect(json['text'], 'Hola mundo');
-        expect(json['isLocal'], false);
-        expect(json['timestamp'], timestamp.toIso8601String());
-
-        final restored = Transcription.fromJson(json);
-        expect(restored, transcription);
-
-        await tester.pumpWidget(buildTestApp());
-        await tester.pumpAndSettle();
-
-        expect(find.byType(HomeScreen), findsOneWidget);
       },
     );
   });
@@ -265,61 +155,5 @@ void main() {
         expect(find.byType(SettingsScreen), findsNothing);
       },
     );
-  });
-
-  group('Transcription model edge cases', () {
-    test('equality operator with same values', () {
-      final t1 = Transcription(
-        text: 'test',
-        timestamp: DateTime(2025),
-        isLocal: true,
-      );
-      final t2 = Transcription(
-        text: 'test',
-        timestamp: DateTime(2025),
-        isLocal: true,
-      );
-      expect(t1, equals(t2));
-      expect(t1.hashCode, equals(t2.hashCode));
-    });
-
-    test('inequality with different text', () {
-      final t1 = Transcription(
-        text: 'hello',
-        timestamp: DateTime(2025),
-        isLocal: true,
-      );
-      final t2 = Transcription(
-        text: 'world',
-        timestamp: DateTime(2025),
-        isLocal: true,
-      );
-      expect(t1, isNot(equals(t2)));
-    });
-
-    test('inequality with different isLocal', () {
-      final t1 = Transcription(
-        text: 'test',
-        timestamp: DateTime(2025),
-        isLocal: true,
-      );
-      final t2 = Transcription(
-        text: 'test',
-        timestamp: DateTime(2025),
-        isLocal: false,
-      );
-      expect(t1, isNot(equals(t2)));
-    });
-
-    test('serialization round-trip with special characters', () {
-      final t = Transcription(
-        text: 'Acentos: áéíóú ñ, emoji: 🎤',
-        timestamp: DateTime(2025, 12, 31, 23, 59, 59),
-        isLocal: true,
-      );
-      final restored = Transcription.fromJson(t.toJson());
-      expect(restored, equals(t));
-      expect(restored.text, 'Acentos: áéíóú ñ, emoji: 🎤');
-    });
   });
 }

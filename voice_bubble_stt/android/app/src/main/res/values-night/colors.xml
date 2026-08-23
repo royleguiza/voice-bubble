@@ -14,6 +14,14 @@
     <color name="kb_recording">#FFFF453A</color>
     <color name="kb_recording_pressed">#FFD70015</color>
 
+    <!-- Burbuja flotante (Hito 3): mismos neutros que claro; rojo y azul
+         derivados de las variantes noche del teclado. -->
+    <color name="bubble_idle_bg">#CC1C1C1E</color>
+    <color name="bubble_idle_border">#4DFFFFFF</color>
+    <color name="bubble_active_border">#80FFFFFF</color>
+    <color name="bubble_recording_bg">#E6FF453A</color>
+    <color name="bubble_transcribing_bg">#D90A84FF</color>
+
     <!-- Icono adaptive / splash (H5-T3): azul iOS variante oscura (design.md) -->
     <color name="ic_launcher_background">#FF0A84FF</color>
 </resources>

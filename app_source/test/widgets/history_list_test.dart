@@ -34,11 +34,10 @@ void main() {
     );
   }
 
-  Transcription makeT(String text, {bool isLocal = false, int minutesAgo = 0}) {
+  Transcription makeT(String text, {int minutesAgo = 0}) {
     return Transcription(
       text: text,
       timestamp: DateTime.now().subtract(Duration(minutes: minutesAgo)),
-      isLocal: isLocal,
     );
   }
 
@@ -61,20 +60,13 @@ void main() {
       }
     });
 
-    testWidgets('shows cloud icon for cloud transcriptions', (tester) async {
+    testWidgets('shows the cloud icon for every transcription', (tester) async {
       await tester.pumpWidget(wrap(HistoryList(
-        transcriptions: [makeT('cloud text', isLocal: false)],
+        transcriptions: [makeT('cloud text')],
       )));
+      // Motor Cloud unico: un solo icono, sin rama local (AT-C5).
       expect(find.byIcon(Icons.cloud), findsOneWidget);
       expect(find.byIcon(Icons.phone_android), findsNothing);
-    });
-
-    testWidgets('shows phone icon for local transcriptions', (tester) async {
-      await tester.pumpWidget(wrap(HistoryList(
-        transcriptions: [makeT('local text', isLocal: true)],
-      )));
-      expect(find.byIcon(Icons.phone_android), findsOneWidget);
-      expect(find.byIcon(Icons.cloud), findsNothing);
     });
 
     testWidgets('shows transcription text in each item', (tester) async {
@@ -86,7 +78,7 @@ void main() {
 
     testWidgets('shows formatted timestamp', (tester) async {
       final dt = DateTime(2026, 8, 21, 14, 30);
-      final t = Transcription(text: 'ts', timestamp: dt, isLocal: false);
+      final t = Transcription(text: 'ts', timestamp: dt);
       await tester.pumpWidget(wrap(HistoryList(transcriptions: [t])));
       expect(find.text('21/08/2026 14:30'), findsOneWidget);
     });
@@ -137,15 +129,15 @@ void main() {
       expect(listFinder, findsOneWidget);
     });
 
-    testWidgets('shows both cloud and local icons in mixed list', (tester) async {
+    testWidgets('shows one cloud icon per item in a mixed list', (tester) async {
       final items = [
-        makeT('cloud 1', isLocal: false),
-        makeT('local 1', isLocal: true),
-        makeT('cloud 2', isLocal: false),
+        makeT('first 1'),
+        makeT('second 1'),
+        makeT('third 2'),
       ];
       await tester.pumpWidget(wrap(HistoryList(transcriptions: items)));
-      expect(find.byIcon(Icons.cloud), findsNWidgets(2));
-      expect(find.byIcon(Icons.phone_android), findsOneWidget);
+      expect(find.byIcon(Icons.cloud), findsNWidgets(3));
+      expect(find.byIcon(Icons.phone_android), findsNothing);
     });
   });
 }

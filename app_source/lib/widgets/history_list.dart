@@ -49,8 +49,9 @@ class HistoryList extends StatelessWidget {
       itemBuilder: (context, index) {
         final t = transcriptions[index];
         return ListTile(
+          // Motor Cloud único: sin motor Local no hay rama de ícono.
           leading: Icon(
-            t.isLocal ? Icons.phone_android : Icons.cloud,
+            Icons.cloud,
             size: 20,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),

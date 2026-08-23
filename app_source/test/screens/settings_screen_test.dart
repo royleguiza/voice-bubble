@@ -534,9 +534,8 @@ void main() {
       await tester.tap(find.byIcon(Icons.save));
       await tester.pumpAndSettle();
 
-      expect(await storageService.loadSttMirroredApiKey(), 'gsk_espejo_123');
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_stt_provider'), 'groq');
+      expect(prefs.getString('kb_stt_api_key'), 'gsk_espejo_123');
       expect(prefs.getString('kb_stt_model'), CloudSttService.model);
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
     });
@@ -547,12 +546,13 @@ void main() {
       await tester.pumpAndSettle();
 
       await storageService.saveSttMirror(apiKey: 'a_borrar');
-      expect(await storageService.loadSttMirroredApiKey(), 'a_borrar');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_stt_api_key'), 'a_borrar');
 
       await tester.tap(find.byIcon(Icons.delete_outline));
       await tester.pumpAndSettle();
 
-      expect(await storageService.loadSttMirroredApiKey(), isNull);
+      expect(prefs.getString('kb_stt_api_key'), isNull);
     });
 
     testWidgets('al abrir Ajustes con key existente se re-espeja (backfill)',
@@ -562,7 +562,8 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      expect(await storageService.loadSttMirroredApiKey(), 'previa');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_stt_api_key'), 'previa');
     });
   });
 }

@@ -81,7 +81,6 @@ void main() {
   group('Border radius tokens', () {
     test('border radius values match design specifications', () {
       expect(kBorderRadiusCapsule, 100.0);
-      expect(kBorderRadiusChip, 12.0);
       expect(kBorderRadiusCard, 16.0);
       expect(kBorderRadiusSheet, 24.0);
     });
@@ -89,8 +88,6 @@ void main() {
 
   group('Typography styles', () {
     test('typography styles have correct font sizes and weights', () {
-      expect(kTextLargeTitle.fontSize, 34);
-      expect(kTextLargeTitle.fontWeight, FontWeight.bold);
       expect(kTextTitle.fontSize, 22);
       expect(kTextTitle.fontWeight, FontWeight.bold);
       expect(kTextBody.fontSize, 17);

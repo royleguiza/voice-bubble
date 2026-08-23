@@ -9,8 +9,8 @@ import 'package:voice_bubble_stt/services/storage_service.dart';
 ///
 /// El teclado nativo escribe entradas JSON con la misma forma que
 /// Transcription.toJson() de Dart: {"text", "timestamp" (ISO-8601, con
-/// sufijo Z cuando viene de Instant.now()), "isLocal": false}. Estos tests
-/// fijan ese contrato por ambos lados sin necesidad de runner Kotlin.
+/// sufijo Z cuando viene de Instant.now())}. Estos tests fijan ese
+/// contrato por ambos lados sin necesidad de runner Kotlin.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -23,48 +23,24 @@ void main() {
       final t = Transcription.fromJson(decoded);
 
       expect(t.text, 'dictado desde el teclado');
-      expect(t.isLocal, isFalse);
-      expect(t.timestamp.year, 2026);
-      expect(t.timestamp.month, 8);
-      expect(t.timestamp.day, 23);
-      expect(t.timestamp.hour, 10);
+      // El instante UTC se conserva y se muestra en hora local.
+      expect(t.timestamp, DateTime.utc(2026, 8, 23, 10).toLocal());
+      expect(t.timestamp.isUtc, isFalse);
     });
 
     test('round-trip toJson/fromJson preserva los campos', () {
       final base = Transcription(
         text: 'hola mundo',
         timestamp: DateTime.parse('2026-08-23T10:00:00Z'),
-        isLocal: false,
       );
 
       final restored = Transcription.fromJson(base.toJson());
 
       expect(restored, base);
     });
-
-    test('entrada local de la app usa isLocal true (distingue origen)',
-        () async {
-      SharedPreferences.setMockInitialValues({
-        'transcriptions': [
-          keyboardEntry('del teclado', DateTime.parse('2026-08-23T10:00:00Z')),
-          jsonEncode(Transcription(
-            text: 'de la app',
-            timestamp: DateTime.parse('2026-08-23T09:00:00Z'),
-            isLocal: true,
-          ).toJson()),
-        ],
-      });
-
-      final service = StorageService();
-      await service.load();
-
-      expect(service.transcriptions[0].isLocal, isFalse);
-      expect(service.transcriptions[0].text, 'del teclado');
-      expect(service.transcriptions[1].isLocal, isTrue);
-    });
   });
 
-  group('Contrato historial - FIFO 20 con entradas mixtas', () {
+  group('Contrato historial - FIFO 20 con entradas del teclado', () {
     test('carga el lote del teclado en orden mas-nuevo-primero', () async {
       SharedPreferences.setMockInitialValues({
         'transcriptions': [
@@ -120,7 +96,7 @@ void main() {
     test('entrada con timestamp ilegible se ignora sin crashear', () async {
       SharedPreferences.setMockInitialValues({
         'transcriptions': [
-          '{"text":"ts-roto","timestamp":"no-es-fecha","isLocal":false}',
+          '{"text":"ts-roto","timestamp":"no-es-fecha"}',
           keyboardEntry('valida', DateTime.parse('2026-08-23T10:00:00Z')),
         ],
       });
@@ -135,17 +111,12 @@ void main() {
 }
 
 /// Forma EXACTA que produce org.json en el lado Kotlin.
-String keyboardEntry(
-  String text,
-  DateTime timestamp, {
-  bool isLocal = false,
-}) {
-  return '{"text":"$text","timestamp":"'
-      '${timestamp.toUtc().toIso8601String()}","isLocal":$isLocal}';
+String keyboardEntry(String text, DateTime timestamp) {
+  return '{"text":"$text","timestamp":"${timestamp.toUtc().toIso8601String()}"}';
 }
 
 /// Replica la entrada que persiste el teclado nativo (K3): JSON plano con
-/// timestamp UTC e isLocal false, convertido a Transcription para la app.
+/// timestamp UTC, convertido a Transcription para la app.
 Transcription keyboardStyleTranscription(String text, int minuteOffset) {
   return Transcription.fromJson(
     jsonDecode(keyboardEntry(

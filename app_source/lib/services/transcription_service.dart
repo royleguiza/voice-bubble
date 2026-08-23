@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:record/record.dart';
 import '../models/transcription.dart';
 import 'cloud_stt_service.dart';
+import 'keyboard_service.dart';
 import 'storage_service.dart';
 
 /// Sonda de ocupacion del microfono del teclado (exclusion mutua K3).
@@ -11,7 +12,7 @@ typedef MicBlockedProbe = Future<bool> Function();
 
 Future<bool> _defaultMicBlockedProbe() async {
   try {
-    const channel = MethodChannel('com.royleguiza.voicebubblestt/keyboard');
+    const channel = MethodChannel(KeyboardService.channelName);
     return await channel.invokeMethod<bool>('isKeyboardRecording') ?? false;
   } catch (_) {
     return false;
@@ -36,6 +37,10 @@ class TranscriptionService {
 
   StorageService get storageService => _storageService;
 
+  /// Solicita el permiso de micrófono. SOLO debe llamarse en intención
+  /// explícita de grabar (p.ej. al pulsar grabar y el permiso aún no está
+  /// concedido): `hasPermission()` dispara el prompt del sistema, por lo
+  /// que llamarlo en el arranque de la app molesta al usuario sin motivo.
   Future<bool> requestPermissions() async {
     try {
       return await _recorder.hasPermission();

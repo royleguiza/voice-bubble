@@ -6,11 +6,10 @@ import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
-Transcription _makeTranscription(String text, {bool isLocal = true}) {
+Transcription _makeTranscription(String text) {
   return Transcription(
     text: text,
     timestamp: DateTime(2025, 1, 1),
-    isLocal: isLocal,
   );
 }
 
@@ -27,9 +26,11 @@ void main() {
       expect(service.transcriptions, isEmpty);
     });
 
-    test('load() restores previously saved transcriptions', () async {
-      final t1 = _makeTranscription('hello');
-      final t2 = _makeTranscription('world');
+    test('load() restores previously saved transcriptions (desc)', () async {
+      final t1 =
+          Transcription(text: 'hello', timestamp: DateTime.utc(2026, 8, 23, 9));
+      final t2 = Transcription(
+          text: 'world', timestamp: DateTime.utc(2026, 8, 23, 10));
       SharedPreferences.setMockInitialValues({
         'transcriptions': [
           jsonEncode(t1.toJson()),
@@ -40,9 +41,10 @@ void main() {
       final service = StorageService();
       await service.load();
 
+      // Orden descendente impuesto por load() (AT-D1).
       expect(service.transcriptions.length, 2);
-      expect(service.transcriptions[0], t1);
-      expect(service.transcriptions[1], t2);
+      expect(service.transcriptions[0], t2);
+      expect(service.transcriptions[1], t1);
     });
 
     test('load() gracefully ignores corrupt JSON entries', () async {
@@ -120,26 +122,6 @@ void main() {
       expect(service.transcriptions[19], transcriptions[5]);
     });
 
-    test('clear() empties the list', () async {
-      final service = StorageService();
-      await service.add(_makeTranscription('test'));
-      expect(service.transcriptions.length, 1);
-
-      await service.clear();
-      expect(service.transcriptions, isEmpty);
-    });
-
-    test('clear() persists the empty state', () async {
-      final service = StorageService();
-      await service.add(_makeTranscription('test'));
-      await service.clear();
-
-      // Reload in a fresh instance to verify persistence
-      final freshService = StorageService();
-      await freshService.load();
-      expect(freshService.transcriptions, isEmpty);
-    });
-
     test('transcriptions getter returns unmodifiable list', () {
       final service = StorageService();
       expect(
@@ -163,18 +145,18 @@ void main() {
         () async {
       // First instance: add items
       final service1 = StorageService();
-      await service1.add(_makeTranscription('alpha', isLocal: true));
-      await service1.add(_makeTranscription('beta', isLocal: false));
+      await service1.add(
+          Transcription(text: 'alpha', timestamp: DateTime.utc(2026, 8, 23, 9)));
+      await service1.add(Transcription(
+          text: 'beta', timestamp: DateTime.utc(2026, 8, 23, 10)));
 
       // Second instance: load and verify
       final service2 = StorageService();
       await service2.load();
 
       expect(service2.transcriptions.length, 2);
-      expect(service2.transcriptions[0],
-          _makeTranscription('beta', isLocal: false));
-      expect(service2.transcriptions[1],
-          _makeTranscription('alpha', isLocal: true));
+      expect(service2.transcriptions[0].text, 'beta');
+      expect(service2.transcriptions[1].text, 'alpha');
     });
 
     test('floating bubble setting defaults to false', () async {
@@ -295,46 +277,85 @@ void main() {
   });
 
   group('StorageService - espejo D7 de credenciales STT (K3)', () {
-    test('sin espejo previo devuelve null', () async {
-      SharedPreferences.setMockInitialValues({});
-      final service = StorageService();
-      expect(await service.loadSttMirroredApiKey(), isNull);
-    });
-
     test('saveSttMirror escribe key y valores canonicos del motor', () async {
-      SharedPreferences.setMockInitialValues({});
       final service = StorageService();
       await service.saveSttMirror(apiKey: 'gsk_prueba_123');
 
       final prefs = await SharedPreferences.getInstance();
-      expect(await service.loadSttMirroredApiKey(), 'gsk_prueba_123');
-      expect(prefs.getString('kb_stt_provider'), 'groq');
-      expect(prefs.getString('kb_stt_model'), CloudSttService.model);
+      expect(prefs.getString('kb_stt_api_key'), 'gsk_prueba_123');
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
-      expect(prefs.getString('kb_stt_language'), 'es');
+      expect(prefs.getString('kb_stt_model'), CloudSttService.model);
+      expect(prefs.getString('kb_stt_language'), CloudSttService.language);
     });
 
     test('clearSttMirror elimina todas las claves del espejo', () async {
-      SharedPreferences.setMockInitialValues({});
       final service = StorageService();
       await service.saveSttMirror(apiKey: 'gsk_temporal');
       await service.clearSttMirror();
 
       final prefs = await SharedPreferences.getInstance();
-      expect(await service.loadSttMirroredApiKey(), isNull);
-      expect(prefs.getString('kb_stt_provider'), isNull);
+      expect(prefs.getString('kb_stt_api_key'), isNull);
       expect(prefs.getString('kb_stt_url'), isNull);
       expect(prefs.getString('kb_stt_model'), isNull);
       expect(prefs.getString('kb_stt_language'), isNull);
     });
+  });
 
-    test('reescribir el espejo actualiza la key sin duplicar claves',
+  group('StorageService - load(): orden y merge conservador', () {
+    test(
+        'load() ordena desc por timestamp aunque el disco este desordenado (AT-D1)',
         () async {
-      SharedPreferences.setMockInitialValues({});
+      final base = DateTime.utc(2026, 8, 23, 10);
+      String entry(String text, int minutes) => jsonEncode({
+            'text': text,
+            'timestamp': base.add(Duration(minutes: minutes)).toIso8601String(),
+          });
+
+      // El lado Kotlin escribe un Set de strings: el orden de llegada no
+      // esta garantizado. Se siembra deliberadamente desordenado.
+      SharedPreferences.setMockInitialValues({
+        'transcriptions': [
+          entry('medio', 10),
+          entry('viejo', 0),
+          entry('nuevo', 20),
+        ],
+      });
+
       final service = StorageService();
-      await service.saveSttMirror(apiKey: 'primera');
-      await service.saveSttMirror(apiKey: 'segunda');
-      expect(await service.loadSttMirroredApiKey(), 'segunda');
+      await service.load();
+
+      expect(
+        service.transcriptions.map((t) => t.text).toList(),
+        ['nuevo', 'medio', 'viejo'],
+      );
+    });
+
+    test(
+        'load() conserva la entrada en memoria que falta en disco (AT-C10)',
+        () async {
+      final service = StorageService();
+      await service.add(Transcription(
+        text: 'recien dictada',
+        timestamp: DateTime.utc(2026, 8, 23, 12),
+      ));
+
+      // El disco "retrocede": solo contiene lo viejo, como cuando una
+      // escritura externa aun no incluye lo recien anadido en memoria.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('transcriptions', [
+        jsonEncode(Transcription(
+          text: 'vieja',
+          timestamp: DateTime.utc(2026, 8, 23, 9),
+        ).toJson()),
+      ]);
+
+      await service.load();
+
+      // La transcripcion nueva NO se pierde pese a no estar en disco.
+      expect(
+        service.transcriptions.map((t) => t.text).toList(),
+        ['recien dictada', 'vieja'],
+      );
     });
   });
 }

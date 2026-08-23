@@ -37,5 +37,13 @@ Thumbs.db
 **/android/*.jks
 **/android/*.keystore
 
+# Espejo no-Android de voice_bubble_stt: el CI lo sincroniza desde app_source en cada run (AT-D11)
+/voice_bubble_stt/lib/
+/voice_bubble_stt/test/
+/voice_bubble_stt/pubspec.yaml
+/voice_bubble_stt/analysis_options.yaml
+
 # Logs
 *.log
+
+/.agent/

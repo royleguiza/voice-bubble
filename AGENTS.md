@@ -70,7 +70,7 @@ Ver sección "Estado" al final de este archivo y los checkboxes de `plan.md`.
 - Todo widget test que use widgets Material importa explícitamente `package:flutter/material.dart` (flutter_test NO lo re-exporta).
 - Estructura de carpetas sugerida por hito: ver `plan.md` § "Estructura de carpetas sugerida (Flutter)". No inventar estructuras paralelas.
 - Comentarios solo cuando aporten contexto no obvio. En inglés o español, consistente.
-- Sin lógica de UI dentro de widgets: servicios separados (`transcription_service`, `local_stt_service`, etc.).
+- Sin lógica de UI dentro de widgets: servicios separados (`transcription_service`, `cloud_stt_service`, `keyboard_service`, etc.).
 
 ### Seguridad y privacidad (crítico)
 

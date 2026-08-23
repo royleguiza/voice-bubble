@@ -1,0 +1,12 @@
+kb_code_key_visible
+kb_haptics_enabled
+kb_height_profile
+kb_language_key_visible
+kb_snippets_seeded
+kb_stt_api_key
+kb_stt_language
+kb_stt_model
+kb_stt_url
+kb_terminal_row_visible
+transcriptions
+voice_snippets_v1

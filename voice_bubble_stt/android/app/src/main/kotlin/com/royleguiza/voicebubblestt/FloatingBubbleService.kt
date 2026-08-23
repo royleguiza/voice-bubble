@@ -21,6 +21,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
+import androidx.core.content.ContextCompat
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -57,6 +58,7 @@ class FloatingBubbleService : Service() {
 
     private var windowManager: WindowManager? = null
     private var bubbleView: BubbleCanvasView? = null
+    private var snapAnimator: ValueAnimator? = null
     private lateinit var windowLayoutParams: WindowManager.LayoutParams
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -85,7 +87,9 @@ class FloatingBubbleService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        return START_STICKY
+        // START_NOT_STICKY: un FGS de microfono no debe resucitarse solo desde
+        // el fondo (Android 14+); la burbuja se relanza desde la app.
+        return START_NOT_STICKY
     }
 
     private fun createNotificationChannel() {
@@ -239,6 +243,7 @@ class FloatingBubbleService : Service() {
                 windowManager?.updateViewLayout(bubbleView, windowLayoutParams)
             }
         }
+        snapAnimator = animator
         animator.start()
     }
 
@@ -248,6 +253,10 @@ class FloatingBubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Cancelar antes de remover la vista: un frame pendiente del animator
+        // sobre una vista desasociada lanza IllegalArgumentException.
+        snapAnimator?.cancel()
+        snapAnimator = null
         isRunning = false
         if (bubbleView != null && windowManager != null) {
             try {
@@ -260,6 +269,15 @@ class FloatingBubbleService : Service() {
     }
 
     class BubbleCanvasView(context: Context) : View(context) {
+        // Paleta via tokens R.color (claro/noche); resolver UNA vez, no por frame.
+        private val accentColor = ContextCompat.getColor(context, R.color.kb_key_bg_accent)
+        private val recordingColor = ContextCompat.getColor(context, R.color.kb_recording)
+        private val recordingBgColor = ContextCompat.getColor(context, R.color.bubble_recording_bg)
+        private val transcribingBgColor = ContextCompat.getColor(context, R.color.bubble_transcribing_bg)
+        private val idleBgColor = ContextCompat.getColor(context, R.color.bubble_idle_bg)
+        private val idleBorderColor = ContextCompat.getColor(context, R.color.bubble_idle_border)
+        private val activeBorderColor = ContextCompat.getColor(context, R.color.bubble_active_border)
+
         private var visualState = "idle"
         private var spinnerAngle = 0f
         private var pulsePhase = 0f
@@ -284,7 +302,7 @@ class FloatingBubbleService : Service() {
         private val pulsePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 3f * resources.displayMetrics.density
-            color = Color.parseColor("#FFFF3B30")
+            color = recordingColor
         }
 
         init {
@@ -306,8 +324,8 @@ class FloatingBubbleService : Service() {
 
             when (visualState) {
                 "recording" -> {
-                    bgPaint.color = Color.parseColor("#E6FF3B30")
-                    borderPaint.color = Color.parseColor("#80FFFFFF")
+                    bgPaint.color = recordingBgColor
+                    borderPaint.color = activeBorderColor
                     canvas.drawCircle(cx, cy, radius, bgPaint)
                     canvas.drawCircle(cx, cy, radius, borderPaint)
 
@@ -324,8 +342,8 @@ class FloatingBubbleService : Service() {
                     postInvalidateOnAnimation()
                 }
                 "transcribing" -> {
-                    bgPaint.color = Color.parseColor("#D9007AFF")
-                    borderPaint.color = Color.parseColor("#80FFFFFF")
+                    bgPaint.color = transcribingBgColor
+                    borderPaint.color = activeBorderColor
                     canvas.drawCircle(cx, cy, radius, bgPaint)
                     canvas.drawCircle(cx, cy, radius, borderPaint)
 
@@ -336,8 +354,8 @@ class FloatingBubbleService : Service() {
                     postInvalidateOnAnimation()
                 }
                 else -> {
-                    bgPaint.color = Color.parseColor("#CC1C1C1E")
-                    borderPaint.color = Color.parseColor("#4DFFFFFF")
+                    bgPaint.color = idleBgColor
+                    borderPaint.color = idleBorderColor
                     canvas.drawCircle(cx, cy, radius, bgPaint)
                     canvas.drawCircle(cx, cy, radius, borderPaint)
 
@@ -347,7 +365,7 @@ class FloatingBubbleService : Service() {
         }
 
         private fun drawMicIcon(canvas: Canvas, cx: Float, cy: Float, size: Float) {
-            iconPaint.color = Color.parseColor("#0A84FF")
+            iconPaint.color = accentColor
             val density = resources.displayMetrics.density
 
             val capsuleWidth = size * 0.48f

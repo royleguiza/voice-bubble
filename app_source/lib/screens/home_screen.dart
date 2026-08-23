@@ -43,6 +43,9 @@ class _HomeScreenState extends State<HomeScreen>
   bool _isStoppingRecording = false;
   bool _shouldStopAfterStart = false;
   String _resultText = '';
+  // Timestamp REAL de la transcripción mostrada en el popup: se captura
+  // junto a [_resultText] al recibirla, nunca DateTime.now() en build.
+  DateTime _resultTimestamp = DateTime.now();
   String? _pendingAudioPath;
   String _recordMode = StorageService.defaultRecordMode;
   DateTime? _holdStartedAt;
@@ -105,9 +108,6 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _init() async {
     try {
       await _storageService.load();
-    } catch (_) {}
-    try {
-      await _transcriptionService.requestPermissions();
     } catch (_) {}
     await _loadApiKey();
     await _loadRecordMode();
@@ -275,6 +275,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() {
           _resultText = result.text;
+          _resultTimestamp = result.timestamp;
           _isTranscribing = false;
         });
         if (motionSafe) {
@@ -319,6 +320,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() {
           _resultText = result.text;
+          _resultTimestamp = result.timestamp;
           _pendingAudioPath = null;
           _isTranscribing = false;
         });
@@ -406,7 +408,8 @@ class _HomeScreenState extends State<HomeScreen>
                                   ? kLabelPrimaryDark
                                   : kLabelPrimaryLight,
                             )),
-                        Text('${transcriptions.length} / 20',
+                        Text(
+                            '${transcriptions.length} / ${StorageService.maxItems}',
                             style: kTextCaption.copyWith(
                               color: Theme.of(context).brightness ==
                                       Brightness.dark
@@ -570,7 +573,7 @@ class _HomeScreenState extends State<HomeScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: TranscriptionPopup(
                           text: _resultText,
-                          timestamp: DateTime.now(),
+                          timestamp: _resultTimestamp,
                           controller: _popupCtrl,
                           motionSafe: motionSafe,
                           onCopy: _copyToClipboard,
@@ -591,13 +594,13 @@ class _HomeScreenState extends State<HomeScreen>
                           _recordMode == StorageService.defaultRecordMode
                               ? _toggleRecording
                               : null,
-                      onHoldStart: _recordMode == 'hold'
+                      onHoldStart: _recordMode == StorageService.recordModeHold
                           ? () {
                               _holdStartedAt = DateTime.now();
                               _startRecording();
                             }
                           : null,
-                      onHoldEnd: _recordMode == 'hold'
+                      onHoldEnd: _recordMode == StorageService.recordModeHold
                           ? () async {
                               await _cancelHoldIfTooShort();
                               if (_isRecording || _isStartingRecording) {

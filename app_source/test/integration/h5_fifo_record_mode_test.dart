@@ -62,7 +62,6 @@ void main() {
       Transcription seeded(int i) => Transcription(
             text: 'seed-$i',
             timestamp: base.add(Duration(minutes: i)),
-            isLocal: i.isEven,
           );
 
       // Sembrar 25 en prefs, mas-nuevo-primero (orden que escriben la app
@@ -80,7 +79,6 @@ void main() {
       final nueva = Transcription(
         text: 'nueva-26',
         timestamp: base.add(const Duration(minutes: 26)),
-        isLocal: false,
       );
       await service.add(nueva);
 

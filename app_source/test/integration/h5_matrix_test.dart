@@ -238,7 +238,6 @@ void main() {
         Transcription(
           text: 'dictado largo exitoso',
           timestamp: DateTime.now(),
-          isLocal: false,
         ),
       ]);
       await pumpHome(tester, bundle.service, bundle.storage);
@@ -297,7 +296,6 @@ void main() {
         Transcription(
           text: 'segundo intento ok',
           timestamp: DateTime.now(),
-          isLocal: false,
         ),
       ]);
       await pumpHome(tester, bundle.service, bundle.storage);
@@ -401,7 +399,6 @@ void main() {
         Transcription(
           text: 'dictado modo toque',
           timestamp: DateTime.now(),
-          isLocal: false,
         ),
       ]);
       await pumpHome(tester, bundleC.service, bundleC.storage);

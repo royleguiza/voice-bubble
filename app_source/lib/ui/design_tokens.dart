@@ -112,9 +112,6 @@ const BoxShadow kGlassShadowSmallDark = BoxShadow(
 /// Capsule / pill-shaped controls (primary button, segmented control).
 const double kBorderRadiusCapsule = 100.0;
 
-/// Chips, small glass elements.
-const double kBorderRadiusChip = 12.0;
-
 /// Cards, history items, secondary surfaces.
 const double kBorderRadiusCard = 16.0;
 
@@ -124,12 +121,6 @@ const double kBorderRadiusSheet = 24.0;
 // ---------------------------------------------------------------------------
 // Typography – Apple HIG Approximation for Android (Roboto)
 // ---------------------------------------------------------------------------
-
-const TextStyle kTextLargeTitle = TextStyle(
-  fontSize: 34,
-  fontWeight: FontWeight.bold,
-  letterSpacing: 0.37,
-);
 
 const TextStyle kTextTitle = TextStyle(
   fontSize: 22,
@@ -295,12 +286,6 @@ const double kHistoryPillBottomGap = 72.0;
 
 /// Duración de expansión de la tarjeta emergente.
 const Duration kAnimPopupExpand = Duration(milliseconds: 320);
-
-/// Duración del fade-in del texto transcripto.
-const Duration kAnimPopupTextFade = Duration(milliseconds: 260);
-
-/// Micro-animación (Reduced Motion / feedback rápido).
-const Duration kAnimMicro = Duration(milliseconds: 150);
 
 /// Morph entre estados del botón de grabar.
 const Duration kAnimMorph = Duration(milliseconds: 350);

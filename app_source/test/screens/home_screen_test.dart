@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,104 +9,18 @@ import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 
+import '../helpers/mock_channels.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
-
-    // Canales reales del paquete record 5.x (llfbandit)
-    for (final channel in [
-      'com.llfbandit.record',
-      'com.llfbandit.record/messages',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async {
-          final m = methodCall.method.toLowerCase();
-          if (m.contains('permission')) {
-            return true;
-          }
-          switch (methodCall.method) {
-            case 'start':
-            case 'create':
-            case 'dispose':
-            case 'pause':
-            case 'resume':
-            case 'cancel':
-              return null;
-            case 'stop':
-              return '/tmp/recording.m4a';
-            case 'isRecording':
-            case 'is_recording':
-              return true;
-            case 'isPaused':
-            case 'is_paused':
-              return false;
-            case 'getAmplitude':
-              return {'current': -160.0, 'max': -160.0};
-            case 'listInputDevices':
-              return <Map<String, dynamic>>[];
-            default:
-              return true;
-          }
-        },
-      );
-    }
-
-    // Exclusion mutua K3: teclado libre en estos flujos.
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      const MethodChannel('com.royleguiza.voicebubblestt/keyboard'),
-      (MethodCall call) async => false,
-    );
-
-    for (final channel in [
-      'plugins.flutter.io/path_provider',
-      'plugins.flutter.io/path_provider_android',
-      'plugins.flutter.io/path_provider_ios',
-      'plugins.flutter.io/path_provider_macos',
-      'plugins.flutter.io/path_provider_linux',
-      'plugins.flutter.io/path_provider_windows',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async => '/tmp',
-      );
-    }
-
-    for (final channel in [
-      'com.royleguiza.voicebubblestt/floating_bubble',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall methodCall) async => true,
-      );
-    }
+    registerAppChannelMocks();
   });
 
-  tearDown(() {
-    for (final channel in [
-      'com.royleguiza.voicebubblestt/floating_bubble',
-      'com.llfbandit.record',
-      'com.llfbandit.record/messages',
-      'plugins.flutter.io/path_provider',
-      'plugins.flutter.io/path_provider_android',
-      'plugins.flutter.io/path_provider_ios',
-      'plugins.flutter.io/path_provider_macos',
-      'plugins.flutter.io/path_provider_linux',
-      'plugins.flutter.io/path_provider_windows',
-      'plugins.it_nomads.com/flutter_secure_storage',
-      'plugins.flutter.io/shared_preferences',
-    ]) {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(MethodChannel(channel), null);
-    }
-  });
+  tearDown(unregisterAppChannelMocks);
 
   Widget buildTestableWidget({
     TranscriptionService? transcriptionService,
@@ -282,7 +195,6 @@ void main() {
           'text': 'dictado externo del teclado',
           'timestamp':
               DateTime.parse('2026-08-23T10:00:00Z').toIso8601String(),
-          'isLocal': false,
         }),
       ]);
 
