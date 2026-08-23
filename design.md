@@ -252,7 +252,8 @@ Además:
 |---|---|---|---|
 | `kb_surface` | vidrio Regular: blur σ10–14 + fill blanco ~75% + borde blanco .55 | fill negro ~55% + borde blanco .18 | Fondo completo del teclado |
 | `kb_key_bg` | blanco ~85% opacidad | `#2C2C2E` ~85% | Tecla normal |
-| `kb_key_bg_alt` | `#E5E5EA` | `#3A3A3C` | Shift, backspace, cambiador de capa |
+| `kb_key_bg_alt` | `#D6D6DC` | `#3A3A3C` | Shift, backspace, cambiador de capa |
+| `kb_key_stroke` | `#C5C5C9` | `#48484A` | Borde 1 dp de las teclas alt (definición sobre el surface) |
 | `kb_key_bg_accent` | `tintAccent #007AFF` | `#0A84FF` | Enter y tecla de capa activa |
 | `kb_label` | `labelPrimary` | `labelPrimary` | Glifos de teclas |
 | `kb_label_secondary` | `labelSecondary` | `labelSecondary` | Hints de capa superior (shift/symbols) |
@@ -264,6 +265,7 @@ Además:
 |---|---|---|
 | Altura de tecla | 42–48 dp | 4 filas QWERTY; gap entre teclas 6 dp |
 | Radio de tecla | 8 dp | concéntrico con el surface (16 dp) |
+| Stroke de tecla alt | 1 dp | `kb_key_stroke`; presente también en estado presionado |
 | Fila terminal | misma altura que teclas | TAB/ESC/CTRL/ALT/flechas presente en todas las capas; ocultable desde Settings para quien ya tiene teclas propias (ej. Termux) |
 | Target táctil mínimo | 44×44 dp | regla §9 innegociable |
 | Estado presionado | escala 0.96→1.0 + háptico `KEYBOARD_TAP` | sonido de tecla OFF por defecto |
