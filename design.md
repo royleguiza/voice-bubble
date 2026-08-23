@@ -264,7 +264,7 @@ Además:
 |---|---|---|
 | Altura de tecla | 42–48 dp | 4 filas QWERTY; gap entre teclas 6 dp |
 | Radio de tecla | 8 dp | concéntrico con el surface (16 dp) |
-| Fila terminal | misma altura que teclas | TAB/ESC/CTRL/ALT/flechas visible en TODAS las capas |
+| Fila terminal | misma altura que teclas | TAB/ESC/CTRL/ALT/flechas presente en todas las capas; ocultable desde Settings para quien ya tiene teclas propias (ej. Termux) |
 | Target táctil mínimo | 44×44 dp | regla §9 innegociable |
 | Estado presionado | escala 0.96→1.0 + háptico `KEYBOARD_TAP` | sonido de tecla OFF por defecto |
 

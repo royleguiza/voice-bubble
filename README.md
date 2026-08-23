@@ -122,7 +122,7 @@ Además de la burbuja, la misma app (mismo APK) ofrecerá un **teclado del siste
 
 * QWERTY en español e inglés con tecla de alternancia de idioma.
 * **Capa código**: llaves, corchetes, paréntesis, símbolos poco comunes (`\ | & $ # ~ ^`), comillas y backticks; toque largo = par auto-cerrado.
-* **Fila terminal permanente**: TAB, ESC, CTRL (toggle), ALT (toggle) y flechas — pensada para usar Termux de verdad.
+* **Fila terminal**: TAB, ESC, CTRL (toggle), ALT (toggle) y flechas — pensada para usar Termux de verdad; ocultable desde Ajustes si ya usás un teclado con teclas propias.
 * **Botón de micrófono**: dicta y el texto se inserta donde esté el cursor, con el mismo motor cloud y la misma API key de la app.
 * **Snippets**: atajos de texto/comandos creados en Settings e insertables con un toque; búsqueda por nombre. La primera apertura incluye **5 seeds de ejemplo** editables/borrables: `codex "`, `gemini -p "`, `git add . && git commit -m "`, `git push origin main`, `supabase db push`.
 

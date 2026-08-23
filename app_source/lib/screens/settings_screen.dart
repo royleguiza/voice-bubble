@@ -34,6 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isBubbleEnabled = false;
   bool _isKeyboardEnabled = false;
   bool _isKeyboardSelected = false;
+  bool _showTerminalRow = true;
 
   @override
   void initState() {
@@ -47,6 +48,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadRecordMode();
     _loadBubbleState();
     _loadKeyboardStatus();
+    _loadTerminalRowVisible();
+  }
+
+  Future<void> _loadTerminalRowVisible() async {
+    try {
+      final visible = await _storageService.loadKeyboardTerminalRowVisible();
+      if (mounted) {
+        setState(() => _showTerminalRow = visible);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleTerminalRow(bool visible) async {
+    await _storageService.saveKeyboardTerminalRowVisible(visible);
+    if (mounted) setState(() => _showTerminalRow = visible);
   }
 
   Future<void> _loadKeyboardStatus() async {
@@ -241,6 +257,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Fila terminal'),
+                    subtitle: Text(
+                      'TAB, ESC, CTRL, ALT y flechas sobre las letras. '
+                      'Desactívala si usás Termux, que ya trae teclas propias.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    value: _showTerminalRow,
+                    onChanged: _toggleTerminalRow,
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(

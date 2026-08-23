@@ -193,4 +193,37 @@ void main() {
       expect(disabled, isFalse);
     });
   });
+
+  group('StorageService - fila terminal del teclado', () {
+    test('default visible cuando no hay clave guardada', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.loadKeyboardTerminalRowVisible(), isTrue);
+    });
+
+    test('persiste oculto y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardTerminalRowVisible(false);
+      expect(await service.loadKeyboardTerminalRowVisible(), isFalse);
+    });
+
+    test('persiste visible y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardTerminalRowVisible(false);
+      await service.saveKeyboardTerminalRowVisible(true);
+      expect(await service.loadKeyboardTerminalRowVisible(), isTrue);
+    });
+
+    test('usa la clave compartida con el teclado nativo', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardTerminalRowVisible(false);
+      // El lado Kotlin lee "flutter.kb_terminal_row_visible" en
+      // FlutterSharedPreferences; el plugin antepone "flutter." al guardar.
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_terminal_row_visible'), isFalse);
+    });
+  });
 }

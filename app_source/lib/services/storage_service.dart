@@ -37,6 +37,20 @@ class StorageService {
     await prefs.setBool(_floatingBubbleKey, enabled);
   }
 
+  static const String _keyboardTerminalRowKey = 'kb_terminal_row_visible';
+
+  /// Fila terminal del teclado (TAB, ESC, CTRL, ALT, flechas).
+  /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
+  Future<bool> loadKeyboardTerminalRowVisible() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyboardTerminalRowKey) ?? true;
+  }
+
+  Future<void> saveKeyboardTerminalRowVisible(bool visible) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyboardTerminalRowKey, visible);
+  }
+
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
