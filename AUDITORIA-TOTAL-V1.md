@@ -195,14 +195,19 @@ Objetivo cumplido: cada test restante puede fallar ante una regresión real. Con
 | Corrección 2 (serie) | F8 (+F3 recuperada) | — | F3 detectada sin lanzar y ejecutada antes de auditar | ✅ |
 | Auditoría fresca ≥9 | 2 auditores limpios paralelos | G-Kotlin / G-Dart | F1 9.5 · F2 9.3 · F3 9.7 · F4 10 · F5 9.6 · F6 9.4 · F7 9.2 · F8 9.6 · F9 10 · F10 9.5 · F11 9.2 — **0 errores de build; todas >9.0 aprobadas** | ✅ |
 | Fixes obligatorios post-auditoría | staging helpers/docs + plan.md:154 isLocal + /.agent/ ignorado | — | aplicados por coordinador | ✅ |
-| Batería final + push CI | — | — | ver abajo | ⏳ |
+| Fixes CI r1 (guarda hex bash -e) | 0d1c142 | — | falso positivo del runner bajo set -e; corrección semántica mínima | ✅ |
+| Fixes CI r2 (import widget_test) | 76a4adf | — | profundidad ../helpers incorrecta | ✅ |
+| Fixes CI r3 (11 tests) | 95b40e7 | re-auditor fresco 9.2–9.6 | fixtures toLocal, FIFO-20 al cargar, mock teclado en settings setUp | ✅ |
+| Batería final + push CI | run [32666610965](https://github.com/royleguiza/voice-bubble/actions/runs/32666610965) success | — | APK **r62** entregado al dueño | ✅ |
 
 Mejoras registradas no bloqueantes (sugeridas por auditores, pendientes de próxima ola): guarda de contrato también sobre lado Dart (F7-H1); propagar MIC_PERMISSION_DENIED a mensaje visible en Settings (F2-H1/H2); historial en generación vencida documentar o mover bajo guarda (F1-H1); test merge>maxItems (F10); evitar cascade-sort sobre lista posiblemente const (settings_screen:92); comentar ~10 catch(_) heredados de home_screen.
 
 ## Batería final
 
-- [ ] git status índice completo (helpers/, docs/, deletions)
-- [ ] YAML del workflow parsea (python3-yaml)
-- [ ] Guardas grep: hex colores válidos, sin Log de contenido nuevo, balance Kotlin/Dart
-- [ ] Commit + push → CI monitoreado hasta completed
-- [ ] Éxito → APK r<N> anunciado al dueño
+- [x] git status índice completo (helpers/, docs/, deletions)
+- [x] YAML del workflow parsea (python3-yaml)
+- [x] Guardas grep: hex colores válidos, sin Log de contenido nuevo, balance Kotlin/Dart
+- [x] Commit + push → CI monitoreado hasta completed (3 rondas de fix con auditoría entre cada una)
+- [x] Éxito → APK r62 anunciado al dueño
+
+**Tests finales: 280 (de 368; purga de 88 tautológicos/duplicados + 6 nuevos de contratos reales). Cada test restante puede fallar ante una regresión verdadera.**

@@ -243,7 +243,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 ## Estado del proyecto
 
 > **Actualizar esta sección al final de cada hito completado.**
-> Última actualización: 2026-08-23 (lote pulido UI v1.1 P1–P6 implementado y auditado >9.0; ver `PLAN-PULIDO-TECLADO.md`).
+> Última actualización: 2026-08-23 (AUDITORÍA TOTAL v1 ejecutada en MODO-LOOP: 59 hallazgos corregidos en 11 tarjetas F1–F11 auditadas >9.0; CI verde run `32666610965`, APK r62, suite depurada a 280 tests reales). Ver `AUDITORIA-TOTAL-V1.md`.
 
 - [x] Planificación (README + plan + design + agents)
 - [x] Hito 0 – Setup
@@ -264,6 +264,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] Hito 6 – Testing final y entrega → push único a `main` (`c146c09`, 6 commits), ritual CI completado: run [`32634338510`](https://github.com/royleguiza/voice-bubble/actions/runs/32634338510) success · **368 tests** · artefacto `voice-bubble-debug-apk-r57`; tags [`v0.9.0-keyboard-beta`](https://github.com/royleguiza/voice-bubble/tree/v0.9.0-keyboard-beta) (commit `079f8e8`) y [`v1.0.0`](https://github.com/royleguiza/voice-bubble/tree/v1.0.0)
 
 - [x] Lote pulido UI v1.1 del teclado (2026-08-23, `PLAN-PULIDO-TECLADO.md`, 6 tarjetas P1–P6 auditadas >9.0): ☰ movida entre punto y enter con espacio más centrado (w3.0); panel snippets +25% de altura escalable (`scaleV`), búsqueda compacta 36dp, chips 32dp, grid 3 columnas responsivo (última fila reparte full width); Shift con máquina off→momentáneo→capsLock por doble pulsación ≤300ms (glifo ⇪) y ⇧ +14%; glifos ↵ , . a 16sp; FIX historial del micrófono que mostraba vacío (lectura fresca disco∪caché con parser XML tolerante a tipo/formato, dedup y merge por timestamp, anti-resurrección de entradas borradas en la app); ⌫ con autorrepetición acelerada (250→50ms) y gesto deslizante izquierda que borra palabra por palabra (48dp/umbral). CI verde run `32655570378`, APK **r58**.
+- [x] Auditoría total v1 en MODO-LOOP (`MODO-LOOP.md`, `AUDITORIA-TOTAL-V1.md`): 4 auditores paralelos de contexto limpio → 59 hallazgos; 11 tarjetas de corrección mínima por escritores paralelos/serie; auditoría fresca >9.0 en las 11. Destacados: token de generación para callbacks de dictado (texto jamás en campo equivocado), gate VISIBLE_PASSWORD, audio PCM destruido tras cada dictado, gate de micrófono antes del FGS burbuja (crash Android 14+), cancelación de animator huérfano, FIFO-20 también al cargar + orden desc (Set sin orden), toLocal() unifica zonas horarias, merge conservador anti-pérdida en resume, isLocal/kb_stt_provider/dependencias/recursos muertos eliminados, i18n ☰/↵, guardas CI nuevas (paridad de claves Kotlin↔Dart contra docs/contract-keys.txt, hex válido, anti-filtración Log). Suite depurada: 368→280 tests reales (+6 de contrato); deuda pendiente registrada: AT-C15 i18n es/en y AT-D4 pubspec.lock requieren decisión del dueño.
 
 **Siguiente etapa**: verificación del dueño en dispositivo con el APK de este lote según la checklist final de `PLAN-PULIDO-TECLADO.md`; hallazgos → incidencias → fix-wave.
 
