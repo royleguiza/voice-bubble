@@ -82,6 +82,42 @@ class StorageService {
     await prefs.setBool(_keyboardLanguageKeyVisibleKey, visible);
   }
 
+  static const String kbHeightProfileKey = 'kb_height_profile';
+  static const String kbHapticsEnabledKey = 'kb_haptics_enabled';
+
+  /// Perfiles de altura del teclado validos, de menor a mayor.
+  static const List<String> kbHeightProfiles = ['baja', 'media', 'alta'];
+  static const String defaultHeightProfile = 'media';
+
+  /// Altura global del teclado: 'baja', 'media' o 'alta'.
+  /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
+  /// Un valor ausente o invalido cae al perfil por defecto.
+  Future<String> getHeightProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final profile = prefs.getString(kbHeightProfileKey);
+    return kbHeightProfiles.contains(profile)
+        ? profile!
+        : defaultHeightProfile;
+  }
+
+  Future<void> setHeightProfile(String profile) async {
+    if (!kbHeightProfiles.contains(profile)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbHeightProfileKey, profile);
+  }
+
+  /// Vibracion hapatica al pulsar teclas. El teclado nativo Kotlin lee esta
+  /// misma clave con prefijo "flutter.".
+  Future<bool> getHapticsEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(kbHapticsEnabledKey) ?? true;
+  }
+
+  Future<void> setHapticsEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kbHapticsEnabledKey, enabled);
+  }
+
   // --- Espejo D7: credenciales STT para el teclado nativo (K3) ---
   // El teclado Kotlin lee estas claves con prefijo "flutter." en
   // FlutterSharedPreferences. La API key vive aqui en texto plano dentro de

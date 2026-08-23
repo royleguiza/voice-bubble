@@ -217,6 +217,10 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 | 1 | K4-O1 | K4-T1 ∥ K4-T2 | 2026-08-23 | 2026-08-23 | APROBADA (T1 9.6 · T2 8.9, ronda 1) |
 | 2 | K4-O2 | K4-T3 ∥ K4-T4 | 2026-08-23 | 2026-08-23 | APROBADA ronda 2 (T3 8.9 · T4 9.5) |
 
+| 3 | K5-O1 | K5-T1[B] ∥ T2/T3-Dart[A] | 2026-08-23 | 2026-08-23 | APROBADA (9.2 · 9.4) |
+| 4 | K5-O2 | T2/T3-Kotlin[B] ∥ K5-T7[A] ∥ K5-T8[docs] | 2026-08-23 | 2026-08-23 | APROBADA (9.1 · 9.8 · 9.4) |
+| 5 | K5-O3 | K5-T4+T5 [B único] | 2026-08-23 | 2026-08-23 | T4 REPROCESO r1 (8.4) → APROBADA r2 (9.3) · T5 APROBADA (9.0); T6 LIMPIO |
+
 ### 10.2 Estado de tarjetas
 
 | ID | Título | Lane | Estado | Ronda | Puntaje |
@@ -226,7 +230,14 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 | K4-T3 | Capa snippets en teclado | B | APROBADA | 2 | 8.9 |
 | K4-T4 | CRUD UI Settings | A | APROBADA | 2 | 9.5 |
 | K4-T5 | Integración+cierre K4 | Coord. | APROBADA | — | — |
-| K5-T1..T8 | ver §8 | mixto | PENDIENTE | — | — |
+| K5-T1 | Tema+letras snippets [B] | B | APROBADA | 1 | 9.2 |
+| K5-T2/T3 Dart | Altura+vibración [A] | A | APROBADA | 1 | 9.4 |
+| K5-T2/T3 Kotlin | Altura+vibración [B] | B | APROBADA | 1 | 9.1 |
+| K5-T4 | i18n teclado [B] | B | APROBADA | 2 | 9.3 |
+| K5-T5 | Escenarios hostiles [B] | B | APROBADA | 1 | 9.0 |
+| K5-T6 | Auditoría privacidad | Audit. | LIMPIO | 1 | — |
+| K5-T7 | Regresión tests [A] | A | APROBADA | 1 | 9.8 |
+| K5-T8 | README teclado [docs] | docs | APROBADA | 1 | 9.4 |
 | H5-T1..T5 | ver §8 | mixto | PENDIENTE | — | — |
 | H6-T1..T2 | ver §8 | mixto | PENDIENTE | — | — |
 
@@ -242,6 +253,7 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 | 2026-08-23 | Fix de 1 línea K4-T4 aplicado por el coordinador (parche mínimo del auditor, verbatim) | El lanzamiento del subagente falló por error de formato; parche trivial con instrucción exacta del auditor |
 | 2026-08-23 | Fila(s) alfabéticas dentro de la capa snippets (búsqueda tecleada completa) se agrega como alcance de K5-T1 | Defecto menor aprobado por auditor r2; no bloquea el criterio "filtra en tiempo real" (dictado/historial/puntuación ya pueblan) |
 | 2026-08-23 | Criterios de aceptación K4 que requieren dispositivo NO se marcan aún | Se acumulan en la checklist del dueño §11 y se cierran con el APK del push final |
+| 2026-08-23 | K5 reestructurado en 3 oleadas para respetar lanes sin conflictos: O3 = K5-T1[B] ∥ lado Dart de K5-T2/T3[A]; O4 = lado Kotlin de K5-T2/T3[B] ∥ K5-T7[A] ∥ K5-T8[docs]; O5 = K5-T4+T5 juntos en UN agente [B] (mismo archivo); K5-T6 pasa a la auditoría de cierre | El plan original ponía T1[B] y T2+T3[A+B] en paralelo: dos agentes tocarían VoiceKeyboardService.kt a la vez (conflicto de lanes §4.1) |
 
 ### 10.4 Incidencias
 
@@ -317,6 +329,16 @@ VEREDICTO: APROBADA
 Defectos bloqueantes: ninguno
 Defectos menores: finder byType(ListView) sin scoping al Scaffold (hoy imposible de colisionar); duplicación documentada de consts 50/2000 UI↔StorageService.
 
+### Auditorías HITO K5 · ronda 1
+- **K5-T1** (tema+letras snippets): 9.2 APROBADA. Menores: ↵/terminal siguen operando sobre documento en capa snippets (decisión K2); shift sin tecla propia en snippets; ENTER en snippets con búsqueda inactiva va al documento (heredado K4).
+- **K5-T2/T3-Dart**: 9.4 APROBADA. Menores: sin test del guard de rechazo de setHeightProfile.
+- **K5-T2/T3-Kotlin**: 9.1 APROBADA. Menores: kb_snippets_grid_height fijo no escala con perfil 'alta' (cosmético); cambios exigen reapertura de campo (diseño).
+- **K5-T4** (i18n): **8.4 REPROCESO** — hueco funcional: errores de SpeechToTextClient.errorDetail + "Sin conexión a internet." hardcodeados en español (el aviso más frecuente en EN sale en español). Menor: TAB/ESC descriptions fijas técnicas; flechas/CTRL/ALT sin contentDescription (preexistente).
+- **K5-T5** (hostiles): 9.0 APROBADA. Menores: carrera en PROCESSING puede commitear texto al campo nuevo tras rotación (recomendación: contador de generación, UX no privacidad → registrado como mejora futura); CAN_DUCK no tratado; carrera teórica benigna sobre focusRequest.
+- **K5-T7** (regresión): 9.8 APROBADA sin cambios (deuda ya resuelta en e5b3c4c).
+- **K5-T8** (README): 9.4 APROBADA. Menores: rotular K4 como "en desarrollo" desactualizado y funciones K5 no listadas aún → se cierra en el pase de coherencia del Hito 6.
+- **K5-T6** (privacidad): LIMPIO — grep Log. clasificado (solo diagnósticos numéricos en SnippetStore.kt; cero llamadas en el resto); persistencia auditada: solo historial FIFO-20 intencional + flag seeds; query de búsqueda solo en memoria.
+
 ---
 
 ## 11. Checklist acumulada de verificación en dispositivo (para el dueño)
@@ -343,6 +365,17 @@ Defectos menores: finder byType(ListView) sin scoping al Scaffold (hoy imposible
 - [ ] Modo búsqueda: campo iluminado captura teclas; ↵ sale del modo; ⌫ borra el query sin tocar el documento.
 - [ ] Corromper el JSON manualmente → teclado vivo con lista vacía, sin crash.
 - [ ] En un campo de contraseña NO aparece la tecla ☰.
+
+*Cierre K5 (verificar con APK del push final):*
+- [ ] Tema correcto en claro/oscuro y al cambiar el modo del sistema en caliente (todas las capas, popups y menús).
+- [ ] Filas QWERTY de la capa snippets: teclear filtra en vivo; backspace borra el query; nada escribe en el documento.
+- [ ] Altura baja/media/alta desde Ajustes se aplica al reabrir el teclado; insets de la barra de gestos intactos en los 3 perfiles.
+- [ ] Switch Vibración OFF elimina el haptic feedback del teclado.
+- [ ] Con idioma EN: avisos de dictado (sin conexión, API key, permiso, ocupado) salen en inglés.
+- [ ] Rotación a mitad de dictado cancela limpio (sin grabación fantasma ni crash).
+- [ ] Cambiar de campo/app mientras graba cancela el dictado.
+- [ ] Llamada entrante durante dictado: la grabación se cancela al perder audio focus.
+- [ ] Uso mixto de 15 minutos (dictado + código + snippets + Termux) sin crash ni ANR.
 
 ---
 

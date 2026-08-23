@@ -1,6 +1,6 @@
 # VoiceBubble STT – App Android de Transcripción de Voz a Texto
 
-Aplicación Android **extremadamente simple** cuyo propósito es convertir voz en texto con motor cloud (API OpenAI/Groq), historial de las últimas 20 transcripciones y **burbuja flotante** para usar desde cualquier otra app. En expansión: **teclado del sistema con dictado por voz** (ver "Modo Teclado" más abajo).
+Aplicación Android **extremadamente simple** cuyo propósito es convertir voz en texto con motor cloud (API OpenAI/Groq), historial de las últimas 20 transcripciones y **burbuja flotante** para usar desde cualquier otra app. Alcance dual: además de la burbuja, incluye un **teclado del sistema con dictado por voz y snippets** (ver "Modo Teclado" más abajo).
 
 ## Características principales
 
@@ -12,6 +12,7 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 
   * Se activa desde cualquier app.
   * Tocar → grabar → transcribir → copiar al clipboard + (opcional) inyectar texto en el campo enfocado mediante Accessibility Service.
+* **Teclado del sistema** "VoiceBubble Keyboard": QWERTY es/en, capa código con fila terminal para Termux/Acode, dictado por voz directo en el cursor y snippets (ver "Modo Teclado").
 * Generación fácil de APK de testing (debug y release).
 
 ## Objetivos de diseño
@@ -90,8 +91,6 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 └─────────────────┘ └─────────────┘ └──────────────────┘
 
   (K1+ añade VoiceKeyboardService: teclado nativo Kotlin, ver teclado-voice.md)
-
-  (K1+ añade VoiceKeyboardService: teclado nativo Kotlin, ver teclado-voice.md)
 ```
 
 ## Permisos requeridos
@@ -114,24 +113,34 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 3. En la pantalla principal: mantener pulsado o tocar “Grabar” → hablar → soltar → ver texto → tocar “Copiar”.
 4. Activar burbuja flotante desde Settings o botón dedicado.
 5. Desde cualquier otra app: tocar la burbuja → hablar → el texto se copia automáticamente (y se intenta inyectar si hay Accessibility activo).
-6. (K1+) Elegir "VoiceBubble Keyboard" como teclado del sistema → escribir o dictar directamente en el campo de cualquier app.
+6. Alternativa: en Ajustes de Android elegir "VoiceBubble Keyboard" como teclado actual → escribir o dictar directamente en el campo de cualquier app.
 
-## Modo Teclado (en desarrollo – hitos K1–K5)
+## Modo Teclado – VoiceBubble Keyboard (hitos K1–K5)
 
-Además de la burbuja, la misma app (mismo APK) ofrecerá un **teclado del sistema** con nombre visible **"VoiceBubble Keyboard"**, construido nativamente en Kotlin (sin Flutter embebido, por rendimiento):
+Además de la burbuja, la misma app (mismo APK) ofrece un **teclado del sistema** con nombre visible **"VoiceBubble Keyboard"**, construido nativamente en Kotlin (sin Flutter embebido, por rendimiento). Decisiones cerradas D1–D9: `teclado-voice.md` §3.
 
-* QWERTY en español e inglés con tecla de alternancia de idioma.
-* **Capa código**: llaves, corchetes, paréntesis, símbolos poco comunes (`\ | & $ # ~ ^`), comillas y backticks; toque largo = par auto-cerrado.
-* **Fila terminal**: TAB, ESC, CTRL (toggle), ALT (toggle) y flechas — pensada para usar Termux de verdad; ocultable desde Ajustes si ya usás un teclado con teclas propias.
-* **Botón de micrófono**: dicta y el texto se inserta donde esté el cursor, con el mismo motor cloud y la misma API key de la app.
-* **Snippets**: atajos de texto/comandos creados en Settings e insertables con un toque; búsqueda por nombre. La primera apertura incluye **5 seeds de ejemplo** editables/borrables: `codex "`, `gemini -p "`, `git add . && git commit -m "`, `git push origin main`, `supabase db push`.
+### Cómo activarlo
+
+1. Ajustes de Android → Sistema → "Manage keyboards" / Métodos de entrada → activar **VoiceBubble Keyboard** (Android mostrará la advertencia estándar sobre teclados de terceros).
+2. Seleccionarlo como teclado actual (botón selector de IME, o la tarjeta "Teclado VoiceBubble" en Settings de la app, que muestra el estado y lleva directo a los Ajustes del sistema).
+3. Sin configuración extra: la API key ya guardada se comparte con el teclado vía copia espejo en las preferencias privadas de la app (D7).
+
+### Funciones
+
+* **QWERTY es/en**: subtipos español (es-ES) e inglés (en-US) con tecla de alternancia de idioma (ocultable desde Ajustes).
+* **Capa símbolos** básica: números y puntuación habitual.
+* **Capa código** (tecla `</>`): llaves, corchetes, paréntesis, símbolos poco comunes (`\ | & $ # ~ ^`), comillas y backticks; toque largo = par auto-cerrado (ej. `{` inserta `{}`).
+* **Fila terminal** (presente en todas las capas): TAB, ESC, CTRL (toggle), ALT (toggle) y flechas ↑ ↓ ← → — pensada para usar Termux de verdad y editar en Acode; ocultable desde Ajustes si ya usás un teclado con teclas propias.
+* **Dictado por voz dentro del teclado** (botón 🎤): dicta y el texto se inserta donde esté el cursor, con el mismo motor cloud y la misma API key de la app; grabaciones de hasta **5 minutos**; **historial emergente** con toque largo sobre el micrófono en reposo (últimas 20 transcripciones; tocar una la inserta en el cursor).
+* **Snippets** (capa en desarrollo, hito K4): atajos de texto/comandos creados en Settings e insertables desde una capa de chips con búsqueda por nombre; toque largo en un chip = menú contextual (insertar / copiar al portapapeles / abrir app asociada — D9, opcional). La primera apertura de la capa precarga **5 seeds editables/borrables**: `codex "`, `gemini -p "`, `git add . && git commit -m "`, `git push origin main`, `supabase db push`.
+* **Exclusión mutua de micrófono burbuja↔teclado**: si uno está grabando, el otro muestra estado ocupado (flag en memoria del proceso + audio focus).
 
 Spec completa e investigación: **`teclado-voice.md`**.
 
 ### Promesa de privacidad del teclado
 
 * El teclado **jamás registra, guarda ni transmite** lo tecleado (ni en logs).
-* Sin dictado, snippets ni aprendizaje en campos de contraseña.
+* En campos de contraseña no aparece el micrófono, y sin dictado, snippets ni aprendizaje.
 * Red usada **solo** en transcripciones iniciadas explícitamente por el usuario.
 * Cero analytics, cero telemetría.
 
@@ -179,5 +188,5 @@ Ver **PLAN.md** para el desglose completo de hitos, tareas y criterios de acepta
 
 \---
 
-**Estado actual del proyecto**: Hitos 0–3 completados y verificados en dispositivo real (ago 2026). Hito 4 (Accessibility) congelado. En curso: teclado del sistema según `teclado-voice.md` (T0–K5).
+**Estado actual del proyecto**: Hitos 0–3 completados y verificados en dispositivo real (ago 2026). Hito 4 (Accessibility) congelado: el dictado desde el teclado cubre la inserción en cursor. Alcance dual en curso según `teclado-voice.md` (T0–K5): teclado activable y QWERTY es/en verificados en dispositivo (K1, K2.1); capa código + fila terminal y dictado por voz (hasta 5 minutos, con historial emergente) implementados con CI verde (K2/K3), pendiente verificación de casos borde; siguen K4 (snippets) y K5 (pulido y entrega).
 
