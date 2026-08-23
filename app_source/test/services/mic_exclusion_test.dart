@@ -27,8 +27,11 @@ void main() {
             case 'create':
             case 'dispose':
               return null;
+            case 'stop':
+              // stop devuelve el path del archivo (String?).
+              return '/tmp/recording.wav';
             default:
-              return true;
+              return null;
           }
         },
       );
