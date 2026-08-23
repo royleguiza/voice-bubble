@@ -31,7 +31,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final TranscriptionService _transcriptionService;
   late final StorageService _storageService;
   late final FloatingBubbleService _floatingBubbleService;
@@ -55,6 +55,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _floatingBubbleService =
         widget.floatingBubbleService ?? FloatingBubbleService();
     _floatingBubbleService.onBubbleTap = _handleBubbleTap;
@@ -447,8 +448,27 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// El teclado nativo escribe dictados en disco mientras la app está en
+  /// segundo plano; al volver al primer plano se relee el historial desde
+  /// SharedPreferences para mostrarlos sin reiniciar la app.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _refreshHistoryFromDisk();
+    }
+  }
+
+  Future<void> _refreshHistoryFromDisk() async {
+    try {
+      await _storageService.load();
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _popupCtrl.dispose();
     super.dispose();
   }
