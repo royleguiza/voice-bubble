@@ -228,6 +228,72 @@ void main() {
     });
   });
 
+  group('StorageService - tecla de capa codigo del teclado', () {
+    test('default visible cuando no hay clave guardada', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.loadKeyboardCodeKeyVisible(), isTrue);
+    });
+
+    test('persiste oculto y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardCodeKeyVisible(false);
+      expect(await service.loadKeyboardCodeKeyVisible(), isFalse);
+    });
+
+    test('persiste visible y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardCodeKeyVisible(false);
+      await service.saveKeyboardCodeKeyVisible(true);
+      expect(await service.loadKeyboardCodeKeyVisible(), isTrue);
+    });
+
+    test('usa la clave compartida con el teclado nativo', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardCodeKeyVisible(false);
+      // El lado Kotlin lee "flutter.kb_code_key_visible" en
+      // FlutterSharedPreferences; el plugin antepone "flutter." al guardar.
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_code_key_visible'), isFalse);
+    });
+  });
+
+  group('StorageService - tecla de idioma del teclado', () {
+    test('default visible cuando no hay clave guardada', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.loadKeyboardLanguageKeyVisible(), isTrue);
+    });
+
+    test('persiste oculto y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardLanguageKeyVisible(false);
+      expect(await service.loadKeyboardLanguageKeyVisible(), isFalse);
+    });
+
+    test('persiste visible y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardLanguageKeyVisible(false);
+      await service.saveKeyboardLanguageKeyVisible(true);
+      expect(await service.loadKeyboardLanguageKeyVisible(), isTrue);
+    });
+
+    test('usa la clave compartida con el teclado nativo', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardLanguageKeyVisible(false);
+      // El lado Kotlin lee "flutter.kb_language_key_visible" en
+      // FlutterSharedPreferences; el plugin antepone "flutter." al guardar.
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_language_key_visible'), isFalse);
+    });
+  });
+
   group('StorageService - espejo D7 de credenciales STT (K3)', () {
     test('sin espejo previo devuelve null', () async {
       SharedPreferences.setMockInitialValues({});

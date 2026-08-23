@@ -428,6 +428,101 @@ void main() {
     });
   });
 
+  group('SettingsScreen - Tecla de capa código', () {
+    Finder codeKeySwitch() => find.descendant(
+          of: find.ancestor(
+            of: find.text('Tecla de capa código'),
+            matching: find.byType(SwitchListTile),
+          ),
+          matching: find.byType(Switch),
+        );
+
+    testWidgets('muestra el switch con estado por defecto visible',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tecla de capa código'), findsOneWidget);
+      expect(
+          find.textContaining('liberar espacio en la barra inferior'),
+          findsOneWidget);
+      expect(codeKeySwitch(), findsOneWidget);
+      expect(tester.widget<Switch>(codeKeySwitch()).value, isTrue);
+    });
+
+    testWidgets('alternar el switch persiste la preferencia', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(codeKeySwitch());
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(codeKeySwitch()).value, isFalse);
+      expect(await storageService.loadKeyboardCodeKeyVisible(), isFalse);
+
+      await tester.tap(codeKeySwitch());
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(codeKeySwitch()).value, isTrue);
+      expect(await storageService.loadKeyboardCodeKeyVisible(), isTrue);
+    });
+
+    testWidgets('refleja el valor previamente guardado', (tester) async {
+      SharedPreferences.setMockInitialValues({'kb_code_key_visible': false});
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(codeKeySwitch()).value, isFalse);
+    });
+  });
+
+  group('SettingsScreen - Tecla de idioma', () {
+    Finder languageKeySwitch() => find.descendant(
+          of: find.ancestor(
+            of: find.text('Tecla de idioma'),
+            matching: find.byType(SwitchListTile),
+          ),
+          matching: find.byType(Switch),
+        );
+
+    testWidgets('muestra el switch con estado por defecto visible',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tecla de idioma'), findsOneWidget);
+      expect(find.textContaining('dictás en un solo idioma'),
+          findsOneWidget);
+      expect(languageKeySwitch(), findsOneWidget);
+      expect(tester.widget<Switch>(languageKeySwitch()).value, isTrue);
+    });
+
+    testWidgets('alternar el switch persiste la preferencia', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(languageKeySwitch());
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(languageKeySwitch()).value, isFalse);
+      expect(await storageService.loadKeyboardLanguageKeyVisible(), isFalse);
+
+      await tester.tap(languageKeySwitch());
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(languageKeySwitch()).value, isTrue);
+      expect(await storageService.loadKeyboardLanguageKeyVisible(), isTrue);
+    });
+
+    testWidgets('refleja el valor previamente guardado', (tester) async {
+      SharedPreferences.setMockInitialValues({'kb_language_key_visible': false});
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(languageKeySwitch()).value, isFalse);
+    });
+  });
+
   group('SettingsScreen - Espejo D7 de credenciales para el teclado', () {
     testWidgets('guardar la API key escribe el espejo con valores canonicos',
         (tester) async {

@@ -35,6 +35,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isKeyboardEnabled = false;
   bool _isKeyboardSelected = false;
   bool _showTerminalRow = true;
+  bool _showCodeKey = true;
+  bool _showLanguageKey = true;
 
   @override
   void initState() {
@@ -49,6 +51,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _loadBubbleState();
     _loadKeyboardStatus();
     _loadTerminalRowVisible();
+    _loadCodeKeyVisible();
+    _loadLanguageKeyVisible();
   }
 
   Future<void> _loadTerminalRowVisible() async {
@@ -63,6 +67,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleTerminalRow(bool visible) async {
     await _storageService.saveKeyboardTerminalRowVisible(visible);
     if (mounted) setState(() => _showTerminalRow = visible);
+  }
+
+  Future<void> _loadCodeKeyVisible() async {
+    try {
+      final visible = await _storageService.loadKeyboardCodeKeyVisible();
+      if (mounted) {
+        setState(() => _showCodeKey = visible);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleKeyboardCodeKey(bool visible) async {
+    await _storageService.saveKeyboardCodeKeyVisible(visible);
+    if (mounted) setState(() => _showCodeKey = visible);
+  }
+
+  Future<void> _loadLanguageKeyVisible() async {
+    try {
+      final visible = await _storageService.loadKeyboardLanguageKeyVisible();
+      if (mounted) {
+        setState(() => _showLanguageKey = visible);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleKeyboardLanguageKey(bool visible) async {
+    await _storageService.saveKeyboardLanguageKeyVisible(visible);
+    if (mounted) setState(() => _showLanguageKey = visible);
   }
 
   Future<void> _loadKeyboardStatus() async {
@@ -283,6 +315,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     value: _showTerminalRow,
                     onChanged: _toggleTerminalRow,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Tecla de capa código'),
+                    subtitle: Text(
+                      'La tecla </> abre los símbolos de programación. '
+                      'Desactívala para liberar espacio en la barra inferior.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    value: _showCodeKey,
+                    onChanged: _toggleKeyboardCodeKey,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Tecla de idioma'),
+                    subtitle: Text(
+                      'El botón ES/EN junto a la barra espaciadora. '
+                      'Desactívala si dictás en un solo idioma.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    value: _showLanguageKey,
+                    onChanged: _toggleKeyboardLanguageKey,
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
