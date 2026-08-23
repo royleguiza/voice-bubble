@@ -222,7 +222,7 @@ class VoiceKeyboardService : InputMethodService() {
         addRow(letterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
 
         val row3 = horizontalRow()
-        val shiftKey = makeSpecialKey("⇧", R.drawable.kb_key_alt, 1f, "mayúsculas") {
+        val shiftKey = makeSpecialKey("⇧", R.drawable.kb_key_alt, 1.3f, "mayúsculas") {
             toggleShift()
         }
         shiftKeyViews.add(shiftKey)
@@ -265,13 +265,18 @@ class VoiceKeyboardService : InputMethodService() {
             layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
             rebuild()
         })
-        row.addView(makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, "capa código") {
-            toggleCodeLayer()
-        })
-        row.addView(makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, "cambiar idioma") {
-            spanishMode = !spanishMode
-            rebuild()
-        })
+        // K2.2: teclas de capa codigo e idioma ocultables desde Ajustes (default visibles).
+        if (codeKeyVisible()) {
+            row.addView(makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, "capa código") {
+                toggleCodeLayer()
+            })
+        }
+        if (languageKeyVisible()) {
+            row.addView(makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, "cambiar idioma") {
+                spanishMode = !spanishMode
+                rebuild()
+            })
+        }
         if (!currentIsPasswordField) {
             micKeyView = makeMicKey()
             row.addView(micKeyView)
@@ -283,7 +288,7 @@ class VoiceKeyboardService : InputMethodService() {
             commit(" ")
         })
         row.addView(makeSymbolKey("."))
-        row.addView(makeSpecialKey("↵", R.drawable.kb_key_accent, 1.5f, "enter") {
+        row.addView(makeSpecialKey("↵", R.drawable.kb_key_accent, 1.8f, "enter") {
             handleEnter()
         })
         return row
@@ -306,7 +311,7 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun makeBackspaceKey(): TextView =
-        makeSpecialKey("⌫", R.drawable.kb_key_alt, 1f, "borrar") {
+        makeSpecialKey("⌫", R.drawable.kb_key_alt, 1.3f, "borrar") {
             handleBackspace()
         }
 
@@ -1017,6 +1022,30 @@ class VoiceKeyboardService : InputMethodService() {
     private fun terminalRowVisible(): Boolean = try {
         getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             .getBoolean("flutter.kb_terminal_row_visible", true)
+    } catch (_: Exception) {
+        true
+    }
+
+    /**
+     * Preferencia escrita por los Ajustes de la app (mismo puente K2.1):
+     * tecla "</>" de capa codigo ocultable; ante cualquier error se muestra
+     * la tecla (default true).
+     */
+    private fun codeKeyVisible(): Boolean = try {
+        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getBoolean("flutter.kb_code_key_visible", true)
+    } catch (_: Exception) {
+        true
+    }
+
+    /**
+     * Preferencia escrita por los Ajustes de la app (mismo puente K2.1):
+     * tecla ES/EN de idioma ocultable; ante cualquier error se muestra
+     * la tecla (default true).
+     */
+    private fun languageKeyVisible(): Boolean = try {
+        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getBoolean("flutter.kb_language_key_visible", true)
     } catch (_: Exception) {
         true
     }

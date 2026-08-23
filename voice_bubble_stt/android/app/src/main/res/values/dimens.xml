@@ -4,6 +4,7 @@
     <dimen name="kb_key_height">46dp</dimen>
     <dimen name="kb_key_gap">6dp</dimen>
     <dimen name="kb_key_radius">8dp</dimen>
+    <dimen name="kb_key_stroke_width">1dp</dimen>
     <dimen name="kb_surface_radius">16dp</dimen>
     <dimen name="kb_key_text_size">19sp</dimen>
     <dimen name="kb_key_text_size_small">14sp</dimen>

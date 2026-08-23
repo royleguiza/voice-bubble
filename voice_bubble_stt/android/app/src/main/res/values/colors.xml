@@ -3,7 +3,8 @@
     <!-- Tokens Liquid Glass del teclado - modo claro (design.md §12) -->
     <color name="kb_surface">#F0F2F2F7</color>
     <color name="kb_key_bg">#F2FFFFFF</color>
-    <color name="kb_key_bg_alt">#FFE5E5EA</color>
+    <color name="kb_key_bg_alt">#FFD6D6DC</color>
+    <color name="kb_key_stroke">#FFC5C5C9</color>
     <color name="kb_key_bg_accent">#FF007AFF</color>
     <color name="kb_label">#FF000000</color>
     <color name="kb_label_secondary">#993C3C43</color>
