@@ -55,6 +55,13 @@ void main() {
       );
     }
 
+    // Exclusion mutua K3: teclado libre en estos flujos.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('com.royleguiza.voicebubblestt/keyboard'),
+      (MethodCall call) async => false,
+    );
+
     for (final channel in [
       'plugins.flutter.io/path_provider',
       'plugins.flutter.io/path_provider_android',

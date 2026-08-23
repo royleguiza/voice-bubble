@@ -69,11 +69,16 @@ void main() {
 
     for (final channel in [
       'com.royleguiza.voicebubblestt/floating_bubble',
+      'com.royleguiza.voicebubblestt/keyboard',
     ]) {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(
         MethodChannel(channel),
-        (MethodCall methodCall) async => true,
+        (MethodCall methodCall) async {
+          // Teclado libre en estos flujos (exclusion mutua K3).
+          if (methodCall.method == 'isKeyboardRecording') return false;
+          return true;
+        },
       );
     }
   });
@@ -81,6 +86,7 @@ void main() {
   tearDown(() {
     for (final channel in [
       'com.royleguiza.voicebubblestt/floating_bubble',
+      'com.royleguiza.voicebubblestt/keyboard',
       'com.llfbandit.record',
       'com.llfbandit.record/messages',
       'plugins.flutter.io/path_provider',
