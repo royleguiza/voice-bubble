@@ -159,11 +159,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _hasApiKey = key.isNotEmpty;
       });
     }
+    // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
+    if (key.isNotEmpty) {
+      try {
+        await _storageService.saveSttMirror(apiKey: key);
+      } catch (_) {}
+    }
   }
 
   Future<void> _saveApiKey() async {
     final key = _apiKeyController.text.trim();
     await _secureStorage.write(key: 'groq_api_key', value: key);
+    if (key.isNotEmpty) {
+      await _storageService.saveSttMirror(apiKey: key);
+    } else {
+      await _storageService.clearSttMirror();
+    }
     if (mounted) {
       setState(() => _hasApiKey = key.isNotEmpty);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -174,6 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _clearApiKey() async {
     await _secureStorage.delete(key: 'groq_api_key');
+    await _storageService.clearSttMirror();
     if (mounted) {
       _apiKeyController.clear();
       setState(() => _hasApiKey = false);

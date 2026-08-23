@@ -34,9 +34,15 @@ class FloatingBubbleService : Service() {
         var isRunning: Boolean = false
             private set
 
+        /** Ultimo estado visual reportado por la app (idle/recording/transcribing). */
+        @Volatile
+        var lastVisualState: String = "idle"
+            private set
+
         var onBubbleActionListener: BubbleActionListener? = null
 
         fun updateState(state: String) {
+            lastVisualState = state
             instance?.updateBubbleVisualState(state)
         }
 

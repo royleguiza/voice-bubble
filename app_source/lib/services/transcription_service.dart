@@ -1,21 +1,38 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:record/record.dart';
 import '../models/transcription.dart';
 import 'cloud_stt_service.dart';
 import 'storage_service.dart';
 
+/// Sonda de ocupacion del microfono del teclado (exclusion mutua K3).
+/// Inyectable para tests; por defecto consulta el canal nativo.
+typedef MicBlockedProbe = Future<bool> Function();
+
+Future<bool> _defaultMicBlockedProbe() async {
+  try {
+    const channel = MethodChannel('com.royleguiza.voicebubblestt/keyboard');
+    return await channel.invokeMethod<bool>('isKeyboardRecording') ?? false;
+  } catch (_) {
+    return false;
+  }
+}
+
 class TranscriptionService {
   CloudSttService _cloudService;
   final StorageService _storageService;
   final AudioRecorder _recorder;
+  final MicBlockedProbe _isMicBlocked;
 
   TranscriptionService({
     required CloudSttService cloudService,
     required StorageService storageService,
     AudioRecorder? recorder,
+    MicBlockedProbe? isMicBlocked,
   })  : _cloudService = cloudService,
         _storageService = storageService,
-        _recorder = recorder ?? AudioRecorder();
+        _recorder = recorder ?? AudioRecorder(),
+        _isMicBlocked = isMicBlocked ?? _defaultMicBlockedProbe;
 
   StorageService get storageService => _storageService;
 
@@ -32,6 +49,13 @@ class TranscriptionService {
   }
 
   Future<void> startRecording(String path) async {
+    // Exclusion mutua burbuja<->teclado: si el teclado esta grabando, la
+    // burbuja no inicia (y viceversa, el teclado chequea el estado burbuja).
+    if (await _isMicBlocked()) {
+      throw const TranscriptionException(
+        'El micrófono está siendo usado por el teclado.',
+      );
+    }
     if (!await _recorder.hasPermission()) {
       throw const TranscriptionException('Permiso de micrófono denegado.');
     }

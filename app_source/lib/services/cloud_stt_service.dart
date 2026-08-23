@@ -42,6 +42,12 @@ class CloudSttService {
       'https://api.groq.com/openai/v1/audio/transcriptions';
   static const String _model = 'whisper-large-v3';
 
+  /// Valores canonicos compartidos con el teclado nativo (espejo D7).
+  static const String endpoint = _endpoint;
+  static const String model = _model;
+  static const String provider = 'groq';
+  static const String language = 'es';
+
   final String apiKey;
   final http.Client? client;
 

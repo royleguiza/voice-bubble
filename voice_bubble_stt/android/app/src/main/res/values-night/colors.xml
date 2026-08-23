@@ -10,4 +10,6 @@
     <color name="kb_label_on_accent">#FFFFFFFF</color>
     <color name="kb_key_pressed">#FF48484A</color>
     <color name="kb_accent_pressed">#FF0069DB</color>
+    <color name="kb_recording">#FFFF453A</color>
+    <color name="kb_recording_pressed">#FFD70015</color>
 </resources>

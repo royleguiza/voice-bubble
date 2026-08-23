@@ -106,6 +106,8 @@ jobs:
             || { echo '::error::falta method.xml'; exit 1; }
           grep -q 'VoiceKeyboardService' voice_bubble_stt/android/app/src/main/AndroidManifest.xml \
             || { echo '::error::IME no declarado en manifest'; exit 1; }
+          test -f voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SpeechToTextClient.kt \
+            || { echo '::error::falta SpeechToTextClient.kt (K3)'; exit 1; }
 
       - name: Build APK debug
         working-directory: voice_bubble_stt

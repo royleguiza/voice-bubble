@@ -97,6 +97,9 @@ class MainActivity : FlutterActivity() {
                     startActivity(intent)
                     result.success(true)
                 }
+                "isKeyboardRecording" -> {
+                    result.success(VoiceKeyboardService.keyboardRecordingActive)
+                }
                 else -> result.notImplemented()
             }
         }

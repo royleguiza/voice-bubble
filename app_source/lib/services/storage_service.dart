@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/transcription.dart';
+import 'cloud_stt_service.dart';
 
 class StorageService {
   static const String _key = 'transcriptions';
@@ -49,6 +50,39 @@ class StorageService {
   Future<void> saveKeyboardTerminalRowVisible(bool visible) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyboardTerminalRowKey, visible);
+  }
+
+  // --- Espejo D7: credenciales STT para el teclado nativo (K3) ---
+  // El teclado Kotlin lee estas claves con prefijo "flutter." en
+  // FlutterSharedPreferences. La API key vive aqui en texto plano dentro de
+  // las preferencias PRIVADAS del paquete (inaccesibles para otras apps),
+  // nunca en el repo ni en storage externo.
+  static const String _sttProviderKey = 'kb_stt_provider';
+  static const String _sttUrlKey = 'kb_stt_url';
+  static const String _sttModelKey = 'kb_stt_model';
+  static const String _sttApiKeyKey = 'kb_stt_api_key';
+
+  Future<void> saveSttMirror({required String apiKey}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_sttApiKeyKey, apiKey);
+    await prefs.setString(_sttProviderKey, CloudSttService.provider);
+    await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
+    await prefs.setString(_sttModelKey, CloudSttService.model);
+    await prefs.setString('kb_stt_language', CloudSttService.language);
+  }
+
+  Future<void> clearSttMirror() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_sttApiKeyKey);
+    await prefs.remove(_sttProviderKey);
+    await prefs.remove(_sttUrlKey);
+    await prefs.remove(_sttModelKey);
+    await prefs.remove('kb_stt_language');
+  }
+
+  Future<String?> loadSttMirroredApiKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_sttApiKeyKey);
   }
 
   Future<void> load() async {

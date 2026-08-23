@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
+import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
 Transcription _makeTranscription(String text, {bool isLocal = true}) {
@@ -224,6 +225,50 @@ void main() {
       // FlutterSharedPreferences; el plugin antepone "flutter." al guardar.
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool('kb_terminal_row_visible'), isFalse);
+    });
+  });
+
+  group('StorageService - espejo D7 de credenciales STT (K3)', () {
+    test('sin espejo previo devuelve null', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.loadSttMirroredApiKey(), isNull);
+    });
+
+    test('saveSttMirror escribe key y valores canonicos del motor', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveSttMirror(apiKey: 'gsk_prueba_123');
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(await service.loadSttMirroredApiKey(), 'gsk_prueba_123');
+      expect(prefs.getString('kb_stt_provider'), 'groq');
+      expect(prefs.getString('kb_stt_model'), CloudSttService.model);
+      expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
+      expect(prefs.getString('kb_stt_language'), 'es');
+    });
+
+    test('clearSttMirror elimina todas las claves del espejo', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveSttMirror(apiKey: 'gsk_temporal');
+      await service.clearSttMirror();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(await service.loadSttMirroredApiKey(), isNull);
+      expect(prefs.getString('kb_stt_provider'), isNull);
+      expect(prefs.getString('kb_stt_url'), isNull);
+      expect(prefs.getString('kb_stt_model'), isNull);
+      expect(prefs.getString('kb_stt_language'), isNull);
+    });
+
+    test('reescribir el espejo actualiza la key sin duplicar claves',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveSttMirror(apiKey: 'primera');
+      await service.saveSttMirror(apiKey: 'segunda');
+      expect(await service.loadSttMirroredApiKey(), 'segunda');
     });
   });
 }
