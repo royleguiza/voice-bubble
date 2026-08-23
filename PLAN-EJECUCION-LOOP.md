@@ -220,6 +220,7 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 | 3 | K5-O1 | K5-T1[B] ∥ T2/T3-Dart[A] | 2026-08-23 | 2026-08-23 | APROBADA (9.2 · 9.4) |
 | 4 | K5-O2 | T2/T3-Kotlin[B] ∥ K5-T7[A] ∥ K5-T8[docs] | 2026-08-23 | 2026-08-23 | APROBADA (9.1 · 9.8 · 9.4) |
 | 5 | K5-O3 | K5-T4+T5 [B único] | 2026-08-23 | 2026-08-23 | T4 REPROCESO r1 (8.4) → APROBADA r2 (9.3) · T5 APROBADA (9.0); T6 LIMPIO |
+| 6 | H5-O1 | T1/T3[B] ∥ T2/T4[docs] ∥ T5[A] | 2026-08-23 | 2026-08-23 | APROBADAS (8.7 · 9.1 · 9.5); T5 REPROCESO r1 (7.0, Matcher como bool ×14) → fix coordinador → re-auditar en cierre |
 
 ### 10.2 Estado de tarjetas
 
@@ -238,8 +239,11 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 | K5-T6 | Auditoría privacidad | Audit. | LIMPIO | 1 | — |
 | K5-T7 | Regresión tests [A] | A | APROBADA | 1 | 9.8 |
 | K5-T8 | README teclado [docs] | docs | APROBADA | 1 | 9.4 |
-| H5-T1..T5 | ver §8 | mixto | PENDIENTE | — | — |
-| H6-T1..T2 | ver §8 | mixto | PENDIENTE | — | — |
+| H5-T1 | Robustez Android 14/15 [B] | B | APROBADA | 1 | 8.7 |
+| H5-T3 | Icono adaptive + splash [B] | B | APROBADA | 1 | 9.1 |
+| H5-T2/T4 | INSTALL.md + batería [docs] | docs | APROBADA | 1 | 9.5 |
+| H5-T5 | Matriz de tests [A] | A | APROBADA (fix coordinador aplicado) | 1 | 7.0→fix |
+| H6-T1..T2 | ver §8 | docs | PENDIENTE | — | — |
 
 ### 10.3 Decisiones del coordinador
 
@@ -254,6 +258,9 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 | 2026-08-23 | Fila(s) alfabéticas dentro de la capa snippets (búsqueda tecleada completa) se agrega como alcance de K5-T1 | Defecto menor aprobado por auditor r2; no bloquea el criterio "filtra en tiempo real" (dictado/historial/puntuación ya pueblan) |
 | 2026-08-23 | Criterios de aceptación K4 que requieren dispositivo NO se marcan aún | Se acumulan en la checklist del dueño §11 y se cierran con el APK del push final |
 | 2026-08-23 | K5 reestructurado en 3 oleadas para respetar lanes sin conflictos: O3 = K5-T1[B] ∥ lado Dart de K5-T2/T3[A]; O4 = lado Kotlin de K5-T2/T3[B] ∥ K5-T7[A] ∥ K5-T8[docs]; O5 = K5-T4+T5 juntos en UN agente [B] (mismo archivo); K5-T6 pasa a la auditoría de cierre | El plan original ponía T1[B] y T2+T3[A+B] en paralelo: dos agentes tocarían VoiceKeyboardService.kt a la vez (conflicto de lanes §4.1) |
+| 2026-08-23 | Fix mecánico H5-T5 aplicado por el coordinador: `classifiedAs(kind, isTrue/isFalse)` → literales `true/false` en 14 sitios (Matcher vs bool = analyze fatal) | Parche trivial y unívoco señalado por el auditor; mismo precedente que K4-T4 |
+| 2026-08-23 | Edge case "startForeground tipo mic con RECORD_AUDIO denegado permanente" (menor de H5-T1) se difiere a verificación del dueño | Tarjeta APROBADA 8.7; el flujo normal mitiga (mic se pide al abrir la app); un parche no auditado sería más riesgoso |
+| 2026-08-23 | Menor H5-T3 (sin `<monochrome>` en icono adaptive) registrado como mejora futura | Android 13+ themed icons usan fallback; no bloquea beta |
 
 ### 10.4 Incidencias
 
@@ -376,6 +383,13 @@ Defectos menores: finder byType(ListView) sin scoping al Scaffold (hoy imposible
 - [ ] Cambiar de campo/app mientras graba cancela el dictado.
 - [ ] Llamada entrante durante dictado: la grabación se cancela al perder audio focus.
 - [ ] Uso mixto de 15 minutos (dictado + código + snippets + Termux) sin crash ni ANR.
+
+*Cierre Hito 5 (verificar con APK del push final):*
+- [ ] Icono adaptive visible en launcher (claro/oscuro) y splash de marca al arrancar.
+- [ ] Burbuja funciona con Android 14/15 (FGS tipado micrófono; notificación visible mientras graba).
+- [ ] POST_NOTIFICATIONS se solicita la primera vez que inicias la burbuja en Android 13+.
+- [ ] Con micrófono denegado permanentemente, activar la burbuja NO crashea la app (edge case registrado por auditoría; verificar comportamiento).
+- [ ] Matriz H5: grabación larga (~10 min) estable; reintento usa el mismo audio sin regrabar; FIFO exacto de 20; errores de red reintentables y 401/400 no reintentables.
 
 ---
 
