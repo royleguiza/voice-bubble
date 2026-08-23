@@ -247,7 +247,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] T0 – Documentación de alcance dual (README + design + AGENTS actualizados con teclado, 2026-08-22)
 - [x] K1 – Esqueleto del teclado funcional (verificado por el dueño en dispositivo real, 2026-08-23: instalado como teclado principal; fix de solape con barra de gestos confirmado en APK r45)
 - [ ] K2 – Capa código y teclas terminales → **implementado**; PENDIENTE verificación del dueño en Termux/Acode (criterios de aceptación de `teclado-voice.md` §K2)
-- [ ] K2.1 – Fila terminal configurable desde Settings (decisión del dueño 2026-08-23: toggle manual, sin auto-detección) → **implementado, CI verde** (run `32611294100`, APK r48, 266 tests); primer uso del puente de preferencias Flutter↔Kotlin (`flutter.` en `FlutterSharedPreferences`) que reutilizará K3 para el espejo D7; PENDIENTE verificación en dispositivo
+- [x] K2.1 – Fila terminal configurable desde Settings (decisión del dueño 2026-08-23: toggle manual, sin auto-detección) → **implementado, CI verde** (run `32611294100`, APK r48, 266 tests); primer uso del puente de preferencias Flutter↔Kotlin (`flutter.` en `FlutterSharedPreferences`) que reutiliza K3 para el espejo D7; verificado por el dueño
+- [ ] K3 – Dictado por voz dentro del teclado → **implementado** (SpeechToTextClient.kt nativo WAV PCM16 + multipart Groq; estados mic idle/grabando/procesando/ocupado con anillo rojo que respeta Reduced Motion; avisos inline no bloqueantes con "abrir Ajustes"; timeout 60 s; cancelación por toque largo; exclusión mutua burbuja↔teclado bidireccional vía flag de proceso + canal `isKeyboardRecording` + audio focus transitorio exclusivo; mic oculto en campos de contraseña; historial FIFO-20 compartido reordenado por timestamp); PENDIENTE verificación del dueño en dispositivo
 - [ ] K2 – Capa código y teclas terminales
 - [ ] K3 – Dictado por voz dentro del teclado
 - [ ] K4 – Snippets y comandos (con 5 seeds)
@@ -256,7 +257,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [ ] Hito 5 – Optimización y pulido → se ejecutará después del ciclo del teclado
 - [ ] Hito 6 – Testing final y entrega (tag `v1.0.0`)
 
-**Siguiente etapa**: verificación en dispositivo de **K2** (Termux: TAB/Ctrl+C/Ctrl+L/flechas; Acode: pares auto-cerrados) → luego **K3 – Dictado por voz dentro del teclado**.
+**Siguiente etapa**: verificación en dispositivo de **K2 + K3** (Termux/Acode para teclas; dictado es/en en Chrome, WhatsApp, Acode; ocupación cruzada burbuja↔teclado; mic ausente en contraseñas) → luego **K4 – Snippets y comandos**.
 
 **Deuda técnica menor (no bloqueante)**:
 - Limpiar los registros muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` (~líneas 74–76 y 115–117).

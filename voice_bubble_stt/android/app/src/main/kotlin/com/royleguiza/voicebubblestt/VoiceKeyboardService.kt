@@ -1,13 +1,20 @@
 package com.royleguiza.voicebubblestt
 
+import android.animation.ObjectAnimator
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.Settings
+import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -33,12 +40,25 @@ class VoiceKeyboardService : InputMethodService() {
 
     private enum class Layer { LETTERS, SYMBOLS, CODE }
 
+    private enum class MicState { IDLE, RECORDING, PROCESSING, BUSY }
+
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
     private var spanishMode = true
     private var shiftActive = false
     private var ctrlActive = false
     private var altActive = false
+
+    // --- Dictado (K3) ---
+    private lateinit var sttClient: SpeechToTextClient
+    private var micState = MicState.IDLE
+    private var currentIsPasswordField = false
+    private var micKeyView: TextView? = null
+    private var statusRowView: TextView? = null
+    private var timeoutRunnable: Runnable? = null
+    private var dismissStatusRunnable: Runnable? = null
+    private var focusRequest: AudioFocusRequest? = null
+    private var pulseAnimators: List<ObjectAnimator> = emptyList()
 
     private lateinit var root: LinearLayout
     private val letterKeys = mutableListOf<Pair<TextView, Char>>()
@@ -51,6 +71,7 @@ class VoiceKeyboardService : InputMethodService() {
     override fun onEvaluateFullscreenMode(): Boolean = false
 
     override fun onCreateInputView(): View {
+        sttClient = SpeechToTextClient(this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -90,12 +111,22 @@ class VoiceKeyboardService : InputMethodService() {
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        currentIsPasswordField = isPasswordInput(info)
         layer = Layer.LETTERS
         lastLettersLayer = Layer.LETTERS
         shiftActive = false
         ctrlActive = false
         altActive = false
         rebuild()
+    }
+
+    /** Campos de contraseña: sin micrófono, snippets ni sugerencias (K3). */
+    private fun isPasswordInput(info: EditorInfo?): Boolean {
+        if (info == null) return false
+        val variation = info.inputType and InputType.TYPE_MASK_VARIATION
+        return variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+            variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
     }
 
     override fun onWindowHidden() {
@@ -115,6 +146,7 @@ class VoiceKeyboardService : InputMethodService() {
 
     private fun rebuild() {
         dismissPopup()
+        removeStatusRow()
         letterKeys.clear()
         shiftKeyViews.clear()
         modifierKeyViews.clear()
@@ -239,8 +271,14 @@ class VoiceKeyboardService : InputMethodService() {
             spanishMode = !spanishMode
             rebuild()
         })
+        if (!currentIsPasswordField) {
+            micKeyView = makeMicKey()
+            row.addView(micKeyView)
+        } else {
+            micKeyView = null
+        }
         row.addView(makeSymbolKey(","))
-        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 3f, "espacio") {
+        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 2.6f, "espacio") {
             commit(" ")
         })
         row.addView(makeSymbolKey("."))
@@ -532,6 +570,299 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     // ------------------------------------------------------------------
+    // Dictado por voz (K3)
+    // ------------------------------------------------------------------
+
+    private fun makeMicKey(): TextView {
+        val key = makeKey(
+            "🎤",
+            1f,
+            R.drawable.kb_key_bg,
+            R.color.kb_label,
+            dimen(R.dimen.kb_key_text_size_small),
+        )
+        key.contentDescription = "dictar"
+        attachLongPress(
+            key,
+            onLongPress = {
+                if (micState == MicState.RECORDING) cancelDictation()
+            },
+            onTapUp = { handleMicTap() },
+        )
+        applyMicVisual(key)
+        return key
+    }
+
+    private fun handleMicTap() {
+        haptic(root)
+        when (micState) {
+            MicState.IDLE, MicState.BUSY -> startDictation()
+            MicState.RECORDING -> finishDictation()
+            MicState.PROCESSING -> { /* en curso: ignorar toques */ }
+        }
+    }
+
+    private fun bubbleBusy(): Boolean =
+        FloatingBubbleService.isRunning && FloatingBubbleService.lastVisualState != "idle"
+
+    private fun startDictation() {
+        if (bubbleBusy()) {
+            micState = MicState.BUSY
+            refreshMicVisual()
+            showStatus("Ocupado: la burbuja está grabando.")
+            return
+        }
+        val config = sttClient.loadConfig()
+        if (config.apiKey.isBlank()) {
+            micState = MicState.IDLE
+            refreshMicVisual()
+            showStatus("Falta la API key. Toca este aviso para abrir Ajustes.", openSettingsOnClick = true)
+            return
+        }
+        if (!sttClient.hasMicPermission()) {
+            showStatus("Permiso de micrófono denegado. Concedelo desde Ajustes.", openSettingsOnClick = true)
+            return
+        }
+        keyboardRecordingActive = true
+        gainAudioFocus()
+        val started = sttClient.startRecording()
+        if (!started) {
+            abandonAudioFocus()
+            keyboardRecordingActive = false
+            showStatus("No se pudo iniciar la grabación.")
+            return
+        }
+        micState = MicState.RECORDING
+        refreshMicVisual()
+        val t = Runnable { if (micState == MicState.RECORDING) finishDictation() }
+        timeoutRunnable = t
+        handler.postDelayed(t, 60_000L)
+    }
+
+    private fun finishDictation() {
+        timeoutRunnable?.let { handler.removeCallbacks(it) }
+        timeoutRunnable = null
+        micState = MicState.PROCESSING
+        refreshMicVisual()
+        val config = sttClient.loadConfig()
+        Thread {
+            val wav = sttClient.stopRecording()
+            abandonAudioFocus()
+            keyboardRecordingActive = false
+            if (sttClient.isEmptyCapture(wav)) {
+                runOnMain {
+                    micIdle()
+                    showStatus("No se detectó voz.")
+                }
+                return@Thread
+            }
+            sttClient.transcribe(
+                wav,
+                config,
+                onDone = { text ->
+                    runOnMain {
+                        micIdle()
+                        if (text.isNullOrBlank()) {
+                            showStatus("No se detectó voz.")
+                        } else {
+                            commit(text)
+                            addToSharedHistory(text)
+                        }
+                    }
+                },
+                onError = { message ->
+                    runOnMain {
+                        micIdle()
+                        showStatus(message)
+                    }
+                },
+            )
+        }.apply { name = "VbKeyboardFinish"; start() }
+    }
+
+    private fun cancelDictation() {
+        timeoutRunnable?.let { handler.removeCallbacks(it) }
+        timeoutRunnable = null
+        micState = MicState.IDLE
+        refreshMicVisual()
+        Thread {
+            sttClient.cancelRecording()
+            abandonAudioFocus()
+            keyboardRecordingActive = false
+        }.start()
+    }
+
+    private fun micIdle() {
+        micState = MicState.IDLE
+        refreshMicVisual()
+    }
+
+    private fun runOnMain(block: () -> Unit) {
+        Handler(Looper.getMainLooper()).post(block)
+    }
+
+    private fun refreshMicVisual() {
+        micKeyView?.let { applyMicVisual(it) }
+    }
+
+    private fun applyMicVisual(key: TextView) {
+        pulseAnimators.forEach { it.cancel() }
+        pulseAnimators = emptyList()
+        when (micState) {
+            MicState.IDLE -> {
+                key.setBackgroundResource(R.drawable.kb_key_bg)
+                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+                key.text = "🎤"
+                key.alpha = 1f
+            }
+            MicState.RECORDING -> {
+                key.setBackgroundResource(R.drawable.kb_mic_recording)
+                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
+                key.text = "⏺"
+                key.alpha = 1f
+                if (!reducedMotion()) {
+                    val x = ObjectAnimator.ofFloat(key, View.SCALE_X, 1f, 1.08f)
+                    val y = ObjectAnimator.ofFloat(key, View.SCALE_Y, 1f, 1.08f)
+                    listOf(x, y).forEach { a ->
+                        a.repeatCount = ObjectAnimator.INFINITE
+                        a.repeatMode = ObjectAnimator.REVERSE
+                        a.duration = 450
+                        a.start()
+                    }
+                    pulseAnimators = listOf(x, y)
+                }
+            }
+            MicState.PROCESSING -> {
+                key.setBackgroundResource(R.drawable.kb_key_alt)
+                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+                key.text = "···"
+                key.alpha = 1f
+            }
+            MicState.BUSY -> {
+                key.setBackgroundResource(R.drawable.kb_key_alt)
+                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+                key.text = "🎤"
+                key.alpha = 0.5f
+            }
+        }
+    }
+
+    private fun reducedMotion(): Boolean =
+        Settings.Global.getFloat(
+            contentResolver,
+            Settings.Global.ANIMATOR_DURATION_SCALE,
+            1f,
+        ) == 0f
+
+    private fun gainAudioFocus() {
+        try {
+            val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+            val request = AudioFocusRequest.Builder(
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE,
+            ).setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_INPUT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            ).build()
+            am.requestAudioFocus(request)
+            focusRequest = request
+        } catch (_: Exception) {}
+    }
+
+    private fun abandonAudioFocus() {
+        try {
+            focusRequest?.let { request ->
+                val am = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                am.abandonAudioFocusRequest(request)
+            }
+        } catch (_: Exception) {}
+        focusRequest = null
+    }
+
+    /**
+     * Alta en el historial FIFO-20 compartido con la app. El plugin
+     * shared_preferences guarda la lista como Set nativo sin orden garantizado:
+     * se reordena por timestamp descendente (el mismo criterio semantico de la
+     * app: mas nuevo primero) para que el contrato sea determinista.
+     */
+    private fun addToSharedHistory(text: String) {
+        try {
+            val prefs = getSharedPreferences(
+                "FlutterSharedPreferences", Context.MODE_PRIVATE,
+            )
+            val raw = prefs.getStringSet("flutter.transcriptions", emptySet())
+                ?: emptySet()
+            val entries = raw.mapNotNull { entry ->
+                try { JSONObject(entry) } catch (_: Exception) { null }
+            }
+            val newEntry = JSONObject()
+                .put("text", text)
+                .put("timestamp", java.time.Instant.now().toString())
+                .put("isLocal", false)
+            val sorted = (entries + newEntry)
+                .sortedByDescending { json ->
+                    try {
+                        java.time.Instant.parse(json.optString("timestamp"))
+                    } catch (_: Exception) {
+                        java.time.Instant.EPOCH
+                    }
+                }
+                .take(20)
+                .map { it.toString() }
+                .toSet()
+            prefs.edit().putStringSet("flutter.transcriptions", sorted).apply()
+        } catch (_: Exception) {}
+    }
+
+    /** Aviso inline no bloqueante; auto-descarta a los 3.5 s. */
+    private fun showStatus(message: String, openSettingsOnClick: Boolean = false) {
+        root.post {
+            if (!::root.isInitialized) return@post
+            removeStatusRow()
+            val tv = TextView(this)
+            tv.text = message
+            tv.gravity = Gravity.CENTER
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            tv.setPadding(dimen(R.dimen.kb_popup_padding), dimen(R.dimen.kb_popup_padding), dimen(R.dimen.kb_popup_padding), dimen(R.dimen.kb_popup_padding))
+            tv.setBackgroundResource(R.drawable.kb_popup_bg)
+            tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+            if (openSettingsOnClick) {
+                tv.isClickable = true
+                tv.setOnClickListener { openAppUi() }
+            }
+            statusRowView = tv
+            val lp = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            lp.bottomMargin = dimen(R.dimen.kb_key_gap)
+            root.addView(tv, 0, lp)
+            val dismiss = Runnable { removeStatusRow() }
+            dismissStatusRunnable = dismiss
+            handler.postDelayed(dismiss, 3500L)
+        }
+    }
+
+    private fun removeStatusRow() {
+        dismissStatusRunnable?.let { handler.removeCallbacks(it) }
+        dismissStatusRunnable = null
+        statusRowView?.let {
+            (it.parent as? ViewGroup)?.removeView(it)
+        }
+        statusRowView = null
+    }
+
+    /** Abre la UI principal de la app (Ajustes) desde el teclado. */
+    private fun openAppUi() {
+        try {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        } catch (_: Exception) {}
+    }
+
+    // ------------------------------------------------------------------
     // Acentos por toque largo y pares auto-cerrados
     // ------------------------------------------------------------------
 
@@ -689,5 +1020,9 @@ class VoiceKeyboardService : InputMethodService() {
 
     companion object {
         private const val LONG_PRESS_MILLIS = 350L
+
+        /** Exclusion mutua de microfono: visible para MainActivity/burbuja. */
+        @Volatile
+        var keyboardRecordingActive: Boolean = false
     }
 }

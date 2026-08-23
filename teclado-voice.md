@@ -322,6 +322,22 @@ Riesgos específicos: permiso de micrófono concedido a la app cubre al teclado 
 paquete), pero si el usuario revocó el permiso hay que guiarlo a re-concederlo desde
 Settings de la app (no se puede pedir diálogo desde el teclado cómodamente).
 
+**Notas de implementación (2026-08-23)**:
+- Espejo D7: claves `kb_stt_provider/url/model/api_key/language` en preferencias
+  compartidas; `CloudSttService` expone las constantes canónicas (`endpoint`,
+  `model`, `provider`, `language`) y `StorageService.saveSttMirror/clearSttMirror`
+  las escribe al guardar/borrar la API key, con backfill silencioso al abrir Ajustes.
+- Exclusión mutua: flag de proceso `VoiceKeyboardService.keyboardRecordingActive`
+  + estado burbuja vía `FloatingBubbleService.lastVisualState` (interceptado en el
+  canal existente `updateBubbleState`, cero cambios en Dart para leerlo) + canal
+  `isKeyboardRecording` que consulta Dart antes de grabar + audio focus
+  transitorio exclusivo mientras el teclado captura.
+- Historial FIFO-20: el teclado reordena por timestamp descendente antes de
+  persistir (el Set nativo de shared_preferences no garantiza orden); contrato
+  fijado por tests en `history_bridge_contract_test.dart`.
+- Avisos inline: strip superior auto-descartable (3.5 s), nunca diálogos;
+  tocable cuando ofrece "abrir Ajustes" (lanza MainActivity).
+
 ---
 
 ### Hito K4 — Snippets y comandos (~2 ciclos CI)

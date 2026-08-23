@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
+import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
@@ -424,6 +425,48 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tester.widget<Switch>(terminalSwitch()).value, isFalse);
+    });
+  });
+
+  group('SettingsScreen - Espejo D7 de credenciales para el teclado', () {
+    testWidgets('guardar la API key escribe el espejo con valores canonicos',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'gsk_espejo_123');
+      await tester.tap(find.byIcon(Icons.save));
+      await tester.pumpAndSettle();
+
+      expect(await storageService.loadSttMirroredApiKey(), 'gsk_espejo_123');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_stt_provider'), 'groq');
+      expect(prefs.getString('kb_stt_model'), CloudSttService.model);
+      expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
+    });
+
+    testWidgets('borrar la API key limpia el espejo', (tester) async {
+      FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'a_borrar'});
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await storageService.saveSttMirror(apiKey: 'a_borrar');
+      expect(await storageService.loadSttMirroredApiKey(), 'a_borrar');
+
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+
+      expect(await storageService.loadSttMirroredApiKey(), isNull);
+    });
+
+    testWidgets('al abrir Ajustes con key existente se re-espeja (backfill)',
+        (tester) async {
+      FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'previa'});
+      SharedPreferences.setMockInitialValues({});
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(await storageService.loadSttMirroredApiKey(), 'previa');
     });
   });
 }
