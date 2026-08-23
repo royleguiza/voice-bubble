@@ -54,6 +54,10 @@ voice-bubble/                  ← raíz del repo git
 5. Al completar un hito: actualizar checkboxes de criterios en `plan.md`, commitear y pushear.
 6. Después de cada cambio importante: generar APK debug (`flutter build apk --debug`) y avisar al usuario para prueba en dispositivo real.
 
+### Modo loop (estilo de trabajo del dueño)
+
+Cuando el dueño pida "trabajar en modo loop", rige `MODO-LOOP.md`: coordinador + escritores paralelos por archivos disjuntos (serie para archivos compartidos) → auditor ultracrítico SIEMPRE con contexto limpio que califica 0–10 → todo lo < 9.0 vuelve a escritores nuevos limpios hasta aprobar → batería final → push con CI monitoreado → APK al dueño. Cero deuda técnica, cero parches, menos es más. Los planes vigentes (ej. `AUDITORIA-TOTAL-V1.md`, `PLAN-PULIDO-TECLADO.md`) llevan su sección "Registro del loop".
+
 ### Estado actual
 
 Ver sección "Estado" al final de este archivo y los checkboxes de `plan.md`.
