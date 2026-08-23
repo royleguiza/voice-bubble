@@ -259,7 +259,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] Hito 5 – Robustez Android 14/15 (re-definido) → **implementado y auditado** (FGS tipado micrófono + `POST_NOTIFICATIONS` runtime, icono adaptive + splash, `INSTALL.md` con guía de batería, matriz de tests; commit `d569ab6`; fix-wave `c146c09` tras fallo de test; CI verde r57)
 - [x] Hito 6 – Testing final y entrega → push único a `main` (`c146c09`, 6 commits), ritual CI completado: run [`32634338510`](https://github.com/royleguiza/voice-bubble/actions/runs/32634338510) success · **368 tests** · artefacto `voice-bubble-debug-apk-r57`; tags [`v0.9.0-keyboard-beta`](https://github.com/royleguiza/voice-bubble/tree/v0.9.0-keyboard-beta) (commit `079f8e8`) y [`v1.0.0`](https://github.com/royleguiza/voice-bubble/tree/v1.0.0)
 
-**Siguiente etapa**: verificación acumulada del dueño en dispositivo real con el APK r57 según la checklist completa de `PLAN-EJECUCION-LOOP.md` §11 (casos borde heredados de K2/K3 + nuevos de K4/K5/Hito 5). Cualquier hallazgo se registra como incidencia y se corrige en una nueva ronda.
+**Siguiente etapa**: verificación acumulada del dueño en dispositivo real con el APK r57 según **`CHECKLIST-TESTING.md`** (copia navegable de la checklist §11 del plan, para marcar y reportar incidencias). Cualquier hallazgo se registra como incidencia y se corrige en una nueva ronda.
 
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
