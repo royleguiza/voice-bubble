@@ -14,16 +14,6 @@ import 'package:voice_bubble_stt/services/storage_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  String keyboardEntry(
-    String text,
-    DateTime timestamp, {
-    bool isLocal = false,
-  }) {
-    // Forma EXACTA que produce org.json en el lado Kotlin.
-    return '{"text":"$text","timestamp":"'
-        '${timestamp.toUtc().toIso8601String()}","isLocal":$isLocal}';
-  }
-
   group('Contrato historial - formato de entrada del teclado', () {
     test('entrada estilo Kotlin se parsea con Transcription.fromJson', () {
       final json = keyboardEntry('dictado desde el teclado',
@@ -142,6 +132,16 @@ void main() {
       expect(service.transcriptions.single.text, 'valida');
     });
   });
+}
+
+/// Forma EXACTA que produce org.json en el lado Kotlin.
+String keyboardEntry(
+  String text,
+  DateTime timestamp, {
+  bool isLocal = false,
+}) {
+  return '{"text":"$text","timestamp":"'
+      '${timestamp.toUtc().toIso8601String()}","isLocal":$isLocal}';
 }
 
 /// Replica la entrada que persiste el teclado nativo (K3): JSON plano con
