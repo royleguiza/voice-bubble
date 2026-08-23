@@ -52,6 +52,35 @@ class StorageService {
     await prefs.setBool(_keyboardTerminalRowKey, visible);
   }
 
+  static const String _keyboardCodeKeyVisibleKey = 'kb_code_key_visible';
+
+  /// Tecla </> que abre la capa de simbolos de programacion.
+  /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
+  Future<bool> loadKeyboardCodeKeyVisible() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyboardCodeKeyVisibleKey) ?? true;
+  }
+
+  Future<void> saveKeyboardCodeKeyVisible(bool visible) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyboardCodeKeyVisibleKey, visible);
+  }
+
+  static const String _keyboardLanguageKeyVisibleKey =
+      'kb_language_key_visible';
+
+  /// Tecla ES/EN junto a la barra espaciadora para cambiar el idioma.
+  /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
+  Future<bool> loadKeyboardLanguageKeyVisible() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keyboardLanguageKeyVisibleKey) ?? true;
+  }
+
+  Future<void> saveKeyboardLanguageKeyVisible(bool visible) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyboardLanguageKeyVisibleKey, visible);
+  }
+
   // --- Espejo D7: credenciales STT para el teclado nativo (K3) ---
   // El teclado Kotlin lee estas claves con prefijo "flutter." en
   // FlutterSharedPreferences. La API key vive aqui en texto plano dentro de
