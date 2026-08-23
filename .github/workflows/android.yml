@@ -35,8 +35,10 @@ jobs:
 
       - name: Hex de colores valido
         run: |
+          # || true semantico: filtro vacio (todo valido) termina con estado 1
+          # bajo bash -e; el fallo real lo detecta el chequeo de BAD.
           BAD=$(grep -rnoE '<color name="[^"]+">[^<]+</color>' voice_bubble_stt/android/app/src/main/res/values* \
-            | grep -vE '>(@[A-Za-z0-9_/]+|#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8}))</color>$')
+            | grep -vE '>(@[A-Za-z0-9_/]+|#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8}))</color>$' || true)
           if [ -n "$BAD" ]; then
             echo "$BAD"
             echo '::error::hex invalido en colors.xml'
