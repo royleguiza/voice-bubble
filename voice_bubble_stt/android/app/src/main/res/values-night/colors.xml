@@ -6,7 +6,7 @@
     <color name="kb_key_bg_alt">#FF3A3A3C</color>
     <color name="kb_key_bg_accent">#FF0A84FF</color>
     <color name="kb_label">#FFFFFFFF</color>
-    <color name="kb_label_secondary">#FF99EBEBF5</color>
+    <color name="kb_label_secondary">#99EBEBF5</color>
     <color name="kb_label_on_accent">#FFFFFFFF</color>
     <color name="kb_key_pressed">#FF48484A</color>
     <color name="kb_accent_pressed">#FF0069DB</color>
