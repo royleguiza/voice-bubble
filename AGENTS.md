@@ -239,7 +239,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 ## Estado del proyecto
 
 > **Actualizar esta sección al final de cada hito completado.**
-> Última actualización: 2026-08-23 (verificación del dueño en dispositivo completada con APK r57 — CHECKLIST-TESTING.md al 100%, sin incidencias).
+> Última actualización: 2026-08-23 (lote pulido UI v1.1 P1–P6 implementado y auditado >9.0; ver `PLAN-PULIDO-TECLADO.md`).
 
 - [x] Planificación (README + plan + design + agents)
 - [x] Hito 0 – Setup
@@ -259,7 +259,9 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] Hito 5 – Robustez Android 14/15 (re-definido) → **implementado y auditado** (FGS tipado micrófono + `POST_NOTIFICATIONS` runtime, icono adaptive + splash, `INSTALL.md` con guía de batería, matriz de tests; commit `d569ab6`; fix-wave `c146c09` tras fallo de test; CI verde r57)
 - [x] Hito 6 – Testing final y entrega → push único a `main` (`c146c09`, 6 commits), ritual CI completado: run [`32634338510`](https://github.com/royleguiza/voice-bubble/actions/runs/32634338510) success · **368 tests** · artefacto `voice-bubble-debug-apk-r57`; tags [`v0.9.0-keyboard-beta`](https://github.com/royleguiza/voice-bubble/tree/v0.9.0-keyboard-beta) (commit `079f8e8`) y [`v1.0.0`](https://github.com/royleguiza/voice-bubble/tree/v1.0.0)
 
-**Siguiente etapa**: sin deuda de verificación — la checklist del dueño (`CHECKLIST-TESTING.md`, 5 bloques) pasó completa el 2026-08-23 con APK r57, sin incidencias. El proyecto queda en estado v1.0.0 estable; nuevos trabajos parten de decisiones del dueño (posibles vías: mejoras futuras registradas en "Deuda técnica menor", o nueva planificación).
+- [x] Lote pulido UI v1.1 del teclado (2026-08-23, `PLAN-PULIDO-TECLADO.md`, 6 tarjetas P1–P6 auditadas >9.0): ☰ movida entre punto y enter con espacio más centrado (w3.0); panel snippets +25% de altura escalable (`scaleV`), búsqueda compacta 36dp, chips 32dp, grid 3 columnas responsivo (última fila reparte full width); Shift con máquina off→momentáneo→capsLock por doble pulsación ≤300ms (glifo ⇪) y ⇧ +14%; glifos ↵ , . a 16sp; FIX historial del micrófono que mostraba vacío (lectura fresca disco∪caché con parser XML tolerante a tipo/formato, dedup y merge por timestamp, anti-resurrección de entradas borradas en la app); ⌫ con autorrepetición acelerada (250→50ms) y gesto deslizante izquierda que borra palabra por palabra (48dp/umbral). CI pendiente en el push del lote.
+
+**Siguiente etapa**: verificación del dueño en dispositivo con el APK de este lote según la checklist final de `PLAN-PULIDO-TECLADO.md`; hallazgos → incidencias → fix-wave.
 
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.

@@ -59,6 +59,17 @@
 
 ---
 
+## 6. Lote pulido UI v1.1 (nuevo APK, checklist completa en `PLAN-PULIDO-TECLADO.md` §Verificación del dueño)
+
+- [ ] ☰ entre punto y ↵; espacio más centrado; fila completa funcional; contraseña sin ☰.
+- [ ] Snippets: contenedor más alto (escala con perfil), búsqueda compacta, chips densos, grid 3 columnas con última fila full width.
+- [ ] Shift: tap = una mayúscula; doble tap rápido = mayúsculas persistentes (⇪); tap posterior apaga; glifo más grande.
+- [ ] ↵ , . claramente más grandes sin desalinear.
+- [ ] Toque largo en 🎤 muestra el historial real (incluye dictados del teclado); insertar no duplica; borrar en la app no resucita al dictar.
+- [ ] ⌫: mantener borra continuo acelerado; deslizar izquierda borra palabra por palabra; tap corto = 1 carácter.
+
+---
+
 ## Incidencias encontradas
 
 | # | Fecha | Hito/sección | Síntoma | App/contexto |
