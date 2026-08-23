@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -250,6 +252,78 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(await storage.loadFloatingBubbleEnabled(), isFalse);
+    });
+  });
+
+  group('Refresco del historial al volver a la app', () {
+    testWidgets(
+        'un dictado escrito por el teclado en segundo plano aparece tras resumed',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpAndSettle();
+
+      // Estado inicial: historial vacio.
+      await tester.tap(find.text('Historial'));
+      await tester.pumpAndSettle();
+      expect(find.text('No hay transcripciones aun'), findsOneWidget);
+
+      // Cerrar el sheet para reabrirlo despues del ciclo de vida.
+      final sheetContext =
+          tester.element(find.text('No hay transcripciones aun'));
+      Navigator.of(sheetContext).pop();
+      await tester.pumpAndSettle();
+
+      // Simular la escritura externa del teclado en SharedPreferences
+      // mientras la app esta de fondo.
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('transcriptions', [
+        jsonEncode({
+          'text': 'dictado externo del teclado',
+          'timestamp':
+              DateTime.parse('2026-08-23T10:00:00Z').toIso8601String(),
+          'isLocal': false,
+        }),
+      ]);
+
+      // Ciclo de vida paused -> resumed: dispara didChangeAppLifecycleState.
+      addTearDown(() {
+        tester.binding
+            .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      });
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding
+          .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      // El nuevo dictado debe verse al abrir el historial.
+      await tester.tap(find.text('Historial'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('dictado externo del teclado'),
+          findsOneWidget);
+      expect(find.text('No hay transcripciones aun'), findsNothing);
+    });
+
+    testWidgets('resumed sin escrituras previas mantiene la pantalla estable',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpAndSettle();
+
+      addTearDown(() {
+        tester.binding
+            .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      });
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding
+          .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+
+      expect(find.text('VoiceBubble STT'), findsOneWidget);
+      expect(find.text('Listo para transcribir'), findsOneWidget);
+
+      await tester.tap(find.text('Historial'));
+      await tester.pumpAndSettle();
+      expect(find.text('No hay transcripciones aun'), findsOneWidget);
     });
   });
 }
