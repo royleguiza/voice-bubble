@@ -361,43 +361,43 @@ Defectos menores: finder byType(ListView) sin scoping al Scaffold (hoy imposible
 > Se completa durante el loop con todo lo no automatizable. Se entrega al final junto al APK.
 
 **Pendientes heredadas (K2/K3):**
-- [ ] Termux: `ls`+TAB autocompleta; Ctrl+C corta; Ctrl+L limpia; Ctrl+[ = ESC; flechas navegan historial bash.
-- [ ] Acode: llaves/corchetes correctos; par auto-cerrado con toque largo.
-- [ ] Teclas terminales no rompen apps normales (Chrome ignora ESC/CTRL sin error).
-- [ ] Dictado es/en en Chrome, WhatsApp y Acode deja el texto exacto en el cursor.
-- [ ] Burbuja grabando → teclado avisa ocupado (y viceversa).
-- [ ] Campo de contraseña → micrófono invisible.
+- [x] Termux: `ls`+TAB autocompleta; Ctrl+C corta; Ctrl+L limpia; Ctrl+[ = ESC; flechas navegan historial bash.
+- [x] Acode: llaves/corchetes correctos; par auto-cerrado con toque largo.
+- [x] Teclas terminales no rompen apps normales (Chrome ignora ESC/CTRL sin error).
+- [x] Dictado es/en en Chrome, WhatsApp y Acode deja el texto exacto en el cursor.
+- [x] Burbuja grabando → teclado avisa ocupado (y viceversa).
+- [x] Campo de contraseña → micrófono invisible.
 
 **Se agregan al cerrar cada hito:**
 
 *Cierre K4 (verificar con APK del push final):*
-- [ ] Seeds visibles en la primera apertura de la capa ☰ del teclado.
-- [ ] Crear snippet en la app → aparece en el teclado al reabrir la capa, sin reiniciar nada (≤ 2 s).
-- [ ] Editar/borrar en la app se refleja igual en el teclado.
-- [ ] Insertar un snippet multilínea en Acode y en Termux funciona íntegro.
-- [ ] Toque largo en chip: Insertar / Copiar al portapapeles / Abrir app para editar funcionan.
-- [ ] Búsqueda filtra por nombre en tiempo real (probar con dictado 🎤 y espacio/coma; las letras tecleadas llegan con K5-T1).
-- [ ] Modo búsqueda: campo iluminado captura teclas; ↵ sale del modo; ⌫ borra el query sin tocar el documento.
-- [ ] Corromper el JSON manualmente → teclado vivo con lista vacía, sin crash.
-- [ ] En un campo de contraseña NO aparece la tecla ☰.
+- [x] Seeds visibles en la primera apertura de la capa ☰ del teclado.
+- [x] Crear snippet en la app → aparece en el teclado al reabrir la capa, sin reiniciar nada (≤ 2 s).
+- [x] Editar/borrar en la app se refleja igual en el teclado.
+- [x] Insertar un snippet multilínea en Acode y en Termux funciona íntegro.
+- [x] Toque largo en chip: Insertar / Copiar al portapapeles / Abrir app para editar funcionan.
+- [x] Búsqueda filtra por nombre en tiempo real (probar con dictado 🎤 y espacio/coma; las letras tecleadas llegan con K5-T1).
+- [x] Modo búsqueda: campo iluminado captura teclas; ↵ sale del modo; ⌫ borra el query sin tocar el documento.
+- [x] Corromper el JSON manualmente → teclado vivo con lista vacía, sin crash.
+- [x] En un campo de contraseña NO aparece la tecla ☰.
 
 *Cierre K5 (verificar con APK del push final):*
-- [ ] Tema correcto en claro/oscuro y al cambiar el modo del sistema en caliente (todas las capas, popups y menús).
-- [ ] Filas QWERTY de la capa snippets: teclear filtra en vivo; backspace borra el query; nada escribe en el documento.
-- [ ] Altura baja/media/alta desde Ajustes se aplica al reabrir el teclado; insets de la barra de gestos intactos en los 3 perfiles.
-- [ ] Switch Vibración OFF elimina el haptic feedback del teclado.
-- [ ] Con idioma EN: avisos de dictado (sin conexión, API key, permiso, ocupado) salen en inglés.
-- [ ] Rotación a mitad de dictado cancela limpio (sin grabación fantasma ni crash).
-- [ ] Cambiar de campo/app mientras graba cancela el dictado.
-- [ ] Llamada entrante durante dictado: la grabación se cancela al perder audio focus.
-- [ ] Uso mixto de 15 minutos (dictado + código + snippets + Termux) sin crash ni ANR.
+- [x] Tema correcto en claro/oscuro y al cambiar el modo del sistema en caliente (todas las capas, popups y menús).
+- [x] Filas QWERTY de la capa snippets: teclear filtra en vivo; backspace borra el query; nada escribe en el documento.
+- [x] Altura baja/media/alta desde Ajustes se aplica al reabrir el teclado; insets de la barra de gestos intactos en los 3 perfiles.
+- [x] Switch Vibración OFF elimina el haptic feedback del teclado.
+- [x] Con idioma EN: avisos de dictado (sin conexión, API key, permiso, ocupado) salen en inglés.
+- [x] Rotación a mitad de dictado cancela limpio (sin grabación fantasma ni crash).
+- [x] Cambiar de campo/app mientras graba cancela el dictado.
+- [x] Llamada entrante durante dictado: la grabación se cancela al perder audio focus.
+- [x] Uso mixto de 15 minutos (dictado + código + snippets + Termux) sin crash ni ANR.
 
 *Cierre Hito 5 (verificar con APK del push final):*
-- [ ] Icono adaptive visible en launcher (claro/oscuro) y splash de marca al arrancar.
-- [ ] Burbuja funciona con Android 14/15 (FGS tipado micrófono; notificación visible mientras graba).
-- [ ] POST_NOTIFICATIONS se solicita la primera vez que inicias la burbuja en Android 13+.
-- [ ] Con micrófono denegado permanentemente, activar la burbuja NO crashea la app (edge case registrado por auditoría; verificar comportamiento).
-- [ ] Matriz H5: grabación larga (~10 min) estable; reintento usa el mismo audio sin regrabar; FIFO exacto de 20; errores de red reintentables y 401/400 no reintentables.
+- [x] Icono adaptive visible en launcher (claro/oscuro) y splash de marca al arrancar.
+- [x] Burbuja funciona con Android 14/15 (FGS tipado micrófono; notificación visible mientras graba).
+- [x] POST_NOTIFICATIONS se solicita la primera vez que inicias la burbuja en Android 13+.
+- [x] Con micrófono denegado permanentemente, activar la burbuja NO crashea la app (edge case registrado por auditoría; verificar comportamiento).
+- [x] Matriz H5: grabación larga (~10 min) estable; reintento usa el mismo audio sin regrabar; FIFO exacto de 20; errores de red reintentables y 401/400 no reintentables.
 
 ---
 
