@@ -140,8 +140,8 @@
 - [x] P6 — ⌫ repetición + gesto (auditoría 9.4)
 - [x] Auditoría >9.0 en las 6 tarjetas (auditor ultracrítico, diff leído línea a línea)
 - [x] Batería pre-push (guardas grep sin hex/Log, XML válido, constantes def=uso, balance llaves/paréntesis 0, sin restos shiftActive, baseline r57 verde)
-- [ ] Push + CI verde
-- [ ] APK entregado al dueño
+- [x] Push + CI verde (run [`32655570378`](https://github.com/royleguiza/voice-bubble/actions/runs/32655570378) success al primer intento · artefacto `voice-bubble-debug-apk-r58`)
+- [x] APK entregado al dueño (r58)
 
 Condiciones de vigilancia registradas por el auditor (no bloqueantes):
 - Si se expone borrado individual/clear() de transcripciones en la app, el overlay anti-resurrección de P5 exigirá límite por sesión antes de mergear.
