@@ -72,9 +72,10 @@ void main() {
     FloatingBubbleService? bubbleService,
     KeyboardService? keyboardService,
   }) {
-    // Superficie alta (800x2000 logicos) para que toda la pagina de Settings
-    // sea visible sin scroll: la tarjeta del teclado alargo la lista.
-    tester.view.physicalSize = const Size(1600, 4000);
+    // Superficie alta (800x2400 logicos) para que toda la pagina de Settings
+    // sea visible sin scroll: la tarjeta del teclado y la seccion de snippets
+    // alargan la lista (9.1-17 / 9.1-21).
+    tester.view.physicalSize = const Size(1600, 4800);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
     return MaterialApp(

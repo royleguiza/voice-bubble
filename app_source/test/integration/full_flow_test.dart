@@ -134,8 +134,9 @@ void main() {
     testWidgets(
       '3. SettingsScreen shows API key input',
       (WidgetTester tester) async {
-        // Superficie alta para ver toda la pagina sin scroll (hay tarjeta nueva).
-        tester.view.physicalSize = const Size(1600, 4000);
+        // Superficie alta para ver toda la pagina sin scroll: la tarjeta del
+        // teclado y la seccion de snippets alargan la lista (9.1-17 / 9.1-21).
+        tester.view.physicalSize = const Size(1600, 4800);
         tester.view.devicePixelRatio = 2.0;
         addTearDown(tester.view.reset);
         await tester.pumpWidget(buildTestApp(home: const SettingsScreen()));
@@ -150,7 +151,7 @@ void main() {
     testWidgets(
       '4. User can enter and save API key',
       (WidgetTester tester) async {
-        tester.view.physicalSize = const Size(1600, 4000);
+        tester.view.physicalSize = const Size(1600, 4800);
         tester.view.devicePixelRatio = 2.0;
         addTearDown(tester.view.reset);
         await tester.pumpWidget(buildTestApp(home: const SettingsScreen()));
@@ -237,7 +238,7 @@ void main() {
       'Home → Settings → Back preserves state',
       (WidgetTester tester) async {
         // Superficie alta para ver toda la pagina sin scroll (hay tarjeta nueva).
-        tester.view.physicalSize = const Size(1600, 4000);
+        tester.view.physicalSize = const Size(1600, 4800);
         tester.view.devicePixelRatio = 2.0;
         addTearDown(tester.view.reset);
 

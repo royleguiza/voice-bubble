@@ -11,4 +11,5 @@
     <dimen name="kb_row_padding_h">4dp</dimen>
     <dimen name="kb_row_padding_v">10dp</dimen>
     <dimen name="kb_popup_padding">6dp</dimen>
+    <dimen name="kb_snippets_grid_height">112dp</dimen>
 </resources>

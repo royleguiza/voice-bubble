@@ -161,8 +161,9 @@ void main() {
 
     testWidgets('settings button navigates to SettingsScreen', (tester) async {
       // Superficie alta: la pagina de Settings es mas larga que el viewport
-      // por defecto y el ListView lazy no construye lo que queda fuera (9.1-17).
-      tester.view.physicalSize = const Size(1600, 4000);
+      // por defecto y el ListView lazy no construye lo que queda fuera
+      // (9.1-17); la seccion de snippets la alargo aun mas (9.1-21).
+      tester.view.physicalSize = const Size(1600, 4800);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(buildTestableWidget());
