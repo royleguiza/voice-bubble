@@ -304,12 +304,12 @@ Tareas:
 9. Tests Dart del contrato JSON de historial compartido (lo testeable desde Dart).
 
 Criterios de aceptación:
-- [ ] Dictado es/en en Chrome, WhatsApp y Acode deja el texto exacto en el cursor.
-- [ ] Historial de la app muestra las transcripciones hechas desde el teclado.
-- [ ] Si la burbuja está grabando, el teclado muestra estado ocupado (y viceversa).
-- [ ] En un campo de contraseña no aparece el micrófono.
-- [ ] Sin conexión: mensaje claro, sin crash, sin envíos parciales.
-- [ ] CI verde + APK probado.
+- [ ] Dictado es/en en Chrome, WhatsApp y Acode deja el texto exacto en el cursor. (pendiente dispositivo)
+- [ ] Historial de la app muestra las transcripciones hechas desde el teclado. (contrato fijado por tests; pendiente dispositivo)
+- [ ] Si la burbuja está grabando, el teclado muestra estado ocupado (y viceversa). (tests Dart; pendiente dispositivo)
+- [ ] En un campo de contraseña no aparece el micrófono. (implementado; pendiente dispositivo)
+- [ ] Sin conexión: mensaje claro, sin crash, sin envíos parciales. (manejo de errores espeja CloudSttService; pendiente dispositivo)
+- [x] CI verde + APK generado. (run `32614903180`, APK r53, 284 tests)
 
 Guion de prueba manual:
 1. Chrome → tocar mic → decir frase larga en español → verificar texto.
