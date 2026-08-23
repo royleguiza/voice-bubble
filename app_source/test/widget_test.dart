@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/main.dart';
 
-import '../helpers/mock_channels.dart';
+import 'helpers/mock_channels.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
