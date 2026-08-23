@@ -239,7 +239,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 ## Estado del proyecto
 
 > **Actualizar esta sección al final de cada hito completado.**
-> Última actualización: 2026-08-23 (lote de pulido visual del teclado).
+> Última actualización: 2026-08-23 (K4, K5 y Hito 5 re-definido implementados localmente; preparación del push final).
 
 - [x] Planificación (README + plan + design + agents)
 - [x] Hito 0 – Setup
@@ -253,13 +253,13 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [ ] K3 – Dictado por voz dentro del teclado → **implementado, CI verde** (run `32614903180`, APK r53, 284 tests); SpeechToTextClient.kt nativo WAV PCM16 + multipart Groq; estados mic idle/grabando/procesando/ocupado con anillo rojo que respeta Reduced Motion; avisos inline no bloqueantes con "abrir Ajustes"; timeout 60 s; cancelación por toque largo; exclusión mutua burbuja↔teclado bidireccional vía flag de proceso + canal `isKeyboardRecording` + audio focus transitorio exclusivo; mic oculto en campos de contraseña; historial FIFO-20 compartido reordenado por timestamp. Verificación parcial del dueño (2026-08-23): dictado operativo en uso diario e historial del teclado OK (ver lote r55). Pendiente: casos borde (mic ausente en contraseñas, aviso de ocupado con burbuja grabando, dictado en inglés)
 - [x] Lote de pulido visual del teclado (2026-08-23, avance de K5): switches en Ajustes para ocultar la tecla `</>` (`kb_code_key_visible`) y la de idioma ES/EN (`kb_language_key_visible`, puente Flutter↔Kotlin del patrón K2.1); pesos ampliados de ⇧/⌫/↵ (1.3f/1.3f/1.8f); contraste modo claro con `kb_key_bg_alt` #D6D6DC + stroke 1dp `kb_key_stroke`. CI verde run `32617334365`, APK **r54**, 302 tests. Verificado por el dueño en dispositivo (2026-08-23): switches ocultan/revelan teclas, mejora visible en claro y oscuro, dictado sigue operativo
 - [x] Lote historial + audios largos del teclado (2026-08-23): FIX de historial que no mostraba dictados del teclado (HomeScreen ahora relee SharedPreferences al volver al primer plano vía WidgetsBindingObserver); historial emergente desde el teclado (toque largo en 🎤 en reposo → ventana con las últimas 20, tocar inserta en cursor, sin Log, sin duplicar entrada); tope de dictado subido de 60 s a 5 minutos (`SpeechToTextClient.MAX_SECONDS` como fuente única) y readTimeout HTTP a 240 s. CI verde run `32619043596`, APK **r55**, 304 tests. Verificado por el dueño (2026-08-23): los dictados desde el teclado ya se guardan y aparecen en el historial de la app
-- [ ] K4 – Snippets y comandos (con 5 seeds)
-- [ ] K5 – Pulido, robustez y entrega (tag `v0.9.0-keyboard-beta`)
+- [x] K4 – Snippets y comandos (con 5 seeds) → **implementado localmente** (CRUD completo en Settings, capa de chips en el teclado con búsqueda por nombre y filas QWERTY propias para el filtro, menú contextual por toque largo, 5 seeds editables/borrables en la primera apertura; CI y verificación en dispositivo pendientes al push final)
+- [x] K5 – Pulido, robustez y entrega → **implementado localmente** (tema claro/oscuro completo del teclado, altura configurable baja/media/alta, vibración on/off, i18n es/en completo incluidos errores de red/API, escenarios hostiles robustecidos: rotación a mitad de dictado, cambio de campo/app grabando, llamada entrante; CI y verificación en dispositivo pendientes al push final)
 - [ ] Hito 4 – Pegado inteligente (Accessibility) → **CONGELADO**: el dictado desde el teclado nativo cubre la inserción en cursor; reevaluar tras K3
-- [ ] Hito 5 – Optimización y pulido → se ejecutará después del ciclo del teclado
+- [x] Hito 5 – Robustez Android 14/15 (re-definido) → **implementado localmente** (FGS tipado de micrófono + `POST_NOTIFICATIONS` solicitado en runtime, icono adaptive + splash, `INSTALL.md` nuevo con guía de batería por fabricante, matriz de tests nueva; CI y verificación en dispositivo pendientes al push final)
 - [ ] Hito 6 – Testing final y entrega (tag `v1.0.0`)
 
-**Siguiente etapa**: **K4 – Snippets y comandos**, ejecutado con el sistema de orquestación de subagentes + auditoría definido en `PLAN-EJECUCION-LOOP.md` (sin push a `main` hasta completar TODO el alcance restante). Las verificaciones de dispositivo pendientes (casos borde K2/K3) se acumulan en el checklist del dueño dentro de ese plan y se cierran juntas al final.
+**Siguiente etapa**: **Hito 6 – Testing final y entrega**: un único push a `main` con todos los commits locales acumulados (K4, K5 y Hito 5 re-definido), seguido del ritual de monitoreo CI obligatorio (`AGENTS.md` §9.4) y del cierre de las verificaciones acumuladas del dueño en dispositivo (checklist en `PLAN-EJECUCION-LOOP.md` §11). Sin pushes intermedios: el CI corre sobre el push final.
 
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.

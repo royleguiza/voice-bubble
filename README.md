@@ -101,6 +101,7 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 <uses-permission android:name="android.permission.FOREGROUND\_SERVICE" />
 <uses-permission android:name="android.permission.FOREGROUND\_SERVICE\_MICROPHONE" /> <!-- Android 14+ -->
 <uses-permission android:name="android.permission.POST\_NOTIFICATIONS" />
+<uses-permission android:name="android.permission.INTERNET" /> <!-- solo transcripciones iniciadas por el usuario -->
 ```
 
 * Declaración de `AccessibilityService` en el `AndroidManifest.xml` (el usuario debe activarlo manualmente en Ajustes). **CONGELADO**: reevaluar tras K3.
@@ -132,8 +133,9 @@ Además de la burbuja, la misma app (mismo APK) ofrece un **teclado del sistema*
 * **Capa código** (tecla `</>`): llaves, corchetes, paréntesis, símbolos poco comunes (`\ | & $ # ~ ^`), comillas y backticks; toque largo = par auto-cerrado (ej. `{` inserta `{}`).
 * **Fila terminal** (presente en todas las capas): TAB, ESC, CTRL (toggle), ALT (toggle) y flechas ↑ ↓ ← → — pensada para usar Termux de verdad y editar en Acode; ocultable desde Ajustes si ya usás un teclado con teclas propias.
 * **Dictado por voz dentro del teclado** (botón 🎤): dicta y el texto se inserta donde esté el cursor, con el mismo motor cloud y la misma API key de la app; grabaciones de hasta **5 minutos**; **historial emergente** con toque largo sobre el micrófono en reposo (últimas 20 transcripciones; tocar una la inserta en el cursor).
-* **Snippets** (capa en desarrollo, hito K4): atajos de texto/comandos creados en Settings e insertables desde una capa de chips con búsqueda por nombre; toque largo en un chip = menú contextual (insertar / copiar al portapapeles / abrir app asociada — D9, opcional). La primera apertura de la capa precarga **5 seeds editables/borrables**: `codex "`, `gemini -p "`, `git add . && git commit -m "`, `git push origin main`, `supabase db push`.
+* **Snippets** (hito K4): atajos de texto/comandos creados y editados en Settings (CRUD completo) e insertables desde una capa de chips con búsqueda por nombre (con filas QWERTY propias para escribir el filtro sin salir de la capa); toque largo en un chip = menú contextual (insertar / copiar al portapapeles / editar en la app). La primera apertura de la capa precarga **5 seeds editables/borrables**: `codex "`, `gemini -p "`, `git add . && git commit -m "`, `git push origin main`, `supabase db push`.
 * **Exclusión mutua de micrófono burbuja↔teclado**: si uno está grabando, el otro muestra estado ocupado (flag en memoria del proceso + audio focus).
+* **Pulido y personalización** (K5): tema claro/oscuro completo siguiendo el sistema, altura del teclado configurable (baja/media/alta), vibración on/off, e i18n completo es/en de las etiquetas internas (incluidos los avisos de error de red/API).
 
 Spec completa e investigación: **`teclado-voice.md`**.
 
@@ -146,7 +148,7 @@ Spec completa e investigación: **`teclado-voice.md`**.
 
 ## Limitaciones conocidas de Android
 
-* Algunos fabricantes (Xiaomi, Huawei, Oppo, etc.) matan agresivamente los servicios en segundo plano → el usuario debe desactivar optimización de batería para la app.
+* Algunos fabricantes (Xiaomi, Huawei, Oppo, Samsung, etc.) matan agresivamente los servicios en segundo plano → el usuario debe desactivar la optimización de batería para la app (guía por fabricante en **`INSTALL.md`** §5).
 * `SYSTEM\_ALERT\_WINDOW` y Accessibility Service son permisos “especiales” que el usuario debe conceder manualmente.
 * En Android Go o dispositivos con poca RAM el overlay puede estar restringido.
 * Android muestra la advertencia estándar sobre teclados de terceros al activar un IME; se mitiga con cero logging y código auditable.
@@ -173,7 +175,7 @@ flutter build apk --release        # más optimizado
 eas build --platform android --profile preview
 ```
 
-Los APKs se instalan activando “Orígenes desconocidos” / “Instalar apps desconocidas”.
+Los APKs se instalan activando “Orígenes desconocidos” / “Instalar apps desconocidas”. Para la instalación paso a paso, la activación de burbuja/teclado y la guía de batería por fabricante, ver **`INSTALL.md`**.
 
 ## Privacidad
 
@@ -188,5 +190,5 @@ Ver **PLAN.md** para el desglose completo de hitos, tareas y criterios de acepta
 
 \---
 
-**Estado actual del proyecto**: Hitos 0–3 completados y verificados en dispositivo real (ago 2026). Hito 4 (Accessibility) congelado: el dictado desde el teclado cubre la inserción en cursor. Alcance dual en curso según `teclado-voice.md` (T0–K5): teclado activable y QWERTY es/en verificados en dispositivo (K1, K2.1); capa código + fila terminal y dictado por voz (hasta 5 minutos, con historial emergente) implementados con CI verde (K2/K3), pendiente verificación de casos borde; siguen K4 (snippets) y K5 (pulido y entrega).
+**Estado actual del proyecto**: Hitos 0–3 completados y verificados en dispositivo real (ago 2026). Hito 4 (Accessibility) congelado: el dictado desde el teclado cubre la inserción en cursor. Alcance dual según `teclado-voice.md` (T0–K5): teclado activable y QWERTY es/en verificados en dispositivo (K1, K2.1); capa código + fila terminal y dictado por voz (hasta 5 minutos, con historial emergente) implementados (K2/K3), pendiente verificación de casos borde; K4 (snippets con CRUD, capa en teclado, búsqueda propia y 5 seeds) y K5 (tema claro/oscuro completo, altura configurable baja/media/alta, vibración on/off, i18n es/en incluidos errores de red/API, escenarios hostiles robustecidos) implementados; Hito 5 re-definido como robustez Android 14/15 y también implementado localmente (FGS tipado de micrófono + `POST_NOTIFICATIONS` en runtime, icono adaptive + splash, `INSTALL.md` con guía de batería por fabricante, matriz de tests nueva). Todo esto vive en commits locales sin pushear: **pendiente la verificación del dueño en dispositivo y el CI del push final** (ver `PLAN-EJECUCION-LOOP.md` §11).
 
