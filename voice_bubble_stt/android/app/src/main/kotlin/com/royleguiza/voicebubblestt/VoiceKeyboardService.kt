@@ -35,6 +35,7 @@ import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
@@ -83,7 +84,9 @@ class VoiceKeyboardService : InputMethodService() {
     private var micState = MicState.IDLE
     private var currentIsPasswordField = false
     private var micKeyView: View? = null
-    private var micNormalView: TextView? = null
+    private var micNormalView: ImageView? = null
+    private var micProcView: View? = null
+    private var micProcDots: List<View> = emptyList()
     private var micPillView: View? = null
     private var micPillDot: TextView? = null
     private var micPillTimer: TextView? = null
@@ -259,6 +262,8 @@ class VoiceKeyboardService : InputMethodService() {
         modifierKeyViews.clear()
         micKeyView = null
         micNormalView = null
+        micProcView = null
+        micProcDots = emptyList()
         micPillView = null
         micPillDot = null
         micPillTimer = null
@@ -442,6 +447,8 @@ class VoiceKeyboardService : InputMethodService() {
         } else {
             micKeyView = null
             micNormalView = null
+            micProcView = null
+            micProcDots = emptyList()
             micPillView = null
             micPillDot = null
             micPillTimer = null
@@ -956,18 +963,17 @@ class VoiceKeyboardService : InputMethodService() {
         lp.setMargins(m, 0, m, 0)
         container.layoutParams = lp
 
-        // Vista normal en reposo / procesando / ocupado
-        val normal = TextView(this)
-        normal.gravity = Gravity.CENTER
+        // Vista normal en reposo / ocupado (icono vectorial kb_ic_mic)
+        val normal = ImageView(this)
+        normal.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        normal.setImageResource(R.drawable.kb_ic_mic)
         normal.isClickable = true
         normal.isFocusable = true
-        normal.includeFontPadding = false
         normal.minimumWidth = 0
         normal.minimumHeight = 0
         normal.setPadding(0, 0, 0, 0)
         normal.setBackgroundResource(R.drawable.kb_key_bg)
-        normal.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-        normal.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+        normal.setColorFilter(ContextCompat.getColor(this, R.color.kb_label))
         normal.layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -985,6 +991,36 @@ class VoiceKeyboardService : InputMethodService() {
             onTapUp = { handleMicTap() },
         )
         container.addView(normal)
+
+        // Vista de procesamiento / transcripción (3 puntos suspensivos pulsantes)
+        val proc = LinearLayout(this)
+        proc.orientation = LinearLayout.HORIZONTAL
+        proc.gravity = Gravity.CENTER
+        proc.setBackgroundResource(R.drawable.kb_key_alt)
+        proc.isClickable = true
+        proc.isFocusable = true
+        proc.layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        val dotSizePx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 5f, resources.displayMetrics,
+        ).toInt()
+        val dotGapPx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 4f, resources.displayMetrics,
+        ).toInt()
+        val dots = mutableListOf<View>()
+        for (i in 0 until 3) {
+            val dot = View(this)
+            dot.setBackgroundResource(R.drawable.kb_proc_dot)
+            val dotLp = LinearLayout.LayoutParams(dotSizePx, dotSizePx)
+            if (i > 0) {
+                dotLp.leftMargin = dotGapPx
+            }
+            proc.addView(dot, dotLp)
+            dots.add(dot)
+        }
+        container.addView(proc)
 
         // Vista pastilla (M4 Pill) en grabación
         val pill = LinearLayout(this)
@@ -1072,6 +1108,8 @@ class VoiceKeyboardService : InputMethodService() {
         container.addView(pill)
 
         micNormalView = normal
+        micProcView = proc
+        micProcDots = dots
         micPillView = pill
         micPillDot = dot
         micPillTimer = timer
@@ -1276,6 +1314,7 @@ class VoiceKeyboardService : InputMethodService() {
 
         val container = micKeyView ?: return
         val normal = micNormalView
+        val proc = micProcView
         val pill = micPillView
         val dot = micPillDot
         val timer = micPillTimer
@@ -1297,7 +1336,9 @@ class VoiceKeyboardService : InputMethodService() {
                 lp.weight = 4.0f
                 container.layoutParams = lp
             }
+            container.background = null
             normal?.visibility = View.GONE
+            proc?.visibility = View.GONE
             pill?.visibility = View.VISIBLE
             container.contentDescription = if (spanishMode) "grabando dictado" else "recording dictation"
 
@@ -1331,29 +1372,75 @@ class VoiceKeyboardService : InputMethodService() {
                 container.layoutParams = lp
             }
             pill?.visibility = View.GONE
-            normal?.visibility = View.VISIBLE
 
             when (micState) {
                 MicState.IDLE -> {
+                    container.background = null
+                    proc?.visibility = View.GONE
+                    normal?.visibility = View.VISIBLE
                     normal?.setBackgroundResource(R.drawable.kb_key_bg)
-                    normal?.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-                    normal?.text = "🎤"
+                    normal?.setImageResource(R.drawable.kb_ic_mic)
+                    normal?.setColorFilter(ContextCompat.getColor(this, R.color.kb_label))
                     normal?.alpha = 1f
                     normal?.contentDescription = if (spanishMode) "dictar" else "dictate"
                     container.contentDescription = if (spanishMode) "dictar" else "dictate"
                 }
                 MicState.PROCESSING -> {
-                    normal?.setBackgroundResource(R.drawable.kb_key_alt)
-                    normal?.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-                    normal?.text = "···"
-                    normal?.alpha = 1f
-                    normal?.contentDescription = if (spanishMode) "procesando" else "processing"
+                    normal?.visibility = View.GONE
+                    proc?.visibility = View.VISIBLE
+                    proc?.setBackgroundResource(R.drawable.kb_key_alt)
+                    container.setBackgroundResource(R.drawable.kb_key_alt)
+                    proc?.contentDescription = if (spanishMode) "procesando" else "processing"
                     container.contentDescription = if (spanishMode) "procesando" else "processing"
+
+                    if (!rm) {
+                        val animators = mutableListOf<ObjectAnimator>()
+                        micProcDots.forEachIndexed { index, dotView ->
+                            dotView.scaleX = 0.8f
+                            dotView.scaleY = 0.8f
+                            dotView.alpha = 0.25f
+
+                            val alphaAnim = ObjectAnimator.ofFloat(dotView, View.ALPHA, 0.25f, 1.0f).apply {
+                                duration = 540L
+                                startDelay = index * 180L
+                                repeatCount = ObjectAnimator.INFINITE
+                                repeatMode = ObjectAnimator.REVERSE
+                            }
+                            val scaleXAnim = ObjectAnimator.ofFloat(dotView, View.SCALE_X, 0.8f, 1.25f).apply {
+                                duration = 540L
+                                startDelay = index * 180L
+                                repeatCount = ObjectAnimator.INFINITE
+                                repeatMode = ObjectAnimator.REVERSE
+                            }
+                            val scaleYAnim = ObjectAnimator.ofFloat(dotView, View.SCALE_Y, 0.8f, 1.25f).apply {
+                                duration = 540L
+                                startDelay = index * 180L
+                                repeatCount = ObjectAnimator.INFINITE
+                                repeatMode = ObjectAnimator.REVERSE
+                            }
+                            alphaAnim.start()
+                            scaleXAnim.start()
+                            scaleYAnim.start()
+                            animators.add(alphaAnim)
+                            animators.add(scaleXAnim)
+                            animators.add(scaleYAnim)
+                        }
+                        pulseAnimators = animators
+                    } else {
+                        micProcDots.forEach { dotView ->
+                            dotView.scaleX = 1.0f
+                            dotView.scaleY = 1.0f
+                            dotView.alpha = 1.0f
+                        }
+                    }
                 }
                 MicState.BUSY -> {
+                    container.background = null
+                    proc?.visibility = View.GONE
+                    normal?.visibility = View.VISIBLE
                     normal?.setBackgroundResource(R.drawable.kb_key_alt)
-                    normal?.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-                    normal?.text = "🎤"
+                    normal?.setImageResource(R.drawable.kb_ic_mic)
+                    normal?.setColorFilter(ContextCompat.getColor(this, R.color.kb_label))
                     normal?.alpha = 0.5f
                     normal?.contentDescription = if (spanishMode) "micrófono ocupado" else "microphone busy"
                     container.contentDescription = if (spanishMode) "micrófono ocupado" else "microphone busy"
