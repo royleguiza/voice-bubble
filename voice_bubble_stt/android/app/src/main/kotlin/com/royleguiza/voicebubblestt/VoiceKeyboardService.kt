@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.media.AudioAttributes
@@ -20,6 +21,7 @@ import android.text.Editable
 import android.text.InputType
 import android.text.TextUtils
 import android.text.TextWatcher
+import android.transition.TransitionManager
 import android.util.TypedValue
 import android.util.Xml
 import android.view.Gravity
@@ -32,6 +34,7 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
@@ -75,15 +78,25 @@ class VoiceKeyboardService : InputMethodService() {
     private var ctrlActive = false
     private var altActive = false
 
-    // --- Dictado (K3) ---
+    // --- Dictado (K3 + M4 Morph-to-Pill) ---
     private lateinit var sttClient: SpeechToTextClient
     private var micState = MicState.IDLE
     private var currentIsPasswordField = false
-    private var micKeyView: TextView? = null
+    private var micKeyView: View? = null
+    private var micNormalView: TextView? = null
+    private var micPillView: View? = null
+    private var micPillDot: TextView? = null
+    private var micPillTimer: TextView? = null
+    private var micPillCancel: TextView? = null
+    private var spaceKeyView: View? = null
+    private var commaKeyView: View? = null
+    private var dotKeyView: View? = null
     private var statusRowView: TextView? = null
     private var statusMessage: String? = null
     private var timeoutRunnable: Runnable? = null
+    private var recordingTimerRunnable: Runnable? = null
     private var dismissStatusRunnable: Runnable? = null
+    private var recordingStartMs: Long = 0L
 
     // AT-A1: token de generacion del dictado. Cada cancelacion lo avanza;
     // los callbacks onDone/onError capturan su valor y se abortan si difiere,
@@ -209,6 +222,7 @@ class VoiceKeyboardService : InputMethodService() {
 
     /** K5-T5: al cerrarse el campo actual, corta dictado y popups vivos. */
     override fun onFinishInputView(finishingInput: Boolean) {
+        stopRecordingTimer()
         cancelDictationIfActive()
         dismissPopup()
         super.onFinishInputView(finishingInput)
@@ -220,6 +234,9 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     override fun onDestroy() {
+        stopRecordingTimer()
+        pulseAnimators.forEach { it.cancel() }
+        pulseAnimators = emptyList()
         handler.removeCallbacksAndMessages(null)
         dismissPopup()
         // K5-T5: destruccion del servicio con dictado vivo = grabacion fantasma.
@@ -234,9 +251,21 @@ class VoiceKeyboardService : InputMethodService() {
     private fun rebuild() {
         dismissPopup()
         removeStatusRow()
+        stopRecordingTimer()
+        pulseAnimators.forEach { it.cancel() }
+        pulseAnimators = emptyList()
         letterKeys.clear()
         shiftKeyViews.clear()
         modifierKeyViews.clear()
+        micKeyView = null
+        micNormalView = null
+        micPillView = null
+        micPillDot = null
+        micPillTimer = null
+        micPillCancel = null
+        spaceKeyView = null
+        commaKeyView = null
+        dotKeyView = null
         if (layer != Layer.SNIPPETS) {
             snippetQuery = ""
             snippetGridContainer = null
@@ -260,6 +289,7 @@ class VoiceKeyboardService : InputMethodService() {
         // Sincronizar estados visuales persistentes tras reconstruir la vista.
         applyCase()
         refreshModifierVisuals()
+        applyMicVisual()
     }
 
     /** Fila terminal permanente en todas las capas (K2). */
@@ -406,18 +436,32 @@ class VoiceKeyboardService : InputMethodService() {
             })
         }
         if (!currentIsPasswordField) {
-            micKeyView = makeMicKey()
-            row.addView(micKeyView)
+            val mic = makeMicKey()
+            micKeyView = mic
+            row.addView(mic)
         } else {
             micKeyView = null
+            micNormalView = null
+            micPillView = null
+            micPillDot = null
+            micPillTimer = null
+            micPillCancel = null
         }
-        row.addView(makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct)))
-        row.addView(makeSpecialKey("", R.drawable.kb_key_bg, 3.0f, if (spanishMode) "espacio" else "space") {
+        val comma = makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct))
+        commaKeyView = comma
+        row.addView(comma)
+
+        val space = makeSpecialKey("", R.drawable.kb_key_bg, 3.0f, if (spanishMode) "espacio" else "space") {
             // En snippets el espacio alimenta el query, nunca el documento.
             if (layer == Layer.SNIPPETS) ensureSnippetSearchMode()
             commit(" ")
-        })
-        row.addView(makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct)))
+        }
+        spaceKeyView = space
+        row.addView(space)
+
+        val dot = makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct))
+        dotKeyView = dot
+        row.addView(dot)
         // K4: acceso a la capa snippets; oculto en campos de contrasena igual que el microfono.
         if (!currentIsPasswordField) {
             row.addView(makeSpecialKey("☰", R.drawable.kb_key_alt, 1f, if (spanishMode) "fragmentos" else "snippets") {
@@ -902,32 +946,139 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     // ------------------------------------------------------------------
-    // Dictado por voz (K3)
+    // Dictado por voz (K3 + M4 Morph-to-Pill)
     // ------------------------------------------------------------------
 
-    private fun makeMicKey(): TextView {
-        val key = makeKey(
-            "🎤",
-            1f,
-            R.drawable.kb_key_bg,
-            R.color.kb_label,
-            dimen(R.dimen.kb_key_text_size_small),
+    private fun makeMicKey(): View {
+        val container = FrameLayout(this)
+        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), 1f)
+        val m = dimen(R.dimen.kb_key_gap) / 2
+        lp.setMargins(m, 0, m, 0)
+        container.layoutParams = lp
+
+        // Vista normal en reposo / procesando / ocupado
+        val normal = TextView(this)
+        normal.gravity = Gravity.CENTER
+        normal.isClickable = true
+        normal.isFocusable = true
+        normal.includeFontPadding = false
+        normal.minimumWidth = 0
+        normal.minimumHeight = 0
+        normal.setPadding(0, 0, 0, 0)
+        normal.setBackgroundResource(R.drawable.kb_key_bg)
+        normal.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+        normal.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+        normal.layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
         )
-        key.contentDescription = if (spanishMode) "dictar" else "dictate"
         attachLongPress(
-            key,
+            normal,
             onLongPress = {
-                haptic(key)
+                haptic(normal)
                 when (micState) {
                     MicState.RECORDING -> cancelDictation()
-                    MicState.IDLE, MicState.BUSY -> showHistoryPopup(key)
+                    MicState.IDLE, MicState.BUSY -> showHistoryPopup(container)
                     MicState.PROCESSING -> { /* transcribiendo: ignorar */ }
                 }
             },
             onTapUp = { handleMicTap() },
         )
-        applyMicVisual(key)
-        return key
+        container.addView(normal)
+
+        // Vista pastilla (M4 Pill) en grabación
+        val pill = LinearLayout(this)
+        pill.orientation = LinearLayout.HORIZONTAL
+        pill.gravity = Gravity.CENTER_VERTICAL
+        pill.setBackgroundResource(R.drawable.kb_mic_pill)
+        val padH = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 12f, resources.displayMetrics,
+        ).toInt()
+        pill.setPadding(padH, 0, padH, 0)
+        pill.isClickable = true
+        pill.isFocusable = true
+        pill.layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        attachLongPress(
+            pill,
+            onLongPress = {
+                haptic(pill)
+                cancelDictation()
+            },
+            onTapUp = {
+                haptic(pill)
+                finishDictation()
+            },
+        )
+
+        // Punto pulsante ●
+        val dot = TextView(this)
+        dot.text = "●"
+        dot.gravity = Gravity.CENTER
+        dot.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
+        dot.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10f)
+        val dotLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+        pill.addView(dot, dotLp)
+
+        // Cronómetro en vivo
+        val timer = TextView(this)
+        timer.text = "0:00"
+        timer.gravity = Gravity.CENTER_VERTICAL
+        timer.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
+        timer.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13f)
+        timer.setTypeface(null, Typeface.BOLD)
+        val timerLp = LinearLayout.LayoutParams(
+            0,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            1f,
+        )
+        val timerMargin = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 6f, resources.displayMetrics,
+        ).toInt()
+        timerLp.setMargins(timerMargin, 0, timerMargin, 0)
+        pill.addView(timer, timerLp)
+
+        // Botón cancelar ✕
+        val cancel = TextView(this)
+        cancel.text = "✕"
+        cancel.gravity = Gravity.CENTER
+        cancel.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
+        cancel.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
+        cancel.setTypeface(null, Typeface.BOLD)
+        cancel.isClickable = true
+        cancel.isFocusable = true
+        cancel.minimumWidth = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 44f, resources.displayMetrics,
+        ).toInt()
+        val cancelPad = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 8f, resources.displayMetrics,
+        ).toInt()
+        cancel.setPadding(cancelPad, 0, cancelPad, 0)
+        val cancelLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        cancel.setOnClickListener {
+            haptic(cancel)
+            cancelDictation()
+        }
+        pill.addView(cancel, cancelLp)
+
+        container.addView(pill)
+
+        micNormalView = normal
+        micPillView = pill
+        micPillDot = dot
+        micPillTimer = timer
+        micPillCancel = cancel
+
+        applyMicVisual()
+        return container
     }
 
     private fun handleMicTap() {
@@ -978,13 +1129,17 @@ class VoiceKeyboardService : InputMethodService() {
             return
         }
         micState = MicState.RECORDING
+        recordingStartMs = SystemClock.elapsedRealtime()
+        micPillTimer?.text = "0:00"
         refreshMicVisual()
+        startRecordingTimer()
         val t = Runnable { if (micState == MicState.RECORDING) finishDictation() }
         timeoutRunnable = t
         handler.postDelayed(t, SpeechToTextClient.MAX_SECONDS * 1000L)
     }
 
     private fun finishDictation() {
+        stopRecordingTimer()
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = null
         micState = MicState.PROCESSING
@@ -1037,6 +1192,7 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun cancelDictation() {
+        stopRecordingTimer()
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = null
         micState = MicState.IDLE
@@ -1056,6 +1212,7 @@ class VoiceKeyboardService : InputMethodService() {
      * del cliente, igual que cancelDictation.
      */
     private fun cancelDictationIfActive() {
+        stopRecordingTimer()
         if (micState == MicState.IDLE && !keyboardRecordingActive) return
         val client = if (::sttClient.isInitialized) sttClient else null
         keyboardRecordingActive = false
@@ -1074,8 +1231,30 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun micIdle() {
+        stopRecordingTimer()
         micState = MicState.IDLE
         refreshMicVisual()
+    }
+
+    private fun startRecordingTimer() {
+        stopRecordingTimer()
+        val r = object : Runnable {
+            override fun run() {
+                if (micState != MicState.RECORDING) return
+                val elapsedSec = (SystemClock.elapsedRealtime() - recordingStartMs) / 1000
+                val m = elapsedSec / 60
+                val s = elapsedSec % 60
+                micPillTimer?.text = String.format(java.util.Locale.US, "%d:%02d", m, s)
+                handler.postDelayed(this, 1000L)
+            }
+        }
+        recordingTimerRunnable = r
+        handler.postDelayed(r, 1000L)
+    }
+
+    private fun stopRecordingTimer() {
+        recordingTimerRunnable?.let { handler.removeCallbacks(it) }
+        recordingTimerRunnable = null
     }
 
     private fun runOnMain(block: () -> Unit) {
@@ -1088,47 +1267,98 @@ class VoiceKeyboardService : InputMethodService() {
         if (micState == MicState.BUSY && !bubbleBusy()) {
             micState = MicState.IDLE
         }
-        micKeyView?.let { applyMicVisual(it) }
+        applyMicVisual()
     }
 
-    private fun applyMicVisual(key: TextView) {
+    private fun applyMicVisual() {
         pulseAnimators.forEach { it.cancel() }
         pulseAnimators = emptyList()
-        when (micState) {
-            MicState.IDLE -> {
-                key.setBackgroundResource(R.drawable.kb_key_bg)
-                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-                key.text = "🎤"
-                key.alpha = 1f
+
+        val container = micKeyView ?: return
+        val normal = micNormalView
+        val pill = micPillView
+        val dot = micPillDot
+        val timer = micPillTimer
+        val parentRow = container.parent as? ViewGroup
+
+        val isRecording = (micState == MicState.RECORDING)
+        val rm = reducedMotion()
+
+        if (!rm && parentRow != null && isRecording != (spaceKeyView?.visibility == View.GONE)) {
+            try {
+                TransitionManager.beginDelayedTransition(parentRow)
+            } catch (_: Exception) {}
+        }
+
+        val lp = container.layoutParams as? LinearLayout.LayoutParams
+        if (isRecording) {
+            spaceKeyView?.visibility = View.GONE
+            if (lp != null && lp.weight != 4.0f) {
+                lp.weight = 4.0f
+                container.layoutParams = lp
             }
-            MicState.RECORDING -> {
-                key.setBackgroundResource(R.drawable.kb_mic_recording)
-                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
-                key.text = "⏺"
-                key.alpha = 1f
-                if (!reducedMotion()) {
-                    val x = ObjectAnimator.ofFloat(key, View.SCALE_X, 1f, 1.08f)
-                    val y = ObjectAnimator.ofFloat(key, View.SCALE_Y, 1f, 1.08f)
-                    listOf(x, y).forEach { a ->
+            normal?.visibility = View.GONE
+            pill?.visibility = View.VISIBLE
+            container.contentDescription = if (spanishMode) "grabando dictado" else "recording dictation"
+
+            val elapsed = (SystemClock.elapsedRealtime() - recordingStartMs) / 1000
+            micPillTimer?.text = String.format("%d:%02d", elapsed / 60, elapsed % 60)
+            if (recordingTimerRunnable == null) {
+                startRecordingTimer()
+            }
+
+            if (dot != null) {
+                dot.scaleX = 1f
+                dot.scaleY = 1f
+                dot.alpha = 1f
+                if (!rm) {
+                    val sx = ObjectAnimator.ofFloat(dot, View.SCALE_X, 1f, 1.35f)
+                    val sy = ObjectAnimator.ofFloat(dot, View.SCALE_Y, 1f, 1.35f)
+                    val alpha = ObjectAnimator.ofFloat(dot, View.ALPHA, 1f, 0.4f)
+                    listOf(sx, sy, alpha).forEach { a ->
                         a.repeatCount = ObjectAnimator.INFINITE
                         a.repeatMode = ObjectAnimator.REVERSE
-                        a.duration = 450
+                        a.duration = 600
                         a.start()
                     }
-                    pulseAnimators = listOf(x, y)
+                    pulseAnimators = listOf(sx, sy, alpha)
                 }
             }
-            MicState.PROCESSING -> {
-                key.setBackgroundResource(R.drawable.kb_key_alt)
-                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-                key.text = "···"
-                key.alpha = 1f
+        } else {
+            spaceKeyView?.visibility = View.VISIBLE
+            if (lp != null && lp.weight != 1.0f) {
+                lp.weight = 1.0f
+                container.layoutParams = lp
             }
-            MicState.BUSY -> {
-                key.setBackgroundResource(R.drawable.kb_key_alt)
-                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-                key.text = "🎤"
-                key.alpha = 0.5f
+            pill?.visibility = View.GONE
+            normal?.visibility = View.VISIBLE
+
+            when (micState) {
+                MicState.IDLE -> {
+                    normal?.setBackgroundResource(R.drawable.kb_key_bg)
+                    normal?.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+                    normal?.text = "🎤"
+                    normal?.alpha = 1f
+                    normal?.contentDescription = if (spanishMode) "dictar" else "dictate"
+                    container.contentDescription = if (spanishMode) "dictar" else "dictate"
+                }
+                MicState.PROCESSING -> {
+                    normal?.setBackgroundResource(R.drawable.kb_key_alt)
+                    normal?.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+                    normal?.text = "···"
+                    normal?.alpha = 1f
+                    normal?.contentDescription = if (spanishMode) "procesando" else "processing"
+                    container.contentDescription = if (spanishMode) "procesando" else "processing"
+                }
+                MicState.BUSY -> {
+                    normal?.setBackgroundResource(R.drawable.kb_key_alt)
+                    normal?.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+                    normal?.text = "🎤"
+                    normal?.alpha = 0.5f
+                    normal?.contentDescription = if (spanishMode) "micrófono ocupado" else "microphone busy"
+                    container.contentDescription = if (spanishMode) "micrófono ocupado" else "microphone busy"
+                }
+                MicState.RECORDING -> { /* no-op */ }
             }
         }
     }
@@ -1944,7 +2174,7 @@ class VoiceKeyboardService : InputMethodService() {
      * press del framework.
      */
     private fun attachLongPress(
-        key: TextView,
+        key: View,
         onLongPress: () -> Unit,
         onTapUp: () -> Unit,
         onRepeat: (() -> Unit)? = null,

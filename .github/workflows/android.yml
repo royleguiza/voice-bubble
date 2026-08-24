@@ -96,15 +96,15 @@ jobs:
           test -f voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SpeechToTextClient.kt \
             || { echo '::error::falta SpeechToTextClient.kt (K3)'; exit 1; }
 
-      - name: Build APK debug
+      - name: Build APK debug (split por ABI)
         working-directory: voice_bubble_stt
-        run: flutter build apk --debug
+        run: flutter build apk --debug --split-per-abi
 
-      - name: Upload APK
+      - name: Upload APK arm64
         uses: actions/upload-artifact@v4
         with:
-          name: voice-bubble-debug-apk-r${{ github.run_number }}
-          path: voice_bubble_stt/build/app/outputs/flutter-apk/app-debug.apk
+          name: voice-bubble-arm64-debug-apk-r${{ github.run_number }}
+          path: voice_bubble_stt/build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
           if-no-files-found: error
           retention-days: 7
-          compression-level: 0
+          compression-level: 6

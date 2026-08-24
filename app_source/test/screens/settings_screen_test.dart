@@ -8,6 +8,7 @@ import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
+import 'package:voice_bubble_stt/widgets/settings_tab_bar.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -168,7 +169,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.tap(find.byKey(const ValueKey('tab-acerca')));
       await tester.pumpAndSettle();
 
       expect(find.text('Acerca de'), findsOneWidget);
@@ -178,7 +179,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.tap(find.byKey(const ValueKey('tab-acerca')));
       await tester.pumpAndSettle();
 
       expect(find.text('VoiceBubble STT v0.1.0'), findsOneWidget);
@@ -188,7 +189,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.tap(find.byKey(const ValueKey('tab-acerca')));
       await tester.pumpAndSettle();
 
       expect(
@@ -329,6 +330,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(find.text('Teclado VoiceBubble'), findsOneWidget);
       expect(find.text('Abrir ajustes del sistema'), findsOneWidget);
       expect(find.byIcon(Icons.keyboard), findsOneWidget);
@@ -340,6 +344,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(find.text('No habilitado'), findsOneWidget);
     });
 
@@ -347,6 +354,9 @@ void main() {
         (tester) async {
       mockKeyboardChannel(enabled: true, selected: true);
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       expect(find.text('Activo'), findsOneWidget);
@@ -358,12 +368,18 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(find.text('Habilitado, falta seleccionarlo'), findsOneWidget);
     });
 
     testWidgets('el boton abre los ajustes del sistema', (tester) async {
       mockKeyboardChannel();
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Abrir ajustes del sistema'));
@@ -390,6 +406,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       final consultasIniciales = keyboardLog.length;
       await tester.tap(find.byIcon(Icons.refresh));
       await tester.pumpAndSettle();
@@ -413,6 +432,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(find.text('Fila terminal'), findsOneWidget);
       expect(find.textContaining('Desactívala si usás Termux'),
           findsOneWidget);
@@ -422,6 +444,9 @@ void main() {
 
     testWidgets('alternar el switch persiste la preferencia', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       await tester.tap(terminalSwitch());
@@ -442,6 +467,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(tester.widget<Switch>(terminalSwitch()).value, isFalse);
     });
   });
@@ -460,6 +488,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(find.text('Tecla de capa código'), findsOneWidget);
       expect(
           find.textContaining('liberar espacio en la barra inferior'),
@@ -470,6 +501,9 @@ void main() {
 
     testWidgets('alternar el switch persiste la preferencia', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       await tester.tap(codeKeySwitch());
@@ -490,6 +524,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(tester.widget<Switch>(codeKeySwitch()).value, isFalse);
     });
   });
@@ -508,6 +545,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(find.text('Tecla de idioma'), findsOneWidget);
       expect(find.textContaining('dictás en un solo idioma'),
           findsOneWidget);
@@ -517,6 +557,9 @@ void main() {
 
     testWidgets('alternar el switch persiste la preferencia', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       await tester.tap(languageKeySwitch());
@@ -535,6 +578,9 @@ void main() {
     testWidgets('refleja el valor previamente guardado', (tester) async {
       SharedPreferences.setMockInitialValues({'kb_language_key_visible': false});
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       expect(tester.widget<Switch>(languageKeySwitch()).value, isFalse);
@@ -581,6 +627,99 @@ void main() {
 
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('kb_stt_api_key'), 'previa');
+    });
+  });
+
+  group('SettingsScreen - Tabs C2 Navigation & State', () {
+    testWidgets('arranca en el tab General por defecto y muestra los 4 tabs',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SettingsTabBar), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-general')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-teclado')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-snippets')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-acerca')), findsOneWidget);
+
+      expect(find.text('Burbuja flotante'), findsOneWidget);
+      expect(find.text('API Key de Groq'), findsOneWidget);
+    });
+
+    testWidgets('navega a todos los tabs y actualiza el contenido visible',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      // Navegar a Teclado
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+      expect(find.text('Teclado VoiceBubble'), findsOneWidget);
+      expect(find.text('Altura del teclado'), findsOneWidget);
+
+      // Navegar a Snippets
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
+      await tester.pumpAndSettle();
+      expect(find.text('Snippets del teclado'), findsOneWidget);
+      expect(find.byKey(const ValueKey('snippets-add-button')), findsOneWidget);
+
+      // Navegar a Acerca
+      await tester.tap(find.byKey(const ValueKey('tab-acerca')));
+      await tester.pumpAndSettle();
+      expect(find.text('Acerca de'), findsOneWidget);
+      expect(find.text('VoiceBubble STT v0.1.0'), findsOneWidget);
+
+      // Regresar a General
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
+      await tester.pumpAndSettle();
+      expect(find.text('Burbuja flotante'), findsOneWidget);
+    });
+
+    testWidgets('persiste el estado de los inputs al cambiar de pestaña y volver',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'gsk_temporal_test');
+      await tester.pumpAndSettle();
+      expect(find.text('gsk_temporal_test'), findsOneWidget);
+
+      // Cambiar a Teclado y luego a Snippets
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
+      await tester.pumpAndSettle();
+
+      // Volver a General
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('gsk_temporal_test'), findsOneWidget);
+    });
+
+    testWidgets('SettingsTabBar respeta accesibilidad y Reduced Motion',
+        (tester) async {
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(
+            disableAnimations: true,
+            accessibleNavigation: true,
+          ),
+          child: MaterialApp(
+            home: SettingsScreen(
+              storageService: storageService,
+              floatingBubbleService: FloatingBubbleService(),
+              keyboardService: KeyboardService(channel: keyboardChannel),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pump();
+
+      expect(find.text('Teclado VoiceBubble'), findsOneWidget);
     });
   });
 }

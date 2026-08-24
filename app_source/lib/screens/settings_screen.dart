@@ -8,6 +8,7 @@ import '../services/floating_bubble_service.dart';
 import '../services/keyboard_service.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
+import '../widgets/settings_tab_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
   final StorageService? storageService;
@@ -28,6 +29,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  int _currentTab = 0;
   final _apiKeyController = TextEditingController();
   late final FlutterSecureStorage _secureStorage;
   late final StorageService _storageService;
@@ -434,348 +436,420 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: const Text('Configuración'),
         centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Stack(
         children: [
-          // Floating Bubble section
-          Text(
-            'Burbuja flotante',
-            style: Theme.of(context).textTheme.titleMedium,
+          IndexedStack(
+            index: _currentTab,
+            children: [
+              _buildGeneralTab(context),
+              _buildKeyboardTab(context),
+              _buildSnippetsTab(context),
+              _buildAboutTab(context),
+            ],
           ),
-          const SizedBox(height: 8),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Activar burbuja flotante'),
-            subtitle: const Text(
-              'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SettingsTabBar(
+              selectedIndex: _currentTab,
+              onTabSelected: (index) {
+                setState(() {
+                  _currentTab = index;
+                });
+              },
             ),
-            value: _isBubbleEnabled,
-            onChanged: _toggleBubble,
           ),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-
-          // Keyboard section
-          Text(
-            'Teclado VoiceBubble',
-            style: Theme.of(context).textTheme.titleMedium,
+  Widget _buildGeneralTab(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      children: [
+        // Floating Bubble section
+        Text(
+          'Burbuja flotante',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Activar burbuja flotante'),
+          subtitle: const Text(
+            'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
           ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+          value: _isBubbleEnabled,
+          onChanged: _toggleBubble,
+        ),
+
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 16),
+
+        // Recording interaction mode
+        Text(
+          'Modo de grabación',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        SegmentedButton<String>(
+          showSelectedIcon: false,
+          segments: const [
+            ButtonSegment(
+              value: StorageService.defaultRecordMode,
+              label: Text('Toque'),
+            ),
+            ButtonSegment(
+              value: StorageService.recordModeHold,
+              label: Text('Mantener'),
+            ),
+          ],
+          selected: {_recordMode},
+          onSelectionChanged: (modes) => _saveRecordMode(modes.first),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _recordMode == StorageService.recordModeHold
+              ? 'Mantén presionado para grabar y suelta para transcribir.'
+              : 'Toca para iniciar y vuelve a tocar para transcribir.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 16),
+
+        // API Key section
+        Text(
+          'API Key de Groq',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Necesaria para el modo Cloud. Obtén tu clave en console.groq.com',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _apiKeyController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: 'gsk_...',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: _hasApiKey
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : null,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _saveApiKey,
+              tooltip: 'Guardar',
+            ),
+            if (_hasApiKey)
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: _clearApiKey,
+                tooltip: 'Borrar',
+              ),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 16),
+
+        // Transcription model section
+        Text(
+          'Modelo de transcripcion',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.cloud,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.keyboard,
-                        color: Theme.of(context).colorScheme.primary,
+                      Text(
+                        'Modo Cloud',
+                        style: Theme.of(context).textTheme.titleSmall,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _keyboardStatusText,
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.refresh),
-                        onPressed: _loadKeyboardStatus,
-                        tooltip: 'Actualizar',
+                      Text(
+                        'Groq Whisper Large V3 (whisper-large-v3)',
+                        style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Usa VoiceBubble como teclado del sistema en cualquier app.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Fila terminal'),
-                    subtitle: Text(
-                      'TAB, ESC, CTRL, ALT y flechas sobre las letras. '
-                      'Desactívala si usás Termux, que ya trae teclas propias.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKeyboardTab(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      children: [
+        Text(
+          'Teclado VoiceBubble',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.keyboard,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
-                    value: _showTerminalRow,
-                    onChanged: _toggleTerminalRow,
-                  ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Tecla de capa código'),
-                    subtitle: Text(
-                      'La tecla </> abre los símbolos de programación. '
-                      'Desactívala para liberar espacio en la barra inferior.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _keyboardStatusText,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                     ),
-                    value: _showCodeKey,
-                    onChanged: _toggleKeyboardCodeKey,
-                  ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Tecla de idioma'),
-                    subtitle: Text(
-                      'El botón ES/EN junto a la barra espaciadora. '
-                      'Desactívala si dictás en un solo idioma.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      onPressed: _loadKeyboardStatus,
+                      tooltip: 'Actualizar',
                     ),
-                    value: _showLanguageKey,
-                    onChanged: _toggleKeyboardLanguageKey,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Altura del teclado',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<String>(
-                    key: const ValueKey('kb-height-profile-selector'),
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(value: 'baja', label: Text('Baja')),
-                      ButtonSegment(value: 'media', label: Text('Media')),
-                      ButtonSegment(value: 'alta', label: Text('Alta')),
-                    ],
-                    selected: {_heightProfile},
-                    onSelectionChanged: (profiles) =>
-                        _saveHeightProfile(profiles.first),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _heightProfileHint,
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Usa VoiceBubble como teclado del sistema en cualquier app.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Fila terminal'),
+                  subtitle: Text(
+                    'TAB, ESC, CTRL, ALT y flechas sobre las letras. '
+                    'Desactívala si usás Termux, que ya trae teclas propias.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color:
                               Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Vibración'),
-                    subtitle: Text(
-                      'Feedback háptico al tocar cada tecla.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                    value: _hapticsEnabled,
-                    onChanged: _toggleHaptics,
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.settings),
-                    label: const Text('Abrir ajustes del sistema'),
-                    onPressed: _openKeyboardSettings,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Guía: activa "VoiceBubble Keyboard" en Administrar teclados y luego selecciónalo al escribir.',
+                  value: _showTerminalRow,
+                  onChanged: _toggleTerminalRow,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Tecla de capa código'),
+                  subtitle: Text(
+                    'La tecla </> abre los símbolos de programación. '
+                    'Desactívala para liberar espacio en la barra inferior.',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                   ),
-                ],
-              ),
-            ),
-          ),
-
-          // Snippets del teclado (K4): CRUD + reorden desde Ajustes.
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Snippets del teclado',
+                  value: _showCodeKey,
+                  onChanged: _toggleKeyboardCodeKey,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Tecla de idioma'),
+                  subtitle: Text(
+                    'El botón ES/EN junto a la barra espaciadora. '
+                    'Desactívala si dictás en un solo idioma.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  value: _showLanguageKey,
+                  onChanged: _toggleKeyboardLanguageKey,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Altura del teclado',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
-              ),
-              Text(
-                '${_snippets.length} / ${StorageService.maxSnippets}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              IconButton(
-                key: const ValueKey('snippets-add-button'),
-                icon: const Icon(Icons.add),
-                tooltip: 'Agregar snippet',
-                onPressed: () => _openSnippetSheet(),
-              ),
-            ],
-          ),
-          if (_snippets.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Todavía no hay snippets. Toca + para crear el primero.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-            )
-          else
-            // Lista inline dentro del ListView raíz (tope StorageService.maxSnippets).
-            // Hacerla lazy exigiría CustomScrollView + Slivers en toda la página,
-            // con riesgo alto de regresión en tests de viewport plegado (9.1-17/21);
-            // se documenta y se deja (AT-C14).
-            for (var i = 0; i < _snippets.length; i++)
-              _buildSnippetTile(_snippets[i], i),
-
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 16),
-
-          // API Key section
-          Text(
-            'API Key de Groq',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Necesaria para el modo Cloud. Obtén tu clave en console.groq.com',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  key: const ValueKey('kb-height-profile-selector'),
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 'baja', label: Text('Baja')),
+                    ButtonSegment(value: 'media', label: Text('Media')),
+                    ButtonSegment(value: 'alta', label: Text('Alta')),
+                  ],
+                  selected: {_heightProfile},
+                  onSelectionChanged: (profiles) =>
+                      _saveHeightProfile(profiles.first),
                 ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _apiKeyController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'gsk_...',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: _hasApiKey
-                        ? const Icon(Icons.check_circle, color: Colors.green)
-                        : null,
-                  ),
+                const SizedBox(height: 8),
+                Text(
+                  _heightProfileHint,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: const Icon(Icons.save),
-                onPressed: _saveApiKey,
-                tooltip: 'Guardar',
-              ),
-              if (_hasApiKey)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: _clearApiKey,
-                  tooltip: 'Borrar',
-                ),
-            ],
-          ),
-
-          const SizedBox(height: 32),
-
-          // Transcription model section
-          Text(
-            'Modelo de transcripcion',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.cloud,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Modo Cloud',
-                          style: Theme.of(context).textTheme.titleSmall,
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Vibración'),
+                  subtitle: Text(
+                    'Feedback háptico al tocar cada tecla.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                        Text(
-                          'Groq Whisper Large V3 (whisper-large-v3)',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
-                    ),
                   ),
-                ],
-              ),
+                  value: _hapticsEnabled,
+                  onChanged: _toggleHaptics,
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.settings),
+                  label: const Text('Abrir ajustes del sistema'),
+                  onPressed: _openKeyboardSettings,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Guía: activa "VoiceBubble Keyboard" en Administrar teclados y luego selecciónalo al escribir.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
             ),
           ),
+        ),
+      ],
+    );
+  }
 
-          const SizedBox(height: 32),
+  Widget _buildSnippetsTab(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Snippets del teclado',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+            Text(
+              '${_snippets.length} / ${StorageService.maxSnippets}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            IconButton(
+              key: const ValueKey('snippets-add-button'),
+              icon: const Icon(Icons.add),
+              tooltip: 'Agregar snippet',
+              onPressed: () => _openSnippetSheet(),
+            ),
+          ],
+        ),
+        if (_snippets.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Todavía no hay snippets. Toca + para crear el primero.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          )
+        else
+          for (var i = 0; i < _snippets.length; i++)
+            _buildSnippetTile(_snippets[i], i),
+      ],
+    );
+  }
 
-          // Recording interaction mode
-          Text(
-            'Modo de grabación',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(
-                  value: StorageService.defaultRecordMode,
-                  label: Text('Toque')),
-              ButtonSegment(
-                  value: StorageService.recordModeHold,
-                  label: Text('Mantener')),
-            ],
-            selected: {_recordMode},
-            onSelectionChanged: (modes) => _saveRecordMode(modes.first),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _recordMode == StorageService.recordModeHold
-                ? 'Mantén presionado para grabar y suelta para transcribir.'
-                : 'Toca para iniciar y vuelve a tocar para transcribir.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+  Widget _buildAboutTab(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      children: [
+        Text(
+          'Acerca de',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.mic_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 28,
+                  ),
                 ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // About section
-          const Divider(),
-          const SizedBox(height: 16),
-          Text(
-            'Acerca de',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'VoiceBubble STT v0.1.0',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Transcripción de voz a texto con Groq Whisper.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'VoiceBubble STT v0.1.0',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Transcripción de voz a texto con Groq Whisper.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
+              ],
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

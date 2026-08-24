@@ -93,6 +93,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(find.text('Altura del teclado'), findsOneWidget);
       expect(find.text('Baja'), findsOneWidget);
       expect(find.text('Media'), findsOneWidget);
@@ -103,6 +106,9 @@ void main() {
     testWidgets('cambiar a Alta persiste en SharedPreferences',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Alta'));
@@ -121,6 +127,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(selectedHeightProfile(tester), {'media'});
       expect(await StorageService().getHeightProfile(), 'media');
     });
@@ -131,6 +140,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
       expect(find.text('Vibración'), findsOneWidget);
       expect(hapticsSwitch(), findsOneWidget);
       expect(tester.widget<Switch>(hapticsSwitch()).value, isTrue);
@@ -139,6 +151,9 @@ void main() {
     testWidgets('apagar la vibración persiste en SharedPreferences',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       await tester.tap(hapticsSwitch());
@@ -154,6 +169,9 @@ void main() {
     testWidgets('refleja el valor previamente guardado', (tester) async {
       SharedPreferences.setMockInitialValues({'kb_haptics_enabled': false});
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
       expect(tester.widget<Switch>(hapticsSwitch()).value, isFalse);

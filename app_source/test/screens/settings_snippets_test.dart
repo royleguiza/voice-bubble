@@ -87,6 +87,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
+      await tester.pumpAndSettle();
+
       for (final nombre in [
         'Codex',
         'Gemini',
@@ -103,6 +106,9 @@ void main() {
     testWidgets('crear snippet lo muestra en la lista y persiste',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
@@ -133,6 +139,9 @@ void main() {
     testWidgets('editar snippet precarga el formulario y persiste los cambios',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
       await tester.pumpAndSettle();
 
       await tester.tap(tileAction('Codex', Icons.edit_rounded));
@@ -168,6 +177,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
+      await tester.pumpAndSettle();
+
       await tester.tap(tileAction('Gemini', Icons.delete_outline_rounded));
       await tester.pumpAndSettle();
 
@@ -186,6 +198,9 @@ void main() {
     testWidgets('las flechas reordenan snippets y persisten el orden',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
       await tester.pumpAndSettle();
 
       final upCodex = tester.widget<IconButton>(
@@ -215,6 +230,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
+      await tester.pumpAndSettle();
+
       await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
       await tester.pumpAndSettle();
 
@@ -232,10 +250,9 @@ void main() {
       expect(find.textContaining('Límite de 50'), findsOneWidget);
       expect(find.text('Guardar'), findsOneWidget);
       // El sheet sigue abierto con el error: el snippet rechazado no debe
-      // aparecer en la lista de Settings (el contenido del sheet NO es
-      // descendiente del ListView).
+      // aparecer en las tarjetas de snippets de Settings.
       expect(
-        find.descendant(of: find.byType(ListView), matching: find.text('Extra')),
+        find.descendant(of: find.byType(Card), matching: find.text('Extra')),
         findsNothing,
       );
 
@@ -246,6 +263,9 @@ void main() {
     testWidgets('contenido mayor a 2000 caracteres muestra error y no guarda',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
@@ -273,6 +293,9 @@ void main() {
 
     testWidgets('nombre vacío muestra error y no guarda', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
