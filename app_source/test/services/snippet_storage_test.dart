@@ -206,16 +206,99 @@ void main() {
       expect(loaded.single.id, 'a');
     });
 
-    test('fromJson tolera campos ausentes o de tipo equivocado', () async {
+    test('fromJson tolera campos de tipo equivocado y regenera el id vacio',
+        () async {
       SharedPreferences.setMockInitialValues({
         'voice_snippets_v1': '[{"id": 123, "orden": "3"}]',
       });
       final service = StorageService();
 
+      final loaded = await service.loadSnippets();
+      expect(loaded, hasLength(1));
+      // id no-String cae a '' y _readSnippets lo regenera ('<micros>-<n>').
+      expect(loaded.single.id, isNotEmpty);
+      // Los campos tolerantes conservan sus defaults sin lanzar excepcion.
+      expect(loaded.single.nombre, '');
+      expect(loaded.single.contenido, '');
+      expect(loaded.single.orden, 0);
+    });
+  });
+
+  group('StorageService - proteccion anti-perdida ante lectura ilegible', () {
+    const corruptedRaw = '{corrupto';
+
+    Future<String?> currentRaw() async {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(StorageService.snippetsKey);
+    }
+
+    void seedCorrupto() {
+      SharedPreferences.setMockInitialValues({
+        'voice_snippets_v1': corruptedRaw,
+      });
+    }
+
+    // Regresion del bug "guardar borra todo": una mutacion sobre storage
+    // ilegible debe abortar SIN reescribir la clave (nunca un array nuevo).
+    test('addSnippet con JSON corrupto devuelve false y no pisa los datos',
+        () async {
+      seedCorrupto();
+      final service = StorageService();
+
       expect(
-        await service.loadSnippets(),
-        [const Snippet(id: '', nombre: '', contenido: '', orden: 0)],
+        await service.addSnippet(nombre: 'X', contenido: 'x'),
+        isFalse,
       );
+      expect(await currentRaw(), corruptedRaw);
+    });
+
+    test(
+        'updateSnippet, deleteSnippet y reorderSnippets con JSON corrupto '
+        'no escriben nada', () async {
+      seedCorrupto();
+      final service = StorageService();
+
+      expect(
+        await service.updateSnippet('seed-codex', nombre: 'X'),
+        isFalse,
+      );
+      expect(await currentRaw(), corruptedRaw);
+
+      expect(await service.deleteSnippet('seed-codex'), isFalse);
+      expect(await currentRaw(), corruptedRaw);
+
+      await service.reorderSnippets(['seed-codex']);
+      expect(await currentRaw(), corruptedRaw);
+    });
+
+    test('loadSnippets regenera ids vacios o duplicados sin perder entradas',
+        () async {
+      final raw = jsonEncode([
+        {'id': 'dup', 'nombre': 'A', 'contenido': 'a', 'orden': 0},
+        {'id': '', 'nombre': 'B', 'contenido': 'b', 'orden': 1},
+        {'id': 'dup', 'nombre': 'C', 'contenido': 'c', 'orden': 2},
+      ]);
+      SharedPreferences.setMockInitialValues({
+        'voice_snippets_v1': raw,
+      });
+      final service = StorageService();
+
+      final loaded = await service.loadSnippets();
+      expect(loaded.map((s) => s.nombre).toList(), ['A', 'B', 'C']);
+      expect(loaded.every((s) => s.id.isNotEmpty), isTrue);
+      expect(loaded.map((s) => s.id).toSet().length, 3);
+    });
+
+    test('ensureSeeds con datos ilegibles no marca el flag ni escribe seeds',
+        () async {
+      seedCorrupto();
+      final service = StorageService();
+
+      await service.ensureSeeds();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool(StorageService.snippetsSeededKey), isNull);
+      expect(prefs.getString(StorageService.snippetsKey), corruptedRaw);
     });
   });
 

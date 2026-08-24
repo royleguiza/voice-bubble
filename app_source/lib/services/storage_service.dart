@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/snippet.dart';
 import '../models/transcription.dart';
@@ -166,26 +167,43 @@ class StorageService {
     return '${DateTime.now().microsecondsSinceEpoch}-$_snippetIdCounter';
   }
 
-  /// Carga los snippets guardados. Ante JSON corrupto o tipos inesperados
-  /// devuelve lista vacia en lugar de lanzar excepcion al llamador.
-  Future<List<Snippet>> loadSnippets() async {
+  /// Carga los snippets guardados para lecturas de UI. Ante JSON corrupto
+  /// devuelve lista vacia para lecturas; las mutaciones usan _readSnippets
+  /// y nunca pisan datos ilegibles.
+  Future<List<Snippet>> loadSnippets() async =>
+      await _readSnippets() ?? const [];
+
+  /// Lectura interna distinguendo "vacio real" de "ilegible": devuelve
+  /// null cuando el JSON esta corrupto, el tipo raiz no es lista o el canal
+  /// falla (los llamadores de mutacion bloquean la escritura en ese caso).
+  /// Devuelve lista (posiblemente vacia) solo cuando la lectura fue valida.
+  Future<List<Snippet>?> _readSnippets() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload();
       final raw = prefs.getString(snippetsKey);
-      if (raw == null || raw.isEmpty) return [];
+      if (raw == null || raw.isEmpty) return const [];
       final decoded = jsonDecode(raw);
-      if (decoded is! List) return [];
+      if (decoded is! List) return null;
       final loaded = <Snippet>[];
+      final seenIds = <String>{};
       for (final item in decoded) {
         if (item is Map) {
-          loaded.add(Snippet.fromJson(Map<String, dynamic>.from(item)));
+          var snippet =
+              Snippet.fromJson(Map<String, dynamic>.from(item));
+          // Boundary: id vacio o duplicado colapsaria reorder/delete;
+          // se regenera para mantener ids unicos en esta carga.
+          if (snippet.id.isEmpty || seenIds.contains(snippet.id)) {
+            snippet = snippet.copyWith(id: _nextSnippetId());
+          }
+          seenIds.add(snippet.id);
+          loaded.add(snippet);
         }
       }
       return loaded;
     } catch (_) {
-      // JSON corrupto o tipo raiz incorrecto: se descarta sin fallar.
-      return [];
+      debugPrint('StorageService: lectura de snippets fallida, escritura bloqueada');
+      return null;
     }
   }
 
@@ -215,7 +233,9 @@ class StorageService {
   }) async {
     if (nombre.trim().isEmpty) return false;
     if (contenido.length > maxSnippetLength) return false;
-    final current = await loadSnippets();
+    final current = await _readSnippets();
+    // Lectura ilegible: bloqueada la escritura para no pisar datos.
+    if (current == null) return false;
     if (current.length >= maxSnippets) return false;
     await saveSnippets([
       ...current,
@@ -241,7 +261,8 @@ class StorageService {
     if (contenido != null && contenido.length > maxSnippetLength) {
       return false;
     }
-    final current = await loadSnippets();
+    final current = await _readSnippets();
+    if (current == null) return false;
     final index = current.indexWhere((s) => s.id == id);
     if (index == -1) return false;
     current[index] =
@@ -251,9 +272,11 @@ class StorageService {
   }
 
   /// Elimina el snippet con ese id y renumera [Snippet.orden] para que
-  /// quede contiguo. Devuelve false si el id no existia.
+  /// quede contiguo. Devuelve false si el id no existia o la lectura fue
+  /// ilegible (escritura bloqueada para no pisar datos).
   Future<bool> deleteSnippet(String id) async {
-    final current = await loadSnippets();
+    final current = await _readSnippets();
+    if (current == null) return false;
     final remaining =
         current.where((s) => s.id != id).toList(growable: false);
     if (remaining.length == current.length) return false;
@@ -266,9 +289,11 @@ class StorageService {
 
   /// Recibe los ids en el nuevo orden deseado y reescribe [Snippet.orden]
   /// segun esa posicion. Los ids desconocidos se ignoran y los snippets no
-  /// mencionados conservan su orden relativo al final de la lista.
+  /// mencionados conservan su orden relativo al final de la lista. Si la
+  /// lectura fue ilegible no escribe nada (no pisa datos).
   Future<void> reorderSnippets(List<String> idsInNewOrder) async {
-    final current = await loadSnippets();
+    final current = await _readSnippets();
+    if (current == null) return;
     final pending = {for (final s in current) s.id: s};
     final reordered = <Snippet>[];
     for (final id in idsInNewOrder) {
@@ -284,11 +309,15 @@ class StorageService {
 
   /// Precarga los 5 seeds solo si nunca se sembro y ademas no hay snippets
   /// guardados. Idempotente: si el flag ya esta marcado no toca nada, asi
-  /// que borrar todos los seeds manualmente no los resucita.
+  /// que borrar todos los seeds manualmente no los resucita. El reload
+  /// evita leer una cache Dart obsoleta por escrituras nativas de Kotlin;
+  /// si la lectura es ilegible retorna sin marcar el flag ni escribir.
   Future<void> ensureSeeds() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload();
     if (prefs.getBool(snippetsSeededKey) ?? false) return;
-    final current = await loadSnippets();
+    final current = await _readSnippets();
+    if (current == null) return;
     if (current.isEmpty) {
       await saveSnippets(_seedSnippets);
     }

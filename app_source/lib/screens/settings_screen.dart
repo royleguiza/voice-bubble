@@ -880,6 +880,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
   String? _nombreError;
   String? _contenidoError;
   String? _generalError;
+  bool _submitting = false;
 
   bool get _isEditing => widget.existing != null;
 
@@ -900,6 +901,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
   }
 
   Future<void> _submit() async {
+    if (_submitting) return;
     final nombre = _nombreController.text.trim();
     final contenido = _contenidoController.text;
     final nombreError = nombre.isEmpty ? 'El nombre es obligatorio' : null;
@@ -913,19 +915,32 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
     });
     if (nombreError != null || contenidoError != null) return;
 
-    // La validación local ya pasó: un false aqui solo puede venir del
-    // límite de 50 snippets (creación) o de un id inexistente (edición).
-    final saved = await widget.onSubmit(nombre: nombre, contenido: contenido);
+    setState(() => _submitting = true);
+    bool saved = false;
+    try {
+      saved = await widget.onSubmit(nombre: nombre, contenido: contenido);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _generalError = 'No se pudo guardar el snippet.';
+      });
+    } finally {
+      if (mounted && !saved) {
+        setState(() => _submitting = false);
+      }
+    }
     if (!mounted) return;
     if (saved) {
       Navigator.of(context).pop(true);
       return;
     }
     setState(() {
-      _generalError = _isEditing
+      // Un false ya NO implica solo límite: también puede venir de una
+      // lectura corrupta del storage (protección anti-pérdida de datos).
+      _generalError ??= _isEditing
           ? 'No se pudo guardar el snippet.'
-          : 'Límite de ${widget.maxSnippets} snippets alcanzado. '
-              'Elimina alguno para crear otro.';
+          : 'No se pudo guardar el snippet: Límite de ${widget.maxSnippets} '
+              'snippets alcanzado o datos temporales no legibles.';
     });
   }
 
@@ -1011,7 +1026,9 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
-                  onPressed: _submit,
+                  // Deshabilitado mientras se guarda para evitar
+                  // dobles submits con read-modify-write concurrentes.
+                  onPressed: _submitting ? null : _submit,
                   child: Text(_isEditing ? 'Guardar cambios' : 'Guardar'),
                 ),
               ],

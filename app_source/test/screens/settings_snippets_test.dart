@@ -171,6 +171,20 @@ void main() {
       final edited = loaded.firstWhere((s) => s.nombre == 'Codex editado');
       expect(edited.id, 'seed-codex');
       expect(edited.contenido, 'codex --nuevo ');
+
+      // Regresion del bug "guardar borra todo": editar UN snippet no debe
+      // alterar el total persistido ni el resto de los snippets.
+      expect(loaded.length, 5);
+      const intactos = {
+        'Gemini': 'gemini -p "',
+        'Git commit': 'git add . && git commit -m "',
+        'Git push': 'git push origin main',
+        'Supabase push': 'supabase db push',
+      };
+      for (final entry in intactos.entries) {
+        final otro = loaded.singleWhere((s) => s.nombre == entry.key);
+        expect(otro.contenido, entry.value, reason: entry.key);
+      }
     });
 
     testWidgets('borrar snippet pide confirmación y persiste', (tester) async {
