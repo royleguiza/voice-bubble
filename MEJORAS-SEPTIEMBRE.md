@@ -79,6 +79,29 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.4 [MEJ-06] Gesto en Barra Espaciadora con Menú Rápido de 3 Opciones Superpuesto
+* **Origen / Necesidad**: Alternar rápidamente entre modos (Código, Termux, Snippets, Portapapeles o Idioma) sin tener que buscar botones pequeños o realizar múltiples pulsaciones.
+* **Comportamiento Esperado**:
+  - **Gesto de Activación**: Al realizar una pulsación larga (~300ms) o deslizar hacia arriba desde la barra espaciadora (`Spacebar`), se despliega un **menú rápido flotante superpuesto** (Overlay Glass) sobre el teclado con 3 opciones/ranuras principales.
+  - **Interacción Fluida**:
+    - El usuario puede deslizar el dedo hacia cualquiera de las 3 opciones y soltar para activar el modo de inmediato.
+    - O tocar directamente una de las 3 ranuras si el menú permanece abierto.
+  - **Personalización Completa desde Ajustes (Tab Teclado)**:
+    - El usuario puede asignar qué acción ejecuta cada una de las 3 ranuras desde un selector:
+      - Slot 1 (Izquierda): ej. `Capa Código (</>)` o `Modo Terminal Termux`.
+      - Slot 2 (Centro): ej. `Bandeja de Portapapeles (📋)` o `Selector de Teclado del Sistema (IME Picker)`.
+      - Slot 3 (Derecha): ej. `Fragmentos (☰)` o `Cambiar Idioma (ES/EN)`.
+    - Opciones adicionales disponibles para asignar a las ranuras:
+      - `Abrir Ajustes VoiceBubble`
+      - `Capa Símbolos (?123)`
+      - `Modo Cursor / Trackpad` (deslizar espacio para mover cursor).
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`, captura de `ACTION_DOWN` + `ACTION_MOVE` ascendente en `spaceKeyView`. Creación de `showSpaceQuickMenu()` superpuesto con 3 píldoras Glass y ejecución de callback de cambio de capa o servicio.
+  - *Flutter (Dart)*: 3 preferencias configurables en `StorageService` (`flutter.kb_space_slot_left`, `flutter.kb_space_slot_center`, `flutter.kb_space_slot_right`) con dropdowns intuitivos en `SettingsScreen`.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -86,5 +109,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-03 (Barra Superior Mic/Clipboard) | Aprobada | Descongestiona la barra inferior y agranda la barra espaciadora |
 | 2026-08-26 | MEJ-04 (Presets Código / Termux) | Aprobada | Maximiza la productividad en Termux y desarrollo de software móvil |
 | 2026-08-26 | MEJ-05 (Pulsación Larga Símbolos/Acentos) | Aprobada | Permite escribir `;`, `:`, `ñ` y acentos sin conmutar a la capa `?123` |
+| 2026-08-26 | MEJ-06 (Menú Rápido de 3 Opciones en Espacio) | Aprobada | Conmutación ultra veloz de modos y personalización total de accesos |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
