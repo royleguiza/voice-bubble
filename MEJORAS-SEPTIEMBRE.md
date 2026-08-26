@@ -158,6 +158,33 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.7 [MEJ-09] Modo Trackpad y Puntero de Mouse Virtual Flotante
+* **Origen / Necesidad**: En interfaces densas (páginas web completas, Termux con interfaces CLI/TUI, editores como Acode o paneles de servidores), seleccionar texto pequeño o acertar a botones diminutos con los dedos resulta impreciso. Un modo Trackpad que transforme el teclado en una superficie de control con puntero de mouse en pantalla brinda precisión milimétrica.
+* **Comportamiento Esperado**:
+  - **Activación Rápida**: Desde el menú rápido de espacio (`MEJ-06`), acceso en barra superior (`MEJ-03`) o botón de capa.
+  - **Superficie Táctil del Teclado (Trackpad View)**:
+    - La vista del teclado se convierte en un panel táctil suave Glass con un cuadrado/área central de navegación.
+    - Fila inferior con botones táctiles dedicados:
+      - `[ Clic Izquierdo (L) ]` (Área amplia a la izquierda)
+      - `[ Rueda Scroll / Desplazamiento ]`
+      - `[ Clic Derecho / Menú Contextual (R) ]`
+      - `[ ✕ Salir a Teclado ]`
+  - **Puntero de Mouse Flotante en Pantalla**:
+    - Al activar el modo, se dibuja un puntero de mouse estilizado en pantalla (Overlay `SYSTEM_ALERT_WINDOW`).
+    - Al mover el dedo en el trackpad, el puntero se desplaza con aceleración fluida e inercia natural.
+    - **Acciones**:
+      - **Clic Izquierdo / Tap**: Tocar la superficie del trackpad o pulsar el botón `L` dispara un clic en las coordenadas exactas del puntero en pantalla (`AccessibilityService.dispatchGesture`).
+      - **Clic Derecho / Pulsación Larga**: Tocar el botón `R` o doble toque sostenido ejecuta un toque prolongado / menú contextual.
+      - **Desplazamiento / Scroll**: Deslizar con dos dedos en el trackpad emula scroll arriba/abajo.
+  - **Ajustes y Sensibilidad**:
+    - Ajuste de sensibilidad del puntero (Lento, Normal, Rápido) y velocidad de aceleración.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt` se implementa `buildTrackpadLayer()`. Vinculación con el servicio de accesibilidad (`VoiceBubbleAccessibilityService`) para inyectar gestos de clic (`dispatchGesture`) y con el `WindowManager` para el puntero flotante (`PointerOverlayView`).
+  - *Flutter (Dart)*: Configuración de sensibilidad y habilitación en Ajustes > Teclado.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -168,5 +195,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-06 (Menú Rápido de 3 Opciones en Espacio) | Aprobada | Conmutación ultra veloz de modos y personalización total de accesos |
 | 2026-08-26 | MEJ-07 (Altura de Teclas y Elevación Inferior) | Aprobada | Ergonomía desacoplada: teclas más grandes y elevación para descanso del pulgar |
 | 2026-08-26 | MEJ-08 (Pegado Secuencial Multi-Clip) | Aprobada | Permite copiar 3+ datos en distintas apps y pegarlos sucesivamente sin alternar |
+| 2026-08-26 | MEJ-09 (Modo Trackpad y Puntero Virtual) | Aprobada | Control milimétrico de precisión con puntero de mouse, clic izq/der y scroll |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
