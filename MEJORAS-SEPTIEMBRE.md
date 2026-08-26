@@ -207,6 +207,30 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.9 [MEJ-11] Modelos de Burbuja Dinámica Expandible (Morph-to-Pill, Cronómetro, Botones Rápidos y Auto-Enter)
+* **Origen / Necesidad**: La burbuja flotante fija puede resultar demasiado estática. Incorporar una versión dinámica que se expanda visualmente (al estilo de la tecla M4 del teclado y Dynamic Island), muestre el tiempo de grabación en vivo y permita acciones inmediatas como cancelar, enviar con `Auto-Enter` o insertar espacios agiliza el flujo en mensajería y terminal.
+* **Comportamiento Esperado**:
+  1. **Selector de Modelos de Burbuja en Ajustes (Tab Burbuja)**:
+     - **Modelo A: Clásica Mínima**: Círculo Liquid Glass discreto (56x56dp), animación pulsante sutil.
+     - **Modelo B: Dinámica Expandible (Pill Island)**:
+       - **En reposo**: Círculo Glass compacto en el borde de pantalla.
+       - **Al iniciar grabación**: La burbuja se expande horizontalmente a una **pastilla roja flotante (Floating Pill)** con:
+         - Punto pulsante indicador de grabación.
+         - Cronómetro `M:SS` en vivo.
+         - Botón táctil `[ ✕ Cancelar ]` para descartar el audio sin consumir tokens/API.
+       - **Al procesar**: Animación de 3 puntos en ola Liquid Glass.
+       - **Combo de Botones Auxiliares Rápidos (Opcional / Mini-Barra Adyacente)**:
+         - Mini píldoras adyacentes de 1 toque: `[ ↵ Enter ]`, `[ ␣ Espacio ]`, `[ ⌫ Borrar ]`.
+  2. **Opción Auto-Enter / Auto-Envío**:
+     - Switch en Ajustes: *"Auto-Enter al finalizar dictado en burbuja"*.
+     - Al concluir la transcripción, la burbuja pega el texto e inmediatamente inyecta un `ENTER / ACTION_SEND`, enviando el mensaje o ejecutando el comando en Termux sin requerir toques extra.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `FloatingBubbleService.kt`, animación interpolada de `LayoutParams.width` en `windowManager` para transicionar de círculo a pastilla durante `recording`. Manejo de botones de acción rápida e inyección de `KEYCODE_ENTER` vía accesibilidad.
+  - *Flutter (Dart)*: Controles en `SettingsScreen` (Tab Burbuja): `flutter.bubble_style_model` (`classic` vs `dynamic_pill`) y `flutter.bubble_auto_enter_enabled`.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -219,5 +243,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-08 (Pegado Secuencial Multi-Clip) | Aprobada | Permite copiar 3+ datos en distintas apps y pegarlos sucesivamente sin alternar |
 | 2026-08-26 | MEJ-09 (Modo Trackpad y Puntero Virtual) | Aprobada | Control milimétrico de precisión con puntero de mouse, clic izq/der y scroll |
 | 2026-08-26 | MEJ-10 (Gestos Duales en Burbuja + Historial) | Aprobada | Simetría de gestos (Tap vs Hold) y acceso al historial flotante sin abrir la app |
+| 2026-08-26 | MEJ-11 (Burbuja Dinámica Pill + Auto-Enter) | Aprobada | Expansión a pastilla con cronómetro, cancelación rápida y auto-envío/enter |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
