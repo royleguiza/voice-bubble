@@ -54,8 +54,28 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
-### 2.3 App Flutter y Ajustes (Liquid Glass)
-* *(Espacio para registrar nuevas ideas de UI principal, snippets, historial y configuración)*
+### 2.3 [MEJ-05] Presión Larga para Símbolos y Menú Emergente de Puntuación
+* **Origen / Necesidad**: Cambiar a la capa de símbolos (`?123`) solo para escribir `;`, `:`, `!`, `?` o vocales con acento ralentiza el flujo continuo de tipeo y programación. La pulsación larga resuelve esto sin fricción.
+* **Comportamiento Esperado**:
+  - **Pulsación Larga en Punto (`.`)**:
+    - Al mantener presionado `.` (ej. ~300ms), aparece una micro-ventana emergente (popup glass) por encima de la tecla con opciones: `;`, `:`, `...`, `!`, `?`, `/`.
+    - **Comportamiento por Deslizamiento**: Al deslizar el dedo hacia el símbolo y soltar, se comita dicho carácter. Si se suelta de inmediato sin mover, se comita el carácter secundario predeterminado (`;`).
+  - **Pulsación Larga en Coma (`,`)**:
+    - Opciones emergentes: `:`, `;`, `_`, `-`, `\`.
+  - **Pulsación Larga en Letras (Tildes y Caracteres Especiales)**:
+    - `a` → `á, à, â, ä`
+    - `e` → `é, è, ê, ë`
+    - `i` → `í, ì, î, ï`
+    - `o` → `ó, ò, ô, ö`
+    - `u` → `ú, ù, û, ü`
+    - `n` → `ñ`
+  - **Ajustes y Personalización**:
+    - Switch para activar/desactivar menús de pulsación larga (`flutter.kb_long_press_symbols`).
+    - Selector de tiempo de retardo: Rápido (250ms), Normal (350ms, default), Relajado (450ms).
+* **Impacto Técnico**:
+  - *Kotlin nativo*: Extensión de `attachLongPress` en `VoiceKeyboardService.kt` con un `PopupWindow` / vista superpuesta ligera (`showKeyPopup()`) que trackea el `ACTION_MOVE` y `ACTION_UP` para seleccionar el glifo.
+  - *Flutter (Dart)*: Controles en Ajustes > Teclado.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
 
 ---
 
@@ -65,5 +85,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 |---|---|---|---|
 | 2026-08-26 | MEJ-03 (Barra Superior Mic/Clipboard) | Aprobada | Descongestiona la barra inferior y agranda la barra espaciadora |
 | 2026-08-26 | MEJ-04 (Presets Código / Termux) | Aprobada | Maximiza la productividad en Termux y desarrollo de software móvil |
+| 2026-08-26 | MEJ-05 (Pulsación Larga Símbolos/Acentos) | Aprobada | Permite escribir `;`, `:`, `ñ` y acentos sin conmutar a la capa `?123` |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
