@@ -1,5 +1,9 @@
 # AGENTS.md – Guía para Agentes de IA en VoiceBubble STT
 
+> ⚠️ **ATENCIÓN - CONGELAMIENTO DE PUSH A GITHUB ACTIONS (VIGENTE HASTA EL 1 DE SEPTIEMBRE DE 2026)**:
+> **PROHIBIDO REALIZAR `git push` O DISPARAR WORKFLOWS DE CI.**
+> Las cuotas mensuales de GitHub Actions están temporalmente saturadas. Hasta el **1 de septiembre de 2026**, el trabajo se centrará exclusivamente en **recopilación de ideas, diseño de arquitectura, refinamiento de planes y backlog de mejoras locales**. Ningún agente debe ejecutar `git push`.
+
 > Este archivo es el **manual de onboarding** para cualquier agente de IA (Claude, Cursor, Copilot, etc.) que trabaje en este repositorio. Léelo completo antes de escribir código.
 
 ---
