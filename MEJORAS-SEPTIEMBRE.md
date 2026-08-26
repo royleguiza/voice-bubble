@@ -185,6 +185,28 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.8 [MEJ-10] Gestos Duales en Burbuja Flotante: Toque vs Mantener + Acceso Rápido al Historial
+* **Origen / Necesidad**: La burbuja flotante actualmente solo responde a un toque simple para grabar. Cuando el usuario está usando otra app y necesita consultar, copiar o pegar una transcripción anterior del historial, tiene que salir y abrir la app principal o el teclado. Asignar el gesto complementario al historial unifica la experiencia flotante.
+* **Comportamiento Esperado**:
+  - **Selector de Modo en Ajustes (Tab Burbuja)**:
+    - **Modo 1: Toque Simple (Tap-to-Record) [Default]**:
+      - `Toque simple`: Inicia grabación (1er tap) / Detiene y transcribe (2do tap).
+      - `Pulsación Larga (~400ms en reposo)`: Abre la **modal flotante con el Historial de Transcripciones** (las últimas 20).
+    - **Modo 2: Mantener Presionado (Push-to-Talk / Hold-to-Record)**:
+      - `Mantener presionado`: Graba mientras se sostiene el dedo sobre la burbuja; al soltar, finaliza y transcribe inmediatamente.
+      - `Toque Simple (Tap rápido en reposo)`: Abre la **modal flotante con el Historial de Transcripciones**.
+  - **Modal Flotante de Historial (Liquid Glass)**:
+    - Se despliega anclada a la posición de la burbuja en pantalla.
+    - Lista las últimas 20 transcripciones con fecha/hora relativa.
+    - Tocar una transcripción la copia al portapapeles con confirmación háptica/visual instantánea (y la inserta si hay accesibilidad activa).
+    - Tocar fuera o el botón cerrar descarta la modal.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `FloatingBubbleService.kt`, actualización del listener táctil `onTouch` para discriminar entre `ACTION_DOWN` sostenido (Long Press / Hold) y `ACTION_UP` rápido (Tap), y despliegue del popup `FloatingHistoryOverlayView` vía `WindowManager`.
+  - *Flutter (Dart)*: Switch en `SettingsScreen` (Tab Burbuja) para elegir `flutter.bubble_trigger_mode` (`tap` vs `hold`).
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -196,5 +218,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-07 (Altura de Teclas y Elevación Inferior) | Aprobada | Ergonomía desacoplada: teclas más grandes y elevación para descanso del pulgar |
 | 2026-08-26 | MEJ-08 (Pegado Secuencial Multi-Clip) | Aprobada | Permite copiar 3+ datos en distintas apps y pegarlos sucesivamente sin alternar |
 | 2026-08-26 | MEJ-09 (Modo Trackpad y Puntero Virtual) | Aprobada | Control milimétrico de precisión con puntero de mouse, clic izq/der y scroll |
+| 2026-08-26 | MEJ-10 (Gestos Duales en Burbuja + Historial) | Aprobada | Simetría de gestos (Tap vs Hold) y acceso al historial flotante sin abrir la app |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
