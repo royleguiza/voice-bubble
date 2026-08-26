@@ -130,6 +130,34 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.6 [MEJ-08] Flujo de Pegado Secuencial Multi-Clip (Portapapeles Global Persistente)
+* **Origen / Necesidad**: Llenar formularios, configurar variables en un `.env` o autenticar accesos suele requerir copiar múltiples datos en apps distintas (ej. una URL en Chrome, un ID en un correo y un PIN en el autenticador). Tener que alternar entre 3 apps de ida y vuelta para copiar y pegar de a uno por vez genera fricción extrema.
+* **Comportamiento Esperado**:
+  1. **Fase de Copia Acumulativa**:
+     - El usuario copia el dato 1 en la app A (`https://api.ejemplo.com`).
+     - Copia el dato 2 en la app B (`USER_ID=49281`).
+     - Copia el dato 3 en la app C (`PIN=839201`).
+     - La bandeja de portapapeles de VoiceBubble acumula los clips en su cola FIFO (20 elementos).
+  2. **Fase de Pegado Secuencial Multi-Campo**:
+     - El usuario abre el destino (ej. formulario web o editor Acode/Termux).
+     - Abre la **Bandeja de Portapapeles** (vía botón `📋` en barra superior/inferior o menú rápido de espacio `MEJ-06`).
+     - **Modo Pegado Secuencial / Sticky Tray (Opcional o conmutador de chincheta 📌)**:
+       - Toca el primer clip (URL) → se inserta en el campo activo.
+       - Toca el siguiente campo de texto → la bandeja permanece abierta o con acceso a 1 toque.
+       - Toca el segundo clip (USER_ID) → se inserta.
+       - Toca el tercer campo y toca el PIN → se inserta.
+     - Permite completar formularios de múltiples campos en un solo paso sin salir del teclado.
+  3. **Gestión de Clips**:
+     - Vista previa clara de cada clip.
+     - Botón para fijar clips favoritos/frecuentes (📌) para que no se borren por rotación FIFO.
+     - Botón de vaciar papelera/portapapeles con 1 toque.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: Ampliación del motor de [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md) en `VoiceKeyboardService.kt`: soporte para modo "Keep Open / Sticky" en `showClipboardPopup()`, inserción sucesiva mediante `currentInputConnection?.commitText()`, y flags de retención de clips fijados.
+  - *Flutter (Dart)*: Switch en Ajustes > Portapapeles: *"Mantener bandeja abierta tras pegar (Pegado secuencial)"*.
+* **Estado**: **En Diseño (Aprobada como extensión clave de MEJ-01 para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -139,5 +167,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-05 (Pulsación Larga Símbolos/Acentos) | Aprobada | Permite escribir `;`, `:`, `ñ` y acentos sin conmutar a la capa `?123` |
 | 2026-08-26 | MEJ-06 (Menú Rápido de 3 Opciones en Espacio) | Aprobada | Conmutación ultra veloz de modos y personalización total de accesos |
 | 2026-08-26 | MEJ-07 (Altura de Teclas y Elevación Inferior) | Aprobada | Ergonomía desacoplada: teclas más grandes y elevación para descanso del pulgar |
+| 2026-08-26 | MEJ-08 (Pegado Secuencial Multi-Clip) | Aprobada | Permite copiar 3+ datos en distintas apps y pegarlos sucesivamente sin alternar |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
