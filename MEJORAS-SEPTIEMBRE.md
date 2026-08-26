@@ -231,6 +231,29 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.10 [MEJ-12] Conmutación Fluida Teclado ↔ Burbuja y Modo Micro-Teclado Flotante (Command Strip)
+* **Origen / Necesidad**: En sesiones de terminal (Termux / SSH / Neovim) o lectura de chats, tener el teclado completo abierto tapa el 45% de la pantalla y oculta logs o respuestas. Un modo "Micro-Teclado Flotante" (una tira delgada de una sola fila) permite mantener acceso permanente a dictado, comandos y edición viendo el 95% de la pantalla.
+* **Comportamiento Esperado**:
+  1. **Conmutación Instantánea Teclado ↔ Burbuja**:
+     - **Desde el Teclado**: Botón en barra superior (`MEJ-03`) o menú de espacio (`MEJ-06`): *"Minimizar a Burbuja Flotante"*.
+     - **Desde la Burbuja**: Toque de acción en menú: *"Desplegar Teclado Completo"*.
+  2. **Modo Micro-Teclado Flotante / Command Strip**:
+     - Tira horizontal compacta Glass (altura ~44dp) que se puede mover o anclar en la parte inferior o flotante.
+     - Contiene únicamente los controles esenciales de alta frecuencia:
+       - `[ 🎤 Dictado por Voz ]` (con estado en vivo)
+       - `[ ⌫ Backspace / Borrar ]` (soporta borrado rápido y swipe-to-delete)
+       - `[ ␣ Espacio ]`
+       - `[ ↵ Enter / Ejecutar ]`
+       - `[ ⇥ Tab ]` (o flechas si está en modo terminal)
+       - `[ ⌨️ Expandir a Teclado Completo ]`
+     - **Utilidad Extrema**: Permite dictar comandos por voz en Termux o enviar mensajes en chats sin que el teclado tradicional tape la pantalla.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: Comunicación bidireccional entre `VoiceKeyboardService.kt` y `FloatingBubbleService.kt` para orquestar la transición entre vista completa de IME, barra horizontal `CommandStripView` y burbuja circular `BubbleView`.
+  - *Flutter (Dart)*: Configuración de la barra mínima en Ajustes > Teclado / Burbuja.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -244,5 +267,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-09 (Modo Trackpad y Puntero Virtual) | Aprobada | Control milimétrico de precisión con puntero de mouse, clic izq/der y scroll |
 | 2026-08-26 | MEJ-10 (Gestos Duales en Burbuja + Historial) | Aprobada | Simetría de gestos (Tap vs Hold) y acceso al historial flotante sin abrir la app |
 | 2026-08-26 | MEJ-11 (Burbuja Dinámica Pill + Auto-Enter) | Aprobada | Expansión a pastilla con cronómetro, cancelación rápida y auto-envío/enter |
+| 2026-08-26 | MEJ-12 (Conmutación Teclado↔Burbuja y Micro-Barra) | Aprobada | Barra mínima de 1 sola fila para terminal/chats que deja ver el 95% de pantalla |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
