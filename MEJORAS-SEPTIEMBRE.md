@@ -102,6 +102,34 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.5 [MEJ-07] Control Avanzado de Altura de Teclas y Posición / Elevación del Teclado
+* **Origen / Necesidad**: La ergonomía varía según el tamaño de la mano y de la pantalla del dispositivo. Poder calibrar por separado el **tamaño/altura de las teclas** (para precisión táctil) y la **posición/elevación del teclado** (para evitar doblar los pulgares hacia la base de la pantalla) previene la fatiga en sesiones largas de desarrollo y escritura.
+* **Comportamiento Esperado**:
+  - **Ajustes > Tab Teclado > Sección Dimensiones y Ergonomía**:
+    1. **Menú de Altura de Teclas (Key Height)**:
+       - Escala el tamaño vertical de las teclas y fuentes proporcionalmente.
+       - 5 opciones claras:
+         - `Muy Compacto (85%)`
+         - `Compacto / Bajo (92%)`
+         - `Estándar / Medio (100%)` [Default]
+         - `Alto (108%)`
+         - `Extra Alto (120%)`
+    2. **Menú de Posición / Elevación Inferior (Bottom Offset / Lift)**:
+       - Sube todo el cuerpo del teclado hacia arriba, despegándolo del borde inferior del teléfono.
+       - Ideal para teléfonos con bordes delgados o pantallas alargadas (>6.5"), alejando la fila inferior de la barra de gestos de Android.
+       - Opciones:
+         - `Pegado al borde (0 dp)`
+         - `Elevación Baja (12 dp)`
+         - `Elevación Media (24 dp)` [Recomendada]
+         - `Elevación Alta (36 dp)`
+         - `Ajuste Personalizado (Slider 0 – 48 dp)`
+* **Impacto Técnico**:
+  - *Flutter (Dart)*: Claves `flutter.kb_height_profile` (con 5 perfiles) y `flutter.kb_bottom_elevation_dp` en `StorageService` y selectores ergonómicos en `SettingsScreen`.
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`, actualización del factor de escala `scaleV()` y aplicación de `bottomElevationPx` en el contenedor `inputView` respetando los insets del sistema.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -110,5 +138,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-04 (Presets Código / Termux) | Aprobada | Maximiza la productividad en Termux y desarrollo de software móvil |
 | 2026-08-26 | MEJ-05 (Pulsación Larga Símbolos/Acentos) | Aprobada | Permite escribir `;`, `:`, `ñ` y acentos sin conmutar a la capa `?123` |
 | 2026-08-26 | MEJ-06 (Menú Rápido de 3 Opciones en Espacio) | Aprobada | Conmutación ultra veloz de modos y personalización total de accesos |
+| 2026-08-26 | MEJ-07 (Altura de Teclas y Elevación Inferior) | Aprobada | Ergonomía desacoplada: teclas más grandes y elevación para descanso del pulgar |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
