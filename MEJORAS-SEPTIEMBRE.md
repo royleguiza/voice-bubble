@@ -412,6 +412,27 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.18 [MEJ-20] Widget de Control Multimedia y Música en el Teclado (Mini Reproductor Liquid Glass)
+* **Origen / Necesidad**: Cambiar de canción o pausar música y podcasts mientras se escribe o chatea requiere deslizar la barra de notificaciones de Android o cambiar de aplicación. Un micro-controlador multimedia integrado directamente en el teclado o en la isla superior permite controlar la reproducción al instante.
+* **Comportamiento Esperado**:
+  1. **Detección Automática de Sesiones Activas**:
+     - Conexión vía Android `MediaSessionManager` / `MediaController` compatible con Spotify, YouTube Music, Apple Music, Deezer, podcasts, VLC y navegadores.
+     - **Auto-Ocultamiento**: Si no hay ninguna reproducción activa, el widget permanece oculto para ahorrar espacio.
+  2. **Mini Reproductor Liquid Glass (Píldora Interactiva en Barra Superior / Widgets)**:
+     - Mini carátula de álbum / icono de nota musical con animación de rotación sutil.
+     - Título de la pista y artista en texto deslizante fluido (marquee).
+     - Botones táctiles inmediatos: `[ ⏮ Anterior ]`, `[ ⏯ Play / Pausa ]`, `[ ⏭ Siguiente ]`.
+  3. **Tarjeta Expandida al Toque**:
+     - Tocar sobre el nombre de la pista abre una micro-tarjeta flotante con barra de progreso de tiempo y control de volumen rápido.
+  4. **Ajustes y Privacidad**:
+     - Switch en Ajustes > Teclado > Widgets: *"Habilitar widget de música en teclado"*. Cero recolección de datos, lectura 100% en memoria local.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: Implementación de `MediaSessionObserver` y `MediaWidgetView` en `VoiceKeyboardService.kt` vinculado a `MediaController.TransportControls`.
+  - *Flutter (Dart)*: Switch `flutter.kb_media_widget_enabled` y diálogo explicativo de permisos en `SettingsScreen` (Tab Teclado).
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -433,5 +454,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-17 (Sistema Modular de Micro-Widgets) | Aprobada | Widgets de notas rápidas, live clipboard, comandos y calculadora en teclado |
 | 2026-08-27 | MEJ-18 (Isla Dinámica / Notch Superior Apple-style) | Aprobada | Anclaje elástico en cámara/notch superior con animaciones elásticas Glass |
 | 2026-08-27 | MEJ-19 (Capa de Teclado Numérico Dedicado - Numpad) | Aprobada | Bloque numérico puro (3x4/4x4) para entrada veloz de números y auto-detección |
+| 2026-08-27 | MEJ-20 (Widget de Control Multimedia y Música) | Aprobada | Mini reproductor Liquid Glass con carátula, título marquee y controles ⏯ ⏮ ⏭ |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
