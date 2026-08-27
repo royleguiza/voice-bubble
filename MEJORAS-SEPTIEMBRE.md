@@ -504,6 +504,26 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.22 [MEJ-24] Auto-Conmutación Inteligente a Burbuja / Isla al Conectar Teclado Físico (Bluetooth / USB-OTG)
+* **Origen / Necesidad**: Al conectar un teclado físico externo (Bluetooth, dock DeX o USB-C en Termux y tablets), mantener el teclado virtual en pantalla estorba y desperdicia el 40% del área de visión. Sin embargo, el usuario aún necesita dictado por voz y snippets. Conmutar automáticamente a la burbuja flotante o isla superior resuelve esto de forma transparente.
+* **Comportamiento Esperado**:
+  1. **Detección Automática de Hardware**:
+     - Escucha en tiempo real la conexión/desconexión de periféricos vía `InputManager.InputDeviceListener` y `Configuration.keyboard`.
+     - Detecta teclados Bluetooth, teclados mecánicos USB-OTG, docks y fundas con teclado integrado.
+  2. **Comportamiento al Conectar**:
+     - **Oculta el Teclado Virtual**: Libera el 100% de la pantalla para el editor de código, chat o terminal.
+     - **Despliega la Burbuja / Isla Configurada**: Lanza automáticamente la burbuja flotante (`MEJ-11`) o la isla superior (`MEJ-18`), manteniendo el micrófono `🎤`, el portapapeles y los snippets flotando de forma discreta.
+  3. **Comportamiento al Desconectar**:
+     - Vuelve a desplegar el teclado en pantalla nativo sin requerir ninguna acción manual.
+  4. **Ajustes**:
+     - Switch en Ajustes > Teclado: *"Auto-conmutar a burbuja al detectar teclado físico"* (activado por defecto).
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`, implementación de `onEvaluateInputViewShown()` condicional y listener `InputDeviceListener`. Envío de `Intent` de inicio a `FloatingBubbleService.kt`.
+  - *Flutter (Dart)*: Clave `flutter.kb_auto_bubble_on_hardware_kb` y toggle en `SettingsScreen`.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -529,5 +549,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-21 (Bloc de Notas de Voz y Borrador Flotante) | Aprobada | Sandbox de notas de voz aisladas para no ensuciar el input activo |
 | 2026-08-27 | MEJ-22 (Controlador de Audios de WhatsApp/Chats) | Aprobada | Barra fija de reproducción con scrubber, -5s, +5s y volumen persistente en scroll |
 | 2026-08-27 | MEJ-23 (Lanzador Rápido de Apps Spotlight/Raycast) | Aprobada | Buscador y lanzador instantáneo de apps instaladas desde teclado o burbuja |
+| 2026-08-27 | MEJ-24 (Auto-Conmutación a Burbuja con Teclado Físico) | Aprobada | Oculta teclado virtual y activa burbuja al conectar teclado Bluetooth/USB |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
