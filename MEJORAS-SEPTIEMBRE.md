@@ -484,6 +484,26 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.21 [MEJ-23] Lanzador Rápido de Aplicaciones y Búsqueda Universal (Spotlight / Raycast en Teclado y Burbuja)
+* **Origen / Necesidad**: Cambiar a otra aplicación mientras se trabaja en el teléfono suele requerir salir a la pantalla de inicio o abrir el cajón de aplicaciones del sistema. Un buscador y lanzador rápido integrado estilo Spotlight/Raycast permite buscar cualquier app instalada y abrirla en 1 toque directamente desde el teclado o la burbuja flotante.
+* **Comportamiento Esperado**:
+  1. **Acceso Inmediato**:
+     - Desde el menú rápido de espacio (`MEJ-06`), barra superior (`MEJ-03`) o menú de la burbuja/isla (`MEJ-10` / `MEJ-18`).
+  2. **Interfaz de Búsqueda Rápida (Liquid Glass Spotlight)**:
+     - Se despliega una barra de búsqueda sobre el teclado con cuadrícula/carrusel de aplicaciones.
+     - **Fila de Apps Recientes**: Acceso a 1 toque a las 5 aplicaciones más usadas (ej. Termux, Chrome, WhatsApp, Acode, Spotify).
+     - **Filtro Instantáneo al Escribir**: Al tipear las primeras letras (ej. *"ter"* $\rightarrow$ Termux, *"git"* $\rightarrow$ GitHub, *"sp"* $\rightarrow$ Spotify), los resultados se actualizan en milisegundos con sus iconos oficiales.
+  3. **Lanzamiento Directo**:
+     - Al tocar la aplicación, se abre inmediatamente en primer plano (`startActivity`).
+  4. **Privacidad y Cero Consumo en Reposo**:
+     - La lista de paquetes se indexa localmente en memoria y no envía ningún dato al exterior.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt` y `FloatingBubbleService.kt`, componente `AppSearchManager` utilizando `PackageManager.queryIntentActivities()` y renderizado de `AppLauncherPopupView` con iconos cacheados.
+  - *Flutter (Dart)*: Switch `flutter.kb_app_launcher_enabled` en Ajustes > Teclado.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -508,5 +528,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-20 (Widget de Control Multimedia y Música) | Aprobada | Mini reproductor Liquid Glass con carátula, título marquee y controles ⏯ ⏮ ⏭ |
 | 2026-08-27 | MEJ-21 (Bloc de Notas de Voz y Borrador Flotante) | Aprobada | Sandbox de notas de voz aisladas para no ensuciar el input activo |
 | 2026-08-27 | MEJ-22 (Controlador de Audios de WhatsApp/Chats) | Aprobada | Barra fija de reproducción con scrubber, -5s, +5s y volumen persistente en scroll |
+| 2026-08-27 | MEJ-23 (Lanzador Rápido de Apps Spotlight/Raycast) | Aprobada | Buscador y lanzador instantáneo de apps instaladas desde teclado o burbuja |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
