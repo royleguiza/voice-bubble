@@ -390,6 +390,28 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.17 [MEJ-19] Capa de Teclado Numérico Dedicado (Numpad Limpio para Carga Rápida de Datos y Contabilidad)
+* **Origen / Necesidad**: La capa de símbolos estándar mezcla dígitos con caracteres especiales y signos ortográficos en teclas reducidas, lo que dificulta la digitación rápida de importes, PINs, teléfonos, cálculos o datos contables. Un Numpad puro con teclas numéricas gigantes resuelve esto de forma ergonómica.
+* **Comportamiento Esperado**:
+  1. **Distribución Numpad Limpia y Ergonómica**:
+     - Teclas de gran tamaño con tipografía destacada:
+       - Bloque numérico: `[ 7 ] [ 8 ] [ 9 ]` / `[ 4 ] [ 5 ] [ 6 ]` / `[ 1 ] [ 2 ] [ 3 ]` / `[ , / . ] [ 0 ] [ 00 ]`.
+       - Columna lateral de operadores básicos: `[ / ] [ * ] [ - ] [ + ] [ = ]`.
+       - Teclas de control esenciales: `[ ⌫ Borrar ]`, `[ ↵ Enter ]`, `[ ␣ Espacio ]`, `[ 🎤 Dictado ]` y `[ ABC Volver a Letras ]`.
+  2. **Auto-Detección Inteligente de Campos Numéricos**:
+     - Al enfocar un campo de texto clasificado como `TYPE_CLASS_NUMBER` o `TYPE_CLASS_PHONE`, el teclado se abre directamente en la capa `NUMERIC` sin obligar al usuario a cambiar de modo.
+  3. **Acceso Manual Directo**:
+     - Tecla `123` en barra superior (`MEJ-03`) o ranura en menú rápido de espacio (`MEJ-06`) para abrir el Numpad en cualquier momento.
+  4. **Estilo Configurable en Ajustes**:
+     - *Estilo Calculadora / Contable* (`7-8-9 arriba, 1-2-3 abajo`) [Default].
+     - *Estilo Teléfono / Marcador* (`1-2-3 arriba, 7-8-9 abajo`).
+* **Impacto Técnico**:
+  - *Kotlin nativo*: Implementación de `Layer.NUMPAD` en `VoiceKeyboardService.kt` con `buildNumpadRows()` y apertura contextual según `EditorInfo.inputType`.
+  - *Flutter (Dart)*: Ajustes de disposición y toggle de auto-detección en `SettingsScreen` (Tab Teclado).
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -410,5 +432,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-16 (Rediseño Integral de Modal de Historial) | Aprobada | Tarjetas Glass, buscador, Pin 📌, borrado individual y dimensiones ampliadas |
 | 2026-08-27 | MEJ-17 (Sistema Modular de Micro-Widgets) | Aprobada | Widgets de notas rápidas, live clipboard, comandos y calculadora en teclado |
 | 2026-08-27 | MEJ-18 (Isla Dinámica / Notch Superior Apple-style) | Aprobada | Anclaje elástico en cámara/notch superior con animaciones elásticas Glass |
+| 2026-08-27 | MEJ-19 (Capa de Teclado Numérico Dedicado - Numpad) | Aprobada | Bloque numérico puro (3x4/4x4) para entrada veloz de números y auto-detección |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
