@@ -278,7 +278,7 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
   2. **Controles Táctiles (Estilo Xbox / PlayStation Liquid Glass)**:
      - **Cruceta Direccional / D-Pad**: Arriba, Abajo, Izquierda, Derecha (`▲`, `▼`, `◄`, `►`).
      - **Botones de Acción Principales**: 4 botones ergonómicos `[ A ]`, `[ B ]`, `[ X ]`, `[ Y ]` (o `✕`, `○`, `□`, `△`).
-     - **Gatillos y Control**: `[ L1 / LB ]`, `[ R1 / RB ]`, `[ SELECT / ESC ]`, `[ START / PAUSE ]`, `[ ✕ Salir ]`.
+     - **Gatillos y Control**: `[ L1 / LB ]`, `[ R1 / RB ]`, `[ SELECT / ESC ]`, `[ START / PAUSE ]` y `[ ✕ Salir ]`.
   3. **Multi-Touch Real y Orientación Dual**:
      - **Multi-Touch Simultáneo**: Permite mantener presionada una dirección para moverse mientras se pulsa `A` (saltar) o `B` (disparar) sin conflicto.
      - **Modo Vertical (Portrait)**: Disposición compacta en la mitad inferior de la pantalla.
@@ -289,6 +289,33 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 * **Impacto Técnico**:
   - *Kotlin nativo*: En `VoiceKeyboardService.kt`, implementación de `buildGamepadLayer()` con una vista multi-touch dedicada (`GamepadTouchView`) que procesa múltiples punteros `MotionEvent.getPointerId()` e inyecta `sendDownUpKeyEvents()`.
   - *Flutter (Dart)*: Selector de mapeo y switch en Ajustes > Teclado > Modo Gaming.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
+### 2.13 [MEJ-15] Motor de Temas Visuales y Personalización Tecla por Tecla (Paleta Cromática Arcoíris)
+* **Origen / Necesidad**: Ofrecer libertad estética absoluta para que cada usuario cree su identidad visual: desde temas de alto contraste o bajo consumo OLED hasta paletas radiantes Neón, cyberpunk o esquemas funcionales con colores distintos por grupo de teclas (letras, modificadores, código).
+* **Comportamiento Esperado**:
+  1. **Temas Globales Predeterminados (Ajustes > Tab Temas)**:
+     - `Liquid Glass (Oscuro / Claro)` [Estilo por defecto]
+     - `OLED Negro Puro` (fondos #000000 para ahorro máximo de batería en pantallas AMOLED).
+     - `Neón Cyberpunk` (Bordes brillantes cian/magenta/azul eléctrico sobre fondo oscuro).
+     - `Terminal Matrix` (Verde fósforo clásico hacker sobre negro azabache).
+     - `Atardecer / Sunset Glow` (Gradientes cálidos naranja/violeta).
+     - `Blanco Nieve / Minimal Light` (Estilo limpio blanco puro).
+  2. **Personalización Tecla por Tecla (Editor Interactivo & Paleta de Pintor)**:
+     - En Ajustes > Tab Temas se muestra una vista previa interactiva del teclado.
+     - Al tocar cualquier tecla (o grupo: vocales, números, `Shift`, `Enter`, `Espacio`, `Código`), se abre una **Paleta de Pintor / Selector Arcoíris** con rueda cromática HSV/RGB y paletas de colores prearmadas.
+     - Permite personalizar:
+       - Color de fondo de la tecla.
+       - Color de la letra / glifo.
+       - Color y grosor del borde (stroke neón / glass).
+  3. **Guardado y Perfiles**:
+     - Guardar esquemas personalizados del usuario.
+     - Botón de restablecer al tema original Liquid Glass en 1 toque.
+* **Impacto Técnico**:
+  - *Flutter (Dart)*: Editor interactivo de teclado con selector de color cromático en `SettingsScreen` (Tab Temas), almacenamiento en `StorageService` (`flutter.kb_theme_preset`, `flutter.kb_custom_colors_json`).
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`, renderizado dinámico de fondos con `GradientDrawable` tintados en tiempo real según el mapa de colores configurado.
 * **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
 
 ---
@@ -309,5 +336,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-12 (Conmutación Teclado↔Burbuja y Micro-Barra) | Aprobada | Barra mínima de 1 sola fila para terminal/chats que deja ver el 95% de pantalla |
 | 2026-08-27 | MEJ-13 (Capa de Emojis, Kaomojis y Stickers) | Aprobada | Expresividad completa y soporte de stickers sin cambiar a otro teclado |
 | 2026-08-27 | MEJ-14 (Modo Gaming y Gamepad Virtual) | Aprobada | Mando táctil multi-touch (D-Pad + ABXY) para juegos web, PWAs y emuladores |
+| 2026-08-27 | MEJ-15 (Motor de Temas y Color Tecla por Tecla) | Aprobada | Paleta arcoíris interactiva, temas Neón/OLED/Matrix y colores por tecla |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
