@@ -364,6 +364,32 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.16 [MEJ-18] Modo Isla Dinámica / Notch Interactivo Superior (Apple-style Dynamic Island & Camera Notch Docking)
+* **Origen / Necesidad**: Ofrecer una alternativa a la burbuja flotante tradicional integrando la interfaz de voz en la parte superior de la pantalla / orificio de la cámara frontal (Dynamic Island / Notch), de modo que nunca tape botones laterales ni el contenido central y se expanda suavemente solo cuando se interactúa con ella.
+* **Comportamiento Esperado**:
+  1. **Selector de Posicionamiento en Ajustes (Tab Burbuja)**:
+     - *Modo 1: Burbuja Flotante Libre*: Flota en los bordes laterales (actual).
+     - *Modo 2: Isla Dinámica / Notch Superior*: Anclada en el centro superior / cutout de cámara frontal.
+  2. **Estados y Animaciones Fluidas (Liquid Glass Island)**:
+     - **Reposo Compacto (Compact Pill)**: Píldora delgada discreta alrededor de la cámara frontal con micro-icono `🎤`.
+     - **Expansión al Grabar (Recording Island)**:
+       - Se expande hacia los laterales y hacia abajo de forma elástica.
+       - Muestra: Onda de audio / punto pulsante rojo + Cronómetro en vivo `M:SS` + Botón `[ ✕ Cancelar ]`.
+     - **Procesando / Transcribiendo**: Indicador de 3 puntos en ola Liquid Glass.
+     - **Resultado / Mini-Vista Previa**: Muestra brevemente las primeras palabras dictadas con animación de éxito y botón de auto-pegado o copia.
+  3. **Gestos en la Isla**:
+     - *Toque simple*: Iniciar / Detener grabación.
+     - *Deslizar hacia abajo (Swipe Down)*: Despliega la tarjeta expandida con el historial reciente o controles completos (`Enter`, `Espacio`, `Portapapeles`).
+     - *Deslizar hacia arriba (Swipe Up)*: Colapsa de inmediato a reposo.
+  4. **Compatibilidad con Display Cutout de Android**:
+     - Detección automática de la posición de la cámara (API 28+ `DisplayCutout`) para centrar la píldora perfectamente según el modelo de teléfono.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `FloatingBubbleService.kt`, nuevo controlador `DynamicIslandController` con anclaje `Gravity.TOP | Gravity.CENTER_HORIZONTAL`, lectura de `DisplayCutout` y animaciones elásticas de interpolación de tamaño.
+  - *Flutter (Dart)*: Selector `flutter.bubble_docking_mode` (`free_floating` vs `dynamic_island`) en Ajustes > Tab Burbuja.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -383,5 +409,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-15 (Motor de Temas y Color Tecla por Tecla) | Aprobada | Paleta arcoíris interactiva, temas Neón/OLED/Matrix y colores por tecla |
 | 2026-08-27 | MEJ-16 (Rediseño Integral de Modal de Historial) | Aprobada | Tarjetas Glass, buscador, Pin 📌, borrado individual y dimensiones ampliadas |
 | 2026-08-27 | MEJ-17 (Sistema Modular de Micro-Widgets) | Aprobada | Widgets de notas rápidas, live clipboard, comandos y calculadora en teclado |
+| 2026-08-27 | MEJ-18 (Isla Dinámica / Notch Superior Apple-style) | Aprobada | Anclaje elástico en cámara/notch superior con animaciones elásticas Glass |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
