@@ -271,6 +271,28 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.12 [MEJ-14] Modo Gaming y Gamepad Virtual (Joystick / D-Pad y Botones para Juegos Web y PWAs)
+* **Origen / Necesidad**: Jugar videojuegos web (HTML5, Phaser, emuladores web en navegador, Progressive Web Apps o juegos en terminal) desde el teléfono suele ser problemático por la falta de controles táctiles o la necesidad de teclas de dirección y botones de acción simultáneos. Un modo Gaming transforma el teclado en un mando virtual táctil de respuesta instantánea.
+* **Comportamiento Esperado**:
+  1. **Activación Rápida**: Desde el menú rápido de la barra espaciadora (`MEJ-06`), barra superior (`MEJ-03`) o botón de capa.
+  2. **Controles Táctiles (Estilo Xbox / PlayStation Liquid Glass)**:
+     - **Cruceta Direccional / D-Pad**: Arriba, Abajo, Izquierda, Derecha (`▲`, `▼`, `◄`, `►`).
+     - **Botones de Acción Principales**: 4 botones ergonómicos `[ A ]`, `[ B ]`, `[ X ]`, `[ Y ]` (o `✕`, `○`, `□`, `△`).
+     - **Gatillos y Control**: `[ L1 / LB ]`, `[ R1 / RB ]`, `[ SELECT / ESC ]`, `[ START / PAUSE ]`, `[ ✕ Salir ]`.
+  3. **Multi-Touch Real y Orientación Dual**:
+     - **Multi-Touch Simultáneo**: Permite mantener presionada una dirección para moverse mientras se pulsa `A` (saltar) o `B` (disparar) sin conflicto.
+     - **Modo Vertical (Portrait)**: Disposición compacta en la mitad inferior de la pantalla.
+     - **Modo Horizontal (Landscape)**: Controles divididos en las esquinas izquierda/derecha para sujetar el dispositivo con ambas manos.
+  4. **Modos de Mapeo de Teclas (Configurable en Ajustes)**:
+     - **Preset Teclado Gamer**: Mapeo directo a `WASD` / `Flechas` + `Espacio` (Salto) + `Enter` + `Shift` (compatibilidad inmediata con el 100% de páginas web y juegos HTML5).
+     - **Preset Gamepad Android**: Inyección de `KEYCODE_BUTTON_A/B/X/Y/START` para emuladores y apps compatibles con mando.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`, implementación de `buildGamepadLayer()` con una vista multi-touch dedicada (`GamepadTouchView`) que procesa múltiples punteros `MotionEvent.getPointerId()` e inyecta `sendDownUpKeyEvents()`.
+  - *Flutter (Dart)*: Selector de mapeo y switch en Ajustes > Teclado > Modo Gaming.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -286,5 +308,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-11 (Burbuja Dinámica Pill + Auto-Enter) | Aprobada | Expansión a pastilla con cronómetro, cancelación rápida y auto-envío/enter |
 | 2026-08-26 | MEJ-12 (Conmutación Teclado↔Burbuja y Micro-Barra) | Aprobada | Barra mínima de 1 sola fila para terminal/chats que deja ver el 95% de pantalla |
 | 2026-08-27 | MEJ-13 (Capa de Emojis, Kaomojis y Stickers) | Aprobada | Expresividad completa y soporte de stickers sin cambiar a otro teclado |
+| 2026-08-27 | MEJ-14 (Modo Gaming y Gamepad Virtual) | Aprobada | Mando táctil multi-touch (D-Pad + ABXY) para juegos web, PWAs y emuladores |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
