@@ -460,6 +460,30 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.20 [MEJ-22] Controlador Inteligente de Audios y Mensajes de Voz de Chats (WhatsApp / Instagram / Telegram) en el Teclado
+* **Origen / Necesidad**: Al escuchar un audio largo en WhatsApp, Telegram o Instagram mientras se redacta una respuesta o se navega por el chat, la burbuja del reproductor en la conversación se desplaza fuera de la pantalla. Si se desea pausar, retroceder 5 segundos para reescuchar un detalle clave o ajustar el volumen, el usuario debe detener la escritura y buscar el mensaje. Un controlador integrado y anclado al teclado mantiene los controles de reproducción accesibles en todo momento.
+* **Comportamiento Esperado**:
+  1. **Detección Automática de Audios de Chat**:
+     - Detección de sesiones de audio activas provenientes de apps de mensajería (`com.whatsapp`, `org.telegram.messenger`, `com.instagram.android`, etc.) vía `AudioPlaybackCallback` y `MediaSessionManager`.
+  2. **Barra de Control de Audio en el Teclado (Liquid Glass Strip)**:
+     - Aparece de forma fluida sobre la barra superior del teclado o en la isla superior.
+     - **Controles Integrados**:
+       - `[ ⏪ -5s ]`: Salto hacia atrás de 5 segundos para reescuchar una frase.
+       - `[ ⏯ Play / Pausa ]`: Alternar reproducción sin salir del área de escritura.
+       - `[ ⏩ +5s ]`: Salto hacia adelante de 5 segundos.
+       - **Línea de Tiempo Táctil (Scrubber)**: Barra de progreso interactiva para arrastrar el cabezal y saltar a cualquier segundo del audio (`0:45 / 2:10`).
+       - **Control de Volumen Rápido**: Micro-slider o botón de volumen para escuchar con claridad sin pulsar botones físicos.
+  3. **Persistencia Durante el Scroll**:
+     - El usuario puede seguir scrolleando el chat libremente o escribiendo su respuesta: los controles de audio permanecen visibles y fijados al teclado.
+  4. **Auto-Ocultamiento Suave**:
+     - Al finalizar la reproducción del audio de voz, la barra se retrae suavemente sin generar parpadeos ni modificar el foco de entrada.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`, componente `VoiceNoteSessionMonitor` escuchando `AudioManager.AudioPlaybackCallback` y `MediaController.TransportControls.seekTo()`. Vista modular `VoiceNoteControlStripView` con `SeekBar` personalizada Liquid Glass.
+  - *Flutter (Dart)*: Switch `flutter.kb_voicenote_controller_enabled` en Ajustes > Teclado > Widgets.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -483,5 +507,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-19 (Capa de Teclado Numérico Dedicado - Numpad) | Aprobada | Bloque numérico puro (3x4/4x4) para entrada veloz de números y auto-detección |
 | 2026-08-27 | MEJ-20 (Widget de Control Multimedia y Música) | Aprobada | Mini reproductor Liquid Glass con carátula, título marquee y controles ⏯ ⏮ ⏭ |
 | 2026-08-27 | MEJ-21 (Bloc de Notas de Voz y Borrador Flotante) | Aprobada | Sandbox de notas de voz aisladas para no ensuciar el input activo |
+| 2026-08-27 | MEJ-22 (Controlador de Audios de WhatsApp/Chats) | Aprobada | Barra fija de reproducción con scrubber, -5s, +5s y volumen persistente en scroll |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 

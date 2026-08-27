@@ -4,7 +4,7 @@
 > **PROHIBIDO DISPARAR WORKFLOWS DE CI / BUILDS EN GITHUB ACTIONS (CUOTAS AL 100%).**
 > - Para evitar facturación en GitHub, **está terminantemente prohibido hacer commits/pushes que modifiquen código** (`app_source/`, `voice_bubble_stt/`, etc.).
 > - Los pushes de documentación `.md` están protegidos por `paths-ignore: '*.md'` en el workflow y **SIEMPRE deben incluir `[skip ci]`** en el mensaje de commit.
-> - El backlog maestro de mejoras, ideas y arquitectura diseñado para el ciclo de Septiembre reside en [`MEJORAS-SEPTIEMBRE.md`](file:///root/projects/activos/voice-bubble/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-21).
+> - El backlog maestro de mejoras, ideas y arquitectura diseñado para el ciclo de Septiembre reside en [`MEJORAS-SEPTIEMBRE.md`](file:///root/projects/activos/voice-bubble/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-22).
 
 > Este archivo es el **manual de onboarding** para cualquier agente de IA (Claude, Cursor, Copilot, etc.) que trabaje en este repositorio. Léelo completo antes de escribir código.
 
@@ -44,7 +44,7 @@ voice-bubble/                  ← raíz del repo git
 ├── plan.md                    ← plan de ejecución por hitos (LA FUENTE DE VERDAD del qué y cuándo)
 ├── design.md                  ← sistema de diseño Liquid Glass (LA FUENTE DE VERDAD del cómo se ve)
 ├── teclado-voice.md           ← plan del teclado del sistema (T0–K5); se integra a la secuencia desde la posición del Hito 4
-├── MEJORAS-SEPTIEMBRE.md      ← backlog de mejoras, arquitectura y especificaciones para el ciclo Septiembre 2026 (MEJ-01 a MEJ-21)
+├── MEJORAS-SEPTIEMBRE.md      ← backlog de mejoras, arquitectura y especificaciones para el ciclo Septiembre 2026 (MEJ-01 a MEJ-22)
 ├── plan-clipboard.md          ← plan de la bandeja de portapapeles del teclado (MEJ-01 / MEJ-08)
 ├── plan-ciclar-mayusculas.md  ← plan para ciclar mayúsculas/minúsculas con Shift ⇧ (MEJ-02)
 ├── AGENTS.md                  ← este archivo
@@ -276,7 +276,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 
 - [x] Lote v1.2 – Configuración con Tabs C2, Tecla Micrófono M4 Morph-to-Pill y APK split arm64 (2026-08-24, `plan-v1.2.md`, auditado en MODO-LOOP >9.0): Settings con 4 tabs glass inferiores (`IndexedStack` que preserva estado + 96dp bottom padding); tecla mic M4 en teclado nativo Kotlin con expansión a pastilla roja, punto pulsante, cronómetro M:SS y touch target cancelar >=44dp; ícono vectorial limpio `kb_ic_mic.xml` (reemplazo definitivo del emoji 🎤) y animación de 3 puntos en ola en `PROCESSING` (`kb_proc_dot.xml`); optimización de CI a split arm64 (-67% de peso, 168MB -> 48MB en storage GitHub). CI verde a la primera: run [`32682031857`](https://github.com/royleguiza/voice-bubble/actions/runs/32682031857) success · artefacto `voice-bubble-arm64-debug-apk-r64` (48.35 MB comprimido).
 
-**Siguiente etapa (Reinicio Septiembre 2026)**: Ejecución del backlog de 21 mejoras estructurado en [`MEJORAS-SEPTIEMBRE.md`](file:///root/projects/activos/voice-bubble/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-21), comenzando por los planes aprobados [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md) y [`plan-ciclar-mayusculas.md`](file:///root/projects/activos/voice-bubble/plan-ciclar-mayusculas.md).
+**Siguiente etapa (Reinicio Septiembre 2026)**: Ejecución del backlog de 22 mejoras estructurado en [`MEJORAS-SEPTIEMBRE.md`](file:///root/projects/activos/voice-bubble/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-22), comenzando por los planes aprobados [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md) y [`plan-ciclar-mayusculas.md`](file:///root/projects/activos/voice-bubble/plan-ciclar-mayusculas.md).
 
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
