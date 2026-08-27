@@ -320,6 +320,31 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.14 [MEJ-16] Rediseño y Potenciación de la Modal de Historial de Transcripciones (Dimensiones, Estilo Glass y Funcionalidades)
+* **Origen / Necesidad**: La ventana emergente actual del historial es básica (una lista de texto simple sin búsqueda ni gestión). Rediseñarla a nivel de proporciones, diseño Liquid Glass y funcionalidades avanzadas convierte al historial en una herramienta de productividad de primer nivel.
+* **Comportamiento Esperado**:
+  1. **Mejoras de Tamaño y Proporciones**:
+     - **Dimensiones Adaptables**: Ocupa el 55–65% de la pantalla con bordes amplios y scroll suave.
+     - **Vista Acordeón / Expandible**: Las transcripciones largas se pueden expandir con un toque para leer el texto completo sin cortes de elipsis.
+  2. **Diseño Visual Liquid Glass Pulido**:
+     - **Tarjetas Flotantes Individuales**: Cada transcripción reside en una tarjeta con fondo translúcido, borde suave (`kb_key_stroke`) y elevación ligera.
+     - **Header con Controles**: Título *"Historial de Dictados"*, contador visible (`N/20`), botón *"Vaciar"* y botón de cierre `✕`.
+     - **Metadatos Visuales**: Timestamp relativo amigable (*"Hace 3 min"*, *"Hoy 11:20"*) e icono indicador de procedencia (🎤 Teclado vs 🫧 Burbuja).
+  3. **Nuevas Funcionalidades**:
+     - **Búsqueda / Filtro en Vivo**: Barra superior para escribir y filtrar al instante entre las 20 transcripciones.
+     - **Fijar Transcripciones (Pin 📌)**: Marcar notas de voz importantes para que no se borren por la rotación FIFO.
+     - **Acciones Rápidas por Tarjeta**:
+       - *Toque simple*: Insertar en cursor (en teclado) o Copiar (en burbuja).
+       - *Botón Copiar `📋` directo*: Copia al portapapeles sin cerrar la modal.
+       - *Botón Borrar `🗑️` individual*: Eliminar una transcripción puntual.
+     - **Copiar Selección Múltiple**: Posibilidad de marcar varias transcripciones y copiarlas o insertarlas concatenadas en bloque.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt` (y compartido con `FloatingBubbleService.kt`), sustitución del `ScrollView` básico por un `HistoryDialogFragment` / `PopupWindow` estructurado con `RecyclerView`, búsqueda en memoria y botones de acción.
+  - *Flutter (Dart)*: Consistencia visual con el historial de `HomeScreen`.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -337,5 +362,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-13 (Capa de Emojis, Kaomojis y Stickers) | Aprobada | Expresividad completa y soporte de stickers sin cambiar a otro teclado |
 | 2026-08-27 | MEJ-14 (Modo Gaming y Gamepad Virtual) | Aprobada | Mando táctil multi-touch (D-Pad + ABXY) para juegos web, PWAs y emuladores |
 | 2026-08-27 | MEJ-15 (Motor de Temas y Color Tecla por Tecla) | Aprobada | Paleta arcoíris interactiva, temas Neón/OLED/Matrix y colores por tecla |
+| 2026-08-27 | MEJ-16 (Rediseño Integral de Modal de Historial) | Aprobada | Tarjetas Glass, buscador, Pin 📌, borrado individual y dimensiones ampliadas |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
