@@ -345,6 +345,25 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.15 [MEJ-17] Sistema Modular de Micro-Widgets en el Teclado (Notas, Portapapeles, Comandos y Calculadora)
+* **Origen / Necesidad**: Durante la jornada móvil, salir del teclado para abrir una app de notas, calcular una operación o buscar un comando común genera interrupciones constantes. Integrar micro-widgets ligeros directamente en la barra del teclado aporta máxima productividad a 1 toque.
+* **Comportamiento Esperado**:
+  1. **Franja Modular de Widgets (Widget Strip / Toolbar)**:
+     - Franja superior o menú lateral con micro-widgets intercambiables Liquid Glass.
+  2. **Widgets Disponibles**:
+     - 📝 **Widget de Notas Rápidas (Scratchpad)**: Mini bloc de borrador flotante para apuntar ideas temporales, números o textos y copiarlos/insertarlos con 1 toque.
+     - 📋 **Widget de Portapapeles en Vivo (Live Clipboard Strip)**: Carrusel horizontal con los últimos clips para pegar sin desplegar la modal completa.
+     - ⚡ **Widget de Comandos y Terminal**: Chips de acceso directo a comandos frecuentes (`git status`, `docker`, `npm`, `ssh`, scripts) listos para enviar al cursor.
+     - 🔢 **Widget de Calculadora Rápida (Mini Calc)**: Resuelve cálculos matemáticos al vuelo (ej. `150 * 1.21 = 181.5`) y permite comitar el resultado al texto.
+  3. **Configuración y Personalización en Ajustes**:
+     - Selector para activar/desactivar y reordenar qué widgets aparecen en la barra principal.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`, contenedor `WidgetStripLayout` con micro-vistas modulares (`ScratchpadView`, `LiveClipboardView`, `QuickCommandsView`, `MiniCalcView`).
+  - *Flutter (Dart)*: Gestión de widgets y orden de visualización en `SettingsScreen` (Tab Teclado).
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -363,5 +382,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-14 (Modo Gaming y Gamepad Virtual) | Aprobada | Mando táctil multi-touch (D-Pad + ABXY) para juegos web, PWAs y emuladores |
 | 2026-08-27 | MEJ-15 (Motor de Temas y Color Tecla por Tecla) | Aprobada | Paleta arcoíris interactiva, temas Neón/OLED/Matrix y colores por tecla |
 | 2026-08-27 | MEJ-16 (Rediseño Integral de Modal de Historial) | Aprobada | Tarjetas Glass, buscador, Pin 📌, borrado individual y dimensiones ampliadas |
+| 2026-08-27 | MEJ-17 (Sistema Modular de Micro-Widgets) | Aprobada | Widgets de notas rápidas, live clipboard, comandos y calculadora en teclado |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
