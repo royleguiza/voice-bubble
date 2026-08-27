@@ -437,6 +437,29 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.19 [MEJ-21] Bloc de Notas de Voz y Borrador Flotante en Teclado (Voice Scratchpad Sandbox)
+* **Origen / Necesidad**: Cuando surge una idea, apunte o pensamiento mientras se usa cualquier app, abrir una app externa de notas interrumpe la tarea y requiere alternar de ventana. Dictar directamente en el campo de texto activo corre el riesgo de enviar accidentalmente el mensaje en un chat o romper código en una terminal. Un borrador flotante aislado en el teclado permite dictar notas y guardarlas como clips en el acto.
+* **Comportamiento Esperado**:
+  1. **Acceso Inmediato**: Botón `📝` en la barra superior (`MEJ-03`), en la bandeja de portapapeles (`MEJ-01` / `MEJ-08`) o en el menú rápido de espacio (`MEJ-06`).
+  2. **Lienzo Aislado (Sandbox Draft)**:
+     - Se despliega una tarjeta flotante Liquid Glass con su propia área de edición de texto independiente.
+     - **Aislamiento Total**: Lo que se escriba o dicte en este bloc **NO se inserta ni se envía a la app que está debajo**.
+  3. **Dictado por Voz Directo a la Nota**:
+     - Botón de micrófono dentro del borrador: al dictar, la transcripción se escribe automáticamente en la nota en tiempo real.
+  4. **Acciones de la Nota**:
+     - `[ 💾 Guardar como Clip / Nota ]`: Almacena la nota en el cajón persistente (hasta 10 notas guardadas).
+     - `[ 📋 Copiar ]`: Copia el contenido al portapapeles global.
+     - `[ ↵ Insertar en App ]`: Si el usuario decide que sí quiere usar el texto, lo inserta en el campo activo de la app inferior.
+     - `[ 🗑️ Descartar / Limpiar ]`: Borra el borrador con 1 toque.
+  5. **Cajón de Notas Guardadas (Mini App de Notas Ligera)**:
+     - Lista compacta de notas creadas para consultar, reutilizar o enviar cuando sea necesario sin requerir apps pesadas como Keep o Notion.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`, vista `ScratchpadOverlayView` con `EditText` local que intercepta los callbacks de `SpeechToTextClient.kt` mientras el bloc esté visible. Persistencia de lista de notas en `FlutterSharedPreferences` (`flutter.kb_saved_notes_json`).
+  - *Flutter (Dart)*: Vista y gestión de notas sincronizada en `HomeScreen`.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -459,5 +482,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-18 (Isla Dinámica / Notch Superior Apple-style) | Aprobada | Anclaje elástico en cámara/notch superior con animaciones elásticas Glass |
 | 2026-08-27 | MEJ-19 (Capa de Teclado Numérico Dedicado - Numpad) | Aprobada | Bloque numérico puro (3x4/4x4) para entrada veloz de números y auto-detección |
 | 2026-08-27 | MEJ-20 (Widget de Control Multimedia y Música) | Aprobada | Mini reproductor Liquid Glass con carátula, título marquee y controles ⏯ ⏮ ⏭ |
+| 2026-08-27 | MEJ-21 (Bloc de Notas de Voz y Borrador Flotante) | Aprobada | Sandbox de notas de voz aisladas para no ensuciar el input activo |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
