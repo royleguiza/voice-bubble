@@ -67,13 +67,13 @@ Flujo feliz:
 | 4 | Vista previa enmascarada (`••••`) para clips marcados sensibles por la app origen |
 | 5 | Switch ON/OFF en Ajustes + switch de tecla visible (puente `flutter.`↔Kotlin existente) |
 | 6 | i18n ES/EN, Liquid Glass nativo (tokens existentes), Reduced Motion, targets ≥44dp |
-| 7 | Retención **volátil en memoria** con expiración por antigüedad (TTL, decisión D-C1) |
+| 8 | Cabecera dual interactiva con `[ 🔍 Lupa ]` (búsqueda y filtro en vivo de clips) y `[ ➕ Agregar ]` (creación de clip o nota rápida manual sin salir a Ajustes) |
+| 9 | Fijar clips favoritos (Pin 📌) para protegerlos de la rotación FIFO |
 
 ### NO incluye (fuera de alcance, explícito)
 
 - ❌ Imágenes, URIs, intents ni HTML rico: solo `MIMETYPE_TEXT_PLAIN`.
-- ❌ Persistencia del contenido del portapapeles en disco (ni preferencias, ni SQLite, ni archivos).
-- ❌ Pinning/fijado de clips (posible v2 si el dueño lo pide después).
+- ❌ Persistencia en disco de clips no fijados (la memoria temporal sigue siendo volátil por privacidad).
 - ❌ Captura en background real (imposible por diseño de Android 10+, ver §4.1).
 - ❌ Sincronización entre dispositivos, traducción, sugerencias, nada ajeno al tray.
 - ❌ Cualquier registro en Log del contenido capturado (jamás, ni debug).

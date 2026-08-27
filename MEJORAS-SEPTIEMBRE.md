@@ -151,8 +151,12 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
      - Vista previa clara de cada clip.
      - Botón para fijar clips favoritos/frecuentes (📌) para que no se borren por rotación FIFO.
      - Botón de vaciar papelera/portapapeles con 1 toque.
+  4. **Cabecera Dual Interactiva: Búsqueda (`🔍`) vs Agregar Clip Nuevo (`➕`)**:
+     - **Extremo Izquierdo `[ 🔍 Lupa ]`**: Al tocarlo, conmuta la cabecera a un campo de búsqueda en vivo que filtra al instante entre todos los clips copiados y notas fijadas.
+     - **Extremo Derecho `[ ➕ Agregar ]`**: Al tocarlo, despliega un mini-editor de texto Liquid Glass en la cabecera para escribir o pegar un texto personalizado y guardarlo al instante en el portapapeles/fijados, **sin necesidad de navegar a Ajustes**.
+     - **Ciclo de Interfaz**: Alternancia suave con 1 toque entre la vista normal de lista, la barra de búsqueda y el formulario de nuevo clip.
 * **Impacto Técnico**:
-  - *Kotlin nativo*: Ampliación del motor de [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md) en `VoiceKeyboardService.kt`: soporte para modo "Keep Open / Sticky" en `showClipboardPopup()`, inserción sucesiva mediante `currentInputConnection?.commitText()`, y flags de retención de clips fijados.
+  - *Kotlin nativo*: Ampliación del motor de [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md) en `VoiceKeyboardService.kt`: soporte para modo "Keep Open / Sticky" en `showClipboardPopup()`, inserción sucesiva mediante `currentInputConnection?.commitText()`, header con conmutación dinámica de vistas (búsqueda y mini-input `EditText` para nuevo clip), y flags de retención de clips fijados.
   - *Flutter (Dart)*: Switch en Ajustes > Portapapeles: *"Mantener bandeja abierta tras pegar (Pegado secuencial)"*.
 * **Estado**: **En Diseño (Aprobada como extensión clave de MEJ-01 para Septiembre)**.
 
