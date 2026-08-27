@@ -254,6 +254,23 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.11 [MEJ-13] Capa de Emojis, Emoticones ASCII/Kaomoji y Soporte de Stickers (Rich Content)
+* **Origen / Necesidad**: Enviar reacciones rápidas, emojis y stickers en apps de mensajería sin tener que alternar a otro teclado del sistema exclusivamente para buscar un emoticon o sticker.
+* **Comportamiento Esperado**:
+  - **Acceso a la Capa**: Tecla `😀` (ubicable en la barra superior `MEJ-03`, menú rápido de espacio `MEJ-06` o capa de símbolos). Ocultable desde Ajustes si se prefiere un teclado estrictamente de código.
+  - **Pestañas de la Capa**:
+    1. **Recientes / Favoritos**: Últimos 30 emojis usados para inserción a 1 toque.
+    2. **Emojis Unicode Nativos**: Cuadrícula por categorías (Caritas, Gestos, Objetos, Símbolos) renderizada con la fuente del sistema (cero consumo extra de APK o memoria).
+    3. **Emoticones ASCII / Kaomojis**: Pestaña dedicada con kaomojis listos para programadores y usuarios de chat (`¯\_(ツ)_/¯`, `(╯°□°)╯︵ ┻━┻`, `(•_•)`, `(◕‿◕)`).
+    4. **Bandeja de Stickers / GIFs (Opt-in)**: Soporte de inserción de imágenes/stickers mediante la API estándar de Android `InputConnection.commitContent()` (compatible con WhatsApp, Telegram, Discord).
+  - **Rendimiento y Privacidad**: Cero telemetría, carga bajo demanda y switch para activar/desactivar en Ajustes.
+* **Impacto Técnico**:
+  - *Kotlin nativo*: Implementación de `buildEmojiLayer()` en `VoiceKeyboardService.kt` con `commitText()` para Unicode/Kaomoji y `commitContent()` para Rich Content/Stickers.
+  - *Flutter (Dart)*: Switch `flutter.kb_emoji_key_visible` en Ajustes > Teclado.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -268,5 +285,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-10 (Gestos Duales en Burbuja + Historial) | Aprobada | Simetría de gestos (Tap vs Hold) y acceso al historial flotante sin abrir la app |
 | 2026-08-26 | MEJ-11 (Burbuja Dinámica Pill + Auto-Enter) | Aprobada | Expansión a pastilla con cronómetro, cancelación rápida y auto-envío/enter |
 | 2026-08-26 | MEJ-12 (Conmutación Teclado↔Burbuja y Micro-Barra) | Aprobada | Barra mínima de 1 sola fila para terminal/chats que deja ver el 95% de pantalla |
+| 2026-08-27 | MEJ-13 (Capa de Emojis, Kaomojis y Stickers) | Aprobada | Expresividad completa y soporte de stickers sin cambiar a otro teclado |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 
