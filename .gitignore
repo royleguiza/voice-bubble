@@ -55,5 +55,9 @@ package.json
 test-results/
 laboratorio_ui/test_analysis.spec.js
 
+# Python
+__pycache__/
+*.pyc
+
 # Impeccable
 .impeccable/
