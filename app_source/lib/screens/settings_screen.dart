@@ -46,6 +46,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _showLanguageKey = true;
   String _heightProfile = StorageService.defaultHeightProfile;
   bool _hapticsEnabled = true;
+  int _bottomElevationDp = StorageService.defaultBottomElevationDp;
+  bool _invertToolbar = false;
+  String _spacebarAlignment = StorageService.defaultSpacebarAlignment;
   List<Snippet> _snippets = [];
 
   @override
@@ -77,6 +80,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _storageService.getHeightProfile(),
       _storageService.getHapticsEnabled(),
     ).wait;
+    final bottomElevation = await _storageService.getBottomElevationDp();
+    final invertToolbar = await _storageService.getInvertToolbar();
+    final spacebarAlign = await _storageService.getSpacebarAlignment();
     // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
     if (apiKey.isNotEmpty) {
       try {
@@ -97,6 +103,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _showLanguageKey = results.$7;
       _heightProfile = results.$8;
       _hapticsEnabled = results.$9;
+      _bottomElevationDp = bottomElevation;
+      _invertToolbar = invertToolbar;
+      _spacebarAlignment = spacebarAlign;
     });
   }
 
@@ -277,6 +286,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveHeightProfile(String profile) async {
     await _storageService.setHeightProfile(profile);
     if (mounted) setState(() => _heightProfile = profile);
+  }
+
+  Future<void> _saveBottomElevation(int dp) async {
+    await _storageService.setBottomElevationDp(dp);
+    if (mounted) setState(() => _bottomElevationDp = dp);
+  }
+
+  Future<void> _toggleInvertToolbar(bool invert) async {
+    await _storageService.setInvertToolbar(invert);
+    if (mounted) setState(() => _invertToolbar = invert);
+  }
+
+  Future<void> _saveSpacebarAlignment(String alignment) async {
+    await _storageService.setSpacebarAlignment(alignment);
+    if (mounted) setState(() => _spacebarAlignment = alignment);
   }
 
   String get _heightProfileHint {
@@ -610,6 +634,82 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Widget _buildSpacebarAlignmentCards() {
+    return Row(
+      children: [
+        Expanded(child: _buildMiniKbCard('left', 'Zurdo')),
+        const SizedBox(width: 8),
+        Expanded(child: _buildMiniKbCard('center', 'Centro')),
+        const SizedBox(width: 8),
+        Expanded(child: _buildMiniKbCard('right', 'Diestro')),
+      ],
+    );
+  }
+
+  Widget _buildMiniKbCard(String id, String label) {
+    final isSelected = _spacebarAlignment == id;
+    final colorScheme = Theme.of(context).colorScheme;
+    
+    return GestureDetector(
+      onTap: () => _saveSpacebarAlignment(id),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? colorScheme.primary.withOpacity(0.1) 
+              : colorScheme.surface,
+          border: Border.all(
+            color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            _buildMiniKbRow(id, colorScheme),
+            const SizedBox(height: 12),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniKbRow(String layout, ColorScheme colorScheme) {
+    Widget miniKey(int flex, {bool isSpace = false}) {
+      return Expanded(
+        flex: flex,
+        child: Container(
+          height: 16,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            color: isSpace ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      );
+    }
+
+    List<Widget> keys;
+    if (layout == 'left') {
+      keys = [miniKey(1), miniKey(3, isSpace: true), miniKey(1), miniKey(1), miniKey(1)];
+    } else if (layout == 'right') {
+      keys = [miniKey(1), miniKey(1), miniKey(1), miniKey(3, isSpace: true), miniKey(1)];
+    } else {
+      // center
+      keys = [miniKey(1), miniKey(1), miniKey(3, isSpace: true), miniKey(1), miniKey(1)];
+    }
+
+    return Row(children: keys);
+  }
+
   Widget _buildKeyboardTab(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
@@ -718,6 +818,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color:
                             Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Barra Interactiva Superior',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Invertir disposición (Zurdo/Diestro)'),
+                  subtitle: Text(
+                    'El micrófono pasa a la izquierda y el portapapeles a la derecha.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  value: _invertToolbar,
+                  onChanged: _toggleInvertToolbar,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Posición de la Barra Espaciadora',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 12),
+                _buildSpacebarAlignmentCards(),
+                const SizedBox(height: 16),
+                Text(
+                  'Elevación Inferior (Bottom Lift)',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<int>(
+                  key: const ValueKey('kb-bottom-elevation-selector'),
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 0, label: Text('0dp')),
+                    ButtonSegment(value: 12, label: Text('12dp')),
+                    ButtonSegment(value: 24, label: Text('24dp')),
+                    ButtonSegment(value: 36, label: Text('36dp')),
+                    ButtonSegment(value: 48, label: Text('48dp')),
+                  ],
+                  selected: {_bottomElevationDp},
+                  onSelectionChanged: (dps) => _saveBottomElevation(dps.first),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Despega el teclado del borde inferior de la pantalla. Ideal para dispositivos con barra de gestos o biseles delgados.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                 ),
                 SwitchListTile(

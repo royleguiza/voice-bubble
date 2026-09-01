@@ -1,8 +1,11 @@
+kb_bottom_elevation_dp
 kb_code_key_visible
 kb_haptics_enabled
 kb_height_profile
+kb_invert_toolbar
 kb_language_key_visible
 kb_snippets_seeded
+kb_spacebar_alignment
 kb_stt_api_key
 kb_stt_language
 kb_stt_model

@@ -130,6 +130,9 @@ class VoiceKeyboardService : InputMethodService() {
     // del teclado, jamas el padding inferior por insets.
     private var heightFactor = HEIGHT_FACTOR_MEDIA
     private var hapticsEnabled = true
+    private var bottomElevationDp = 24
+    private var invertToolbar = false
+    private var spacebarAlignment = "center"
 
     // AT-A8: cache de visibilidad leida junto a lo anterior; rebuild jamas
     // consulta SharedPreferences.
@@ -186,7 +189,12 @@ class VoiceKeyboardService : InputMethodService() {
                 @Suppress("DEPRECATION")
                 insets.systemWindowInsetBottom
             }
-            view.setPadding(padH, padV, padH, padV + bottom)
+            val elevationPx = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                bottomElevationDp.toFloat(),
+                resources.displayMetrics
+            ).toInt()
+            view.setPadding(padH, padV, padH, padV + bottom + elevationPx)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 WindowInsets.CONSUMED
             } else {
@@ -211,6 +219,7 @@ class VoiceKeyboardService : InputMethodService() {
         ctrlActive = false
         altActive = false
         rebuild()
+        root.requestApplyInsets()
     }
 
     /** Campos de contraseña: sin micrófono, snippets ni sugerencias (K3). */
@@ -280,6 +289,11 @@ class VoiceKeyboardService : InputMethodService() {
         root.removeAllViews()
 
         // K2.1: fila terminal ocultable desde Ajustes de la app (default visible).
+        // Y ahora Toolbar Interactiva Superior con Mic, Portapapeles, etc.
+        val toolbar = buildInteractiveToolbar()
+        if (toolbar != null) {
+            addRow(toolbar)
+        }
         if (terminalRowVisiblePref) {
             addRow(buildTerminalRow())
         }
@@ -295,6 +309,93 @@ class VoiceKeyboardService : InputMethodService() {
         applyCase()
         refreshModifierVisuals()
         applyMicVisual()
+    }
+
+    private fun buildInteractiveToolbar(): LinearLayout? {
+        val row = LinearLayout(this)
+        row.orientation = LinearLayout.HORIZONTAL
+        // Opción 1: Pill Flotante
+        val lp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+        val m = dimen(R.dimen.kb_key_gap)
+        lp.setMargins(m, m, m, m)
+        row.layoutParams = lp
+        
+        row.setPadding(m, m, m, m)
+        row.setBackgroundResource(R.drawable.kb_popup_bg) // Fondo redondeado suave
+        
+        // Elementos:
+        val btnSnippets = if (!currentIsPasswordField) {
+            makeSpecialKey("☰", R.drawable.kb_key_alt, 1f, if (spanishMode) "fragmentos" else "snippets") {
+                toggleSnippetsLayer()
+            }
+        } else null
+
+        val btnTerminal = if (terminalRowVisiblePref) {
+            makeSpecialKey(">_", R.drawable.kb_key_alt, 1f, if (spanishMode) "fila terminal" else "terminal row") {
+                terminalRowVisiblePref = !terminalRowVisiblePref
+                rebuild()
+            }
+        } else null
+
+        val btnCode = if (codeKeyVisiblePref) {
+            makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, if (spanishMode) "capa código" else "code layer") {
+                toggleCodeLayer()
+            }
+        } else null
+
+        val btnMic = if (!currentIsPasswordField) {
+            val mic = makeMicKey()
+            micKeyView = mic
+            mic
+        } else {
+            micKeyView = null
+            micNormalView = null
+            micProcView = null
+            micProcDots = emptyList()
+            micPillView = null
+            micPillDot = null
+            micPillTimer = null
+            micPillCancel = null
+            null
+        }
+
+        // Centro (Historial de pegado o layout de herramientas)
+        val btnPaste = makeSpecialKey("📋", R.drawable.kb_key_alt, 1f, if (spanishMode) "pegar" else "paste") {
+            // Lógica de pegado / placeholder
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            if (clipboard.hasPrimaryClip()) {
+                val item = clipboard.primaryClip?.getItemAt(0)
+                item?.text?.let { commit(it.toString()) }
+            }
+        }
+
+        val items = mutableListOf<View>()
+        if (btnSnippets != null) items.add(btnSnippets)
+        items.add(btnPaste)
+        if (btnTerminal != null) items.add(btnTerminal)
+        if (btnCode != null) items.add(btnCode)
+        if (btnMic != null) items.add(btnMic)
+
+        if (invertToolbar) {
+            items.reverse()
+        }
+
+        if (items.isEmpty()) return null
+
+        for (item in items) {
+            // Darles weight 1 para que ocupen parejo (o ajustarlos)
+            val itemLp = item.layoutParams as? LinearLayout.LayoutParams
+            if (itemLp != null) {
+                itemLp.weight = 1f
+                item.layoutParams = itemLp
+            }
+            row.addView(item)
+        }
+
+        return row
     }
 
     /** Fila terminal permanente en todas las capas (K2). */
@@ -424,39 +525,21 @@ class VoiceKeyboardService : InputMethodService() {
 
     private fun buildBottomBar(): LinearLayout {
         val row = horizontalRow()
-        row.addView(makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols") {
+
+        val btnSym = makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols") {
             layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
             rebuild()
-        })
-        // K2.2: teclas de capa codigo e idioma ocultables desde Ajustes (default visibles).
-        if (codeKeyVisiblePref) {
-            row.addView(makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, if (spanishMode) "capa código" else "code layer") {
-                toggleCodeLayer()
-            })
         }
-        if (languageKeyVisiblePref) {
-            row.addView(makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language") {
+
+        val btnLang = if (languageKeyVisiblePref) {
+            makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language") {
                 spanishMode = !spanishMode
                 rebuild()
-            })
-        }
-        if (!currentIsPasswordField) {
-            val mic = makeMicKey()
-            micKeyView = mic
-            row.addView(mic)
-        } else {
-            micKeyView = null
-            micNormalView = null
-            micProcView = null
-            micProcDots = emptyList()
-            micPillView = null
-            micPillDot = null
-            micPillTimer = null
-            micPillCancel = null
-        }
+            }
+        } else null
+
         val comma = makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct))
         commaKeyView = comma
-        row.addView(comma)
 
         val space = makeSpecialKey("", R.drawable.kb_key_bg, 3.0f, if (spanishMode) "espacio" else "space") {
             // En snippets el espacio alimenta el query, nunca el documento.
@@ -464,28 +547,46 @@ class VoiceKeyboardService : InputMethodService() {
             commit(" ")
         }
         spaceKeyView = space
-        row.addView(space)
 
         val dot = makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct))
         dotKeyView = dot
-        row.addView(dot)
-        // K4: acceso a la capa snippets; oculto en campos de contrasena igual que el microfono.
-        if (!currentIsPasswordField) {
-            row.addView(makeSpecialKey("☰", R.drawable.kb_key_alt, 1f, if (spanishMode) "fragmentos" else "snippets") {
-                toggleSnippetsLayer()
-            })
+
+        val enter = makeSpecialKey(
+            "↵",
+            R.drawable.kb_key_accent,
+            1.8f,
+            if (spanishMode) "intro" else "enter",
+            dimen(R.dimen.kb_key_glyph_enter),
+        ) {
+            handleEnter()
         }
-        row.addView(
-            makeSpecialKey(
-                "↵",
-                R.drawable.kb_key_accent,
-                1.8f,
-                if (spanishMode) "intro" else "enter",
-                dimen(R.dimen.kb_key_glyph_enter),
-            ) {
-                handleEnter()
-            },
-        )
+
+        // Orden de la fila inferior segun la preferencia de alineacion.
+        // Siempre arranca con Sym/Lang, luego el bloque configurable, y termina con Enter.
+        row.addView(btnSym)
+        if (btnLang != null) {
+            row.addView(btnLang)
+        }
+
+        when (spacebarAlignment) {
+            "left" -> {
+                row.addView(space)
+                row.addView(comma)
+                row.addView(dot)
+            }
+            "right" -> {
+                row.addView(comma)
+                row.addView(dot)
+                row.addView(space)
+            }
+            else -> { // "center" default
+                row.addView(comma)
+                row.addView(space)
+                row.addView(dot)
+            }
+        }
+        
+        row.addView(enter)
         return row
     }
 
@@ -2524,6 +2625,24 @@ class VoiceKeyboardService : InputMethodService() {
                 .getBoolean("flutter.kb_haptics_enabled", true)
         } catch (_: Exception) {
             true
+        }
+        bottomElevationDp = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getLong("flutter.kb_bottom_elevation_dp", 24L).toInt()
+        } catch (_: Exception) {
+            24
+        }
+        invertToolbar = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getBoolean("flutter.kb_invert_toolbar", false)
+        } catch (_: Exception) {
+            false
+        }
+        spacebarAlignment = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_spacebar_alignment", "center") ?: "center"
+        } catch (_: Exception) {
+            "center"
         }
         terminalRowVisiblePref = terminalRowVisible()
         codeKeyVisiblePref = codeKeyVisible()

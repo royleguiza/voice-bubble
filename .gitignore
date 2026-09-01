@@ -61,3 +61,5 @@ __pycache__/
 
 # Impeccable
 .impeccable/
+.github_token
+.agents/secrets.env

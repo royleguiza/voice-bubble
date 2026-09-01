@@ -91,6 +91,43 @@ class StorageService {
 
   static const String kbHeightProfileKey = 'kb_height_profile';
   static const String kbHapticsEnabledKey = 'kb_haptics_enabled';
+  static const String kbBottomElevationDpKey = 'kb_bottom_elevation_dp';
+  static const String kbInvertToolbarKey = 'kb_invert_toolbar';
+
+  static const int defaultBottomElevationDp = 24;
+
+  Future<int> getBottomElevationDp() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(kbBottomElevationDpKey) ?? defaultBottomElevationDp;
+  }
+
+  Future<void> setBottomElevationDp(int dp) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(kbBottomElevationDpKey, dp);
+  }
+
+  Future<bool> getInvertToolbar() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(kbInvertToolbarKey) ?? false;
+  }
+
+  Future<void> setInvertToolbar(bool invert) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kbInvertToolbarKey, invert);
+  }
+
+  static const String kbSpacebarAlignmentKey = 'kb_spacebar_alignment';
+  static const String defaultSpacebarAlignment = 'center'; // left, center, right
+
+  Future<String> getSpacebarAlignment() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(kbSpacebarAlignmentKey) ?? defaultSpacebarAlignment;
+  }
+
+  Future<void> setSpacebarAlignment(String alignment) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbSpacebarAlignmentKey, alignment);
+  }
 
   /// Perfiles de altura del teclado validos, de menor a mayor.
   static const List<String> kbHeightProfiles = ['baja', 'media', 'alta'];
