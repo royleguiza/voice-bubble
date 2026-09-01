@@ -309,6 +309,7 @@ class VoiceKeyboardService : InputMethodService() {
         applyCase()
         refreshModifierVisuals()
         applyMicVisual()
+    }
     private fun buildInteractiveToolbar(): LinearLayout? {
         val row = LinearLayout(this)
         row.orientation = LinearLayout.HORIZONTAL
