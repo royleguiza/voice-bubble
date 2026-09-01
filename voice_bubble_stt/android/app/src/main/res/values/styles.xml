@@ -15,4 +15,9 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+
+    <style name="VoiceHistoryPopupAnimation">
+        <item name="android:windowEnterAnimation">@anim/kb_popup_enter</item>
+        <item name="android:windowExitAnimation">@anim/kb_popup_exit</item>
+    </style>
 </resources>

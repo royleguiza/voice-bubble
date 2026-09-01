@@ -3,330 +3,1341 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceBubble - Laboratorio UI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>VoiceBubble STT — Laboratorio UI & Design System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root[data-theme="dark"] {
-            --bg-base: #0f0f11;
-            --bg-sidebar: #161618;
-            --bg-surface: #1e1e20;
-            --bg-surface-hover: #2a2a2c;
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0a5;
-            --border: #2a2a2c;
-            --primary: #bb86fc;
-            --keyboard-glass-bg: #1e1e20; /* Solid to see shapes clearly */
-            --key-bg: #323234;
-            --key-special-bg: #2a2a2c;
-            --key-shadow: 0 1px 0 rgba(0,0,0,0.5);
+            --bg-canvas: #09090b;
+            --bg-sidebar: #0e0e11;
+            --bg-surface: #141417;
+            --bg-surface-elevated: #1a1a1f;
+            --bg-surface-glass: rgba(20, 20, 24, 0.75);
+            --bg-surface-hover: #222228;
+            --border-subtle: rgba(255, 255, 255, 0.07);
+            --border-strong: rgba(255, 255, 255, 0.14);
+            --border-focus: #3b82f6;
+            --text-primary: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --text-tertiary: #71717a;
+            
+            /* Royal Electric Blue */
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.35);
+            --primary-bg: rgba(59, 130, 246, 0.12);
+            --primary-hover: #2563eb;
+            --accent: #0284c7;
+            
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.35);
+            --danger-bg: rgba(239, 68, 68, 0.12);
+            --success: #10b981;
+            --success-bg: rgba(16, 185, 129, 0.12);
+            --warning: #f59e0b;
+            
+            --kb-glass-bg: #18181c;
+            --kb-key-bg: #27272e;
+            --kb-key-alt-bg: #1e1e24;
+            --kb-key-active: #383842;
+            --kb-key-text: #f4f4f5;
+            --kb-key-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+            --phone-bezel: #1c1c22;
+            --phone-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
         }
+
         :root[data-theme="light"] {
-            --bg-base: #f4f5f7;
+            --bg-canvas: #f8fafc;
             --bg-sidebar: #ffffff;
             --bg-surface: #ffffff;
-            --bg-surface-hover: #f0f0f4;
-            --text-primary: #111112;
-            --text-secondary: #55555a;
-            --border: #e0e0e5;
-            --primary: #6200ee;
-            --keyboard-glass-bg: #d4d6db;
-            --key-bg: #ffffff;
-            --key-special-bg: #b6b8c0;
-            --key-shadow: 0 1px 0 rgba(0,0,0,0.15);
+            --bg-surface-elevated: #f1f5f9;
+            --bg-surface-glass: rgba(255, 255, 255, 0.85);
+            --bg-surface-hover: #e2e8f0;
+            --border-subtle: rgba(0, 0, 0, 0.07);
+            --border-strong: rgba(0, 0, 0, 0.14);
+            --border-focus: #2563eb;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-tertiary: #94a3b8;
+            
+            /* Royal Electric Blue */
+            --primary: #2563eb;
+            --primary-glow: rgba(37, 99, 235, 0.25);
+            --primary-bg: rgba(37, 99, 235, 0.08);
+            --primary-hover: #1d4ed8;
+            --accent: #0284c7;
+            
+            --danger: #dc2626;
+            --danger-glow: rgba(220, 38, 38, 0.25);
+            --danger-bg: rgba(220, 38, 38, 0.08);
+            --success: #059669;
+            --success-bg: rgba(5, 150, 105, 0.08);
+            --warning: #d97706;
+            
+            --kb-glass-bg: #cbd5e1;
+            --kb-key-bg: #ffffff;
+            --kb-key-alt-bg: #94a3b8;
+            --kb-key-active: #e2e8f0;
+            --kb-key-text: #0f172a;
+            --kb-key-shadow: 0 1.5px 0 rgba(0, 0, 0, 0.18);
+            --phone-bezel: #e2e8f0;
+            --phone-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.08);
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg-base); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
-
-        /* Sidebar */
-        aside { width: 280px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px; z-index: 10; }
-        .logo { font-size: 20px; font-weight: 700; margin-bottom: 48px; display: flex; align-items: center; gap: 12px; }
-        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), #ff4081); border-radius: 10px; }
-        .nav-label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; margin-bottom: 16px; }
-        .nav-list { list-style: none; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-        .nav-item { padding: 12px 16px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 12px; }
-        .nav-item.active { background: rgba(98, 0, 238, 0.1); color: var(--primary); font-weight: 600; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
         
-        .theme-toggle { margin-top: auto; padding: 14px 16px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: var(--text-primary); font-weight: 600; font-size: 14px; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-canvas);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            letter-spacing: -0.01em;
+        }
 
-        main { flex: 1; display: flex; overflow: hidden; }
-        .content-area { flex: 1; padding: 56px; max-width: 800px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
-        .preview-area { width: 440px; border-left: 1px solid var(--border); background: var(--bg-sidebar); display: flex; align-items: center; justify-content: center; }
+        /* Ambient Glow (Blue Aura) */
+        .ambient-glow {
+            position: fixed;
+            top: -20%;
+            right: 15%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, rgba(0,0,0,0) 70%);
+            opacity: 0.35;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(60px);
+        }
 
-        header h1 { font-size: 34px; font-weight: 700; letter-spacing: -1px; margin-bottom: 12px; }
-        header p { font-size: 16px; color: var(--text-secondary); line-height: 1.6; }
+        /* SIDEBAR */
+        aside {
+            width: 300px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            padding: 28px 20px;
+            z-index: 10;
+            flex-shrink: 0;
+            backdrop-filter: blur(12px);
+        }
 
-        .control-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
-        .control-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
-        
-        /* Switch */
-        .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-        .switch-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
-        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); border-radius: 24px; transition: .3s; }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; }
-        input:checked + .slider { background-color: var(--primary); }
-        input:checked + .slider:before { transform: translateX(20px); }
+        .brand-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 36px;
+            padding: 0 6px;
+        }
 
-        /* MOCKUP */
-        .phone-mockup { width: 340px; height: 720px; background: #000; border-radius: 44px; border: 12px solid #222; display: flex; flex-direction: column; overflow: hidden; position: relative;}
-        .phone-mockup::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 110px; height: 30px; background: #222; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; z-index: 20; }
-        .phone-screen { flex: 1; background: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=800&auto=format&fit=crop') center/cover; display: flex; flex-direction: column; justify-content: flex-end; }
-        
-        .keyboard-glass { background: var(--keyboard-glass-bg); padding: 8px 6px 32px 6px; border-radius: 16px 16px 0 0; }
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 8px 16px -4px var(--primary-glow);
+            position: relative;
+            overflow: hidden;
+        }
 
-        /* TOOLBAR - Sin fondo outer y más pequeña */
-        .kb-toolbar {
+        .brand-icon::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 50%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%);
+        }
+
+        .brand-title {
+            font-size: 17px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-group-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            font-weight: 700;
+            margin: 0 8px 10px 8px;
+            letter-spacing: 0.06em;
+        }
+
+        .nav-menu {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-size: 13.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid transparent;
+            user-select: none;
+        }
+
+        .nav-btn:hover {
+            background: var(--bg-surface-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-btn.active {
+            background: var(--primary-bg);
+            color: var(--primary);
+            border-color: rgba(59, 130, 246, 0.25);
+            font-weight: 700;
+        }
+
+        .nav-btn svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .nav-btn:hover svg {
+            transform: scale(1.08);
+        }
+
+        .sidebar-footer {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .action-chip-btn {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 6px;
-            margin-bottom: 10px;
-            height: 38px;
-            padding: 0 4px;
-        }
-
-        .kb-toolbar.inverted { flex-direction: row-reverse; }
-
-        .tb-center-group {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            flex: 1;
-            height: 100%;
-        }
-
-        .tb-btn {
-            background: var(--key-bg); 
-            box-shadow: var(--key-shadow);
-            border-radius: 8px; 
-            height: 100%;
-            width: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
             color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+        }
+
+        .action-chip-btn:hover {
+            background: var(--bg-surface-hover);
+            border-color: var(--border-strong);
+        }
+
+        /* MAIN VIEWPORT */
+        main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+        }
+
+        .content-scroll {
+            flex: 1;
+            padding: 44px 48px;
+            max-width: 860px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            font-size: 14.5px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 680px;
+        }
+
+        /* CARDS & PANELS */
+        .glass-card {
+            background: var(--bg-surface-glass);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.2);
+            transition: border-color 0.2s;
+        }
+
+        .glass-card:hover {
+            border-color: var(--border-strong);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge-pill {
+            font-size: 11px;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+
+        .badge-primary { background: var(--primary-bg); color: var(--primary); }
+        .badge-danger  { background: var(--danger-bg); color: var(--danger); }
+        .badge-success { background: var(--success-bg); color: var(--success); }
+
+        /* CONTROLS LIST */
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .setting-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .setting-label {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .setting-subtext {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* SWITCH TOGGLE */
+        .ios-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .ios-switch input { opacity: 0; width: 0; height: 0; }
+
+        .ios-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--border-strong);
+            border-radius: 24px;
+            transition: .25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .ios-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: .25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        input:checked + .ios-slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .ios-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* PREVIEW AREA (PHONE HARDWARE MOCKUP) */
+        .preview-pane {
+            width: 460px;
+            background: var(--bg-sidebar);
+            border-left: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            flex-shrink: 0;
             position: relative;
         }
 
-        .tb-btn.tb-text-btn {
-            width: 56px; 
-            font-size: 14px;
-            font-weight: 600;
+        .phone-frame {
+            width: 350px;
+            height: 720px;
+            background: #000;
+            border-radius: 48px;
+            border: 11px solid var(--phone-bezel);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            box-shadow: var(--phone-shadow);
         }
 
-        .tb-icon {
-            width: 20px;
-            height: 20px;
-            fill: currentColor;
+        /* Dynamic Island */
+        .phone-island {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 24px;
+            background: #000;
+            border-radius: 20px;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
         }
-        .tb-icon-stroke {
-            width: 20px;
-            height: 20px;
+
+        .island-lens {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #111;
+            border: 1px solid #222;
+        }
+
+        .island-indicator {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            opacity: 0.8;
+            box-shadow: 0 0 6px var(--success);
+        }
+
+        .phone-screen {
+            flex: 1;
+            background: linear-gradient(180deg, #101014 0%, #08080a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        /* Top Status Bar */
+        .status-bar {
+            height: 44px;
+            padding: 10px 22px 0 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            z-index: 20;
+        }
+
+        .status-icons {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* App Terminal / Chat Workspace */
+        .app-workspace {
+            flex: 1;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .terminal-preview-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 12px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #e2e8f0;
+            min-height: 85px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+        }
+
+        .terminal-preview-card.glow {
+            border-color: var(--primary);
+            box-shadow: 0 0 16px var(--primary-glow), inset 0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--text-tertiary);
+            font-size: 10.5px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+        }
+
+        .terminal-text {
+            font-size: 13px;
+            line-height: 1.5;
+            word-break: break-all;
+            color: #f8fafc;
+        }
+
+        .terminal-cursor {
+            display: inline-block;
+            width: 7px;
+            height: 14px;
+            background: var(--primary);
+            vertical-align: middle;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* KEYBOARD CONTAINER */
+        .keyboard-glass {
+            background: var(--kb-glass-bg);
+            padding: 8px 6px 18px 6px;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35);
+            position: relative;
+            user-select: none;
+        }
+
+        /* SVG ICONS */
+        .icon-svg {
+            width: 17px;
+            height: 17px;
             fill: none;
             stroke: currentColor;
-            stroke-width: 2;
+            stroke-width: 2.2;
             stroke-linecap: round;
             stroke-linejoin: round;
+            display: inline-block;
+            vertical-align: middle;
         }
 
-        /* Mic Animación Continua y Fluida */
-        .tb-mic {
-            color: #FF3B30;
-            width: 44px; /* Ancho base */
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .icon-svg-solid {
+            width: 17px;
+            height: 17px;
+            fill: currentColor;
+            display: inline-block;
+            vertical-align: middle;
         }
-        
-        /* Estado Grabando: Se ensancha a píldora de forma fluida */
-        .tb-mic.recording {
-            width: 72px; /* Morph to pill */
+
+        /* TOP TOOLBAR ROW */
+        .kb-toolbar-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 5px;
+            margin-bottom: 7px;
+            height: 38px;
+            padding: 0 2px;
+        }
+
+        .kb-toolbar-row.inverted {
+            flex-direction: row-reverse;
+        }
+
+        .tb-key {
+            background: var(--kb-key-bg);
+            box-shadow: var(--kb-key-shadow);
+            border-radius: 8px;
+            height: 100%;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--kb-key-text);
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+
+        .tb-key:active {
+            transform: scale(0.92);
+            background: var(--kb-key-active);
+        }
+
+        .tb-key.active {
+            background: var(--primary-bg);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .tb-key-mic {
+            color: #ef4444;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .tb-key-mic.recording {
+            flex: 4;
             border-radius: 19px;
-            background: rgba(255, 59, 48, 0.1);
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid #ef4444;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
         }
 
-        .tb-mic.recording::after {
-            content: '';
-            position: absolute;
-            top: -2px; left: -2px; right: -2px; bottom: -2px;
-            border-radius: 21px;
-            border: 2px solid #FF3B30;
+        /* SNIPPET HEADER (SEARCH + QUICK ACTION BUTTONS) */
+        .snippet-view-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin-bottom: 6px;
+            position: relative;
+            min-height: 132px;
+        }
+
+        .snippet-header-v1 {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            height: 38px;
+        }
+
+        .snippet-search-pill {
+            flex: 1;
+            height: 100%;
+            background: var(--kb-key-bg);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            gap: 8px;
+            box-shadow: var(--kb-key-shadow);
+            border: 1px solid var(--border-subtle);
+            transition: all 0.2s;
+        }
+
+        .snippet-search-pill.focused {
+            border-color: var(--primary);
+            background: var(--bg-surface-elevated);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .snippet-search-pill input {
+            border: none;
+            background: transparent;
+            color: var(--kb-key-text);
+            font-size: 12.5px;
+            outline: none;
+            width: 100%;
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        .quick-action-btn {
+            width: 36px;
+            height: 38px;
+            background: var(--kb-key-bg);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--kb-key-shadow);
+            color: var(--kb-key-text);
+            transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+            flex-shrink: 0;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .quick-action-btn:hover { background: var(--bg-surface-hover); }
+        .quick-action-btn:active { transform: scale(0.92); }
+        
+        /* Active States */
+        .quick-action-btn.active-edit {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .quick-action-btn.active-delete {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger);
+            box-shadow: 0 0 10px var(--danger-glow);
+        }
+
+        .quick-action-btn.btn-plus {
+            background: var(--primary-bg);
+            color: var(--primary);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        /* SNIPPET CHIPS GRID */
+        .snippet-chips-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            max-height: 82px;
+            overflow-y: auto;
+            padding: 2px;
+            transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .snippet-chips-grid.fade-out {
             opacity: 0;
-            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-        }
-        
-        @keyframes pulse-ring {
-            0% { transform: scale(1); opacity: 0.6; }
-            100% { transform: scale(1.3); opacity: 0; }
+            transform: scale(0.96);
+            pointer-events: none;
         }
 
-        /* QWERTY ROWS */
-        .kb-row { display: flex; gap: 6px; margin-bottom: 8px; justify-content: center; }
-        
-        .kb-key { 
-            background: var(--key-bg); 
-            border-radius: 8px; 
-            height: 42px; /* Standard QWERTY height */
-            flex: 1; /* 1 flex = 1 letter width */
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 16px; 
-            box-shadow: var(--key-shadow);
-        }
-        
-        .kb-key.special { 
-            background: var(--key-special-bg); 
-            font-size: 14px; 
+        .snippet-chip-card {
+            background: var(--kb-key-bg);
+            border-radius: 8px;
+            padding: 6px 7px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            box-shadow: var(--kb-key-shadow);
+            transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+            min-height: 35px;
+            border: 1px solid var(--border-subtle);
         }
 
-        /* FILA INFERIOR */
-        /* Hacemos que coma y punto tengan flex: 1 (igual que las letras) y el espacio el resto */
-        .k-comma, .k-dot { flex: 1 !important; }
-        .k-space { flex: 5 !important; } /* Gana el protagonismo */
-        .k-sym, .k-enter { flex: 1.5 !important; }
+        .snippet-chip-card:hover {
+            background: var(--bg-surface-hover);
+            transform: translateY(-1px);
+        }
 
-        /* Ordering */
-        .layout-center .k-sym { order: 1; }
-        .layout-center .k-comma { order: 2; }
-        .layout-center .k-space { order: 3; }
-        .layout-center .k-dot { order: 4; }
-        .layout-center .k-enter { order: 5; }
+        .snippet-chip-card:active, .snippet-chip-card.tapped {
+            transform: scale(0.91);
+            background: var(--kb-key-active);
+        }
 
-        .layout-left .k-sym { order: 1; }
-        .layout-left .k-space { order: 2; }
-        .layout-left .k-comma { order: 3; }
-        .layout-left .k-dot { order: 4; }
-        .layout-left .k-enter { order: 5; }
+        .chip-label {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--kb-key-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-align: center;
+        }
 
-        .layout-right .k-sym { order: 1; }
-        .layout-right .k-comma { order: 2; }
-        .layout-right .k-dot { order: 3; }
-        .layout-right .k-space { order: 4; }
-        .layout-right .k-enter { order: 5; }
+        /* Edit Mode: Dashed Blue Pulse */
+        .snippet-chip-card.mode-edit {
+            border: 1.5px dashed var(--primary);
+            background: var(--primary-bg);
+            animation: pulse-blue 1.8s infinite ease-in-out;
+        }
 
+        @keyframes pulse-blue {
+            0%, 100% { border-color: var(--primary); box-shadow: 0 0 8px var(--primary-glow); }
+            50% { border-color: rgba(59, 130, 246, 0.3); box-shadow: none; }
+        }
+
+        /* Delete Mode: Dashed Red Pulse */
+        .snippet-chip-card.mode-delete {
+            border: 1.5px dashed var(--danger);
+            background: var(--danger-bg);
+            animation: pulse-red 1.8s infinite ease-in-out;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { border-color: var(--danger); box-shadow: 0 0 8px var(--danger-glow); }
+            50% { border-color: rgba(239, 68, 68, 0.3); box-shadow: none; }
+        }
+
+        /* FLUID DELETE CONFIRMATION BAR */
+        .delete-confirm-modal {
+            background: var(--bg-surface);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5), 0 0 12px var(--danger-glow);
+            animation: fluidSlideInDelete 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fluidSlideInDelete {
+            0% {
+                opacity: 0;
+                transform: translateY(-8px) scale(0.97);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .delete-confirm-text {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .delete-confirm-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* FLUID INLINE SNIPPET EDITOR MODAL */
+        .inline-snippet-editor {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-strong);
+            border-radius: 14px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.55), 0 0 16px var(--primary-glow);
+            animation: fluidSpringIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fluidSpringIn {
+            0% {
+                opacity: 0;
+                transform: translateY(12px) scale(0.96);
+                filter: blur(4px);
+            }
+            70% {
+                opacity: 1;
+                transform: translateY(-2px) scale(1.01);
+                filter: blur(0);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: blur(0);
+            }
+        }
+
+        .editor-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .editor-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .editor-close {
+            cursor: pointer;
+            color: var(--text-tertiary);
+            font-size: 13px;
+            padding: 2px 4px;
+            transition: color 0.15s;
+        }
+
+        .editor-close:hover { color: var(--text-primary); }
+
+        .editor-input {
+            width: 100%;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 7px 10px;
+            font-size: 12px;
+            color: var(--text-primary);
+            outline: none;
+            font-family: inherit;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .editor-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .editor-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 7px;
+            border: none;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn-action:active { transform: scale(0.95); }
+        .btn-save { background: var(--primary); color: white; box-shadow: 0 2px 6px var(--primary-glow); }
+        .btn-cancel { background: var(--bg-surface-elevated); color: var(--text-secondary); }
+        .btn-delete { background: var(--danger); color: #fff; box-shadow: 0 2px 6px var(--danger-glow); }
+
+        /* COMPACT QWERTY KEYBOARD */
+        .qwerty-row {
+            display: flex;
+            gap: 4.5px;
+            margin-bottom: 5px;
+            justify-content: center;
+        }
+
+        .key-btn {
+            background: var(--kb-key-bg);
+            border-radius: 7px;
+            height: 38px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14.5px;
+            font-weight: 600;
+            color: var(--kb-key-text);
+            box-shadow: var(--kb-key-shadow);
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.08s, background-color 0.08s;
+            position: relative;
+        }
+
+        .key-btn:active {
+            transform: translateY(2px) scale(0.95);
+            background: var(--kb-key-active);
+        }
+
+        .key-btn.key-special {
+            background: var(--kb-key-alt-bg);
+            font-size: 12.5px;
+            font-weight: 700;
+        }
+
+        .key-btn.key-shift.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px var(--primary-glow);
+        }
+
+        /* ENTER KEY IN VIBRANT BLUE */
+        .key-btn.key-enter {
+            background: var(--primary) !important;
+            color: #ffffff !important;
+            font-weight: 800;
+            box-shadow: 0 2px 8px var(--primary-glow);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .key-btn.key-enter:active {
+            background: var(--primary-hover) !important;
+        }
+
+        .key-btn.key-space { flex: 5 !important; }
+        .key-btn.key-comma, .key-btn.key-dot { flex: 1 !important; }
+        .key-btn.key-sym, .key-btn.key-enter { flex: 1.5 !important; }
+        .key-btn.key-shift, .key-btn.key-backspace { flex: 1.5 !important; }
+
+        /* VIEW DISPLAY SWITCHER */
+        .tab-pane { display: none; }
+        .tab-pane.active { display: flex; flex-direction: column; gap: 24px; animation: fadeIn 0.25s ease-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* CUSTOM SCROLLBAR */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
     </style>
 </head>
 <body>
 
+    <div class="ambient-glow"></div>
+
+    <!-- SIDEBAR -->
     <aside>
-        <div class="logo"><div class="logo-icon"></div>VoiceBubble Lab</div>
-        <div class="nav-label">Auditoría Final</div>
-        <ul class="nav-list">
-            <li class="nav-item active">Master Mockup</li>
+        <div class="brand-header">
+            <div class="brand-icon">
+                <svg class="icon-svg" viewBox="0 0 24 24" style="width:20px;height:20px;stroke-width:2.5;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </div>
+            <div>
+                <div class="brand-title">VoiceBubble</div>
+                <div class="brand-subtitle">UI Design Studio</div>
+            </div>
+        </div>
+
+        <div class="nav-group-title">Módulos de Teclado</div>
+        <ul class="nav-menu">
+            <li class="nav-btn active" onclick="switchNavTab('snippets', this)">
+                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                Gestión de Snippets
+            </li>
+            <li class="nav-btn" onclick="switchNavTab('toolbar', this)">
+                <svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"></path></svg>
+                Toolbar & Espaciador
+            </li>
         </ul>
-        <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon">☀️</span><span id="theme-text">Modo Claro</span></button>
+
+        <div class="sidebar-footer">
+            <button class="action-chip-btn" onclick="toggleTheme()">
+                <span style="display:flex;align-items:center;gap:8px;">
+                    <span id="theme-icon">☀️</span>
+                    <span id="theme-label">Modo Claro</span>
+                </span>
+                <span style="font-size:11px;opacity:0.6;">Toggle</span>
+            </button>
+        </div>
     </aside>
 
+    <!-- MAIN VIEWPORT -->
     <main>
-        <div class="content-area">
-            <header>
-                <h1>Refinamiento de UI (Toolbar y Espacio)</h1>
-                <p>Prueba en vivo de los ajustes solicitados: eliminación del contorno outer de la toolbar, tamaños fijos de botones superiores, inclusión del botón de Ajustes (⚙), animación fluida del micrófono y protagonismo de la barra espaciadora.</p>
-            </header>
+        
+        <!-- PANE 1: GESTIÓN DE SNIPPETS -->
+        <div class="content-scroll tab-pane active" id="pane-snippets">
+            <div class="page-header">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span class="badge-pill badge-primary">Transiciones Fluidas</span>
+                    <span class="badge-pill badge-success">Micro-Delay Táctil</span>
+                </div>
+                <h1>Gestión Rápida de Fragmentos</h1>
+                <p>Animaciones orgánicas con micro-delay háptico al pulsar cada snippet para una apertura suave y elástica de los formularios de edición y confirmación.</p>
+            </div>
 
-            <div class="control-card">
-                <div class="control-title">Controles Interactivos</div>
+            <!-- CONTROLS CARD -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--primary);"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        Acciones Rápidas del Teclado
+                    </div>
+                    <div style="display:flex;gap:6px;">
+                        <span class="badge-pill badge-primary">✏️ Edición (Azul)</span>
+                        <span class="badge-pill badge-danger">🗑️ Borrado (Rojo)</span>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Modo Editar Snippets (✏️)</div>
+                        <div class="setting-subtext">Resalta los snippets en <strong>azul pulsante</strong>. Tocar uno despliega suavemente el formulario con animación elástica.</div>
+                    </div>
+                    <button class="btn-action btn-save" onclick="setMode('edit')" style="padding: 7px 14px;">
+                        Activar Lápiz
+                    </button>
+                </div>
+
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Modo Eliminar Snippets (🗑️)</div>
+                        <div class="setting-subtext">Resalta los snippets en <strong>rojo pulsante</strong>. Tocar uno despliega la barra de confirmación con deslizamiento fluido.</div>
+                    </div>
+                    <button class="btn-action btn-delete" onclick="setMode('delete')" style="padding: 7px 14px;">
+                        Activar Tacho
+                    </button>
+                </div>
+
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Crear Nuevo Snippet ( ➕ )</div>
+                        <div class="setting-subtext">Abre directamente el formulario inline en blanco.</div>
+                    </div>
+                    <button class="btn-action btn-cancel" onclick="openNewSnippetForm()" style="padding: 7px 14px; color:var(--text-primary);">
+                        Abrir Formulario
+                    </button>
+                </div>
+            </div>
+
+            <!-- UX AUDIT HIGHLIGHTS -->
+            <div class="glass-card">
+                <div class="card-title" style="margin-bottom:12px;">
+                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--success);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    Física de Animación Implementada
+                </div>
+                <ul style="padding-left: 20px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.8;">
+                    <li><strong>Micro-Delay Táctil (70ms):</strong> Al tocar un chip, este se comprime elásticamente (`scale(0.91)`) dando feedback de clic antes de que el formulario emerja.</li>
+                    <li><strong>Apertura Elástica (Spring In):</strong> El editor emerge con una suave curva cúbica `cubic-bezier(0.16, 1, 0.3, 1)` con un sutil desempañado (`filter: blur(4px) -> 0`).</li>
+                    <li><strong>Deslizamiento de Borrado:</strong> La barra de confirmación roja se desliza de arriba hacia abajo de forma limpia y precisa.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- PANE 2: TOOLBAR & ESPACIO -->
+        <div class="content-scroll tab-pane" id="pane-toolbar">
+            <div class="page-header">
+                <h1>Toolbar Interactiva & Espaciador</h1>
+                <p>Verificación del comportamiento responsivo de la toolbar superior, pesos elásticos y alineación de la barra espaciadora.</p>
+            </div>
+
+            <div class="glass-card">
+                <div class="card-title" style="margin-bottom:16px;">Controles de Hardware y Layout</div>
                 
-                <div class="switch-row">
+                <div class="setting-row">
                     <div>
-                        <div style="font-weight: 500;">Animación Micrófono</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">Simular estado de grabación (Morph to pill)</div>
+                        <div class="setting-label">Animación Micrófono (Morph-to-Pill)</div>
+                        <div class="setting-subtext">Expansión elástica continua al grabar sin deformar las otras teclas.</div>
                     </div>
-                    <label class="switch"><input type="checkbox" id="micToggle" onchange="toggleMic()"><span class="slider"></span></label>
+                    <label class="ios-switch">
+                        <input type="checkbox" id="micToggleSwitch" onchange="toggleMicAnimation()">
+                        <span class="ios-slider"></span>
+                    </label>
                 </div>
 
-                <div class="switch-row">
+                <div class="setting-row">
                     <div>
-                        <div style="font-weight: 500;">Invertir Toolbar</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">Cambia el micrófono a la izquierda</div>
+                        <div class="setting-label">Invertir Toolbar</div>
+                        <div class="setting-subtext">Mueve el micrófono a la izquierda para zurdos.</div>
                     </div>
-                    <label class="switch"><input type="checkbox" onchange="toggleToolbarInvert(this)"><span class="slider"></span></label>
+                    <label class="ios-switch">
+                        <input type="checkbox" onchange="toggleToolbarInvert(this.checked)">
+                        <span class="ios-slider"></span>
+                    </label>
                 </div>
 
-                <div class="switch-row">
+                <div class="setting-row">
                     <div>
-                        <div style="font-weight: 500;">Mostrar Capa Código (&lt;/&gt;)</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">Demuestra que el tamaño de las otras teclas no se deforma.</div>
+                        <div class="setting-label">Alineación Barra Espaciadora</div>
+                        <div class="setting-subtext">Configura el orden de las teclas en la fila inferior.</div>
                     </div>
-                    <label class="switch"><input type="checkbox" checked onchange="toggleCodeKey(this)"><span class="slider"></span></label>
-                </div>
-
-                <div class="switch-row">
-                    <div>
-                        <div style="font-weight: 500;">Alineación de la Barra Espaciadora</div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">Zurdo, Centro o Diestro</div>
-                    </div>
-                    <select onchange="updateSpacebarLayout(this.value)" style="padding: 6px 12px; border-radius: 8px; background: var(--border); color: var(--text-primary); border: none;">
-                        <option value="left">Zurdo</option>
+                    <select onchange="changeSpacebarLayout(this.value)" style="padding: 7px 12px; border-radius: 8px; background: var(--bg-surface-elevated); color: var(--text-primary); border: 1px solid var(--border-strong); font-weight:600; outline:none;">
                         <option value="center" selected>Centro</option>
+                        <option value="left">Zurdo</option>
                         <option value="right">Diestro</option>
                     </select>
                 </div>
             </div>
         </div>
 
-        <div class="preview-area">
-            <div class="phone-mockup">
+        <!-- PREVIEW AREA (PHONE FRAME) -->
+        <div class="preview-pane">
+            <div class="phone-frame">
+                
+                <!-- Notch / Dynamic Island -->
+                <div class="phone-island">
+                    <div class="island-lens"></div>
+                    <div class="island-indicator"></div>
+                </div>
+
                 <div class="phone-screen">
+                    <!-- Status Bar -->
+                    <div class="status-bar">
+                        <span id="liveTime">19:35</span>
+                        <div class="status-icons">
+                            <svg style="width:14px;height:14px;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L12 22l7.03-4.39C20.26 16.07 21 14.12 21 12c0-4.97-4.03-9-9-9zm0 15c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6z"/></svg>
+                            <svg style="width:14px;height:14px;fill:currentColor;" viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.66-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+                            <svg style="width:16px;height:16px;fill:currentColor;" viewBox="0 0 24 24"><path d="M17 4h-3V2h-4v2H7v18h10V4z"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- App Workspace Area -->
+                    <div class="app-workspace">
+                        <div class="terminal-preview-card" id="terminalOutputCard">
+                            <div class="terminal-header">
+                                <span>TERM://OUTPUT</span>
+                                <span id="matchCounter" style="color:var(--primary); font-weight:700;">6 snippets</span>
+                            </div>
+                            <div class="terminal-text" id="terminalTextOutput">
+                                <span style="color:var(--text-tertiary);">// Toca un snippet o tipea en el teclado...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- KEYBOARD GLASS OVERLAY -->
                     <div class="keyboard-glass">
                         
-                        <!-- TOOLBAR REFINADA -->
-                        <div class="kb-toolbar" id="topToolbar">
-                            <!-- Snippets (Siempre izquierda o derecha) -->
-                            <div class="tb-btn" title="Fragmentos">
-                                ☰
+                        <!-- TOP INTERACTIVE TOOLBAR -->
+                        <div class="kb-toolbar-row" id="kbToolbar">
+                            <!-- Snippets toggle button -->
+                            <div class="tb-key active" id="tbBtnSnippets" title="Fragmentos" onclick="toggleSnippetLayer()">
+                                <svg class="icon-svg" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                             </div>
                             
-                            <!-- Grupo Central (Ajustes, Terminal, Pegar, Código) -->
-                            <div class="tb-center-group">
-                                <!-- Ajustes -->
-                                <div class="tb-btn" title="Ajustes">
-                                    <svg class="tb-icon-stroke" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                                </div>
-                                
-                                <!-- Terminal -->
-                                <div class="tb-btn tb-text-btn" title="Terminal">>_</div>
-                                
-                                <!-- Historial Pegar (Nuevo SVG del Usuario) -->
-                                <div class="tb-btn" title="Pegar">
-                                    <svg class="tb-icon" viewBox="0 -960 960 960">
-                                        <path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560h-80v120H280v-120h-80v560Zm308.5-571.5Q520-783 520-800t-11.5-28.5Q497-840 480-840t-28.5 11.5Q440-817 440-800t11.5 28.5Q463-760 480-760t28.5-11.5Z"/>
-                                    </svg>
-                                </div>
+                            <!-- Settings -->
+                            <div class="tb-key" title="Ajustes">
+                                <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            </div>
+                            
+                            <!-- Terminal Row Toggle -->
+                            <div class="tb-key" title="Terminal">&gt;_</div>
+                            
+                            <!-- Paste -->
+                            <div class="tb-key" title="Pegar">
+                                <svg class="icon-svg-solid" viewBox="0 -960 960 960"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560h-80v120H280v-120h-80v560Zm308.5-571.5Q520-783 520-800t-11.5-28.5Q497-840 480-840t-28.5 11.5Q440-817 440-800t11.5 28.5Q463-760 480-760t28.5-11.5Z"/></svg>
+                            </div>
 
-                                <!-- Código (Ocultable) -->
-                                <div class="tb-btn tb-text-btn" id="codeKeyBtn" title="Código">&lt;/&gt;</div>
-                            </div>
+                            <!-- Code Layer -->
+                            <div class="tb-key" title="Código">&lt;/&gt;</div>
                             
-                            <!-- Micrófono (Siempre derecha o izquierda) -->
-                            <div class="tb-btn tb-mic" id="micBtn" title="Grabar">
-                                <svg class="tb-icon-stroke" viewBox="0 0 24 24">
-                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
-                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                                    <line x1="12" y1="19" x2="12" y2="23"/>
-                                    <line x1="8" y1="23" x2="16" y2="23"/>
-                                </svg>
+                            <!-- Mic Button -->
+                            <div class="tb-key tb-key-mic" id="tbMicBtn" title="Dictado" onclick="toggleMicAnimation()">
+                                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
                             </div>
                         </div>
 
-                        <!-- LETRAS QWERTY -->
-                        <div class="kb-row"><div class="kb-key">Q</div><div class="kb-key">W</div><div class="kb-key">E</div><div class="kb-key">R</div><div class="kb-key">T</div><div class="kb-key">Y</div><div class="kb-key">U</div><div class="kb-key">I</div><div class="kb-key">O</div><div class="kb-key">P</div></div>
-                        <div class="kb-row"><div class="kb-key">A</div><div class="kb-key">S</div><div class="kb-key">D</div><div class="kb-key">F</div><div class="kb-key">G</div><div class="kb-key">H</div><div class="kb-key">J</div><div class="kb-key">K</div><div class="kb-key">L</div><div class="kb-key">Ñ</div></div>
-                        <div class="kb-row"><div class="kb-key special" style="flex:1.5">⬆</div><div class="kb-key">Z</div><div class="kb-key">X</div><div class="kb-key">C</div><div class="kb-key">V</div><div class="kb-key">B</div><div class="kb-key">N</div><div class="kb-key">M</div><div class="kb-key special" style="flex:1.5">⌫</div></div>
-                        
-                        <!-- FILA INFERIOR -->
-                        <div class="kb-row layout-center" id="bottomRow">
-                            <div class="kb-key special k-sym">?123</div>
-                            <div class="kb-key k-comma">,</div>
-                            <div class="kb-key k-space">Espacio</div>
-                            <div class="kb-key k-dot">.</div>
-                            <div class="kb-key special k-enter">↵</div>
+                        <!-- SNIPPET LAYER SECTION (OPCIÓN 1: BUSCADOR + MÁS + LÁPIZ + TACHO) -->
+                        <div class="snippet-view-wrapper" id="snippetLayerArea">
+                            
+                            <!-- Header: [ 🔍 Buscar... ] [ ➕ Nuevo ] [ ✏️ Editar ] [ 🗑️ Eliminar ] -->
+                            <div class="snippet-header-v1" id="header-v1">
+                                <div class="snippet-search-pill" id="searchPillBox">
+                                    <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--text-tertiary); width:15px; height:15px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                    <input type="text" id="searchInputField" placeholder="Buscar snippets..." oninput="onSearchChange(this.value)" onfocus="onSearchFocus(true)" onblur="onSearchFocus(false)">
+                                </div>
+                                <div class="quick-action-btn btn-plus" title="Nuevo Snippet" onclick="openNewSnippetForm()">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                </div>
+                                <div class="quick-action-btn" id="btnEditMode" title="Modo Edición (Azul)" onclick="toggleMode('edit')">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                </div>
+                                <div class="quick-action-btn" id="btnDeleteMode" title="Modo Eliminar (Rojo)" onclick="toggleMode('delete')">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </div>
+                            </div>
+
+                            <!-- CONFIRMACIÓN DIRECTA DE BORRADO -->
+                            <div class="delete-confirm-modal" id="deleteConfirmBar" style="display:none;">
+                                <span class="delete-confirm-text">¿Eliminar <strong id="deleteSnippetTargetName" style="color:var(--danger);"></strong>?</span>
+                                <div class="delete-confirm-actions">
+                                    <button class="btn-action btn-cancel" style="padding:4px 8px;font-size:11px;" onclick="closeDeleteConfirm()">Cancelar</button>
+                                    <button class="btn-action btn-delete" style="padding:4px 10px;font-size:11px;" onclick="confirmDeleteSnippet()">Sí, eliminar</button>
+                                </div>
+                            </div>
+
+                            <!-- INLINE SNIPPET EDITOR MODAL -->
+                            <div class="inline-snippet-editor" id="inlineEditorCard" style="display:none;">
+                                <div class="editor-header">
+                                    <span class="editor-title" id="editorHeaderTitle">Nuevo Snippet</span>
+                                    <span class="editor-close" onclick="closeInlineEditor()">✕</span>
+                                </div>
+                                <input type="text" class="editor-input" id="editorInputName" placeholder="Nombre (ej. Git Commit)">
+                                <input type="text" class="editor-input" id="editorInputContent" placeholder="Comando o contenido...">
+                                <div class="editor-actions">
+                                    <button class="btn-action btn-cancel" onclick="closeInlineEditor()">Cancelar</button>
+                                    <button class="btn-action btn-save" onclick="saveSnippetData()">Guardar</button>
+                                </div>
+                            </div>
+
+                            <!-- SNIPPETS CHIPS GRID -->
+                            <div class="snippet-chips-grid" id="snippetChipsGrid">
+                                <!-- Chips dynamically injected -->
+                            </div>
                         </div>
-                        
+
+                        <!-- COMPACT QWERTY KEYBOARD -->
+                        <div id="qwertyContainer">
+                            <!-- Fila 1 -->
+                            <div class="qwerty-row">
+                                <div class="key-btn" onclick="typeKey('q')"><span class="key-lbl">q</span></div>
+                                <div class="key-btn" onclick="typeKey('w')"><span class="key-lbl">w</span></div>
+                                <div class="key-btn" onclick="typeKey('e')"><span class="key-lbl">e</span></div>
+                                <div class="key-btn" onclick="typeKey('r')"><span class="key-lbl">r</span></div>
+                                <div class="key-btn" onclick="typeKey('t')"><span class="key-lbl">t</span></div>
+                                <div class="key-btn" onclick="typeKey('y')"><span class="key-lbl">y</span></div>
+                                <div class="key-btn" onclick="typeKey('u')"><span class="key-lbl">u</span></div>
+                                <div class="key-btn" onclick="typeKey('i')"><span class="key-lbl">i</span></div>
+                                <div class="key-btn" onclick="typeKey('o')"><span class="key-lbl">o</span></div>
+                                <div class="key-btn" onclick="typeKey('p')"><span class="key-lbl">p</span></div>
+                            </div>
+                            <!-- Fila 2 -->
+                            <div class="qwerty-row">
+                                <div class="key-btn" onclick="typeKey('a')"><span class="key-lbl">a</span></div>
+                                <div class="key-btn" onclick="typeKey('s')"><span class="key-lbl">s</span></div>
+                                <div class="key-btn" onclick="typeKey('d')"><span class="key-lbl">d</span></div>
+                                <div class="key-btn" onclick="typeKey('f')"><span class="key-lbl">f</span></div>
+                                <div class="key-btn" onclick="typeKey('g')"><span class="key-lbl">g</span></div>
+                                <div class="key-btn" onclick="typeKey('h')"><span class="key-lbl">h</span></div>
+                                <div class="key-btn" onclick="typeKey('j')"><span class="key-lbl">j</span></div>
+                                <div class="key-btn" onclick="typeKey('k')"><span class="key-lbl">k</span></div>
+                                <div class="key-btn" onclick="typeKey('l')"><span class="key-lbl">l</span></div>
+                                <div class="key-btn" onclick="typeKey('ñ')"><span class="key-lbl">ñ</span></div>
+                            </div>
+                            <!-- Fila 3: Shift + Letras + Backspace (Simetría Total 1.5 + 7 + 1.5 = 10) -->
+                            <div class="qwerty-row">
+                                <div class="key-btn key-special key-shift" id="keyShiftBtn" onclick="toggleShift()">
+                                    <svg class="icon-svg" viewBox="0 0 24 24" style="width:16px;height:16px;"><path d="M12 4l-7 7h4v9h6v-9h4z"/></svg>
+                                </div>
+                                <div class="key-btn" onclick="typeKey('z')"><span class="key-lbl">z</span></div>
+                                <div class="key-btn" onclick="typeKey('x')"><span class="key-lbl">x</span></div>
+                                <div class="key-btn" onclick="typeKey('c')"><span class="key-lbl">c</span></div>
+                                <div class="key-btn" onclick="typeKey('v')"><span class="key-lbl">v</span></div>
+                                <div class="key-btn" onclick="typeKey('b')"><span class="key-lbl">b</span></div>
+                                <div class="key-btn" onclick="typeKey('n')"><span class="key-lbl">n</span></div>
+                                <div class="key-btn" onclick="typeKey('m')"><span class="key-lbl">m</span></div>
+                                <div class="key-btn key-special key-backspace" onclick="typeBackspace()">
+                                    <svg class="icon-svg" viewBox="0 0 24 24" style="width:17px;height:17px;"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"></path><line x1="18" y1="9" x2="12" y2="15"></line><line x1="12" y1="9" x2="18" y2="15"></line></svg>
+                                </div>
+                            </div>
+                            <!-- Fila 4: Inferior (Enter en Azul Real) -->
+                            <div class="qwerty-row" id="kbBottomRow">
+                                <div class="key-btn key-special key-sym">?123</div>
+                                <div class="key-btn key-comma" onclick="typeKey(',')">,</div>
+                                <div class="key-btn key-space" onclick="typeKey(' ')">Espacio</div>
+                                <div class="key-btn key-dot" onclick="typeKey('.')">.</div>
+                                <div class="key-btn key-special key-enter" onclick="typeEnter()">↵</div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
@@ -334,34 +1345,320 @@
     </main>
 
     <script>
-        function toggleTheme() {
-            const html = document.documentElement;
-            html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        // State
+        let snippetList = [
+            { id: "1", nombre: "Codex", contenido: "codex \"" },
+            { id: "2", nombre: "Gemini", contenido: "gemini -p \"" },
+            { id: "3", nombre: "Git commit", contenido: "git add . && git commit -m \"" },
+            { id: "4", nombre: "Git push", contenido: "git push origin main" },
+            { id: "5", nombre: "Supabase", contenido: "supabase db push" },
+            { id: "6", nombre: "Docker Run", contenido: "docker compose up -d" }
+        ];
+        
+        let currentMode = 'normal'; // 'normal' | 'edit' | 'delete'
+        let isShiftActive = false;
+        let pendingDeleteId = null;
+        let editingSnippetId = null;
+
+        // Render Snippets
+        function renderSnippetGrid(filter = "") {
+            const grid = document.getElementById('snippetChipsGrid');
+            grid.innerHTML = '';
+            
+            const query = filter.trim().toLowerCase();
+            const filtered = snippetList.filter(s => 
+                s.nombre.toLowerCase().includes(query) || 
+                s.contenido.toLowerCase().includes(query)
+            );
+
+            document.getElementById('matchCounter').innerText = `${filtered.length} snippet${filtered.length === 1 ? '' : 's'}`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;font-size:11.5px;color:var(--text-tertiary);padding:8px;">Sin coincidencias</div>';
+                return;
+            }
+
+            filtered.forEach(s => {
+                const card = document.createElement('div');
+                let modeClass = '';
+                if (currentMode === 'edit') modeClass = 'mode-edit';
+                if (currentMode === 'delete') modeClass = 'mode-delete';
+
+                card.className = `snippet-chip-card ${modeClass}`;
+                card.innerHTML = `<div class="chip-label">${s.nombre}</div>`;
+                
+                card.onclick = (e) => onChipClick(s, card);
+                grid.appendChild(card);
+            });
         }
 
-        function toggleMic() {
-            const mic = document.getElementById('micBtn');
-            mic.classList.toggle('recording');
-        }
+        // Chip Click Router with tactile feedback and subtle delay
+        function onChipClick(snippet, cardElement) {
+            // Tactile micro-bounce feedback
+            cardElement.classList.add('tapped');
+            setTimeout(() => cardElement.classList.remove('tapped'), 150);
 
-        function toggleToolbarInvert(checkbox) {
-            const toolbar = document.getElementById('topToolbar');
-            if (checkbox.checked) {
-                toolbar.classList.add('inverted');
+            if (currentMode === 'edit') {
+                // Subtle 70ms micro-delay for realistic tactile feel before spring animation
+                setTimeout(() => {
+                    openEditSnippetForm(snippet.id);
+                }, 70);
+            } else if (currentMode === 'delete') {
+                // Subtle 70ms micro-delay before slide in
+                setTimeout(() => {
+                    promptDeleteSnippet(snippet.id, snippet.nombre);
+                }, 70);
             } else {
-                toolbar.classList.remove('inverted');
+                // Normal mode: instant insert
+                triggerSnippetInsert(snippet.contenido);
             }
         }
 
-        function toggleCodeKey(checkbox) {
-            const codeKey = document.getElementById('codeKeyBtn');
-            codeKey.style.display = checkbox.checked ? 'flex' : 'none';
+        // Mode Toggling (Edit / Delete / Normal)
+        function toggleMode(mode) {
+            if (currentMode === mode) {
+                setMode('normal');
+            } else {
+                setMode(mode);
+            }
         }
 
-        function updateSpacebarLayout(layout) {
-            const bottomRow = document.getElementById('bottomRow');
-            bottomRow.className = `kb-row layout-${layout}`;
+        function setMode(mode) {
+            currentMode = mode;
+            closeDeleteConfirm();
+            closeInlineEditor();
+
+            const btnEdit = document.getElementById('btnEditMode');
+            const btnDelete = document.getElementById('btnDeleteMode');
+
+            btnEdit.classList.toggle('active-edit', currentMode === 'edit');
+            btnDelete.classList.toggle('active-delete', currentMode === 'delete');
+
+            renderSnippetGrid(document.getElementById('searchInputField').value);
         }
+
+        // Delete Prompt
+        function promptDeleteSnippet(id, name) {
+            pendingDeleteId = id;
+            document.getElementById('deleteSnippetTargetName').innerText = name;
+            
+            const grid = document.getElementById('snippetChipsGrid');
+            grid.classList.add('fade-out');
+
+            setTimeout(() => {
+                grid.style.display = 'none';
+                grid.classList.remove('fade-out');
+                const deleteBar = document.getElementById('deleteConfirmBar');
+                deleteBar.style.display = 'flex';
+            }, 60);
+        }
+
+        function closeDeleteConfirm() {
+            pendingDeleteId = null;
+            document.getElementById('deleteConfirmBar').style.display = 'none';
+            document.getElementById('snippetChipsGrid').style.display = 'grid';
+        }
+
+        function confirmDeleteSnippet() {
+            if (!pendingDeleteId) return;
+            deleteSnippetById(pendingDeleteId);
+            closeDeleteConfirm();
+        }
+
+        function deleteSnippetById(id) {
+            snippetList = snippetList.filter(s => s.id !== id);
+            renderSnippetGrid(document.getElementById('searchInputField').value);
+        }
+
+        // Inline Form Actions
+        function openNewSnippetForm() {
+            editingSnippetId = null;
+            setMode('normal');
+            document.getElementById('editorHeaderTitle').innerText = "Nuevo Snippet";
+            document.getElementById('editorInputName').value = "";
+            document.getElementById('editorInputContent').value = "";
+            
+            const grid = document.getElementById('snippetChipsGrid');
+            grid.classList.add('fade-out');
+
+            setTimeout(() => {
+                grid.style.display = 'none';
+                grid.classList.remove('fade-out');
+                const editor = document.getElementById('inlineEditorCard');
+                editor.style.display = 'flex';
+                document.getElementById('editorInputName').focus();
+            }, 60);
+        }
+
+        function openEditSnippetForm(id) {
+            const item = snippetList.find(s => s.id === id);
+            if (!item) return;
+            editingSnippetId = id;
+            document.getElementById('editorHeaderTitle').innerText = "Editar Snippet";
+            document.getElementById('editorInputName').value = item.nombre;
+            document.getElementById('editorInputContent').value = item.contenido;
+
+            const grid = document.getElementById('snippetChipsGrid');
+            grid.classList.add('fade-out');
+
+            setTimeout(() => {
+                grid.style.display = 'none';
+                grid.classList.remove('fade-out');
+                const editor = document.getElementById('inlineEditorCard');
+                editor.style.display = 'flex';
+                document.getElementById('editorInputName').focus();
+            }, 60);
+        }
+
+        function closeInlineEditor() {
+            document.getElementById('inlineEditorCard').style.display = 'none';
+            document.getElementById('snippetChipsGrid').style.display = 'grid';
+        }
+
+        function saveSnippetData() {
+            const name = document.getElementById('editorInputName').value.trim();
+            const content = document.getElementById('editorInputContent').value.trim();
+            if (!name) return;
+
+            if (editingSnippetId) {
+                const idx = snippetList.findIndex(s => s.id === editingSnippetId);
+                if (idx !== -1) {
+                    snippetList[idx].nombre = name;
+                    snippetList[idx].contenido = content;
+                }
+            } else {
+                snippetList.unshift({
+                    id: Date.now().toString(),
+                    nombre: name,
+                    contenido: content
+                });
+            }
+            closeInlineEditor();
+            setMode('normal');
+            renderSnippetGrid();
+        }
+
+        // Insert Snippet to Terminal Output
+        function triggerSnippetInsert(content) {
+            const terminal = document.getElementById('terminalTextOutput');
+            const card = document.getElementById('terminalOutputCard');
+            terminal.innerHTML = `<span style="color:#10b981;font-weight:700;">$ </span><span>${escapeHtml(content)}</span><span class="terminal-cursor"></span>`;
+            card.classList.add('glow');
+            setTimeout(() => card.classList.remove('glow'), 400);
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // Search Handlers
+        function onSearchChange(val) {
+            renderSnippetGrid(val);
+        }
+
+        function onSearchFocus(focused) {
+            const pill = document.getElementById('searchPillBox');
+            if (focused) pill.classList.add('focused');
+            else pill.classList.remove('focused');
+        }
+
+        // Shift Toggle
+        function toggleShift() {
+            isShiftActive = !isShiftActive;
+            const shiftBtn = document.getElementById('keyShiftBtn');
+            shiftBtn.classList.toggle('active', isShiftActive);
+
+            document.querySelectorAll('.key-lbl').forEach(el => {
+                el.innerText = isShiftActive ? el.innerText.toUpperCase() : el.innerText.toLowerCase();
+            });
+        }
+
+        // Simulated Keyboard Typing
+        function typeKey(ch) {
+            const input = document.getElementById('searchInputField');
+            const actualChar = isShiftActive ? ch.toUpperCase() : ch.toLowerCase();
+            input.value += actualChar;
+            onSearchChange(input.value);
+            
+            // Auto un-shift after letter if not locked
+            if (isShiftActive && ch !== ' ' && ch !== ',' && ch !== '.') {
+                toggleShift();
+            }
+        }
+
+        function typeBackspace() {
+            const input = document.getElementById('searchInputField');
+            input.value = input.value.slice(0, -1);
+            onSearchChange(input.value);
+        }
+
+        function typeEnter() {
+            const input = document.getElementById('searchInputField');
+            input.blur();
+        }
+
+        // Navigation Switcher
+        function switchNavTab(tabId, el) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById(`pane-${tabId}`).classList.add('active');
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            document.getElementById('theme-icon').innerText = isDark ? '🌙' : '☀️';
+            document.getElementById('theme-label').innerText = isDark ? 'Modo Oscuro' : 'Modo Claro';
+        }
+
+        // Toolbar Interaction Helpers
+        function toggleMicAnimation() {
+            const mic = document.getElementById('tbMicBtn');
+            const isRec = mic.classList.toggle('recording');
+            document.getElementById('micToggleSwitch').checked = isRec;
+        }
+
+        function toggleToolbarInvert(invert) {
+            document.getElementById('kbToolbar').classList.toggle('inverted', invert);
+        }
+
+        function changeSpacebarLayout(layout) {
+            const row = document.getElementById('kbBottomRow');
+            const space = row.querySelector('.key-space');
+            const comma = row.querySelector('.key-comma');
+            const dot = row.querySelector('.key-dot');
+
+            if (layout === 'left') {
+                space.style.order = '2';
+                comma.style.order = '3';
+                dot.style.order = '4';
+            } else if (layout === 'right') {
+                comma.style.order = '2';
+                dot.style.order = '3';
+                space.style.order = '4';
+            } else {
+                comma.style.order = '2';
+                space.style.order = '3';
+                dot.style.order = '4';
+            }
+        }
+
+        // Live Clock
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const mins = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('liveTime').innerText = `${hours}:${mins}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Initial Render
+        renderSnippetGrid();
     </script>
 </body>
 </html>

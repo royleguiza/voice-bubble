@@ -110,6 +110,10 @@ class VoiceKeyboardService : InputMethodService() {
     private var pulseAnimators: List<ObjectAnimator> = emptyList()
 
     // --- Snippets (K4) ---
+    private enum class SnippetMode { NORMAL, EDIT, DELETE }
+    private var snippetMode = SnippetMode.NORMAL
+    private var btnSnippetEditView: View? = null
+    private var btnSnippetDeleteView: View? = null
     private lateinit var snippetStore: SnippetStore
     private var layerBeforeSnippets = Layer.LETTERS
     private var snippetsSeedAttempted = false
@@ -285,6 +289,9 @@ class VoiceKeyboardService : InputMethodService() {
             snippetGridContainer = null
             snippetSearchActive = false
             snippetSearchField = null
+            snippetMode = SnippetMode.NORMAL
+            btnSnippetEditView = null
+            btnSnippetDeleteView = null
         }
         root.removeAllViews()
 
@@ -1698,81 +1705,144 @@ class VoiceKeyboardService : InputMethodService() {
         dismissPopup()
         val entries = sharedHistoryEntries()
         val pad = dimen(R.dimen.kb_popup_padding)
-        val content = LinearLayout(this)
-        content.orientation = LinearLayout.VERTICAL
-        var first = true
+
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.kb_popup_bg)
+            setPadding(pad, pad, pad, pad)
+        }
+
+        // Encabezado de la ventana
+        val header = TextView(this).apply {
+            text = if (spanishMode) "Historial de transcripciones" else "Transcription history"
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            setTypeface(null, Typeface.BOLD)
+            alpha = 0.75f
+            setPadding(pad * 2, pad, pad * 2, pad)
+        }
+        box.addView(header)
+
+        val headerSep = View(this).apply {
+            setBackgroundColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_key_stroke))
+        }
+        box.addView(
+            headerSep,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics).toInt(),
+            ),
+        )
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+
+        var count = 0
         for (obj in entries) {
             val text = obj.optString("text")
             if (text.isBlank()) continue
-            if (!first) {
-                val sep = View(this)
-                sep.setBackgroundColor(ContextCompat.getColor(this, R.color.kb_key_stroke))
+            if (count > 0) {
+                val sep = View(this).apply {
+                    setBackgroundColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_key_stroke))
+                }
                 content.addView(
                     sep,
                     LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
-                        TypedValue.applyDimension(
-                            TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics,
-                        ).toInt(),
+                        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics).toInt(),
                     ),
                 )
             }
-            first = false
-            val tv = TextView(this)
-            tv.text = text
-            tv.maxLines = 2
-            tv.ellipsize = TextUtils.TruncateAt.END
-            tv.isClickable = true
-            tv.isFocusable = true
-            tv.setPadding(pad * 2, pad, pad * 2, pad)
-            tv.setBackgroundResource(R.drawable.kb_menu_item)
-            tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            tv.setOnClickListener {
-                haptic(tv)
-                commit(text)
-                dismissPopup()
+            count++
+            val tv = TextView(this).apply {
+                this.text = text
+                maxLines = 2
+                ellipsize = TextUtils.TruncateAt.END
+                isClickable = true
+                isFocusable = true
+                setPadding(pad * 2, pad * 2, pad * 2, pad * 2)
+                setBackgroundResource(R.drawable.kb_menu_item)
+                setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+                setOnClickListener {
+                    haptic(this)
+                    commit(text)
+                    dismissPopup()
+                }
             }
             content.addView(tv)
         }
-        if (first) {
-            val empty = TextView(this)
-            empty.text = if (spanishMode) "Sin transcripciones todavía." else "No transcriptions yet."
-            empty.setPadding(pad * 2, pad, pad * 2, pad)
-            empty.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-            empty.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+
+        if (count == 0) {
+            val empty = TextView(this).apply {
+                this.text = if (spanishMode) "Sin transcripciones todavía." else "No transcriptions yet."
+                gravity = Gravity.CENTER
+                setPadding(pad * 2, pad * 4, pad * 2, pad * 4)
+                setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+                setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            }
             content.addView(empty)
         }
-        val scroll = ScrollView(this)
-        scroll.addView(content)
-        val box = LinearLayout(this)
-        box.orientation = LinearLayout.VERTICAL
-        box.setBackgroundResource(R.drawable.kb_popup_bg)
-        box.setPadding(pad, pad, pad, pad)
-        box.addView(scroll)
-        // Medida natural y tope del area scrolleable (~40% de la pantalla):
-        // si el contenido excede el tope, el ScrollView recorta y scrollea.
-        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-        val maxContentHeight = (resources.displayMetrics.heightPixels * 0.4f).toInt()
-        val popupHeight = minOf(box.measuredHeight, maxContentHeight)
-        val popupWidth = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 300f, resources.displayMetrics,
-        ).toInt()
-        val popup = PopupWindow(box, popupWidth, popupHeight, true)
-        popup.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        popup.isOutsideTouchable = true
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            isVerticalScrollBarEnabled = true
+            scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
+            addView(content)
+        }
+        val scrollLp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
+        box.addView(scroll, scrollLp)
+
+        val dm = resources.displayMetrics
+        val minHeightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 220f, dm).toInt()
+        val maxHeightPx = (dm.heightPixels * 0.45f).toInt().coerceAtLeast(minHeightPx)
+
+        box.measure(
+            View.MeasureSpec.makeMeasureSpec((dm.widthPixels * 0.85f).toInt(), View.MeasureSpec.AT_MOST),
+            View.MeasureSpec.UNSPECIFIED,
+        )
+
+        val popupHeight = box.measuredHeight.coerceIn(minHeightPx, maxHeightPx)
+        val desiredWidthPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 320f, dm).toInt()
+        val gap = dimen(R.dimen.kb_key_gap)
+        val maxAllowedWidth = dm.widthPixels - (gap * 2)
+        val popupWidth = minOf(desiredWidthPx, maxAllowedWidth)
+
+        val popup = PopupWindow(box, popupWidth, popupHeight, true).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            animationStyle = R.style.VoiceHistoryPopupAnimation
+        }
+
         val loc = IntArray(2)
         anchor.getLocationInWindow(loc)
-        val gap = dimen(R.dimen.kb_key_gap)
+        val anchorCenterX = loc[0] + anchor.width / 2
+        val rawX = if (anchorCenterX > dm.widthPixels / 2) {
+            loc[0] + anchor.width - popupWidth
+        } else {
+            loc[0]
+        }
+        val posX = rawX.coerceIn(gap, dm.widthPixels - popupWidth - gap)
+        val posY = maxOf(gap, loc[1] - popupHeight - gap)
+
+        val isRightAligned = (posX + popupWidth / 2) > (dm.widthPixels / 2)
+        box.pivotX = if (isRightAligned) popupWidth.toFloat() else 0f
+        box.pivotY = popupHeight.toFloat()
+        box.alpha = 0f
+        box.scaleX = 0.8f
+        box.scaleY = 0.8f
+
         activePopup = popup
-        popup.showAtLocation(
-            root,
-            Gravity.NO_GRAVITY,
-            loc[0],
-            // AT-A12: jamas Y negativo (fila superior + perfil alto); si no
-            // cabe arriba, se solapa con el ancla antes que salirse de pantalla.
-            maxOf(gap, loc[1] - popupHeight - gap),
-        )
+        popup.showAtLocation(root, Gravity.NO_GRAVITY, posX, posY)
+
+        box.animate()
+            .alpha(1f)
+            .scaleX(1f)
+            .scaleY(1f)
+            .setDuration(200)
+            .setInterpolator(android.view.animation.DecelerateInterpolator(1.8f))
+            .start()
     }
 
     /**
@@ -2166,7 +2236,7 @@ class VoiceKeyboardService : InputMethodService() {
         val row = horizontalRow()
         val pad = dimen(R.dimen.kb_popup_padding)
         val et = EditText(this)
-        et.hint = if (spanishMode) "Buscar snippets" else "Search snippets"
+        et.hint = if (spanishMode) "Buscar snippets..." else "Search snippets..."
         et.setSingleLine(true)
         et.maxLines = 1
         et.inputType = InputType.TYPE_CLASS_TEXT
@@ -2176,8 +2246,7 @@ class VoiceKeyboardService : InputMethodService() {
         et.setBackgroundResource(R.drawable.kb_key_bg)
         et.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
         et.setPadding(pad, pad, pad, pad)
-        // Filtra por nombre en tiempo real repoblando solo el grid, para no
-        // reconstruir la vista y perder el foco del campo de busqueda.
+        // Filtra por nombre en tiempo real repoblando solo el grid
         et.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -2205,7 +2274,71 @@ class VoiceKeyboardService : InputMethodService() {
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, 0, m, 0)
         row.addView(et, lp)
+
+        val btnH = scaleV(dimen(R.dimen.kb_snippet_search_height))
+        val btnW = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
+
+        // Boton [+] Nuevo
+        val btnPlus = makeIconKey(R.drawable.ic_add, R.drawable.kb_key_bg, 0f, if (spanishMode) "nuevo snippet" else "new snippet") {
+            showSnippetEditorDialog(null)
+        }
+        val lpPlus = LinearLayout.LayoutParams(btnW, btnH)
+        lpPlus.setMargins(m, 0, m, 0)
+        btnPlus.layoutParams = lpPlus
+        row.addView(btnPlus)
+
+        // Boton [✏️] Editar
+        val btnEdit = makeIconKey(
+            R.drawable.ic_edit,
+            if (snippetMode == SnippetMode.EDIT) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
+            0f,
+            if (spanishMode) "editar snippet" else "edit snippet",
+        ) {
+            snippetMode = if (snippetMode == SnippetMode.EDIT) SnippetMode.NORMAL else SnippetMode.EDIT
+            updateSnippetModeVisuals()
+            refreshSnippetGrid()
+        }
+        btnSnippetEditView = btnEdit
+        val lpEdit = LinearLayout.LayoutParams(btnW, btnH)
+        lpEdit.setMargins(m, 0, m, 0)
+        btnEdit.layoutParams = lpEdit
+        row.addView(btnEdit)
+
+        // Boton [🗑️] Eliminar
+        val btnDelete = makeIconKey(
+            R.drawable.ic_delete,
+            if (snippetMode == SnippetMode.DELETE) R.drawable.kb_key_danger else R.drawable.kb_key_bg,
+            0f,
+            if (spanishMode) "eliminar snippet" else "delete snippet",
+        ) {
+            snippetMode = if (snippetMode == SnippetMode.DELETE) SnippetMode.NORMAL else SnippetMode.DELETE
+            updateSnippetModeVisuals()
+            refreshSnippetGrid()
+        }
+        btnSnippetDeleteView = btnDelete
+        val lpDelete = LinearLayout.LayoutParams(btnW, btnH)
+        lpDelete.setMargins(m, 0, m, 0)
+        btnDelete.layoutParams = lpDelete
+        row.addView(btnDelete)
+
         return row
+    }
+
+    private fun updateSnippetModeVisuals() {
+        btnSnippetEditView?.setBackgroundResource(
+            if (snippetMode == SnippetMode.EDIT) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
+        )
+        (btnSnippetEditView as? ImageView)?.setColorFilter(
+            if (snippetMode == SnippetMode.EDIT) ContextCompat.getColor(this, R.color.kb_label_on_accent)
+            else ContextCompat.getColor(this, R.color.kb_label),
+        )
+        btnSnippetDeleteView?.setBackgroundResource(
+            if (snippetMode == SnippetMode.DELETE) R.drawable.kb_key_danger else R.drawable.kb_key_bg,
+        )
+        (btnSnippetDeleteView as? ImageView)?.setColorFilter(
+            if (snippetMode == SnippetMode.DELETE) ContextCompat.getColor(this, R.color.kb_label_on_accent)
+            else ContextCompat.getColor(this, R.color.kb_label),
+        )
     }
 
     /** Feedback visual del modo busqueda: fondo acentuado cuando esta activo. */
@@ -2253,7 +2386,7 @@ class VoiceKeyboardService : InputMethodService() {
         }
     }
 
-    /** Chip con el nombre del snippet: tap inserta, toque largo abre menu. */
+    /** Chip con el nombre del snippet: tap inserta, o activa accion segun modo. */
     private fun makeSnippetChip(snippet: VbSnippet): TextView {
         val chip = TextView(this)
         chip.text = snippet.nombre
@@ -2267,23 +2400,240 @@ class VoiceKeyboardService : InputMethodService() {
             dimen(R.dimen.kb_popup_padding), 0,
             dimen(R.dimen.kb_popup_padding), 0,
         )
-        chip.setBackgroundResource(R.drawable.kb_key_bg)
-        chip.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+
+        when (snippetMode) {
+            SnippetMode.EDIT -> {
+                chip.setBackgroundResource(R.drawable.kb_key_accent)
+                chip.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
+                chip.setOnClickListener {
+                    haptic(chip)
+                    showSnippetEditorDialog(snippet)
+                }
+            }
+            SnippetMode.DELETE -> {
+                chip.setBackgroundResource(R.drawable.kb_key_danger)
+                chip.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
+                chip.setOnClickListener {
+                    haptic(chip)
+                    showSnippetDeleteConfirmation(snippet)
+                }
+            }
+            SnippetMode.NORMAL -> {
+                chip.setBackgroundResource(R.drawable.kb_key_bg)
+                chip.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+                attachLongPress(
+                    chip,
+                    onLongPress = {
+                        haptic(chip)
+                        showSnippetMenu(chip, snippet)
+                    },
+                    onTapUp = { insertSnippet(snippet) },
+                )
+            }
+        }
+
         chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
         chip.contentDescription = snippet.nombre
-        attachLongPress(
-            chip,
-            onLongPress = {
-                haptic(chip)
-                showSnippetMenu(chip, snippet)
-            },
-            onTapUp = { insertSnippet(snippet) },
-        )
+
         val lp = LinearLayout.LayoutParams(0, scaleV(dimen(R.dimen.kb_snippet_chip_height)), 1f)
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, 0, m, 0)
         chip.layoutParams = lp
         return chip
+    }
+
+    private fun showSnippetEditorDialog(snippet: VbSnippet?) {
+        dismissPopup()
+        val isEdit = snippet != null
+        val pad = dimen(R.dimen.kb_popup_padding)
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.kb_popup_bg)
+            setPadding(pad * 2, pad * 2, pad * 2, pad * 2)
+        }
+
+        val title = TextView(this).apply {
+            text = if (isEdit) (if (spanishMode) "Editar snippet" else "Edit snippet")
+            else (if (spanishMode) "Nuevo snippet" else "New snippet")
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size).toFloat())
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 0, 0, pad)
+        }
+        box.addView(title)
+
+        val etName = EditText(this).apply {
+            hint = if (spanishMode) "Nombre (ej. Git commit)" else "Name"
+            setSingleLine(true)
+            maxLines = 1
+            inputType = InputType.TYPE_CLASS_TEXT
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+            setHintTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
+            setBackgroundResource(R.drawable.kb_key_bg)
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            setPadding(pad, pad, pad, pad)
+            if (isEdit) setText(snippet?.nombre.orEmpty())
+        }
+        val lpName = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, scaleV(dimen(R.dimen.kb_snippet_search_height)))
+        lpName.bottomMargin = pad
+        box.addView(etName, lpName)
+
+        val etContent = EditText(this).apply {
+            hint = if (spanishMode) "Contenido o comando..." else "Content or command..."
+            setSingleLine(false)
+            maxLines = 3
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+            setHintTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
+            setBackgroundResource(R.drawable.kb_key_bg)
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            setPadding(pad, pad, pad, pad)
+            if (isEdit) setText(snippet?.contenido.orEmpty())
+        }
+        val lpContent = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        lpContent.bottomMargin = pad * 2
+        box.addView(etContent, lpContent)
+
+        val actionsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+        }
+
+        val btnCancel = TextView(this).apply {
+            text = if (spanishMode) "Cancelar" else "Cancel"
+            gravity = Gravity.CENTER
+            setPadding(pad * 2, pad, pad * 2, pad)
+            setBackgroundResource(R.drawable.kb_key_bg)
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            setOnClickListener {
+                haptic(this)
+                dismissPopup()
+            }
+        }
+        val lpCancel = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, scaleV(dimen(R.dimen.kb_snippet_chip_height)))
+        lpCancel.rightMargin = pad
+        actionsRow.addView(btnCancel, lpCancel)
+
+        val btnSave = TextView(this).apply {
+            text = if (spanishMode) "Guardar" else "Save"
+            gravity = Gravity.CENTER
+            setPadding(pad * 2, pad, pad * 2, pad)
+            setBackgroundResource(R.drawable.kb_key_accent)
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_on_accent))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            setTypeface(null, Typeface.BOLD)
+            setOnClickListener {
+                haptic(this)
+                val name = etName.text.toString().trim()
+                val content = etContent.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    val toSave = if (isEdit && snippet != null) {
+                        snippet.copy(nombre = name, contenido = content)
+                    } else {
+                        VbSnippet(id = "", nombre = name, contenido = content, orden = 0)
+                    }
+                    snippetStore.saveSnippet(toSave)
+                    snippetMode = SnippetMode.NORMAL
+                    updateSnippetModeVisuals()
+                    dismissPopup()
+                    refreshSnippetGrid()
+                }
+            }
+        }
+        val lpSave = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, scaleV(dimen(R.dimen.kb_snippet_chip_height)))
+        actionsRow.addView(btnSave, lpSave)
+
+        box.addView(actionsRow)
+
+        val dm = resources.displayMetrics
+        val popupWidth = minOf(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 320f, dm).toInt(), dm.widthPixels - pad * 4)
+        val popup = PopupWindow(box, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            animationStyle = R.style.VoiceHistoryPopupAnimation
+        }
+        activePopup = popup
+        popup.showAtLocation(root, Gravity.CENTER, 0, 0)
+    }
+
+    private fun showSnippetDeleteConfirmation(snippet: VbSnippet) {
+        dismissPopup()
+        val pad = dimen(R.dimen.kb_popup_padding)
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.kb_popup_bg)
+            setPadding(pad * 2, pad * 2, pad * 2, pad * 2)
+        }
+
+        val title = TextView(this).apply {
+            text = if (spanishMode) "¿Eliminar snippet?" else "Delete snippet?"
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size).toFloat())
+            setTypeface(null, Typeface.BOLD)
+        }
+        box.addView(title)
+
+        val desc = TextView(this).apply {
+            text = snippet.nombre
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_recording))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            setPadding(0, pad / 2, 0, pad * 2)
+        }
+        box.addView(desc)
+
+        val actionsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.END
+        }
+
+        val btnCancel = TextView(this).apply {
+            text = if (spanishMode) "Cancelar" else "Cancel"
+            gravity = Gravity.CENTER
+            setPadding(pad * 2, pad, pad * 2, pad)
+            setBackgroundResource(R.drawable.kb_key_bg)
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            setOnClickListener {
+                haptic(this)
+                dismissPopup()
+            }
+        }
+        val lpCancel = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, scaleV(dimen(R.dimen.kb_snippet_chip_height)))
+        lpCancel.rightMargin = pad
+        actionsRow.addView(btnCancel, lpCancel)
+
+        val btnDelete = TextView(this).apply {
+            text = if (spanishMode) "Eliminar" else "Delete"
+            gravity = Gravity.CENTER
+            setPadding(pad * 2, pad, pad * 2, pad)
+            setBackgroundResource(R.drawable.kb_key_danger)
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_on_accent))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+            setTypeface(null, Typeface.BOLD)
+            setOnClickListener {
+                haptic(this)
+                snippetStore.deleteSnippet(snippet.id)
+                snippetMode = SnippetMode.NORMAL
+                updateSnippetModeVisuals()
+                dismissPopup()
+                refreshSnippetGrid()
+            }
+        }
+        val lpDelete = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, scaleV(dimen(R.dimen.kb_snippet_chip_height)))
+        actionsRow.addView(btnDelete, lpDelete)
+
+        box.addView(actionsRow)
+
+        val dm = resources.displayMetrics
+        val popupWidth = minOf(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 300f, dm).toInt(), dm.widthPixels - pad * 4)
+        val popup = PopupWindow(box, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            animationStyle = R.style.VoiceHistoryPopupAnimation
+        }
+        activePopup = popup
+        popup.showAtLocation(root, Gravity.CENTER, 0, 0)
     }
 
     private fun emptySnippetsView(): TextView {

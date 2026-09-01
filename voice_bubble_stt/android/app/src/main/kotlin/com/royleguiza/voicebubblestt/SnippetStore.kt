@@ -112,11 +112,40 @@ class SnippetStore(private val context: Context) {
         }
     }
 
+    /** Guarda (crea o edita) un snippet de forma reactiva y actualiza el cache. */
+    fun saveSnippet(snippet: VbSnippet) {
+        synchronized(cacheLock) {
+            val current = load().toMutableList()
+            val existingIndex = current.indexOfFirst { it.id == snippet.id }
+            if (existingIndex != -1) {
+                current[existingIndex] = snippet
+            } else {
+                val newSnippet = if (snippet.id.isBlank()) {
+                    snippet.copy(id = "snip-${System.currentTimeMillis()}")
+                } else snippet
+                current.add(0, newSnippet)
+            }
+            writeAll(current)
+            cache = current
+            Log.i(TAG, "snippet guardado: id=${snippet.id.take(8)}")
+        }
+    }
+
+    /** Elimina un snippet por id y actualiza el cache. */
+    fun deleteSnippet(id: String) {
+        synchronized(cacheLock) {
+            val current = load().filter { it.id != id }
+            writeAll(current)
+            cache = current
+            Log.i(TAG, "snippet eliminado: id=${id.take(8)}")
+        }
+    }
+
     private fun prefs() =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     /** Escritura atomica del array JSON completo bajo la misma clave. */
-    private fun writeAll(snippets: List<VbSnippet>) {
+    fun writeAll(snippets: List<VbSnippet>) {
         val arr = JSONArray()
         for (s in snippets) {
             arr.put(
