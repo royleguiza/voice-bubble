@@ -4,12 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VoiceBubble - Laboratorio UI</title>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS Variables */
         :root[data-theme="dark"] {
             --bg-base: #0f0f11;
             --bg-sidebar: #161618;
@@ -19,8 +15,10 @@
             --text-secondary: #a0a0a5;
             --border: #2a2a2c;
             --primary: #bb86fc;
-            --keyboard-glass-bg: rgba(30, 30, 32, 0.75);
-            --key-bg: rgba(255,255,255,0.1);
+            --keyboard-glass-bg: #1e1e20; /* Solid to see shapes clearly */
+            --key-bg: #323234;
+            --key-special-bg: #2a2a2c;
+            --key-shadow: 0 1px 0 rgba(0,0,0,0.5);
         }
         :root[data-theme="light"] {
             --bg-base: #f4f5f7;
@@ -31,8 +29,10 @@
             --text-secondary: #55555a;
             --border: #e0e0e5;
             --primary: #6200ee;
-            --keyboard-glass-bg: rgba(255, 255, 255, 0.85);
-            --key-bg: rgba(0,0,0,0.05);
+            --keyboard-glass-bg: #d4d6db;
+            --key-bg: #ffffff;
+            --key-special-bg: #b6b8c0;
+            --key-shadow: 0 1px 0 rgba(0,0,0,0.15);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,13 +45,10 @@
         .nav-label { font-size: 11px; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; margin-bottom: 16px; }
         .nav-list { list-style: none; display: flex; flex-direction: column; gap: 6px; flex: 1; }
         .nav-item { padding: 12px 16px; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-secondary); display: flex; align-items: center; gap: 12px; }
-        .nav-item:hover { background: var(--bg-surface-hover); color: var(--text-primary); }
         .nav-item.active { background: rgba(98, 0, 238, 0.1); color: var(--primary); font-weight: 600; }
-        :root[data-theme="dark"] .nav-item.active { background: rgba(187, 134, 252, 0.15); }
-
+        
         .theme-toggle { margin-top: auto; padding: 14px 16px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; color: var(--text-primary); font-weight: 600; font-size: 14px; }
 
-        /* Main Content */
         main { flex: 1; display: flex; overflow: hidden; }
         .content-area { flex: 1; padding: 56px; max-width: 800px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
         .preview-area { width: 440px; border-left: 1px solid var(--border); background: var(--bg-sidebar); display: flex; align-items: center; justify-content: center; }
@@ -59,64 +56,148 @@
         header h1 { font-size: 34px; font-weight: 700; letter-spacing: -1px; margin-bottom: 12px; }
         header p { font-size: 16px; color: var(--text-secondary); line-height: 1.6; }
 
-        /* Variant Cards */
-        .variant-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; cursor: pointer; position: relative; }
-        .variant-card.active { border-color: var(--primary); box-shadow: 0 12px 32px rgba(98, 0, 238, 0.08); }
-        .variant-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-        .variant-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: var(--text-primary); }
-        .variant-desc { font-size: 13px; color: var(--text-secondary); max-width: 85%; }
-        .radio-btn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--text-secondary); display: flex; align-items: center; justify-content: center; flex-shrink: 0;}
-        .variant-card.active .radio-btn { border-color: var(--primary); }
-        .variant-card.active .radio-btn::after { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); }
+        .control-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px; }
+        .control-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
+        
+        /* Switch */
+        .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .switch-row:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border); border-radius: 24px; transition: .3s; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
 
-        /* UI Options Styles */
-        
-        /* Opcion 1: Segmented Text */
-        .segmented-control { display: flex; background: rgba(128,128,128,0.1); border-radius: 12px; padding: 4px; }
-        .seg-btn { flex: 1; text-align: center; padding: 10px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-secondary); }
-        .seg-btn.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        
-        /* Opcion 2: Visual Radio Cards */
-        .visual-cards { display: flex; gap: 12px; }
-        .vc-card { flex: 1; border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; transition: 0.2s; }
-        .vc-card.active { border-color: var(--primary); background: rgba(98,0,238,0.05); }
-        .vc-label { font-size: 13px; font-weight: 600; }
-        .mini-kb { display: flex; gap: 4px; width: 100%; height: 20px; }
-        .mk-key { flex: 1; background: var(--text-secondary); opacity: 0.4; border-radius: 3px; }
-        .mk-key.space { flex: 3; opacity: 0.8; background: var(--primary); }
-        
-        /* Opcion 3: Slider Magnético */
-        .slider-wrapper { padding: 16px 8px 8px 8px; }
-        .slider-input { width: 100%; cursor: pointer; accent-color: var(--primary); }
-        .slider-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-secondary); font-weight: 500; }
-        
-        /* Opcion 4: Select/Dropdown */
-        .dropdown { padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; background: rgba(128,128,128,0.05); }
-        
-        /* Mockup */
+        /* MOCKUP */
         .phone-mockup { width: 340px; height: 720px; background: #000; border-radius: 44px; border: 12px solid #222; display: flex; flex-direction: column; overflow: hidden; position: relative;}
         .phone-mockup::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 110px; height: 30px; background: #222; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; z-index: 20; }
         .phone-screen { flex: 1; background: url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=800&auto=format&fit=crop') center/cover; display: flex; flex-direction: column; justify-content: flex-end; }
         
-        .keyboard-glass { background: var(--keyboard-glass-bg); backdrop-filter: blur(24px); border-top: 1px solid rgba(255,255,255,0.1); border-radius: 16px 16px 0 0; padding: 12px 8px 24px 8px; }
-        .kb-toolbar { height: 44px; background: rgba(255,255,255,0.1); border-radius: 22px; margin: 0 4px 12px 4px; display: flex; justify-content: center; align-items: center; color: var(--text-secondary); font-size: 12px;}
+        .keyboard-glass { background: var(--keyboard-glass-bg); padding: 8px 6px 32px 6px; border-radius: 16px 16px 0 0; }
+
+        /* TOOLBAR - Sin fondo outer y más pequeña */
+        .kb-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-bottom: 10px;
+            height: 38px;
+            padding: 0 4px;
+        }
+
+        .kb-toolbar.inverted { flex-direction: row-reverse; }
+
+        .tb-center-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex: 1;
+            height: 100%;
+        }
+
+        .tb-btn {
+            background: var(--key-bg); 
+            box-shadow: var(--key-shadow);
+            border-radius: 8px; 
+            height: 100%;
+            width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .tb-btn.tb-text-btn {
+            width: 56px; 
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .tb-icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        .tb-icon-stroke {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Mic Animación Continua y Fluida */
+        .tb-mic {
+            color: #FF3B30;
+            width: 44px; /* Ancho base */
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Estado Grabando: Se ensancha a píldora de forma fluida */
+        .tb-mic.recording {
+            width: 72px; /* Morph to pill */
+            border-radius: 19px;
+            background: rgba(255, 59, 48, 0.1);
+        }
+
+        .tb-mic.recording::after {
+            content: '';
+            position: absolute;
+            top: -2px; left: -2px; right: -2px; bottom: -2px;
+            border-radius: 21px;
+            border: 2px solid #FF3B30;
+            opacity: 0;
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.3); opacity: 0; }
+        }
+
+        /* QWERTY ROWS */
         .kb-row { display: flex; gap: 6px; margin-bottom: 8px; justify-content: center; }
-        .kb-key { background: var(--key-bg); border-radius: 8px; height: 44px; flex: 1; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 500; }
-        .kb-key.special { background: rgba(128,128,128,0.2); font-size: 14px; }
         
-        /* Animaciones para la fila inferior */
-        .bottom-row { transition: all 0.3s ease; }
-        .bottom-row .kb-key { transition: flex 0.3s ease, order 0.3s ease; }
+        .kb-key { 
+            background: var(--key-bg); 
+            border-radius: 8px; 
+            height: 42px; /* Standard QWERTY height */
+            flex: 1; /* 1 flex = 1 letter width */
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 16px; 
+            box-shadow: var(--key-shadow);
+        }
         
-        /* Layout Clases (Controlan el order) */
+        .kb-key.special { 
+            background: var(--key-special-bg); 
+            font-size: 14px; 
+        }
+
+        /* FILA INFERIOR */
+        /* Hacemos que coma y punto tengan flex: 1 (igual que las letras) y el espacio el resto */
+        .k-comma, .k-dot { flex: 1 !important; }
+        .k-space { flex: 5 !important; } /* Gana el protagonismo */
+        .k-sym, .k-enter { flex: 1.5 !important; }
+
+        /* Ordering */
         .layout-center .k-sym { order: 1; }
         .layout-center .k-comma { order: 2; }
-        .layout-center .k-space { order: 3; flex: 4; }
+        .layout-center .k-space { order: 3; }
         .layout-center .k-dot { order: 4; }
         .layout-center .k-enter { order: 5; }
 
         .layout-left .k-sym { order: 1; }
-        .layout-left .k-space { order: 2; flex: 4; }
+        .layout-left .k-space { order: 2; }
         .layout-left .k-comma { order: 3; }
         .layout-left .k-dot { order: 4; }
         .layout-left .k-enter { order: 5; }
@@ -124,7 +205,7 @@
         .layout-right .k-sym { order: 1; }
         .layout-right .k-comma { order: 2; }
         .layout-right .k-dot { order: 3; }
-        .layout-right .k-space { order: 4; flex: 4; }
+        .layout-right .k-space { order: 4; }
         .layout-right .k-enter { order: 5; }
 
     </style>
@@ -133,11 +214,9 @@
 
     <aside>
         <div class="logo"><div class="logo-icon"></div>VoiceBubble Lab</div>
-        <div class="nav-label">Mejoras UI</div>
+        <div class="nav-label">Auditoría Final</div>
         <ul class="nav-list">
-            <li class="nav-item">Altura del Teclado</li>
-            <li class="nav-item">Barra Interactiva</li>
-            <li class="nav-item active">Posición del Espacio</li>
+            <li class="nav-item active">Master Mockup</li>
         </ul>
         <button class="theme-toggle" onclick="toggleTheme()"><span id="theme-icon">☀️</span><span id="theme-text">Modo Claro</span></button>
     </aside>
@@ -145,112 +224,107 @@
     <main>
         <div class="content-area">
             <header>
-                <h1>Disposición de la Barra Espaciadora</h1>
-                <p>Auditoría de UX para el menú de Ajustes en Flutter. Elige la mejor representación visual para que el usuario entienda cómo cambiar la barra espaciadora para uso zurdo, diestro o centrado.</p>
+                <h1>Refinamiento de UI (Toolbar y Espacio)</h1>
+                <p>Prueba en vivo de los ajustes solicitados: eliminación del contorno outer de la toolbar, tamaños fijos de botones superiores, inclusión del botón de Ajustes (⚙), animación fluida del micrófono y protagonismo de la barra espaciadora.</p>
             </header>
 
-            <!-- OPCION 1: TEXT SEGMENTS -->
-            <div class="variant-card active" onclick="activateVariant(1)">
-                <div class="variant-header">
+            <div class="control-card">
+                <div class="control-title">Controles Interactivos</div>
+                
+                <div class="switch-row">
                     <div>
-                        <div class="variant-title">Opción 1: Selector de Segmentos (Texto)</div>
-                        <div class="variant-desc">Limpio y estándar de Material 3. Depende de que el usuario asocie "Izquierda" con "Zurdo".</div>
+                        <div style="font-weight: 500;">Animación Micrófono</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Simular estado de grabación (Morph to pill)</div>
                     </div>
-                    <div class="radio-btn"></div>
+                    <label class="switch"><input type="checkbox" id="micToggle" onchange="toggleMic()"><span class="slider"></span></label>
                 </div>
-                <div class="segmented-control">
-                    <div class="seg-btn" onclick="updateLayout('left', event)">Izquierda</div>
-                    <div class="seg-btn active" onclick="updateLayout('center', event)">Centro</div>
-                    <div class="seg-btn" onclick="updateLayout('right', event)">Derecha</div>
+
+                <div class="switch-row">
+                    <div>
+                        <div style="font-weight: 500;">Invertir Toolbar</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Cambia el micrófono a la izquierda</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" onchange="toggleToolbarInvert(this)"><span class="slider"></span></label>
+                </div>
+
+                <div class="switch-row">
+                    <div>
+                        <div style="font-weight: 500;">Mostrar Capa Código (&lt;/&gt;)</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Demuestra que el tamaño de las otras teclas no se deforma.</div>
+                    </div>
+                    <label class="switch"><input type="checkbox" checked onchange="toggleCodeKey(this)"><span class="slider"></span></label>
+                </div>
+
+                <div class="switch-row">
+                    <div>
+                        <div style="font-weight: 500;">Alineación de la Barra Espaciadora</div>
+                        <div style="font-size: 13px; color: var(--text-secondary);">Zurdo, Centro o Diestro</div>
+                    </div>
+                    <select onchange="updateSpacebarLayout(this.value)" style="padding: 6px 12px; border-radius: 8px; background: var(--border); color: var(--text-primary); border: none;">
+                        <option value="left">Zurdo</option>
+                        <option value="center" selected>Centro</option>
+                        <option value="right">Diestro</option>
+                    </select>
                 </div>
             </div>
-
-            <!-- OPCION 2: VISUAL CARDS -->
-            <div class="variant-card" onclick="activateVariant(2)">
-                <div class="variant-header">
-                    <div>
-                        <div class="variant-title">Opción 2: Tarjetas Gráficas (Mini-Teclados)</div>
-                        <div class="variant-desc">Altamente visual. El usuario ve exactamente cómo quedará el teclado antes de seleccionarlo sin leer.</div>
-                    </div>
-                    <div class="radio-btn"></div>
-                </div>
-                <div class="visual-cards">
-                    <div class="vc-card" onclick="updateLayout('left', event)">
-                        <div class="mini-kb">
-                            <div class="mk-key"></div><div class="mk-key space"></div><div class="mk-key"></div><div class="mk-key"></div><div class="mk-key"></div>
-                        </div>
-                        <div class="vc-label">Zurdo</div>
-                    </div>
-                    <div class="vc-card active" onclick="updateLayout('center', event)">
-                        <div class="mini-kb">
-                            <div class="mk-key"></div><div class="mk-key"></div><div class="mk-key space"></div><div class="mk-key"></div><div class="mk-key"></div>
-                        </div>
-                        <div class="vc-label">Centro</div>
-                    </div>
-                    <div class="vc-card" onclick="updateLayout('right', event)">
-                        <div class="mini-kb">
-                            <div class="mk-key"></div><div class="mk-key"></div><div class="mk-key"></div><div class="mk-key space"></div><div class="mk-key"></div>
-                        </div>
-                        <div class="vc-label">Diestro</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- OPCION 3: SLIDER -->
-            <div class="variant-card" onclick="activateVariant(3)">
-                <div class="variant-header">
-                    <div>
-                        <div class="variant-title">Opción 3: Deslizador Magnético</div>
-                        <div class="variant-desc">Permite arrastrar el punto de balance. Ocupa muy poco espacio vertical en las opciones.</div>
-                    </div>
-                    <div class="radio-btn"></div>
-                </div>
-                <div class="slider-wrapper">
-                    <input type="range" class="slider-input" min="0" max="2" step="1" value="1" oninput="handleSlider(this.value, event)">
-                    <div class="slider-labels">
-                        <span>Zurdo</span>
-                        <span>Base</span>
-                        <span>Diestro</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- OPCION 4: DROPDOWN -->
-            <div class="variant-card" onclick="activateVariant(4)">
-                <div class="variant-header">
-                    <div>
-                        <div class="variant-title">Opción 4: Menú Desplegable (Dropdown)</div>
-                        <div class="variant-desc">El diseño más tradicional y conservador. Ahorra el máximo espacio en pantalla, pero oculta las alternativas.</div>
-                    </div>
-                    <div class="radio-btn"></div>
-                </div>
-                <div class="dropdown">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 17h10"/></svg>
-                        <span>Centrado (Por defecto)</span>
-                    </div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                </div>
-            </div>
-
         </div>
 
         <div class="preview-area">
             <div class="phone-mockup">
                 <div class="phone-screen">
                     <div class="keyboard-glass">
-                        <div class="kb-toolbar">Toolbar superior (ya implementada)</div>
+                        
+                        <!-- TOOLBAR REFINADA -->
+                        <div class="kb-toolbar" id="topToolbar">
+                            <!-- Snippets (Siempre izquierda o derecha) -->
+                            <div class="tb-btn" title="Fragmentos">
+                                ☰
+                            </div>
+                            
+                            <!-- Grupo Central (Ajustes, Terminal, Pegar, Código) -->
+                            <div class="tb-center-group">
+                                <!-- Ajustes -->
+                                <div class="tb-btn" title="Ajustes">
+                                    <svg class="tb-icon-stroke" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                </div>
+                                
+                                <!-- Terminal -->
+                                <div class="tb-btn tb-text-btn" title="Terminal">>_</div>
+                                
+                                <!-- Historial Pegar (Nuevo SVG del Usuario) -->
+                                <div class="tb-btn" title="Pegar">
+                                    <svg class="tb-icon" viewBox="0 -960 960 960">
+                                        <path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560h-80v120H280v-120h-80v560Zm308.5-571.5Q520-783 520-800t-11.5-28.5Q497-840 480-840t-28.5 11.5Q440-817 440-800t11.5 28.5Q463-760 480-760t28.5-11.5Z"/>
+                                    </svg>
+                                </div>
+
+                                <!-- Código (Ocultable) -->
+                                <div class="tb-btn tb-text-btn" id="codeKeyBtn" title="Código">&lt;/&gt;</div>
+                            </div>
+                            
+                            <!-- Micrófono (Siempre derecha o izquierda) -->
+                            <div class="tb-btn tb-mic" id="micBtn" title="Grabar">
+                                <svg class="tb-icon-stroke" viewBox="0 0 24 24">
+                                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                                    <line x1="12" y1="19" x2="12" y2="23"/>
+                                    <line x1="8" y1="23" x2="16" y2="23"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- LETRAS QWERTY -->
                         <div class="kb-row"><div class="kb-key">Q</div><div class="kb-key">W</div><div class="kb-key">E</div><div class="kb-key">R</div><div class="kb-key">T</div><div class="kb-key">Y</div><div class="kb-key">U</div><div class="kb-key">I</div><div class="kb-key">O</div><div class="kb-key">P</div></div>
                         <div class="kb-row"><div class="kb-key">A</div><div class="kb-key">S</div><div class="kb-key">D</div><div class="kb-key">F</div><div class="kb-key">G</div><div class="kb-key">H</div><div class="kb-key">J</div><div class="kb-key">K</div><div class="kb-key">L</div><div class="kb-key">Ñ</div></div>
                         <div class="kb-row"><div class="kb-key special" style="flex:1.5">⬆</div><div class="kb-key">Z</div><div class="kb-key">X</div><div class="kb-key">C</div><div class="kb-key">V</div><div class="kb-key">B</div><div class="kb-key">N</div><div class="kb-key">M</div><div class="kb-key special" style="flex:1.5">⌫</div></div>
                         
-                        <!-- FILA INFERIOR DINÁMICA -->
-                        <div class="kb-row bottom-row layout-center" id="kbBottomRow">
-                            <div class="kb-key special k-sym" style="flex:1.5">?123</div>
+                        <!-- FILA INFERIOR -->
+                        <div class="kb-row layout-center" id="bottomRow">
+                            <div class="kb-key special k-sym">?123</div>
                             <div class="kb-key k-comma">,</div>
                             <div class="kb-key k-space">Espacio</div>
                             <div class="kb-key k-dot">.</div>
-                            <div class="kb-key special k-enter" style="flex:1.5">↵</div>
+                            <div class="kb-key special k-enter">↵</div>
                         </div>
                         
                     </div>
@@ -260,51 +334,33 @@
     </main>
 
     <script>
-        const bottomRow = document.getElementById('kbBottomRow');
-
         function toggleTheme() {
             const html = document.documentElement;
             html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
         }
 
-        function activateVariant(id) {
-            document.querySelectorAll('.variant-card').forEach((card, idx) => {
-                card.classList.toggle('active', idx + 1 === id);
-            });
+        function toggleMic() {
+            const mic = document.getElementById('micBtn');
+            mic.classList.toggle('recording');
         }
 
-        function updateLayout(layout, e) {
-            if (e) e.stopPropagation();
-            
-            // Update Mockup
-            bottomRow.className = `kb-row bottom-row layout-${layout}`;
-            
-            // Sync Segmented Control (Opción 1)
-            const segBtns = document.querySelectorAll('.seg-btn');
-            segBtns.forEach(btn => btn.classList.remove('active'));
-            if(layout === 'left') segBtns[0].classList.add('active');
-            if(layout === 'center') segBtns[1].classList.add('active');
-            if(layout === 'right') segBtns[2].classList.add('active');
-
-            // Sync Visual Cards (Opción 2)
-            const vcCards = document.querySelectorAll('.vc-card');
-            vcCards.forEach(card => card.classList.remove('active'));
-            if(layout === 'left') vcCards[0].classList.add('active');
-            if(layout === 'center') vcCards[1].classList.add('active');
-            if(layout === 'right') vcCards[2].classList.add('active');
-
-            // Sync Slider (Opción 3)
-            const slider = document.querySelector('.slider-input');
-            if(layout === 'left') slider.value = 0;
-            if(layout === 'center') slider.value = 1;
-            if(layout === 'right') slider.value = 2;
+        function toggleToolbarInvert(checkbox) {
+            const toolbar = document.getElementById('topToolbar');
+            if (checkbox.checked) {
+                toolbar.classList.add('inverted');
+            } else {
+                toolbar.classList.remove('inverted');
+            }
         }
 
-        function handleSlider(val, e) {
-            e.stopPropagation();
-            if(val == 0) updateLayout('left');
-            if(val == 1) updateLayout('center');
-            if(val == 2) updateLayout('right');
+        function toggleCodeKey(checkbox) {
+            const codeKey = document.getElementById('codeKeyBtn');
+            codeKey.style.display = checkbox.checked ? 'flex' : 'none';
+        }
+
+        function updateSpacebarLayout(layout) {
+            const bottomRow = document.getElementById('bottomRow');
+            bottomRow.className = `kb-row layout-${layout}`;
         }
     </script>
 </body>

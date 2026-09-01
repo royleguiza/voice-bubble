@@ -309,46 +309,49 @@ class VoiceKeyboardService : InputMethodService() {
         applyCase()
         refreshModifierVisuals()
         applyMicVisual()
-    }
-
     private fun buildInteractiveToolbar(): LinearLayout? {
         val row = LinearLayout(this)
         row.orientation = LinearLayout.HORIZONTAL
-        // Opción 1: Pill Flotante
+        
+        // El toolbar principal debe separar bordes (space-between)
+        // En Android LinearLayout standard no tiene space-between exacto,
+        // pero podemos usar weights para los elementos del medio o centrar con un wrapper.
+        // Un LinearLayout con gravity CENTER_HORIZONTAL centrará el grupo, 
+        // pero queremos Snippets al borde y Mic al borde.
+        // Haremos:
+        // [Snippets(0f)] [Space(1f)] [CenterGroup(0f)] [Space(1f)] [Mic(0f)]
+        
         val lp = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
         )
+        // Ya no seteamos kb_popup_bg
         val m = dimen(R.dimen.kb_key_gap)
         lp.setMargins(m, m, m, m)
         row.layoutParams = lp
+        row.setPadding(0, 0, 0, 0)
         
-        row.setPadding(m, m, m, m)
-        row.setBackgroundResource(R.drawable.kb_popup_bg) // Fondo redondeado suave
-        
-        // Elementos:
+        // Elementos borde:
         val btnSnippets = if (!currentIsPasswordField) {
-            makeSpecialKey("☰", R.drawable.kb_key_alt, 1f, if (spanishMode) "fragmentos" else "snippets") {
+            makeFixedTextKey("☰", R.drawable.kb_key_alt, 44, if (spanishMode) "fragmentos" else "snippets") {
                 toggleSnippetsLayer()
-            }
-        } else null
-
-        val btnTerminal = if (terminalRowVisiblePref) {
-            makeSpecialKey(">_", R.drawable.kb_key_alt, 1f, if (spanishMode) "fila terminal" else "terminal row") {
-                terminalRowVisiblePref = !terminalRowVisiblePref
-                rebuild()
-            }
-        } else null
-
-        val btnCode = if (codeKeyVisiblePref) {
-            makeSpecialKey("</>", R.drawable.kb_key_alt, 1f, if (spanishMode) "capa código" else "code layer") {
-                toggleCodeLayer()
             }
         } else null
 
         val btnMic = if (!currentIsPasswordField) {
             val mic = makeMicKey()
             micKeyView = mic
+            
+            // Adjust mic layout params to match height=38dp
+            val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
+            val micLp = LinearLayout.LayoutParams(
+                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 44f, resources.displayMetrics).toInt(), 
+                hPx, 0f
+            )
+            val micM = dimen(R.dimen.kb_key_gap) / 2
+            micLp.setMargins(micM, micM, micM, micM)
+            mic.layoutParams = micLp
+            
             mic
         } else {
             micKeyView = null
@@ -362,37 +365,60 @@ class VoiceKeyboardService : InputMethodService() {
             null
         }
 
-        // Centro (Historial de pegado o layout de herramientas)
-        val btnPaste = makeSpecialKey("📋", R.drawable.kb_key_alt, 1f, if (spanishMode) "pegar" else "paste") {
-            // Lógica de pegado / placeholder
+        // Grupo central
+        val centerGroup = LinearLayout(this)
+        centerGroup.orientation = LinearLayout.HORIZONTAL
+        centerGroup.gravity = Gravity.CENTER
+        // No necesita weight si los spacers empujan, pero dejaremos el centerGroup al centro.
+
+        val btnSettings = makeIconKey(R.drawable.ic_settings, R.drawable.kb_key_alt, 44, "ajustes") {
+            openAppUi()
+        }
+        centerGroup.addView(btnSettings)
+
+        if (terminalRowVisiblePref) {
+            val btnTerminal = makeFixedTextKey(">_", R.drawable.kb_key_alt, 56, if (spanishMode) "fila terminal" else "terminal row") {
+                terminalRowVisiblePref = !terminalRowVisiblePref
+                rebuild()
+            }
+            centerGroup.addView(btnTerminal)
+        }
+
+        val btnPaste = makeIconKey(R.drawable.ic_paste, R.drawable.kb_key_alt, 44, if (spanishMode) "pegar" else "paste") {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             if (clipboard.hasPrimaryClip()) {
                 val item = clipboard.primaryClip?.getItemAt(0)
                 item?.text?.let { commit(it.toString()) }
             }
         }
+        centerGroup.addView(btnPaste)
 
-        val items = mutableListOf<View>()
-        if (btnSnippets != null) items.add(btnSnippets)
-        items.add(btnPaste)
-        if (btnTerminal != null) items.add(btnTerminal)
-        if (btnCode != null) items.add(btnCode)
-        if (btnMic != null) items.add(btnMic)
-
-        if (invertToolbar) {
-            items.reverse()
+        if (codeKeyVisiblePref) {
+            val btnCode = makeFixedTextKey("</>", R.drawable.kb_key_alt, 56, if (spanishMode) "capa código" else "code layer") {
+                toggleCodeLayer()
+            }
+            centerGroup.addView(btnCode)
         }
 
-        if (items.isEmpty()) return null
+        // Spacers for space-between
+        fun makeSpacer(): View {
+            val spacer = View(this)
+            spacer.layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+            return spacer
+        }
 
-        for (item in items) {
-            // Darles weight 1 para que ocupen parejo (o ajustarlos)
-            val itemLp = item.layoutParams as? LinearLayout.LayoutParams
-            if (itemLp != null) {
-                itemLp.weight = 1f
-                item.layoutParams = itemLp
-            }
-            row.addView(item)
+        if (invertToolbar) {
+            if (btnMic != null) row.addView(btnMic)
+            row.addView(makeSpacer())
+            row.addView(centerGroup)
+            row.addView(makeSpacer())
+            if (btnSnippets != null) row.addView(btnSnippets)
+        } else {
+            if (btnSnippets != null) row.addView(btnSnippets)
+            row.addView(makeSpacer())
+            row.addView(centerGroup)
+            row.addView(makeSpacer())
+            if (btnMic != null) row.addView(btnMic)
         }
 
         return row
@@ -541,7 +567,7 @@ class VoiceKeyboardService : InputMethodService() {
         val comma = makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct))
         commaKeyView = comma
 
-        val space = makeSpecialKey("", R.drawable.kb_key_bg, 3.0f, if (spanishMode) "espacio" else "space") {
+        val space = makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, if (spanishMode) "espacio" else "space") {
             // En snippets el espacio alimenta el query, nunca el documento.
             if (layer == Layer.SNIPPETS) ensureSnippetSearchMode()
             commit(" ")
@@ -715,6 +741,73 @@ class VoiceKeyboardService : InputMethodService() {
         if (description != null) {
             key.contentDescription = description
         }
+        key.setOnClickListener {
+            haptic(key)
+            onClick()
+        }
+        return key
+    }
+
+    private fun makeIconKey(
+        iconRes: Int,
+        bgRes: Int,
+        widthDp: Int,
+        description: String?,
+        onClick: () -> Unit,
+    ): android.widget.ImageView {
+        val key = android.widget.ImageView(this)
+        key.setImageResource(iconRes)
+        key.scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+        key.isClickable = true
+        key.isFocusable = true
+        key.setBackgroundResource(bgRes)
+        if (description != null) {
+            key.contentDescription = description
+        }
+        val p = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10f, resources.displayMetrics).toInt()
+        key.setPadding(p, p, p, p)
+        
+        // El toolbar interactivo pide width exacto, no flex (weight=0)
+        val wPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, widthDp.toFloat(), resources.displayMetrics).toInt()
+        val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt() // height 38dp matches HTML mockup
+        val lp = LinearLayout.LayoutParams(wPx, hPx, 0f)
+        val m = dimen(R.dimen.kb_key_gap) / 2
+        lp.setMargins(m, m, m, m)
+        key.layoutParams = lp
+        
+        key.setOnClickListener {
+            haptic(key)
+            onClick()
+        }
+        return key
+    }
+
+    private fun makeFixedTextKey(
+        label: String,
+        bgRes: Int,
+        widthDp: Int,
+        description: String?,
+        onClick: () -> Unit,
+    ): TextView {
+        val key = TextView(this)
+        key.text = label
+        key.gravity = Gravity.CENTER
+        key.isClickable = true
+        key.isFocusable = true
+        key.includeFontPadding = false
+        key.setBackgroundResource(bgRes)
+        key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+        key.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+        if (description != null) {
+            key.contentDescription = description
+        }
+        val wPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, widthDp.toFloat(), resources.displayMetrics).toInt()
+        val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
+        val lp = LinearLayout.LayoutParams(wPx, hPx, 0f)
+        val m = dimen(R.dimen.kb_key_gap) / 2
+        lp.setMargins(m, m, m, m)
+        key.layoutParams = lp
+        
         key.setOnClickListener {
             haptic(key)
             onClick()

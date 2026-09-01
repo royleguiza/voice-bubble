@@ -1,6 +1,6 @@
 #!/bin/bash
 TOKEN="***REVOKADO-SPK01***"
-RUN_ID="33554765058"
+RUN_ID="33555022818"
 REPO="royleguiza/voice-bubble"
 
 while true; do
