@@ -314,46 +314,68 @@ class VoiceKeyboardService : InputMethodService() {
         val row = LinearLayout(this)
         row.orientation = LinearLayout.HORIZONTAL
         
-        // El toolbar principal debe separar bordes (space-between)
-        // En Android LinearLayout standard no tiene space-between exacto,
-        // pero podemos usar weights para los elementos del medio o centrar con un wrapper.
-        // Un LinearLayout con gravity CENTER_HORIZONTAL centrará el grupo, 
-        // pero queremos Snippets al borde y Mic al borde.
-        // Haremos:
-        // [Snippets(0f)] [Space(1f)] [CenterGroup(0f)] [Space(1f)] [Mic(0f)]
-        
         val lp = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
         )
-        // Ya no seteamos kb_popup_bg
         val m = dimen(R.dimen.kb_key_gap)
         lp.setMargins(m, m, m, m)
         row.layoutParams = lp
         row.setPadding(0, 0, 0, 0)
         
-        // Elementos borde:
-        val btnSnippets = if (!currentIsPasswordField) {
-            makeFixedTextKey("☰", R.drawable.kb_key_alt, 44, if (spanishMode) "fragmentos" else "snippets") {
+        val items = mutableListOf<View>()
+        
+        // Elementos borde (Snippets):
+        if (!currentIsPasswordField) {
+            val btnSnippets = makeFixedTextKey("☰", R.drawable.kb_key_alt, 1.0f, if (spanishMode) "fragmentos" else "snippets") {
                 toggleSnippetsLayer()
             }
-        } else null
+            items.add(btnSnippets)
+        }
 
-        val btnMic = if (!currentIsPasswordField) {
+        // Elementos centrales:
+        val btnSettings = makeIconKey(R.drawable.ic_settings, R.drawable.kb_key_alt, 1.0f, "ajustes") {
+            openAppUi()
+        }
+        items.add(btnSettings)
+
+        if (terminalRowVisiblePref) {
+            val btnTerminal = makeFixedTextKey(">_", R.drawable.kb_key_alt, 1.0f, if (spanishMode) "fila terminal" else "terminal row") {
+                terminalRowVisiblePref = !terminalRowVisiblePref
+                rebuild()
+            }
+            items.add(btnTerminal)
+        }
+
+        val btnPaste = makeIconKey(R.drawable.ic_paste, R.drawable.kb_key_alt, 1.0f, if (spanishMode) "pegar" else "paste") {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            if (clipboard.hasPrimaryClip()) {
+                val item = clipboard.primaryClip?.getItemAt(0)
+                item?.text?.let { commit(it.toString()) }
+            }
+        }
+        items.add(btnPaste)
+
+        if (codeKeyVisiblePref) {
+            val btnCode = makeFixedTextKey("</>", R.drawable.kb_key_alt, 1.0f, if (spanishMode) "capa código" else "code layer") {
+                toggleCodeLayer()
+            }
+            items.add(btnCode)
+        }
+
+        // Elementos borde (Micrófono):
+        if (!currentIsPasswordField) {
             val mic = makeMicKey()
             micKeyView = mic
             
-            // Adjust mic layout params to match height=38dp
+            // Adjust mic layout params to use weight 1.0f
             val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
-            val micLp = LinearLayout.LayoutParams(
-                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 44f, resources.displayMetrics).toInt(), 
-                hPx, 0f
-            )
+            val micLp = LinearLayout.LayoutParams(0, hPx, 1.0f)
             val micM = dimen(R.dimen.kb_key_gap) / 2
             micLp.setMargins(micM, micM, micM, micM)
             mic.layoutParams = micLp
             
-            mic
+            items.add(mic)
         } else {
             micKeyView = null
             micNormalView = null
@@ -363,64 +385,13 @@ class VoiceKeyboardService : InputMethodService() {
             micPillDot = null
             micPillTimer = null
             micPillCancel = null
-            null
-        }
-
-        // Grupo central
-        val centerGroup = LinearLayout(this)
-        centerGroup.orientation = LinearLayout.HORIZONTAL
-        centerGroup.gravity = Gravity.CENTER
-        // No necesita weight si los spacers empujan, pero dejaremos el centerGroup al centro.
-
-        val btnSettings = makeIconKey(R.drawable.ic_settings, R.drawable.kb_key_alt, 44, "ajustes") {
-            openAppUi()
-        }
-        centerGroup.addView(btnSettings)
-
-        if (terminalRowVisiblePref) {
-            val btnTerminal = makeFixedTextKey(">_", R.drawable.kb_key_alt, 56, if (spanishMode) "fila terminal" else "terminal row") {
-                terminalRowVisiblePref = !terminalRowVisiblePref
-                rebuild()
-            }
-            centerGroup.addView(btnTerminal)
-        }
-
-        val btnPaste = makeIconKey(R.drawable.ic_paste, R.drawable.kb_key_alt, 44, if (spanishMode) "pegar" else "paste") {
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            if (clipboard.hasPrimaryClip()) {
-                val item = clipboard.primaryClip?.getItemAt(0)
-                item?.text?.let { commit(it.toString()) }
-            }
-        }
-        centerGroup.addView(btnPaste)
-
-        if (codeKeyVisiblePref) {
-            val btnCode = makeFixedTextKey("</>", R.drawable.kb_key_alt, 56, if (spanishMode) "capa código" else "code layer") {
-                toggleCodeLayer()
-            }
-            centerGroup.addView(btnCode)
-        }
-
-        // Spacers for space-between
-        fun makeSpacer(): View {
-            val spacer = View(this)
-            spacer.layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
-            return spacer
         }
 
         if (invertToolbar) {
-            if (btnMic != null) row.addView(btnMic)
-            row.addView(makeSpacer())
-            row.addView(centerGroup)
-            row.addView(makeSpacer())
-            if (btnSnippets != null) row.addView(btnSnippets)
-        } else {
-            if (btnSnippets != null) row.addView(btnSnippets)
-            row.addView(makeSpacer())
-            row.addView(centerGroup)
-            row.addView(makeSpacer())
-            if (btnMic != null) row.addView(btnMic)
+            items.reverse()
         }
+        
+        items.forEach { row.addView(it) }
 
         return row
     }
@@ -752,7 +723,7 @@ class VoiceKeyboardService : InputMethodService() {
     private fun makeIconKey(
         iconRes: Int,
         bgRes: Int,
-        widthDp: Int,
+        weight: Float,
         description: String?,
         onClick: () -> Unit,
     ): android.widget.ImageView {
@@ -768,10 +739,8 @@ class VoiceKeyboardService : InputMethodService() {
         val p = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 10f, resources.displayMetrics).toInt()
         key.setPadding(p, p, p, p)
         
-        // El toolbar interactivo pide width exacto, no flex (weight=0)
-        val wPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, widthDp.toFloat(), resources.displayMetrics).toInt()
-        val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt() // height 38dp matches HTML mockup
-        val lp = LinearLayout.LayoutParams(wPx, hPx, 0f)
+        val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
+        val lp = LinearLayout.LayoutParams(0, hPx, weight)
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, m, m, m)
         key.layoutParams = lp
@@ -786,7 +755,7 @@ class VoiceKeyboardService : InputMethodService() {
     private fun makeFixedTextKey(
         label: String,
         bgRes: Int,
-        widthDp: Int,
+        weight: Float,
         description: String?,
         onClick: () -> Unit,
     ): TextView {
@@ -802,9 +771,8 @@ class VoiceKeyboardService : InputMethodService() {
         if (description != null) {
             key.contentDescription = description
         }
-        val wPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, widthDp.toFloat(), resources.displayMetrics).toInt()
         val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
-        val lp = LinearLayout.LayoutParams(wPx, hPx, 0f)
+        val lp = LinearLayout.LayoutParams(0, hPx, weight)
         val m = dimen(R.dimen.kb_key_gap) / 2
         lp.setMargins(m, m, m, m)
         key.layoutParams = lp
@@ -1518,7 +1486,7 @@ class VoiceKeyboardService : InputMethodService() {
         val isRecording = (micState == MicState.RECORDING)
         val rm = reducedMotion()
 
-        if (!rm && parentRow != null && isRecording != (spaceKeyView?.visibility == View.GONE)) {
+        if (!rm && parentRow != null) {
             try {
                 TransitionManager.beginDelayedTransition(parentRow)
             } catch (_: Exception) {}
@@ -1526,9 +1494,9 @@ class VoiceKeyboardService : InputMethodService() {
 
         val lp = container.layoutParams as? LinearLayout.LayoutParams
         if (isRecording) {
-            spaceKeyView?.visibility = View.GONE
-            if (lp != null && lp.weight != 4.0f) {
-                lp.weight = 4.0f
+            // Ya no ocultamos la barra espaciadora porque el mic no está en la misma fila!
+            if (lp != null && lp.weight != 5.0f) {
+                lp.weight = 5.0f // Un peso más grande para empujar y comprimir a los demás iconos suavemente
                 container.layoutParams = lp
             }
             container.background = null
@@ -1561,7 +1529,6 @@ class VoiceKeyboardService : InputMethodService() {
                 }
             }
         } else {
-            spaceKeyView?.visibility = View.VISIBLE
             if (lp != null && lp.weight != 1.0f) {
                 lp.weight = 1.0f
                 container.layoutParams = lp
