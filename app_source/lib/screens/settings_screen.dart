@@ -657,7 +657,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: isSelected 
-              ? colorScheme.primary.withOpacity(0.1) 
+              ? colorScheme.primary.withValues(alpha: 0.1) 
               : colorScheme.surface,
           border: Border.all(
             color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
@@ -690,7 +690,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           height: 16,
           margin: const EdgeInsets.symmetric(horizontal: 2),
           decoration: BoxDecoration(
-            color: isSpace ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.3),
+            color: isSpace ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(4),
           ),
         ),
