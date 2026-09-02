@@ -648,10 +648,16 @@ class VoiceKeyboardService : InputMethodService() {
                 MotionEvent.ACTION_DOWN -> {
                     haptic(v)
                     v.isPressed = true
-                    onClick()
                     true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                MotionEvent.ACTION_UP -> {
+                    if (v.isPressed) {
+                        onClick()
+                    }
+                    v.isPressed = false
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
                     v.isPressed = false
                     true
                 }

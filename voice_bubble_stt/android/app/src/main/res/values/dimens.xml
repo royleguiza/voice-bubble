@@ -3,7 +3,7 @@
 <resources>
     <dimen name="kb_key_height">42dp</dimen>
     <dimen name="kb_key_gap">6dp</dimen>
-    <dimen name="kb_key_gap_h">4dp</dimen>
+    <dimen name="kb_key_gap_h">5dp</dimen>
     <dimen name="kb_key_gap_v">8dp</dimen>
     <dimen name="kb_key_radius">8dp</dimen>
     <dimen name="kb_key_stroke_width">1dp</dimen>
