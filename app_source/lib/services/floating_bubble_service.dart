@@ -10,9 +10,17 @@ class FloatingBubbleService {
   static const String channelName =
       'com.royleguiza.voicebubblestt/floating_bubble';
 
+  static void Function()? _sharedOnBubbleTap;
+  static void Function()? _sharedOnBubbleClose;
+
   final MethodChannel _channel;
-  void Function()? onBubbleTap;
-  void Function()? onBubbleClose;
+
+  void Function()? get onBubbleTap => _sharedOnBubbleTap;
+  set onBubbleTap(void Function()? callback) => _sharedOnBubbleTap = callback;
+
+  void Function()? get onBubbleClose => _sharedOnBubbleClose;
+  set onBubbleClose(void Function()? callback) =>
+      _sharedOnBubbleClose = callback;
 
   FloatingBubbleService({MethodChannel? channel})
       : _channel = channel ?? const MethodChannel(channelName) {
@@ -22,10 +30,10 @@ class FloatingBubbleService {
   Future<dynamic> _handleMethodCall(MethodCall call) async {
     switch (call.method) {
       case 'onBubbleTap':
-        onBubbleTap?.call();
+        _sharedOnBubbleTap?.call();
         break;
       case 'onBubbleClose':
-        onBubbleClose?.call();
+        _sharedOnBubbleClose?.call();
         break;
       default:
         break;

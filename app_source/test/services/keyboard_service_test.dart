@@ -36,6 +36,8 @@ void main() {
           return selected;
         case 'openKeyboardSettings':
           return openResult;
+        case 'showInputMethodPicker':
+          return openResult;
         default:
           return null;
       }
@@ -79,12 +81,20 @@ void main() {
       expect(log.single.method, 'openKeyboardSettings');
     });
 
+    test('showInputMethodPicker invoca el metodo correcto', () async {
+      mockKeyboardChannel();
+      final service = KeyboardService();
+      expect(await service.showInputMethodPicker(), isTrue);
+      expect(log.single.method, 'showInputMethodPicker');
+    });
+
     test('devuelve false si el nativo lanza error (defensivo)', () async {
       mockKeyboardChannel(failAll: true);
       final service = KeyboardService();
       expect(await service.isKeyboardEnabled(), isFalse);
       expect(await service.isKeyboardSelected(), isFalse);
       expect(await service.openKeyboardSettings(), isFalse);
+      expect(await service.showInputMethodPicker(), isFalse);
     });
 
     test('devuelve false sin handler registrado (MissingPluginException)',
@@ -93,6 +103,7 @@ void main() {
       expect(await service.isKeyboardEnabled(), isFalse);
       expect(await service.isKeyboardSelected(), isFalse);
       expect(await service.openKeyboardSettings(), isFalse);
+      expect(await service.showInputMethodPicker(), isFalse);
     });
   });
 }

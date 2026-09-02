@@ -148,17 +148,15 @@ class ClipboardFilmstripLayout(
                 layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
                     topMargin = dpToPx(2)
                 }
-            }
-            // Decodificación y carga asíncrona de miniatura
-            post {
-                val bmp: Bitmap? = store.getThumbnail(clip, widthPx, heightPx)
-                if (bmp != null) {
-                    iv.setImageBitmap(bmp)
-                } else {
-                    iv.setImageResource(R.drawable.ic_paste)
-                }
+                setImageResource(R.drawable.ic_paste)
             }
             card.addView(iv)
+            // Decodificación y carga asíncrona fuera del hilo principal
+            store.loadThumbnailAsync(clip, widthPx, heightPx) { bmp ->
+                if (bmp != null) {
+                    iv.setImageBitmap(bmp)
+                }
+            }
         } else {
             val tv = TextView(context).apply {
                 text = clip.preview ?: clip.text ?: ""

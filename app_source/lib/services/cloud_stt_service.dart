@@ -88,67 +88,17 @@ class CloudSttService {
     request.fields['language'] = 'es';
     request.files.add(await http.MultipartFile.fromPath('file', audioPath));
 
-    http.StreamedResponse response;
-    try {
+    final response = await _guardNetworkCall(() {
       final effectiveClient = client;
       final future = effectiveClient != null
           ? effectiveClient.send(request)
           : request.send();
-      response = await future.timeout(timeout);
-    } on SocketException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on http.ClientException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on HttpException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on HandshakeException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on TlsException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on TimeoutException {
-      throw const TranscriptionException(
-        'Tiempo de espera agotado al conectar con el servidor.',
-        kind: TranscriptionErrorKind.network,
-      );
-    } catch (e) {
-      if (e is TranscriptionException) rethrow;
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    }
+      return future.timeout(timeout);
+    });
 
-    final String body;
-    try {
-      body = await response.stream.bytesToString().timeout(timeout);
-    } on SocketException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on http.ClientException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on HttpException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on HandshakeException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on TlsException {
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    } on TimeoutException {
-      throw const TranscriptionException(
-        'Tiempo de espera agotado al conectar con el servidor.',
-        kind: TranscriptionErrorKind.network,
-      );
-    } catch (e) {
-      if (e is TranscriptionException) rethrow;
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
-    }
+    final body = await _guardNetworkCall(() {
+      return response.stream.bytesToString().timeout(timeout);
+    });
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(body) as Map<String, dynamic>;
@@ -182,6 +132,36 @@ class CloudSttService {
       _serverErrorDetail(response.statusCode, body),
       kind: TranscriptionErrorKind.badRequest,
     );
+  }
+
+  Future<T> _guardNetworkCall<T>(Future<T> Function() call) async {
+    try {
+      return await call();
+    } on SocketException {
+      throw const TranscriptionException('Sin conexión a internet.',
+          kind: TranscriptionErrorKind.network);
+    } on http.ClientException {
+      throw const TranscriptionException('Sin conexión a internet.',
+          kind: TranscriptionErrorKind.network);
+    } on HttpException {
+      throw const TranscriptionException('Sin conexión a internet.',
+          kind: TranscriptionErrorKind.network);
+    } on HandshakeException {
+      throw const TranscriptionException('Sin conexión a internet.',
+          kind: TranscriptionErrorKind.network);
+    } on TlsException {
+      throw const TranscriptionException('Sin conexión a internet.',
+          kind: TranscriptionErrorKind.network);
+    } on TimeoutException {
+      throw const TranscriptionException(
+        'Tiempo de espera agotado al conectar con el servidor.',
+        kind: TranscriptionErrorKind.network,
+      );
+    } catch (e) {
+      if (e is TranscriptionException) rethrow;
+      throw const TranscriptionException('Sin conexión a internet.',
+          kind: TranscriptionErrorKind.network);
+    }
   }
 
   /// Propaga el motivo exacto que devuelve Groq en el body (ej. 400:

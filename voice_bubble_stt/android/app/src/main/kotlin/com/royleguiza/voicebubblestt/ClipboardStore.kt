@@ -13,6 +13,8 @@ import java.io.FileOutputStream
 import java.util.UUID
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import android.os.Handler
+import android.os.Looper
 
 enum class ClipType { TEXT, CODE, IMAGE, MATH, URL }
 
@@ -98,6 +100,7 @@ class ClipboardStore(
     private val thumbnailCache = object : LruCache<String, Bitmap>(4 * 1024 * 1024) {
         override fun sizeOf(key: String, bitmap: Bitmap): Int = bitmap.byteCount
     }
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile
     private var itemsCache: MutableList<ClipboardItem>? = null
@@ -324,6 +327,42 @@ class ClipboardStore(
             thumbnailCache.put(item.id, bmp)
         }
         return bmp
+    }
+
+    /**
+     * Carga asincrona de miniaturas en hilo secundario para no bloquear el hilo principal (UI).
+     */
+    fun loadThumbnailAsync(item: ClipboardItem, targetW: Int, targetH: Int, onLoaded: (Bitmap?) -> Unit) {
+        if (item.type != ClipType.IMAGE || item.mediaFileName == null) {
+            onLoaded(null)
+            return
+        }
+        val cached = thumbnailCache.get(item.id)
+        if (cached != null) {
+            onLoaded(cached)
+            return
+        }
+
+        executor.execute {
+            val file = File(mediaDir, item.mediaFileName)
+            val bmp = if (file.exists()) {
+                decodeSampledBitmap(file.absolutePath, targetW, targetH)?.also {
+                    thumbnailCache.put(item.id, it)
+                }
+            } else {
+                null
+            }
+            mainHandler.post { onLoaded(bmp) }
+        }
+    }
+
+    /**
+     * Cierra el executor para liberar hilos y recursos en onDestroy.
+     */
+    fun shutdown() {
+        try {
+            executor.shutdown()
+        } catch (_: Exception) {}
     }
 
     /**

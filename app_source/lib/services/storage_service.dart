@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/snippet.dart';
 import '../models/transcription.dart';
@@ -130,10 +132,15 @@ class StorageService {
   }
 
   /// Perfiles de altura del teclado validos, de menor a mayor.
-  static const List<String> kbHeightProfiles = ['baja', 'media', 'alta'];
+  static const List<String> kbHeightProfiles = [
+    'baja',
+    'media',
+    'alta',
+    'muy_alta',
+  ];
   static const String defaultHeightProfile = 'media';
 
-  /// Altura global del teclado: 'baja', 'media' o 'alta'.
+  /// Altura global del teclado: 'baja', 'media', 'alta' o 'muy_alta'.
   /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
   /// Un valor ausente o invalido cae al perfil por defecto.
   Future<String> getHeightProfile() async {
@@ -392,32 +399,68 @@ class StorageService {
     ),
   ];
 
-  Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.reload();
-    final jsonList = prefs.getStringList(_key) ?? [];
-    final loaded = <Transcription>[];
-    for (final json in jsonList) {
-      try {
-        final decoded = jsonDecode(json);
-        if (decoded is Map) {
-          loaded.add(
-            Transcription.fromJson(Map<String, dynamic>.from(decoded)),
-          );
-        }
-      } catch (_) {
-        // Ignore corrupt entry gracefully
-      }
-    }
+  static const String historyFileName = 'transcription_history.json';
 
-    // El lado Kotlin escribe un Set de strings (sin orden garantizado):
-    // el orden FIFO del historial se impone aqui por timestamp descendente.
+  Future<File?> _getHistoryFile() async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      return File('${dir.path}/$historyFileName');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> load() async {
+    final loaded = <Transcription>[];
+
+    // 1. Cargar desde archivo compartido atómico JSON (origen definitivo de verdad)
+    try {
+      final file = await _getHistoryFile();
+      if (file != null && file.existsSync()) {
+        final content = file.readAsStringSync().trim();
+        if (content.isNotEmpty) {
+          final decoded = jsonDecode(content);
+          if (decoded is List) {
+            for (final item in decoded) {
+              if (item is Map) {
+                try {
+                  loaded.add(
+                    Transcription.fromJson(Map<String, dynamic>.from(item)),
+                  );
+                } catch (_) {}
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Cargar/migrar desde SharedPreferences (para tests con mocks y migración limpia)
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final jsonList = prefs.getStringList(_key) ?? [];
+      for (final json in jsonList) {
+        try {
+          final decoded = jsonDecode(json);
+          if (decoded is Map) {
+            loaded.add(
+              Transcription.fromJson(Map<String, dynamic>.from(decoded)),
+            );
+          }
+        } catch (_) {
+          // Ignorar entrada corrupta
+        }
+      }
+    } catch (_) {}
+
+    // El orden FIFO del historial se impone aquí por timestamp descendente.
     loaded.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    // Merge conservador: una entrada en memoria cuyo timestamp no esta en
-    // disco sobrevive, para no pisar una transcripcion recien anadida
-    // durante un resume. Dedup por timestamp; ante colision gana la entrada
-    // recien leida del disco.
+    // Merge conservador: una entrada en memoria cuyo timestamp no está en
+    // disco sobrevive, para no pisar una transcripción recién añadida
+    // durante un resume. Dedup por timestamp; ante colisión gana la entrada
+    // recién leída del disco.
     final byTimestamp = <DateTime, Transcription>{};
     for (final t in loaded) {
       byTimestamp.putIfAbsent(t.timestamp, () => t);
@@ -429,20 +472,48 @@ class StorageService {
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     _transcriptions =
         merged.length > maxItems ? merged.sublist(0, maxItems) : merged;
+
+    // Sincronizar hacia el archivo compartido atómico si hubo entradas
+    await _saveHistoryFile();
   }
 
   Future<void> add(Transcription transcription) async {
+    // Sincronizar primero con el estado fresco de disco (evita pisar dictados del teclado)
+    await load();
     _transcriptions.insert(0, transcription);
     if (_transcriptions.length > maxItems) {
       _transcriptions = _transcriptions.sublist(0, maxItems);
     }
     await _save();
+    await _saveHistoryFile();
   }
 
   Future<void> _save() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList =
-        _transcriptions.map((t) => jsonEncode(t.toJson())).toList();
-    await prefs.setStringList(_key, jsonList);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList =
+          _transcriptions.map((t) => jsonEncode(t.toJson())).toList();
+      await prefs.setStringList(_key, jsonList);
+    } catch (_) {}
+  }
+
+  Future<void> _saveHistoryFile() async {
+    try {
+      final file = await _getHistoryFile();
+      if (file == null) return;
+      final tmpFile = File('${file.path}.tmp');
+      final list = _transcriptions.map((t) => t.toJson()).toList();
+      tmpFile.writeAsStringSync(jsonEncode(list), flush: true);
+      if (tmpFile.existsSync()) {
+        try {
+          tmpFile.renameSync(file.path);
+        } catch (_) {
+          tmpFile.copySync(file.path);
+          try {
+            tmpFile.deleteSync();
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
   }
 }

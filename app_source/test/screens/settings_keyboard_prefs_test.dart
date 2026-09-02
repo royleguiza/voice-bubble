@@ -100,6 +100,7 @@ void main() {
       expect(find.text('Baja'), findsOneWidget);
       expect(find.text('Media'), findsOneWidget);
       expect(find.text('Alta'), findsOneWidget);
+      expect(find.text('Muy alta'), findsOneWidget);
       expect(selectedHeightProfile(tester), {'media'});
     });
 
@@ -119,6 +120,23 @@ void main() {
       expect(await StorageService().getHeightProfile(), 'alta');
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('kb_height_profile'), 'alta');
+    });
+
+    testWidgets('cambiar a Muy alta persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Muy alta'));
+      await tester.pumpAndSettle();
+
+      expect(selectedHeightProfile(tester), {'muy_alta'});
+      expect(await StorageService().getHeightProfile(), 'muy_alta');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_height_profile'), 'muy_alta');
     });
 
     testWidgets('valor corrupto en prefs cae a Media sin crash',

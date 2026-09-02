@@ -38,4 +38,14 @@ class KeyboardService {
       return false;
     }
   }
+
+  /// Abre el diálogo modal del sistema para seleccionar el método de entrada activo.
+  Future<bool> showInputMethodPicker() async {
+    try {
+      return await _channel.invokeMethod<bool>('showInputMethodPicker') ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
 }

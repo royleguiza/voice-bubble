@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:record/record.dart';
 import '../models/snippet.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
@@ -28,7 +29,8 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen>
+    with WidgetsBindingObserver {
   int _currentTab = 0;
   final _apiKeyController = TextEditingController();
   late final FlutterSecureStorage _secureStorage;
@@ -54,12 +56,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
     _storageService = widget.storageService ?? StorageService();
     _floatingBubbleService =
         widget.floatingBubbleService ?? FloatingBubbleService();
     _keyboardService = widget.keyboardService ?? KeyboardService();
     _loadInitialState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureMicrophonePermission();
+    });
   }
 
   /// Carga inicial de toda la pantalla: las lecturas corren en paralelo y
@@ -309,6 +315,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return 'Teclas compactas para dejar más pantalla libre.';
       case 'alta':
         return 'Teclas más altas para dictar con menos errores.';
+      case 'muy_alta':
+        return 'Teclas extra altas para máxima comodidad y precisión.';
       default:
         return 'Altura equilibrada entre espacio y precisión.';
     }
@@ -371,6 +379,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _openKeyboardSettings() async {
     await _keyboardService.openKeyboardSettings();
+  }
+
+  Future<void> _showInputMethodPicker() async {
+    await _keyboardService.showInputMethodPicker();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _handleAppResumed();
+    }
+  }
+
+  Future<void> _handleAppResumed() async {
+    final wasEnabled = _isKeyboardEnabled;
+    await _loadKeyboardStatus();
+    // Si acaba de habilitar el teclado en ajustes del sistema, mostramos
+    // el modal de inmediato para que lo active sin salir de la app.
+    if (!wasEnabled && _isKeyboardEnabled && !_isKeyboardSelected) {
+      await _showInputMethodPicker();
+    }
+  }
+
+  Future<void> _ensureMicrophonePermission() async {
+    try {
+      final recorder = AudioRecorder();
+      await recorder.hasPermission();
+      recorder.dispose();
+    } catch (_) {}
   }
 
   Future<void> _toggleBubble(bool enable) async {
@@ -449,6 +486,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _apiKeyController.dispose();
     super.dispose();
   }
@@ -807,6 +845,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ButtonSegment(value: 'baja', label: Text('Baja')),
                     ButtonSegment(value: 'media', label: Text('Media')),
                     ButtonSegment(value: 'alta', label: Text('Alta')),
+                    ButtonSegment(value: 'muy_alta', label: Text('Muy alta')),
                   ],
                   selected: {_heightProfile},
                   onSelectionChanged: (profiles) =>
@@ -885,18 +924,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: _toggleHaptics,
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.settings),
-                  label: const Text('Abrir ajustes del sistema'),
-                  onPressed: _openKeyboardSettings,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Guía: activa "VoiceBubble Keyboard" en Administrar teclados y luego selecciónalo al escribir.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                ),
+                if (!_isKeyboardEnabled) ...[
+                  FilledButton.icon(
+                    icon: const Icon(Icons.settings),
+                    label: const Text('Abrir ajustes del sistema'),
+                    onPressed: _openKeyboardSettings,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Paso 1: Activa "VoiceBubble STT" en Administrar teclados de Android. Al volver, la app te permitirá seleccionarlo inmediatamente sin salir.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ] else if (!_isKeyboardSelected) ...[
+                  FilledButton.icon(
+                    icon: const Icon(Icons.touch_app),
+                    label: const Text('Seleccionar VoiceBubble como teclado'),
+                    onPressed: _showInputMethodPicker,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Paso 2: Toca para abrir el selector modal y activar VoiceBubble STT directamente sin salir de la app.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.settings),
+                    label: const Text('Abrir ajustes del sistema'),
+                    onPressed: _openKeyboardSettings,
+                  ),
+                ] else ...[
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.check_circle, color: Colors.green),
+                    label: const Text('Teclado activo (toca para cambiar)'),
+                    onPressed: _showInputMethodPicker,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'VoiceBubble está activo. Toca el botón para alternar rápidamente entre teclados sin salir de la app.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.settings),
+                    label: const Text('Abrir ajustes del sistema'),
+                    onPressed: _openKeyboardSettings,
+                  ),
+                ],
               ],
             ),
           ),

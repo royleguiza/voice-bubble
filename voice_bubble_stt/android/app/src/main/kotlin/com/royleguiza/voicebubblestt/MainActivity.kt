@@ -118,6 +118,11 @@ class MainActivity : FlutterActivity() {
                     startActivity(intent)
                     result.success(true)
                 }
+                "showInputMethodPicker" -> {
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.showInputMethodPicker()
+                    result.success(true)
+                }
                 "isKeyboardRecording" -> {
                     result.success(VoiceKeyboardService.keyboardRecordingActive)
                 }

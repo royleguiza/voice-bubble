@@ -9,7 +9,9 @@
         android:label="VoiceBubble STT"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round">
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:hasFragileUserData="true"
+        android:allowBackup="true">
         <service
             android:name=".FloatingBubbleService"
             android:foregroundServiceType="microphone"

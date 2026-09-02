@@ -63,3 +63,4 @@ __pycache__/
 .impeccable/
 .github_token
 .agents/secrets.env
+auditoria-serve/

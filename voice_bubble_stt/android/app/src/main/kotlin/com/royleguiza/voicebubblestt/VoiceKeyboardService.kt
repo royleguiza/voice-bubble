@@ -133,6 +133,11 @@ class VoiceKeyboardService : InputMethodService() {
     private var snippetsSeedAttempted = false
     private var snippetQuery = ""
     private var snippetGridContainer: LinearLayout? = null
+    private var snippetSubLayer = Layer.LETTERS
+    private var snippetDraftName = ""
+    private var snippetDraftContent = ""
+    private var snippetDraftActiveFieldIsContent = false
+    private var snippetDraftCursor = 0
 
     // K4-T3: con el campo de busqueda enfocado, los commits del propio
     // teclado se redirigen al query en vez del documento destino.
@@ -173,6 +178,7 @@ class VoiceKeyboardService : InputMethodService() {
 
     // --- Portapapeles Multimodal (Opción 2: Cinta Horizontal Deslizable) ---
     private lateinit var clipboardStore: ClipboardStore
+    private lateinit var transcriptionRepo: TranscriptionHistoryRepository
     private var clipboardFilmstripView: ClipboardFilmstripLayout? = null
     private var isFilmstripExpanded = false
 
@@ -183,6 +189,7 @@ class VoiceKeyboardService : InputMethodService() {
     override fun onCreate() {
         super.onCreate()
         clipboardStore = ClipboardStore(this)
+        transcriptionRepo = TranscriptionHistoryRepository(this)
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         try {
             cm?.addPrimaryClipChangedListener(clipboardListener)
@@ -296,6 +303,11 @@ class VoiceKeyboardService : InputMethodService() {
         dismissPopup()
         // K5-T5: destruccion del servicio con dictado vivo = grabacion fantasma.
         cancelDictationIfActive()
+        try {
+            if (::clipboardStore.isInitialized) {
+                clipboardStore.shutdown()
+            }
+        } catch (_: Exception) {}
         super.onDestroy()
     }
 
@@ -336,6 +348,11 @@ class VoiceKeyboardService : InputMethodService() {
             activeSnippetEditorField = null
             etSnippetNameField = null
             etSnippetContentField = null
+            snippetDraftName = ""
+            snippetDraftContent = ""
+            snippetDraftActiveFieldIsContent = false
+            snippetDraftCursor = 0
+            snippetSubLayer = Layer.LETTERS
         }
         root.removeAllViews()
 
@@ -615,8 +632,14 @@ class VoiceKeyboardService : InputMethodService() {
         val row = horizontalRow()
 
         val btnSym = makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols", isBold = true) {
-            layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
-            rebuild()
+            if (layer == Layer.SNIPPETS) {
+                saveSnippetDraftState()
+                snippetSubLayer = if (snippetSubLayer == Layer.LETTERS) Layer.SYMBOLS else Layer.LETTERS
+                rebuild()
+            } else {
+                layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
+                rebuild()
+            }
         }
 
         val btnLang = if (languageKeyVisiblePref) {
@@ -630,8 +653,8 @@ class VoiceKeyboardService : InputMethodService() {
         commaKeyView = comma
 
         val space = makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, if (spanishMode) "espacio" else "space") {
-            // En snippets el espacio alimenta el query, nunca el documento.
-            if (layer == Layer.SNIPPETS) ensureSnippetSearchMode()
+            // En snippets el espacio alimenta el query solo si no esta abierto el editor.
+            if (layer == Layer.SNIPPETS && !isSnippetEditorOpen) ensureSnippetSearchMode()
             commit(" ")
         }
         spaceKeyView = space
@@ -678,20 +701,25 @@ class VoiceKeyboardService : InputMethodService() {
         return row
     }
 
-    private fun symbolsToggleLabel(): String = when (layer) {
-        Layer.SYMBOLS -> "ABC"
+    private fun symbolsToggleLabel(): String = when {
+        layer == Layer.SNIPPETS && (snippetSubLayer == Layer.SYMBOLS || snippetSubLayer == Layer.CODE) -> "ABC"
+        layer == Layer.SYMBOLS || layer == Layer.CODE -> "ABC"
         else -> "?123"
     }
 
     /** Cambiador de capas con memoria de la ultima capa no-codigo. */
     private fun toggleCodeLayer() {
+        if (layer == Layer.SNIPPETS) {
+            saveSnippetDraftState()
+            snippetSubLayer = if (snippetSubLayer == Layer.CODE) Layer.LETTERS else Layer.CODE
+            rebuild()
+            return
+        }
         if (layer == Layer.CODE) {
             layer = lastLettersLayer
         } else {
             // Desde snippets no se pisa la memoria: volver conserva el origen.
-            if (layer != Layer.SNIPPETS) {
-                lastLettersLayer = if (layer == Layer.SYMBOLS) Layer.LETTERS else layer
-            }
+            lastLettersLayer = if (layer == Layer.SYMBOLS) Layer.LETTERS else layer
             layer = Layer.CODE
         }
         rebuild()
@@ -1873,31 +1901,13 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /**
-     * Alta en el historial FIFO-20 compartido con la app. La base de
-     * escritura es writableHistoryBase(): lectura fresca de disco mas las
-     * entradas de la cache cuyo timestamp no exista ya en disco (merge por
-     * timestamp parseado), asi el dictado recien aplicado (apply aun no
-     * volcado) nunca se pierde y las entradas borradas desde la app NO
-     * resucitan al proximo dictado. El plugin shared_preferences guarda la
-     * lista como Set nativo sin orden garantizado: se reordena por timestamp
-     * descendente (mismo criterio semantico de la app: mas nuevo primero).
+     * Alta en el historial FIFO-20 compartido con la app mediante el repositorio atómico.
      */
     private fun addToSharedHistory(text: String) {
         try {
-            val entries = writableHistoryBase()
-            val newEntry = JSONObject()
-                .put("text", text)
-                .put("timestamp", java.time.Instant.now().toString())
-            entries.add(newEntry)
-            val sorted = entries.sortedByDescending { historyEntryInstant(it) }
-            val out = LinkedHashSet<String>()
-            for (obj in sorted.take(20)) {
-                out.add(obj.toString())
+            if (::transcriptionRepo.isInitialized) {
+                transcriptionRepo.addTranscription(text)
             }
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .edit()
-                .putStringSet(SHARED_HISTORY_KEY, out)
-                .apply()
         } catch (_: Exception) {}
     }
 
@@ -2055,211 +2065,17 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /**
-     * Historial compartido parseado para la ventana: tolerante (los candidatos
-     * que no son objetos JSON validos se descartan en silencio), ordenado por
-     * timestamp descendente y con dedup por timestamp parseado
-     * (una misma entrada presente en dos serializaciones ocupa una sola fila;
-     * entradas con timestamp imposible no participan del dedup y nunca se
-     * pierden). Mismo criterio de lectura que addToSharedHistory y la app.
+     * Historial compartido para la ventana: proveído por TranscriptionHistoryRepository.
      */
     private fun sharedHistoryEntries(): List<JSONObject> {
-        val parsed = ArrayList<JSONObject>()
-        for (raw in sharedHistoryRaw()) {
-            try {
-                parsed.add(JSONObject(raw))
-            } catch (_: Exception) {}
-        }
-        val seen = HashSet<java.time.Instant>()
-        val out = ArrayList<JSONObject>(20)
-        for (obj in parsed.sortedByDescending { historyEntryInstant(it) }) {
-            val ts = historyEntryInstantOrNull(obj)
-            if (ts != null && !seen.add(ts)) continue
-            out.add(obj)
-            if (out.size >= 20) break
-        }
-        return out
-    }
-
-    /**
-     * Candidatos crudos del historial con lectura fresca garantizada. El
-     * framework Android cachea el archivo por proceso y SharedPreferences no
-     * expone reload() publico, asi que se relee el XML directamente desde
-     * disco y se une a la vista cacheada del framework (la cache cubre
-     * escrituras apply() aun no volcadas; el disco, cambios externos). Ambas
-     * fuentes son copiadas a estructuras propias: el Set devuelto por
-     * getStringSet es la referencia interna viva y mutarlo corrompe la cache.
-     */
-    private fun sharedHistoryRaw(): Set<String> {
-        val merged = LinkedHashSet<String>()
-        try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getStringSet(SHARED_HISTORY_KEY, emptySet())
-                ?.let { cached -> merged.addAll(cached) }
-        } catch (_: Exception) {
-            // Tipo almacenado inesperado: la lectura fresca de disco puede
-            // rescatar igualmente las entradas.
-        }
-        try {
-            readFreshHistoryFromDisk()?.let { fresh -> merged.addAll(fresh) }
-        } catch (_: Exception) {}
-        return expandHistoryCandidates(merged)
-    }
-
-    /**
-     * Base de ESCRITURA del historial (P5-F2): SOLO la lectura fresca de
-     * disco, mas de la cache del proceso las entradas cuyo timestamp parseado
-     * no exista ya en disco (las de timestamp imposible cuentan como "solo
-     * cache" unicamente si su texto crudo no esta en disco, para no duplicar
-     * el espejo cache-disco). Asi sobreviven las escrituras apply() aun no
-     * volcadas sin resucitar entradas borradas desde la app.
-     */
-    private fun writableHistoryBase(): ArrayList<JSONObject> {
-        val diskRaw = try {
-            readFreshHistoryFromDisk()
-        } catch (_: Exception) {
-            null
-        } ?: emptySet()
-        val base = ArrayList<JSONObject>(diskRaw.size)
-        val diskTimes = HashSet<java.time.Instant>()
-        for (raw in diskRaw) {
-            try {
-                val obj = JSONObject(raw)
-                historyEntryInstantOrNull(obj)?.let { diskTimes.add(it) }
-                base.add(obj)
-            } catch (_: Exception) {}
-        }
-        try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getStringSet(SHARED_HISTORY_KEY, emptySet())
-                ?.let { cached ->
-                    // Copia defensiva antes de usar: el set interno vivo del
-                    // framework jamas se muta ni se retiene.
-                    for (raw in expandHistoryCandidates(cached.toList())) {
-                        val obj = try {
-                            JSONObject(raw)
-                        } catch (_: Exception) {
-                            continue
-                        }
-                        val ts = historyEntryInstantOrNull(obj)
-                        val alreadyOnDisk =
-                            (ts != null && diskTimes.contains(ts)) || diskRaw.contains(raw)
-                        if (!alreadyOnDisk) base.add(obj)
-                    }
-                }
-        } catch (_: Exception) {}
-        return base
-    }
-
-    /**
-     * Lectura directa del XML de preferencias compartidas, sin pasar por la
-     * cache del proceso. Tolerante al formato real almacenado por el plugin:
-     * <set> con hijos <string> (caso setStringList), <string> escalar bajo la
-     * clave, y ausencia total del archivo (devuelve null). Cualquier error de
-     * lectura se propaga al llamador, que captura todo.
-     */
-    private fun readFreshHistoryFromDisk(): Set<String>? {
-        val file = File(applicationInfo.dataDir, "shared_prefs/FlutterSharedPreferences.xml")
-        if (!file.exists()) return null
-        val parser = Xml.newPullParser()
-        InputStreamReader(FileInputStream(file), Charsets.UTF_8).use { reader ->
-            parser.setInput(reader)
-            val out = LinkedHashSet<String>()
-            val chunk = StringBuilder()
-            var inSet = false
-            var captureScalar = false
-            fun flushChunk() {
-                if (chunk.isNotEmpty()) {
-                    val value = chunk.toString()
-                    if (value.isNotBlank()) out.add(value)
-                    chunk.setLength(0)
-                }
+        return try {
+            if (::transcriptionRepo.isInitialized) {
+                transcriptionRepo.loadHistory()
+            } else {
+                emptyList()
             }
-            var event = parser.eventType
-            while (event != XmlPullParser.END_DOCUMENT) {
-                when (event) {
-                    // Todo START_TAG cierra el texto previo (asi la sangria
-                    // entre elementos hijos nunca contamina una entrada).
-                    XmlPullParser.START_TAG -> {
-                        flushChunk()
-                        when {
-                            parser.name == "set" &&
-                                parser.getAttributeValue(null, "name") == SHARED_HISTORY_KEY -> {
-                                inSet = true
-                            }
-                            parser.name == "string" && !inSet && !captureScalar &&
-                                parser.getAttributeValue(null, "name") == SHARED_HISTORY_KEY -> {
-                                captureScalar = true
-                            }
-                        }
-                    }
-                    XmlPullParser.TEXT -> if (inSet || captureScalar) {
-                        chunk.append(parser.text)
-                    }
-                    XmlPullParser.END_TAG -> when (parser.name) {
-                        "set" -> if (inSet) {
-                            flushChunk()
-                            inSet = false
-                        }
-                        "string" -> if (captureScalar) {
-                            flushChunk()
-                            captureScalar = false
-                        }
-                    }
-                }
-                event = parser.next()
-            }
-            flushChunk()
-            return out
-        }
-    }
-
-    /**
-     * Tolerancia de formato: si algun candidato es un JSON array de strings,
-     * se expande a entradas individuales; cualquier otro valor se conserva
-     * tal cual para que el parseo posterior decida.
-     */
-    private fun expandHistoryCandidates(candidates: Collection<String>): LinkedHashSet<String> {
-        val out = LinkedHashSet<String>()
-        for (raw in candidates) {
-            val trimmed = raw.trim()
-            var expanded = false
-            if (trimmed.startsWith("[")) {
-                try {
-                    val arr = JSONArray(trimmed)
-                    for (i in 0 until arr.length()) {
-                        val item = arr.optString(i)
-                        if (!item.isNullOrBlank()) out.add(item)
-                    }
-                    expanded = true
-                } catch (_: Exception) {}
-            }
-            if (!expanded) out.add(raw)
-        }
-        return out
-    }
-
-    /**
-     * Timestamp normalizado para ordenar. La app guarda DateTime.now() en ISO
-     * local SIN zona ("2026-08-23T10:00:00.000"), que Instant.parse rechaza;
-     * se interpreta entonces como hora local. Si nada parsea cae a EPOCH.
-     */
-    private fun historyEntryInstant(obj: JSONObject): java.time.Instant =
-        historyEntryInstantOrNull(obj) ?: java.time.Instant.EPOCH
-
-    /**
-     * Timestamp normalizado o null si no es interpretable (ni UTC ni local).
-     * Esas entradas se tratan como "solo cache" en el merge de escritura y no
-     * participan del dedup por timestamp en la ventana.
-     */
-    private fun historyEntryInstantOrNull(obj: JSONObject): java.time.Instant? = try {
-        java.time.Instant.parse(obj.optString("timestamp"))
-    } catch (_: Exception) {
-        try {
-            java.time.LocalDateTime.parse(obj.optString("timestamp"))
-                .atZone(java.time.ZoneId.systemDefault())
-                .toInstant()
         } catch (_: Exception) {
-            null
+            emptyList()
         }
     }
 
@@ -2332,11 +2148,7 @@ class VoiceKeyboardService : InputMethodService() {
             layer = layerBeforeSnippets
             snippetSearchActive = false
             snippetSearchField = null
-            isSnippetEditorOpen = false
-            editingSnippet = null
-            activeSnippetEditorField = null
-            etSnippetNameField = null
-            etSnippetContentField = null
+            closeSnippetEditor()
             rebuild()
             return
         }
@@ -2347,6 +2159,7 @@ class VoiceKeyboardService : InputMethodService() {
         }
         snippetStore.load()
         snippetQuery = ""
+        snippetSubLayer = Layer.LETTERS
         layer = Layer.SNIPPETS
         rebuild()
     }
@@ -2355,6 +2168,11 @@ class VoiceKeyboardService : InputMethodService() {
         dismissPopup()
         isSnippetEditorOpen = true
         editingSnippet = snippet
+        snippetDraftName = snippet?.nombre.orEmpty()
+        snippetDraftContent = snippet?.contenido.orEmpty()
+        snippetDraftActiveFieldIsContent = false
+        snippetDraftCursor = snippetDraftName.length
+        snippetSubLayer = Layer.LETTERS
         snippetSearchActive = false
         rebuild()
     }
@@ -2365,11 +2183,24 @@ class VoiceKeyboardService : InputMethodService() {
         activeSnippetEditorField = null
         etSnippetNameField = null
         etSnippetContentField = null
+        snippetDraftName = ""
+        snippetDraftContent = ""
+        snippetDraftActiveFieldIsContent = false
+        snippetDraftCursor = 0
+        snippetSubLayer = Layer.LETTERS
         snippetMode = SnippetMode.NORMAL
         rebuild()
     }
 
-    /** Fila de busqueda/editor inline + grid scrolleable de chips + filas QWERTY. */
+    private fun saveSnippetDraftState() {
+        etSnippetNameField?.let { snippetDraftName = it.text.toString() }
+        etSnippetContentField?.let { snippetDraftContent = it.text.toString() }
+        snippetDraftActiveFieldIsContent = (activeSnippetEditorField === etSnippetContentField)
+        val activeEt = activeSnippetEditorField ?: etSnippetNameField
+        activeEt?.let { snippetDraftCursor = it.selectionStart.coerceAtLeast(0) }
+    }
+
+    /** Fila de busqueda/editor inline + grid scrolleable de chips + teclado (letras/simbolos/codigo). */
     private fun buildSnippetRows() {
         if (isSnippetEditorOpen) {
             addRow(buildSnippetEditorInline())
@@ -2391,7 +2222,11 @@ class VoiceKeyboardService : InputMethodService() {
             lp.topMargin = rowGapPx()
             root.addView(scroll, lp)
         }
-        addSnippetLetterRows()
+        when (snippetSubLayer) {
+            Layer.SYMBOLS -> buildSymbolRows()
+            Layer.CODE -> buildCodeRows()
+            else -> addSnippetLetterRows()
+        }
     }
 
     private fun buildSnippetEditorInline(): LinearLayout {
@@ -2473,7 +2308,7 @@ class VoiceKeyboardService : InputMethodService() {
             setBackgroundResource(R.drawable.kb_key_bg)
             setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
             setPadding(pad, pad, pad, pad)
-            if (isEdit) setText(editingSnippet?.nombre.orEmpty())
+            setText(snippetDraftName)
             onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
                 if (hasFocus) activeSnippetEditorField = this
             }
@@ -2496,7 +2331,7 @@ class VoiceKeyboardService : InputMethodService() {
             setBackgroundResource(R.drawable.kb_key_bg)
             setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
             setPadding(pad, pad, pad, pad)
-            if (isEdit) setText(editingSnippet?.contenido.orEmpty())
+            setText(snippetDraftContent)
             onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
                 if (hasFocus) activeSnippetEditorField = this
             }
@@ -2509,10 +2344,20 @@ class VoiceKeyboardService : InputMethodService() {
         lpContent.topMargin = pad
         container.addView(etContent, lpContent)
 
-        activeSnippetEditorField = etName
-        etName.post {
-            etName.requestFocus()
-            etName.setSelection(etName.text.length)
+        if (snippetDraftActiveFieldIsContent) {
+            activeSnippetEditorField = etContent
+            etContent.post {
+                etContent.requestFocus()
+                val pos = snippetDraftCursor.coerceIn(0, etContent.text.length)
+                etContent.setSelection(pos)
+            }
+        } else {
+            activeSnippetEditorField = etName
+            etName.post {
+                etName.requestFocus()
+                val pos = snippetDraftCursor.coerceIn(0, etName.text.length)
+                etName.setSelection(pos)
+            }
         }
 
         val lpContainer = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -2529,6 +2374,17 @@ class VoiceKeyboardService : InputMethodService() {
         addRow(snippetLetterRow("qwertyuiop"))
         addRow(snippetLetterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
         val row3 = horizontalRow()
+        val shiftKey = makeActionIconKey(
+            R.drawable.ic_shift_off,
+            R.drawable.kb_key_alt,
+            1.3f,
+            if (spanishMode) "mayúsculas" else "shift",
+            tintColorRes = R.color.kb_label,
+        ) {
+            toggleShift()
+        }
+        shiftKeyViews.add(shiftKey)
+        row3.addView(shiftKey)
         for (c in "zxcvbnm") {
             row3.addView(makeSnippetLetterKey(c))
         }
@@ -2990,6 +2846,16 @@ class VoiceKeyboardService : InputMethodService() {
         val item = clipData.getItemAt(0)
         val description = clipData.description
 
+        // Privacidad: ignorar clips marcados como confidenciales (passwords, OTPs, etc.)
+        if (description != null) {
+            val isSensitive = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                description.extras?.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE, false) ?: false
+            } else {
+                description.extras?.getBoolean("android.content.extra.IS_SENSITIVE", false) ?: false
+            }
+            if (isSensitive) return
+        }
+
         if (description != null && description.hasMimeType("image/*") && item.uri != null) {
             val mime = description.getMimeType(0) ?: "image/png"
             clipboardStore.addImageClip(item.uri, mime) {
@@ -3432,6 +3298,7 @@ class VoiceKeyboardService : InputMethodService() {
             ) {
                 HEIGHT_PROFILE_BAJA -> HEIGHT_FACTOR_BAJA
                 HEIGHT_PROFILE_ALTA -> HEIGHT_FACTOR_ALTA
+                HEIGHT_PROFILE_MUY_ALTA -> HEIGHT_FACTOR_MUY_ALTA
                 else -> HEIGHT_FACTOR_MEDIA
             }
         } catch (_: Exception) {
@@ -3510,17 +3377,16 @@ class VoiceKeyboardService : InputMethodService() {
         private const val HEIGHT_PROFILE_BAJA = "baja"
         private const val HEIGHT_PROFILE_MEDIA = "media"
         private const val HEIGHT_PROFILE_ALTA = "alta"
+        private const val HEIGHT_PROFILE_MUY_ALTA = "muy_alta"
 
         /** Factores aplicados a alturas verticales propias del teclado. */
         private const val HEIGHT_FACTOR_BAJA = 0.85f
         private const val HEIGHT_FACTOR_MEDIA = 1f
         private const val HEIGHT_FACTOR_ALTA = 1.15f
+        private const val HEIGHT_FACTOR_MUY_ALTA = 1.30f
 
         /** Exclusion mutua de microfono: visible para MainActivity/burbuja. */
         @Volatile
         var keyboardRecordingActive: Boolean = false
-
-        /** Clave del historial compartido con la app (prefijo flutter.). */
-        private const val SHARED_HISTORY_KEY = "flutter.transcriptions"
     }
 }
