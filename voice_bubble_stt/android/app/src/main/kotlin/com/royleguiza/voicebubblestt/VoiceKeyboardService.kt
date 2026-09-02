@@ -160,7 +160,7 @@ class VoiceKeyboardService : InputMethodService() {
     // ::root.isInitialized no detecta que root ya fue reemplazado.
     private var inputView: View? = null
     private val letterKeys = mutableListOf<Pair<TextView, Char>>()
-    private val shiftKeyViews = mutableListOf<TextView>()
+    private val shiftKeyViews = mutableListOf<ImageView>()
     private val modifierKeyViews = mutableListOf<Pair<TextView, Boolean>>()
 
     private var activePopup: PopupWindow? = null
@@ -348,7 +348,12 @@ class VoiceKeyboardService : InputMethodService() {
         
         // Elementos borde (Snippets):
         if (!currentIsPasswordField) {
-            val btnSnippets = makeFixedTextKey("☰", R.drawable.kb_key_alt, 1.0f, if (spanishMode) "fragmentos" else "snippets") {
+            val btnSnippets = makeIconKey(
+                R.drawable.ic_snippets,
+                R.drawable.kb_key_alt,
+                1.0f,
+                if (spanishMode) "fragmentos" else "snippets",
+            ) {
                 toggleSnippetsLayer()
             }
             items.add(btnSnippets)
@@ -361,7 +366,12 @@ class VoiceKeyboardService : InputMethodService() {
         items.add(btnSettings)
 
         if (terminalRowVisiblePref) {
-            val btnTerminal = makeFixedTextKey(">_", R.drawable.kb_key_alt, 1.0f, if (spanishMode) "fila terminal" else "terminal row") {
+            val btnTerminal = makeIconKey(
+                R.drawable.ic_terminal,
+                R.drawable.kb_key_alt,
+                1.0f,
+                if (spanishMode) "fila terminal" else "terminal row",
+            ) {
                 terminalRowVisiblePref = !terminalRowVisiblePref
                 rebuild()
             }
@@ -378,7 +388,12 @@ class VoiceKeyboardService : InputMethodService() {
         items.add(btnPaste)
 
         if (codeKeyVisiblePref) {
-            val btnCode = makeFixedTextKey("</>", R.drawable.kb_key_alt, 1.0f, if (spanishMode) "capa código" else "code layer") {
+            val btnCode = makeIconKey(
+                R.drawable.ic_code,
+                R.drawable.kb_key_alt,
+                1.0f,
+                if (spanishMode) "capa código" else "code layer",
+            ) {
                 toggleCodeLayer()
             }
             items.add(btnCode)
@@ -420,10 +435,10 @@ class VoiceKeyboardService : InputMethodService() {
     /** Fila terminal permanente en todas las capas (K2). */
     private fun buildTerminalRow(): LinearLayout {
         val row = horizontalRow()
-        row.addView(makeSpecialKey("TAB", R.drawable.kb_key_alt, 1.5f, "tab") {
+        row.addView(makeSpecialKey("TAB", R.drawable.kb_key_alt, 1.5f, "tab", isBold = true) {
             sendKeyCode(KeyEvent.KEYCODE_TAB)
         })
-        row.addView(makeSpecialKey("ESC", R.drawable.kb_key_alt, 1f, "escape") {
+        row.addView(makeSpecialKey("ESC", R.drawable.kb_key_alt, 1f, "escape", isBold = true) {
             sendKeyCode(KeyEvent.KEYCODE_ESCAPE)
         })
         row.addView(makeModifierKey("CTRL", true, 1.25f))
@@ -456,7 +471,7 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun makeArrowKey(glyph: String, code: Int, description: String?): TextView =
-        makeSpecialKey(glyph, R.drawable.kb_key_bg, 1f, description) {
+        makeSpecialKey(glyph, R.drawable.kb_key_bg, 1f, description, isBold = true) {
             sendKeyCode(code)
         }
 
@@ -471,9 +486,8 @@ class VoiceKeyboardService : InputMethodService() {
             } else {
                 if (spanishMode) "tecla alt" else "alt key"
             },
-        ) {}
-        key.setOnClickListener {
-            haptic(key)
+            isBold = true,
+        ) {
             if (isCtrl) ctrlActive = !ctrlActive else altActive = !altActive
             refreshModifierVisuals()
         }
@@ -499,12 +513,12 @@ class VoiceKeyboardService : InputMethodService() {
         addRow(letterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
 
         val row3 = horizontalRow()
-        val shiftKey = makeSpecialKey(
-            "⇧",
+        val shiftKey = makeActionIconKey(
+            R.drawable.ic_shift_off,
             R.drawable.kb_key_alt,
             1.3f,
             if (spanishMode) "mayúsculas" else "shift",
-            dimen(R.dimen.kb_key_glyph_shift),
+            tintColorRes = R.color.kb_label,
         ) {
             toggleShift()
         }
@@ -519,7 +533,7 @@ class VoiceKeyboardService : InputMethodService() {
 
     private fun buildSymbolRows() {
         addRow(symbolRow("1234567890"))
-        addRow(symbolRow("@#\$%&-+()/"))
+        addRow(symbolRow("@#$%&-+()/"))
 
         val row3 = horizontalRow()
         for (c in "=*\"':;!?") {
@@ -535,7 +549,7 @@ class VoiceKeyboardService : InputMethodService() {
         addRow(codeRow("'\"`\\|/!?=+"))
 
         val row3 = horizontalRow()
-        for (c in "*&%\$#@^~_") {
+        for (c in "*&%$#@^~_") {
             row3.addView(makeCodeKey(c))
         }
         row3.addView(makeBackspaceKey())
@@ -545,19 +559,19 @@ class VoiceKeyboardService : InputMethodService() {
     private fun buildBottomBar(): LinearLayout {
         val row = horizontalRow()
 
-        val btnSym = makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols") {
+        val btnSym = makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols", isBold = true) {
             layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
             rebuild()
         }
 
         val btnLang = if (languageKeyVisiblePref) {
-            makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language") {
+            makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language", isBold = true) {
                 spanishMode = !spanishMode
                 rebuild()
             }
         } else null
 
-        val comma = makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct))
+        val comma = makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
         commaKeyView = comma
 
         val space = makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, if (spanishMode) "espacio" else "space") {
@@ -567,15 +581,15 @@ class VoiceKeyboardService : InputMethodService() {
         }
         spaceKeyView = space
 
-        val dot = makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct))
+        val dot = makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
         dotKeyView = dot
 
-        val enter = makeSpecialKey(
-            "↵",
+        val enter = makeActionIconKey(
+            R.drawable.ic_enter,
             R.drawable.kb_key_accent,
             1.8f,
             if (spanishMode) "intro" else "enter",
-            dimen(R.dimen.kb_key_glyph_enter),
+            tintColorRes = R.color.kb_label_on_accent,
         ) {
             handleEnter()
         }
@@ -628,8 +642,61 @@ class VoiceKeyboardService : InputMethodService() {
         rebuild()
     }
 
-    private fun makeBackspaceKey(): TextView {
-        val key = makeSpecialKey("⌫", R.drawable.kb_key_alt, 1.3f, if (spanishMode) "borrar" else "delete") {
+    private fun attachFastKeyTouch(key: View, onClick: () -> Unit) {
+        key.setOnTouchListener { v, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    haptic(v)
+                    v.isPressed = true
+                    onClick()
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.isPressed = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun makeActionIconKey(
+        iconRes: Int,
+        bgRes: Int,
+        weight: Float,
+        description: String?,
+        tintColorRes: Int = R.color.kb_label,
+        onClick: () -> Unit,
+    ): ImageView {
+        val key = ImageView(this)
+        key.setImageResource(iconRes)
+        key.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        key.isClickable = true
+        key.isFocusable = true
+        key.minimumWidth = 0
+        key.minimumHeight = 0
+        key.setPadding(0, 0, 0, 0)
+        key.setBackgroundResource(bgRes)
+        key.setColorFilter(ContextCompat.getColor(this, tintColorRes))
+        if (description != null) {
+            key.contentDescription = description
+        }
+        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), weight)
+        val m = dimen(R.dimen.kb_key_gap_h) / 2
+        lp.setMargins(m, 0, m, 0)
+        key.layoutParams = lp
+        attachFastKeyTouch(key, onClick)
+        return key
+    }
+
+    private fun makeBackspaceKey(): ImageView {
+        val key = makeActionIconKey(
+            R.drawable.ic_backspace,
+            R.drawable.kb_key_alt,
+            1.3f,
+            if (spanishMode) "borrar" else "delete",
+            tintColorRes = R.color.kb_label,
+        ) {
             handleBackspace()
         }
         attachBackspaceGestures(key) {
@@ -677,7 +744,7 @@ class VoiceKeyboardService : InputMethodService() {
             dimen(R.dimen.kb_key_text_size),
         )
         if (accentsFor(base).isEmpty()) {
-            key.setOnClickListener { commitLetter(base) }
+            attachFastKeyTouch(key) { commitLetter(base) }
         } else {
             attachAccentLongPress(key, base)
         }
@@ -688,6 +755,7 @@ class VoiceKeyboardService : InputMethodService() {
     private fun makeSymbolKey(
         label: String,
         textSizePx: Int = dimen(R.dimen.kb_key_text_size_small),
+        isBold: Boolean = false,
     ): TextView {
         val key = makeKey(
             label,
@@ -695,9 +763,10 @@ class VoiceKeyboardService : InputMethodService() {
             R.drawable.kb_key_bg,
             R.color.kb_label,
             textSizePx,
+            isBold = isBold,
         )
         key.contentDescription = label
-        key.setOnClickListener { commitSymbolText(label) }
+        attachFastKeyTouch(key) { commitSymbolText(label) }
         return key
     }
 
@@ -722,6 +791,7 @@ class VoiceKeyboardService : InputMethodService() {
         weight: Float,
         description: String?,
         textSizePx: Int = dimen(R.dimen.kb_key_text_size_small),
+        isBold: Boolean = true,
         onClick: () -> Unit,
     ): TextView {
         val key = makeKey(
@@ -730,14 +800,12 @@ class VoiceKeyboardService : InputMethodService() {
             bgRes,
             R.color.kb_label,
             textSizePx,
+            isBold = isBold,
         )
         if (description != null) {
             key.contentDescription = description
         }
-        key.setOnClickListener {
-            haptic(key)
-            onClick()
-        }
+        attachFastKeyTouch(key, onClick)
         return key
     }
 
@@ -746,30 +814,28 @@ class VoiceKeyboardService : InputMethodService() {
         bgRes: Int,
         weight: Float,
         description: String?,
+        tintColorRes: Int = R.color.kb_label,
         onClick: () -> Unit,
-    ): android.widget.ImageView {
-        val key = android.widget.ImageView(this)
+    ): ImageView {
+        val key = ImageView(this)
         key.setImageResource(iconRes)
-        key.scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+        key.scaleType = ImageView.ScaleType.CENTER_INSIDE
         key.isClickable = true
         key.isFocusable = true
         key.setBackgroundResource(bgRes)
+        key.setColorFilter(ContextCompat.getColor(this, tintColorRes))
         if (description != null) {
             key.contentDescription = description
         }
-        // Sin padding restrictivo para centrado continuo y suave durante la animacion
         key.setPadding(0, 0, 0, 0)
         
         val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
         val lp = LinearLayout.LayoutParams(0, hPx, weight)
-        val m = dimen(R.dimen.kb_key_gap) / 2
+        val m = dimen(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, m, m, m)
         key.layoutParams = lp
         
-        key.setOnClickListener {
-            haptic(key)
-            onClick()
-        }
+        attachFastKeyTouch(key, onClick)
         return key
     }
 
@@ -789,19 +855,17 @@ class VoiceKeyboardService : InputMethodService() {
         key.setBackgroundResource(bgRes)
         key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
         key.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
+        key.setTypeface(null, Typeface.BOLD)
         if (description != null) {
             key.contentDescription = description
         }
         val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
         val lp = LinearLayout.LayoutParams(0, hPx, weight)
-        val m = dimen(R.dimen.kb_key_gap) / 2
+        val m = dimen(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, m, m, m)
         key.layoutParams = lp
         
-        key.setOnClickListener {
-            haptic(key)
-            onClick()
-        }
+        attachFastKeyTouch(key, onClick)
         return key
     }
 
@@ -811,6 +875,7 @@ class VoiceKeyboardService : InputMethodService() {
         bgRes: Int,
         colorRes: Int,
         textSizePx: Int,
+        isBold: Boolean = false,
     ): TextView {
         val key = TextView(this)
         key.text = label
@@ -824,8 +889,11 @@ class VoiceKeyboardService : InputMethodService() {
         key.setBackgroundResource(bgRes)
         key.setTextColor(ContextCompat.getColor(this, colorRes))
         key.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSizePx.toFloat())
+        if (isBold) {
+            key.setTypeface(null, Typeface.BOLD)
+        }
         val lp = LinearLayout.LayoutParams(0, keyHeightPx(), weight)
-        val m = dimen(R.dimen.kb_key_gap) / 2
+        val m = dimen(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, 0, m, 0)
         key.layoutParams = lp
         return key
@@ -876,20 +944,25 @@ class VoiceKeyboardService : InputMethodService() {
             key.text = displayFor(base)
         }
         for (key in shiftKeyViews) {
-            // Caps lock comparte fondo accent pero se distingue por el glifo ⇪.
-            key.text = if (shiftState == ShiftState.CAPS_LOCK) "⇪" else "⇧"
-            key.contentDescription =
-                if (shiftState == ShiftState.CAPS_LOCK) {
-                    if (spanishMode) "bloqueo mayúsculas" else "caps lock"
-                } else {
-                    if (spanishMode) "mayúsculas" else "shift"
+            when (shiftState) {
+                ShiftState.CAPS_LOCK -> {
+                    key.setImageResource(R.drawable.ic_shift_caps)
+                    key.contentDescription = if (spanishMode) "bloqueo mayúsculas" else "caps lock"
+                    key.setBackgroundResource(R.drawable.kb_key_accent)
+                    key.setColorFilter(ContextCompat.getColor(this, R.color.kb_label_on_accent))
                 }
-            if (upper) {
-                key.setBackgroundResource(R.drawable.kb_key_accent)
-                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
-            } else {
-                key.setBackgroundResource(R.drawable.kb_key_alt)
-                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
+                ShiftState.MOMENTARY -> {
+                    key.setImageResource(R.drawable.ic_shift_on)
+                    key.contentDescription = if (spanishMode) "mayúsculas" else "shift"
+                    key.setBackgroundResource(R.drawable.kb_key_accent)
+                    key.setColorFilter(ContextCompat.getColor(this, R.color.kb_label_on_accent))
+                }
+                ShiftState.OFF -> {
+                    key.setImageResource(R.drawable.ic_shift_off)
+                    key.contentDescription = if (spanishMode) "mayúsculas" else "shift"
+                    key.setBackgroundResource(R.drawable.kb_key_alt)
+                    key.setColorFilter(ContextCompat.getColor(this, R.color.kb_label))
+                }
             }
         }
     }
@@ -2420,7 +2493,7 @@ class VoiceKeyboardService : InputMethodService() {
             dimen(R.dimen.kb_key_text_size),
         )
         if (accentsFor(base).isEmpty()) {
-            key.setOnClickListener { commitSnippetLetter(base) }
+            attachFastKeyTouch(key) { commitSnippetLetter(base) }
         } else {
             attachLongPress(
                 key,
@@ -2437,8 +2510,14 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /** Backspace: borra del query, del editor activo o del documento. */
-    private fun makeSnippetBackspaceKey(): TextView {
-        val key = makeSpecialKey("⌫", R.drawable.kb_key_alt, 1.3f, if (spanishMode) "borrar" else "delete") {
+    private fun makeSnippetBackspaceKey(): ImageView {
+        val key = makeActionIconKey(
+            R.drawable.ic_backspace,
+            R.drawable.kb_key_alt,
+            1.3f,
+            if (spanishMode) "borrar" else "delete",
+            tintColorRes = R.color.kb_label,
+        ) {
             ensureSnippetSearchMode()
             handleBackspace()
         }
@@ -2912,6 +2991,8 @@ class VoiceKeyboardService : InputMethodService() {
                     longPressFired = false
                     swipeMode = false
                     swipeAnchorX = ev.rawX
+                    haptic(v)
+                    v.isPressed = true
                     val r = Runnable {
                         longPressFired = true
                         onLongPress()
@@ -2935,7 +3016,7 @@ class VoiceKeyboardService : InputMethodService() {
                     }
                     pending = r
                     handler.postDelayed(r, LONG_PRESS_MILLIS)
-                    false
+                    true
                 }
                 MotionEvent.ACTION_MOVE -> {
                     if (onSwipeStep != null) {
@@ -2953,7 +3034,7 @@ class VoiceKeyboardService : InputMethodService() {
                             }
                         }
                     }
-                    false
+                    true
                 }
                 MotionEvent.ACTION_UP -> {
                     cancelPending()
@@ -2978,7 +3059,7 @@ class VoiceKeyboardService : InputMethodService() {
     /** Cablea una tecla ⌫ (P6): tap = 1 caracter, mantener = borrado
      *  continuo acelerado con haptic unico, deslizar a la izquierda =
      *  borrar palabra por umbral de distancia. */
-    private fun attachBackspaceGestures(key: TextView, action: () -> Unit) {
+    private fun attachBackspaceGestures(key: View, action: () -> Unit) {
         attachLongPress(
             key,
             onLongPress = {
@@ -3172,8 +3253,8 @@ class VoiceKeyboardService : InputMethodService() {
     /** Altura de teclas QWERTY de snippets: unificada al perfil estándar activo. */
     private fun snippetKeyHeightPx(): Int = keyHeightPx()
 
-    /** Margen vertical entre filas, escalado igual que las teclas. */
-    private fun rowGapPx(): Int = scaleV(dimen(R.dimen.kb_key_gap))
+    /** Margen vertical entre filas, escalado ergonómico estilo Gboard. */
+    private fun rowGapPx(): Int = scaleV(dimen(R.dimen.kb_key_gap_v))
 
     /**
      * Escala una dimension vertical propia del contenido del teclado con el

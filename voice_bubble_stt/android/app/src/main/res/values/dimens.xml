@@ -1,21 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Métricas Liquid Glass del teclado (design.md §12) -->
 <resources>
-    <dimen name="kb_key_height">46dp</dimen>
+    <dimen name="kb_key_height">42dp</dimen>
     <dimen name="kb_key_gap">6dp</dimen>
+    <dimen name="kb_key_gap_h">4dp</dimen>
+    <dimen name="kb_key_gap_v">8dp</dimen>
     <dimen name="kb_key_radius">8dp</dimen>
     <dimen name="kb_key_stroke_width">1dp</dimen>
     <dimen name="kb_surface_radius">16dp</dimen>
-    <dimen name="kb_key_text_size">19sp</dimen>
+    <dimen name="kb_key_text_size">20sp</dimen>
     <dimen name="kb_key_text_size_small">14sp</dimen>
     <!-- Glifo interno de la tecla shift (+15% sobre small, tarjeta P3). -->
     <dimen name="kb_key_glyph_shift">16sp</dimen>
     <!-- Glifo ↵ del enter (+14% sobre small, tarjeta P4). -->
     <dimen name="kb_key_glyph_enter">16sp</dimen>
-    <!-- Glifos , y . de la barra inferior (+14% sobre small, tarjeta P4). -->
-    <dimen name="kb_key_glyph_punct">16sp</dimen>
-    <dimen name="kb_row_padding_h">4dp</dimen>
-    <dimen name="kb_row_padding_v">10dp</dimen>
+    <!-- Glifos , y . de la barra inferior: igualados a 19sp para presencia visual plena. -->
+    <dimen name="kb_key_glyph_punct">19sp</dimen>
+    <dimen name="kb_row_padding_h">3dp</dimen>
+    <dimen name="kb_row_padding_v">6dp</dimen>
     <dimen name="kb_popup_padding">6dp</dimen>
     <dimen name="kb_snippets_grid_height">100dp</dimen>
     <!-- Altura compacta de las filas QWERTY dentro de la capa snippets. -->
