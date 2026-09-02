@@ -9,6 +9,7 @@
 /// contenedor que produce AudioEncoder.wav (leccion 13) y la que Groq valida.
 library;
 
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,6 +41,13 @@ final List<String> appMockedChannels = [
 ];
 
 void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
+  try {
+    final file = File('$temporaryDirectory/transcription_history.json');
+    if (file.existsSync()) file.deleteSync();
+    final tmp = File('$temporaryDirectory/transcription_history.json.tmp');
+    if (tmp.existsSync()) tmp.deleteSync();
+  } catch (_) {}
+
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
@@ -96,6 +104,13 @@ void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
 }
 
 void unregisterAppChannelMocks() {
+  try {
+    final file = File('/tmp/transcription_history.json');
+    if (file.existsSync()) file.deleteSync();
+    final tmp = File('/tmp/transcription_history.json.tmp');
+    if (tmp.existsSync()) tmp.deleteSync();
+  } catch (_) {}
+
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   for (final channel in appMockedChannels) {
