@@ -189,14 +189,6 @@ class VoiceKeyboardService : InputMethodService() {
         } catch (_: Exception) {}
     }
 
-    override fun onDestroy() {
-        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        try {
-            cm?.removePrimaryClipChangedListener(clipboardListener)
-        } catch (_: Exception) {}
-        super.onDestroy()
-    }
-
     override fun onEvaluateFullscreenMode(): Boolean = false
 
     override fun onCreateInputView(): View {
@@ -293,6 +285,10 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     override fun onDestroy() {
+        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        try {
+            cm?.removePrimaryClipChangedListener(clipboardListener)
+        } catch (_: Exception) {}
         stopRecordingTimer()
         pulseAnimators.forEach { it.cancel() }
         pulseAnimators = emptyList()
@@ -3119,8 +3115,7 @@ class VoiceKeyboardService : InputMethodService() {
                 } else if (autoClose && isFilmstripExpanded) {
                     toggleClipboardFilmstrip()
                 }
-            } catch (e: Exception) {
-                Log.e("VoiceKeyboard", "Error en commitContent", e)
+            } catch (_: Exception) {
                 showClipboardNotice(if (spanishMode) "Error al insertar imagen" else "Error inserting image")
             }
         } else {
