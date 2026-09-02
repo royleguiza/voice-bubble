@@ -996,6 +996,396 @@
         .key-btn.key-sym, .key-btn.key-enter { flex: 1.5 !important; }
         .key-btn.key-shift, .key-btn.key-backspace { flex: 1.5 !important; }
 
+        /* ==========================================================================
+           CLIPBOARD & MULTIMODAL HISTORY STYLES (5 PARADIGMAS DE DISEÑO)
+           ========================================================================== */
+        .clipboard-view-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            margin-bottom: 6px;
+            position: relative;
+            min-height: 142px;
+            animation: fluidSpringIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .cb-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 5px 8px;
+        }
+
+        .cb-search-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-size: 11.5px;
+            flex: 1;
+            font-family: inherit;
+        }
+
+        .cb-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .cb-opt-pill {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background: var(--primary-bg);
+            color: var(--primary);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .cb-btn-icon {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.15s;
+        }
+
+        .cb-btn-icon:hover {
+            color: var(--text-primary);
+            border-color: var(--border-strong);
+        }
+
+        /* OPCIÓN 1: BENTO GRID GLASS (2 COLUMNAS) */
+        .cb-bento-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            max-height: 118px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .cb-bento-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 5px;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            min-height: 54px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .cb-bento-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        .cb-bento-card:active {
+            transform: scale(0.96);
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .cb-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .cb-badge {
+            font-size: 9px;
+            font-weight: 800;
+            padding: 1px 5px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .cb-badge-code { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+        .cb-badge-img { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+        .cb-badge-math { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+        .cb-badge-text { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .cb-badge-url { background: rgba(14, 165, 233, 0.15); color: #38bdf8; }
+
+        .cb-pin-badge {
+            font-size: 10px;
+            opacity: 0.4;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .cb-pin-badge.pinned {
+            opacity: 1;
+            color: #f59e0b;
+        }
+
+        .cb-card-body {
+            font-size: 11px;
+            line-height: 1.35;
+            color: var(--text-primary);
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            word-break: break-all;
+        }
+
+        .cb-card-body.mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #93c5fd;
+            white-space: pre-wrap;
+        }
+
+        .cb-thumb-container {
+            width: 100%;
+            height: 38px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-subtle);
+        }
+
+        .cb-thumb-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.88;
+        }
+
+        .cb-thumb-meta {
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            background: rgba(0,0,0,0.75);
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 8.5px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* OPCIÓN 2: HORIZONTAL FILMSTRIP REEL + PREVIEW STACK */
+        .cb-reel-track {
+            display: flex;
+            gap: 7px;
+            overflow-x: auto;
+            padding: 2px 2px 6px 2px;
+            scroll-snap-type: x mandatory;
+        }
+
+        .cb-reel-item {
+            flex: 0 0 115px;
+            height: 98px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 11px;
+            padding: 7px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: pointer;
+            scroll-snap-align: start;
+            transition: all 0.15s;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+        }
+
+        .cb-reel-item:hover, .cb-reel-item.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 12px var(--primary-glow);
+            transform: scale(1.02);
+        }
+
+        .cb-reel-zoom-preview {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 9px;
+            padding: 7px 10px;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #60a5fa;
+            max-height: 48px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        /* OPCIÓN 3: SEGMENTED DRAWER CON FILTROS */
+        .cb-seg-bar {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            padding: 3px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+        }
+
+        .cb-seg-tab {
+            flex: 1;
+            text-align: center;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 2px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.15s;
+        }
+
+        .cb-seg-tab.active {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 2px 6px var(--primary-glow);
+        }
+
+        .cb-drawer-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4.5px;
+            max-height: 98px;
+            overflow-y: auto;
+            padding-right: 2px;
+        }
+
+        .cb-drawer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 6px 9px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .cb-drawer-row:hover {
+            border-color: var(--primary);
+            background: var(--bg-surface-hover);
+        }
+
+        /* OPCIÓN 4: IOS ACTION SHEET GLASS */
+        .cb-sheet-glass-card {
+            background: var(--bg-surface-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-strong);
+            border-radius: 14px;
+            padding: 9px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cb-sheet-grabber {
+            width: 32px;
+            height: 4px;
+            background: var(--text-tertiary);
+            border-radius: 2px;
+            margin: 0 auto 4px auto;
+            opacity: 0.5;
+        }
+
+        /* OPCIÓN 5: SPLIT DUAL-PANE PRO */
+        .cb-dual-layout {
+            display: grid;
+            grid-template-columns: 105px 1fr;
+            gap: 6px;
+            height: 122px;
+        }
+
+        .cb-dual-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-subtle);
+            padding-right: 4px;
+        }
+
+        .cb-dual-item {
+            padding: 5px 6px;
+            border-radius: 6px;
+            background: var(--bg-surface);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border: 1px solid transparent;
+        }
+
+        .cb-dual-item.active, .cb-dual-item:hover {
+            background: var(--primary-bg);
+            color: var(--primary);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .cb-dual-inspector {
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 7px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        .cb-dual-code-view {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9.5px;
+            line-height: 1.4;
+            color: #93c5fd;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 75px;
+        }
+
+        .cb-btn-paste-large {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 8px;
+            font-size: 10.5px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 6px var(--primary-glow);
+            transition: transform 0.1s;
+        }
+
+        .cb-btn-paste-large:active { transform: scale(0.96); }
+
         /* VIEW DISPLAY SWITCHER */
         .tab-pane { display: none; }
         .tab-pane.active { display: flex; flex-direction: column; gap: 24px; animation: fadeIn 0.25s ease-out; }
@@ -1037,6 +1427,10 @@
             <li class="nav-btn" onclick="switchNavTab('toolbar', this)">
                 <svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"></path></svg>
                 Toolbar & Espaciador
+            </li>
+            <li class="nav-btn" id="nav-btn-clipboard" onclick="switchNavTab('clipboard', this)">
+                <svg class="icon-svg-solid" viewBox="0 -960 960 960"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560h-80v120H280v-120h-80v560Zm308.5-571.5Q520-783 520-800t-11.5-28.5Q497-840 480-840t-28.5 11.5Q440-817 440-800t11.5 28.5Q463-760 480-760t28.5-11.5Z"/></svg>
+                Portapapeles & Historial
             </li>
         </ul>
 
@@ -1169,6 +1563,129 @@
             </div>
         </div>
 
+        <!-- PANE 3: PORTAPAPELES & HISTORIAL MULTIMODAL -->
+        <div class="content-scroll tab-pane" id="pane-clipboard">
+            <div class="page-header">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span class="badge-pill badge-primary">Multimodal: Texto, Código &amp; Imágenes</span>
+                    <span class="badge-pill badge-success">Separación 100% de Transcripciones</span>
+                </div>
+                <h1>Portapapeles &amp; Historial del Sistema</h1>
+                <p>Gestor de copiado externo enriquecido (código con indentación exacta, fórmulas matemáticas LaTeX, notas y capturas de pantalla/imágenes). <strong>Las transcripciones de voz NUNCA residen aquí</strong>, permanecen alojadas exclusivamente en la pulsación larga del micrófono.</p>
+            </div>
+
+            <!-- SELECTOR DE LAS 5 OPCIONES DE DISEÑO -->
+            <div class="glass-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--primary);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                        5 Paradigmas de Interacción &amp; Renderizado
+                    </div>
+                    <span class="badge-pill badge-primary" id="activeOptionLabel">Opción 1 Activa</span>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px;margin-top:10px;">
+                    <button class="action-chip-btn" id="optBtn-1" onclick="selectClipboardOption(1)" style="border-color:var(--primary);background:var(--primary-bg);">
+                        <div>
+                            <div style="font-weight:700;color:var(--primary);">Opción 1: Bento Grid</div>
+                            <div style="font-size:10.5px;color:var(--text-secondary);">Rejilla 2 col. con badges y miniaturas</div>
+                        </div>
+                    </button>
+                    <button class="action-chip-btn" id="optBtn-2" onclick="selectClipboardOption(2)">
+                        <div>
+                            <div style="font-weight:700;">Opción 2: Filmstrip Reel</div>
+                            <div style="font-size:10.5px;color:var(--text-secondary);">Cinta horizontal + Zoom Preview</div>
+                        </div>
+                    </button>
+                    <button class="action-chip-btn" id="optBtn-3" onclick="selectClipboardOption(3)">
+                        <div>
+                            <div style="font-weight:700;">Opción 3: Segmented Drawer</div>
+                            <div style="font-size:10.5px;color:var(--text-secondary);">Pestañas: Código / Imágenes / Todo</div>
+                        </div>
+                    </button>
+                    <button class="action-chip-btn" id="optBtn-4" onclick="selectClipboardOption(4)">
+                        <div>
+                            <div style="font-weight:700;">Opción 4: iOS Action Sheet</div>
+                            <div style="font-size:10.5px;color:var(--text-secondary);">Sheet flotante glass con blur</div>
+                        </div>
+                    </button>
+                    <button class="action-chip-btn" id="optBtn-5" onclick="selectClipboardOption(5)">
+                        <div>
+                            <div style="font-weight:700;">Opción 5: Dual-Pane Pro</div>
+                            <div style="font-size:10.5px;color:var(--text-secondary);">Lista + Inspector y formateador en vivo</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- CONTROLES DEL SIMULADOR DE PORTAPAPELES -->
+            <div class="glass-card">
+                <div class="card-title" style="margin-bottom:12px;">Acciones de Prueba en Vivo (Simulador de Portapapeles)</div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                    <button class="btn-action btn-save" onclick="addMockClip('code')">➕ Copiar Código Python</button>
+                    <button class="btn-action btn-save" onclick="addMockClip('math')" style="background:#f59e0b;">➕ Copiar Fórmula LaTeX</button>
+                    <button class="btn-action btn-save" onclick="addMockClip('image')" style="background:#a855f7;">➕ Copiar Captura / Imagen</button>
+                    <button class="btn-action btn-save" onclick="addMockClip('url')" style="background:#0ea5e9;">➕ Copiar URL</button>
+                    <button class="btn-action btn-delete" onclick="clearClipboardHistory()">🗑️ Vaciar Historial</button>
+                </div>
+            </div>
+
+            <!-- TABLA COMPARATIVA DE LOS 5 PARADIGMAS -->
+            <div class="glass-card">
+                <div class="card-title" style="margin-bottom:12px;">Matriz Comparativa de Ergonomía y Densidad</div>
+                <div style="overflow-x:auto;">
+                    <table style="width:100%;border-collapse:collapse;font-size:12.5px;color:var(--text-secondary);">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border-strong);color:var(--text-primary);text-align:left;">
+                                <th style="padding:8px 6px;">Paradigma</th>
+                                <th style="padding:8px 6px;">Ergonomía 1 Mano</th>
+                                <th style="padding:8px 6px;">Miniaturas Imagen</th>
+                                <th style="padding:8px 6px;">Indentación Código</th>
+                                <th style="padding:8px 6px;">Velocidad de Pegado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom:1px solid var(--border-subtle);">
+                                <td style="padding:8px 6px;font-weight:700;color:var(--primary);">1. Bento Grid Glass</td>
+                                <td style="padding:8px 6px;">⭐⭐⭐⭐⭐ (Excelente)</td>
+                                <td style="padding:8px 6px;">Thumbnails 16:9 integrados</td>
+                                <td style="padding:8px 6px;">2 líneas mono con badge</td>
+                                <td style="padding:8px 6px;">1 tap directo</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border-subtle);">
+                                <td style="padding:8px 6px;font-weight:700;color:var(--text-primary);">2. Filmstrip Reel</td>
+                                <td style="padding:8px 6px;">⭐⭐⭐⭐⭐ (No tapa teclas)</td>
+                                <td style="padding:8px 6px;">Tarjeta vertical visual</td>
+                                <td style="padding:8px 6px;">Zoom bubble superior</td>
+                                <td style="padding:8px 6px;">Deslizar + 1 tap</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border-subtle);">
+                                <td style="padding:8px 6px;font-weight:700;color:var(--text-primary);">3. Segmented Drawer</td>
+                                <td style="padding:8px 6px;">⭐⭐⭐⭐ (Filtro por tipo)</td>
+                                <td style="padding:8px 6px;">Pestaña dedicada</td>
+                                <td style="padding:8px 6px;">Pestaña código monospace</td>
+                                <td style="padding:8px 6px;">1 tap directo</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid var(--border-subtle);">
+                                <td style="padding:8px 6px;font-weight:700;color:var(--text-primary);">4. iOS Action Sheet</td>
+                                <td style="padding:8px 6px;">⭐⭐⭐⭐ (Aspecto nativo)</td>
+                                <td style="padding:8px 6px;">Tarjetas blur translúcidas</td>
+                                <td style="padding:8px 6px;">Resaltado de sintaxis</td>
+                                <td style="padding:8px 6px;">1 tap + auto-cierre</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px 6px;font-weight:700;color:var(--text-primary);">5. Dual-Pane Pro</td>
+                                <td style="padding:8px 6px;">⭐⭐⭐ (Más técnico)</td>
+                                <td style="padding:8px 6px;">Visor zoom en vivo</td>
+                                <td style="padding:8px 6px;">Formateador estricto c/líneas</td>
+                                <td style="padding:8px 6px;">Selección + Botón Pegar</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- PREVIEW AREA (PHONE FRAME) -->
         <div class="preview-pane">
             <div class="phone-frame">
@@ -1221,8 +1738,8 @@
                             <!-- Terminal Row Toggle -->
                             <div class="tb-key" title="Terminal">&gt;_</div>
                             
-                            <!-- Paste -->
-                            <div class="tb-key" title="Pegar">
+                            <!-- Paste / Clipboard Button -->
+                            <div class="tb-key" id="tbBtnPaste" title="Portapapeles &amp; Historial" onclick="toggleClipboardLayer()">
                                 <svg class="icon-svg-solid" viewBox="0 -960 960 960"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560h-80v120H280v-120h-80v560Zm308.5-571.5Q520-783 520-800t-11.5-28.5Q497-840 480-840t-28.5 11.5Q440-817 440-800t11.5 28.5Q463-760 480-760t28.5-11.5Z"/></svg>
                             </div>
 
@@ -1281,6 +1798,24 @@
                             <!-- SNIPPETS CHIPS GRID -->
                             <div class="snippet-chips-grid" id="snippetChipsGrid">
                                 <!-- Chips dynamically injected -->
+                            </div>
+                        </div>
+
+                        <!-- CLIPBOARD LAYER SECTION (MULTIMODAL: 5 PARADIGMAS) -->
+                        <div class="clipboard-view-wrapper" id="clipboardLayerArea" style="display:none;">
+                            <!-- Header de Portapapeles con buscador y botón de minimizar -->
+                            <div class="cb-header-bar">
+                                <span style="font-size:12px;opacity:0.7;">📋</span>
+                                <input type="text" class="cb-search-input" id="cbSearchInput" placeholder="Buscar en portapapeles..." oninput="onClipboardSearch(this.value)">
+                                <div class="cb-header-actions">
+                                    <span class="cb-opt-pill" id="cbCurrentOptBadge">Opción 1</span>
+                                    <div class="cb-btn-icon" title="Cerrar / Minimizar" onclick="toggleClipboardLayer()">✕</div>
+                                </div>
+                            </div>
+
+                            <!-- Contenedor dinámico de la opción activa de portapapeles -->
+                            <div id="cbDynamicContentArea">
+                                <!-- Injected dynamically by JS -->
                             </div>
                         </div>
 
@@ -1548,18 +2083,462 @@
         }
 
         function escapeHtml(text) {
+            if (!text) return "";
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
-        // Search Handlers
-        function onSearchChange(val) {
-            renderSnippetGrid(val);
+        // ==========================================================================
+        // CLIPBOARD & MULTIMODAL HISTORY JAVASCRIPT ENGINE
+        // ==========================================================================
+        let currentClipboardOption = 1;
+        let isClipboardLayerOpen = false;
+        let activeClipboardCategory = 'all';
+        let selectedInspectorClipId = "clip-1";
+
+        let clipboardList = [
+            {
+                id: "clip-1",
+                tipo: "code",
+                titulo: "Función Python Fibonacci",
+                contenido: "def fibonacci(n):\n    if n <= 1: return n\n    return fibonacci(n-1) + fibonacci(n-2)",
+                tiempo: "hace 2m",
+                pinned: true,
+                meta: "Python 3.11 • 3 líneas"
+            },
+            {
+                id: "clip-2",
+                tipo: "math",
+                titulo: "Fórmula de Energía Relativista",
+                contenido: "E = \\sqrt{(mc^2)^2 + (pc)^2}",
+                tiempo: "hace 8m",
+                pinned: true,
+                meta: "LaTeX Math • Physics"
+            },
+            {
+                id: "clip-3",
+                tipo: "image",
+                titulo: "Captura Mockup UI Terminal",
+                contenido: "[🖼️ Screenshot_2026-09-01_2200.png - 1080x2400]",
+                tiempo: "hace 14m",
+                pinned: false,
+                meta: "PNG • 1080×2400 • 420 KB",
+                imgSvg: `<svg viewBox="0 0 160 80" class="cb-thumb-img"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0284c7"/></linearGradient></defs><rect width="160" height="80" fill="url(#g1)"/><rect x="10" y="10" width="140" height="15" rx="3" fill="rgba(255,255,255,0.15)"/><circle cx="18" cy="17.5" r="3" fill="#ef4444"/><circle cx="28" cy="17.5" r="3" fill="#f59e0b"/><circle cx="38" cy="17.5" r="3" fill="#10b981"/><rect x="10" y="32" width="90" height="6" rx="2" fill="#38bdf8"/><rect x="10" y="44" width="120" height="6" rx="2" fill="rgba(255,255,255,0.4)"/><rect x="10" y="56" width="60" height="6" rx="2" fill="#34d399"/></svg>`
+            },
+            {
+                id: "clip-4",
+                tipo: "code",
+                titulo: "Git Branch & Rebase",
+                contenido: "git checkout -b feat/clipboard-multimodal && git rebase main",
+                tiempo: "hace 25m",
+                pinned: false,
+                meta: "Bash Shell"
+            },
+            {
+                id: "clip-5",
+                tipo: "url",
+                titulo: "Repositorio VoiceBubble",
+                contenido: "https://github.com/royleguiza/voice-bubble",
+                tiempo: "hace 40m",
+                pinned: false,
+                meta: "GitHub Repository"
+            },
+            {
+                id: "clip-6",
+                tipo: "text",
+                titulo: "Notas de Reunión de Producto",
+                contenido: "Auditoría de Portapapeles:\n• Separación estricta de transcripciones\n• Miniaturas para capturas\n• Preservar tabulaciones y saltos",
+                tiempo: "hace 1h",
+                pinned: false,
+                meta: "Texto Plano • 3 líneas"
+            }
+        ];
+
+        // Cambiar entre las 5 opciones de diseño
+        function selectClipboardOption(optNum) {
+            currentClipboardOption = optNum;
+            document.querySelectorAll('[id^="optBtn-"]').forEach((btn, idx) => {
+                if (idx + 1 === optNum) {
+                    btn.style.borderColor = 'var(--primary)';
+                    btn.style.background = 'var(--primary-bg)';
+                    btn.querySelector('div div:first-child').style.color = 'var(--primary)';
+                } else {
+                    btn.style.borderColor = 'var(--border-subtle)';
+                    btn.style.background = 'var(--bg-surface)';
+                    btn.querySelector('div div:first-child').style.color = 'var(--text-primary)';
+                }
+            });
+
+            document.getElementById('activeOptionLabel').innerText = `Opción ${optNum} Activa`;
+            const badge = document.getElementById('cbCurrentOptBadge');
+            if (badge) badge.innerText = `Opción ${optNum}`;
+
+            if (!isClipboardLayerOpen) {
+                openClipboardLayer();
+            } else {
+                renderClipboardLayer();
+            }
         }
 
-        function onSearchFocus(focused) {
-            const pill = document.getElementById('searchPillBox');
-            if (focused) pill.classList.add('focused');
-            else pill.classList.remove('focused');
+        // Abrir / Cerrar / Toggle Layer de Portapapeles
+        function toggleClipboardLayer() {
+            if (isClipboardLayerOpen) {
+                closeClipboardLayer();
+            } else {
+                openClipboardLayer();
+            }
+        }
+
+        function openClipboardLayer() {
+            isClipboardLayerOpen = true;
+            document.getElementById('snippetLayerArea').style.display = 'none';
+            document.getElementById('clipboardLayerArea').style.display = 'flex';
+            document.getElementById('tbBtnPaste').classList.add('active');
+            document.getElementById('tbBtnSnippets').classList.remove('active');
+            renderClipboardLayer();
+        }
+
+        function closeClipboardLayer() {
+            isClipboardLayerOpen = false;
+            document.getElementById('clipboardLayerArea').style.display = 'none';
+            document.getElementById('snippetLayerArea').style.display = 'flex';
+            document.getElementById('tbBtnPaste').classList.remove('active');
+            document.getElementById('tbBtnSnippets').classList.add('active');
+        }
+
+        // Renderizado del Contenedor de Portapapeles según la opción seleccionada
+        function renderClipboardLayer(query = "") {
+            const container = document.getElementById('cbDynamicContentArea');
+            if (!container) return;
+
+            const q = query.trim().toLowerCase();
+            let filtered = clipboardList.filter(c => {
+                const matchQ = c.titulo.toLowerCase().includes(q) || c.contenido.toLowerCase().includes(q);
+                if (activeClipboardCategory === 'all') return matchQ;
+                if (activeClipboardCategory === 'code') return matchQ && (c.tipo === 'code' || c.tipo === 'math');
+                if (activeClipboardCategory === 'image') return matchQ && c.tipo === 'image';
+                if (activeClipboardCategory === 'pinned') return matchQ && c.pinned;
+                return matchQ;
+            });
+
+            // Orden: Pinned primero
+            filtered.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div style="text-align:center;padding:24px 8px;font-size:12px;color:var(--text-tertiary);">Portapapeles vacío o sin coincidencias</div>`;
+                return;
+            }
+
+            switch (currentClipboardOption) {
+                case 1:
+                    renderOption1BentoGrid(container, filtered);
+                    break;
+                case 2:
+                    renderOption2FilmstripReel(container, filtered);
+                    break;
+                case 3:
+                    renderOption3SegmentedDrawer(container, filtered);
+                    break;
+                case 4:
+                    renderOption4IOSActionSheet(container, filtered);
+                    break;
+                case 5:
+                    renderOption5DualPanePro(container, filtered);
+                    break;
+                default:
+                    renderOption1BentoGrid(container, filtered);
+            }
+        }
+
+        // --- OPCIÓN 1: BENTO GRID GLASS ---
+        function renderOption1BentoGrid(container, items) {
+            let html = `<div class="cb-bento-grid">`;
+            items.forEach(c => {
+                const badgeClass = `cb-badge-${c.tipo}`;
+                const isMono = c.tipo === 'code' || c.tipo === 'math';
+                
+                let bodyHtml = '';
+                if (c.tipo === 'image') {
+                    bodyHtml = `
+                        <div class="cb-thumb-container">
+                            ${c.imgSvg || '<div style="color:#aaa;font-size:10px;">IMG PREVIEW</div>'}
+                            <span class="cb-thumb-meta">PNG</span>
+                        </div>
+                    `;
+                } else {
+                    bodyHtml = `<div class="cb-card-body ${isMono ? 'mono' : ''}">${escapeHtml(c.contenido)}</div>`;
+                }
+
+                html += `
+                    <div class="cb-bento-card" onclick="triggerClipInsert('${c.id}')">
+                        <div class="cb-card-header">
+                            <span class="cb-badge ${badgeClass}">${c.tipo.toUpperCase()}</span>
+                            <span class="cb-pin-badge ${c.pinned ? 'pinned' : ''}" onclick="togglePinClip('${c.id}', event)">📌</span>
+                        </div>
+                        ${bodyHtml}
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        // --- OPCIÓN 2: FILMSTRIP REEL + ZOOM PREVIEW ---
+        function renderOption2FilmstripReel(container, items) {
+            const first = items[0];
+            let html = `
+                <div class="cb-reel-zoom-preview" id="reelZoomBox">
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;">${escapeHtml(first.contenido)}</span>
+                    <span style="font-size:9px;color:var(--text-tertiary);font-family:sans-serif;">Tocar para pegar</span>
+                </div>
+                <div class="cb-reel-track">
+            `;
+
+            items.forEach(c => {
+                const badgeClass = `cb-badge-${c.tipo}`;
+                let thumbHtml = '';
+                if (c.tipo === 'image') {
+                    thumbHtml = `<div class="cb-thumb-container" style="height:48px;">${c.imgSvg}</div>`;
+                } else {
+                    thumbHtml = `<div class="cb-card-body mono" style="-webkit-line-clamp:3;font-size:9px;">${escapeHtml(c.contenido)}</div>`;
+                }
+
+                html += `
+                    <div class="cb-reel-item" onclick="triggerClipInsert('${c.id}')" onmouseenter="previewReelClip('${c.id}')">
+                        <div class="cb-card-header">
+                            <span class="cb-badge ${badgeClass}">${c.tipo.toUpperCase()}</span>
+                            <span style="font-size:9px;color:var(--text-tertiary);">${c.tiempo}</span>
+                        </div>
+                        ${thumbHtml}
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function previewReelClip(id) {
+            const clip = clipboardList.find(c => c.id === id);
+            const zoom = document.getElementById('reelZoomBox');
+            if (clip && zoom) {
+                zoom.innerHTML = `
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;">${escapeHtml(clip.contenido)}</span>
+                    <span style="font-size:9px;color:var(--primary);font-family:sans-serif;font-weight:700;">${clip.meta || 'Clip'}</span>
+                `;
+            }
+        }
+
+        // --- OPCIÓN 3: SEGMENTED DRAWER CON FILTROS ---
+        function renderOption3SegmentedDrawer(container, items) {
+            let html = `
+                <div class="cb-seg-bar">
+                    <div class="cb-seg-tab ${activeClipboardCategory === 'all' ? 'active' : ''}" onclick="setClipboardCategory('all')">Todo (${clipboardList.length})</div>
+                    <div class="cb-seg-tab ${activeClipboardCategory === 'code' ? 'active' : ''}" onclick="setClipboardCategory('code')">💻 Código</div>
+                    <div class="cb-seg-tab ${activeClipboardCategory === 'image' ? 'active' : ''}" onclick="setClipboardCategory('image')">🖼️ Capturas</div>
+                    <div class="cb-seg-tab ${activeClipboardCategory === 'pinned' ? 'active' : ''}" onclick="setClipboardCategory('pinned')">📌 Fijados</div>
+                </div>
+                <div class="cb-drawer-list">
+            `;
+
+            items.forEach(c => {
+                const isImg = c.tipo === 'image';
+                html += `
+                    <div class="cb-drawer-row" onclick="triggerClipInsert('${c.id}')">
+                        <div style="display:flex;align-items:center;gap:8px;overflow:hidden;flex:1;">
+                            <span class="cb-badge cb-badge-${c.tipo}">${c.tipo.toUpperCase()}</span>
+                            <div style="font-size:11px;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:${c.tipo === 'code' || c.tipo === 'math' ? 'JetBrains Mono, monospace' : 'inherit'};">
+                                ${escapeHtml(c.contenido)}
+                            </div>
+                        </div>
+                        <span style="font-size:9.5px;color:var(--text-tertiary);margin-left:8px;flex-shrink:0;">${c.tiempo}</span>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function setClipboardCategory(cat) {
+            activeClipboardCategory = cat;
+            renderClipboardLayer();
+        }
+
+        // --- OPCIÓN 4: IOS ACTION SHEET GLASS ---
+        function renderOption4IOSActionSheet(container, items) {
+            let html = `
+                <div class="cb-sheet-glass-card">
+                    <div class="cb-sheet-grabber"></div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                        <span style="font-size:11px;font-weight:800;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.04em;">Portapapeles Reciente</span>
+                        <span style="font-size:10px;color:var(--primary);font-weight:700;">${items.length} elementos</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px;max-height:86px;overflow-y:auto;padding-right:2px;">
+            `;
+
+            items.forEach(c => {
+                html += `
+                    <div style="background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:9px;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="triggerClipInsert('${c.id}')">
+                        <div style="overflow:hidden;flex:1;">
+                            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+                                <span class="cb-badge cb-badge-${c.tipo}">${c.tipo.toUpperCase()}</span>
+                                <span style="font-size:10.5px;font-weight:700;color:var(--text-primary);">${c.titulo}</span>
+                            </div>
+                            <div style="font-size:10px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:${c.tipo === 'code' || c.tipo === 'math' ? 'JetBrains Mono, monospace' : 'inherit'};">
+                                ${escapeHtml(c.contenido)}
+                            </div>
+                        </div>
+                        <span style="font-size:12px;opacity:0.6;">📋</span>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        // --- OPCIÓN 5: SPLIT DUAL-PANE PRO ---
+        function renderOption5DualPanePro(container, items) {
+            const activeClip = clipboardList.find(c => c.id === selectedInspectorClipId) || items[0] || clipboardList[0];
+
+            let html = `
+                <div class="cb-dual-layout">
+                    <div class="cb-dual-list">
+            `;
+
+            items.forEach(c => {
+                const isSelected = c.id === activeClip.id;
+                html += `
+                    <div class="cb-dual-item ${isSelected ? 'active' : ''}" onclick="selectDualInspectorClip('${c.id}')">
+                        <span style="font-size:9px;font-weight:800;color:var(--primary);">[${c.tipo[0].toUpperCase()}]</span> ${c.titulo}
+                    </div>
+                `;
+            });
+
+            let inspectorBody = '';
+            if (activeClip.tipo === 'image') {
+                inspectorBody = `<div class="cb-thumb-container" style="height:65px;margin-bottom:6px;">${activeClip.imgSvg}</div>`;
+            } else {
+                inspectorBody = `<div class="cb-dual-code-view">${escapeHtml(activeClip.contenido)}</div>`;
+            }
+
+            html += `
+                    </div>
+                    <div class="cb-dual-inspector">
+                        ${inspectorBody}
+                        <button class="cb-btn-paste-large" onclick="triggerClipInsert('${activeClip.id}')">Pegar en Terminal</button>
+                    </div>
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        function selectDualInspectorClip(id) {
+            selectedInspectorClipId = id;
+            renderClipboardLayer();
+        }
+
+        // Insertar elemento de portapapeles a la terminal
+        function triggerClipInsert(clipId) {
+            const clip = clipboardList.find(c => c.id === clipId);
+            if (!clip) return;
+
+            const terminal = document.getElementById('terminalTextOutput');
+            const card = document.getElementById('terminalOutputCard');
+
+            if (clip.tipo === 'image') {
+                terminal.innerHTML = `
+                    <span style="color:#a855f7;font-weight:700;">[IMG PASTE] </span>
+                    <span style="color:#c084fc;">${escapeHtml(clip.contenido)}</span>
+                    <div style="margin-top:6px;width:120px;height:55px;border-radius:6px;overflow:hidden;border:1px solid #a855f7;">${clip.imgSvg}</div>
+                    <span class="terminal-cursor"></span>
+                `;
+            } else {
+                terminal.innerHTML = `
+                    <span style="color:#10b981;font-weight:700;">$ </span>
+                    <span style="white-space:pre-wrap;">${escapeHtml(clip.contenido)}</span>
+                    <span class="terminal-cursor"></span>
+                `;
+            }
+
+            card.classList.add('glow');
+            setTimeout(() => card.classList.remove('glow'), 400);
+
+            // Toast feedback
+            document.getElementById('matchCounter').innerText = `Pegado: ${clip.titulo}`;
+        }
+
+        // Pin / Unpin
+        function togglePinClip(id, event) {
+            if (event) event.stopPropagation();
+            const clip = clipboardList.find(c => c.id === id);
+            if (clip) {
+                clip.pinned = !clip.pinned;
+                renderClipboardLayer();
+            }
+        }
+
+        // Búsqueda en Portapapeles
+        function onClipboardSearch(query) {
+            renderClipboardLayer(query);
+        }
+
+        // Agregar elementos de prueba desde la UI
+        function addMockClip(type) {
+            let newClip = null;
+            const now = "ahora";
+
+            if (type === 'code') {
+                newClip = {
+                    id: "clip-" + Date.now(),
+                    tipo: "code",
+                    titulo: "SQL Query Agrupado",
+                    contenido: "SELECT user_id, COUNT(*) AS total_clips\nFROM clipboard_entries\nGROUP BY user_id\nHAVING total_clips > 5;",
+                    tiempo: now,
+                    pinned: false,
+                    meta: "PostgreSQL"
+                };
+            } else if (type === 'math') {
+                newClip = {
+                    id: "clip-" + Date.now(),
+                    tipo: "math",
+                    titulo: "Integral Gaussiana",
+                    contenido: "\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}",
+                    tiempo: now,
+                    pinned: false,
+                    meta: "LaTeX Calculus"
+                };
+            } else if (type === 'image') {
+                newClip = {
+                    id: "clip-" + Date.now(),
+                    tipo: "image",
+                    titulo: "Nueva Captura de Pantalla",
+                    contenido: "[🖼️ Screenshot_" + Date.now() + ".png - 1080x2400]",
+                    tiempo: now,
+                    pinned: false,
+                    meta: "PNG • 1080×2400",
+                    imgSvg: `<svg viewBox="0 0 160 80" class="cb-thumb-img"><defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#14532d"/><stop offset="100%" stop-color="#10b981"/></linearGradient></defs><rect width="160" height="80" fill="url(#g2)"/><rect x="15" y="15" width="130" height="50" rx="6" fill="rgba(255,255,255,0.2)"/><circle cx="45" cy="40" r="14" fill="#34d399"/><polygon points="70,50 95,25 120,50" fill="rgba(255,255,255,0.6)"/></svg>`
+                };
+            } else if (type === 'url') {
+                newClip = {
+                    id: "clip-" + Date.now(),
+                    tipo: "url",
+                    titulo: "Documentación Flutter",
+                    contenido: "https://docs.flutter.dev/cookbook/forms",
+                    tiempo: now,
+                    pinned: false,
+                    meta: "Web Link"
+                };
+            }
+
+            if (newClip) {
+                clipboardList.unshift(newClip);
+                if (!isClipboardLayerOpen) openClipboardLayer();
+                else renderClipboardLayer();
+            }
+        }
+
+        function clearClipboardHistory() {
+            clipboardList = clipboardList.filter(c => c.pinned);
+            renderClipboardLayer();
         }
 
         // Shift Toggle
@@ -1575,10 +2554,11 @@
 
         // Simulated Keyboard Typing
         function typeKey(ch) {
-            const input = document.getElementById('searchInputField');
+            const input = isClipboardLayerOpen ? document.getElementById('cbSearchInput') : document.getElementById('searchInputField');
             const actualChar = isShiftActive ? ch.toUpperCase() : ch.toLowerCase();
             input.value += actualChar;
-            onSearchChange(input.value);
+            if (isClipboardLayerOpen) onClipboardSearch(input.value);
+            else onSearchChange(input.value);
             
             // Auto un-shift after letter if not locked
             if (isShiftActive && ch !== ' ' && ch !== ',' && ch !== '.') {
@@ -1587,13 +2567,14 @@
         }
 
         function typeBackspace() {
-            const input = document.getElementById('searchInputField');
+            const input = isClipboardLayerOpen ? document.getElementById('cbSearchInput') : document.getElementById('searchInputField');
             input.value = input.value.slice(0, -1);
-            onSearchChange(input.value);
+            if (isClipboardLayerOpen) onClipboardSearch(input.value);
+            else onSearchChange(input.value);
         }
 
         function typeEnter() {
-            const input = document.getElementById('searchInputField');
+            const input = isClipboardLayerOpen ? document.getElementById('cbSearchInput') : document.getElementById('searchInputField');
             input.blur();
         }
 
@@ -1604,6 +2585,12 @@
 
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             document.getElementById(`pane-${tabId}`).classList.add('active');
+
+            if (tabId === 'clipboard') {
+                openClipboardLayer();
+            } else if (tabId === 'snippets') {
+                closeClipboardLayer();
+            }
         }
 
         // Theme Toggle
@@ -1659,6 +2646,7 @@
 
         // Initial Render
         renderSnippetGrid();
+        renderClipboardLayer();
     </script>
 </body>
 </html>
