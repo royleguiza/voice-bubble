@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/transcription_service.dart';
