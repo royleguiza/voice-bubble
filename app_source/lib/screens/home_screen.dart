@@ -515,34 +515,33 @@ class _HomeScreenState extends State<HomeScreen>
       body: LayoutBuilder(
         builder: (context, constraints) {
           final historyBottom = insets.bottom + kHistoryPillBottomGap;
-          final recordBottom = math.max(
-            historyBottom + 48,
-            constraints.maxHeight * kRecordClusterBottomFactor,
-          );
+          final recordBottom =
+              constraints.maxHeight * kRecordClusterBottomFactor;
           return Stack(
             children: [
-              // Zona de gesto inferior para desplegar el historial (acotada al pill para no solapar el botón de grabación).
+              // Zona de gesto inferior para desplegar el historial.
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: historyBottom,
-                child: Center(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _openHistory,
-                    onVerticalDragEnd: (details) {
-                      if ((details.primaryVelocity ?? 0) < -100) {
-                        _openHistory();
-                      }
-                    },
-                    onVerticalDragUpdate: (details) {
-                      if (details.delta.dy < -8) {
-                        _openHistory();
-                      }
-                    },
+                bottom: 0,
+                height: historyBottom + 52,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _openHistory,
+                  onVerticalDragEnd: (details) {
+                    if ((details.primaryVelocity ?? 0) < -100) {
+                      _openHistory();
+                    }
+                  },
+                  onVerticalDragUpdate: (details) {
+                    if (details.delta.dy < -8) {
+                      _openHistory();
+                    }
+                  },
+                  child: Align(
+                    alignment: Alignment.topCenter,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.only(top: 8),
                       child: Semantics(
                         button: true,
                         label: 'Abrir historial',

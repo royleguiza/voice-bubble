@@ -461,14 +461,16 @@ class StorageService {
     // disco sobrevive, para no pisar una transcripción recién añadida
     // durante un resume. Dedup por timestamp; ante colisión gana la entrada
     // recién leída del disco.
-    final byTimestamp = <DateTime, Transcription>{};
+    final byIdentity = <String, Transcription>{};
     for (final t in loaded) {
-      byTimestamp.putIfAbsent(t.timestamp, () => t);
+      byIdentity.putIfAbsent(
+          '${t.timestamp.microsecondsSinceEpoch}|${t.text}', () => t);
     }
     for (final t in _transcriptions) {
-      byTimestamp.putIfAbsent(t.timestamp, () => t);
+      byIdentity.putIfAbsent(
+          '${t.timestamp.microsecondsSinceEpoch}|${t.text}', () => t);
     }
-    final merged = byTimestamp.values.toList()
+    final merged = byIdentity.values.toList()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     _transcriptions =
         merged.length > maxItems ? merged.sublist(0, maxItems) : merged;
@@ -478,8 +480,6 @@ class StorageService {
   }
 
   Future<void> add(Transcription transcription) async {
-    // Sincronizar primero con el estado fresco de disco (evita pisar dictados del teclado)
-    await load();
     _transcriptions.insert(0, transcription);
     if (_transcriptions.length > maxItems) {
       _transcriptions = _transcriptions.sublist(0, maxItems);
