@@ -476,6 +476,8 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _floatingBubbleService.onBubbleTap = null;
+    _floatingBubbleService.onBubbleClose = null;
     _popupCtrl.dispose();
     super.dispose();
   }
