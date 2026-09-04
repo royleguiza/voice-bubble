@@ -1259,13 +1259,13 @@ class _SettingsScreenState extends State<SettingsScreen>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: _isAccessibilityGranted
-                    ? Colors.green.withOpacity(0.08)
-                    : Colors.amber.withOpacity(0.12),
+                    ? const Color(0x144CAF50)
+                    : const Color(0x1FFF9800),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: _isAccessibilityGranted
-                      ? Colors.green.withOpacity(0.3)
-                      : Colors.amber.withOpacity(0.4),
+                      ? const Color(0x4D4CAF50)
+                      : const Color(0x66FF9800),
                 ),
               ),
               child: Row(

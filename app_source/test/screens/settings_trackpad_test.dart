@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
+import 'package:voice_bubble_stt/services/floating_trackpad_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
