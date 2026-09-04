@@ -509,6 +509,7 @@ class VoiceKeyboardService : InputMethodService() {
                 if (isTp) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
                 1.0f,
                 if (isTp) (if (spanishMode) "teclado" else "keyboard") else "trackpad",
+                tintColorRes = if (isTp) R.color.kb_label_on_accent else R.color.kb_label,
             ) {
                 toggleTrackpadLayer()
             }
@@ -769,8 +770,32 @@ class VoiceKeyboardService : InputMethodService() {
         rebuild()
     }
 
+    private fun getTargetTrackpadHeightPx(): Int {
+        val totalKeyRows = if (terminalRowVisiblePref) 5 else 4
+        return totalKeyRows * keyHeightPx() + (totalKeyRows - 1) * rowGapPx()
+    }
+
+    private fun beginKeyboardTransition() {
+        if (!reducedMotion()) {
+            try {
+                val transition = TransitionSet().apply {
+                    ordering = TransitionSet.ORDERING_TOGETHER
+                    addTransition(ChangeBounds().apply {
+                        duration = 180L
+                        interpolator = DecelerateInterpolator()
+                    })
+                    addTransition(Fade().apply {
+                        duration = 140L
+                    })
+                }
+                TransitionManager.beginDelayedTransition(root, transition)
+            } catch (_: Exception) {}
+        }
+    }
+
     private fun toggleTrackpadLayer() {
         if (currentIsPasswordField) return
+        beginKeyboardTransition()
         if (layer == Layer.TRACKPAD) {
             layer = lastLettersLayer
             pointerOverlayManager?.hide()
@@ -811,6 +836,7 @@ class VoiceKeyboardService : InputMethodService() {
 
     private fun buildTrackpadLayer(): View {
         val manager = getOrCreatePointerOverlay()
+        val targetHeight = getTargetTrackpadHeightPx()
         return VirtualTrackpadView(
             context = this,
             scrollPosition = trackpadScrollPosition,
@@ -818,6 +844,7 @@ class VoiceKeyboardService : InputMethodService() {
             secondaryClickMode = trackpadSecondaryClick,
             scrollDirection = trackpadScrollDirection,
             autoReturnSeconds = trackpadAutoReturn,
+            trackpadHeightPx = targetHeight,
             listener = object : VirtualTrackpadView.TrackpadListener {
                 override fun onPointerMove(dx: Float, dy: Float) {
                     manager.moveBy(dx, dy)
@@ -1156,10 +1183,17 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun addRow(row: View) {
-        val lp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        )
+        val lp = if (row is VirtualTrackpadView) {
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                getTargetTrackpadHeightPx(),
+            )
+        } else {
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+        }
         if (root.childCount > 0) {
             lp.topMargin = rowGapPx()
         }

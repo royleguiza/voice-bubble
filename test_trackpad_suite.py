@@ -129,6 +129,10 @@ if os.path.isfile(vtv_kt_path):
     check("VirtualTrackpadView re-ancla coordenadas tras ACTION_POINTER_UP para evitar saltos", "remainingIndex" in vtv_content)
     check("VirtualTrackpadView implementa modo de clic secundario 'hold' (mantener)", 'secondaryClickMode == "hold"' in vtv_content and "holdRunnable" in vtv_content)
     check("VirtualTrackpadView cancela pulsación de botón si el toque sale del área", "inside" in vtv_content)
+    check("VirtualTrackpadView acota altura vía onMeasure con MeasureSpec.EXACTLY", "MeasureSpec.EXACTLY" in vtv_content and "onMeasure" in vtv_content)
+    check("VirtualTrackpadView contraste accesible en clic izquierdo (acento primario)", "isPrimary" in vtv_content and "kb_key_bg_accent" in vtv_content)
+    check("VirtualTrackpadView contraste accesible en clic derecho (neutro sólido)", "CLIC" in vtv_content and "DER" in vtv_content and ("3C3C43" in vtv_content or "EBEBF5" in vtv_content))
+    check("VirtualTrackpadView feedback visual de contraste en scroll strip", "pressedBgColor" in vtv_content and ("26007AFF" in vtv_content or "330A84FF" in vtv_content))
 
 # --- TEST 6: VoiceKeyboardService integración ---
 check("VoiceKeyboardService declara Layer.TRACKPAD", "Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD }" in vk_content)
@@ -141,6 +145,8 @@ check("VoiceKeyboardService oculta overlay en onFinishInputView y onWindowHidden
 check("VoiceKeyboardService previene loop en lastLettersLayer", "layer != Layer.TRACKPAD" in vk_content)
 check("VoiceKeyboardService lee kb_trackpad_auto_return tolerante a Integer y Long", "is Number -> raw.toInt()" in vk_content)
 check("VoiceKeyboardService despacha trackpad vía InputConnection nativo", "sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)" in vk_content)
+check("VoiceKeyboardService transición suave morphing al alternar trackpad", "beginKeyboardTransition" in vk_content and "TransitionManager" in vk_content)
+check("VoiceKeyboardService altura determinista del trackpad acorde al teclado", "getTargetTrackpadHeightPx" in vk_content and "totalKeyRows" in vk_content)
 
 # --- TEST 7: Auditoría de Cero-Logs y Cero-Telemetría ---
 trackpad_files = [acc_kt_path, pom_kt_path, vtv_kt_path]

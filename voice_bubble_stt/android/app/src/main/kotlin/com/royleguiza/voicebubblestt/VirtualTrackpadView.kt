@@ -1,6 +1,7 @@
 package com.royleguiza.voicebubblestt
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -11,8 +12,10 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import android.view.animation.DecelerateInterpolator
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import kotlin.math.abs
 
 /**
@@ -33,15 +36,35 @@ import kotlin.math.abs
  *
  * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni persistencia de eventos táctiles.
  */
-class VirtualTrackpadView(
+class VirtualTrackpadView @JvmOverloads constructor(
     context: Context,
     private val scrollPosition: String = "right", // right, left, disabled
     private val tapToClick: Boolean = true,
     private val secondaryClickMode: String = "2fingers", // 2fingers, button, hold
     private val scrollDirection: String = "natural", // natural, standard
     private val autoReturnSeconds: Int = 0,
+    private val trackpadHeightPx: Int = 0,
     private val listener: TrackpadListener
 ) : LinearLayout(context) {
+
+    constructor(
+        context: Context,
+        scrollPosition: String = "right",
+        tapToClick: Boolean = true,
+        secondaryClickMode: String = "2fingers",
+        scrollDirection: String = "natural",
+        autoReturnSeconds: Int = 0,
+        listener: TrackpadListener
+    ) : this(
+        context = context,
+        scrollPosition = scrollPosition,
+        tapToClick = tapToClick,
+        secondaryClickMode = secondaryClickMode,
+        scrollDirection = scrollDirection,
+        autoReturnSeconds = autoReturnSeconds,
+        trackpadHeightPx = 0,
+        listener = listener
+    )
 
     interface TrackpadListener {
         fun onPointerMove(dx: Float, dy: Float)
@@ -55,7 +78,10 @@ class VirtualTrackpadView(
     private val density = context.resources.displayMetrics.density
     private val wingWidthPx = (68 * density).toInt()
     private val gapPx = (4 * density).toInt()
-    private val trackpadHeightPx = (200 * density).toInt()
+    private val effectiveHeightPx: Int = if (trackpadHeightPx > 0) trackpadHeightPx else (210 * density).toInt()
+
+    private val isNight: Boolean
+        get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
     private val handler = Handler(Looper.getMainLooper())
     private val autoReturnRunnable = Runnable {
@@ -64,11 +90,32 @@ class VirtualTrackpadView(
 
     init {
         orientation = HORIZONTAL
-        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, trackpadHeightPx).apply {
+        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, effectiveHeightPx).apply {
             setMargins(gapPx, gapPx, gapPx, gapPx)
         }
         setupWings()
         resetAutoReturnTimer()
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val parentHeight = MeasureSpec.getSize(heightMeasureSpec)
+        val heightMode = MeasureSpec.getMode(heightMeasureSpec)
+        val targetH = when {
+            heightMode == MeasureSpec.EXACTLY && parentHeight > 0 -> parentHeight
+            effectiveHeightPx > 0 -> effectiveHeightPx
+            layoutParams != null && layoutParams.height > 0 -> layoutParams.height
+            else -> (210 * density).toInt()
+        }
+        val exactHeightSpec = MeasureSpec.makeMeasureSpec(targetH, MeasureSpec.EXACTLY)
+        super.onMeasure(widthMeasureSpec, exactHeightSpec)
+        setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), targetH)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (alpha == 0f) {
+            animate().alpha(1f).setDuration(160L).setInterpolator(DecelerateInterpolator()).start()
+        }
     }
 
     private fun resetAutoReturnTimer() {
@@ -134,7 +181,7 @@ class VirtualTrackpadView(
             "left" -> {
                 // Scroll en ala izquierda + botón L (flex 0.8); botón R en ala derecha al 100%
                 val scrollStrip = createScrollStripView(weight = 1.4f)
-                val btnLeft = createWingButton("CLIC", "IZQ", weight = 0.8f) {
+                val btnLeft = createWingButton("CLIC", "IZQ", weight = 0.8f, isPrimary = true) {
                     resetAutoReturnTimer()
                     listener.performHaptic(isFirm = false)
                     listener.onLeftClick()
@@ -142,7 +189,7 @@ class VirtualTrackpadView(
                 leftWing.addView(scrollStrip)
                 leftWing.addView(btnLeft)
 
-                val btnRight = createWingButton("CLIC", "DER", weight = 1.0f) {
+                val btnRight = createWingButton("CLIC", "DER", weight = 1.0f, isPrimary = false) {
                     resetAutoReturnTimer()
                     listener.performHaptic(isFirm = true)
                     listener.onRightClick()
@@ -151,14 +198,14 @@ class VirtualTrackpadView(
             }
             "disabled" -> {
                 // Ambos botones expandidos al 100% de la altura (flex 1.0)
-                val btnLeft = createWingButton("CLIC", "IZQ", weight = 1.0f) {
+                val btnLeft = createWingButton("CLIC", "IZQ", weight = 1.0f, isPrimary = true) {
                     resetAutoReturnTimer()
                     listener.performHaptic(isFirm = false)
                     listener.onLeftClick()
                 }
                 leftWing.addView(btnLeft)
 
-                val btnRight = createWingButton("CLIC", "DER", weight = 1.0f) {
+                val btnRight = createWingButton("CLIC", "DER", weight = 1.0f, isPrimary = false) {
                     resetAutoReturnTimer()
                     listener.performHaptic(isFirm = true)
                     listener.onRightClick()
@@ -167,7 +214,7 @@ class VirtualTrackpadView(
             }
             else -> { // "right" (default)
                 // Botón L en ala izquierda al 100%; scroll (flex 1.4) + botón R (flex 0.8) en ala derecha
-                val btnLeft = createWingButton("CLIC", "IZQ", weight = 1.0f) {
+                val btnLeft = createWingButton("CLIC", "IZQ", weight = 1.0f, isPrimary = true) {
                     resetAutoReturnTimer()
                     listener.performHaptic(isFirm = false)
                     listener.onLeftClick()
@@ -175,7 +222,7 @@ class VirtualTrackpadView(
                 leftWing.addView(btnLeft)
 
                 val scrollStrip = createScrollStripView(weight = 1.4f)
-                val btnRight = createWingButton("CLIC", "DER", weight = 0.8f) {
+                val btnRight = createWingButton("CLIC", "DER", weight = 0.8f, isPrimary = false) {
                     resetAutoReturnTimer()
                     listener.performHaptic(isFirm = true)
                     listener.onRightClick()
@@ -194,20 +241,49 @@ class VirtualTrackpadView(
         title: String,
         subtitle: String,
         weight: Float,
+        isPrimary: Boolean = false,
         onClick: () -> Unit
     ): View {
+        val night = isNight
+        val normalBgColor = ContextCompat.getColor(context, R.color.kb_key_bg)
+        val strokeColor = ContextCompat.getColor(context, R.color.kb_key_stroke)
+        val pressedBgColor = ContextCompat.getColor(context, R.color.kb_key_pressed)
+        val titleColor = ContextCompat.getColor(context, R.color.kb_label)
+
+        // Contraste óptimo para subtítulos:
+        // Clic Izquierdo (isPrimary = true): Azul de acento accesible (kb_key_bg_accent: #007AFF en claro, #0A84FF en noche).
+        // Clic Derecho (isPrimary = false): Neutro sólido de alto contraste (#3C3C43 en claro, ratio > 10:1; #EBEBF5 en noche, ratio > 11:1).
+        val subtitleColor = if (isPrimary) {
+            ContextCompat.getColor(context, R.color.kb_key_bg_accent)
+        } else {
+            if (night) Color.parseColor("#FFEBEBF5") else Color.parseColor("#FF3C3C43")
+        }
+
+        val strokeActiveColor = if (isPrimary) {
+            ContextCompat.getColor(context, R.color.kb_key_bg_accent)
+        } else {
+            if (night) Color.parseColor("#8E8E93") else Color.parseColor("#636366")
+        }
+
+        val activeBgColor = if (isPrimary) {
+            if (night) Color.parseColor("#330A84FF") else Color.parseColor("#26007AFF")
+        } else {
+            pressedBgColor
+        }
+
         val button = LinearLayout(context).apply {
             orientation = VERTICAL
             gravity = Gravity.CENTER
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, weight).apply {
                 setMargins(0, gapPx / 2, 0, gapPx / 2)
             }
+            elevation = 2f * density
 
             val bg = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 14f * density
-                setColor(Color.parseColor("#1FFFFFFF")) // Translucidez Liquid Glass
-                setStroke((1f * density).toInt(), Color.parseColor("#33FFFFFF"))
+                setColor(normalBgColor)
+                setStroke((1.2f * density).toInt(), strokeColor)
             }
             background = bg
 
@@ -215,37 +291,44 @@ class VirtualTrackpadView(
                 text = title
                 textSize = 13f
                 gravity = Gravity.CENTER
-                setTextColor(Color.WHITE)
+                setTextColor(titleColor)
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
             val tvSub = TextView(context).apply {
                 text = subtitle
                 textSize = 10f
                 gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#B3FFFFFF"))
+                setTextColor(subtitleColor)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
 
             addView(tvTitle)
             addView(tvSub)
 
             setOnTouchListener { v, event ->
-                when (event.action) {
+                when (event.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
                         resetAutoReturnTimer()
                         v.isPressed = true
-                        bg.setColor(Color.parseColor("#330A84FF"))
+                        bg.setColor(activeBgColor)
+                        bg.setStroke((1.5f * density).toInt(), strokeActiveColor)
                         true
                     }
                     MotionEvent.ACTION_MOVE -> {
                         val inside = event.x >= 0 && event.x <= v.width && event.y >= 0 && event.y <= v.height
                         if (v.isPressed != inside) {
                             v.isPressed = inside
-                            bg.setColor(if (inside) Color.parseColor("#330A84FF") else Color.parseColor("#1FFFFFFF"))
+                            bg.setColor(if (inside) activeBgColor else normalBgColor)
+                            bg.setStroke(
+                                (if (inside) 1.5f else 1.2f * density).toInt(),
+                                if (inside) strokeActiveColor else strokeColor
+                            )
                         }
                         true
                     }
                     MotionEvent.ACTION_UP -> {
-                        bg.setColor(Color.parseColor("#1FFFFFFF"))
+                        bg.setColor(normalBgColor)
+                        bg.setStroke((1.2f * density).toInt(), strokeColor)
                         if (v.isPressed) {
                             v.isPressed = false
                             onClick()
@@ -253,7 +336,8 @@ class VirtualTrackpadView(
                         true
                     }
                     MotionEvent.ACTION_CANCEL -> {
-                        bg.setColor(Color.parseColor("#1FFFFFFF"))
+                        bg.setColor(normalBgColor)
+                        bg.setStroke((1.2f * density).toInt(), strokeColor)
                         v.isPressed = false
                         true
                     }
@@ -326,17 +410,29 @@ class VirtualTrackpadView(
             }
         }
 
+        private val isNight: Boolean
+            get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+        private val surfaceBgColor: Int
+            get() = if (isNight) Color.parseColor("#140F172A") else Color.parseColor("#0F007AFF")
+        private val strokeNormalColor: Int
+            get() = if (isNight) Color.parseColor("#4738BDF8") else Color.parseColor("#66007AFF")
+        private val strokeActiveColor: Int
+            get() = if (isNight) Color.parseColor("#8038BDF8") else Color.parseColor("#CC007AFF")
+        private val gridColor: Int
+            get() = if (isNight) Color.parseColor("#0D38BDF8") else Color.parseColor("#26007AFF")
+
         private val surfaceBg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 16f * density
-            setColor(Color.parseColor("#140F172A")) // Translucidez oscura elegante
-            setStroke((1.2f * density).toInt(), Color.parseColor("#4738BDF8")) // Borde cian cristal
+            setColor(surfaceBgColor)
+            setStroke((1.2f * density).toInt(), strokeNormalColor)
         }
 
         private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 1f * density
-            color = Color.parseColor("#0D38BDF8") // Cuadrícula tenue
+            color = gridColor
         }
 
         init {
@@ -350,7 +446,7 @@ class VirtualTrackpadView(
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
-            // Dibuja guías sutiles de cuadrícula Liquid Glass
+            gridPaint.color = gridColor
             val w = width.toFloat()
             val h = height.toFloat()
             val step = 32f * density
@@ -386,7 +482,7 @@ class VirtualTrackpadView(
                         surfaceHandler.postDelayed(holdRunnable, ViewConfiguration.getLongPressTimeout().toLong())
                     }
 
-                    surfaceBg.setStroke((1.5f * density).toInt(), Color.parseColor("#8038BDF8"))
+                    surfaceBg.setStroke((1.5f * density).toInt(), strokeActiveColor)
                     invalidate()
                     return true
                 }
@@ -440,7 +536,7 @@ class VirtualTrackpadView(
                 }
                 MotionEvent.ACTION_UP -> {
                     surfaceHandler.removeCallbacks(holdRunnable)
-                    surfaceBg.setStroke((1.2f * density).toInt(), Color.parseColor("#4738BDF8"))
+                    surfaceBg.setStroke((1.2f * density).toInt(), strokeNormalColor)
                     invalidate()
 
                     val duration = System.currentTimeMillis() - downTime
@@ -454,7 +550,7 @@ class VirtualTrackpadView(
                 }
                 MotionEvent.ACTION_CANCEL -> {
                     surfaceHandler.removeCallbacks(holdRunnable)
-                    surfaceBg.setStroke((1.2f * density).toInt(), Color.parseColor("#4738BDF8"))
+                    surfaceBg.setStroke((1.2f * density).toInt(), strokeNormalColor)
                     invalidate()
                 }
             }
@@ -477,22 +573,34 @@ class VirtualTrackpadView(
         private var lastY = 0f
         private var accumulatedDistance = 0f
 
+        private val isNight: Boolean
+            get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+
+        private val normalBgColor = ContextCompat.getColor(context, R.color.kb_key_bg_alt)
+        private val strokeColor = ContextCompat.getColor(context, R.color.kb_key_stroke)
+        private val pressedBgColor: Int
+            get() = if (isNight) Color.parseColor("#330A84FF") else Color.parseColor("#26007AFF")
+        private val strokeActiveColor: Int
+            get() = if (isNight) Color.parseColor("#800A84FF") else Color.parseColor("#CC007AFF")
+        private val iconColor = ContextCompat.getColor(context, R.color.kb_label)
+
         private val bg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 14f * density
-            setColor(Color.parseColor("#1FFFFFFF"))
-            setStroke((1f * density).toInt(), Color.parseColor("#33FFFFFF"))
+            setColor(normalBgColor)
+            setStroke((1.2f * density).toInt(), strokeColor)
         }
 
         private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 2f * density
             strokeCap = Paint.Cap.ROUND
-            color = Color.parseColor("#B3FFFFFF")
+            color = iconColor
         }
 
         init {
             background = bg
+            elevation = 1.5f * density
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -518,11 +626,12 @@ class VirtualTrackpadView(
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
             onInteraction()
-            when (event.action) {
+            when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     lastY = event.y
                     accumulatedDistance = 0f
-                    bg.setColor(Color.parseColor("#330A84FF"))
+                    bg.setColor(pressedBgColor)
+                    bg.setStroke((1.5f * density).toInt(), strokeActiveColor)
                     invalidate()
                     return true
                 }
@@ -540,7 +649,8 @@ class VirtualTrackpadView(
                     }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    bg.setColor(Color.parseColor("#1FFFFFFF"))
+                    bg.setColor(normalBgColor)
+                    bg.setStroke((1.2f * density).toInt(), strokeColor)
                     invalidate()
                 }
             }
