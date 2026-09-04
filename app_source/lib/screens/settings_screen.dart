@@ -84,6 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     _loadInitialState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureMicrophonePermission();
+      _loadTrackpadStatus();
     });
   }
 
@@ -119,10 +120,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     final trackpadHaptic = await _storageService.getTrackpadHaptic();
     final trackpadPointerStyle = await _storageService.getTrackpadPointerStyle();
     final trackpadAutoReturn = await _storageService.getTrackpadAutoReturn();
-    final isTrackpadBubbleRunning =
-        await _floatingTrackpadService.isTrackpadBubbleRunning();
-    final isAccessibilityGranted =
-        await _floatingTrackpadService.isAccessibilityGranted();
     // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
     if (apiKey.isNotEmpty) {
       try {
@@ -135,8 +132,6 @@ class _SettingsScreenState extends State<SettingsScreen>
       _hasApiKey = apiKey.isNotEmpty;
       _recordMode = results.$1;
       _isBubbleEnabled = results.$2;
-      _isTrackpadBubbleRunning = isTrackpadBubbleRunning;
-      _isAccessibilityGranted = isAccessibilityGranted;
       _isKeyboardEnabled = results.$3.$1;
       _isKeyboardSelected = results.$3.$2;
       _snippets = results.$4..sort((a, b) => a.orden.compareTo(b.orden));
