@@ -77,18 +77,16 @@ class TranscriptionHistoryRepository(private val context: Context) {
     fun purgePreviousSessionHistory() {
         synchronized(lock) {
             try {
-                val file = targetFile
-                if (file.exists()) {
-                    file.delete()
-                }
                 val tmp = File(context.filesDir, "$FILE_NAME.tmp")
                 if (tmp.exists()) {
                     tmp.delete()
                 }
+                val file = targetFile
+                file.writeText("[]", Charsets.UTF_8)
                 context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                     .edit()
                     .remove(SHARED_HISTORY_KEY)
-                    .apply()
+                    .commit()
             } catch (_: Exception) {}
         }
     }

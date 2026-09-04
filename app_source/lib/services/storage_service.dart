@@ -578,14 +578,12 @@ class StorageService {
     } catch (_) {}
     try {
       final file = await _getHistoryFile();
-      if (file != null && file.existsSync()) {
-        file.deleteSync();
-      }
       if (file != null) {
         final tmp = File('${file.path}.tmp');
         if (tmp.existsSync()) {
           tmp.deleteSync();
         }
+        file.writeAsStringSync('[]');
       }
     } catch (_) {}
   }

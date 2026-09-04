@@ -136,6 +136,7 @@ def test_session_scoped_history_purge():
     kt_file = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/TranscriptionHistoryRepository.kt"
     vk_file = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt"
     dart_file = "app_source/lib/services/storage_service.dart"
+    main_dart_file = "app_source/lib/main.dart"
 
     with open(kt_file, "r", encoding="utf-8") as f:
         kt_content = f.read()
@@ -143,13 +144,18 @@ def test_session_scoped_history_purge():
         vk_content = f.read()
     with open(dart_file, "r", encoding="utf-8") as f:
         dart_content = f.read()
+    with open(main_dart_file, "r", encoding="utf-8") as f:
+        main_content = f.read()
 
     assert "fun purgePreviousSessionHistory()" in kt_content, "Kotlin TranscriptionHistoryRepository debe implementar purgePreviousSessionHistory()"
     assert "fun clearPreviousHistoryOnStartup()" in kt_content, "Kotlin TranscriptionHistoryRepository debe implementar clearPreviousHistoryOnStartup()"
+    assert 'file.writeText("[]", Charsets.UTF_8)' in kt_content, "Kotlin debe escribir [] para evitar resurrección de datos legados"
     assert "transcriptionRepo.purgePreviousSessionHistory()" in vk_content, "VoiceKeyboardService debe purgar historial anterior en onCreate()"
     assert "clearPreviousHistoryOnStartup()" in dart_content, "StorageService debe implementar clearPreviousHistoryOnStartup()"
     assert "purgePreviousSessionHistory()" in dart_content, "StorageService debe implementar purgePreviousSessionHistory()"
-    print("  [PASS] Purga de sesión única implementada en Kotlin y Dart.")
+    assert "file.writeAsStringSync('[]')" in dart_content, "StorageService debe escribir [] al archivo de historial al purgar"
+    assert "clearPreviousHistoryOnStartup()" in main_content, "main.dart debe purgar el historial previo al arrancar la app"
+    print("  [PASS] Purga de sesión única implementada en Kotlin, Dart y arranque de aplicación.")
 
 if __name__ == "__main__":
     print("=" * 60)
