@@ -57,6 +57,13 @@ def test_manifest_retention():
     with open("app_source/pubspec.yaml", "r", encoding="utf-8") as f:
         pubspec = f.read()
     assert "version: 1.0.0+87" in pubspec, "Version en app_source/pubspec.yaml debe ser 1.0.0+87"
+    with open("voice_bubble_stt/pubspec.yaml", "r", encoding="utf-8") as f:
+        vb_pubspec = f.read()
+    assert "version: 1.0.0+87" in vb_pubspec, "Version en voice_bubble_stt/pubspec.yaml debe ser 1.0.0+87"
+    with open("voice_bubble_stt/android/app/build.gradle.kts", "r", encoding="utf-8") as f:
+        gradle_kts = f.read()
+    assert 'debug.keystore' in gradle_kts, "build.gradle.kts debe configurar debug.keystore persistente"
+
 
 def test_snippet_keyboard_sublayer():
     kt_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt"
