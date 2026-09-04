@@ -73,17 +73,16 @@ with open(manifest_path, "r", encoding="utf-8") as f:
     manifest_content = f.read()
 
 check("AndroidManifest declara SYSTEM_ALERT_WINDOW", 'android.permission.SYSTEM_ALERT_WINDOW' in manifest_content)
-check("AndroidManifest declara VoiceBubbleAccessibilityService", 'android:name=".VoiceBubbleAccessibilityService"' in manifest_content)
-check("VoiceBubbleAccessibilityService requiere BIND_ACCESSIBILITY_SERVICE", 'android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"' in manifest_content)
-check("VoiceBubbleAccessibilityService referencia config XML", 'android:resource="@xml/accessibility_service_config"' in manifest_content)
+check("AndroidManifest libre de BIND_ACCESSIBILITY_SERVICE (Play Protect seguro)", 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest_content)
+check("AndroidManifest no declara VoiceBubbleAccessibilityService (perfil limpio r84)", 'android:name=".VoiceBubbleAccessibilityService"' not in manifest_content)
 
-config_xml_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/xml/accessibility_service_config.xml")
-check("accessibility_service_config.xml existe", os.path.isfile(config_xml_path))
-if os.path.isfile(config_xml_path):
-    with open(config_xml_path, "r", encoding="utf-8") as f:
-        cfg_content = f.read()
-    check("accessibility_service_config tiene canPerformGestures='true'", 'android:canPerformGestures="true"' in cfg_content)
-    check("accessibility_service_config tiene canRetrieveWindowContent='false' (privacidad estricta)", 'android:canRetrieveWindowContent="false"' in cfg_content)
+gradle_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/build.gradle.kts")
+with open(gradle_path, "r", encoding="utf-8") as f:
+    gradle_content = f.read()
+
+keystore_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/debug.keystore")
+check("Keystore persistente debug.keystore existe en android/app", os.path.isfile(keystore_path))
+check("build.gradle.kts configura signingConfigs con debug.keystore", 'debug.keystore' in gradle_content)
 
 # --- TEST 3: VoiceBubbleAccessibilityService ---
 acc_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceBubbleAccessibilityService.kt")
@@ -141,6 +140,7 @@ check("VoiceKeyboardService toolbar incluye botón de trackpad", "btnTrackpad" i
 check("VoiceKeyboardService oculta overlay en onFinishInputView y onWindowHidden", "pointerOverlayManager?.hide()" in vk_content)
 check("VoiceKeyboardService previene loop en lastLettersLayer", "layer != Layer.TRACKPAD" in vk_content)
 check("VoiceKeyboardService lee kb_trackpad_auto_return tolerante a Integer y Long", "is Number -> raw.toInt()" in vk_content)
+check("VoiceKeyboardService despacha trackpad vía InputConnection nativo", "sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)" in vk_content)
 
 # --- TEST 7: Auditoría de Cero-Logs y Cero-Telemetría ---
 trackpad_files = [acc_kt_path, pom_kt_path, vtv_kt_path]

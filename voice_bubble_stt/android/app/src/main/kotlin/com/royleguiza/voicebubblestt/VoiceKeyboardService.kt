@@ -862,26 +862,34 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun dispatchTrackpadTap(x: Float, y: Float) {
-        if (!VoiceBubbleAccessibilityService.isConnected()) {
-            Toast.makeText(this, "Activa el servicio de accesibilidad de VoiceBubble para usar el trackpad", Toast.LENGTH_SHORT).show()
+        if (VoiceBubbleAccessibilityService.isConnected()) {
+            VoiceBubbleAccessibilityService.dispatchTap(x, y)
             return
         }
-        VoiceBubbleAccessibilityService.dispatchTap(x, y)
+        val ic = currentInputConnection ?: return
+        sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)
     }
 
     private fun dispatchTrackpadLongPress(x: Float, y: Float) {
-        if (!VoiceBubbleAccessibilityService.isConnected()) {
-            Toast.makeText(this, "Activa el servicio de accesibilidad de VoiceBubble para usar el trackpad", Toast.LENGTH_SHORT).show()
+        if (VoiceBubbleAccessibilityService.isConnected()) {
+            VoiceBubbleAccessibilityService.dispatchLongPress(x, y)
             return
         }
-        VoiceBubbleAccessibilityService.dispatchLongPress(x, y)
+        val ic = currentInputConnection ?: return
+        sendDownUpKeyEvents(KeyEvent.KEYCODE_MENU)
     }
 
     private fun dispatchTrackpadScroll(x: Float, y: Float, deltaY: Float) {
-        if (!VoiceBubbleAccessibilityService.isConnected()) {
+        if (VoiceBubbleAccessibilityService.isConnected()) {
+            VoiceBubbleAccessibilityService.dispatchScroll(x, y, deltaY)
             return
         }
-        VoiceBubbleAccessibilityService.dispatchScroll(x, y, deltaY)
+        val ic = currentInputConnection ?: return
+        if (deltaY > 0) {
+            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
+        } else if (deltaY < 0) {
+            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
+        }
     }
 
     private fun attachFastKeyTouch(key: View, onClick: () -> Unit) {
