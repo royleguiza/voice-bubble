@@ -36,7 +36,7 @@ import kotlin.math.abs
  *
  * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni persistencia de eventos táctiles.
  */
-class VirtualTrackpadView @JvmOverloads constructor(
+class VirtualTrackpadView(
     context: Context,
     private val scrollPosition: String = "right", // right, left, disabled
     private val tapToClick: Boolean = true,
@@ -46,25 +46,6 @@ class VirtualTrackpadView @JvmOverloads constructor(
     private val trackpadHeightPx: Int = 0,
     private val listener: TrackpadListener
 ) : LinearLayout(context) {
-
-    constructor(
-        context: Context,
-        scrollPosition: String = "right",
-        tapToClick: Boolean = true,
-        secondaryClickMode: String = "2fingers",
-        scrollDirection: String = "natural",
-        autoReturnSeconds: Int = 0,
-        listener: TrackpadListener
-    ) : this(
-        context = context,
-        scrollPosition = scrollPosition,
-        tapToClick = tapToClick,
-        secondaryClickMode = secondaryClickMode,
-        scrollDirection = scrollDirection,
-        autoReturnSeconds = autoReturnSeconds,
-        trackpadHeightPx = 0,
-        listener = listener
-    )
 
     interface TrackpadListener {
         fun onPointerMove(dx: Float, dy: Float)
