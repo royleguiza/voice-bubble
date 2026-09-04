@@ -115,6 +115,10 @@ def test_clipboard_suite():
     res = subprocess.run(["python3", "test_clipboard_suite.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert res.returncode == 0, f"Fallo en clipboard suite: {res.stderr}\n{res.stdout}"
 
+def test_trackpad_suite():
+    res = subprocess.run(["python3", "test_trackpad_suite.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    assert res.returncode == 0, f"Fallo en trackpad suite: {res.stderr}\n{res.stdout}"
+
 def main():
     print("=" * 70)
     print(" 🚀 INICIANDO MASTER VERIFICATION SUITE - VOICEBUBBLE STT")
@@ -128,6 +132,7 @@ def main():
         ("Ergonomía: Perfil de altura de tecla 'Muy alta' (factor 1.30f)", test_height_profiles),
         ("Historial: Repositorio JSON atómico y sincronización FIFO-20", test_transcription_history_atomic),
         ("Portapapeles: Suite Multimodal 24/24", test_clipboard_suite),
+        ("Trackpad: Suite Split Wings y Puntero Virtual", test_trackpad_suite),
     ]
 
     passed = 0

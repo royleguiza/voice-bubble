@@ -169,6 +169,164 @@ class StorageService {
     await prefs.setBool(kbHapticsEnabledKey, enabled);
   }
 
+  // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
+  static const String kbTrackpadEnabledKey = 'kb_trackpad_enabled';
+  static const String kbTrackpadToolbarVisibleKey = 'kb_trackpad_toolbar_visible';
+  static const String kbTrackpadScrollPositionKey = 'kb_trackpad_scroll_position';
+  static const String kbTrackpadSensitivityKey = 'kb_trackpad_sensitivity';
+  static const String kbTrackpadAccelCurveKey = 'kb_trackpad_accel_curve';
+  static const String kbTrackpadTapToClickKey = 'kb_trackpad_tap_to_click';
+  static const String kbTrackpadSecondaryClickKey = 'kb_trackpad_secondary_click';
+  static const String kbTrackpadScrollDirectionKey = 'kb_trackpad_scroll_direction';
+  static const String kbTrackpadHapticKey = 'kb_trackpad_haptic';
+  static const String kbTrackpadPointerStyleKey = 'kb_trackpad_pointer_style';
+  static const String kbTrackpadAutoReturnKey = 'kb_trackpad_auto_return';
+
+  static const bool defaultTrackpadEnabled = true;
+  static const bool defaultTrackpadToolbarVisible = true;
+  static const String defaultTrackpadScrollPosition = 'right'; // right, left, disabled
+  static const double defaultTrackpadSensitivity = 1.2; // 0.5 to 2.5
+  static const String defaultTrackpadAccelCurve = 'dynamic'; // dynamic, linear, precision
+  static const bool defaultTrackpadTapToClick = true;
+  static const String defaultTrackpadSecondaryClick = '2fingers'; // 2fingers, button, hold
+  static const String defaultTrackpadScrollDirection = 'natural'; // natural, standard
+  static const String defaultTrackpadHaptic = 'subtle'; // subtle, none, firm
+  static const String defaultTrackpadPointerStyle = 'arrow'; // arrow, dot, cross
+  static const int defaultTrackpadAutoReturn = 0; // 0, 5, 15, 30
+
+  static const List<String> kbTrackpadScrollPositions = ['right', 'left', 'disabled'];
+  static const List<String> kbTrackpadAccelCurves = ['dynamic', 'linear', 'precision'];
+  static const List<String> kbTrackpadSecondaryClicks = ['2fingers', 'button', 'hold'];
+  static const List<String> kbTrackpadScrollDirections = ['natural', 'standard'];
+  static const List<String> kbTrackpadHaptics = ['subtle', 'none', 'firm'];
+  static const List<String> kbTrackpadPointerStyles = ['arrow', 'dot', 'cross'];
+  static const List<int> kbTrackpadAutoReturns = [0, 5, 15, 30];
+
+  Future<bool> getTrackpadEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(kbTrackpadEnabledKey) ?? defaultTrackpadEnabled;
+  }
+
+  Future<void> setTrackpadEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kbTrackpadEnabledKey, enabled);
+  }
+
+  Future<bool> getTrackpadToolbarVisible() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(kbTrackpadToolbarVisibleKey) ?? defaultTrackpadToolbarVisible;
+  }
+
+  Future<void> setTrackpadToolbarVisible(bool visible) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kbTrackpadToolbarVisibleKey, visible);
+  }
+
+  Future<String> getTrackpadScrollPosition() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(kbTrackpadScrollPositionKey);
+    return kbTrackpadScrollPositions.contains(val) ? val! : defaultTrackpadScrollPosition;
+  }
+
+  Future<void> setTrackpadScrollPosition(String position) async {
+    if (!kbTrackpadScrollPositions.contains(position)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbTrackpadScrollPositionKey, position);
+  }
+
+  Future<double> getTrackpadSensitivity() async {
+    final prefs = await SharedPreferences.getInstance();
+    return (prefs.getDouble(kbTrackpadSensitivityKey) ?? defaultTrackpadSensitivity).clamp(0.5, 2.5);
+  }
+
+  Future<void> setTrackpadSensitivity(double sensitivity) async {
+    final clamped = sensitivity.clamp(0.5, 2.5);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(kbTrackpadSensitivityKey, clamped);
+  }
+
+  Future<String> getTrackpadAccelCurve() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(kbTrackpadAccelCurveKey);
+    return kbTrackpadAccelCurves.contains(val) ? val! : defaultTrackpadAccelCurve;
+  }
+
+  Future<void> setTrackpadAccelCurve(String curve) async {
+    if (!kbTrackpadAccelCurves.contains(curve)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbTrackpadAccelCurveKey, curve);
+  }
+
+  Future<bool> getTrackpadTapToClick() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(kbTrackpadTapToClickKey) ?? defaultTrackpadTapToClick;
+  }
+
+  Future<void> setTrackpadTapToClick(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(kbTrackpadTapToClickKey, enabled);
+  }
+
+  Future<String> getTrackpadSecondaryClick() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(kbTrackpadSecondaryClickKey);
+    return kbTrackpadSecondaryClicks.contains(val) ? val! : defaultTrackpadSecondaryClick;
+  }
+
+  Future<void> setTrackpadSecondaryClick(String mode) async {
+    if (!kbTrackpadSecondaryClicks.contains(mode)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbTrackpadSecondaryClickKey, mode);
+  }
+
+  Future<String> getTrackpadScrollDirection() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(kbTrackpadScrollDirectionKey);
+    return kbTrackpadScrollDirections.contains(val) ? val! : defaultTrackpadScrollDirection;
+  }
+
+  Future<void> setTrackpadScrollDirection(String direction) async {
+    if (!kbTrackpadScrollDirections.contains(direction)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbTrackpadScrollDirectionKey, direction);
+  }
+
+  Future<String> getTrackpadHaptic() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(kbTrackpadHapticKey);
+    return kbTrackpadHaptics.contains(val) ? val! : defaultTrackpadHaptic;
+  }
+
+  Future<void> setTrackpadHaptic(String haptic) async {
+    if (!kbTrackpadHaptics.contains(haptic)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbTrackpadHapticKey, haptic);
+  }
+
+  Future<String> getTrackpadPointerStyle() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(kbTrackpadPointerStyleKey);
+    return kbTrackpadPointerStyles.contains(val) ? val! : defaultTrackpadPointerStyle;
+  }
+
+  Future<void> setTrackpadPointerStyle(String style) async {
+    if (!kbTrackpadPointerStyles.contains(style)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbTrackpadPointerStyleKey, style);
+  }
+
+  Future<int> getTrackpadAutoReturn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getInt(kbTrackpadAutoReturnKey);
+    return kbTrackpadAutoReturns.contains(val) ? val! : defaultTrackpadAutoReturn;
+  }
+
+  Future<void> setTrackpadAutoReturn(int seconds) async {
+    if (!kbTrackpadAutoReturns.contains(seconds)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(kbTrackpadAutoReturnKey, seconds);
+  }
+
   // --- Espejo D7: credenciales STT para el teclado nativo (K3) ---
   // El teclado Kotlin lee estas claves con prefijo "flutter." en
   // FlutterSharedPreferences. La API key vive aqui en texto plano dentro de
@@ -480,6 +638,7 @@ class StorageService {
   }
 
   Future<void> add(Transcription transcription) async {
+    await load();
     _transcriptions.insert(0, transcription);
     if (_transcriptions.length > maxItems) {
       _transcriptions = _transcriptions.sublist(0, maxItems);

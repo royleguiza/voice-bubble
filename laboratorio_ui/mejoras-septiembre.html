@@ -1,0 +1,2827 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>VoiceBubble STT — Plan de Mejoras Septiembre 2026</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root[data-theme="dark"] {
+            --bg-canvas: #09090b;
+            --bg-surface: rgba(18, 18, 23, 0.78);
+            --bg-surface-elevated: rgba(26, 26, 33, 0.88);
+            --bg-card-hover: rgba(32, 32, 42, 0.95);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.16);
+            --border-focus: #38bdf8;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-tertiary: #64748b;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.25);
+            --accent-bg: rgba(56, 189, 248, 0.12);
+            --accent-secondary: #818cf8;
+            --badge-green-bg: rgba(34, 197, 94, 0.16);
+            --badge-green-border: rgba(34, 197, 94, 0.35);
+            --badge-green-text: #4ade80;
+            --shadow-glass: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+        }
+
+        :root[data-theme="light"] {
+            --bg-canvas: #f8fafc;
+            --bg-surface: rgba(255, 255, 255, 0.88);
+            --bg-surface-elevated: rgba(241, 245, 249, 0.95);
+            --bg-card-hover: rgba(255, 255, 255, 1);
+            --border-subtle: rgba(0, 0, 0, 0.08);
+            --border-strong: rgba(0, 0, 0, 0.15);
+            --border-focus: #0284c7;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-tertiary: #94a3b8;
+            --accent: #0284c7;
+            --accent-glow: rgba(2, 132, 199, 0.2);
+            --accent-bg: rgba(2, 132, 199, 0.1);
+            --accent-secondary: #6366f1;
+            --badge-green-bg: rgba(22, 163, 74, 0.12);
+            --badge-green-border: rgba(22, 163, 74, 0.3);
+            --badge-green-text: #15803d;
+            --shadow-glass: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+            --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-canvas);
+            color: var(--text-primary);
+            line-height: 1.65;
+            padding-bottom: env(safe-area-inset-bottom, 24px);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        /* Sticky Glass Header */
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 12px 16px;
+            padding-top: calc(12px + env(safe-area-inset-top, 0px));
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .brand-cluster {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.35);
+        }
+
+        .brand-text h1 {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            line-height: 1.2;
+        }
+
+        .brand-text span {
+            font-size: 11px;
+            color: var(--accent);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-surface-elevated);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-icon:hover, .btn-icon:active {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+            transform: scale(0.96);
+        }
+
+        /* Sticky Search & Filter Bar */
+        .sticky-search-panel {
+            position: sticky;
+            top: 62px;
+            z-index: 90;
+            background: var(--bg-surface);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 10px 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .search-box-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            color: var(--text-tertiary);
+            font-size: 15px;
+            pointer-events: none;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 42px;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 0 38px 0 40px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            background: var(--bg-card-hover);
+        }
+
+        .search-clear-btn {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            font-size: 16px;
+            cursor: pointer;
+            display: none;
+        }
+
+        .filter-chips {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px;
+        }
+
+        .filter-chips::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chip {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .chip.active {
+            background: var(--accent);
+            color: #09090b;
+            border-color: var(--accent);
+            box-shadow: 0 2px 10px var(--accent-glow);
+        }
+
+        /* Main Container */
+        .main-content {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Hero / Overview Card */
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(99, 102, 241, 0.12) 100%);
+            border: 1px solid var(--border-strong);
+            border-radius: 20px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow-glass);
+        }
+
+        .hero-banner::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .hero-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: var(--accent-bg);
+            border: 1px solid var(--accent-glow);
+            border-radius: 30px;
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .hero-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            line-height: 1.25;
+        }
+
+        .hero-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .stat-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 12px 10px;
+            text-align: center;
+        }
+
+        .stat-num {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--accent);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 2px;
+        }
+
+        /* Section Headings */
+        .section-header-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            margin-bottom: 4px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-tag {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: var(--bg-surface-elevated);
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Section 1 Card */
+        .execution-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .execution-item {
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            margin-top: 10px;
+        }
+
+        .execution-item h4 {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .execution-item ul {
+            list-style: none;
+            padding-left: 0;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+        }
+
+        .execution-item li {
+            margin-top: 4px;
+            position: relative;
+            padding-left: 14px;
+        }
+
+        .execution-item li::before {
+            content: '•';
+            position: absolute;
+            left: 2px;
+            color: var(--accent);
+        }
+
+        /* Improvement Cards (MEJ-XX) */
+        .mej-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .mej-card:hover {
+            border-color: var(--border-strong);
+            background: var(--bg-card-hover);
+        }
+
+        .mej-header {
+            padding: 16px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .mej-meta-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .mej-code-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            background: var(--accent-bg);
+            border: 1px solid var(--accent-glow);
+            padding: 3px 10px;
+            border-radius: 8px;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .badge-approved {
+            background: var(--badge-green-bg);
+            border: 1px solid var(--badge-green-border);
+            color: var(--badge-green-text);
+        }
+
+        .badge-design {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            color: #38bdf8;
+        }
+
+        .badge-discarded {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+        }
+
+        .mej-title {
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.35;
+            letter-spacing: -0.2px;
+            color: var(--text-primary);
+        }
+
+        .mej-card-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+        }
+
+        .tag-pill {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            background: var(--bg-surface-elevated);
+            color: var(--text-tertiary);
+            text-transform: capitalize;
+        }
+
+        .mej-body {
+            padding: 0 16px 16px;
+            border-top: 1px solid var(--border-subtle);
+            background: rgba(0, 0, 0, 0.08);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            font-size: 13.5px;
+        }
+
+        .mej-body.collapsed {
+            display: none;
+        }
+
+        .toggle-icon {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-icon.expanded {
+            transform: rotate(180deg);
+        }
+
+        /* Bullets in MEJ body */
+        .bullet-section {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .bullet-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .bullet-content {
+            flex: 1;
+            line-height: 1.6;
+        }
+
+        .bullet-content strong {
+            color: var(--text-primary);
+        }
+
+        .sublist {
+            list-style: none;
+            padding-left: 12px;
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border-left: 2px solid var(--border-subtle);
+        }
+
+        .sublist li {
+            position: relative;
+            padding-left: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .sublist li::before {
+            content: '›';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        /* Inline code & links */
+        .code-pill {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 6px;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--accent);
+        }
+
+        .md-link {
+            color: var(--accent);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--accent);
+        }
+
+        .md-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            background: var(--bg-surface);
+            box-shadow: var(--shadow-card);
+            margin-top: 10px;
+        }
+
+        .glass-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+            text-align: left;
+            min-width: 600px;
+        }
+
+        .glass-table th {
+            background: var(--bg-surface-elevated);
+            color: var(--text-secondary);
+            font-weight: 700;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            white-space: nowrap;
+        }
+
+        .glass-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            vertical-align: middle;
+        }
+
+        .glass-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .glass-table tr:hover td {
+            background: var(--bg-card-hover);
+        }
+
+        /* Table of Contents Offcanvas Drawer */
+        .toc-drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+
+        .toc-drawer-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .toc-drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 80vh;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border-strong);
+            border-radius: 24px 24px 0 0;
+            z-index: 210;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+        }
+
+        .toc-drawer.active {
+            transform: translateY(0);
+        }
+
+        .toc-drawer-handle {
+            width: 44px;
+            height: 5px;
+            background: var(--text-tertiary);
+            border-radius: 10px;
+            margin: 12px auto 6px;
+            opacity: 0.6;
+        }
+
+        .toc-drawer-header {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .toc-drawer-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .toc-list {
+            overflow-y: auto;
+            padding: 12px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toc-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-subtle);
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .toc-item:active {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+        }
+
+        .toc-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--accent);
+            margin-right: 8px;
+        }
+
+        /* Floating Action Button (Back to Top) */
+        .fab-top {
+            position: fixed;
+            bottom: 24px;
+            right: 20px;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #09090b;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            box-shadow: 0 4px 20px var(--accent-glow);
+            cursor: pointer;
+            z-index: 80;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+        }
+
+        .fab-top.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        /* Alert / Callout Glass */
+        .alert-callout {
+            background: rgba(56, 189, 248, 0.08);
+            border: 1px solid var(--accent-glow);
+            border-radius: 14px;
+            padding: 14px;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            display: flex;
+            gap: 10px;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-tertiary);
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sticky Glass Header -->
+    <header class="app-header">
+        <a href="#" class="brand-cluster">
+            <div class="brand-icon">🎙️</div>
+            <div class="brand-text">
+                <h1>VoiceBubble STT</h1>
+                <span>Mejoras Septiembre 2026</span>
+            </div>
+        </a>
+        <div class="header-actions">
+            <button class="btn-icon" id="btn-toc" title="Índice de Mejoras" aria-label="Índice">📑</button>
+            <button class="btn-icon" id="btn-theme" title="Alternar Modo Oscuro/Claro" aria-label="Tema">🌓</button>
+        </div>
+    </header>
+
+    <!-- Sticky Search and Filter Bar -->
+    <div class="sticky-search-panel">
+        <div class="search-box-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" class="search-input" placeholder="Buscar entre las 24 mejoras (ej: teclado, termux, notch)..." autocomplete="off">
+            <button class="search-clear-btn" id="search-clear">✕</button>
+        </div>
+        <div class="filter-chips" id="filter-chips">
+            <button class="chip active" data-cat="all">Todas (24)</button>
+            <button class="chip" data-cat="teclado">⌨️ Teclado</button>
+            <button class="chip" data-cat="burbuja">🫧 Burbuja / Isla</button>
+            <button class="chip" data-cat="clipboard">📋 Portapapeles</button>
+            <button class="chip" data-cat="codigo">💻 Código / Termux</button>
+            <button class="chip" data-cat="gestos">👆 Gestos / Puntero</button>
+            <button class="chip" data-cat="multimedia">🎵 Multimedia</button>
+            <button class="chip" data-cat="ui">🎨 UI & Temas</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="main-content">
+
+        <!-- Hero Overview -->
+        <section class="hero-banner">
+            <div class="hero-pill">⚡ Documento Oficial • Ciclo Septiembre</div>
+            <h2 class="hero-title">Plan y Registro de Mejoras 2026</h2>
+            <p class="hero-desc">
+                Especificación técnica de features y arquitectura móvil para <strong>VoiceBubble STT</strong>.
+                Sin parches temporales, con foco en ergonomía, estabilidad y diseño Apple Liquid Glass.
+            </p>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-num">24</div>
+                    <div class="stat-label">Mejoras Totales</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-num">2</div>
+                    <div class="stat-label">Listas Ejecución</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-num">22</div>
+                    <div class="stat-label">Nuevas Ideas</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rules Alert -->
+        <div class="alert-callout">
+            <span style="font-size: 18px;">📌</span>
+            <div>
+                <strong>Regla Operativa:</strong> CERO cambios de código en <code>app_source/</code> o <code>voice_bubble_stt/</code> hasta la fase de ejecución. Solo documentación, diseño de arquitectura y especificación de features aprobadas.
+            </div>
+        </div>
+
+        <!-- Section 1: Ready for Execution -->
+        <div class="section-header-wrap" id="section-1">
+            <h3 class="section-title">1. Planes Listos para Ejecución</h3>
+            <span class="section-tag">2 FEATURES</span>
+        </div>
+
+        <div class="execution-card">
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;">
+                Planes analizados y aprobados previamente por el dueño:
+            </p>
+
+            <div class="execution-item" data-cats="clipboard teclado" data-search="bandeja portapapeles clipboard tray mej-01 clips cursor">
+                <h4>
+                    <span class="mej-code-badge">MEJ-01</span>
+                    Bandeja de Portapapeles (Clipboard Tray)
+                    <span class="status-badge badge-approved" style="margin-left: auto;">✓ Aprobada</span>
+                </h4>
+                <ul>
+                    <li>Captura de clips copiados fuera de la app (opt-in).</li>
+                    <li>Tecla <code>📋</code> en barra inferior o superior para insertar clips en cursor.</li>
+                    <li>Documento técnico: <a href="plan-clipboard.md" target="_blank" class="md-link">plan-clipboard.md</a></li>
+                </ul>
+            </div>
+
+            <div class="execution-item" data-cats="teclado gestos" data-search="ciclar mayusculas minusculas shift mej-02 texto seleccionado">
+                <h4>
+                    <span class="mej-code-badge">MEJ-02</span>
+                    Ciclar Mayúsculas/Minúsculas con ⇧
+                    <span class="status-badge badge-approved" style="margin-left: auto;">✓ Aprobada</span>
+                </h4>
+                <ul>
+                    <li>Ciclo <code>minúsculas</code> → <code>Mayúscula Inicial</code> → <code>MAYÚSCULAS</code> en texto seleccionado.</li>
+                    <li>Comportamiento dinámico dependiente del estado del cursor y selección.</li>
+                    <li>Documento técnico: <a href="plan-ciclar-mayusculas.md" target="_blank" class="md-link">plan-ciclar-mayusculas.md</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 2: New Proposals -->
+        <div class="section-header-wrap" id="section-2">
+            <h3 class="section-title">2. Registro de Nuevas Ideas y Propuestas</h3>
+            <span class="section-tag">MEJ-03 AL MEJ-24</span>
+        </div>
+
+        <div id="mej-items-container" style="display: flex; flex-direction: column; gap: 14px;">
+
+            <article class="mej-card" id="mej-03" data-cats="teclado clipboard codigo ui" data-search="mej-03 barra superior de acciones (top action bar) para micrófono y portapapeles * **origen / necesidad**: la barra inferior del teclado acumula actualmente muchas teclas (`?123`, `</>`, `es/en`, `🎤`, `,`, `espacio`, `.`, `☰`, `↵`), lo que reduce el ancho de la barra espaciadora. mover herramientas clave a una barra superior (toolbar/strip) mejora la ergonomía y amplía la superficie de tipeo.
+* **comportamiento esperado**:
+  - **ajustes**: switch/selector en ajustes de teclado: *ubicación de herramientas* (`barra inferior` vs `barra superior / toolbar`).
+  - **en barra superior**:
+    - se renderiza una franja superior estilizada con estética glass por encima de la primera fila de letras.
+    - aloja:
+      - 🎤 **micrófono** (con su animación de pastilla roja, cronómetro y cancelación de k3/v1.2).
+      - 📋 **portapapeles** (acceso a bandeja de clips de mej-01).
+      - ☰ **snippets** (acceso a fragmentos de k4).
+      - accesos rápidos adicionales (ej. flechas de cursor o selector de idioma).
+    - **impacto en barra inferior**: al liberar el mic y snippets de abajo, la barra espaciadora crece un 40-50% en ancho, evitando toques accidentales de puntuación o comandos.
+* **impacto técnico**:
+  - *flutter (dart)*: clave sharedpreferences `flutter.kb_top_bar_enabled` y selector visual en `settingsscreen` (tab teclado).
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, función `buildtopbar()` que se inserta antes de las filas de letras y reubica condicionalmente `makemickey()` y el botón de clipboard.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-03')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-03</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-03">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.1 Barra Superior de Acciones (Top Action Bar) para Micrófono y Portapapeles</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">clipboard</span><span class="tag-pill">codigo</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-03">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: La barra inferior del teclado acumula actualmente muchas teclas (<code class="code-pill">?123</code>, <code class="code-pill">&lt;/&gt;</code>, <code class="code-pill">ES/EN</code>, <code class="code-pill">🎤</code>, <code class="code-pill">,</code>, <code class="code-pill">espacio</code>, <code class="code-pill">.</code>, <code class="code-pill">☰</code>, <code class="code-pill">↵</code>), lo que reduce el ancho de la barra espaciadora. Mover herramientas clave a una barra superior (toolbar/strip) mejora la ergonomía y amplía la superficie de tipeo.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<ul class="sublist">
+<li><strong>Ajustes</strong>: Switch/selector en Ajustes de Teclado: <em>"Ubicación de Herramientas"</em> (<code class="code-pill">Barra Inferior</code> vs <code class="code-pill">Barra Superior / Toolbar</code>).</li>
+<li><strong>En Barra Superior</strong>:</li>
+<li>Se renderiza una franja superior estilizada con estética Glass por encima de la primera fila de letras.</li>
+<li>Aloja:</li>
+<li>🎤 <strong>Micrófono</strong> (con su animación de pastilla roja, cronómetro y cancelación de K3/v1.2).</li>
+<li>📋 <strong>Portapapeles</strong> (acceso a bandeja de clips de MEJ-01).</li>
+<li>☰ <strong>Snippets</strong> (acceso a fragmentos de K4).</li>
+<li>Accesos rápidos adicionales (ej. flechas de cursor o selector de idioma).</li>
+<li><strong>Impacto en Barra Inferior</strong>: Al liberar el mic y snippets de abajo, la barra espaciadora crece un 40-50% en ancho, evitando toques accidentales de puntuación o comandos.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Flutter (Dart)</em>: Clave SharedPreferences <code class="code-pill">flutter.kb_top_bar_enabled</code> y selector visual en <code class="code-pill">SettingsScreen</code> (Tab Teclado).</li>
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, función <code class="code-pill">buildTopBar()</code> que se inserta antes de las filas de letras y reubica condicionalmente <code class="code-pill">makeMicKey()</code> y el botón de clipboard.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-04" data-cats="teclado codigo ui" data-search="mej-04 layouts y presets configurables de barras de código y termux * **origen / necesidad**: el uso del teclado en programación y terminal móvil (termux / acode / neovim / ssh) requiere acceso rápido a distintos conjuntos de símbolos y teclas de control sin tener que cambiar de pantalla constantemente.
+* **comportamiento esperado**:
+  - **selector de presets en ajustes**:
+    - **preset código estándar**: `{ } [ ] ( ) < > ; : '  \ | / ! = +` (actual de k2).
+    - **preset termux / cli**: teclas de control dedicadas (`ctrl`, `alt`, `tab`, `esc`, `~`, `|`, `-`, flechas direccionales `← ↑ ↓ →`).
+    - **preset web / javascript / dart**: optimizado para sintaxis web (`=>`, `===`, `&&`, `||`, `{}`, `$`, `?`).
+  - **activación dinámica**: posibilidad de fijar el preset preferido desde ajustes o conmutar entre ellos desde la tecla `</>`.
+* **impacto técnico**:
+  - *flutter (dart)*: selector de preset en ajustes (`flutter.kb_code_layout_preset`).
+  - *kotlin nativo*: `voicekeyboardservice.kt` interpreta el preset configurado para generar las filas de `buildcoderows()` o la fila superior de terminal correspondiente.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-04')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-04</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-04">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.2 Layouts y Presets Configurables de Barras de Código y Termux</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">codigo</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-04">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: El uso del teclado en programación y terminal móvil (Termux / Acode / Neovim / SSH) requiere acceso rápido a distintos conjuntos de símbolos y teclas de control sin tener que cambiar de pantalla constantemente.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<ul class="sublist">
+<li><strong>Selector de Presets en Ajustes</strong>:</li>
+<li><strong>Preset Código Estándar</strong>: <code class="code-pill">{ } [ ] ( ) &lt; &gt; ; : &#x27; &quot; \ | / ! = +</code> (actual de K2).</li>
+<li><strong>Preset Termux / CLI</strong>: Teclas de control dedicadas (<code class="code-pill">Ctrl</code>, <code class="code-pill">Alt</code>, <code class="code-pill">Tab</code>, <code class="code-pill">Esc</code>, <code class="code-pill">~</code>, <code class="code-pill">|</code>, <code class="code-pill">-</code>, flechas direccionales <code class="code-pill">← ↑ ↓ →</code>).</li>
+<li><strong>Preset Web / JavaScript / Dart</strong>: Optimizado para sintaxis web (<code class="code-pill">=&gt;</code>, <code class="code-pill">===</code>, <code class="code-pill">&amp;&amp;</code>, <code class="code-pill">||</code>, <code class="code-pill">{}</code>, <code class="code-pill">$</code>, <code class="code-pill">?</code>).</li>
+<li><strong>Activación Dinámica</strong>: Posibilidad de fijar el preset preferido desde Ajustes o conmutar entre ellos desde la tecla <code class="code-pill">&lt;/&gt;</code>.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Flutter (Dart)</em>: Selector de preset en Ajustes (<code class="code-pill">flutter.kb_code_layout_preset</code>).</li>
+<li><em>Kotlin nativo</em>: <code class="code-pill">VoiceKeyboardService.kt</code> interpreta el preset configurado para generar las filas de <code class="code-pill">buildCodeRows()</code> o la fila superior de terminal correspondiente.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-05" data-cats="teclado gestos ui" data-search="mej-05 presión larga para símbolos y menú emergente de puntuación * **origen / necesidad**: cambiar a la capa de símbolos (`?123`) solo para escribir `;`, `:`, `!`, `?` o vocales con acento ralentiza el flujo continuo de tipeo y programación. la pulsación larga resuelve esto sin fricción.
+* **comportamiento esperado**:
+  - **pulsación larga en punto (`.`)**:
+    - al mantener presionado `.` (ej. ~300ms), aparece una micro-ventana emergente (popup glass) por encima de la tecla con opciones: `;`, `:`, `...`, `!`, `?`, `/`.
+    - **comportamiento por deslizamiento**: al deslizar el dedo hacia el símbolo y soltar, se comita dicho carácter. si se suelta de inmediato sin mover, se comita el carácter secundario predeterminado (`;`).
+  - **pulsación larga en coma (`,`)**:
+    - opciones emergentes: `:`, `;`, `_`, `-`, `\`.
+  - **pulsación larga en letras (tildes y caracteres especiales)**:
+    - `a` → `á, à, â, ä`
+    - `e` → `é, è, ê, ë`
+    - `i` → `í, ì, î, ï`
+    - `o` → `ó, ò, ô, ö`
+    - `u` → `ú, ù, û, ü`
+    - `n` → `ñ`
+  - **ajustes y personalización**:
+    - switch para activar/desactivar menús de pulsación larga (`flutter.kb_long_press_symbols`).
+    - selector de tiempo de retardo: rápido (250ms), normal (350ms, default), relajado (450ms).
+* **impacto técnico**:
+  - *kotlin nativo*: extensión de `attachlongpress` en `voicekeyboardservice.kt` con un `popupwindow` / vista superpuesta ligera (`showkeypopup()`) que trackea el `action_move` y `action_up` para seleccionar el glifo.
+  - *flutter (dart)*: controles en ajustes > teclado.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-05')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-05</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-05">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.3 Presión Larga para Símbolos y Menú Emergente de Puntuación</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">gestos</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-05">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Cambiar a la capa de símbolos (<code class="code-pill">?123</code>) solo para escribir <code class="code-pill">;</code>, <code class="code-pill">:</code>, <code class="code-pill">!</code>, <code class="code-pill">?</code> o vocales con acento ralentiza el flujo continuo de tipeo y programación. La pulsación larga resuelve esto sin fricción.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<ul class="sublist">
+<li><strong>Pulsación Larga en Punto (<code class="code-pill">.</code>)</strong>:</li>
+<li>Al mantener presionado <code class="code-pill">.</code> (ej. ~300ms), aparece una micro-ventana emergente (popup glass) por encima de la tecla con opciones: <code class="code-pill">;</code>, <code class="code-pill">:</code>, <code class="code-pill">...</code>, <code class="code-pill">!</code>, <code class="code-pill">?</code>, <code class="code-pill">/</code>.</li>
+<li><strong>Comportamiento por Deslizamiento</strong>: Al deslizar el dedo hacia el símbolo y soltar, se comita dicho carácter. Si se suelta de inmediato sin mover, se comita el carácter secundario predeterminado (<code class="code-pill">;</code>).</li>
+<li><strong>Pulsación Larga en Coma (<code class="code-pill">,</code>)</strong>:</li>
+<li>Opciones emergentes: <code class="code-pill">:</code>, <code class="code-pill">;</code>, <code class="code-pill">_</code>, <code class="code-pill">-</code>, <code class="code-pill">\</code>.</li>
+<li><strong>Pulsación Larga en Letras (Tildes y Caracteres Especiales)</strong>:</li>
+<li><code class="code-pill">a</code> → <code class="code-pill">á, à, â, ä</code></li>
+<li><code class="code-pill">e</code> → <code class="code-pill">é, è, ê, ë</code></li>
+<li><code class="code-pill">i</code> → <code class="code-pill">í, ì, î, ï</code></li>
+<li><code class="code-pill">o</code> → <code class="code-pill">ó, ò, ô, ö</code></li>
+<li><code class="code-pill">u</code> → <code class="code-pill">ú, ù, û, ü</code></li>
+<li><code class="code-pill">n</code> → <code class="code-pill">ñ</code></li>
+<li><strong>Ajustes y Personalización</strong>:</li>
+<li>Switch para activar/desactivar menús de pulsación larga (<code class="code-pill">flutter.kb_long_press_symbols</code>).</li>
+<li>Selector de tiempo de retardo: Rápido (250ms), Normal (350ms, default), Relajado (450ms).</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: Extensión de <code class="code-pill">attachLongPress</code> en <code class="code-pill">VoiceKeyboardService.kt</code> con un <code class="code-pill">PopupWindow</code> / vista superpuesta ligera (<code class="code-pill">showKeyPopup()</code>) que trackea el <code class="code-pill">ACTION_MOVE</code> y <code class="code-pill">ACTION_UP</code> para seleccionar el glifo.</li>
+<li><em>Flutter (Dart)</em>: Controles en Ajustes > Teclado.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-06" data-cats="teclado burbuja clipboard codigo gestos ui" data-search="mej-06 gesto en barra espaciadora con menú rápido de 3 opciones superpuesto * **origen / necesidad**: alternar rápidamente entre modos (código, termux, snippets, portapapeles o idioma) sin tener que buscar botones pequeños o realizar múltiples pulsaciones.
+* **comportamiento esperado**:
+  - **gesto de activación**: al realizar una pulsación larga (~300ms) o deslizar hacia arriba desde la barra espaciadora (`spacebar`), se despliega un **menú rápido flotante superpuesto** (overlay glass) sobre el teclado con 3 opciones/ranuras principales.
+  - **interacción fluida**:
+    - el usuario puede deslizar el dedo hacia cualquiera de las 3 opciones y soltar para activar el modo de inmediato.
+    - o tocar directamente una de las 3 ranuras si el menú permanece abierto.
+  - **personalización completa desde ajustes (tab teclado)**:
+    - el usuario puede asignar qué acción ejecuta cada una de las 3 ranuras desde un selector:
+      - slot 1 (izquierda): ej. `capa código (</>)` o `modo terminal termux`.
+      - slot 2 (centro): ej. `bandeja de portapapeles (📋)` o `selector de teclado del sistema (ime picker)`.
+      - slot 3 (derecha): ej. `fragmentos (☰)` o `cambiar idioma (es/en)`.
+    - opciones adicionales disponibles para asignar a las ranuras:
+      - `abrir ajustes voicebubble`
+      - `capa símbolos (?123)`
+      - `modo cursor / trackpad` (deslizar espacio para mover cursor).
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, captura de `action_down` + `action_move` ascendente en `spacekeyview`. creación de `showspacequickmenu()` superpuesto con 3 píldoras glass y ejecución de callback de cambio de capa o servicio.
+  - *flutter (dart)*: 3 preferencias configurables en `storageservice` (`flutter.kb_space_slot_left`, `flutter.kb_space_slot_center`, `flutter.kb_space_slot_right`) con dropdowns intuitivos en `settingsscreen`.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-06')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-06</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-06">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.4 Gesto en Barra Espaciadora con Menú Rápido de 3 Opciones Superpuesto</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">clipboard</span><span class="tag-pill">codigo</span><span class="tag-pill">gestos</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-06">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Alternar rápidamente entre modos (Código, Termux, Snippets, Portapapeles o Idioma) sin tener que buscar botones pequeños o realizar múltiples pulsaciones.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<ul class="sublist">
+<li><strong>Gesto de Activación</strong>: Al realizar una pulsación larga (~300ms) o deslizar hacia arriba desde la barra espaciadora (<code class="code-pill">Spacebar</code>), se despliega un <strong>menú rápido flotante superpuesto</strong> (Overlay Glass) sobre el teclado con 3 opciones/ranuras principales.</li>
+<li><strong>Interacción Fluida</strong>:</li>
+<li>El usuario puede deslizar el dedo hacia cualquiera de las 3 opciones y soltar para activar el modo de inmediato.</li>
+<li>O tocar directamente una de las 3 ranuras si el menú permanece abierto.</li>
+<li><strong>Personalización Completa desde Ajustes (Tab Teclado)</strong>:</li>
+<li>El usuario puede asignar qué acción ejecuta cada una de las 3 ranuras desde un selector:</li>
+<li>Slot 1 (Izquierda): ej. <code class="code-pill">Capa Código (&lt;/&gt;)</code> o <code class="code-pill">Modo Terminal Termux</code>.</li>
+<li>Slot 2 (Centro): ej. <code class="code-pill">Bandeja de Portapapeles (📋)</code> o <code class="code-pill">Selector de Teclado del Sistema (IME Picker)</code>.</li>
+<li>Slot 3 (Derecha): ej. <code class="code-pill">Fragmentos (☰)</code> o <code class="code-pill">Cambiar Idioma (ES/EN)</code>.</li>
+<li>Opciones adicionales disponibles para asignar a las ranuras:</li>
+<li><code class="code-pill">Abrir Ajustes VoiceBubble</code></li>
+<li><code class="code-pill">Capa Símbolos (?123)</code></li>
+<li><code class="code-pill">Modo Cursor / Trackpad</code> (deslizar espacio para mover cursor).</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, captura de <code class="code-pill">ACTION_DOWN</code> + <code class="code-pill">ACTION_MOVE</code> ascendente en <code class="code-pill">spaceKeyView</code>. Creación de <code class="code-pill">showSpaceQuickMenu()</code> superpuesto con 3 píldoras Glass y ejecución de callback de cambio de capa o servicio.</li>
+<li><em>Flutter (Dart)</em>: 3 preferencias configurables en <code class="code-pill">StorageService</code> (<code class="code-pill">flutter.kb_space_slot_left</code>, <code class="code-pill">flutter.kb_space_slot_center</code>, <code class="code-pill">flutter.kb_space_slot_right</code>) con dropdowns intuitivos en <code class="code-pill">SettingsScreen</code>.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-07" data-cats="teclado clipboard gestos ui" data-search="mej-07 control avanzado de altura de teclas y posición / elevación del teclado * **origen / necesidad**: la ergonomía varía según el tamaño de la mano y de la pantalla del dispositivo. poder calibrar por separado el **tamaño/altura de las teclas** (para precisión táctil) y la **posición/elevación del teclado** (para evitar doblar los pulgares hacia la base de la pantalla) previene la fatiga en sesiones largas de desarrollo y escritura.
+* **comportamiento esperado**:
+  - **ajustes > tab teclado > sección dimensiones y ergonomía**:
+    1. **menú de altura de teclas (key height)**:
+       - escala el tamaño vertical de las teclas y fuentes proporcionalmente.
+       - 5 opciones claras:
+         - `muy compacto (85%)`
+         - `compacto / bajo (92%)`
+         - `estándar / medio (100%)` [default]
+         - `alto (108%)`
+         - `extra alto (120%)`
+    2. **menú de posición / elevación inferior (bottom offset / lift)**:
+       - sube todo el cuerpo del teclado hacia arriba, despegándolo del borde inferior del teléfono.
+       - ideal para teléfonos con bordes delgados o pantallas alargadas (>6.5), alejando la fila inferior de la barra de gestos de android.
+       - opciones:
+         - `pegado al borde (0 dp)`
+         - `elevación baja (12 dp)`
+         - `elevación media (24 dp)` [recomendada]
+         - `elevación alta (36 dp)`
+         - `ajuste personalizado (slider 0 – 48 dp)`
+* **impacto técnico**:
+  - *flutter (dart)*: claves `flutter.kb_height_profile` (con 5 perfiles) y `flutter.kb_bottom_elevation_dp` en `storageservice` y selectores ergonómicos en `settingsscreen`.
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, actualización del factor de escala `scalev()` y aplicación de `bottomelevationpx` en el contenedor `inputview` respetando los insets del sistema.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-07')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-07</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-07">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.5 Control Avanzado de Altura de Teclas y Posición / Elevación del Teclado</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">clipboard</span><span class="tag-pill">gestos</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-07">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: La ergonomía varía según el tamaño de la mano y de la pantalla del dispositivo. Poder calibrar por separado el <strong>tamaño/altura de las teclas</strong> (para precisión táctil) y la <strong>posición/elevación del teclado</strong> (para evitar doblar los pulgares hacia la base de la pantalla) previene la fatiga en sesiones largas de desarrollo y escritura.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<ul class="sublist">
+<li><strong>Ajustes > Tab Teclado > Sección Dimensiones y Ergonomía</strong>:</li>
+</ul>
+<p>1. <strong>Menú de Altura de Teclas (Key Height)</strong>:</p>
+<ul class="sublist">
+<li>Escala el tamaño vertical de las teclas y fuentes proporcionalmente.</li>
+<li>5 opciones claras:</li>
+<li><code class="code-pill">Muy Compacto (85%)</code></li>
+<li><code class="code-pill">Compacto / Bajo (92%)</code></li>
+<li><code class="code-pill">Estándar / Medio (100%)</code> [Default]</li>
+<li><code class="code-pill">Alto (108%)</code></li>
+<li><code class="code-pill">Extra Alto (120%)</code></li>
+</ul>
+<p>2. <strong>Menú de Posición / Elevación Inferior (Bottom Offset / Lift)</strong>:</p>
+<ul class="sublist">
+<li>Sube todo el cuerpo del teclado hacia arriba, despegándolo del borde inferior del teléfono.</li>
+<li>Ideal para teléfonos con bordes delgados o pantallas alargadas (>6.5"), alejando la fila inferior de la barra de gestos de Android.</li>
+<li>Opciones:</li>
+<li><code class="code-pill">Pegado al borde (0 dp)</code></li>
+<li><code class="code-pill">Elevación Baja (12 dp)</code></li>
+<li><code class="code-pill">Elevación Media (24 dp)</code> [Recomendada]</li>
+<li><code class="code-pill">Elevación Alta (36 dp)</code></li>
+<li><code class="code-pill">Ajuste Personalizado (Slider 0 – 48 dp)</code></li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Flutter (Dart)</em>: Claves <code class="code-pill">flutter.kb_height_profile</code> (con 5 perfiles) y <code class="code-pill">flutter.kb_bottom_elevation_dp</code> en <code class="code-pill">StorageService</code> y selectores ergonómicos en <code class="code-pill">SettingsScreen</code>.</li>
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, actualización del factor de escala <code class="code-pill">scaleV()</code> y aplicación de <code class="code-pill">bottomElevationPx</code> en el contenedor <code class="code-pill">inputView</code> respetando los insets del sistema.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-08" data-cats="teclado clipboard codigo ui" data-search="mej-08 flujo de pegado secuencial multi-clip (portapapeles global persistente) * **origen / necesidad**: llenar formularios, configurar variables en un `.env` o autenticar accesos suele requerir copiar múltiples datos en apps distintas (ej. una url en chrome, un id en un correo y un pin en el autenticador). tener que alternar entre 3 apps de ida y vuelta para copiar y pegar de a uno por vez genera fricción extrema.
+* **comportamiento esperado**:
+  1. **fase de copia acumulativa**:
+     - el usuario copia el dato 1 en la app a (`https://api.ejemplo.com`).
+     - copia el dato 2 en la app b (`user_id=49281`).
+     - copia el dato 3 en la app c (`pin=839201`).
+     - la bandeja de portapapeles de voicebubble acumula los clips en su cola fifo (20 elementos).
+  2. **fase de pegado secuencial multi-campo**:
+     - el usuario abre el destino (ej. formulario web o editor acode/termux).
+     - abre la **bandeja de portapapeles** (vía botón `📋` en barra superior/inferior o menú rápido de espacio `mej-06`).
+     - **modo pegado secuencial / sticky tray (opcional o conmutador de chincheta 📌)**:
+       - toca el primer clip (url) → se inserta en el campo activo.
+       - toca el siguiente campo de texto → la bandeja permanece abierta o con acceso a 1 toque.
+       - toca el segundo clip (user_id) → se inserta.
+       - toca el tercer campo y toca el pin → se inserta.
+     - permite completar formularios de múltiples campos en un solo paso sin salir del teclado.
+  3. **gestión de clips**:
+     - vista previa clara de cada clip.
+     - botón para fijar clips favoritos/frecuentes (📌) para que no se borren por rotación fifo.
+     - botón de vaciar papelera/portapapeles con 1 toque.
+  4. **cabecera dual interactiva: búsqueda (`🔍`) vs agregar clip nuevo (`➕`)**:
+     - **extremo izquierdo `[ 🔍 lupa ]`**: al tocarlo, conmuta la cabecera a un campo de búsqueda en vivo que filtra al instante entre todos los clips copiados y notas fijadas.
+     - **extremo derecho `[ ➕ agregar ]`**: al tocarlo, despliega un mini-editor de texto liquid glass en la cabecera para escribir o pegar un texto personalizado y guardarlo al instante en el portapapeles/fijados, **sin necesidad de navegar a ajustes**.
+     - **ciclo de interfaz**: alternancia suave con 1 toque entre la vista normal de lista, la barra de búsqueda y el formulario de nuevo clip.
+* **impacto técnico**:
+  - *kotlin nativo*: ampliación del motor de [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md) en `voicekeyboardservice.kt`: soporte para modo keep open / sticky en `showclipboardpopup()`, inserción sucesiva mediante `currentinputconnection?.committext()`, header con conmutación dinámica de vistas (búsqueda y mini-input `edittext` para nuevo clip), y flags de retención de clips fijados.
+  - *flutter (dart)*: switch en ajustes > portapapeles: *mantener bandeja abierta tras pegar (pegado secuencial)*.
+* **estado**: **en diseño (aprobada como extensión clave de mej-01 para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-08')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-08</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-08">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.6 Flujo de Pegado Secuencial Multi-Clip (Portapapeles Global Persistente)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">clipboard</span><span class="tag-pill">codigo</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-08">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Llenar formularios, configurar variables en un <code class="code-pill">.env</code> o autenticar accesos suele requerir copiar múltiples datos en apps distintas (ej. una URL en Chrome, un ID en un correo y un PIN en el autenticador). Tener que alternar entre 3 apps de ida y vuelta para copiar y pegar de a uno por vez genera fricción extrema.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Fase de Copia Acumulativa</strong>:</p>
+<ul class="sublist">
+<li>El usuario copia el dato 1 en la app A (<code class="code-pill">https://api.ejemplo.com</code>).</li>
+<li>Copia el dato 2 en la app B (<code class="code-pill">USER_ID=49281</code>).</li>
+<li>Copia el dato 3 en la app C (<code class="code-pill">PIN=839201</code>).</li>
+<li>La bandeja de portapapeles de VoiceBubble acumula los clips en su cola FIFO (20 elementos).</li>
+</ul>
+<p>2. <strong>Fase de Pegado Secuencial Multi-Campo</strong>:</p>
+<ul class="sublist">
+<li>El usuario abre el destino (ej. formulario web o editor Acode/Termux).</li>
+<li>Abre la <strong>Bandeja de Portapapeles</strong> (vía botón <code class="code-pill">📋</code> en barra superior/inferior o menú rápido de espacio <code class="code-pill">MEJ-06</code>).</li>
+<li><strong>Modo Pegado Secuencial / Sticky Tray (Opcional o conmutador de chincheta 📌)</strong>:</li>
+<li>Toca el primer clip (URL) → se inserta en el campo activo.</li>
+<li>Toca el siguiente campo de texto → la bandeja permanece abierta o con acceso a 1 toque.</li>
+<li>Toca el segundo clip (USER_ID) → se inserta.</li>
+<li>Toca el tercer campo y toca el PIN → se inserta.</li>
+<li>Permite completar formularios de múltiples campos en un solo paso sin salir del teclado.</li>
+</ul>
+<p>3. <strong>Gestión de Clips</strong>:</p>
+<ul class="sublist">
+<li>Vista previa clara de cada clip.</li>
+<li>Botón para fijar clips favoritos/frecuentes (📌) para que no se borren por rotación FIFO.</li>
+<li>Botón de vaciar papelera/portapapeles con 1 toque.</li>
+</ul>
+<p>4. <strong>Cabecera Dual Interactiva: Búsqueda (<code class="code-pill">🔍</code>) vs Agregar Clip Nuevo (<code class="code-pill">➕</code>)</strong>:</p>
+<ul class="sublist">
+<li><strong>Extremo Izquierdo <code class="code-pill">[ 🔍 Lupa ]</code></strong>: Al tocarlo, conmuta la cabecera a un campo de búsqueda en vivo que filtra al instante entre todos los clips copiados y notas fijadas.</li>
+<li><strong>Extremo Derecho <code class="code-pill">[ ➕ Agregar ]</code></strong>: Al tocarlo, despliega un mini-editor de texto Liquid Glass en la cabecera para escribir o pegar un texto personalizado y guardarlo al instante en el portapapeles/fijados, <strong>sin necesidad de navegar a Ajustes</strong>.</li>
+<li><strong>Ciclo de Interfaz</strong>: Alternancia suave con 1 toque entre la vista normal de lista, la barra de búsqueda y el formulario de nuevo clip.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: Ampliación del motor de <a href="file:///root/projects/activos/voice-bubble/plan-clipboard.md" target="_blank" rel="noopener" class="md-link"><code class="code-pill">plan-clipboard.md</code></a> en <code class="code-pill">VoiceKeyboardService.kt</code>: soporte para modo "Keep Open / Sticky" en <code class="code-pill">showClipboardPopup()</code>, inserción sucesiva mediante <code class="code-pill">currentInputConnection?.commitText()</code>, header con conmutación dinámica de vistas (búsqueda y mini-input <code class="code-pill">EditText</code> para nuevo clip), y flags de retención de clips fijados.</li>
+<li><em>Flutter (Dart)</em>: Switch en Ajustes > Portapapeles: <em>"Mantener bandeja abierta tras pegar (Pegado secuencial)"</em>.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como extensión clave de MEJ-01 para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-09" data-cats="teclado burbuja codigo gestos ui" data-search="mej-09 modo trackpad y puntero de mouse virtual flotante * **origen / necesidad**: en interfaces densas (páginas web completas, termux con interfaces cli/tui, editores como acode o paneles de servidores), seleccionar texto pequeño o acertar a botones diminutos con los dedos resulta impreciso. un modo trackpad que transforme el teclado en una superficie de control con puntero de mouse en pantalla brinda precisión milimétrica.
+* **comportamiento esperado**:
+  - **activación rápida**: desde el menú rápido de espacio (`mej-06`), acceso en barra superior (`mej-03`) o botón de capa.
+  - **superficie táctil del teclado (trackpad view)**:
+    - la vista del teclado se convierte en un panel táctil suave glass con un cuadrado/área central de navegación.
+    - fila inferior con botones táctiles dedicados:
+      - `[ clic izquierdo (l) ]` (área amplia a la izquierda)
+      - `[ rueda scroll / desplazamiento ]`
+      - `[ clic derecho / menú contextual (r) ]`
+      - `[ ✕ salir a teclado ]`
+  - **puntero de mouse flotante en pantalla**:
+    - al activar el modo, se dibuja un puntero de mouse estilizado en pantalla (overlay `system_alert_window`).
+    - al mover el dedo en el trackpad, el puntero se desplaza con aceleración fluida e inercia natural.
+    - **acciones**:
+      - **clic izquierdo / tap**: tocar la superficie del trackpad o pulsar el botón `l` dispara un clic en las coordenadas exactas del puntero en pantalla (`accessibilityservice.dispatchgesture`).
+      - **clic derecho / pulsación larga**: tocar el botón `r` o doble toque sostenido ejecuta un toque prolongado / menú contextual.
+      - **desplazamiento / scroll**: deslizar con dos dedos en el trackpad emula scroll arriba/abajo.
+  - **ajustes y sensibilidad**:
+    - ajuste de sensibilidad del puntero (lento, normal, rápido) y velocidad de aceleración.
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt` se implementa `buildtrackpadlayer()`. vinculación con el servicio de accesibilidad (`voicebubbleaccessibilityservice`) para inyectar gestos de clic (`dispatchgesture`) y con el `windowmanager` para el puntero flotante (`pointeroverlayview`).
+  - *flutter (dart)*: configuración de sensibilidad y habilitación en ajustes > teclado.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-09')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-09</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-09">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.7 Modo Trackpad y Puntero de Mouse Virtual Flotante</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">codigo</span><span class="tag-pill">gestos</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-09">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: En interfaces densas (páginas web completas, Termux con interfaces CLI/TUI, editores como Acode o paneles de servidores), seleccionar texto pequeño o acertar a botones diminutos con los dedos resulta impreciso. Un modo Trackpad que transforme el teclado en una superficie de control con puntero de mouse en pantalla brinda precisión milimétrica.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<ul class="sublist">
+<li><strong>Activación Rápida</strong>: Desde el menú rápido de espacio (<code class="code-pill">MEJ-06</code>), acceso en barra superior (<code class="code-pill">MEJ-03</code>) o botón de capa.</li>
+<li><strong>Superficie Táctil del Teclado (Trackpad View)</strong>:</li>
+<li>La vista del teclado se convierte en un panel táctil suave Glass con un cuadrado/área central de navegación.</li>
+<li>Fila inferior con botones táctiles dedicados:</li>
+<li><code class="code-pill">[ Clic Izquierdo (L) ]</code> (Área amplia a la izquierda)</li>
+<li><code class="code-pill">[ Rueda Scroll / Desplazamiento ]</code></li>
+<li><code class="code-pill">[ Clic Derecho / Menú Contextual (R) ]</code></li>
+<li><code class="code-pill">[ ✕ Salir a Teclado ]</code></li>
+<li><strong>Puntero de Mouse Flotante en Pantalla</strong>:</li>
+<li>Al activar el modo, se dibuja un puntero de mouse estilizado en pantalla (Overlay <code class="code-pill">SYSTEM_ALERT_WINDOW</code>).</li>
+<li>Al mover el dedo en el trackpad, el puntero se desplaza con aceleración fluida e inercia natural.</li>
+<li><strong>Acciones</strong>:</li>
+<li><strong>Clic Izquierdo / Tap</strong>: Tocar la superficie del trackpad o pulsar el botón <code class="code-pill">L</code> dispara un clic en las coordenadas exactas del puntero en pantalla (<code class="code-pill">AccessibilityService.dispatchGesture</code>).</li>
+<li><strong>Clic Derecho / Pulsación Larga</strong>: Tocar el botón <code class="code-pill">R</code> o doble toque sostenido ejecuta un toque prolongado / menú contextual.</li>
+<li><strong>Desplazamiento / Scroll</strong>: Deslizar con dos dedos en el trackpad emula scroll arriba/abajo.</li>
+<li><strong>Ajustes y Sensibilidad</strong>:</li>
+<li>Ajuste de sensibilidad del puntero (Lento, Normal, Rápido) y velocidad de aceleración.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code> se implementa <code class="code-pill">buildTrackpadLayer()</code>. Vinculación con el servicio de accesibilidad (<code class="code-pill">VoiceBubbleAccessibilityService</code>) para inyectar gestos de clic (<code class="code-pill">dispatchGesture</code>) y con el <code class="code-pill">WindowManager</code> para el puntero flotante (<code class="code-pill">PointerOverlayView</code>).</li>
+<li><em>Flutter (Dart)</em>: Configuración de sensibilidad y habilitación en Ajustes > Teclado.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-10" data-cats="teclado burbuja clipboard gestos ui" data-search="mej-10 gestos duales en burbuja flotante: toque vs mantener + acceso rápido al historial * **origen / necesidad**: la burbuja flotante actualmente solo responde a un toque simple para grabar. cuando el usuario está usando otra app y necesita consultar, copiar o pegar una transcripción anterior del historial, tiene que salir y abrir la app principal o el teclado. asignar el gesto complementario al historial unifica la experiencia flotante.
+* **comportamiento esperado**:
+  - **selector de modo en ajustes (tab burbuja)**:
+    - **modo 1: toque simple (tap-to-record) [default]**:
+      - `toque simple`: inicia grabación (1er tap) / detiene y transcribe (2do tap).
+      - `pulsación larga (~400ms en reposo)`: abre la **modal flotante con el historial de transcripciones** (las últimas 20).
+    - **modo 2: mantener presionado (push-to-talk / hold-to-record)**:
+      - `mantener presionado`: graba mientras se sostiene el dedo sobre la burbuja; al soltar, finaliza y transcribe inmediatamente.
+      - `toque simple (tap rápido en reposo)`: abre la **modal flotante con el historial de transcripciones**.
+  - **modal flotante de historial (liquid glass)**:
+    - se despliega anclada a la posición de la burbuja en pantalla.
+    - lista las últimas 20 transcripciones con fecha/hora relativa.
+    - tocar una transcripción la copia al portapapeles con confirmación háptica/visual instantánea (y la inserta si hay accesibilidad activa).
+    - tocar fuera o el botón cerrar descarta la modal.
+* **impacto técnico**:
+  - *kotlin nativo*: en `floatingbubbleservice.kt`, actualización del listener táctil `ontouch` para discriminar entre `action_down` sostenido (long press / hold) y `action_up` rápido (tap), y despliegue del popup `floatinghistoryoverlayview` vía `windowmanager`.
+  - *flutter (dart)*: switch en `settingsscreen` (tab burbuja) para elegir `flutter.bubble_trigger_mode` (`tap` vs `hold`).
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-10')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-10</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-10">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.8 Gestos Duales en Burbuja Flotante: Toque vs Mantener + Acceso Rápido al Historial</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">clipboard</span><span class="tag-pill">gestos</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-10">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: La burbuja flotante actualmente solo responde a un toque simple para grabar. Cuando el usuario está usando otra app y necesita consultar, copiar o pegar una transcripción anterior del historial, tiene que salir y abrir la app principal o el teclado. Asignar el gesto complementario al historial unifica la experiencia flotante.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<ul class="sublist">
+<li><strong>Selector de Modo en Ajustes (Tab Burbuja)</strong>:</li>
+<li><strong>Modo 1: Toque Simple (Tap-to-Record) [Default]</strong>:</li>
+<li><code class="code-pill">Toque simple</code>: Inicia grabación (1er tap) / Detiene y transcribe (2do tap).</li>
+<li><code class="code-pill">Pulsación Larga (~400ms en reposo)</code>: Abre la <strong>modal flotante con el Historial de Transcripciones</strong> (las últimas 20).</li>
+<li><strong>Modo 2: Mantener Presionado (Push-to-Talk / Hold-to-Record)</strong>:</li>
+<li><code class="code-pill">Mantener presionado</code>: Graba mientras se sostiene el dedo sobre la burbuja; al soltar, finaliza y transcribe inmediatamente.</li>
+<li><code class="code-pill">Toque Simple (Tap rápido en reposo)</code>: Abre la <strong>modal flotante con el Historial de Transcripciones</strong>.</li>
+<li><strong>Modal Flotante de Historial (Liquid Glass)</strong>:</li>
+<li>Se despliega anclada a la posición de la burbuja en pantalla.</li>
+<li>Lista las últimas 20 transcripciones con fecha/hora relativa.</li>
+<li>Tocar una transcripción la copia al portapapeles con confirmación háptica/visual instantánea (y la inserta si hay accesibilidad activa).</li>
+<li>Tocar fuera o el botón cerrar descarta la modal.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">FloatingBubbleService.kt</code>, actualización del listener táctil <code class="code-pill">onTouch</code> para discriminar entre <code class="code-pill">ACTION_DOWN</code> sostenido (Long Press / Hold) y <code class="code-pill">ACTION_UP</code> rápido (Tap), y despliegue del popup <code class="code-pill">FloatingHistoryOverlayView</code> vía <code class="code-pill">WindowManager</code>.</li>
+<li><em>Flutter (Dart)</em>: Switch en <code class="code-pill">SettingsScreen</code> (Tab Burbuja) para elegir <code class="code-pill">flutter.bubble_trigger_mode</code> (<code class="code-pill">tap</code> vs <code class="code-pill">hold</code>).</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-11" data-cats="teclado burbuja codigo multimedia ui" data-search="mej-11 modelos de burbuja dinámica expandible (morph-to-pill, cronómetro, botones rápidos y auto-enter) * **origen / necesidad**: la burbuja flotante fija puede resultar demasiado estática. incorporar una versión dinámica que se expanda visualmente (al estilo de la tecla m4 del teclado y dynamic island), muestre el tiempo de grabación en vivo y permita acciones inmediatas como cancelar, enviar con `auto-enter` o insertar espacios agiliza el flujo en mensajería y terminal.
+* **comportamiento esperado**:
+  1. **selector de modelos de burbuja en ajustes (tab burbuja)**:
+     - **modelo a: clásica mínima**: círculo liquid glass discreto (56x56dp), animación pulsante sutil.
+     - **modelo b: dinámica expandible (pill island)**:
+       - **en reposo**: círculo glass compacto en el borde de pantalla.
+       - **al iniciar grabación**: la burbuja se expande horizontalmente a una **pastilla roja flotante (floating pill)** con:
+         - punto pulsante indicador de grabación.
+         - cronómetro `m:ss` en vivo.
+         - botón táctil `[ ✕ cancelar ]` para descartar el audio sin consumir tokens/api.
+       - **al procesar**: animación de 3 puntos en ola liquid glass.
+       - **combo de botones auxiliares rápidos (opcional / mini-barra adyacente)**:
+         - mini píldoras adyacentes de 1 toque: `[ ↵ enter ]`, `[ ␣ espacio ]`, `[ ⌫ borrar ]`.
+  2. **opción auto-enter / auto-envío**:
+     - switch en ajustes: *auto-enter al finalizar dictado en burbuja*.
+     - al concluir la transcripción, la burbuja pega el texto e inmediatamente inyecta un `enter / action_send`, enviando el mensaje o ejecutando el comando en termux sin requerir toques extra.
+* **impacto técnico**:
+  - *kotlin nativo*: en `floatingbubbleservice.kt`, animación interpolada de `layoutparams.width` en `windowmanager` para transicionar de círculo a pastilla durante `recording`. manejo de botones de acción rápida e inyección de `keycode_enter` vía accesibilidad.
+  - *flutter (dart)*: controles en `settingsscreen` (tab burbuja): `flutter.bubble_style_model` (`classic` vs `dynamic_pill`) y `flutter.bubble_auto_enter_enabled`.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-11')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-11</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-11">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.9 Modelos de Burbuja Dinámica Expandible (Morph-to-Pill, Cronómetro, Botones Rápidos y Auto-Enter)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">codigo</span><span class="tag-pill">multimedia</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-11">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: La burbuja flotante fija puede resultar demasiado estática. Incorporar una versión dinámica que se expanda visualmente (al estilo de la tecla M4 del teclado y Dynamic Island), muestre el tiempo de grabación en vivo y permita acciones inmediatas como cancelar, enviar con <code class="code-pill">Auto-Enter</code> o insertar espacios agiliza el flujo en mensajería y terminal.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Selector de Modelos de Burbuja en Ajustes (Tab Burbuja)</strong>:</p>
+<ul class="sublist">
+<li><strong>Modelo A: Clásica Mínima</strong>: Círculo Liquid Glass discreto (56x56dp), animación pulsante sutil.</li>
+<li><strong>Modelo B: Dinámica Expandible (Pill Island)</strong>:</li>
+<li><strong>En reposo</strong>: Círculo Glass compacto en el borde de pantalla.</li>
+<li><strong>Al iniciar grabación</strong>: La burbuja se expande horizontalmente a una <strong>pastilla roja flotante (Floating Pill)</strong> con:</li>
+<li>Punto pulsante indicador de grabación.</li>
+<li>Cronómetro <code class="code-pill">M:SS</code> en vivo.</li>
+<li>Botón táctil <code class="code-pill">[ ✕ Cancelar ]</code> para descartar el audio sin consumir tokens/API.</li>
+<li><strong>Al procesar</strong>: Animación de 3 puntos en ola Liquid Glass.</li>
+<li><strong>Combo de Botones Auxiliares Rápidos (Opcional / Mini-Barra Adyacente)</strong>:</li>
+<li>Mini píldoras adyacentes de 1 toque: <code class="code-pill">[ ↵ Enter ]</code>, <code class="code-pill">[ ␣ Espacio ]</code>, <code class="code-pill">[ ⌫ Borrar ]</code>.</li>
+</ul>
+<p>2. <strong>Opción Auto-Enter / Auto-Envío</strong>:</p>
+<ul class="sublist">
+<li>Switch en Ajustes: <em>"Auto-Enter al finalizar dictado en burbuja"</em>.</li>
+<li>Al concluir la transcripción, la burbuja pega el texto e inmediatamente inyecta un <code class="code-pill">ENTER / ACTION_SEND</code>, enviando el mensaje o ejecutando el comando en Termux sin requerir toques extra.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">FloatingBubbleService.kt</code>, animación interpolada de <code class="code-pill">LayoutParams.width</code> en <code class="code-pill">windowManager</code> para transicionar de círculo a pastilla durante <code class="code-pill">recording</code>. Manejo de botones de acción rápida e inyección de <code class="code-pill">KEYCODE_ENTER</code> vía accesibilidad.</li>
+<li><em>Flutter (Dart)</em>: Controles en <code class="code-pill">SettingsScreen</code> (Tab Burbuja): <code class="code-pill">flutter.bubble_style_model</code> (<code class="code-pill">classic</code> vs <code class="code-pill">dynamic_pill</code>) y <code class="code-pill">flutter.bubble_auto_enter_enabled</code>.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-12" data-cats="teclado burbuja codigo ui" data-search="mej-12 conmutación fluida teclado ↔ burbuja y modo micro-teclado flotante (command strip) * **origen / necesidad**: en sesiones de terminal (termux / ssh / neovim) o lectura de chats, tener el teclado completo abierto tapa el 45% de la pantalla y oculta logs o respuestas. un modo micro-teclado flotante (una tira delgada de una sola fila) permite mantener acceso permanente a dictado, comandos y edición viendo el 95% de la pantalla.
+* **comportamiento esperado**:
+  1. **conmutación instantánea teclado ↔ burbuja**:
+     - **desde el teclado**: botón en barra superior (`mej-03`) o menú de espacio (`mej-06`): *minimizar a burbuja flotante*.
+     - **desde la burbuja**: toque de acción en menú: *desplegar teclado completo*.
+  2. **modo micro-teclado flotante / command strip**:
+     - tira horizontal compacta glass (altura ~44dp) que se puede mover o anclar en la parte inferior o flotante.
+     - contiene únicamente los controles esenciales de alta frecuencia:
+       - `[ 🎤 dictado por voz ]` (con estado en vivo)
+       - `[ ⌫ backspace / borrar ]` (soporta borrado rápido y swipe-to-delete)
+       - `[ ␣ espacio ]`
+       - `[ ↵ enter / ejecutar ]`
+       - `[ ⇥ tab ]` (o flechas si está en modo terminal)
+       - `[ ⌨️ expandir a teclado completo ]`
+     - **utilidad extrema**: permite dictar comandos por voz en termux o enviar mensajes en chats sin que el teclado tradicional tape la pantalla.
+* **impacto técnico**:
+  - *kotlin nativo*: comunicación bidireccional entre `voicekeyboardservice.kt` y `floatingbubbleservice.kt` para orquestar la transición entre vista completa de ime, barra horizontal `commandstripview` y burbuja circular `bubbleview`.
+  - *flutter (dart)*: configuración de la barra mínima en ajustes > teclado / burbuja.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-12')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-12</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-12">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.10 Conmutación Fluida Teclado ↔ Burbuja y Modo Micro-Teclado Flotante (Command Strip)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">codigo</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-12">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: En sesiones de terminal (Termux / SSH / Neovim) o lectura de chats, tener el teclado completo abierto tapa el 45% de la pantalla y oculta logs o respuestas. Un modo "Micro-Teclado Flotante" (una tira delgada de una sola fila) permite mantener acceso permanente a dictado, comandos y edición viendo el 95% de la pantalla.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Conmutación Instantánea Teclado ↔ Burbuja</strong>:</p>
+<ul class="sublist">
+<li><strong>Desde el Teclado</strong>: Botón en barra superior (<code class="code-pill">MEJ-03</code>) o menú de espacio (<code class="code-pill">MEJ-06</code>): <em>"Minimizar a Burbuja Flotante"</em>.</li>
+<li><strong>Desde la Burbuja</strong>: Toque de acción en menú: <em>"Desplegar Teclado Completo"</em>.</li>
+</ul>
+<p>2. <strong>Modo Micro-Teclado Flotante / Command Strip</strong>:</p>
+<ul class="sublist">
+<li>Tira horizontal compacta Glass (altura ~44dp) que se puede mover o anclar en la parte inferior o flotante.</li>
+<li>Contiene únicamente los controles esenciales de alta frecuencia:</li>
+<li><code class="code-pill">[ 🎤 Dictado por Voz ]</code> (con estado en vivo)</li>
+<li><code class="code-pill">[ ⌫ Backspace / Borrar ]</code> (soporta borrado rápido y swipe-to-delete)</li>
+<li><code class="code-pill">[ ␣ Espacio ]</code></li>
+<li><code class="code-pill">[ ↵ Enter / Ejecutar ]</code></li>
+<li><code class="code-pill">[ ⇥ Tab ]</code> (o flechas si está en modo terminal)</li>
+<li><code class="code-pill">[ ⌨️ Expandir a Teclado Completo ]</code></li>
+<li><strong>Utilidad Extrema</strong>: Permite dictar comandos por voz en Termux o enviar mensajes en chats sin que el teclado tradicional tape la pantalla.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: Comunicación bidireccional entre <code class="code-pill">VoiceKeyboardService.kt</code> y <code class="code-pill">FloatingBubbleService.kt</code> para orquestar la transición entre vista completa de IME, barra horizontal <code class="code-pill">CommandStripView</code> y burbuja circular <code class="code-pill">BubbleView</code>.</li>
+<li><em>Flutter (Dart)</em>: Configuración de la barra mínima en Ajustes > Teclado / Burbuja.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-13" data-cats="teclado codigo gestos multimedia ui" data-search="mej-13 capa de emojis, emoticones ascii/kaomoji y soporte de stickers (rich content) * **origen / necesidad**: enviar reacciones rápidas, emojis y stickers en apps de mensajería sin tener que alternar a otro teclado del sistema exclusivamente para buscar un emoticon o sticker.
+* **comportamiento esperado**:
+  - **acceso a la capa**: tecla `😀` (ubicable en la barra superior `mej-03`, menú rápido de espacio `mej-06` o capa de símbolos). ocultable desde ajustes si se prefiere un teclado estrictamente de código.
+  - **pestañas de la capa**:
+    1. **recientes / favoritos**: últimos 30 emojis usados para inserción a 1 toque.
+    2. **emojis unicode nativos**: cuadrícula por categorías (caritas, gestos, objetos, símbolos) renderizada con la fuente del sistema (cero consumo extra de apk o memoria).
+    3. **emoticones ascii / kaomojis**: pestaña dedicada con kaomojis listos para programadores y usuarios de chat (`¯\_(ツ)_/¯`, `(╯°□°)╯︵ ┻━┻`, `(•_•)`, `(◕‿◕)`).
+    4. **bandeja de stickers / gifs (opt-in)**: soporte de inserción de imágenes/stickers mediante la api estándar de android `inputconnection.commitcontent()` (compatible con whatsapp, telegram, discord).
+  - **rendimiento y privacidad**: cero telemetría, carga bajo demanda y switch para activar/desactivar en ajustes.
+* **impacto técnico**:
+  - *kotlin nativo*: implementación de `buildemojilayer()` en `voicekeyboardservice.kt` con `committext()` para unicode/kaomoji y `commitcontent()` para rich content/stickers.
+  - *flutter (dart)*: switch `flutter.kb_emoji_key_visible` en ajustes > teclado.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-13')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-13</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-13">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.11 Capa de Emojis, Emoticones ASCII/Kaomoji y Soporte de Stickers (Rich Content)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">codigo</span><span class="tag-pill">gestos</span><span class="tag-pill">multimedia</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-13">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Enviar reacciones rápidas, emojis y stickers en apps de mensajería sin tener que alternar a otro teclado del sistema exclusivamente para buscar un emoticon o sticker.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<ul class="sublist">
+<li><strong>Acceso a la Capa</strong>: Tecla <code class="code-pill">😀</code> (ubicable en la barra superior <code class="code-pill">MEJ-03</code>, menú rápido de espacio <code class="code-pill">MEJ-06</code> o capa de símbolos). Ocultable desde Ajustes si se prefiere un teclado estrictamente de código.</li>
+<li><strong>Pestañas de la Capa</strong>:</li>
+</ul>
+<p>1. <strong>Recientes / Favoritos</strong>: Últimos 30 emojis usados para inserción a 1 toque.</p>
+<p>2. <strong>Emojis Unicode Nativos</strong>: Cuadrícula por categorías (Caritas, Gestos, Objetos, Símbolos) renderizada con la fuente del sistema (cero consumo extra de APK o memoria).</p>
+<p>3. <strong>Emoticones ASCII / Kaomojis</strong>: Pestaña dedicada con kaomojis listos para programadores y usuarios de chat (<code class="code-pill">¯\_(ツ)_/¯</code>, <code class="code-pill">(╯°□°)╯︵ ┻━┻</code>, <code class="code-pill">(•_•)</code>, <code class="code-pill">(◕‿◕)</code>).</p>
+<p>4. <strong>Bandeja de Stickers / GIFs (Opt-in)</strong>: Soporte de inserción de imágenes/stickers mediante la API estándar de Android <code class="code-pill">InputConnection.commitContent()</code> (compatible con WhatsApp, Telegram, Discord).</p>
+<ul class="sublist">
+<li><strong>Rendimiento y Privacidad</strong>: Cero telemetría, carga bajo demanda y switch para activar/desactivar en Ajustes.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: Implementación de <code class="code-pill">buildEmojiLayer()</code> en <code class="code-pill">VoiceKeyboardService.kt</code> con <code class="code-pill">commitText()</code> para Unicode/Kaomoji y <code class="code-pill">commitContent()</code> para Rich Content/Stickers.</li>
+<li><em>Flutter (Dart)</em>: Switch <code class="code-pill">flutter.kb_emoji_key_visible</code> en Ajustes > Teclado.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-14" data-cats="teclado codigo gestos ui" data-search="mej-14 modo gaming y gamepad virtual (joystick / d-pad y botones para juegos web y pwas) * **origen / necesidad**: jugar videojuegos web (html5, phaser, emuladores web en navegador, progressive web apps o juegos en terminal) desde el teléfono suele ser problemático por la falta de controles táctiles o la necesidad de teclas de dirección y botones de acción simultáneos. un modo gaming transforma el teclado en un mando virtual táctil de respuesta instantánea.
+* **comportamiento esperado**:
+  1. **activación rápida**: desde el menú rápido de la barra espaciadora (`mej-06`), barra superior (`mej-03`) o botón de capa.
+  2. **controles táctiles (estilo xbox / playstation liquid glass)**:
+     - **cruceta direccional / d-pad**: arriba, abajo, izquierda, derecha (`▲`, `▼`, `◄`, `►`).
+     - **botones de acción principales**: 4 botones ergonómicos `[ a ]`, `[ b ]`, `[ x ]`, `[ y ]` (o `✕`, `○`, `□`, `△`).
+     - **gatillos y control**: `[ l1 / lb ]`, `[ r1 / rb ]`, `[ select / esc ]`, `[ start / pause ]` y `[ ✕ salir ]`.
+  3. **multi-touch real y orientación dual**:
+     - **multi-touch simultáneo**: permite mantener presionada una dirección para moverse mientras se pulsa `a` (saltar) o `b` (disparar) sin conflicto.
+     - **modo vertical (portrait)**: disposición compacta en la mitad inferior de la pantalla.
+     - **modo horizontal (landscape)**: controles divididos en las esquinas izquierda/derecha para sujetar el dispositivo con ambas manos.
+  4. **modos de mapeo de teclas (configurable en ajustes)**:
+     - **preset teclado gamer**: mapeo directo a `wasd` / `flechas` + `espacio` (salto) + `enter` + `shift` (compatibilidad inmediata con el 100% de páginas web y juegos html5).
+     - **preset gamepad android**: inyección de `keycode_button_a/b/x/y/start` para emuladores y apps compatibles con mando.
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, implementación de `buildgamepadlayer()` con una vista multi-touch dedicada (`gamepadtouchview`) que procesa múltiples punteros `motionevent.getpointerid()` e inyecta `senddownupkeyevents()`.
+  - *flutter (dart)*: selector de mapeo y switch en ajustes > teclado > modo gaming.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-14')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-14</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-14">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.12 Modo Gaming y Gamepad Virtual (Joystick / D-Pad y Botones para Juegos Web y PWAs)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">codigo</span><span class="tag-pill">gestos</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-14">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Jugar videojuegos web (HTML5, Phaser, emuladores web en navegador, Progressive Web Apps o juegos en terminal) desde el teléfono suele ser problemático por la falta de controles táctiles o la necesidad de teclas de dirección y botones de acción simultáneos. Un modo Gaming transforma el teclado en un mando virtual táctil de respuesta instantánea.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Activación Rápida</strong>: Desde el menú rápido de la barra espaciadora (<code class="code-pill">MEJ-06</code>), barra superior (<code class="code-pill">MEJ-03</code>) o botón de capa.</p>
+<p>2. <strong>Controles Táctiles (Estilo Xbox / PlayStation Liquid Glass)</strong>:</p>
+<ul class="sublist">
+<li><strong>Cruceta Direccional / D-Pad</strong>: Arriba, Abajo, Izquierda, Derecha (<code class="code-pill">▲</code>, <code class="code-pill">▼</code>, <code class="code-pill">◄</code>, <code class="code-pill">►</code>).</li>
+<li><strong>Botones de Acción Principales</strong>: 4 botones ergonómicos <code class="code-pill">[ A ]</code>, <code class="code-pill">[ B ]</code>, <code class="code-pill">[ X ]</code>, <code class="code-pill">[ Y ]</code> (o <code class="code-pill">✕</code>, <code class="code-pill">○</code>, <code class="code-pill">□</code>, <code class="code-pill">△</code>).</li>
+<li><strong>Gatillos y Control</strong>: <code class="code-pill">[ L1 / LB ]</code>, <code class="code-pill">[ R1 / RB ]</code>, <code class="code-pill">[ SELECT / ESC ]</code>, <code class="code-pill">[ START / PAUSE ]</code> y <code class="code-pill">[ ✕ Salir ]</code>.</li>
+</ul>
+<p>3. <strong>Multi-Touch Real y Orientación Dual</strong>:</p>
+<ul class="sublist">
+<li><strong>Multi-Touch Simultáneo</strong>: Permite mantener presionada una dirección para moverse mientras se pulsa <code class="code-pill">A</code> (saltar) o <code class="code-pill">B</code> (disparar) sin conflicto.</li>
+<li><strong>Modo Vertical (Portrait)</strong>: Disposición compacta en la mitad inferior de la pantalla.</li>
+<li><strong>Modo Horizontal (Landscape)</strong>: Controles divididos en las esquinas izquierda/derecha para sujetar el dispositivo con ambas manos.</li>
+</ul>
+<p>4. <strong>Modos de Mapeo de Teclas (Configurable en Ajustes)</strong>:</p>
+<ul class="sublist">
+<li><strong>Preset Teclado Gamer</strong>: Mapeo directo a <code class="code-pill">WASD</code> / <code class="code-pill">Flechas</code> + <code class="code-pill">Espacio</code> (Salto) + <code class="code-pill">Enter</code> + <code class="code-pill">Shift</code> (compatibilidad inmediata con el 100% de páginas web y juegos HTML5).</li>
+<li><strong>Preset Gamepad Android</strong>: Inyección de <code class="code-pill">KEYCODE_BUTTON_A/B/X/Y/START</code> para emuladores y apps compatibles con mando.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, implementación de <code class="code-pill">buildGamepadLayer()</code> con una vista multi-touch dedicada (<code class="code-pill">GamepadTouchView</code>) que procesa múltiples punteros <code class="code-pill">MotionEvent.getPointerId()</code> e inyecta <code class="code-pill">sendDownUpKeyEvents()</code>.</li>
+<li><em>Flutter (Dart)</em>: Selector de mapeo y switch en Ajustes > Teclado > Modo Gaming.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-15" data-cats="teclado codigo ui" data-search="mej-15 motor de temas visuales y personalización tecla por tecla (paleta cromática arcoíris) * **origen / necesidad**: ofrecer libertad estética absoluta para que cada usuario cree su identidad visual: desde temas de alto contraste o bajo consumo oled hasta paletas radiantes neón, cyberpunk o esquemas funcionales con colores distintos por grupo de teclas (letras, modificadores, código).
+* **comportamiento esperado**:
+  1. **temas globales predeterminados (ajustes > tab temas)**:
+     - `liquid glass (oscuro / claro)` [estilo por defecto]
+     - `oled negro puro` (fondos #000000 para ahorro máximo de batería en pantallas amoled).
+     - `neón cyberpunk` (bordes brillantes cian/magenta/azul eléctrico sobre fondo oscuro).
+     - `terminal matrix` (verde fósforo clásico hacker sobre negro azabache).
+     - `atardecer / sunset glow` (gradientes cálidos naranja/violeta).
+     - `blanco nieve / minimal light` (estilo limpio blanco puro).
+  2. **personalización tecla por tecla (editor interactivo & paleta de pintor)**:
+     - en ajustes > tab temas se muestra una vista previa interactiva del teclado.
+     - al tocar cualquier tecla (o grupo: vocales, números, `shift`, `enter`, `espacio`, `código`), se abre una **paleta de pintor / selector arcoíris** con rueda cromática hsv/rgb y paletas de colores prearmadas.
+     - permite personalizar:
+       - color de fondo de la tecla.
+       - color de la letra / glifo.
+       - color y grosor del borde (stroke neón / glass).
+  3. **guardado y perfiles**:
+     - guardar esquemas personalizados del usuario.
+     - botón de restablecer al tema original liquid glass en 1 toque.
+* **impacto técnico**:
+  - *flutter (dart)*: editor interactivo de teclado con selector de color cromático en `settingsscreen` (tab temas), almacenamiento en `storageservice` (`flutter.kb_theme_preset`, `flutter.kb_custom_colors_json`).
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, renderizado dinámico de fondos con `gradientdrawable` tintados en tiempo real según el mapa de colores configurado.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-15')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-15</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-15">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.13 Motor de Temas Visuales y Personalización Tecla por Tecla (Paleta Cromática Arcoíris)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">codigo</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-15">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Ofrecer libertad estética absoluta para que cada usuario cree su identidad visual: desde temas de alto contraste o bajo consumo OLED hasta paletas radiantes Neón, cyberpunk o esquemas funcionales con colores distintos por grupo de teclas (letras, modificadores, código).</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Temas Globales Predeterminados (Ajustes > Tab Temas)</strong>:</p>
+<ul class="sublist">
+<li><code class="code-pill">Liquid Glass (Oscuro / Claro)</code> [Estilo por defecto]</li>
+<li><code class="code-pill">OLED Negro Puro</code> (fondos #000000 para ahorro máximo de batería en pantallas AMOLED).</li>
+<li><code class="code-pill">Neón Cyberpunk</code> (Bordes brillantes cian/magenta/azul eléctrico sobre fondo oscuro).</li>
+<li><code class="code-pill">Terminal Matrix</code> (Verde fósforo clásico hacker sobre negro azabache).</li>
+<li><code class="code-pill">Atardecer / Sunset Glow</code> (Gradientes cálidos naranja/violeta).</li>
+<li><code class="code-pill">Blanco Nieve / Minimal Light</code> (Estilo limpio blanco puro).</li>
+</ul>
+<p>2. <strong>Personalización Tecla por Tecla (Editor Interactivo & Paleta de Pintor)</strong>:</p>
+<ul class="sublist">
+<li>En Ajustes > Tab Temas se muestra una vista previa interactiva del teclado.</li>
+<li>Al tocar cualquier tecla (o grupo: vocales, números, <code class="code-pill">Shift</code>, <code class="code-pill">Enter</code>, <code class="code-pill">Espacio</code>, <code class="code-pill">Código</code>), se abre una <strong>Paleta de Pintor / Selector Arcoíris</strong> con rueda cromática HSV/RGB y paletas de colores prearmadas.</li>
+<li>Permite personalizar:</li>
+<li>Color de fondo de la tecla.</li>
+<li>Color de la letra / glifo.</li>
+<li>Color y grosor del borde (stroke neón / glass).</li>
+</ul>
+<p>3. <strong>Guardado y Perfiles</strong>:</p>
+<ul class="sublist">
+<li>Guardar esquemas personalizados del usuario.</li>
+<li>Botón de restablecer al tema original Liquid Glass en 1 toque.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Flutter (Dart)</em>: Editor interactivo de teclado con selector de color cromático en <code class="code-pill">SettingsScreen</code> (Tab Temas), almacenamiento en <code class="code-pill">StorageService</code> (<code class="code-pill">flutter.kb_theme_preset</code>, <code class="code-pill">flutter.kb_custom_colors_json</code>).</li>
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, renderizado dinámico de fondos con <code class="code-pill">GradientDrawable</code> tintados en tiempo real según el mapa de colores configurado.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-16" data-cats="teclado burbuja clipboard ui" data-search="mej-16 rediseño y potenciación de la modal de historial de transcripciones (dimensiones, estilo glass y funcionalidades) * **origen / necesidad**: la ventana emergente actual del historial es básica (una lista de texto simple sin búsqueda ni gestión). rediseñarla a nivel de proporciones, diseño liquid glass y funcionalidades avanzadas convierte al historial en una herramienta de productividad de primer nivel.
+* **comportamiento esperado**:
+  1. **mejoras de tamaño y proporciones**:
+     - **dimensiones adaptables**: ocupa el 55–65% de la pantalla con bordes amplios y scroll suave.
+     - **vista acordeón / expandible**: las transcripciones largas se pueden expandir con un toque para leer el texto completo sin cortes de elipsis.
+  2. **diseño visual liquid glass pulido**:
+     - **tarjetas flotantes individuales**: cada transcripción reside en una tarjeta con fondo translúcido, borde suave (`kb_key_stroke`) y elevación ligera.
+     - **header con controles**: título *historial de dictados*, contador visible (`n/20`), botón *vaciar* y botón de cierre `✕`.
+     - **metadatos visuales**: timestamp relativo amigable (*hace 3 min*, *hoy 11:20*) e icono indicador de procedencia (🎤 teclado vs 🫧 burbuja).
+  3. **nuevas funcionalidades**:
+     - **búsqueda / filtro en vivo**: barra superior para escribir y filtrar al instante entre las 20 transcripciones.
+     - **fijar transcripciones (pin 📌)**: marcar notas de voz importantes para que no se borren por la rotación fifo.
+     - **acciones rápidas por tarjeta**:
+       - *toque simple*: insertar en cursor (en teclado) o copiar (en burbuja).
+       - *botón copiar `📋` directo*: copia al portapapeles sin cerrar la modal.
+       - *botón borrar `🗑️` individual*: eliminar una transcripción puntual.
+     - **copiar selección múltiple**: posibilidad de marcar varias transcripciones y copiarlas o insertarlas concatenadas en bloque.
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt` (y compartido con `floatingbubbleservice.kt`), sustitución del `scrollview` básico por un `historydialogfragment` / `popupwindow` estructurado con `recyclerview`, búsqueda en memoria y botones de acción.
+  - *flutter (dart)*: consistencia visual con el historial de `homescreen`.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-16')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-16</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-16">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.14 Rediseño y Potenciación de la Modal de Historial de Transcripciones (Dimensiones, Estilo Glass y Funcionalidades)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">clipboard</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-16">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: La ventana emergente actual del historial es básica (una lista de texto simple sin búsqueda ni gestión). Rediseñarla a nivel de proporciones, diseño Liquid Glass y funcionalidades avanzadas convierte al historial en una herramienta de productividad de primer nivel.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Mejoras de Tamaño y Proporciones</strong>:</p>
+<ul class="sublist">
+<li><strong>Dimensiones Adaptables</strong>: Ocupa el 55–65% de la pantalla con bordes amplios y scroll suave.</li>
+<li><strong>Vista Acordeón / Expandible</strong>: Las transcripciones largas se pueden expandir con un toque para leer el texto completo sin cortes de elipsis.</li>
+</ul>
+<p>2. <strong>Diseño Visual Liquid Glass Pulido</strong>:</p>
+<ul class="sublist">
+<li><strong>Tarjetas Flotantes Individuales</strong>: Cada transcripción reside en una tarjeta con fondo translúcido, borde suave (<code class="code-pill">kb_key_stroke</code>) y elevación ligera.</li>
+<li><strong>Header con Controles</strong>: Título <em>"Historial de Dictados"</em>, contador visible (<code class="code-pill">N/20</code>), botón <em>"Vaciar"</em> y botón de cierre <code class="code-pill">✕</code>.</li>
+<li><strong>Metadatos Visuales</strong>: Timestamp relativo amigable (<em>"Hace 3 min"</em>, <em>"Hoy 11:20"</em>) e icono indicador de procedencia (🎤 Teclado vs 🫧 Burbuja).</li>
+</ul>
+<p>3. <strong>Nuevas Funcionalidades</strong>:</p>
+<ul class="sublist">
+<li><strong>Búsqueda / Filtro en Vivo</strong>: Barra superior para escribir y filtrar al instante entre las 20 transcripciones.</li>
+<li><strong>Fijar Transcripciones (Pin 📌)</strong>: Marcar notas de voz importantes para que no se borren por la rotación FIFO.</li>
+<li><strong>Acciones Rápidas por Tarjeta</strong>:</li>
+<li><em>Toque simple</em>: Insertar en cursor (en teclado) o Copiar (en burbuja).</li>
+<li><em>Botón Copiar <code class="code-pill">📋</code> directo</em>: Copia al portapapeles sin cerrar la modal.</li>
+<li><em>Botón Borrar <code class="code-pill">🗑️</code> individual</em>: Eliminar una transcripción puntual.</li>
+<li><strong>Copiar Selección Múltiple</strong>: Posibilidad de marcar varias transcripciones y copiarlas o insertarlas concatenadas en bloque.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code> (y compartido con <code class="code-pill">FloatingBubbleService.kt</code>), sustitución del <code class="code-pill">ScrollView</code> básico por un <code class="code-pill">HistoryDialogFragment</code> / <code class="code-pill">PopupWindow</code> estructurado con <code class="code-pill">RecyclerView</code>, búsqueda en memoria y botones de acción.</li>
+<li><em>Flutter (Dart)</em>: Consistencia visual con el historial de <code class="code-pill">HomeScreen</code>.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-17" data-cats="teclado burbuja clipboard codigo multimedia ui" data-search="mej-17 sistema modular de micro-widgets en el teclado (notas, portapapeles, comandos y calculadora) * **origen / necesidad**: durante la jornada móvil, salir del teclado para abrir una app de notas, calcular una operación o buscar un comando común genera interrupciones constantes. integrar micro-widgets ligeros directamente en la barra del teclado aporta máxima productividad a 1 toque.
+* **comportamiento esperado**:
+  1. **franja modular de widgets (widget strip / toolbar)**:
+     - franja superior o menú lateral con micro-widgets intercambiables liquid glass.
+  2. **widgets disponibles**:
+     - 📝 **widget de notas rápidas (scratchpad)**: mini bloc de borrador flotante para apuntar ideas temporales, números o textos y copiarlos/insertarlos con 1 toque.
+     - 📋 **widget de portapapeles en vivo (live clipboard strip)**: carrusel horizontal con los últimos clips para pegar sin desplegar la modal completa.
+     - ⚡ **widget de comandos y terminal**: chips de acceso directo a comandos frecuentes (`git status`, `docker`, `npm`, `ssh`, scripts) listos para enviar al cursor.
+     - 🔢 **widget de calculadora rápida (mini calc)**: resuelve cálculos matemáticos al vuelo (ej. `150 * 1.21 = 181.5`) y permite comitar el resultado al texto.
+  3. **configuración y personalización en ajustes**:
+     - selector para activar/desactivar y reordenar qué widgets aparecen en la barra principal.
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, contenedor `widgetstriplayout` con micro-vistas modulares (`scratchpadview`, `liveclipboardview`, `quickcommandsview`, `minicalcview`).
+  - *flutter (dart)*: gestión de widgets y orden de visualización en `settingsscreen` (tab teclado).
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-17')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-17</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-17">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.15 Sistema Modular de Micro-Widgets en el Teclado (Notas, Portapapeles, Comandos y Calculadora)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">clipboard</span><span class="tag-pill">codigo</span><span class="tag-pill">multimedia</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-17">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Durante la jornada móvil, salir del teclado para abrir una app de notas, calcular una operación o buscar un comando común genera interrupciones constantes. Integrar micro-widgets ligeros directamente en la barra del teclado aporta máxima productividad a 1 toque.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Franja Modular de Widgets (Widget Strip / Toolbar)</strong>:</p>
+<ul class="sublist">
+<li>Franja superior o menú lateral con micro-widgets intercambiables Liquid Glass.</li>
+</ul>
+<p>2. <strong>Widgets Disponibles</strong>:</p>
+<ul class="sublist">
+<li>📝 <strong>Widget de Notas Rápidas (Scratchpad)</strong>: Mini bloc de borrador flotante para apuntar ideas temporales, números o textos y copiarlos/insertarlos con 1 toque.</li>
+<li>📋 <strong>Widget de Portapapeles en Vivo (Live Clipboard Strip)</strong>: Carrusel horizontal con los últimos clips para pegar sin desplegar la modal completa.</li>
+<li>⚡ <strong>Widget de Comandos y Terminal</strong>: Chips de acceso directo a comandos frecuentes (<code class="code-pill">git status</code>, <code class="code-pill">docker</code>, <code class="code-pill">npm</code>, <code class="code-pill">ssh</code>, scripts) listos para enviar al cursor.</li>
+<li>🔢 <strong>Widget de Calculadora Rápida (Mini Calc)</strong>: Resuelve cálculos matemáticos al vuelo (ej. <code class="code-pill">150 * 1.21 = 181.5</code>) y permite comitar el resultado al texto.</li>
+</ul>
+<p>3. <strong>Configuración y Personalización en Ajustes</strong>:</p>
+<ul class="sublist">
+<li>Selector para activar/desactivar y reordenar qué widgets aparecen en la barra principal.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, contenedor <code class="code-pill">WidgetStripLayout</code> con micro-vistas modulares (<code class="code-pill">ScratchpadView</code>, <code class="code-pill">LiveClipboardView</code>, <code class="code-pill">QuickCommandsView</code>, <code class="code-pill">MiniCalcView</code>).</li>
+<li><em>Flutter (Dart)</em>: Gestión de widgets y orden de visualización en <code class="code-pill">SettingsScreen</code> (Tab Teclado).</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-18" data-cats="burbuja clipboard gestos multimedia ui" data-search="mej-18 modo isla dinámica / notch interactivo superior (apple-style dynamic island & camera notch docking) * **origen / necesidad**: ofrecer una alternativa a la burbuja flotante tradicional integrando la interfaz de voz en la parte superior de la pantalla / orificio de la cámara frontal (dynamic island / notch), de modo que nunca tape botones laterales ni el contenido central y se expanda suavemente solo cuando se interactúa con ella.
+* **comportamiento esperado**:
+  1. **selector de posicionamiento en ajustes (tab burbuja)**:
+     - *modo 1: burbuja flotante libre*: flota en los bordes laterales (actual).
+     - *modo 2: isla dinámica / notch superior*: anclada en el centro superior / cutout de cámara frontal.
+  2. **estados y animaciones fluidas (liquid glass island)**:
+     - **reposo compacto (compact pill)**: píldora delgada discreta alrededor de la cámara frontal con micro-icono `🎤`.
+     - **expansión al grabar (recording island)**:
+       - se expande hacia los laterales y hacia abajo de forma elástica.
+       - muestra: onda de audio / punto pulsante rojo + cronómetro en vivo `m:ss` + botón `[ ✕ cancelar ]`.
+     - **procesando / transcribiendo**: indicador de 3 puntos en ola liquid glass.
+     - **resultado / mini-vista previa**: muestra brevemente las primeras palabras dictadas con animación de éxito y botón de auto-pegado o copia.
+  3. **gestos en la isla**:
+     - *toque simple*: iniciar / detener grabación.
+     - *deslizar hacia abajo (swipe down)*: despliega la tarjeta expandida con el historial reciente o controles completos (`enter`, `espacio`, `portapapeles`).
+     - *deslizar hacia arriba (swipe up)*: colapsa de inmediato a reposo.
+  4. **compatibilidad con display cutout de android**:
+     - detección automática de la posición de la cámara (api 28+ `displaycutout`) para centrar la píldora perfectamente según el modelo de teléfono.
+* **impacto técnico**:
+  - *kotlin nativo*: en `floatingbubbleservice.kt`, nuevo controlador `dynamicislandcontroller` con anclaje `gravity.top | gravity.center_horizontal`, lectura de `displaycutout` y animaciones elásticas de interpolación de tamaño.
+  - *flutter (dart)*: selector `flutter.bubble_docking_mode` (`free_floating` vs `dynamic_island`) en ajustes > tab burbuja.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-18')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-18</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-18">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.16 Modo Isla Dinámica / Notch Interactivo Superior (Apple-style Dynamic Island & Camera Notch Docking)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">burbuja</span><span class="tag-pill">clipboard</span><span class="tag-pill">gestos</span><span class="tag-pill">multimedia</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-18">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Ofrecer una alternativa a la burbuja flotante tradicional integrando la interfaz de voz en la parte superior de la pantalla / orificio de la cámara frontal (Dynamic Island / Notch), de modo que nunca tape botones laterales ni el contenido central y se expanda suavemente solo cuando se interactúa con ella.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Selector de Posicionamiento en Ajustes (Tab Burbuja)</strong>:</p>
+<ul class="sublist">
+<li><em>Modo 1: Burbuja Flotante Libre</em>: Flota en los bordes laterales (actual).</li>
+<li><em>Modo 2: Isla Dinámica / Notch Superior</em>: Anclada en el centro superior / cutout de cámara frontal.</li>
+</ul>
+<p>2. <strong>Estados y Animaciones Fluidas (Liquid Glass Island)</strong>:</p>
+<ul class="sublist">
+<li><strong>Reposo Compacto (Compact Pill)</strong>: Píldora delgada discreta alrededor de la cámara frontal con micro-icono <code class="code-pill">🎤</code>.</li>
+<li><strong>Expansión al Grabar (Recording Island)</strong>:</li>
+<li>Se expande hacia los laterales y hacia abajo de forma elástica.</li>
+<li>Muestra: Onda de audio / punto pulsante rojo + Cronómetro en vivo <code class="code-pill">M:SS</code> + Botón <code class="code-pill">[ ✕ Cancelar ]</code>.</li>
+<li><strong>Procesando / Transcribiendo</strong>: Indicador de 3 puntos en ola Liquid Glass.</li>
+<li><strong>Resultado / Mini-Vista Previa</strong>: Muestra brevemente las primeras palabras dictadas con animación de éxito y botón de auto-pegado o copia.</li>
+</ul>
+<p>3. <strong>Gestos en la Isla</strong>:</p>
+<ul class="sublist">
+<li><em>Toque simple</em>: Iniciar / Detener grabación.</li>
+<li><em>Deslizar hacia abajo (Swipe Down)</em>: Despliega la tarjeta expandida con el historial reciente o controles completos (<code class="code-pill">Enter</code>, <code class="code-pill">Espacio</code>, <code class="code-pill">Portapapeles</code>).</li>
+<li><em>Deslizar hacia arriba (Swipe Up)</em>: Colapsa de inmediato a reposo.</li>
+</ul>
+<p>4. <strong>Compatibilidad con Display Cutout de Android</strong>:</p>
+<ul class="sublist">
+<li>Detección automática de la posición de la cámara (API 28+ <code class="code-pill">DisplayCutout</code>) para centrar la píldora perfectamente según el modelo de teléfono.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">FloatingBubbleService.kt</code>, nuevo controlador <code class="code-pill">DynamicIslandController</code> con anclaje <code class="code-pill">Gravity.TOP | Gravity.CENTER_HORIZONTAL</code>, lectura de <code class="code-pill">DisplayCutout</code> y animaciones elásticas de interpolación de tamaño.</li>
+<li><em>Flutter (Dart)</em>: Selector <code class="code-pill">flutter.bubble_docking_mode</code> (<code class="code-pill">free_floating</code> vs <code class="code-pill">dynamic_island</code>) en Ajustes > Tab Burbuja.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-19" data-cats="teclado ui" data-search="mej-19 capa de teclado numérico dedicado (numpad limpio para carga rápida de datos y contabilidad) * **origen / necesidad**: la capa de símbolos estándar mezcla dígitos con caracteres especiales y signos ortográficos en teclas reducidas, lo que dificulta la digitación rápida de importes, pins, teléfonos, cálculos o datos contables. un numpad puro con teclas numéricas gigantes resuelve esto de forma ergonómica.
+* **comportamiento esperado**:
+  1. **distribución numpad limpia y ergonómica**:
+     - teclas de gran tamaño con tipografía destacada:
+       - bloque numérico: `[ 7 ] [ 8 ] [ 9 ]` / `[ 4 ] [ 5 ] [ 6 ]` / `[ 1 ] [ 2 ] [ 3 ]` / `[ , / . ] [ 0 ] [ 00 ]`.
+       - columna lateral de operadores básicos: `[ / ] [ * ] [ - ] [ + ] [ = ]`.
+       - teclas de control esenciales: `[ ⌫ borrar ]`, `[ ↵ enter ]`, `[ ␣ espacio ]`, `[ 🎤 dictado ]` y `[ abc volver a letras ]`.
+  2. **auto-detección inteligente de campos numéricos**:
+     - al enfocar un campo de texto clasificado como `type_class_number` o `type_class_phone`, el teclado se abre directamente en la capa `numeric` sin obligar al usuario a cambiar de modo.
+  3. **acceso manual directo**:
+     - tecla `123` en barra superior (`mej-03`) o ranura en menú rápido de espacio (`mej-06`) para abrir el numpad en cualquier momento.
+  4. **estilo configurable en ajustes**:
+     - *estilo calculadora / contable* (`7-8-9 arriba, 1-2-3 abajo`) [default].
+     - *estilo teléfono / marcador* (`1-2-3 arriba, 7-8-9 abajo`).
+* **impacto técnico**:
+  - *kotlin nativo*: implementación de `layer.numpad` en `voicekeyboardservice.kt` con `buildnumpadrows()` y apertura contextual según `editorinfo.inputtype`.
+  - *flutter (dart)*: ajustes de disposición y toggle de auto-detección en `settingsscreen` (tab teclado).
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-19')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-19</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-19">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.17 Capa de Teclado Numérico Dedicado (Numpad Limpio para Carga Rápida de Datos y Contabilidad)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-19">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: La capa de símbolos estándar mezcla dígitos con caracteres especiales y signos ortográficos en teclas reducidas, lo que dificulta la digitación rápida de importes, PINs, teléfonos, cálculos o datos contables. Un Numpad puro con teclas numéricas gigantes resuelve esto de forma ergonómica.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Distribución Numpad Limpia y Ergonómica</strong>:</p>
+<ul class="sublist">
+<li>Teclas de gran tamaño con tipografía destacada:</li>
+<li>Bloque numérico: <code class="code-pill">[ 7 ] [ 8 ] [ 9 ]</code> / <code class="code-pill">[ 4 ] [ 5 ] [ 6 ]</code> / <code class="code-pill">[ 1 ] [ 2 ] [ 3 ]</code> / <code class="code-pill">[ , / . ] [ 0 ] [ 00 ]</code>.</li>
+<li>Columna lateral de operadores básicos: <code class="code-pill">[ / ] [ * ] [ - ] [ + ] [ = ]</code>.</li>
+<li>Teclas de control esenciales: <code class="code-pill">[ ⌫ Borrar ]</code>, <code class="code-pill">[ ↵ Enter ]</code>, <code class="code-pill">[ ␣ Espacio ]</code>, <code class="code-pill">[ 🎤 Dictado ]</code> y <code class="code-pill">[ ABC Volver a Letras ]</code>.</li>
+</ul>
+<p>2. <strong>Auto-Detección Inteligente de Campos Numéricos</strong>:</p>
+<ul class="sublist">
+<li>Al enfocar un campo de texto clasificado como <code class="code-pill">TYPE_CLASS_NUMBER</code> o <code class="code-pill">TYPE_CLASS_PHONE</code>, el teclado se abre directamente en la capa <code class="code-pill">NUMERIC</code> sin obligar al usuario a cambiar de modo.</li>
+</ul>
+<p>3. <strong>Acceso Manual Directo</strong>:</p>
+<ul class="sublist">
+<li>Tecla <code class="code-pill">123</code> en barra superior (<code class="code-pill">MEJ-03</code>) o ranura en menú rápido de espacio (<code class="code-pill">MEJ-06</code>) para abrir el Numpad en cualquier momento.</li>
+</ul>
+<p>4. <strong>Estilo Configurable en Ajustes</strong>:</p>
+<ul class="sublist">
+<li><em>Estilo Calculadora / Contable</em> (<code class="code-pill">7-8-9 arriba, 1-2-3 abajo</code>) [Default].</li>
+<li><em>Estilo Teléfono / Marcador</em> (<code class="code-pill">1-2-3 arriba, 7-8-9 abajo</code>).</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: Implementación de <code class="code-pill">Layer.NUMPAD</code> en <code class="code-pill">VoiceKeyboardService.kt</code> con <code class="code-pill">buildNumpadRows()</code> y apertura contextual según <code class="code-pill">EditorInfo.inputType</code>.</li>
+<li><em>Flutter (Dart)</em>: Ajustes de disposición y toggle de auto-detección en <code class="code-pill">SettingsScreen</code> (Tab Teclado).</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-20" data-cats="teclado burbuja multimedia ui" data-search="mej-20 widget de control multimedia y música en el teclado (mini reproductor liquid glass) * **origen / necesidad**: cambiar de canción o pausar música y podcasts mientras se escribe o chatea requiere deslizar la barra de notificaciones de android o cambiar de aplicación. un micro-controlador multimedia integrado directamente en el teclado o en la isla superior permite controlar la reproducción al instante.
+* **comportamiento esperado**:
+  1. **detección automática de sesiones activas**:
+     - conexión vía android `mediasessionmanager` / `mediacontroller` compatible con spotify, youtube music, apple music, deezer, podcasts, vlc y navegadores.
+     - **auto-ocultamiento**: si no hay ninguna reproducción activa, el widget permanece oculto para ahorrar espacio.
+  2. **mini reproductor liquid glass (píldora interactiva en barra superior / widgets)**:
+     - mini carátula de álbum / icono de nota musical con animación de rotación sutil.
+     - título de la pista y artista en texto deslizante fluido (marquee).
+     - botones táctiles inmediatos: `[ ⏮ anterior ]`, `[ ⏯ play / pausa ]`, `[ ⏭ siguiente ]`.
+  3. **tarjeta expandida al toque**:
+     - tocar sobre el nombre de la pista abre una micro-tarjeta flotante con barra de progreso de tiempo y control de volumen rápido.
+  4. **ajustes y privacidad**:
+     - switch en ajustes > teclado > widgets: *habilitar widget de música en teclado*. cero recolección de datos, lectura 100% en memoria local.
+* **impacto técnico**:
+  - *kotlin nativo*: implementación de `mediasessionobserver` y `mediawidgetview` en `voicekeyboardservice.kt` vinculado a `mediacontroller.transportcontrols`.
+  - *flutter (dart)*: switch `flutter.kb_media_widget_enabled` y diálogo explicativo de permisos en `settingsscreen` (tab teclado).
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-20')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-20</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-20">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.18 Widget de Control Multimedia y Música en el Teclado (Mini Reproductor Liquid Glass)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">multimedia</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-20">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Cambiar de canción o pausar música y podcasts mientras se escribe o chatea requiere deslizar la barra de notificaciones de Android o cambiar de aplicación. Un micro-controlador multimedia integrado directamente en el teclado o en la isla superior permite controlar la reproducción al instante.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Detección Automática de Sesiones Activas</strong>:</p>
+<ul class="sublist">
+<li>Conexión vía Android <code class="code-pill">MediaSessionManager</code> / <code class="code-pill">MediaController</code> compatible con Spotify, YouTube Music, Apple Music, Deezer, podcasts, VLC y navegadores.</li>
+<li><strong>Auto-Ocultamiento</strong>: Si no hay ninguna reproducción activa, el widget permanece oculto para ahorrar espacio.</li>
+</ul>
+<p>2. <strong>Mini Reproductor Liquid Glass (Píldora Interactiva en Barra Superior / Widgets)</strong>:</p>
+<ul class="sublist">
+<li>Mini carátula de álbum / icono de nota musical con animación de rotación sutil.</li>
+<li>Título de la pista y artista en texto deslizante fluido (marquee).</li>
+<li>Botones táctiles inmediatos: <code class="code-pill">[ ⏮ Anterior ]</code>, <code class="code-pill">[ ⏯ Play / Pausa ]</code>, <code class="code-pill">[ ⏭ Siguiente ]</code>.</li>
+</ul>
+<p>3. <strong>Tarjeta Expandida al Toque</strong>:</p>
+<ul class="sublist">
+<li>Tocar sobre el nombre de la pista abre una micro-tarjeta flotante con barra de progreso de tiempo y control de volumen rápido.</li>
+</ul>
+<p>4. <strong>Ajustes y Privacidad</strong>:</p>
+<ul class="sublist">
+<li>Switch en Ajustes > Teclado > Widgets: <em>"Habilitar widget de música en teclado"</em>. Cero recolección de datos, lectura 100% en memoria local.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: Implementación de <code class="code-pill">MediaSessionObserver</code> y <code class="code-pill">MediaWidgetView</code> en <code class="code-pill">VoiceKeyboardService.kt</code> vinculado a <code class="code-pill">MediaController.TransportControls</code>.</li>
+<li><em>Flutter (Dart)</em>: Switch <code class="code-pill">flutter.kb_media_widget_enabled</code> y diálogo explicativo de permisos en <code class="code-pill">SettingsScreen</code> (Tab Teclado).</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-21" data-cats="teclado burbuja clipboard codigo ui" data-search="mej-21 bloc de notas de voz y borrador flotante en teclado (voice scratchpad sandbox) * **origen / necesidad**: cuando surge una idea, apunte o pensamiento mientras se usa cualquier app, abrir una app externa de notas interrumpe la tarea y requiere alternar de ventana. dictar directamente en el campo de texto activo corre el riesgo de enviar accidentalmente el mensaje en un chat o romper código en una terminal. un borrador flotante aislado en el teclado permite dictar notas y guardarlas como clips en el acto.
+* **comportamiento esperado**:
+  1. **acceso inmediato**: botón `📝` en la barra superior (`mej-03`), en la bandeja de portapapeles (`mej-01` / `mej-08`) o en el menú rápido de espacio (`mej-06`).
+  2. **lienzo aislado (sandbox draft)**:
+     - se despliega una tarjeta flotante liquid glass con su propia área de edición de texto independiente.
+     - **aislamiento total**: lo que se escriba o dicte en este bloc **no se inserta ni se envía a la app que está debajo**.
+  3. **dictado por voz directo a la nota**:
+     - botón de micrófono dentro del borrador: al dictar, la transcripción se escribe automáticamente en la nota en tiempo real.
+  4. **acciones de la nota**:
+     - `[ 💾 guardar como clip / nota ]`: almacena la nota en el cajón persistente (hasta 10 notas guardadas).
+     - `[ 📋 copiar ]`: copia el contenido al portapapeles global.
+     - `[ ↵ insertar en app ]`: si el usuario decide que sí quiere usar el texto, lo inserta en el campo activo de la app inferior.
+     - `[ 🗑️ descartar / limpiar ]`: borra el borrador con 1 toque.
+  5. **cajón de notas guardadas (mini app de notas ligera)**:
+     - lista compacta de notas creadas para consultar, reutilizar o enviar cuando sea necesario sin requerir apps pesadas como keep o notion.
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, vista `scratchpadoverlayview` con `edittext` local que intercepta los callbacks de `speechtotextclient.kt` mientras el bloc esté visible. persistencia de lista de notas en `fluttersharedpreferences` (`flutter.kb_saved_notes_json`).
+  - *flutter (dart)*: vista y gestión de notas sincronizada en `homescreen`.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-21')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-21</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-21">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.19 Bloc de Notas de Voz y Borrador Flotante en Teclado (Voice Scratchpad Sandbox)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">clipboard</span><span class="tag-pill">codigo</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-21">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Cuando surge una idea, apunte o pensamiento mientras se usa cualquier app, abrir una app externa de notas interrumpe la tarea y requiere alternar de ventana. Dictar directamente en el campo de texto activo corre el riesgo de enviar accidentalmente el mensaje en un chat o romper código en una terminal. Un borrador flotante aislado en el teclado permite dictar notas y guardarlas como clips en el acto.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Acceso Inmediato</strong>: Botón <code class="code-pill">📝</code> en la barra superior (<code class="code-pill">MEJ-03</code>), en la bandeja de portapapeles (<code class="code-pill">MEJ-01</code> / <code class="code-pill">MEJ-08</code>) o en el menú rápido de espacio (<code class="code-pill">MEJ-06</code>).</p>
+<p>2. <strong>Lienzo Aislado (Sandbox Draft)</strong>:</p>
+<ul class="sublist">
+<li>Se despliega una tarjeta flotante Liquid Glass con su propia área de edición de texto independiente.</li>
+<li><strong>Aislamiento Total</strong>: Lo que se escriba o dicte en este bloc <strong>NO se inserta ni se envía a la app que está debajo</strong>.</li>
+</ul>
+<p>3. <strong>Dictado por Voz Directo a la Nota</strong>:</p>
+<ul class="sublist">
+<li>Botón de micrófono dentro del borrador: al dictar, la transcripción se escribe automáticamente en la nota en tiempo real.</li>
+</ul>
+<p>4. <strong>Acciones de la Nota</strong>:</p>
+<ul class="sublist">
+<li><code class="code-pill">[ 💾 Guardar como Clip / Nota ]</code>: Almacena la nota en el cajón persistente (hasta 10 notas guardadas).</li>
+<li><code class="code-pill">[ 📋 Copiar ]</code>: Copia el contenido al portapapeles global.</li>
+<li><code class="code-pill">[ ↵ Insertar en App ]</code>: Si el usuario decide que sí quiere usar el texto, lo inserta en el campo activo de la app inferior.</li>
+<li><code class="code-pill">[ 🗑️ Descartar / Limpiar ]</code>: Borra el borrador con 1 toque.</li>
+</ul>
+<p>5. <strong>Cajón de Notas Guardadas (Mini App de Notas Ligera)</strong>:</p>
+<ul class="sublist">
+<li>Lista compacta de notas creadas para consultar, reutilizar o enviar cuando sea necesario sin requerir apps pesadas como Keep o Notion.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, vista <code class="code-pill">ScratchpadOverlayView</code> con <code class="code-pill">EditText</code> local que intercepta los callbacks de <code class="code-pill">SpeechToTextClient.kt</code> mientras el bloc esté visible. Persistencia de lista de notas en <code class="code-pill">FlutterSharedPreferences</code> (<code class="code-pill">flutter.kb_saved_notes_json</code>).</li>
+<li><em>Flutter (Dart)</em>: Vista y gestión de notas sincronizada en <code class="code-pill">HomeScreen</code>.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-22" data-cats="teclado burbuja multimedia ui" data-search="mej-22 controlador inteligente de audios y mensajes de voz de chats (whatsapp / instagram / telegram) en el teclado * **origen / necesidad**: al escuchar un audio largo en whatsapp, telegram o instagram mientras se redacta una respuesta o se navega por el chat, la burbuja del reproductor en la conversación se desplaza fuera de la pantalla. si se desea pausar, retroceder 5 segundos para reescuchar un detalle clave o ajustar el volumen, el usuario debe detener la escritura y buscar el mensaje. un controlador integrado y anclado al teclado mantiene los controles de reproducción accesibles en todo momento.
+* **comportamiento esperado**:
+  1. **detección automática de audios de chat**:
+     - detección de sesiones de audio activas provenientes de apps de mensajería (`com.whatsapp`, `org.telegram.messenger`, `com.instagram.android`, etc.) vía `audioplaybackcallback` y `mediasessionmanager`.
+  2. **barra de control de audio en el teclado (liquid glass strip)**:
+     - aparece de forma fluida sobre la barra superior del teclado o en la isla superior.
+     - **controles integrados**:
+       - `[ ⏪ -5s ]`: salto hacia atrás de 5 segundos para reescuchar una frase.
+       - `[ ⏯ play / pausa ]`: alternar reproducción sin salir del área de escritura.
+       - `[ ⏩ +5s ]`: salto hacia adelante de 5 segundos.
+       - **línea de tiempo táctil (scrubber)**: barra de progreso interactiva para arrastrar el cabezal y saltar a cualquier segundo del audio (`0:45 / 2:10`).
+       - **control de volumen rápido**: micro-slider o botón de volumen para escuchar con claridad sin pulsar botones físicos.
+  3. **persistencia durante el scroll**:
+     - el usuario puede seguir scrolleando el chat libremente o escribiendo su respuesta: los controles de audio permanecen visibles y fijados al teclado.
+  4. **auto-ocultamiento suave**:
+     - al finalizar la reproducción del audio de voz, la barra se retrae suavemente sin generar parpadeos ni modificar el foco de entrada.
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, componente `voicenotesessionmonitor` escuchando `audiomanager.audioplaybackcallback` y `mediacontroller.transportcontrols.seekto()`. vista modular `voicenotecontrolstripview` con `seekbar` personalizada liquid glass.
+  - *flutter (dart)*: switch `flutter.kb_voicenote_controller_enabled` en ajustes > teclado > widgets.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-22')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-22</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-22">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.20 Controlador Inteligente de Audios y Mensajes de Voz de Chats (WhatsApp / Instagram / Telegram) en el Teclado</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">multimedia</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-22">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Al escuchar un audio largo en WhatsApp, Telegram o Instagram mientras se redacta una respuesta o se navega por el chat, la burbuja del reproductor en la conversación se desplaza fuera de la pantalla. Si se desea pausar, retroceder 5 segundos para reescuchar un detalle clave o ajustar el volumen, el usuario debe detener la escritura y buscar el mensaje. Un controlador integrado y anclado al teclado mantiene los controles de reproducción accesibles en todo momento.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Detección Automática de Audios de Chat</strong>:</p>
+<ul class="sublist">
+<li>Detección de sesiones de audio activas provenientes de apps de mensajería (<code class="code-pill">com.whatsapp</code>, <code class="code-pill">org.telegram.messenger</code>, <code class="code-pill">com.instagram.android</code>, etc.) vía <code class="code-pill">AudioPlaybackCallback</code> y <code class="code-pill">MediaSessionManager</code>.</li>
+</ul>
+<p>2. <strong>Barra de Control de Audio en el Teclado (Liquid Glass Strip)</strong>:</p>
+<ul class="sublist">
+<li>Aparece de forma fluida sobre la barra superior del teclado o en la isla superior.</li>
+<li><strong>Controles Integrados</strong>:</li>
+<li><code class="code-pill">[ ⏪ -5s ]</code>: Salto hacia atrás de 5 segundos para reescuchar una frase.</li>
+<li><code class="code-pill">[ ⏯ Play / Pausa ]</code>: Alternar reproducción sin salir del área de escritura.</li>
+<li><code class="code-pill">[ ⏩ +5s ]</code>: Salto hacia adelante de 5 segundos.</li>
+<li><strong>Línea de Tiempo Táctil (Scrubber)</strong>: Barra de progreso interactiva para arrastrar el cabezal y saltar a cualquier segundo del audio (<code class="code-pill">0:45 / 2:10</code>).</li>
+<li><strong>Control de Volumen Rápido</strong>: Micro-slider o botón de volumen para escuchar con claridad sin pulsar botones físicos.</li>
+</ul>
+<p>3. <strong>Persistencia Durante el Scroll</strong>:</p>
+<ul class="sublist">
+<li>El usuario puede seguir scrolleando el chat libremente o escribiendo su respuesta: los controles de audio permanecen visibles y fijados al teclado.</li>
+</ul>
+<p>4. <strong>Auto-Ocultamiento Suave</strong>:</p>
+<ul class="sublist">
+<li>Al finalizar la reproducción del audio de voz, la barra se retrae suavemente sin generar parpadeos ni modificar el foco de entrada.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, componente <code class="code-pill">VoiceNoteSessionMonitor</code> escuchando <code class="code-pill">AudioManager.AudioPlaybackCallback</code> y <code class="code-pill">MediaController.TransportControls.seekTo()</code>. Vista modular <code class="code-pill">VoiceNoteControlStripView</code> con <code class="code-pill">SeekBar</code> personalizada Liquid Glass.</li>
+<li><em>Flutter (Dart)</em>: Switch <code class="code-pill">flutter.kb_voicenote_controller_enabled</code> en Ajustes > Teclado > Widgets.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-23" data-cats="teclado burbuja codigo multimedia ui" data-search="mej-23 lanzador rápido de aplicaciones y búsqueda universal (spotlight / raycast en teclado y burbuja) * **origen / necesidad**: cambiar a otra aplicación mientras se trabaja en el teléfono suele requerir salir a la pantalla de inicio o abrir el cajón de aplicaciones del sistema. un buscador y lanzador rápido integrado estilo spotlight/raycast permite buscar cualquier app instalada y abrirla en 1 toque directamente desde el teclado o la burbuja flotante.
+* **comportamiento esperado**:
+  1. **acceso inmediato**:
+     - desde el menú rápido de espacio (`mej-06`), barra superior (`mej-03`) o menú de la burbuja/isla (`mej-10` / `mej-18`).
+  2. **interfaz de búsqueda rápida (liquid glass spotlight)**:
+     - se despliega una barra de búsqueda sobre el teclado con cuadrícula/carrusel de aplicaciones.
+     - **fila de apps recientes**: acceso a 1 toque a las 5 aplicaciones más usadas (ej. termux, chrome, whatsapp, acode, spotify).
+     - **filtro instantáneo al escribir**: al tipear las primeras letras (ej. *ter* $\rightarrow$ termux, *git* $\rightarrow$ github, *sp* $\rightarrow$ spotify), los resultados se actualizan en milisegundos con sus iconos oficiales.
+  3. **lanzamiento directo**:
+     - al tocar la aplicación, se abre inmediatamente en primer plano (`startactivity`).
+  4. **privacidad y cero consumo en reposo**:
+     - la lista de paquetes se indexa localmente en memoria y no envía ningún dato al exterior.
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt` y `floatingbubbleservice.kt`, componente `appsearchmanager` utilizando `packagemanager.queryintentactivities()` y renderizado de `applauncherpopupview` con iconos cacheados.
+  - *flutter (dart)*: switch `flutter.kb_app_launcher_enabled` en ajustes > teclado.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-23')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-23</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-23">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.21 Lanzador Rápido de Aplicaciones y Búsqueda Universal (Spotlight / Raycast en Teclado y Burbuja)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">codigo</span><span class="tag-pill">multimedia</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-23">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Cambiar a otra aplicación mientras se trabaja en el teléfono suele requerir salir a la pantalla de inicio o abrir el cajón de aplicaciones del sistema. Un buscador y lanzador rápido integrado estilo Spotlight/Raycast permite buscar cualquier app instalada y abrirla en 1 toque directamente desde el teclado o la burbuja flotante.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Acceso Inmediato</strong>:</p>
+<ul class="sublist">
+<li>Desde el menú rápido de espacio (<code class="code-pill">MEJ-06</code>), barra superior (<code class="code-pill">MEJ-03</code>) o menú de la burbuja/isla (<code class="code-pill">MEJ-10</code> / <code class="code-pill">MEJ-18</code>).</li>
+</ul>
+<p>2. <strong>Interfaz de Búsqueda Rápida (Liquid Glass Spotlight)</strong>:</p>
+<ul class="sublist">
+<li>Se despliega una barra de búsqueda sobre el teclado con cuadrícula/carrusel de aplicaciones.</li>
+<li><strong>Fila de Apps Recientes</strong>: Acceso a 1 toque a las 5 aplicaciones más usadas (ej. Termux, Chrome, WhatsApp, Acode, Spotify).</li>
+<li><strong>Filtro Instantáneo al Escribir</strong>: Al tipear las primeras letras (ej. <em>"ter"</em> $\rightarrow$ Termux, <em>"git"</em> $\rightarrow$ GitHub, <em>"sp"</em> $\rightarrow$ Spotify), los resultados se actualizan en milisegundos con sus iconos oficiales.</li>
+</ul>
+<p>3. <strong>Lanzamiento Directo</strong>:</p>
+<ul class="sublist">
+<li>Al tocar la aplicación, se abre inmediatamente en primer plano (<code class="code-pill">startActivity</code>).</li>
+</ul>
+<p>4. <strong>Privacidad y Cero Consumo en Reposo</strong>:</p>
+<ul class="sublist">
+<li>La lista de paquetes se indexa localmente en memoria y no envía ningún dato al exterior.</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code> y <code class="code-pill">FloatingBubbleService.kt</code>, componente <code class="code-pill">AppSearchManager</code> utilizando <code class="code-pill">PackageManager.queryIntentActivities()</code> y renderizado de <code class="code-pill">AppLauncherPopupView</code> con iconos cacheados.</li>
+<li><em>Flutter (Dart)</em>: Switch <code class="code-pill">flutter.kb_app_launcher_enabled</code> en Ajustes > Teclado.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+            <article class="mej-card" id="mej-24" data-cats="teclado burbuja clipboard codigo ui" data-search="mej-24 auto-conmutación inteligente a burbuja / isla al conectar teclado físico (bluetooth / usb-otg) * **origen / necesidad**: al conectar un teclado físico externo (bluetooth, dock dex o usb-c en termux y tablets), mantener el teclado virtual en pantalla estorba y desperdicia el 40% del área de visión. sin embargo, el usuario aún necesita dictado por voz y snippets. conmutar automáticamente a la burbuja flotante o isla superior resuelve esto de forma transparente.
+* **comportamiento esperado**:
+  1. **detección automática de hardware**:
+     - escucha en tiempo real la conexión/desconexión de periféricos vía `inputmanager.inputdevicelistener` y `configuration.keyboard`.
+     - detecta teclados bluetooth, teclados mecánicos usb-otg, docks y fundas con teclado integrado.
+  2. **comportamiento al conectar**:
+     - **oculta el teclado virtual**: libera el 100% de la pantalla para el editor de código, chat o terminal.
+     - **despliega la burbuja / isla configurada**: lanza automáticamente la burbuja flotante (`mej-11`) o la isla superior (`mej-18`), manteniendo el micrófono `🎤`, el portapapeles y los snippets flotando de forma discreta.
+  3. **comportamiento al desconectar**:
+     - vuelve a desplegar el teclado en pantalla nativo sin requerir ninguna acción manual.
+  4. **ajustes**:
+     - switch en ajustes > teclado: *auto-conmutar a burbuja al detectar teclado físico* (activado por defecto).
+* **impacto técnico**:
+  - *kotlin nativo*: en `voicekeyboardservice.kt`, implementación de `onevaluateinputviewshown()` condicional y listener `inputdevicelistener`. envío de `intent` de inicio a `floatingbubbleservice.kt`.
+  - *flutter (dart)*: clave `flutter.kb_auto_bubble_on_hardware_kb` y toggle en `settingsscreen`.
+* **estado**: **en diseño (aprobada como idea para septiembre)**.
+
+---">
+                <div class="mej-header" onclick="toggleCard('mej-24')">
+                    <div class="mej-meta-row">
+                        <span class="mej-code-badge">MEJ-24</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="status-badge badge-approved">✓ Aprobada</span>
+                            <span class="toggle-icon expanded" id="icon-mej-24">▼</span>
+                        </div>
+                    </div>
+                    <h4 class="mej-title">2.22 Auto-Conmutación Inteligente a Burbuja / Isla al Conectar Teclado Físico (Bluetooth / USB-OTG)</h4>
+                    <div class="mej-card-tags">
+                        <span class="tag-pill">teclado</span><span class="tag-pill">burbuja</span><span class="tag-pill">clipboard</span><span class="tag-pill">codigo</span><span class="tag-pill">ui</span>
+                    </div>
+                </div>
+                <div class="mej-body" id="body-mej-24">
+                    <div class="bullet-section bullet-origin"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: Al conectar un teclado físico externo (Bluetooth, dock DeX o USB-C en Termux y tablets), mantener el teclado virtual en pantalla estorba y desperdicia el 40% del área de visión. Sin embargo, el usuario aún necesita dictado por voz y snippets. Conmutar automáticamente a la burbuja flotante o isla superior resuelve esto de forma transparente.</div></div>
+<div class="bullet-section bullet-behavior"><span class="bullet-icon">⚡</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Detección Automática de Hardware</strong>:</p>
+<ul class="sublist">
+<li>Escucha en tiempo real la conexión/desconexión de periféricos vía <code class="code-pill">InputManager.InputDeviceListener</code> y <code class="code-pill">Configuration.keyboard</code>.</li>
+<li>Detecta teclados Bluetooth, teclados mecánicos USB-OTG, docks y fundas con teclado integrado.</li>
+</ul>
+<p>2. <strong>Comportamiento al Conectar</strong>:</p>
+<ul class="sublist">
+<li><strong>Oculta el Teclado Virtual</strong>: Libera el 100% de la pantalla para el editor de código, chat o terminal.</li>
+<li><strong>Despliega la Burbuja / Isla Configurada</strong>: Lanza automáticamente la burbuja flotante (<code class="code-pill">MEJ-11</code>) o la isla superior (<code class="code-pill">MEJ-18</code>), manteniendo el micrófono <code class="code-pill">🎤</code>, el portapapeles y los snippets flotando de forma discreta.</li>
+</ul>
+<p>3. <strong>Comportamiento al Desconectar</strong>:</p>
+<ul class="sublist">
+<li>Vuelve a desplegar el teclado en pantalla nativo sin requerir ninguna acción manual.</li>
+</ul>
+<p>4. <strong>Ajustes</strong>:</p>
+<ul class="sublist">
+<li>Switch en Ajustes > Teclado: <em>"Auto-conmutar a burbuja al detectar teclado físico"</em> (activado por defecto).</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, implementación de <code class="code-pill">onEvaluateInputViewShown()</code> condicional y listener <code class="code-pill">InputDeviceListener</code>. Envío de <code class="code-pill">Intent</code> de inicio a <code class="code-pill">FloatingBubbleService.kt</code>.</li>
+<li><em>Flutter (Dart)</em>: Clave <code class="code-pill">flutter.kb_auto_bubble_on_hardware_kb</code> y toggle en <code class="code-pill">SettingsScreen</code>.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
+    
+        </div>
+
+        <div id="no-results-msg" class="no-results">
+            🔍 No se encontraron mejoras que coincidan con la búsqueda.
+        </div>
+
+        <!-- Section 3: Decisions Table -->
+        <div class="section-header-wrap" id="section-3" style="margin-top: 20px;">
+            <h3 class="section-title">3. Registro de Decisiones y Descartes</h3>
+            <span class="section-tag">TABLA RESUMEN</span>
+        </div>
+
+        <div class="table-wrapper"><table class="glass-table"><thead><tr>
+<th>Fecha</th>
+<th>ID / Idea</th>
+<th>Decisión</th>
+<th>Motivo</th>
+</tr></thead><tbody>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-03 (Barra Superior Mic/Clipboard)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Descongestiona la barra inferior y agranda la barra espaciadora</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-04 (Presets Código / Termux)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Maximiza la productividad en Termux y desarrollo de software móvil</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-05 (Pulsación Larga Símbolos/Acentos)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Permite escribir <code class="code-pill">;</code>, <code class="code-pill">:</code>, <code class="code-pill">ñ</code> y acentos sin conmutar a la capa <code class="code-pill">?123</code></td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-06 (Menú Rápido de 3 Opciones en Espacio)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Conmutación ultra veloz de modos y personalización total de accesos</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-07 (Altura de Teclas y Elevación Inferior)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Ergonomía desacoplada: teclas más grandes y elevación para descanso del pulgar</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-08 (Pegado Secuencial Multi-Clip)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Permite copiar 3+ datos en distintas apps y pegarlos sucesivamente sin alternar</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-09 (Modo Trackpad y Puntero Virtual)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Control milimétrico de precisión con puntero de mouse, clic izq/der y scroll</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-10 (Gestos Duales en Burbuja + Historial)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Simetría de gestos (Tap vs Hold) y acceso al historial flotante sin abrir la app</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-11 (Burbuja Dinámica Pill + Auto-Enter)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Expansión a pastilla con cronómetro, cancelación rápida y auto-envío/enter</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>MEJ-12 (Conmutación Teclado↔Burbuja y Micro-Barra)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Barra mínima de 1 sola fila para terminal/chats que deja ver el 95% de pantalla</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-13 (Capa de Emojis, Kaomojis y Stickers)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Expresividad completa y soporte de stickers sin cambiar a otro teclado</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-14 (Modo Gaming y Gamepad Virtual)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Mando táctil multi-touch (D-Pad + ABXY) para juegos web, PWAs y emuladores</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-15 (Motor de Temas y Color Tecla por Tecla)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Paleta arcoíris interactiva, temas Neón/OLED/Matrix y colores por tecla</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-16 (Rediseño Integral de Modal de Historial)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Tarjetas Glass, buscador, Pin 📌, borrado individual y dimensiones ampliadas</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-17 (Sistema Modular de Micro-Widgets)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Widgets de notas rápidas, live clipboard, comandos y calculadora en teclado</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-18 (Isla Dinámica / Notch Superior Apple-style)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Anclaje elástico en cámara/notch superior con animaciones elásticas Glass</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-19 (Capa de Teclado Numérico Dedicado - Numpad)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Bloque numérico puro (3x4/4x4) para entrada veloz de números y auto-detección</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-20 (Widget de Control Multimedia y Música)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Mini reproductor Liquid Glass con carátula, título marquee y controles ⏯ ⏮ ⏭</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-21 (Bloc de Notas de Voz y Borrador Flotante)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Sandbox de notas de voz aisladas para no ensuciar el input activo</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-22 (Controlador de Audios de WhatsApp/Chats)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Barra fija de reproducción con scrubber, -5s, +5s y volumen persistente en scroll</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-23 (Lanzador Rápido de Apps Spotlight/Raycast)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Buscador y lanzador instantáneo de apps instaladas desde teclado o burbuja</td>
+</tr>
+<tr>
+<td>2026-08-27</td>
+<td>MEJ-24 (Auto-Conmutación a Burbuja con Teclado Físico)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Oculta teclado virtual y activa burbuja al conectar teclado Bluetooth/USB</td>
+</tr>
+<tr>
+<td>2026-08-26</td>
+<td>Congelamiento CI</td>
+<td>Aprobado</td>
+<td>Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño</td>
+</tr>
+</tbody></table></div>
+
+        <footer style="text-align: center; padding: 40px 0 20px; font-size: 12px; color: var(--text-tertiary);">
+            <p>VoiceBubble STT • Laboratorio UI & Diseño 2026</p>
+            <p style="margin-top: 4px;">Optimizada para navegación fluida en dispositivos móviles.</p>
+        </footer>
+
+    </main>
+
+    <!-- Table of Contents Bottom Sheet / Drawer -->
+    <div class="toc-drawer-overlay" id="toc-overlay"></div>
+    <div class="toc-drawer" id="toc-drawer">
+        <div class="toc-drawer-handle"></div>
+        <div class="toc-drawer-header">
+            <h3>📑 Índice de Mejoras (24)</h3>
+            <button class="btn-icon" id="toc-close" style="width: 32px; height: 32px;">✕</button>
+        </div>
+        <div class="toc-list">
+            <a href="#section-1" class="toc-item" onclick="closeToc()">
+                <span><strong>1. Planes Listos para Ejecución</strong></span>
+                <span class="status-badge badge-approved">2</span>
+            </a>
+
+            <a href="#mej-03" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-03</span>
+                    <span>Barra Superior de Acciones (Top Action Bar) para Micrófono y Portapapeles</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-04" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-04</span>
+                    <span>Layouts y Presets Configurables de Barras de Código y Termux</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-05" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-05</span>
+                    <span>Presión Larga para Símbolos y Menú Emergente de Puntuación</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-06" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-06</span>
+                    <span>Gesto en Barra Espaciadora con Menú Rápido de 3 Opciones Superpuesto</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-07" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-07</span>
+                    <span>Control Avanzado de Altura de Teclas y Posición / Elevación del Teclado</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-08" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-08</span>
+                    <span>Flujo de Pegado Secuencial Multi-Clip (Portapapeles Global Persistente)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-09" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-09</span>
+                    <span>Modo Trackpad y Puntero de Mouse Virtual Flotante</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-10" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-10</span>
+                    <span>Gestos Duales en Burbuja Flotante: Toque vs Mantener + Acceso Rápido al Historial</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-11" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-11</span>
+                    <span>Modelos de Burbuja Dinámica Expandible (Morph-to-Pill, Cronómetro, Botones Rápidos y Auto-Enter)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-12" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-12</span>
+                    <span>Conmutación Fluida Teclado ↔ Burbuja y Modo Micro-Teclado Flotante (Command Strip)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-13" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-13</span>
+                    <span>Capa de Emojis, Emoticones ASCII/Kaomoji y Soporte de Stickers (Rich Content)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-14" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-14</span>
+                    <span>Modo Gaming y Gamepad Virtual (Joystick / D-Pad y Botones para Juegos Web y PWAs)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-15" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-15</span>
+                    <span>Motor de Temas Visuales y Personalización Tecla por Tecla (Paleta Cromática Arcoíris)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-16" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-16</span>
+                    <span>Rediseño y Potenciación de la Modal de Historial de Transcripciones (Dimensiones, Estilo Glass y Funcionalidades)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-17" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-17</span>
+                    <span>Sistema Modular de Micro-Widgets en el Teclado (Notas, Portapapeles, Comandos y Calculadora)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-18" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-18</span>
+                    <span>Modo Isla Dinámica / Notch Interactivo Superior (Apple-style Dynamic Island & Camera Notch Docking)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-19" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-19</span>
+                    <span>Capa de Teclado Numérico Dedicado (Numpad Limpio para Carga Rápida de Datos y Contabilidad)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-20" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-20</span>
+                    <span>Widget de Control Multimedia y Música en el Teclado (Mini Reproductor Liquid Glass)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-21" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-21</span>
+                    <span>Bloc de Notas de Voz y Borrador Flotante en Teclado (Voice Scratchpad Sandbox)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-22" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-22</span>
+                    <span>Controlador Inteligente de Audios y Mensajes de Voz de Chats (WhatsApp / Instagram / Telegram) en el Teclado</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-23" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-23</span>
+                    <span>Lanzador Rápido de Aplicaciones y Búsqueda Universal (Spotlight / Raycast en Teclado y Burbuja)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-24" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-24</span>
+                    <span>Auto-Conmutación Inteligente a Burbuja / Isla al Conectar Teclado Físico (Bluetooth / USB-OTG)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#section-3" class="toc-item" onclick="closeToc()">
+                <span><strong>3. Registro de Decisiones y Descartes</strong></span>
+                <span class="status-badge badge-review">Tabla</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Floating Action Button: Back to Top -->
+    <button class="fab-top" id="fab-top" title="Subir al inicio">↑</button>
+
+    <!-- Interactive Client-side Script -->
+    <script>
+        // Toggle Theme
+        const btnTheme = document.getElementById('btn-theme');
+        btnTheme.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('vb_theme', newTheme);
+        });
+        
+        // Restore saved theme
+        const savedTheme = localStorage.getItem('vb_theme');
+        if (savedTheme) {
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+
+        // Card Collapse / Expand
+        function toggleCard(id) {
+            const body = document.getElementById('body-' + id);
+            const icon = document.getElementById('icon-' + id);
+            if (!body || !icon) return;
+            const isCollapsed = body.classList.toggle('collapsed');
+            icon.classList.toggle('expanded', !isCollapsed);
+        }
+
+        // Table of Contents Drawer
+        const tocDrawer = document.getElementById('toc-drawer');
+        const tocOverlay = document.getElementById('toc-overlay');
+        const btnToc = document.getElementById('btn-toc');
+        const tocClose = document.getElementById('toc-close');
+
+        function openToc() {
+            tocDrawer.classList.add('active');
+            tocOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeToc() {
+            tocDrawer.classList.remove('active');
+            tocOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        btnToc.addEventListener('click', openToc);
+        tocClose.addEventListener('click', closeToc);
+        tocOverlay.addEventListener('click', closeToc);
+
+        // Search & Filter Logic
+        const searchInput = document.getElementById('search-input');
+        const searchClear = document.getElementById('search-clear');
+        const filterChips = document.querySelectorAll('.chip');
+        const cards = document.querySelectorAll('.mej-card, .execution-item');
+        const noResultsMsg = document.getElementById('no-results-msg');
+
+        let activeCategory = 'all';
+
+        function applyFilters() {
+            const query = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            searchClear.style.display = query ? 'block' : 'none';
+
+            cards.forEach(card => {
+                const cardCats = (card.getAttribute('data-cats') || '').split(' ');
+                const cardSearch = card.getAttribute('data-search') || '';
+
+                const matchesCat = (activeCategory === 'all') || cardCats.includes(activeCategory);
+                const matchesQuery = !query || cardSearch.includes(query);
+
+                if (matchesCat && matchesQuery) {
+                    card.style.display = '';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            noResultsMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+
+        searchInput.addEventListener('input', applyFilters);
+
+        searchClear.addEventListener('click', () => {
+            searchInput.value = '';
+            applyFilters();
+            searchInput.focus();
+        });
+
+        filterChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                activeCategory = chip.getAttribute('data-cat');
+                applyFilters();
+            });
+        });
+
+        // Floating Action Button
+        const fabTop = document.getElementById('fab-top');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                fabTop.classList.add('visible');
+            } else {
+                fabTop.classList.remove('visible');
+            }
+        }, { passive: true });
+
+        fabTop.addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>

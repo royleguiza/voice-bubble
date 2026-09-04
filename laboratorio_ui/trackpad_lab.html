@@ -1,0 +1,3628 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <title>VoiceBubble STT — Laboratorio Modo Trackpad & Puntero Virtual (MEJ-09)</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ================================================================
+           DESIGN TOKENS — Apple Liquid Glass · VoiceBubble STT
+           Espejo de design_tokens.dart y design.md
+           ================================================================ */
+        :root[data-theme="dark"] {
+            --bg-canvas: #07090e;
+            --bg-canvas-pattern: radial-gradient(circle at 50% 0%, rgba(10, 132, 255, 0.12) 0%, transparent 70%),
+                                 radial-gradient(circle at 85% 60%, rgba(94, 92, 230, 0.08) 0%, transparent 60%);
+            --phone-chassis: #16181f;
+            --phone-bezel: #1f232e;
+            --phone-bezel-highlight: rgba(255, 255, 255, 0.14);
+            --phone-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            
+            --screen-bg: #0d1117;
+            --screen-card-bg: rgba(255, 255, 255, 0.05);
+            --screen-card-border: rgba(255, 255, 255, 0.08);
+
+            --bg-base: #000000;
+            --bg-elevated: #1C1C1E;
+            --bg-secondary: #2C2C2E;
+            --bg-tertiary: #3A3A3C;
+            --bg-grouped: #1C1C1E;
+
+            --label-primary: #FFFFFF;
+            --label-secondary: rgba(235, 235, 245, 0.65);
+            --label-tertiary: rgba(235, 235, 245, 0.35);
+            --label-quaternary: rgba(235, 235, 245, 0.18);
+
+            --separator: rgba(84, 84, 88, 0.6);
+            --separator-opaque: #38383A;
+
+            --accent: #0A84FF;
+            --accent-hover: #409CFF;
+            --accent-container: rgba(10, 132, 255, 0.16);
+            --accent-glow: rgba(10, 132, 255, 0.4);
+
+            --danger: #FF453A;
+            --danger-container: rgba(255, 69, 58, 0.16);
+            --success: #30D158;
+            --success-container: rgba(48, 209, 88, 0.16);
+            --warning: #FFD60A;
+            --warning-container: rgba(255, 214, 10, 0.16);
+
+            --glass-bg: rgba(28, 28, 32, 0.62);
+            --glass-card-bg: rgba(24, 26, 34, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.14);
+            --glass-border-light: rgba(255, 255, 255, 0.25);
+            --glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+
+            --fill-primary: rgba(120, 120, 128, 0.36);
+            --fill-secondary: rgba(120, 120, 128, 0.28);
+            --fill-tertiary: rgba(120, 120, 128, 0.18);
+
+            --kb-key-bg: rgba(255, 255, 255, 0.08);
+            --kb-key-hover: rgba(255, 255, 255, 0.15);
+            --kb-key-active: rgba(255, 255, 255, 0.25);
+            --kb-key-border: rgba(255, 255, 255, 0.1);
+            --kb-key-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+
+            --trackpad-surface: rgba(15, 23, 42, 0.65);
+            --trackpad-border: rgba(56, 189, 248, 0.28);
+            --trackpad-active: rgba(56, 189, 248, 0.15);
+        }
+
+        :root[data-theme="light"] {
+            --bg-canvas: #f0f4f9;
+            --bg-canvas-pattern: radial-gradient(circle at 50% 0%, rgba(0, 122, 255, 0.08) 0%, transparent 70%),
+                                 radial-gradient(circle at 85% 60%, rgba(99, 102, 241, 0.06) 0%, transparent 60%);
+            --phone-chassis: #e5e9f0;
+            --phone-bezel: #d1d6e2;
+            --phone-bezel-highlight: rgba(255, 255, 255, 0.9);
+            --phone-shadow: 0 25px 70px -15px rgba(15, 23, 42, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.06);
+            
+            --screen-bg: #f8fafc;
+            --screen-card-bg: rgba(255, 255, 255, 0.85);
+            --screen-card-border: rgba(0, 0, 0, 0.08);
+
+            --bg-base: #F2F2F7;
+            --bg-elevated: #FFFFFF;
+            --bg-secondary: #FFFFFF;
+            --bg-tertiary: #E5E5EA;
+            --bg-grouped: #F2F2F7;
+
+            --label-primary: #0F172A;
+            --label-secondary: rgba(60, 60, 67, 0.68);
+            --label-tertiary: rgba(60, 60, 67, 0.38);
+            --label-quaternary: rgba(60, 60, 67, 0.2);
+
+            --separator: rgba(60, 60, 67, 0.25);
+            --separator-opaque: #C6C6C8;
+
+            --accent: #007AFF;
+            --accent-hover: #0056B3;
+            --accent-container: rgba(0, 122, 255, 0.12);
+            --accent-glow: rgba(0, 122, 255, 0.3);
+
+            --danger: #FF3B30;
+            --danger-container: rgba(255, 59, 48, 0.12);
+            --success: #34C759;
+            --success-container: rgba(52, 199, 89, 0.12);
+            --warning: #FF9500;
+            --warning-container: rgba(255, 149, 0, 0.12);
+
+            --glass-bg: rgba(255, 255, 255, 0.72);
+            --glass-card-bg: rgba(255, 255, 255, 0.82);
+            --glass-border: rgba(255, 255, 255, 0.7);
+            --glass-border-light: rgba(255, 255, 255, 0.9);
+            --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+            --fill-primary: rgba(120, 120, 128, 0.22);
+            --fill-secondary: rgba(120, 120, 128, 0.16);
+            --fill-tertiary: rgba(120, 120, 128, 0.10);
+
+            --kb-key-bg: #FFFFFF;
+            --kb-key-hover: #F8FAFC;
+            --kb-key-active: #E2E8F0;
+            --kb-key-border: rgba(0, 0, 0, 0.08);
+            --kb-key-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.12);
+
+            --trackpad-surface: rgba(241, 245, 249, 0.85);
+            --trackpad-border: rgba(2, 132, 199, 0.32);
+            --trackpad-active: rgba(2, 132, 199, 0.12);
+        }
+
+        /* ================================================================
+           RESET & GLOBAL LAYOUT
+           ================================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-canvas);
+            background-image: var(--bg-canvas-pattern);
+            background-attachment: fixed;
+            color: var(--label-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--fill-primary); border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--label-tertiary); }
+
+        /* ================================================================
+           TOP NAVIGATION BAR (Liquid Glass)
+           ================================================================ */
+        .top-navbar {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .brand-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), #5856D6);
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-size: 18px;
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .brand-text h1 {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-text .badge-mej {
+            background: var(--accent-container);
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 6px;
+            border: 1px solid rgba(10, 132, 255, 0.3);
+        }
+
+        .brand-text p {
+            font-size: 12px;
+            color: var(--label-secondary);
+        }
+
+        /* Top Bar Controls */
+        .nav-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tab-switcher {
+            display: inline-flex;
+            background: var(--fill-tertiary);
+            border-radius: 10px;
+            padding: 3px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--label-secondary);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+
+        .tab-btn.active {
+            background: var(--bg-elevated);
+            color: var(--label-primary);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        }
+
+        .theme-toggle-btn {
+            background: var(--fill-tertiary);
+            border: 1px solid var(--glass-border);
+            padding: 7px 14px;
+            border-radius: 10px;
+            color: var(--label-primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+
+        .theme-toggle-btn:hover { background: var(--fill-secondary); }
+
+        /* ================================================================
+           MAIN WRAPPER & GRID
+           ================================================================ */
+        .main-container {
+            flex: 1;
+            max-width: 1440px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 20px 48px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        
+        /* View Mode Controls */
+        .view-mode-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--fill-tertiary);
+            padding: 3px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .view-btn {
+            background: transparent;
+            border: none;
+            padding: 5px 11px;
+            border-radius: 8px;
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--label-secondary);
+            cursor: pointer;
+            transition: all 0.18s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-family: inherit;
+        }
+
+        .view-btn.active {
+            background: var(--bg-elevated);
+            color: var(--accent);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        }
+
+        .mockup-wrapper.fullscreen-mode {
+            max-width: 100%;
+            position: static;
+        }
+
+        .mockup-wrapper.fullscreen-mode .phone-frame {
+            border: none;
+            border-radius: 20px;
+            box-shadow: none;
+            height: auto;
+            min-height: calc(100vh - 180px);
+        }
+
+        .mockup-wrapper.fullscreen-mode .glass-specular-reflection,
+        .mockup-wrapper.fullscreen-mode .phone-island {
+            display: none;
+        }
+
+        /* Hero / Option Selector Header */
+        .selector-strip {
+            background: var(--glass-card-bg);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .selector-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .selector-title-area h2 {
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .selector-title-area p {
+            font-size: 13px;
+            color: var(--label-secondary);
+            margin-top: 2px;
+        }
+
+        .options-pills {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .opt-chip {
+            background: var(--fill-tertiary);
+            border: 1px solid var(--glass-border);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--label-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .opt-chip:hover {
+            background: var(--fill-secondary);
+            color: var(--label-primary);
+        }
+
+        .opt-chip.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+            box-shadow: 0 4px 14px var(--accent-glow);
+        }
+
+        .opt-chip .opt-num {
+            background: rgba(255, 255, 255, 0.2);
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .opt-chip.active .opt-num {
+            background: rgba(255, 255, 255, 0.3);
+            color: #fff;
+        }
+
+        /* Two-Column Responsive Workspace */
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: minmax(360px, 440px) 1fr;
+            gap: 28px;
+            align-items: start;
+        }
+
+        @media (max-width: 980px) {
+            .workspace-grid {
+                grid-template-columns: 1fr;
+                justify-items: center;
+            }
+        }
+
+        /* ================================================================
+           PHONE HARDWARE MOCKUP (STUDIO GRADE)
+           ================================================================ */
+        .mockup-wrapper {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .phone-frame {
+            width: 100%;
+            height: 820px;
+            background: var(--phone-chassis);
+            border-radius: 50px;
+            border: 12px solid var(--phone-bezel);
+            box-shadow: var(--phone-shadow);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Specular Glass Sheen Overlay */
+        .glass-specular-reflection {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 60;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 30%, transparent 60%);
+            border-radius: 38px;
+        }
+
+        /* Dynamic Island */
+        .phone-island {
+            position: absolute;
+            top: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 112px;
+            height: 28px;
+            background: #000000;
+            border-radius: 20px;
+            z-index: 80;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .island-lens {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: #11141a;
+            border: 1.5px solid #232732;
+            position: relative;
+        }
+        .island-lens::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 3px;
+            height: 3px;
+            background: rgba(40, 70, 180, 0.7);
+            border-radius: 50%;
+        }
+
+        .island-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .island-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .island-dot.recording {
+            background: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
+            animation: pulseRecord 1s infinite alternate;
+        }
+
+        @keyframes pulseRecord {
+            0% { transform: scale(0.85); opacity: 0.6; }
+            100% { transform: scale(1.15); opacity: 1; }
+        }
+
+        /* Phone Screen Surface */
+        .phone-screen {
+            flex: 1;
+            background: var(--screen-bg);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 44px;
+            padding: 10px 22px 0 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--label-primary);
+            z-index: 70;
+        }
+
+        .status-icons {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        /* App Context Workspace (Inside Phone) */
+        .mock-app-viewport {
+            flex: 1;
+            padding: 8px 14px 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* App Bar Inside Mock */
+        .mock-app-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--screen-card-bg);
+            border: 1px solid var(--screen-card-border);
+            border-radius: 12px;
+            padding: 8px 12px;
+            backdrop-filter: blur(12px);
+        }
+
+        .mock-app-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .app-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: linear-gradient(135deg, #10b981, #065f46);
+            display: grid;
+            place-items: center;
+            font-size: 13px;
+            color: #fff;
+        }
+
+        .app-title-text {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--label-primary);
+        }
+
+        .app-context-badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--fill-tertiary);
+            color: var(--label-secondary);
+        }
+
+        /* Interactive Scenario Switcher inside Phone */
+        .scenario-selector {
+            display: flex;
+            gap: 4px;
+            background: var(--fill-tertiary);
+            padding: 2px;
+            border-radius: 8px;
+        }
+
+        .sc-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 4px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--label-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+
+        .sc-btn.active {
+            background: var(--bg-elevated);
+            color: var(--label-primary);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* App Context Content */
+        .scenario-card {
+            background: var(--screen-card-bg);
+            border: 1px solid var(--screen-card-border);
+            border-radius: 14px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .terminal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            color: var(--label-tertiary);
+            border-bottom: 1px solid var(--screen-card-border);
+            padding-bottom: 6px;
+        }
+
+        .terminal-body {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            color: #94a3b8;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 85px;
+        }
+
+        .t-cmd { color: #38bdf8; }
+        .t-ok { color: #4ade80; }
+        .t-warn { color: #fbbf24; }
+
+        .mock-clickable-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+
+        .mock-target-btn {
+            background: var(--fill-primary);
+            border: 1px solid var(--screen-card-border);
+            border-radius: 6px;
+            padding: 5px 9px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--label-primary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .mock-target-btn:hover {
+            border-color: var(--accent);
+            background: var(--accent-container);
+            color: var(--accent);
+        }
+
+        .mock-target-btn.active-target {
+            transform: scale(0.95);
+            background: var(--accent);
+            color: #fff;
+        }
+
+        /* Precision Click Feedback Overlay */
+        .click-pulse-indicator {
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(10, 132, 255, 0.45);
+            border: 2px solid var(--accent);
+            transform: translate(-50%, -50%) scale(0);
+            pointer-events: none;
+            z-index: 85;
+            animation: pulseClick 0.4s ease-out forwards;
+        }
+
+        @keyframes pulseClick {
+            0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+        }
+
+        /* Virtual Floating Pointer */
+        .virtual-pointer {
+            position: absolute;
+            top: 140px;
+            left: 180px;
+            width: 22px;
+            height: 22px;
+            pointer-events: none;
+            z-index: 90;
+            transition: transform 0.05s linear;
+            filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.6));
+        }
+
+        .pointer-cursor-arrow {
+            width: 19px;
+            height: 22px;
+            fill: #ffffff;
+            stroke: #000000;
+            stroke-width: 1.5;
+            stroke-linejoin: round;
+        }
+
+        .pointer-cursor-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: rgba(10, 132, 255, 0.85);
+            border: 2.5px solid #ffffff;
+            box-shadow: 0 0 12px var(--accent-glow);
+            display: none;
+            transform: translate(-50%, -50%);
+            margin-left: 9px;
+            margin-top: 9px;
+        }
+
+        .pointer-cursor-cross {
+            width: 22px;
+            height: 22px;
+            stroke: #ffffff;
+            stroke-width: 2;
+            display: none;
+            transform: translate(-50%, -50%);
+            margin-left: 11px;
+            margin-top: 11px;
+        }
+
+        
+        /* Drag-Lock halo indicator on pointer */
+        .virtual-pointer.drag-locked::after {
+            content: '🔒';
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            font-size: 11px;
+            background: var(--warning);
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: grid;
+            place-items: center;
+            box-shadow: 0 0 8px rgba(255, 214, 10, 0.6);
+        }
+
+        .auto-return-pill {
+            display: none;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.25);
+            margin-left: 4px;
+        }
+
+        /* Pointer HUD Indicator */
+        .pointer-hud {
+            position: absolute;
+            top: 48px;
+            right: 14px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: #38bdf8;
+            z-index: 75;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pointer-hud-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #38bdf8;
+            box-shadow: 0 0 6px #38bdf8;
+        }
+
+        /* Context Menu (Right Click) inside Phone */
+        .phone-context-menu {
+            position: absolute;
+            width: 150px;
+            background: var(--glass-card-bg);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 5px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+            z-index: 95;
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            animation: fadeInMenu 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeInMenu {
+            from { opacity: 0; transform: scale(0.92); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .ctx-item {
+            padding: 6px 10px;
+            font-size: 11.5px;
+            font-weight: 500;
+            color: var(--label-primary);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .ctx-item:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        /* ================================================================
+           KEYBOARD CONTAINER & TOP TOOLBAR
+           ================================================================ */
+        .keyboard-wrapper {
+            background: var(--glass-bg);
+            backdrop-filter: blur(28px) saturate(190%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%);
+            border-top: 1px solid var(--glass-border);
+            border-radius: 28px 28px 0 0;
+            padding: 8px 8px 18px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            z-index: 50;
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Top Toolbar Row */
+        .kb-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 5px;
+            height: 38px;
+            padding: 0 2px;
+        }
+
+        .tb-btn {
+            flex: 1;
+            height: 100%;
+            background: var(--kb-key-bg);
+            border: 1px solid var(--kb-key-border);
+            border-radius: 10px;
+            color: var(--label-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--kb-key-shadow);
+            transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .tb-btn:active {
+            transform: scale(0.93);
+            background: var(--kb-key-active);
+        }
+
+        /* The Special Trackpad Mode Toggle Button */
+        .tb-btn-trackpad {
+            background: var(--accent-container);
+            color: var(--accent);
+            border-color: rgba(10, 132, 255, 0.35);
+            flex: 1.4;
+            font-weight: 700;
+        }
+
+        .tb-btn-trackpad.mode-active {
+            background: linear-gradient(135deg, var(--accent), #5856D6);
+            color: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 4px 14px var(--accent-glow);
+            animation: pulseGlow 2s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 8px var(--accent-glow); }
+            100% { box-shadow: 0 0 18px var(--accent-glow); }
+        }
+
+        .tb-btn-mic {
+            color: var(--danger);
+        }
+
+        .tb-btn-mic.recording {
+            background: var(--danger-container);
+            border-color: var(--danger);
+            animation: micPulse 1.2s infinite alternate;
+        }
+
+        @keyframes micPulse {
+            0% { box-shadow: 0 0 4px rgba(255, 69, 58, 0.2); }
+            100% { box-shadow: 0 0 14px rgba(255, 69, 58, 0.5); }
+        }
+
+        /* SVG Icon styling */
+        .icon-svg {
+            width: 17px;
+            height: 17px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            display: inline-block;
+        }
+
+        /* Mode Switch Header Bar inside Keyboard */
+        .mode-status-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--label-secondary);
+        }
+
+        .mode-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--fill-tertiary);
+            padding: 2px 8px;
+            border-radius: 6px;
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .mode-hint {
+            font-size: 10px;
+            color: var(--label-tertiary);
+        }
+
+        /* ================================================================
+           CONTAINER: DYNAMIC TRANSITION BETWEEN KEYBOARD & TRACKPAD
+           ================================================================ */
+        .morph-content-zone {
+            min-height: 205px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* State 1: Standard QWERTY Layout */
+        .qwerty-keyboard-view {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .kb-row {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .kb-key-cell {
+            flex: 1;
+            height: 42px;
+            background: var(--kb-key-bg);
+            border: 1px solid var(--kb-key-border);
+            border-radius: 7px;
+            display: grid;
+            place-items: center;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--label-primary);
+            box-shadow: var(--kb-key-shadow);
+            cursor: pointer;
+            transition: all 0.12s ease;
+        }
+
+        .kb-key-cell:active {
+            transform: scale(0.93) translateY(1px);
+            background: var(--kb-key-active);
+        }
+
+        .kb-key-cell.key-spec {
+            flex: 1.5;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--label-secondary);
+        }
+
+        .kb-key-cell.key-space {
+            flex: 5;
+            font-size: 13px;
+            color: var(--label-tertiary);
+        }
+
+        .kb-key-cell.key-enter {
+            flex: 1.8;
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+            font-size: 17px;
+        }
+
+        /* State 2: Trackpad View Container */
+        .trackpad-view {
+            display: none;
+            width: 100%;
+            height: 100%;
+            min-height: 205px;
+            flex-direction: column;
+            animation: fadeInTrackpad 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeInTrackpad {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* ================================================================
+           SIX (6) TRACKPAD DESIGN OPTIONS
+           ================================================================ */
+
+        /* -------------------------------------------------------------
+           OPCIÓN 1: CLÁSICO CENTRAL (Laptop Precision Square)
+           ------------------------------------------------------------- */
+        .pad-layout-opt1 {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            height: 100%;
+        }
+
+        .opt1-surface {
+            flex: 1;
+            min-height: 145px;
+            background: var(--trackpad-surface);
+            border: 1.5px solid var(--trackpad-border);
+            border-radius: 16px;
+            position: relative;
+            cursor: grab;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.2);
+            touch-action: none;
+        }
+
+        .opt1-surface:active { cursor: grabbing; border-color: var(--accent); }
+
+        .surface-grid-guide {
+            position: absolute;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at center, var(--accent-container) 0%, transparent 65%),
+                linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+            background-size: 100% 100%, 24px 24px, 24px 24px;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .center-crosshair {
+            width: 28px;
+            height: 28px;
+            border: 1px dashed var(--accent);
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: var(--accent);
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .surface-legend {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--label-tertiary);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* Opt 1 Bottom Buttons (Left / Right Click) */
+        .opt1-buttons-bar {
+            display: flex;
+            gap: 6px;
+            height: 48px;
+        }
+
+        .pad-btn {
+            flex: 1;
+            background: var(--kb-key-bg);
+            border: 1px solid var(--kb-key-border);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--label-primary);
+            cursor: pointer;
+            box-shadow: var(--kb-key-shadow);
+            transition: all 0.12s;
+        }
+
+        .pad-btn:active {
+            transform: scale(0.96);
+            background: var(--accent-container);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .pad-btn-primary {
+            flex: 1.3;
+        }
+
+        /* -------------------------------------------------------------
+           OPCIÓN 2: SPLIT WINGS TRACKPAD (Alas Laterales para Pulgares)
+           ------------------------------------------------------------- */
+        .pad-layout-opt2 {
+            display: flex;
+            gap: 7px;
+            height: 200px;
+        }
+
+        .opt2-wing-left,
+        .opt2-wing-right {
+            width: 68px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            height: 100%;
+        }
+
+        .wing-btn {
+            flex: 1;
+            background: var(--kb-key-bg);
+            border: 1px solid var(--kb-key-border);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--label-primary);
+            cursor: pointer;
+            transition: all 0.18s ease-out;
+            box-shadow: var(--kb-key-shadow);
+        }
+
+        .wing-btn:active {
+            transform: scale(0.95);
+            background: var(--accent-container);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .opt2-center {
+            flex: 1;
+            background: var(--trackpad-surface);
+            border: 1.5px solid var(--trackpad-border);
+            border-radius: 16px;
+            position: relative;
+            cursor: grab;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        .scroll-strip-v {
+            flex: 1.4;
+            background: var(--fill-tertiary);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 2px;
+            cursor: ns-resize;
+            touch-action: none;
+            position: relative;
+            transition: all 0.18s ease-out;
+        }
+
+        .scroll-strip-v:active {
+            background: var(--accent-container);
+            border-color: var(--accent);
+        }
+
+        .scroll-ticks {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .scroll-tick {
+            width: 14px;
+            height: 2px;
+            background: var(--label-tertiary);
+            border-radius: 2px;
+        }
+
+        /* -------------------------------------------------------------
+           OPCIÓN 3: COMMAND & PRECISION DOCK (Dock Inferior + Drag Lock)
+           ------------------------------------------------------------- */
+        .pad-layout-opt3 {
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+            height: 100%;
+        }
+
+        .opt3-surface {
+            flex: 1;
+            min-height: 135px;
+            background: var(--trackpad-surface);
+            border: 1.5px solid var(--trackpad-border);
+            border-radius: 16px;
+            position: relative;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        .opt3-dock {
+            display: grid;
+            grid-template-columns: 1fr 1.3fr 1fr 1fr;
+            gap: 5px;
+            height: 52px;
+        }
+
+        .dock-btn {
+            background: var(--kb-key-bg);
+            border: 1px solid var(--kb-key-border);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--label-primary);
+            cursor: pointer;
+            transition: all 0.12s;
+            box-shadow: var(--kb-key-shadow);
+        }
+
+        .dock-btn:active {
+            transform: scale(0.95);
+            background: var(--accent-container);
+            border-color: var(--accent);
+        }
+
+        .dock-btn.drag-locked {
+            background: var(--warning-container);
+            color: var(--warning);
+            border-color: var(--warning);
+            box-shadow: 0 0 10px var(--warning-container);
+        }
+
+        /* -------------------------------------------------------------
+           OPCIÓN 4: FLOATING DYNAMIC NUB & GESTURAL ORBIT
+           ------------------------------------------------------------- */
+        .pad-layout-opt4 {
+            height: 200px;
+            background: var(--trackpad-surface);
+            border: 1.5px solid var(--trackpad-border);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            cursor: crosshair;
+            touch-action: none;
+        }
+
+        /* Dynamic Floating Nub */
+        .floating-nub {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.4), rgba(10, 132, 255, 0.7));
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 18px var(--accent-glow), 0 4px 10px rgba(0,0,0,0.5);
+            transform: translate(-50%, -50%);
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-size: 14px;
+            pointer-events: none;
+            transition: transform 0.05s ease-out;
+            top: 50%;
+            left: 50%;
+        }
+
+        .orbit-rings {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: grid;
+            place-items: center;
+        }
+
+        .orbit-circle {
+            position: absolute;
+            border: 1px dashed var(--accent);
+            border-radius: 50%;
+            opacity: 0.25;
+        }
+
+        .orbit-c1 { width: 90px; height: 90px; }
+        .orbit-c2 { width: 150px; height: 150px; }
+
+        .opt4-floating-pills {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            right: 8px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: auto;
+            gap: 8px;
+        }
+
+        .pill-action-btn {
+            background: var(--glass-card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--label-primary);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            transition: all 0.15s;
+        }
+
+        .pill-action-btn:active {
+            transform: scale(0.93);
+            background: var(--accent);
+            color: #fff;
+        }
+
+        /* -------------------------------------------------------------
+           OPCIÓN 5: DUAL-ZONE NUMPAD & NAVIGATION HYBRID
+           ------------------------------------------------------------- */
+        .pad-layout-opt5 {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 7px;
+            height: 200px;
+        }
+
+        .opt5-left-pad {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .opt5-surface {
+            flex: 1;
+            background: var(--trackpad-surface);
+            border: 1.5px solid var(--trackpad-border);
+            border-radius: 16px;
+            position: relative;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+
+        .opt5-left-btns {
+            display: flex;
+            gap: 5px;
+            height: 42px;
+        }
+
+        .opt5-right-nav {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+
+        .nav-key {
+            background: var(--kb-key-bg);
+            border: 1px solid var(--kb-key-border);
+            border-radius: 9px;
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--label-primary);
+            cursor: pointer;
+            box-shadow: var(--kb-key-shadow);
+            transition: all 0.12s;
+        }
+
+        .nav-key:active {
+            transform: scale(0.92);
+            background: var(--accent-container);
+            color: var(--accent);
+        }
+
+        .nav-key-accent {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        /* -------------------------------------------------------------
+           OPCIÓN 6: EDGE-TO-EDGE MINIMALIST FLUID GLASS (100% Gestual)
+           ------------------------------------------------------------- */
+        .pad-layout-opt6 {
+            height: 200px;
+            background: var(--trackpad-surface);
+            border: 1.5px solid var(--trackpad-border);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            touch-action: none;
+        }
+
+        .opt6-edge-strip {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 22px;
+            background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.15));
+            border-left: 1px dashed rgba(56, 189, 248, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            pointer-events: none;
+        }
+
+        .opt6-edge-icon {
+            font-size: 9px;
+            color: var(--accent);
+            opacity: 0.7;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            letter-spacing: 2px;
+        }
+
+        .opt6-hud-badge {
+            background: var(--fill-tertiary);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+            padding: 5px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--label-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            pointer-events: none;
+        }
+
+        .gesture-indicator-light {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        /* ================================================================
+           RIGHT COLUMN: CONTROLS, SETTINGS & COMPARISON MATRIX
+           ================================================================ */
+        .side-content-pane {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Glass Panel Section */
+        .glass-panel {
+            background: var(--glass-card-bg);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 22px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--separator);
+            padding-bottom: 12px;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-subtitle {
+            font-size: 12px;
+            color: var(--label-secondary);
+        }
+
+        /* Settings Rows & Controls */
+        .settings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 6px 0;
+        }
+
+        .setting-meta {
+            flex: 1;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--label-primary);
+        }
+
+        .setting-desc {
+            font-size: 12px;
+            color: var(--label-secondary);
+            margin-top: 2px;
+            line-height: 1.4;
+        }
+
+        /* iOS Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 30px;
+            appearance: none;
+            -webkit-appearance: none;
+            background: var(--fill-primary);
+            border-radius: 100px;
+            cursor: pointer;
+            transition: background 0.3s;
+            border: none;
+            outline: none;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 26px;
+            height: 26px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toggle-switch:checked {
+            background: var(--success);
+        }
+
+        .toggle-switch:checked::before {
+            transform: translateX(20px);
+        }
+
+        /* Segmented Controls */
+        .segmented-row {
+            display: flex;
+            background: var(--fill-tertiary);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 2px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .seg-btn {
+            flex: 1;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--label-secondary);
+            background: transparent;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .seg-btn.active {
+            background: var(--bg-elevated);
+            color: var(--label-primary);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+        }
+
+        /* Slider Controls */
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 180px;
+        }
+
+        .range-slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: var(--fill-secondary);
+            border-radius: 10px;
+            outline: none;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .range-slider::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+        }
+
+        .slider-val-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 34px;
+            text-align: right;
+        }
+
+
+        /* Comparison Cards Grid */
+        .comparison-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .comp-design-card {
+            background: var(--screen-card-bg);
+            border: 1px solid var(--screen-card-border);
+            border-radius: 14px;
+            padding: 14px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .comp-design-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .comp-design-card.active-comp {
+            border-color: var(--accent);
+            background: var(--accent-container);
+        }
+
+        .card-top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--label-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .card-tag {
+            font-size: 10.5px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: var(--fill-tertiary);
+            color: var(--label-secondary);
+        }
+
+        .card-desc {
+            font-size: 12px;
+            color: var(--label-secondary);
+            line-height: 1.45;
+        }
+
+        .card-specs {
+            display: flex;
+            gap: 10px;
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--label-tertiary);
+        }
+
+        .spec-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ================================================================
+           MOBILE VIEWPORT OPTIMIZATIONS
+           ================================================================ */
+        @media (max-width: 600px) {
+            .top-navbar {
+                padding: 10px 14px;
+            }
+            .brand-text p { display: none; }
+            .main-container {
+                padding: 12px 10px 36px 10px;
+                gap: 14px;
+            }
+            .selector-strip {
+                padding: 12px 14px;
+            }
+            .phone-frame {
+                height: 750px;
+                border-radius: 36px;
+                border-width: 8px;
+            }
+            .status-bar {
+                padding: 6px 16px 0 16px;
+            }
+            .keyboard-wrapper {
+                padding: 6px 6px 14px 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ================================================================
+         TOP NAVIGATION BAR
+         ================================================================ -->
+    <header class="top-navbar">
+        <a href="#" class="brand-section">
+            <div class="brand-icon">
+                <svg class="icon-svg" viewBox="0 0 24 24" style="width:20px;height:20px;"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </div>
+            <div class="brand-text">
+                <h1>VoiceBubble STT <span class="badge-mej">MEJ-09</span></h1>
+                <p>Laboratorio de Diseño · Modo Trackpad & Puntero Virtual Flotante</p>
+            </div>
+        </a>
+
+        <div class="nav-controls">
+            <!-- View Tabs -->
+            <div class="tab-switcher">
+                <button class="tab-btn active" id="tabBtnMockup" onclick="switchMainTab('mockup')">
+                    <svg class="icon-svg" viewBox="0 0 24 24" style="width:14px;height:14px;"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                    Mockup
+                </button>
+                <button class="tab-btn" id="tabBtnComparison" onclick="switchMainTab('comparison')">
+                    <svg class="icon-svg" viewBox="0 0 24 24" style="width:14px;height:14px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    6 Diseños
+                </button>
+                <button class="tab-btn" id="tabBtnSettings" onclick="switchMainTab('settings')">
+                    <svg class="icon-svg" viewBox="0 0 24 24" style="width:14px;height:14px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    Ajustes
+                </button>
+            </div>
+
+            <!-- Theme Toggle -->
+            <button class="theme-toggle-btn" onclick="toggleTheme()" title="Alternar Modo Claro / Oscuro">
+                <span id="themeIcon">☀️</span>
+                <span id="themeLabel">Claro</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ================================================================
+         MAIN CONTAINER
+         ================================================================ -->
+    <main class="main-container">
+
+        <!-- Quick 6-Design Option Switcher Strip -->
+        <section class="selector-strip">
+            <div class="selector-header">
+                <div class="selector-title-area">
+                    <h2>
+                        <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--accent);"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="10" r="3"/><path d="M12 13v4"/><path d="M8 21h8"/></svg>
+                        Explorador de Arquitecturas de Trackpad
+                    </h2>
+                    <p>Seleccioná una de las 6 propuestas para probarla en vivo dentro del mockup móvil interactivo.</p>
+                </div>
+
+                <div class="view-mode-controls">
+                    <button class="view-btn active" id="viewBtnStudio" onclick="setViewMode('studio')" title="Marco de titanio realista con reflejo de vidrio">
+                        <span>📱</span> Marco Estudio
+                    </button>
+                    <button class="view-btn" id="viewBtnNative" onclick="setViewMode('native')" title="Vista limpia 1:1 optimizada para pantalla de celular">
+                        <span>⚡</span> Celular 1:1
+                    </button>
+                    <button class="view-btn" id="viewBtnFit" onclick="toggleFitScreen()" title="Ajustar altura para evitar scroll en pantallas pequeñas">
+                        <span id="fitBtnIcon">⤢</span> Ajustar
+                    </button>
+                </div>
+                <!-- Quick Mode Toggle Button for Toolbar -->
+                <button class="theme-toggle-btn" style="background:var(--accent-container); color:var(--accent); border-color:rgba(10,132,255,0.3);" onclick="toggleKeyboardTrackpad()">
+                    <span id="quickToggleStatusIcon">🖱️</span>
+                    <span id="quickToggleStatusText">Activar Modo Trackpad</span>
+                </button>
+            </div>
+
+            <!-- 6 Interactive Pills -->
+            <div class="options-pills">
+                <button class="opt-chip" id="pillOpt1" onclick="selectTrackpadOption(1)">
+                    <span class="opt-num">1</span>
+                    Clásico Central
+                </button>
+                <button class="opt-chip active" id="pillOpt2" onclick="selectTrackpadOption(2)">
+                    <span class="opt-num">2</span>
+                    Split Wings ★
+                </button>
+                <button class="opt-chip" id="pillOpt3" onclick="selectTrackpadOption(3)">
+                    <span class="opt-num">3</span>
+                    Command Dock
+                </button>
+                <button class="opt-chip" id="pillOpt4" onclick="selectTrackpadOption(4)">
+                    <span class="opt-num">4</span>
+                    Radial Nub
+                </button>
+                <button class="opt-chip" id="pillOpt5" onclick="selectTrackpadOption(5)">
+                    <span class="opt-num">5</span>
+                    Dual Numpad
+                </button>
+                <button class="opt-chip" id="pillOpt6" onclick="selectTrackpadOption(6)">
+                    <span class="opt-num">6</span>
+                    Edge Fluid
+                </button>
+            </div>
+        </section>
+
+        <!-- Main Responsive Workspace -->
+        <div class="workspace-grid">
+
+            <!-- ============================================================
+                 COLUMN 1: SMARTPHONE HARDWARE MOCKUP (INTERACTIVE)
+                 ============================================================ -->
+            <div class="mockup-wrapper" id="mockupSection">
+                <div class="phone-frame" id="phoneHardwareFrame">
+                    
+                    <!-- Specular Light Reflection Sheen -->
+                    <div class="glass-specular-reflection"></div>
+
+                    <!-- Dynamic Island with Indicator -->
+                    <div class="phone-island" title="Dynamic Island · VoiceBubble Active State" onclick="triggerIslandAction()">
+                        <div class="island-lens"></div>
+                        <div class="island-indicator">
+                            <span style="font-size: 10px; font-weight: 700; color: #fff;" id="islandStatusText">VoiceBubble</span>
+                            <div class="island-dot" id="islandDotIndicator"></div>
+                        </div>
+                    </div>
+
+                    <!-- Phone Screen Surface -->
+                    <div class="phone-screen" id="phoneScreenContainer">
+                        
+                        <!-- Top Hardware Status Bar -->
+                        <div class="status-bar">
+                            <span id="statusBarClock">09:41</span>
+                            <div class="status-icons">
+                                <span>5G</span>
+                                <span>▲ 98%</span>
+                            </div>
+                        </div>
+
+                        <!-- Pointer Coordinates HUD -->
+                        <div class="pointer-hud">
+                            <div class="pointer-hud-dot"></div>
+                            <span id="pointerCoordsText">X: 180 Y: 240</span>
+                        </div>
+
+                        <!-- Virtual Floating Mouse Pointer Overlay -->
+                        <div class="virtual-pointer" id="virtualPointer">
+                            <!-- Arrow Style (Default) -->
+                            <svg class="pointer-cursor-arrow" id="cursorSvgArrow" viewBox="0 0 24 24">
+                                <path d="M3 3l7 18 3-7 7-3L3 3z"/>
+                            </svg>
+                            <!-- Circle Dot Style -->
+                            <div class="pointer-cursor-dot" id="cursorDot"></div>
+                            <!-- Crosshair Precision Style -->
+                            <svg class="pointer-cursor-cross" id="cursorCross" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="9"/>
+                                <line x1="12" y1="3" x2="12" y2="7"/>
+                                <line x1="12" y1="17" x2="12" y2="21"/>
+                                <line x1="3" y1="12" x2="7" y2="12"/>
+                                <line x1="17" y1="12" x2="21" y2="12"/>
+                            </svg>
+                        </div>
+
+                        <!-- Right-Click Context Menu Popup -->
+                        <div class="phone-context-menu" id="phoneContextMenu">
+                            <div class="ctx-item" onclick="execContextAction('Copiar')">
+                                <span>📋 Copiar</span>
+                                <span style="font-size:9px;opacity:0.5;">⌘C</span>
+                            </div>
+                            <div class="ctx-item" onclick="execContextAction('Pegar')">
+                                <span>📥 Pegar</span>
+                                <span style="font-size:9px;opacity:0.5;">⌘V</span>
+                            </div>
+                            <div class="ctx-item" onclick="execContextAction('Seleccionar Todo')">
+                                <span>🔍 Seleccionar</span>
+                                <span style="font-size:9px;opacity:0.5;">⌘A</span>
+                            </div>
+                            <div class="ctx-item" onclick="execContextAction('Inspeccionar')">
+                                <span>⚙️ Inspeccionar</span>
+                            </div>
+                        </div>
+
+                        <!-- App Context Viewport (Simulated App Workspace) -->
+                        <div class="mock-app-viewport" id="mockAppViewport">
+                            
+                            <!-- Context App Bar -->
+                            <div class="mock-app-bar">
+                                <div class="mock-app-info">
+                                    <div class="app-avatar" id="appContextIcon">⚡</div>
+                                    <div>
+                                        <div class="app-title-text" id="appContextTitle">Termux Session #1</div>
+                                        <span class="app-context-badge" id="appContextSubtitle">SSH · Ubuntu Server</span>
+                                    </div>
+                                </div>
+                                <span style="font-size: 11px; color: var(--success); font-weight: 700;">● Online</span>
+                            </div>
+
+                            <!-- Context Scenario Switcher -->
+                            <div class="scenario-selector">
+                                <button class="sc-btn active" id="scBtnTermux" onclick="switchScenario('termux')">1. Termux TUI</button>
+                                <button class="sc-btn" id="scBtnWeb" onclick="switchScenario('web')">2. Web Browser</button>
+                                <button class="sc-btn" id="scBtnChat" onclick="switchScenario('chat')">3. Editor / Code</button>
+                            </div>
+
+                            <!-- Dynamic Scenario Content -->
+                            <div class="scenario-card" id="scenarioCardBody">
+                                <!-- Termux CLI Content -->
+                                <div class="terminal-header">
+                                    <span>bash — 80x24</span>
+                                    <span>PID: 10442</span>
+                                </div>
+                                <div class="terminal-body">
+                                    <div><span class="t-cmd">roy@server:~$</span> status --all</div>
+                                    <div><span class="t-ok">✓ Nginx Service:</span> active (running)</div>
+                                    <div><span class="t-ok">✓ VoiceBubble API:</span> port 8080 [200 OK]</div>
+                                    <div><span class="t-ok">✓ PostgreSQL 16:</span> port 5432 [online]</div>
+                                    <div><span class="t-ok">✓ Redis Cache:</span> port 6379 [connected]</div>
+                                    <div><span class="t-warn">! Memory Usage:</span> 72.4% [4.2GB / 8GB]</div>
+                                    <div><span class="t-cmd">roy@server:~$</span> tail -f /var/log/stt.log</div>
+                                    <div style="font-size:9.5px;color:#94a3b8;">[20:14:10] IME service bound to client</div>
+                                    <div style="font-size:9.5px;color:#94a3b8;">[20:14:12] Split Wings trackpad ready</div>
+                                    <div class="terminal-prompt-row" style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.25);padding:4px 7px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);margin-top:4px;">
+                                        <span class="t-cmd">roy@server:~$</span>
+                                        <span class="t-live-input" id="livePromptInput" style="color:#fff;font-weight:600;">ls -la /var/log</span>
+                                        <span class="t-cursor-blink" style="display:inline-block;width:7px;height:13px;background:var(--accent);animation:blink 1s infinite;"></span>
+                                    </div>
+                                    <div id="termuxLogFeedback" style="color:var(--accent);font-weight:600;font-size:10.5px;">Puntero listo: hacé clic en los botones o escribí con las teclas</div>
+                                </div>
+
+                                <!-- Clickable Targets to Test Precision Pointer Click -->
+                                <div class="mock-clickable-row">
+                                    <button class="mock-target-btn" id="btnTgtRestart" onclick="targetClickEffect(this, 'Reiniciar Servidor')">🔄 Restart</button>
+                                    <button class="mock-target-btn" id="btnTgtLogs" onclick="targetClickEffect(this, 'Ver Logs en Vivo')">📄 View Logs</button>
+                                    <button class="mock-target-btn" id="btnTgtClear" onclick="targetClickEffect(this, 'Limpiar Buffer')">🧹 Clear</button>
+                                    <button class="mock-target-btn" id="btnTgtKill" style="color:var(--danger);" onclick="targetClickEffect(this, 'Terminar Proceso')">⛔ Kill</button>
+                                </div>
+                            </div>
+
+                            <div style="font-size: 11px; color: var(--label-tertiary); text-align: center; margin-top: auto;">
+                                Mové el dedo/cursor sobre el trackpad para deslizar el puntero virtual.
+                            </div>
+
+                        </div>
+
+                        <!-- ====================================================
+                             VIRTUAL KEYBOARD & TRACKPAD DYNAMIC COMPONENT
+                             ==================================================== -->
+                        <div class="keyboard-wrapper" id="keyboardWrapper">
+                            
+                            <!-- Top Toolbar Row -->
+                            <div class="kb-toolbar">
+                                <!-- Dictation Mic -->
+                                <button class="tb-btn tb-btn-mic" id="btnTbMic" title="Dictado por voz STT" onclick="simulateMicRecord()">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                                </button>
+
+                                <!-- THE MASTER TRACKPAD / KEYBOARD TOGGLE BUTTON -->
+                                <button class="tb-btn tb-btn-trackpad" id="btnTbTrackpadToggle" title="Alternar entre Teclado y Trackpad" onclick="toggleKeyboardTrackpad()">
+                                    <span id="tbTrackpadBtnIcon">
+                                        <svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="10" r="3"/><path d="M12 13v4"/></svg>
+                                    </span>
+                                    <span id="tbTrackpadBtnLabel">Trackpad</span>
+                                    <span class="auto-return-pill" id="autoReturnPill">10s</span>
+                                </button>
+
+                                <!-- Clipboard -->
+                                <button class="tb-btn" title="Portapapeles & Snippets" onclick="simulateToast('Portapapeles rápido')">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                                </button>
+
+                                <!-- Terminal Layer Toggle -->
+                                <button class="tb-btn" title="Fila Terminal" onclick="simulateToast('Fila Terminal')">&gt;_</button>
+
+                                <!-- Settings -->
+                                <button class="tb-btn" title="Ajustes de VoiceBubble" onclick="switchMainTab('settings')">
+                                    <svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                </button>
+                            </div>
+
+                            <!-- Morphing Content Zone (Switches between QWERTY and Trackpad) -->
+                            <div class="morph-content-zone">
+                                
+                                <!-- ============================================
+                                     STATE A: STANDARD QWERTY KEYBOARD
+                                     ============================================ -->
+                                <div class="qwerty-keyboard-view" id="qwertyContainer">
+                                    <!-- Row 1 -->
+                                    <div class="kb-row">
+                                        <div class="kb-key-cell" onclick="typeSimKey('q')">q</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('w')">w</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('e')">e</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('r')">r</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('t')">t</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('y')">y</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('u')">u</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('i')">i</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('o')">o</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('p')">p</div>
+                                    </div>
+                                    <!-- Row 2 -->
+                                    <div class="kb-row">
+                                        <div class="kb-key-cell" onclick="typeSimKey('a')">a</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('s')">s</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('d')">d</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('f')">f</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('g')">g</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('h')">h</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('j')">j</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('k')">k</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('l')">l</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('ñ')">ñ</div>
+                                    </div>
+                                    <!-- Row 3 -->
+                                    <div class="kb-row">
+                                        <div class="kb-key-cell key-spec" onclick="simulateToast('Shift ⇧')">⇧</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('z')">z</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('x')">x</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('c')">c</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('v')">v</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('b')">b</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('n')">n</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('m')">m</div>
+                                        <div class="kb-key-cell key-spec" onclick="typeSimBackspace()">⌫</div>
+                                    </div>
+                                    <!-- Row 4 -->
+                                    <div class="kb-row">
+                                        <div class="kb-key-cell key-spec">?123</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey(',')">,</div>
+                                        <div class="kb-key-cell key-space" onclick="typeSimKey(' ')">Espacio</div>
+                                        <div class="kb-key-cell" onclick="typeSimKey('.')">.</div>
+                                        <div class="kb-key-cell key-enter" onclick="typeSimEnter()">↵</div>
+                                    </div>
+                                </div>
+
+                                <!-- ============================================
+                                     STATE B: TRACKPAD LAYER
+                                     ============================================ -->
+                                <div class="trackpad-view" id="trackpadView">
+                                    
+                                    <!-- Dynamic Trackpad Sub-header -->
+                                    <div class="mode-status-header">
+                                        <span class="mode-pill" id="trackpadModePill">
+                                            <span>●</span> Opción 2: Split Wings (Alas Laterales Ergonómicas)
+                                        </span>
+                                        <span class="mode-hint" id="trackpadGestureHint">Pulgar izq: Clic L (100% alto) · Pulgar der: Scroll Strip & Clic R</span>
+                                    </div>
+
+                                    <!-- ----------------------------------------
+                                         DESIGN OPTION 1: CLÁSICO CENTRAL
+                                         ---------------------------------------- -->
+                                    <div class="pad-layout-opt1" id="trackpadOpt1" style="display:none;">
+                                        <div class="opt1-surface trackpad-touch-target" id="padSurfaceOpt1" onmousedown="onPadTouchStart(event)" onmousemove="onPadTouchMove(event)" onmouseup="onPadTouchEnd(event)" ontouchstart="onPadTouchStart(event)" ontouchmove="onPadTouchMove(event)" ontouchend="onPadTouchEnd(event)">
+                                            <div class="surface-grid-guide"></div>
+                                            <div class="center-crosshair">+</div>
+                                            <span class="surface-legend">Área Táctil Central de Precisión</span>
+                                        </div>
+                                        <div class="opt1-buttons-bar">
+                                            <button class="pad-btn pad-btn-primary" onclick="triggerLeftClick()">
+                                                <svg class="icon-svg" viewBox="0 0 24 24" style="width:15px;height:15px;"><path d="M15 18l-6-6 6-6"/></svg>
+                                                Clic Izquierdo (L)
+                                            </button>
+                                            <button class="pad-btn" onclick="triggerRightClick()">
+                                                Clic Derecho (R)
+                                                <svg class="icon-svg" viewBox="0 0 24 24" style="width:15px;height:15px;"><path d="M9 18l6-6-6-6"/></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- ----------------------------------------
+                                         DESIGN OPTION 2: SPLIT WINGS TRACKPAD
+                                         ---------------------------------------- -->
+                                    <div class="pad-layout-opt2" id="trackpadOpt2">
+                                        <!-- Left Wing for Thumb -->
+                                        <div class="opt2-wing-left" id="opt2WingLeft">
+                                            <button class="wing-btn" id="opt2BtnLeft" onclick="triggerLeftClick()">
+                                                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+                                                <span>CLIC</span>
+                                                <span style="font-size:9px;color:var(--accent);">IZQ</span>
+                                            </button>
+                                        </div>
+                                        <!-- Central Pad -->
+                                        <div class="opt2-center trackpad-touch-target" id="padSurfaceOpt2" onmousedown="onPadTouchStart(event)" onmousemove="onPadTouchMove(event)" onmouseup="onPadTouchEnd(event)" ontouchstart="onPadTouchStart(event)" ontouchmove="onPadTouchMove(event)" ontouchend="onPadTouchEnd(event)">
+                                            <div class="surface-grid-guide"></div>
+                                            <span class="surface-legend">Puntero Central</span>
+                                        </div>
+                                        <!-- Right Wing with Scroll Strip + Right Click -->
+                                        <div class="opt2-wing-right" id="opt2WingRight">
+                                            <div class="scroll-strip-v" id="scrollStripOpt2" onmousedown="onScrollStart(event)" onmousemove="onScrollMove(event)" onmouseup="onScrollEnd(event)" ontouchstart="onScrollStart(event)" ontouchmove="onScrollMove(event)" ontouchend="onScrollEnd(event)">
+                                                <span style="font-size:9px;opacity:0.6;">▲</span>
+                                                <div class="scroll-ticks">
+                                                    <div class="scroll-tick"></div>
+                                                    <div class="scroll-tick"></div>
+                                                    <div class="scroll-tick"></div>
+                                                </div>
+                                                <span style="font-size:9px;opacity:0.6;">▼</span>
+                                            </div>
+                                            <button class="wing-btn" id="opt2BtnRight" style="flex:0.8;" onclick="triggerRightClick()">
+                                                <svg class="icon-svg" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M9 18l6-6-6-6"/></svg>
+                                                <span>CLIC</span>
+                                                <span style="font-size:9px;color:var(--label-secondary);">DER</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- ----------------------------------------
+                                         DESIGN OPTION 3: COMMAND & PRECISION DOCK
+                                         ---------------------------------------- -->
+                                    <div class="pad-layout-opt3" id="trackpadOpt3" style="display:none;">
+                                        <div class="opt3-surface trackpad-touch-target" id="padSurfaceOpt3" onmousedown="onPadTouchStart(event)" onmousemove="onPadTouchMove(event)" onmouseup="onPadTouchEnd(event)" ontouchstart="onPadTouchStart(event)" ontouchmove="onPadTouchMove(event)" ontouchend="onPadTouchEnd(event)">
+                                            <div class="surface-grid-guide"></div>
+                                            <span class="surface-legend">Superficie Panorámica de Precisión</span>
+                                        </div>
+                                        <div class="opt3-dock">
+                                            <button class="dock-btn" id="btnDragLockOpt3" onclick="toggleDragLock()">
+                                                <span id="dragLockIcon">🔓</span>
+                                                <span>Drag-Lock</span>
+                                            </button>
+                                            <button class="dock-btn" style="color:var(--accent);" onclick="triggerLeftClick()">
+                                                <span>◀ L-Click</span>
+                                            </button>
+                                            <button class="dock-btn" onclick="simulateWheelScroll()">
+                                                <span>⟳ Scroll</span>
+                                            </button>
+                                            <button class="dock-btn" onclick="triggerRightClick()">
+                                                <span>R-Click ▶</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- ----------------------------------------
+                                         DESIGN OPTION 4: RADIAL GESTURAL ORBIT
+                                         ---------------------------------------- -->
+                                    <div class="pad-layout-opt4 trackpad-touch-target" id="trackpadOpt4" style="display:none;" onmousedown="onPadTouchStart(event)" onmousemove="onPadTouchMove(event)" onmouseup="onPadTouchEnd(event)" ontouchstart="onPadTouchStart(event)" ontouchmove="onPadTouchMove(event)" ontouchend="onPadTouchEnd(event)">
+                                        <div class="orbit-rings">
+                                            <div class="orbit-circle orbit-c1"></div>
+                                            <div class="orbit-circle orbit-c2"></div>
+                                        </div>
+                                        <!-- Dynamic Floating Thumb Nub -->
+                                        <div class="floating-nub" id="floatingNub">●</div>
+                                        
+                                        <!-- Corner Quick Action Pills -->
+                                        <div class="opt4-floating-pills">
+                                            <button class="pill-action-btn" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation(); triggerLeftClick();">
+                                                ● Clic Izquierdo
+                                            </button>
+                                            <button class="pill-action-btn" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation(); triggerRightClick();">
+                                                Clic Derecho ●
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- ----------------------------------------
+                                         DESIGN OPTION 5: DUAL-ZONE NUMPAD & NAV
+                                         ---------------------------------------- -->
+                                    <div class="pad-layout-opt5" id="trackpadOpt5" style="display:none;">
+                                        <!-- Left Side: Trackpad Area -->
+                                        <div class="opt5-left-pad">
+                                            <div class="opt5-surface trackpad-touch-target" id="padSurfaceOpt5" onmousedown="onPadTouchStart(event)" onmousemove="onPadTouchMove(event)" onmouseup="onPadTouchEnd(event)" ontouchstart="onPadTouchStart(event)" ontouchmove="onPadTouchMove(event)" ontouchend="onPadTouchEnd(event)">
+                                                <div class="surface-grid-guide"></div>
+                                                <span class="surface-legend" style="font-size:9.5px;">Trackpad 55%</span>
+                                            </div>
+                                            <div class="opt5-left-btns">
+                                                <button class="pad-btn" style="font-size:11px;" onclick="triggerLeftClick()">L-Click</button>
+                                                <button class="pad-btn" style="font-size:11px;" onclick="triggerRightClick()">R-Click</button>
+                                            </div>
+                                        </div>
+                                        <!-- Right Side: Terminal / Developer Nav Matrix -->
+                                        <div class="opt5-right-nav">
+                                            <button class="nav-key" onclick="simulateNavKey('Tab')">Tab</button>
+                                            <button class="nav-key" onclick="simulateNavKey('Esc')">Esc</button>
+                                            <button class="nav-key" onclick="simulateNavKey('Home')">Home</button>
+
+                                            <button class="nav-key" onclick="simulateNavKey('Ctrl')">Ctrl</button>
+                                            <button class="nav-key nav-key-accent" onclick="simulateArrowKey('▲')">▲</button>
+                                            <button class="nav-key" onclick="simulateNavKey('End')">End</button>
+
+                                            <button class="nav-key nav-key-accent" onclick="simulateArrowKey('◀')">◀</button>
+                                            <button class="nav-key nav-key-accent" onclick="simulateArrowKey('▼')">▼</button>
+                                            <button class="nav-key nav-key-accent" onclick="simulateArrowKey('▶')">▶</button>
+
+                                            <button class="nav-key" onclick="typeSimBackspace()">⌫</button>
+                                            <button class="nav-key" onclick="simulateNavKey('Alt')">Alt</button>
+                                            <button class="nav-key nav-key-accent" onclick="typeSimEnter()">↵</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- ----------------------------------------
+                                         DESIGN OPTION 6: EDGE-TO-EDGE FLUID GLASS
+                                         ---------------------------------------- -->
+                                    <div class="pad-layout-opt6 trackpad-touch-target" id="trackpadOpt6" style="display:none;" onmousedown="onPadTouchStart(event)" onmousemove="onPadTouchMove(event)" onmouseup="onPadTouchEnd(event)" ontouchstart="onPadTouchStart(event)" ontouchmove="onPadTouchMove(event)" ontouchend="onPadTouchEnd(event)">
+                                        <div class="surface-grid-guide" style="opacity:0.4;"></div>
+                                        <div class="opt6-hud-badge">
+                                            <div class="gesture-indicator-light"></div>
+                                            <span id="opt6GestureStateText">Superficie 100% Gestual Activa</span>
+                                        </div>
+                                        <span class="surface-legend" style="font-size:10px;">Tap = Clic | 2 Dedos = Menú | Borde = Scroll</span>
+                                        
+                                        <!-- Fast Edge Scroll Indicator -->
+                                        <div class="opt6-edge-strip">
+                                            <span class="opt6-edge-icon">SCROLL</span>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 COLUMN 2: DETAILED SETTINGS, LOGS & ARCHITECTURE MATRIX
+                 ============================================================ -->
+            <div class="side-content-pane" id="sideContentPane">
+
+                <!-- Dedicated Trackpad Settings Section (Liquid Glass) -->
+                <section class="glass-panel" id="settingsPanelSection">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">
+                                <svg class="icon-svg" viewBox="0 0 24 24" style="color:var(--accent);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                Configuración de Modo Trackpad & Puntero
+                            </h3>
+                            <p class="panel-subtitle">Ajustes independientes en la sección de teclado de VoiceBubble STT</p>
+                        </div>
+                        <span class="badge-mej">Ajustes</span>
+                    </div>
+
+                    <div class="settings-list">
+                        
+                        <!-- Master Switch -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Habilitar Modo Trackpad en Teclado</div>
+                                <div class="setting-desc">Permite convertir el área de teclas en una superficie de control de mouse virtual.</div>
+                            </div>
+                            <input type="checkbox" class="toggle-switch" id="cfgMasterToggle" checked onchange="onMasterToggleChange(this.checked)">
+                        </div>
+
+                        <!-- Toolbar Shortcut Button -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Botón Rápido en Barra Superior</div>
+                                <div class="setting-desc">Muestra el icono de mouse en la barra del teclado junto al micrófono.</div>
+                            </div>
+                            <input type="checkbox" class="toggle-switch" id="cfgToolbarBtnToggle" checked onchange="onToolbarBtnToggleChange(this.checked)">
+                        </div>
+
+                        <!-- Pointer Sensitivity -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Sensibilidad del Puntero</div>
+                                <div class="setting-desc">Velocidad de desplazamiento del cursor en pantalla.</div>
+                            </div>
+                            <div class="slider-wrapper">
+                                <input type="range" class="range-slider" id="cfgSensitivitySlider" min="0.5" max="2.5" step="0.1" value="1.2" oninput="onSensitivityChange(this.value)">
+                                <span class="slider-val-badge" id="cfgSensitivityVal">1.2x</span>
+                            </div>
+                        </div>
+
+                        <!-- Acceleration Curve -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Curva de Aceleración</div>
+                                <div class="setting-desc">Respuesta dinámica según la velocidad del dedo.</div>
+                            </div>
+                            <div class="segmented-row">
+                                <button class="seg-btn" onclick="setAccelCurve('linear', this)">Lineal</button>
+                                <button class="seg-btn active" onclick="setAccelCurve('dynamic', this)">Dinámica</button>
+                                <button class="seg-btn" onclick="setAccelCurve('precision', this)">Precisión</button>
+                            </div>
+                        </div>
+
+                        <!-- Tap-to-Click -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Tocar para Clic (Tap-to-Click)</div>
+                                <div class="setting-desc">Un toque ligero en cualquier parte de la superficie emula un clic izquierdo.</div>
+                            </div>
+                            <input type="checkbox" class="toggle-switch" id="cfgTapToClickToggle" checked onchange="onTapToClickToggle(this.checked)">
+                        </div>
+
+                        <!-- Secondary Click Mode -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Clic Secundario (Menú Contextual)</div>
+                                <div class="setting-desc">Método preferido para disparar clic derecho en pantalla.</div>
+                            </div>
+                            <div class="segmented-row">
+                                <button class="seg-btn active" onclick="setSecondaryClick('2fingers', this)">2 Dedos</button>
+                                <button class="seg-btn" onclick="setSecondaryClick('button', this)">Botón R</button>
+                                <button class="seg-btn" onclick="setSecondaryClick('hold', this)">Mantener</button>
+                            </div>
+                        </div>
+
+                        <!-- Scroll Direction -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Dirección del Desplazamiento (Scroll)</div>
+                                <div class="setting-desc">Comportamiento del scroll con dos dedos o barra lateral.</div>
+                            </div>
+                            <div class="segmented-row">
+                                <button class="seg-btn active" onclick="setScrollDirection('natural', this)">Natural (iOS)</button>
+                                <button class="seg-btn" onclick="setScrollDirection('standard', this)">Estándar (PC)</button>
+                            </div>
+                        </div>
+
+                        <!-- Scroll Strip Position (MEJ-09) -->
+                        <div class="setting-row" id="cfgScrollStripRow">
+                            <div class="setting-meta">
+                                <div class="setting-label">Posición de Barra de Scroll (Scroll Strip)</div>
+                                <div class="setting-desc">Mover la barra de scroll a la izquierda, a la derecha o desactivarla. En cualquiera de los casos, los botones de clic ocupan el 100% de la altura de la sección.</div>
+                            </div>
+                            <div class="segmented-row">
+                                <button class="seg-btn" id="btnScrollStripLeft" onclick="setScrollStripPosition('left', this)">Izquierda</button>
+                                <button class="seg-btn active" id="btnScrollStripRight" onclick="setScrollStripPosition('right', this)">Derecha</button>
+                                <button class="seg-btn" id="btnScrollStripDisabled" onclick="setScrollStripPosition('disabled', this)">Desactivada</button>
+                            </div>
+                        </div>
+
+                        <!-- Virtual Haptic Feedback -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Vibración Háptica de Confirmación</div>
+                                <div class="setting-desc">Respuesta física al hacer clic o llegar a los límites del pad.</div>
+                            </div>
+                            <div class="segmented-row">
+                                <button class="seg-btn" onclick="setHapticLevel('none', this)">No</button>
+                                <button class="seg-btn active" onclick="setHapticLevel('subtle', this)">Sutil</button>
+                                <button class="seg-btn" onclick="setHapticLevel('firm', this)">Firme</button>
+                            </div>
+                        </div>
+
+                        <!-- Pointer Style -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Estilo Visual del Puntero</div>
+                                <div class="setting-desc">Apariencia del cursor flotante sobre las aplicaciones.</div>
+                            </div>
+                            <div class="segmented-row">
+                                <button class="seg-btn active" onclick="setPointerStyle('arrow', this)">Flecha</button>
+                                <button class="seg-btn" onclick="setPointerStyle('dot', this)">Punto Óptico</button>
+                                <button class="seg-btn" onclick="setPointerStyle('cross', this)">Cruz</button>
+                            </div>
+                        </div>
+
+                        <!-- Auto-return to Keyboard Timer -->
+                        <div class="setting-row">
+                            <div class="setting-meta">
+                                <div class="setting-label">Auto-retorno al Teclado por Inactividad</div>
+                                <div class="setting-desc">Vuelve automáticamente al teclado tras dejar de usar el trackpad.</div>
+                            </div>
+                            <div class="segmented-row">
+                                <button class="seg-btn active" onclick="setAutoReturnTimer(0, this)">Off</button>
+                                <button class="seg-btn" onclick="setAutoReturnTimer(5, this)">5 seg</button>
+                                <button class="seg-btn" onclick="setAutoReturnTimer(15, this)">15 seg</button>
+                                <button class="seg-btn" onclick="setAutoReturnTimer(30, this)">30 seg</button>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- Matrix / Comparison of the 6 Designs -->
+                <section class="glass-panel" id="comparisonGridSection">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">
+                                <svg class="icon-svg" viewBox="0 0 24 24" style="color:#a855f7;"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                                Matriz Comparativa de las 6 Propuestas
+                            </h3>
+                            <p class="panel-subtitle">Hacé clic en cualquier tarjeta para cargarla inmediatamente en el teléfono</p>
+                        </div>
+                    </div>
+
+                    <div class="comparison-cards-grid">
+                        
+                        <!-- Card 1 -->
+                        <div class="comp-design-card" id="compCard1" onclick="selectTrackpadOption(1)">
+                            <div class="card-top-row">
+                                <span class="card-title">1. Clásico Central</span>
+                                <span class="card-tag" style="color:var(--accent);">Laptop Style</span>
+                            </div>
+                            <p class="card-desc">Superficie táctil rectangular centrada con dos botones grandes divididos en la fila inferior para clic izquierdo y derecho.</p>
+                            <div class="card-specs">
+                                <span class="spec-item">🎯 Precisión: 9/10</span>
+                                <span class="spec-item">👍 Curva: Cero</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 2 -->
+                        <div class="comp-design-card active-comp" id="compCard2" onclick="selectTrackpadOption(2)">
+                            <div class="card-top-row">
+                                <span class="card-title">2. Split Wings</span>
+                                <span class="card-tag" style="color:#10b981;">★ Seleccionada por el usuario</span>
+                            </div>
+                            <p class="card-desc">Botón izquierdo en el flanco izquierdo, trackpad en el centro y scroll strip + botón derecho en el flanco derecho. Soporta scroll en flanco izq/der/desactivado con expansión vertical al 100%.</p>
+                            <div class="card-specs">
+                                <span class="spec-item">👐 Uso: 2 manos</span>
+                                <span class="spec-item">📜 Scroll: Dinámico (L/R/Off)</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 3 -->
+                        <div class="comp-design-card" id="compCard3" onclick="selectTrackpadOption(3)">
+                            <div class="card-top-row">
+                                <span class="card-title">3. Command Dock</span>
+                                <span class="card-tag" style="color:#f59e0b;">Power User</span>
+                            </div>
+                            <p class="card-desc">Área superior panorámica con barra inferior de 4 acciones: Bloqueo de arrastre (Drag-Lock para selección sin fatiga), Clic Izq, Scroll Wheel y Clic Der.</p>
+                            <div class="card-specs">
+                                <span class="spec-item">🔒 Drag-Lock: Sí</span>
+                                <span class="spec-item">📑 Multi-selección</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 4 -->
+                        <div class="comp-design-card" id="compCard4" onclick="selectTrackpadOption(4)">
+                            <div class="card-top-row">
+                                <span class="card-title">4. Radial Nub</span>
+                                <span class="card-tag" style="color:#ec4899;">Gestual Libre</span>
+                            </div>
+                            <p class="card-desc">Nub dinámico que aparece donde se apoya el dedo con anillos hápticos orbitales y dos botones flotantes en las esquinas inferiores.</p>
+                            <div class="card-specs">
+                                <span class="spec-item">✨ Fluidez: 10/10</span>
+                                <span class="spec-item">⭕ Anillos radiales</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 5 -->
+                        <div class="comp-design-card" id="compCard5" onclick="selectTrackpadOption(5)">
+                            <div class="card-top-row">
+                                <span class="card-title">5. Dual Numpad Hybrid</span>
+                                <span class="card-tag" style="color:#06b6d4;">Terminal & Code</span>
+                            </div>
+                            <p class="card-desc">División 55% trackpad de precisión a la izquierda y 45% matriz de flechas direccionales [▲▼◀▶], Tab, Esc, Ctrl y Enter a la derecha para Termux y Neovim.</p>
+                            <div class="card-specs">
+                                <span class="spec-item">💻 Ideal: CLI / SSH</span>
+                                <span class="spec-item">⌨️ Flechas dedicadas</span>
+                            </div>
+                        </div>
+
+                        <!-- Card 6 -->
+                        <div class="comp-design-card" id="compCard6" onclick="selectTrackpadOption(6)">
+                            <div class="card-top-row">
+                                <span class="card-title">6. Edge Fluid Glass</span>
+                                <span class="card-tag" style="color:#8b5cf6;">100% Gestual</span>
+                            </div>
+                            <p class="card-desc">Sin botones físicos. Toda la superficie del teclado se convierte en vidrio líquido interactivo: 1 dedo = mover/clic, 2 dedos = menú contextual, borde = scroll rápido.</p>
+                            <div class="card-specs">
+                                <span class="spec-item">🌊 Espacio: 100%</span>
+                                <span class="spec-item">🍏 Apple HIG Puro</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ================================================================
+         JAVASCRIPT ENGINE: SIMULATION & TRACKPAD LOGIC
+         ================================================================ -->
+    <script>
+        // Global State
+        const state = {
+            theme: 'dark',
+            activeMode: 'qwerty', // 'qwerty' | 'trackpad'
+            activeOption: 2,      // Opción 2 Split Wings (Aprobada por el usuario)
+            scrollStripPosition: 'right', // 'left' | 'right' | 'disabled'
+            masterEnabled: true,
+            toolbarBtnVisible: true,
+            sensitivity: 1.2,
+            accelCurve: 'dynamic', // 'linear' | 'dynamic' | 'precision'
+            tapToClick: true,
+            secondaryClick: '2fingers', // '2fingers' | 'button' | 'hold'
+            scrollDirection: 'natural', // 'natural' | 'standard'
+            hapticLevel: 'subtle',
+            pointerStyle: 'arrow',
+            autoReturnSecs: 0,
+            autoReturnTimerId: null,
+            dragLocked: false,
+            holdTimerId: null,
+            twoFingerTap: false,
+            autoReturnCountdown: 0,
+            autoReturnIntervalId: null,
+            
+            // Pointer coordinates inside mock phone screen
+            pointer: {
+                x: 180,
+                y: 260,
+                minX: 8,
+                maxX: 350,
+                minY: 48,
+                maxY: 540,
+                isDown: false,
+                startX: 0,
+                startY: 0,
+                touchStartTime: 0,
+                lastX: 0,
+                lastY: 0
+            },
+
+            // Scroll tracking
+            scroll: {
+                isDown: false,
+                startY: 0
+            }
+        };
+
+        // DOM Element References
+        const dom = {
+            html: document.documentElement,
+            themeIcon: document.getElementById('themeIcon'),
+            themeLabel: document.getElementById('themeLabel'),
+            quickToggleStatusIcon: document.getElementById('quickToggleStatusIcon'),
+            quickToggleStatusText: document.getElementById('quickToggleStatusText'),
+            btnTbTrackpadToggle: document.getElementById('btnTbTrackpadToggle'),
+            tbTrackpadBtnIcon: document.getElementById('tbTrackpadBtnIcon'),
+            tbTrackpadBtnLabel: document.getElementById('tbTrackpadBtnLabel'),
+            btnTbMic: document.getElementById('btnTbMic'),
+            islandDotIndicator: document.getElementById('islandDotIndicator'),
+            islandStatusText: document.getElementById('islandStatusText'),
+            
+            qwertyContainer: document.getElementById('qwertyContainer'),
+            trackpadView: document.getElementById('trackpadView'),
+            trackpadModePill: document.getElementById('trackpadModePill'),
+            trackpadGestureHint: document.getElementById('trackpadGestureHint'),
+            
+            virtualPointer: document.getElementById('virtualPointer'),
+            cursorSvgArrow: document.getElementById('cursorSvgArrow'),
+            cursorDot: document.getElementById('cursorDot'),
+            cursorCross: document.getElementById('cursorCross'),
+            pointerCoordsText: document.getElementById('pointerCoordsText'),
+            
+            phoneScreenContainer: document.getElementById('phoneScreenContainer'),
+            mockAppViewport: document.getElementById('mockAppViewport'),
+            phoneContextMenu: document.getElementById('phoneContextMenu'),
+            
+            floatingNub: document.getElementById('floatingNub'),
+            btnDragLockOpt3: document.getElementById('btnDragLockOpt3'),
+            dragLockIcon: document.getElementById('dragLockIcon'),
+            
+            opt2WingLeft: document.getElementById('opt2WingLeft'),
+            opt2WingRight: document.getElementById('opt2WingRight'),
+            scrollStripOpt2: document.getElementById('scrollStripOpt2'),
+            opt2BtnLeft: document.getElementById('opt2BtnLeft'),
+            opt2BtnRight: document.getElementById('opt2BtnRight'),
+            
+            cfgMasterToggle: document.getElementById('cfgMasterToggle'),
+            cfgToolbarBtnToggle: document.getElementById('cfgToolbarBtnToggle'),
+            cfgSensitivitySlider: document.getElementById('cfgSensitivitySlider'),
+            cfgSensitivityVal: document.getElementById('cfgSensitivityVal'),
+            cfgTapToClickToggle: document.getElementById('cfgTapToClickToggle'),
+            opt6GestureStateText: document.getElementById('opt6GestureStateText'),
+            statusBarClock: document.getElementById('statusBarClock')
+        };
+
+        // Live Clock
+        function updateClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            if (dom.statusBarClock) {
+                dom.statusBarClock.textContent = `${h}:${m}`;
+            }
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Theme Toggle
+        function toggleTheme() {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            dom.html.setAttribute('data-theme', state.theme);
+            if (state.theme === 'dark') {
+                dom.themeIcon.textContent = '☀️';
+                dom.themeLabel.textContent = 'Claro';
+            } else {
+                dom.themeIcon.textContent = '🌙';
+                dom.themeLabel.textContent = 'Oscuro';
+            }
+            logEvent(`Tema cambiado a: Modo ${state.theme === 'dark' ? 'Oscuro' : 'Claro'}`);
+        }
+
+        // Main Tab Switcher
+        function switchMainTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (tab === 'mockup') {
+                document.getElementById('tabBtnMockup').classList.add('active');
+                document.getElementById('mockupSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (tab === 'comparison') {
+                document.getElementById('tabBtnComparison').classList.add('active');
+                document.getElementById('comparisonGridSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (tab === 'settings') {
+                document.getElementById('tabBtnSettings').classList.add('active');
+                document.getElementById('settingsPanelSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        // Toggle between Keyboard and Trackpad Mode
+        function toggleKeyboardTrackpad() {
+            if (!state.masterEnabled) {
+                simulateToast('El modo trackpad está deshabilitado en Ajustes');
+                return;
+            }
+
+            if (state.activeMode === 'qwerty') {
+                state.activeMode = 'trackpad';
+                dom.qwertyContainer.style.display = 'none';
+                dom.trackpadView.style.display = 'flex';
+                
+                dom.btnTbTrackpadToggle.classList.add('mode-active');
+                dom.tbTrackpadBtnLabel.textContent = 'Teclado';
+                dom.tbTrackpadBtnIcon.innerHTML = '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="6" y1="12" x2="6.01" y2="12"/><line x1="18" y1="12" x2="18.01" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/></svg>';
+                
+                dom.quickToggleStatusIcon.textContent = '⌨️';
+                dom.quickToggleStatusText.textContent = 'Volver al Teclado';
+                
+                logEvent(`Transición: Teclado ➔ Modo Trackpad (Opción ${state.activeOption})`);
+                triggerHaptic();
+                resetAutoReturnTimer();
+            } else {
+                state.activeMode = 'qwerty';
+                dom.trackpadView.style.display = 'none';
+                dom.qwertyContainer.style.display = 'flex';
+                
+                dom.btnTbTrackpadToggle.classList.remove('mode-active');
+                dom.tbTrackpadBtnLabel.textContent = 'Trackpad';
+                dom.tbTrackpadBtnIcon.innerHTML = '<svg class="icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="10" r="3"/><path d="M12 13v4"/></svg>';
+                
+                dom.quickToggleStatusIcon.textContent = '🖱️';
+                dom.quickToggleStatusText.textContent = 'Activar Modo Trackpad';
+                
+                closeContextMenu();
+                logEvent('Transición: Modo Trackpad ➔ Teclado QWERTY');
+                triggerHaptic();
+                clearAutoReturn();
+            }
+        }
+
+        // Select One of the 6 Trackpad Designs
+        function selectTrackpadOption(num) {
+            state.activeOption = num;
+
+            // Update pills
+            for (let i = 1; i <= 6; i++) {
+                const pill = document.getElementById(`pillOpt${i}`);
+                const compCard = document.getElementById(`compCard${i}`);
+                const layout = document.getElementById(`trackpadOpt${i}`);
+                
+                if (pill) pill.classList.toggle('active', i === num);
+                if (compCard) compCard.classList.toggle('active-comp', i === num);
+                if (layout) layout.style.display = i === num ? '' : 'none';
+            }
+
+            // Names and hints
+            const optionNames = {
+                1: 'Opción 1: Clásico Central (Laptop Style)',
+                2: 'Opción 2: Split Wings (Alas Laterales Ergonómicas)',
+                3: 'Opción 3: Command & Precision Dock',
+                4: 'Opción 4: Radial Gestural Orbit (Nub Dinámico)',
+                5: 'Opción 5: Dual-Zone Numpad & Navigation',
+                6: 'Opción 6: Edge-to-Edge Fluid Glass (100% Gestual)'
+            };
+
+            const optionHints = {
+                1: '1 dedo: mover · Botones L/R abajo · Tap = clic',
+                2: state.scrollStripPosition === 'left'
+                    ? 'Pulgar izq: Scroll Strip & Clic L · Pulgar der: Clic R (100% alto)'
+                    : (state.scrollStripPosition === 'disabled'
+                        ? 'Pulgar izq: Clic L (100% alto) · Pulgar der: Clic R (100% alto)'
+                        : 'Pulgar izq: Clic L (100% alto) · Pulgar der: Scroll Strip & Clic R'),
+                3: 'Superficie superior · Dock con Drag-Lock para texto',
+                4: 'Nub sigue el dedo · Clics flotantes en esquinas',
+                5: 'Izquierda: Puntero · Derecha: Flechas, Tab, Esc & Ctrl',
+                6: 'Superficie total · Tap=Clic · 2 dedos=Menú · Borde=Scroll'
+            };
+
+            dom.trackpadModePill.innerHTML = `<span>●</span> ${optionNames[num]}`;
+            dom.trackpadGestureHint.textContent = optionHints[num];
+
+            if (num === 2) {
+                updateScrollStripLayout();
+            }
+
+            // If in keyboard mode, transition to trackpad automatically so user sees it right away
+            if (state.activeMode !== 'trackpad') {
+                toggleKeyboardTrackpad();
+            }
+
+            logEvent(`Diseño seleccionado: [${optionNames[num]}]`);
+            triggerHaptic();
+        }
+
+        // Pointer Physics & Movement Engine
+        function updatePointerUI() {
+            dom.virtualPointer.style.left = `${state.pointer.x}px`;
+            dom.virtualPointer.style.top = `${state.pointer.y}px`;
+            dom.pointerCoordsText.textContent = `X: ${Math.round(state.pointer.x)} Y: ${Math.round(state.pointer.y)}`;
+
+            // Check if hovering over any mock interactive targets
+            checkHoverTargets();
+        }
+
+        function checkHoverTargets() {
+            const targets = document.querySelectorAll('.mock-target-btn');
+            targets.forEach(tgt => {
+                const rect = tgt.getBoundingClientRect();
+                const containerRect = dom.phoneScreenContainer.getBoundingClientRect();
+                
+                const tgtLeft = rect.left - containerRect.left;
+                const tgtTop = rect.top - containerRect.top;
+                const tgtRight = tgtLeft + rect.width;
+                const tgtBottom = tgtTop + rect.height;
+
+                if (state.pointer.x >= tgtLeft && state.pointer.x <= tgtRight &&
+                    state.pointer.y >= tgtTop && state.pointer.y <= tgtBottom) {
+                    tgt.style.borderColor = 'var(--accent)';
+                    tgt.style.background = 'var(--accent-container)';
+                } else {
+                    tgt.style.borderColor = '';
+                    tgt.style.background = '';
+                }
+            });
+        }
+
+        // Trackpad Touch / Mouse Drag Handling
+        function onPadTouchStart(e) {
+            e.preventDefault();
+            closeContextMenu();
+            resetAutoReturnTimer();
+
+            const point = e.touches ? e.touches[0] : e;
+            state.pointer.isDown = true;
+            state.pointer.startX = point.clientX;
+            state.pointer.startY = point.clientY;
+            state.pointer.lastX = point.clientX;
+            state.pointer.lastY = point.clientY;
+            state.pointer.touchStartTime = Date.now();
+
+            // Detect 2 fingers
+            state.twoFingerTap = (e.touches && e.touches.length === 2);
+
+            // Long-press hold detection for secondary click if enabled
+            clearTimeout(state.holdTimerId);
+            if (state.secondaryClick === 'hold') {
+                state.holdTimerId = setTimeout(() => {
+                    if (state.pointer.isDown) {
+                        const dist = Math.hypot(state.pointer.lastX - state.pointer.startX, state.pointer.lastY - state.pointer.startY);
+                        if (dist < 10) {
+                            triggerRightClick();
+                            simulateToast('Clic Secundario (Hold)');
+                        }
+                    }
+                }, 450);
+            }
+
+            // If Option 4 (Radial Nub), place nub at touchdown
+            if (state.activeOption === 4 && dom.floatingNub) {
+                const padRect = document.getElementById('trackpadOpt4').getBoundingClientRect();
+                const relX = point.clientX - padRect.left;
+                const relY = point.clientY - padRect.top;
+                dom.floatingNub.style.left = `${relX}px`;
+                dom.floatingNub.style.top = `${relY}px`;
+            }
+        }
+
+        function onPadTouchMove(e) {
+            if (!state.pointer.isDown) return;
+            e.preventDefault();
+            resetAutoReturnTimer();
+
+            const point = e.touches ? e.touches[0] : e;
+            let deltaX = point.clientX - state.pointer.lastX;
+            let deltaY = point.clientY - state.pointer.lastY;
+
+            state.pointer.lastX = point.clientX;
+            state.pointer.lastY = point.clientY;
+
+            // Cancel hold timer if moved significantly
+            if (Math.hypot(point.clientX - state.pointer.startX, point.clientY - state.pointer.startY) > 10) {
+                clearTimeout(state.holdTimerId);
+                state.twoFingerTap = false;
+            }
+
+            // Two-finger scroll detection
+            if (e.touches && e.touches.length >= 2) {
+                const scrollAmount = state.scrollDirection === 'natural' ? -deltaY * 1.5 : deltaY * 1.5;
+                dom.mockAppViewport.scrollTop += scrollAmount;
+                logEvent(`Scroll con 2 dedos: ${Math.round(deltaY)}px`);
+                return;
+            }
+
+            // Option 6 Edge scroll detection (if touching right border)
+            if (state.activeOption === 6) {
+                const padRect = document.getElementById('trackpadOpt6').getBoundingClientRect();
+                if (point.clientX >= padRect.right - 35) {
+                    const scrollAmt = state.scrollDirection === 'natural' ? -deltaY * 2.5 : deltaY * 2.5;
+                    dom.mockAppViewport.scrollTop += scrollAmt;
+                    dom.opt6GestureStateText.textContent = 'Scroll Rápido por Borde Activo';
+                    return; // Dedicated edge scroll: do NOT displace pointer!
+                } else {
+                    dom.opt6GestureStateText.textContent = 'Superficie 100% Gestual Activa';
+                }
+            }
+
+            // Apply acceleration curve
+            let factor = state.sensitivity;
+            const speed = Math.hypot(deltaX, deltaY);
+
+            if (state.accelCurve === 'dynamic') {
+                factor *= Math.min(3.0, Math.max(0.6, 0.6 + speed * 0.12));
+            } else if (state.accelCurve === 'precision') {
+                factor *= 0.6;
+            }
+
+            // Move pointer within bounds
+            const bounds = getPointerBounds();
+            state.pointer.x = Math.max(bounds.minX, Math.min(bounds.maxX, state.pointer.x + deltaX * factor));
+            state.pointer.y = Math.max(bounds.minY, Math.min(bounds.maxY, state.pointer.y + deltaY * factor));
+
+            updatePointerUI();
+
+            // Option 4 Radial Nub visual follow
+            if (state.activeOption === 4 && dom.floatingNub) {
+                const padRect = document.getElementById('trackpadOpt4').getBoundingClientRect();
+                const relX = Math.max(20, Math.min(padRect.width - 20, point.clientX - padRect.left));
+                const relY = Math.max(20, Math.min(padRect.height - 20, point.clientY - padRect.top));
+                dom.floatingNub.style.left = `${relX}px`;
+                dom.floatingNub.style.top = `${relY}px`;
+            }
+
+            // If Drag-Lock is active, simulate text selection in mock app
+            if (state.dragLocked) {
+                simulateDragSelection();
+            }
+        }
+
+        function onPadTouchEnd(e) {
+            clearTimeout(state.holdTimerId);
+            if (!state.pointer.isDown) return;
+            state.pointer.isDown = false;
+
+            const duration = Date.now() - state.pointer.touchStartTime;
+            const point = e.changedTouches ? e.changedTouches[0] : e;
+            const dist = Math.hypot(point.clientX - state.pointer.startX, point.clientY - state.pointer.startY);
+
+            // Two-finger tap detection for secondary click
+            if (state.twoFingerTap && state.secondaryClick === '2fingers' && duration < 280 && dist < 12) {
+                triggerRightClick();
+                return;
+            }
+
+            // Tap-to-click detection: short touch without much displacement
+            if (state.tapToClick && duration < 240 && dist < 10) {
+                triggerLeftClick();
+            }
+
+            if (state.activeOption === 4 && dom.floatingNub) {
+                dom.floatingNub.style.left = '50%';
+                dom.floatingNub.style.top = '50%';
+            }
+        }
+
+        function simulateDragSelection() {
+            const targets = document.querySelectorAll('.mock-target-btn');
+            targets.forEach(tgt => {
+                const rect = tgt.getBoundingClientRect();
+                const containerRect = dom.phoneScreenContainer.getBoundingClientRect();
+                const tgtLeft = rect.left - containerRect.left;
+                const tgtTop = rect.top - containerRect.top;
+                const tgtRight = tgtLeft + rect.width;
+                const tgtBottom = tgtTop + rect.height;
+
+                if (state.pointer.x >= tgtLeft && state.pointer.x <= tgtRight &&
+                    state.pointer.y >= tgtTop && state.pointer.y <= tgtBottom) {
+                    tgt.style.borderColor = 'var(--warning)';
+                    tgt.style.background = 'var(--warning-container)';
+                }
+            });
+        }
+
+        // Left Click Trigger Action
+        function triggerLeftClick() {
+            closeContextMenu();
+            triggerHaptic();
+            showClickPulse(state.pointer.x, state.pointer.y, 'left');
+
+            // Find target element under pointer inside phone screen
+            const targets = document.querySelectorAll('.mock-target-btn');
+            let hitElement = null;
+
+            targets.forEach(tgt => {
+                const rect = tgt.getBoundingClientRect();
+                const containerRect = dom.phoneScreenContainer.getBoundingClientRect();
+                const tgtLeft = rect.left - containerRect.left;
+                const tgtTop = rect.top - containerRect.top;
+                const tgtRight = tgtLeft + rect.width;
+                const tgtBottom = tgtTop + rect.height;
+
+                if (state.pointer.x >= tgtLeft && state.pointer.x <= tgtRight &&
+                    state.pointer.y >= tgtTop && state.pointer.y <= tgtBottom) {
+                    hitElement = tgt;
+                }
+            });
+
+            if (hitElement) {
+                hitElement.click();
+            } else {
+                logEvent(`Clic Izquierdo en (X: ${Math.round(state.pointer.x)}, Y: ${Math.round(state.pointer.y)})`);
+            }
+
+            resetAutoReturnTimer();
+        }
+
+        // Right Click Trigger Action (Opens Context Menu)
+        function triggerRightClick() {
+            triggerHaptic();
+            showClickPulse(state.pointer.x, state.pointer.y, 'right');
+
+            // Position context menu adjacent to pointer, safely clamped within container
+            const menu = dom.phoneContextMenu;
+            const containerWidth = dom.phoneScreenContainer ? dom.phoneScreenContainer.clientWidth : 380;
+            const containerHeight = dom.phoneScreenContainer ? dom.phoneScreenContainer.clientHeight : 700;
+            const menuWidth = 154;
+            const menuHeight = 140;
+
+            let menuX = Math.min(state.pointer.x + 8, containerWidth - menuWidth - 8);
+            let menuY = Math.min(state.pointer.y + 8, containerHeight - menuHeight - 8);
+
+            menu.style.left = `${Math.max(8, menuX)}px`;
+            menu.style.top = `${Math.max(48, menuY)}px`;
+            menu.style.display = 'flex';
+
+            logEvent(`Clic Derecho (Menú Contextual) en (X: ${Math.round(state.pointer.x)}, Y: ${Math.round(state.pointer.y)})`);
+            resetAutoReturnTimer();
+        }
+
+        function closeContextMenu() {
+            if (dom.phoneContextMenu) {
+                dom.phoneContextMenu.style.display = 'none';
+            }
+        }
+
+        function execContextAction(action) {
+            closeContextMenu();
+            simulateToast(`Acción: ${action}`);
+            logEvent(`Context Menu: ejecutado [${action}]`);
+        }
+
+        // Visual Click Pulse Effect
+        function showClickPulse(x, y, type) {
+            const pulse = document.createElement('div');
+            pulse.className = 'click-pulse-indicator';
+            pulse.style.left = `${x}px`;
+            pulse.style.top = `${y}px`;
+            if (type === 'right') {
+                pulse.style.borderColor = 'var(--warning)';
+                pulse.style.background = 'rgba(255, 214, 10, 0.45)';
+            }
+            dom.phoneScreenContainer.appendChild(pulse);
+            setTimeout(() => pulse.remove(), 420);
+        }
+
+        // Vertical Scroll Strip Handlers (Option 2)
+        function onScrollStart(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            state.scroll.isDown = true;
+            const point = e.touches ? e.touches[0] : e;
+            state.scroll.startY = point.clientY;
+            triggerHaptic();
+        }
+
+        function onScrollMove(e) {
+            if (!state.scroll.isDown) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const point = e.touches ? e.touches[0] : e;
+            const deltaY = point.clientY - state.scroll.startY;
+            state.scroll.startY = point.clientY;
+
+            const scrollAmt = state.scrollDirection === 'natural' ? -deltaY * 3 : deltaY * 3;
+            dom.mockAppViewport.scrollTop += scrollAmt;
+            logEvent(`Scroll strip táctil: ${Math.round(deltaY)}px`);
+        }
+
+        function onScrollEnd(e) {
+            state.scroll.isDown = false;
+        }
+
+        function simulateWheelScroll() {
+            dom.mockAppViewport.scrollTop += 60;
+            triggerHaptic();
+            logEvent('Scroll Wheel / Middle Click: desplazado 60px');
+        }
+
+        // Drag Lock Toggle (Option 3)
+        function toggleDragLock() {
+            state.dragLocked = !state.dragLocked;
+            dom.btnDragLockOpt3.classList.toggle('drag-locked', state.dragLocked);
+            dom.virtualPointer.classList.toggle('drag-locked', state.dragLocked);
+            dom.dragLockIcon.textContent = state.dragLocked ? '🔒' : '🔓';
+            triggerHaptic();
+            simulateToast(state.dragLocked ? 'Drag-Lock Activado (Arrastre fijo)' : 'Drag-Lock Desactivado');
+            logEvent(`Drag-Lock: ${state.dragLocked ? 'Activado' : 'Desactivado'}`);
+        }
+
+        // Scenario Switcher (Inside Mock Screen)
+        function switchScenario(sc) {
+            document.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('active'));
+            const card = document.getElementById('scenarioCardBody');
+
+            if (sc === 'termux') {
+                document.getElementById('scBtnTermux').classList.add('active');
+                document.getElementById('appContextIcon').textContent = '⚡';
+                document.getElementById('appContextTitle').textContent = 'Termux Session #1';
+                document.getElementById('appContextSubtitle').textContent = 'SSH · Ubuntu Server';
+                card.innerHTML = `
+                    <div class="terminal-header">
+                        <span>bash — 80x24</span>
+                        <span>PID: 10442</span>
+                    </div>
+                    <div class="terminal-body">
+                        <div><span class="t-cmd">roy@server:~$</span> status --all</div>
+                        <div><span class="t-ok">✓ Nginx Service:</span> active (running)</div>
+                        <div><span class="t-ok">✓ VoiceBubble API:</span> port 8080 [200 OK]</div>
+                        <div><span class="t-ok">✓ PostgreSQL 16:</span> port 5432 [online]</div>
+                        <div><span class="t-ok">✓ Redis Cache:</span> port 6379 [connected]</div>
+                        <div><span class="t-warn">! Memory Usage:</span> 72.4% [4.2GB / 8GB]</div>
+                        <div><span class="t-cmd">roy@server:~$</span> tail -f /var/log/stt.log</div>
+                        <div style="font-size:9.5px;color:#94a3b8;">[20:14:10] IME service bound to client</div>
+                        <div style="font-size:9.5px;color:#94a3b8;">[20:14:12] Split Wings trackpad ready</div>
+                        <div id="termuxLogFeedback" style="color:var(--accent);font-weight:600;">Puntero listo: hacé clic en los botones de abajo</div>
+                    </div>
+                    <div class="mock-clickable-row">
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Reiniciar Servidor')">🔄 Restart</button>
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Ver Logs')">📄 View Logs</button>
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Limpiar Buffer')">🧹 Clear</button>
+                        <button class="mock-target-btn" style="color:var(--danger);" onclick="targetClickEffect(this, 'Terminar Proceso')">⛔ Kill</button>
+                    </div>
+                `;
+            } else if (sc === 'web') {
+                document.getElementById('scBtnWeb').classList.add('active');
+                document.getElementById('appContextIcon').textContent = '🌐';
+                document.getElementById('appContextTitle').textContent = 'Safari / Chrome';
+                document.getElementById('appContextSubtitle').textContent = 'docs.voicebubble.dev';
+                card.innerHTML = `
+                    <div style="font-size:13px; font-weight:700; color:var(--label-primary);">Documentación de API y SDK</div>
+                    <p style="font-size:11.5px; color:var(--label-secondary); line-height:1.45;">
+                        Seleccionar texto pequeño en pantallas táctiles densas es el problema resuelto por el <strong>Modo Trackpad [MEJ-09]</strong>.
+                    </p>
+                    <div style="display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.25);padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);">
+                        <span style="font-size:11px;color:#94a3b8;">API Token:</span>
+                        <span class="t-live-input" id="livePromptInput" style="color:#fff;font-weight:600;">vb_live_9942a7810fe</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--label-secondary);line-height:1.45;margin-top:6px;">
+                        • Endpoint: <code>https://api.voicebubble.app/v1/stt</code><br>
+                        • Audio Format: <code>audio/wav; codecs=opus</code><br>
+                        • Latencia típica: <code>&lt; 280ms</code> en streaming Whisper.
+                    </div>
+                    <div class="mock-clickable-row">
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Copiar Token API')">🔗 Copiar Token</button>
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Descargar SDK')">📦 Descargar SDK</button>
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Abrir Swagger')">📑 Swagger UI</button>
+                    </div>
+                `;
+            } else if (sc === 'chat') {
+                document.getElementById('scBtnChat').classList.add('active');
+                document.getElementById('appContextIcon').textContent = '📝';
+                document.getElementById('appContextTitle').textContent = 'Neovim / Acode';
+                document.getElementById('appContextSubtitle').textContent = 'trackpad_service.kt';
+                card.innerHTML = `
+                    <div class="terminal-body" style="font-size:11px;">
+                        <div><span style="color:#c084fc;">class</span> <span style="color:#60a5fa;">TrackpadController</span> {</div>
+                        <div style="padding-left:12px;"><span style="color:#c084fc;">fun</span> <span style="color:#34d399;">dispatchClick</span>(x: Float, y: Float) {</div>
+                        <div style="padding-left:24px;color:#94a3b8;" id="livePromptInput">accessibilityService.dispatchGesture(click)</div>
+                        <div style="padding-left:12px;">}</div>
+                        <div style="padding-left:12px;"><span style="color:#c084fc;">fun</span> <span style="color:#34d399;">dispatchScroll</span>(deltaY: Float) {</div>
+                        <div style="padding-left:24px;color:#94a3b8;">accessibilityService.dispatchGesture(scroll)</div>
+                        <div style="padding-left:12px;">}</div>
+                        <div>}</div>
+                    </div>
+                    <div class="mock-clickable-row">
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Compilar Código')">⚡ Build</button>
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Guardar Archivo')">💾 Save (:w)</button>
+                        <button class="mock-target-btn" onclick="targetClickEffect(this, 'Ejecutar Tests')">🧪 Test</button>
+                    </div>
+                `;
+            }
+
+            logEvent(`Escenario cambiado a: ${sc.toUpperCase()}`);
+        }
+
+        // Click on Mock Target Effect
+        function targetClickEffect(btn, label) {
+            btn.classList.add('active-target');
+            setTimeout(() => btn.classList.remove('active-target'), 250);
+            simulateToast(`Clic activado: [${label}]`);
+            logEvent(`Hit en elemento interactivo: "${label}"`);
+
+            const feedback = document.getElementById('termuxLogFeedback');
+            if (feedback) {
+                feedback.textContent = `✓ Ejecutado con éxito: ${label}`;
+            }
+        }
+
+        // Keyboard Simulation Functions
+        function typeSimKey(char) {
+            triggerHaptic();
+            const input = document.getElementById('livePromptInput');
+            if (input) input.textContent += char;
+            logEvent(`Tecla QWERTY pulsada: "${char}"`);
+        }
+
+        function typeSimBackspace() {
+            triggerHaptic();
+            const input = document.getElementById('livePromptInput');
+            if (input && input.textContent.length > 0) {
+                input.textContent = input.textContent.slice(0, -1);
+            }
+            logEvent('Tecla Backspace ⌫ pulsada');
+        }
+
+        function typeSimEnter() {
+            triggerHaptic();
+            logEvent('Tecla Enter ↵ pulsada');
+            simulateToast('Enter inyectado');
+        }
+
+                function simulateNavKey(key) {
+            triggerHaptic();
+            simulateToast(`Nav: ${key}`);
+            logEvent(`Tecla de navegación: [${key}]`);
+            const input = document.getElementById('livePromptInput');
+            if (key === 'Tab' && input) {
+                input.textContent += '    ';
+            }
+        }
+
+        function simulateArrowKey(dir) {
+            triggerHaptic();
+            logEvent(`Flecha de navegación: [${dir}]`);
+            simulateToast(`Flecha ${dir}`);
+        }
+
+        function simulateMicRecord() {
+            const isRec = dom.btnTbMic.classList.toggle('recording');
+            dom.islandDotIndicator.classList.toggle('recording', isRec);
+            dom.islandStatusText.textContent = isRec ? 'Grabando...' : 'VoiceBubble';
+            triggerHaptic();
+            simulateToast(isRec ? '🎙️ Dictado iniciado...' : 'Transcripción completada');
+            logEvent(`Micrófono STT: ${isRec ? 'Grabando audio' : 'Detenido'}`);
+        }
+
+        function triggerIslandAction() {
+            simulateToast('Dynamic Island: VoiceBubble STT listo');
+            triggerHaptic();
+        }
+
+        // Settings Change Handlers
+        function onMasterToggleChange(enabled) {
+            state.masterEnabled = enabled;
+            dom.btnTbTrackpadToggle.style.opacity = enabled ? '1' : '0.4';
+            dom.btnTbTrackpadToggle.style.pointerEvents = enabled ? 'auto' : 'none';
+            if (!enabled && state.activeMode === 'trackpad') {
+                toggleKeyboardTrackpad();
+            }
+            logEvent(`Ajustes: Master Trackpad [${enabled ? 'Habilitado' : 'Deshabilitado'}]`);
+        }
+
+        function onToolbarBtnToggleChange(visible) {
+            state.toolbarBtnVisible = visible;
+            dom.btnTbTrackpadToggle.style.display = visible ? 'flex' : 'none';
+            logEvent(`Ajustes: Botón en Toolbar [${visible ? 'Visible' : 'Oculto'}]`);
+        }
+
+        function onSensitivityChange(val) {
+            state.sensitivity = parseFloat(val);
+            dom.cfgSensitivityVal.textContent = `${val}x`;
+            logEvent(`Ajustes: Sensibilidad ajustada a ${val}x`);
+        }
+
+        function setAccelCurve(curve, btn) {
+            state.accelCurve = curve;
+            btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            logEvent(`Ajustes: Curva de aceleración cambiada a [${curve}]`);
+        }
+
+        function onTapToClickToggle(enabled) {
+            state.tapToClick = enabled;
+            logEvent(`Ajustes: Tap-to-Click [${enabled ? 'Activado' : 'Desactivado'}]`);
+        }
+
+        function setSecondaryClick(mode, btn) {
+            state.secondaryClick = mode;
+            btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            logEvent(`Ajustes: Clic secundario asignado a [${mode}]`);
+        }
+
+        function setScrollDirection(dir, btn) {
+            state.scrollDirection = dir;
+            btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            logEvent(`Ajustes: Sentido de scroll [${dir}]`);
+        }
+
+        // Configuración de Posición de Barra de Scroll (MEJ-09)
+        function setScrollStripPosition(pos, btn) {
+            state.scrollStripPosition = pos;
+            const btnLeft = document.getElementById('btnScrollStripLeft');
+            const btnRight = document.getElementById('btnScrollStripRight');
+            const btnDisabled = document.getElementById('btnScrollStripDisabled');
+            if (btnLeft && btnRight && btnDisabled) {
+                btnLeft.classList.toggle('active', pos === 'left');
+                btnRight.classList.toggle('active', pos === 'right');
+                btnDisabled.classList.toggle('active', pos === 'disabled');
+            } else if (btn) {
+                btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+            updateScrollStripLayout();
+            triggerHaptic();
+        }
+
+        function updateScrollStripLayout() {
+            const leftWing = document.getElementById('opt2WingLeft');
+            const rightWing = document.getElementById('opt2WingRight');
+            const scrollStrip = document.getElementById('scrollStripOpt2');
+            const btnLeft = document.getElementById('opt2BtnLeft');
+            const btnRight = document.getElementById('opt2BtnRight');
+
+            if (!leftWing || !rightWing || !scrollStrip || !btnLeft || !btnRight) return;
+
+            if (state.scrollStripPosition === 'left') {
+                scrollStrip.style.display = 'flex';
+                // Mover scrollStrip al flanco izquierdo antes del botón izquierdo
+                if (scrollStrip.parentElement !== leftWing || leftWing.firstElementChild !== scrollStrip) {
+                    leftWing.insertBefore(scrollStrip, btnLeft);
+                }
+                btnLeft.style.flex = '0.8';
+                btnRight.style.flex = '1';
+            } else if (state.scrollStripPosition === 'right') {
+                scrollStrip.style.display = 'flex';
+                // Mover scrollStrip al flanco derecho antes del botón derecho
+                if (scrollStrip.parentElement !== rightWing || rightWing.firstElementChild !== scrollStrip) {
+                    rightWing.insertBefore(scrollStrip, btnRight);
+                }
+                btnLeft.style.flex = '1';
+                btnRight.style.flex = '0.8';
+            } else { // 'disabled'
+                scrollStrip.style.display = 'none';
+                btnLeft.style.flex = '1';
+                btnRight.style.flex = '1';
+            }
+
+            // Actualizar pista contextual si la Opción 2 está activa
+            if (state.activeOption === 2 && dom.trackpadGestureHint) {
+                if (state.scrollStripPosition === 'left') {
+                    dom.trackpadGestureHint.textContent = 'Pulgar izq: Scroll Strip & Clic L · Pulgar der: Clic R (100% alto)';
+                } else if (state.scrollStripPosition === 'right') {
+                    dom.trackpadGestureHint.textContent = 'Pulgar izq: Clic L (100% alto) · Pulgar der: Scroll Strip & Clic R';
+                } else {
+                    dom.trackpadGestureHint.textContent = 'Pulgar izq: Clic L (100% alto) · Pulgar der: Clic R (100% alto) · Scroll desactivado';
+                }
+            }
+        }
+
+        function setHapticLevel(lvl, btn) {
+            state.hapticLevel = lvl;
+            btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            triggerHaptic();
+            logEvent(`Ajustes: Nivel háptico [${lvl}]`);
+        }
+
+        function setPointerStyle(style, btn) {
+            state.pointerStyle = style;
+            btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            dom.cursorSvgArrow.style.display = style === 'arrow' ? 'block' : 'none';
+            dom.cursorDot.style.display = style === 'dot' ? 'block' : 'none';
+            dom.cursorCross.style.display = style === 'cross' ? 'block' : 'none';
+
+            logEvent(`Ajustes: Estilo de cursor cambiado a [${style}]`);
+        }
+
+        function setAutoReturnTimer(secs, btn) {
+            state.autoReturnSecs = secs;
+            btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            resetAutoReturnTimer();
+            logEvent(`Ajustes: Auto-retorno a teclado programado en [${secs === 0 ? 'Desactivado' : secs + ' seg'}]`);
+        }
+
+        function resetAutoReturnTimer() {
+            clearAutoReturn();
+            const pill = document.getElementById('autoReturnPill');
+            if (state.autoReturnSecs > 0 && state.activeMode === 'trackpad') {
+                state.autoReturnCountdown = state.autoReturnSecs;
+                if (pill) {
+                    pill.style.display = 'inline-block';
+                    pill.textContent = `${state.autoReturnCountdown}s`;
+                }
+
+                state.autoReturnIntervalId = setInterval(() => {
+                    state.autoReturnCountdown--;
+                    if (state.autoReturnCountdown > 0) {
+                        if (pill) pill.textContent = `${state.autoReturnCountdown}s`;
+                    } else {
+                        clearAutoReturn();
+                        simulateToast('⏱️ Auto-retorno al teclado por inactividad');
+                        toggleKeyboardTrackpad();
+                    }
+                }, 1000);
+            }
+        }
+
+        function clearAutoReturn() {
+            clearInterval(state.autoReturnIntervalId);
+            const pill = document.getElementById('autoReturnPill');
+            if (pill) pill.style.display = 'none';
+        }
+
+        // Haptic Feedback Simulation
+        function triggerHaptic() {
+            if (state.hapticLevel === 'none') return;
+            if (navigator.vibrate) {
+                navigator.vibrate(state.hapticLevel === 'firm' ? 25 : 12);
+            }
+        }
+
+        // Toast Notification Overlay
+        function simulateToast(msg) {
+            const toast = document.createElement('div');
+            toast.style.position = 'absolute';
+            toast.style.bottom = '220px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.background = 'rgba(0,0,0,0.78)';
+            toast.style.backdropFilter = 'blur(12px)';
+            toast.style.color = '#ffffff';
+            toast.style.fontSize = '12px';
+            toast.style.fontWeight = '600';
+            toast.style.padding = '6px 14px';
+            toast.style.borderRadius = '100px';
+            toast.style.zIndex = '120';
+            toast.style.border = '1px solid rgba(255,255,255,0.15)';
+            toast.style.boxShadow = '0 6px 18px rgba(0,0,0,0.4)';
+            toast.style.pointerEvents = 'none';
+            toast.textContent = msg;
+
+            dom.phoneScreenContainer.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.25s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 250);
+            }, 1400);
+        }
+
+        // CERO TELEMETRÍA / CERO MONITOREO DE EVENTOS (Requisito estricto del usuario)
+        function logEvent(text) {
+            // No-op intencional: no se almacena, monitorea ni emite ningún evento o gesto
+        }
+
+        // Initial setup
+        
+        // Dynamic Pointer Bounds
+        function getPointerBounds() {
+            const screenWidth = dom.phoneScreenContainer ? dom.phoneScreenContainer.clientWidth : 380;
+            const screenHeight = dom.phoneScreenContainer ? dom.phoneScreenContainer.clientHeight : 700;
+            const keyboardTop = dom.keyboardWrapper ? dom.keyboardWrapper.offsetTop : (screenHeight - 250);
+
+            return {
+                minX: 6,
+                maxX: Math.max(100, screenWidth - 18),
+                minY: 46,
+                maxY: Math.max(80, keyboardTop - 14)
+            };
+        }
+
+        function recalculatePointerBounds() {
+            const bounds = getPointerBounds();
+            state.pointer.minX = bounds.minX;
+            state.pointer.maxX = bounds.maxX;
+            state.pointer.minY = bounds.minY;
+            state.pointer.maxY = bounds.maxY;
+            state.pointer.x = Math.max(bounds.minX, Math.min(bounds.maxX, state.pointer.x));
+            state.pointer.y = Math.max(bounds.minY, Math.min(bounds.maxY, state.pointer.y));
+            updatePointerUI();
+        }
+        window.addEventListener('resize', recalculatePointerBounds);
+
+        // View Mode Handlers
+        function setViewMode(mode) {
+            state.viewMode = mode;
+            const btnStudio = document.getElementById('viewBtnStudio');
+            const btnNative = document.getElementById('viewBtnNative');
+            const wrapper = document.getElementById('mockupSection');
+            if (btnStudio) btnStudio.classList.toggle('active', mode === 'studio');
+            if (btnNative) btnNative.classList.toggle('active', mode === 'native');
+            if (wrapper) wrapper.classList.toggle('fullscreen-mode', mode === 'native');
+            logEvent(`Modo de vista: ${mode === 'studio' ? 'Marco de Estudio' : 'Celular 1:1 Nativo'}`);
+            recalculatePointerBounds();
+        }
+
+        function toggleFitScreen() {
+            state.fitScreen = !state.fitScreen;
+            const btnFit = document.getElementById('viewBtnFit');
+            const fitIcon = document.getElementById('fitBtnIcon');
+            const phone = document.getElementById('phoneHardwareFrame');
+            if (btnFit) btnFit.classList.toggle('active', state.fitScreen);
+            if (fitIcon) fitIcon.textContent = state.fitScreen ? '✕' : '⤢';
+            if (phone) {
+                phone.style.height = state.fitScreen ? 'min(740px, calc(100vh - 160px))' : '';
+            }
+            logEvent(`Ajuste a pantalla: ${state.fitScreen ? 'Activado' : 'Desactivado'}`);
+            setTimeout(recalculatePointerBounds, 80);
+        }
+
+        // Global safety release to ensure drag state never gets stuck
+        window.addEventListener('mouseup', () => {
+            if (state.pointer.isDown && !state.dragLocked) {
+                state.pointer.isDown = false;
+            }
+            if (state.scroll && state.scroll.isDown) {
+                state.scroll.isDown = false;
+            }
+        });
+        window.addEventListener('touchend', () => {
+            if (state.pointer.isDown && !state.dragLocked) {
+                state.pointer.isDown = false;
+            }
+            if (state.scroll && state.scroll.isDown) {
+                state.scroll.isDown = false;
+            }
+        });
+        window.addEventListener('touchcancel', () => {
+            if (state.pointer.isDown && !state.dragLocked) {
+                state.pointer.isDown = false;
+            }
+            if (state.scroll && state.scroll.isDown) {
+                state.scroll.isDown = false;
+            }
+        });
+
+        recalculatePointerBounds();
+        updatePointerUI();
+        updateScrollStripLayout();
+    </script>
+</body>
+</html>

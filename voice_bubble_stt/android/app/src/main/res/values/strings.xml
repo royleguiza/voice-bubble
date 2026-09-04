@@ -3,4 +3,6 @@
     <string name="ime_name">VoiceBubble Keyboard</string>
     <string name="subtype_es">Español</string>
     <string name="subtype_en">English (US)</string>
+    <string name="accessibility_service_name">VoiceBubble Virtual Trackpad</string>
+    <string name="accessibility_service_desc">Permite al trackpad virtual de VoiceBubble realizar clics y desplazamientos en pantalla.</string>
 </resources>

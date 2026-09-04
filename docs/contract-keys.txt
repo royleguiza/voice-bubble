@@ -11,5 +11,16 @@ kb_stt_language
 kb_stt_model
 kb_stt_url
 kb_terminal_row_visible
+kb_trackpad_accel_curve
+kb_trackpad_auto_return
+kb_trackpad_enabled
+kb_trackpad_haptic
+kb_trackpad_pointer_style
+kb_trackpad_scroll_direction
+kb_trackpad_scroll_position
+kb_trackpad_secondary_click
+kb_trackpad_sensitivity
+kb_trackpad_tap_to_click
+kb_trackpad_toolbar_visible
 transcriptions
 voice_snippets_v1

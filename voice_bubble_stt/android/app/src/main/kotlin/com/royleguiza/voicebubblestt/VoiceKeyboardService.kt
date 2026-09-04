@@ -44,6 +44,7 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import android.content.ClipDescription
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -64,11 +65,12 @@ import kotlin.math.abs
  * K2: capa codigo con pares auto-cerrados + fila terminal permanente
  *     (TAB/ESC/CTRL/ALT/flechas) con modificadores sticky para Termux.
  * K4: capa snippets (chips + busqueda) que inserta el contenido en el cursor.
+ * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
 class VoiceKeyboardService : InputMethodService() {
 
-    private enum class Layer { LETTERS, SYMBOLS, CODE, SNIPPETS }
+    private enum class Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD }
 
     private enum class MicState { IDLE, RECORDING, PROCESSING, BUSY }
 
@@ -163,6 +165,21 @@ class VoiceKeyboardService : InputMethodService() {
     private var codeKeyVisiblePref = true
     private var languageKeyVisiblePref = true
 
+    // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
+    private var trackpadEnabled = true
+    private var trackpadToolbarVisible = true
+    private var trackpadScrollPosition = "right"
+    private var trackpadSensitivity = 1.2f
+    private var trackpadAccelCurve = "dynamic"
+    private var trackpadTapToClick = true
+    private var trackpadSecondaryClick = "2fingers"
+    private var trackpadScrollDirection = "natural"
+    private var trackpadHaptic = "subtle"
+    private var trackpadPointerStyle = "arrow"
+    private var trackpadAutoReturn = 0
+
+    private var pointerOverlayManager: PointerOverlayManager? = null
+
     private lateinit var root: LinearLayout
 
     // AT-A9: vista vigente devuelta al sistema por onCreateInputView. Los
@@ -253,6 +270,10 @@ class VoiceKeyboardService : InputMethodService() {
         cancelDictationIfActive()
         loadKeyboardPrefs()
         currentIsPasswordField = isPasswordInput(info)
+        if (currentIsPasswordField && layer == Layer.TRACKPAD) {
+            layer = Layer.LETTERS
+        }
+        pointerOverlayManager?.hide()
         // AT-A4: BUSY es espejo del estado de la burbuja; si ella ya solto
         // el microfono, el teclado arranca este campo en IDLE.
         if (micState == MicState.BUSY && !bubbleBusy()) micIdle()
@@ -268,7 +289,7 @@ class VoiceKeyboardService : InputMethodService() {
         root.requestApplyInsets()
     }
 
-    /** Campos de contraseña: sin micrófono, snippets ni sugerencias (K3). */
+    /** Campos de contraseña: sin micrófono, snippets, trackpad ni sugerencias (K3, MEJ-09). */
     private fun isPasswordInput(info: EditorInfo?): Boolean {
         if (info == null) return false
         val variation = info.inputType and InputType.TYPE_MASK_VARIATION
@@ -283,12 +304,14 @@ class VoiceKeyboardService : InputMethodService() {
         stopRecordingTimer()
         cancelDictationIfActive()
         dismissPopup()
+        pointerOverlayManager?.hide()
         super.onFinishInputView(finishingInput)
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
         dismissPopup()
+        pointerOverlayManager?.hide()
     }
 
     override fun onDestroy() {
@@ -301,6 +324,8 @@ class VoiceKeyboardService : InputMethodService() {
         pulseAnimators = emptyList()
         handler.removeCallbacksAndMessages(null)
         dismissPopup()
+        pointerOverlayManager?.destroy()
+        pointerOverlayManager = null
         // K5-T5: destruccion del servicio con dictado vivo = grabacion fantasma.
         cancelDictationIfActive()
         try {
@@ -372,16 +397,22 @@ class VoiceKeyboardService : InputMethodService() {
         }
         addRow(filmstrip)
 
-        if (terminalRowVisiblePref) {
-            addRow(buildTerminalRow())
+        if (layer == Layer.TRACKPAD) {
+            addRow(buildTrackpadLayer())
+        } else {
+            pointerOverlayManager?.hide()
+            if (terminalRowVisiblePref) {
+                addRow(buildTerminalRow())
+            }
+            when (layer) {
+                Layer.LETTERS -> buildLetterRows()
+                Layer.SYMBOLS -> buildSymbolRows()
+                Layer.CODE -> buildCodeRows()
+                Layer.SNIPPETS -> buildSnippetRows()
+                Layer.TRACKPAD -> {}
+            }
+            addRow(buildBottomBar())
         }
-        when (layer) {
-            Layer.LETTERS -> buildLetterRows()
-            Layer.SYMBOLS -> buildSymbolRows()
-            Layer.CODE -> buildCodeRows()
-            Layer.SNIPPETS -> buildSnippetRows()
-        }
-        addRow(buildBottomBar())
 
         // Sincronizar estados visuales persistentes tras reconstruir la vista.
         applyCase()
@@ -469,6 +500,19 @@ class VoiceKeyboardService : InputMethodService() {
                 toggleCodeLayer()
             }
             items.add(btnCode)
+        }
+
+        if (!currentIsPasswordField && trackpadEnabled && trackpadToolbarVisible) {
+            val isTp = (layer == Layer.TRACKPAD)
+            val btnTrackpad = makeIconKey(
+                if (isTp) R.drawable.ic_keyboard else R.drawable.ic_trackpad,
+                if (isTp) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
+                1.0f,
+                if (isTp) (if (spanishMode) "teclado" else "keyboard") else "trackpad",
+            ) {
+                toggleTrackpadLayer()
+            }
+            items.add(btnTrackpad)
         }
 
         // Elementos borde (Micrófono):
@@ -723,6 +767,121 @@ class VoiceKeyboardService : InputMethodService() {
             layer = Layer.CODE
         }
         rebuild()
+    }
+
+    private fun toggleTrackpadLayer() {
+        if (currentIsPasswordField) return
+        if (layer == Layer.TRACKPAD) {
+            layer = lastLettersLayer
+            pointerOverlayManager?.hide()
+            rebuild()
+        } else {
+            lastLettersLayer = if (layer != Layer.SNIPPETS && layer != Layer.TRACKPAD) layer else Layer.LETTERS
+            layer = Layer.TRACKPAD
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                Toast.makeText(this, "Concede el permiso de superposición para ver el cursor", Toast.LENGTH_SHORT).show()
+            }
+            val manager = getOrCreatePointerOverlay()
+            val location = IntArray(2)
+            root.getLocationOnScreen(location)
+            if (location[1] > 0) {
+                manager.updateKeyboardTop(location[1].toFloat())
+            }
+            manager.show()
+            rebuild()
+            root.post {
+                val loc = IntArray(2)
+                root.getLocationOnScreen(loc)
+                if (loc[1] > 0) {
+                    manager.updateKeyboardTop(loc[1].toFloat())
+                }
+            }
+        }
+    }
+
+    private fun getOrCreatePointerOverlay(): PointerOverlayManager {
+        val manager = pointerOverlayManager ?: PointerOverlayManager(this).also {
+            pointerOverlayManager = it
+        }
+        manager.sensitivity = trackpadSensitivity
+        manager.accelCurve = trackpadAccelCurve
+        manager.pointerStyle = trackpadPointerStyle
+        return manager
+    }
+
+    private fun buildTrackpadLayer(): View {
+        val manager = getOrCreatePointerOverlay()
+        return VirtualTrackpadView(
+            context = this,
+            scrollPosition = trackpadScrollPosition,
+            tapToClick = trackpadTapToClick,
+            secondaryClickMode = trackpadSecondaryClick,
+            scrollDirection = trackpadScrollDirection,
+            autoReturnSeconds = trackpadAutoReturn,
+            listener = object : VirtualTrackpadView.TrackpadListener {
+                override fun onPointerMove(dx: Float, dy: Float) {
+                    manager.moveBy(dx, dy)
+                }
+
+                override fun onLeftClick() {
+                    val (px, py) = manager.getPosition()
+                    manager.triggerClickFeedback()
+                    dispatchTrackpadTap(px, py)
+                }
+
+                override fun onRightClick() {
+                    val (px, py) = manager.getPosition()
+                    manager.triggerClickFeedback()
+                    dispatchTrackpadLongPress(px, py)
+                }
+
+                override fun onScroll(deltaY: Float) {
+                    val (px, py) = manager.getPosition()
+                    dispatchTrackpadScroll(px, py, deltaY)
+                }
+
+                override fun onAutoReturn() {
+                    if (layer == Layer.TRACKPAD) {
+                        toggleTrackpadLayer()
+                    }
+                }
+
+                override fun performHaptic(isFirm: Boolean) {
+                    when (trackpadHaptic) {
+                        "none" -> {}
+                        "firm" -> haptic(root)
+                        else -> { // "subtle"
+                            if (hapticsEnabled) {
+                                root.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    private fun dispatchTrackpadTap(x: Float, y: Float) {
+        if (!VoiceBubbleAccessibilityService.isConnected()) {
+            Toast.makeText(this, "Activa el servicio de accesibilidad de VoiceBubble para usar el trackpad", Toast.LENGTH_SHORT).show()
+            return
+        }
+        VoiceBubbleAccessibilityService.dispatchTap(x, y)
+    }
+
+    private fun dispatchTrackpadLongPress(x: Float, y: Float) {
+        if (!VoiceBubbleAccessibilityService.isConnected()) {
+            Toast.makeText(this, "Activa el servicio de accesibilidad de VoiceBubble para usar el trackpad", Toast.LENGTH_SHORT).show()
+            return
+        }
+        VoiceBubbleAccessibilityService.dispatchLongPress(x, y)
+    }
+
+    private fun dispatchTrackpadScroll(x: Float, y: Float, deltaY: Float) {
+        if (!VoiceBubbleAccessibilityService.isConnected()) {
+            return
+        }
+        VoiceBubbleAccessibilityService.dispatchScroll(x, y, deltaY)
     }
 
     private fun attachFastKeyTouch(key: View, onClick: () -> Unit) {
@@ -3331,6 +3490,86 @@ class VoiceKeyboardService : InputMethodService() {
         terminalRowVisiblePref = terminalRowVisible()
         codeKeyVisiblePref = codeKeyVisible()
         languageKeyVisiblePref = languageKeyVisible()
+
+        // MEJ-09: lectura de preferencias del trackpad
+        trackpadEnabled = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getBoolean("flutter.kb_trackpad_enabled", true)
+        } catch (_: Exception) {
+            true
+        }
+        trackpadToolbarVisible = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getBoolean("flutter.kb_trackpad_toolbar_visible", true)
+        } catch (_: Exception) {
+            true
+        }
+        trackpadScrollPosition = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
+        } catch (_: Exception) {
+            "right"
+        }
+        trackpadSensitivity = try {
+            val p = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val raw = p.all["flutter.kb_trackpad_sensitivity"]
+            when (raw) {
+                is Float -> raw
+                is Double -> raw.toFloat()
+                is Number -> raw.toFloat()
+                is String -> raw.toFloatOrNull() ?: 1.2f
+                else -> 1.2f
+            }
+        } catch (_: Exception) {
+            1.2f
+        }
+        trackpadAccelCurve = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
+        } catch (_: Exception) {
+            "dynamic"
+        }
+        trackpadTapToClick = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getBoolean("flutter.kb_trackpad_tap_to_click", true)
+        } catch (_: Exception) {
+            true
+        }
+        trackpadSecondaryClick = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_trackpad_secondary_click", "2fingers") ?: "2fingers"
+        } catch (_: Exception) {
+            "2fingers"
+        }
+        trackpadScrollDirection = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_trackpad_scroll_direction", "natural") ?: "natural"
+        } catch (_: Exception) {
+            "natural"
+        }
+        trackpadHaptic = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_trackpad_haptic", "subtle") ?: "subtle"
+        } catch (_: Exception) {
+            "subtle"
+        }
+        trackpadPointerStyle = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
+        } catch (_: Exception) {
+            "arrow"
+        }
+        trackpadAutoReturn = try {
+            val p = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val raw = p.all["flutter.kb_trackpad_auto_return"]
+            when (raw) {
+                is Number -> raw.toInt()
+                is String -> raw.toIntOrNull() ?: 0
+                else -> 0
+            }
+        } catch (_: Exception) {
+            0
+        }
     }
 
     /** Altura de tecla estandar escalada por el perfil activo. */
