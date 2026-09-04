@@ -207,6 +207,7 @@ class VoiceKeyboardService : InputMethodService() {
         super.onCreate()
         clipboardStore = ClipboardStore(this)
         transcriptionRepo = TranscriptionHistoryRepository(this)
+        transcriptionRepo.purgePreviousSessionHistory()
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         try {
             cm?.addPrimaryClipChangedListener(clipboardListener)

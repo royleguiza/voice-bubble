@@ -568,6 +568,31 @@ class StorageService {
     }
   }
 
+  /// Purga historiales previos al arrancar una nueva sesión para garantizar
+  /// un historial efímero acotado únicamente a la sesión activa actual (Session-Scoped Ephemeral History).
+  Future<void> clearPreviousHistoryOnStartup() async {
+    _transcriptions.clear();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_key);
+    } catch (_) {}
+    try {
+      final file = await _getHistoryFile();
+      if (file != null && file.existsSync()) {
+        file.deleteSync();
+      }
+      if (file != null) {
+        final tmp = File('${file.path}.tmp');
+        if (tmp.existsSync()) {
+          tmp.deleteSync();
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Alias de conveniencia semántica idéntico a Kotlin TranscriptionHistoryRepository.
+  Future<void> purgePreviousSessionHistory() => clearPreviousHistoryOnStartup();
+
   Future<void> load() async {
     final loaded = <Transcription>[];
 

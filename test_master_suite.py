@@ -50,11 +50,9 @@ def test_manifest_retention():
     with open(manifest_path, "r", encoding="utf-8") as f:
         content = f.read()
     assert 'android:hasFragileUserData="true"' in content, "Falta android:hasFragileUserData=\"true\""
-    assert 'android:allowBackup="true"' in content, "Falta android:allowBackup=\"true\""
-    assert 'android.permission.BIND_ACCESSIBILITY_SERVICE' in content, "AndroidManifest debe declarar BIND_ACCESSIBILITY_SERVICE para mouse virtual"
-    assert 'VoiceBubbleAccessibilityService' in content, "AndroidManifest debe registrar VoiceBubbleAccessibilityService"
-    assert 'FloatingTrackpadService' in content, "AndroidManifest debe registrar FloatingTrackpadService"
-    assert os.path.isfile("voice_bubble_stt/android/app/debug.keystore"), "Falta voice_bubble_stt/android/app/debug.keystore persistente"
+    assert 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in content, "Falla de seguridad: AndroidManifest no debe declarar BIND_ACCESSIBILITY_SERVICE (bloqueo por Play Protect)"
+    assert 'VoiceBubbleAccessibilityService' not in content, "AndroidManifest no debe registrar VoiceBubbleAccessibilityService (perfil limpio r84)"
+    assert 'FloatingTrackpadService' not in content, "AndroidManifest no debe registrar FloatingTrackpadService (Play Protect seguro)"
     with open("app_source/pubspec.yaml", "r", encoding="utf-8") as f:
         pubspec = f.read()
     assert "version: 1.0.0+87" in pubspec, "Version en app_source/pubspec.yaml debe ser 1.0.0+87"

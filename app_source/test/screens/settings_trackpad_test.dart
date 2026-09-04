@@ -5,7 +5,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
-import 'package:voice_bubble_stt/services/floating_trackpad_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
@@ -15,7 +14,6 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   const channel = MethodChannel(FloatingBubbleService.channelName);
   const keyboardChannel = MethodChannel(KeyboardService.channelName);
-  const trackpadChannel = MethodChannel(FloatingTrackpadService.channelName);
 
   late StorageService storageService;
 
@@ -30,15 +28,11 @@ void main() {
     messenger.setMockMethodCallHandler(keyboardChannel, (MethodCall call) async {
       return false;
     });
-    messenger.setMockMethodCallHandler(trackpadChannel, (MethodCall call) async {
-      return false;
-    });
   });
 
   tearDown(() {
     messenger.setMockMethodCallHandler(channel, null);
     messenger.setMockMethodCallHandler(keyboardChannel, null);
-    messenger.setMockMethodCallHandler(trackpadChannel, null);
   });
 
   Widget buildTestableWidget(WidgetTester tester) {
@@ -49,8 +43,6 @@ void main() {
       home: SettingsScreen(
         storageService: storageService,
         floatingBubbleService: FloatingBubbleService(),
-        floatingTrackpadService:
-            FloatingTrackpadService(channel: trackpadChannel),
         keyboardService: KeyboardService(channel: keyboardChannel),
       ),
     );
@@ -67,7 +59,6 @@ void main() {
 
       expect(find.text('Modo Trackpad y Puntero Virtual'), findsOneWidget);
       expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
-      expect(find.text('Burbuja flotante de mouse independiente'), findsOneWidget);
       expect(find.text('Activar modo trackpad'), findsOneWidget);
     });
 

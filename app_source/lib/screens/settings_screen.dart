@@ -6,7 +6,6 @@ import 'package:record/record.dart';
 import '../models/snippet.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
-import '../services/floating_trackpad_service.dart';
 import '../services/keyboard_service.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
@@ -16,7 +15,6 @@ class SettingsScreen extends StatefulWidget {
   final StorageService? storageService;
   final FlutterSecureStorage? secureStorage;
   final FloatingBubbleService? floatingBubbleService;
-  final FloatingTrackpadService? floatingTrackpadService;
   final KeyboardService? keyboardService;
 
   const SettingsScreen({
@@ -24,7 +22,6 @@ class SettingsScreen extends StatefulWidget {
     this.storageService,
     this.secureStorage,
     this.floatingBubbleService,
-    this.floatingTrackpadService,
     this.keyboardService,
   });
 
@@ -39,14 +36,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   late final FlutterSecureStorage _secureStorage;
   late final StorageService _storageService;
   late final FloatingBubbleService _floatingBubbleService;
-  late final FloatingTrackpadService _floatingTrackpadService;
   late final KeyboardService _keyboardService;
 
   bool _hasApiKey = false;
   String _recordMode = StorageService.defaultRecordMode;
   bool _isBubbleEnabled = false;
-  bool _isTrackpadBubbleRunning = false;
-  bool _isAccessibilityGranted = false;
   bool _isKeyboardEnabled = false;
   bool _isKeyboardSelected = false;
   bool _showTerminalRow = true;
@@ -78,13 +72,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     _storageService = widget.storageService ?? StorageService();
     _floatingBubbleService =
         widget.floatingBubbleService ?? FloatingBubbleService();
-    _floatingTrackpadService =
-        widget.floatingTrackpadService ?? FloatingTrackpadService();
     _keyboardService = widget.keyboardService ?? KeyboardService();
     _loadInitialState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureMicrophonePermission();
-      _loadTrackpadStatus();
     });
   }
 
@@ -492,131 +483,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _handleAppResumed() async {
     final wasEnabled = _isKeyboardEnabled;
     await _loadKeyboardStatus();
-    await _loadTrackpadStatus();
     // Si acaba de habilitar el teclado en ajustes del sistema, mostramos
     // el modal de inmediato para que lo active sin salir de la app.
     if (!wasEnabled && _isKeyboardEnabled && !_isKeyboardSelected) {
       await _showInputMethodPicker();
     }
-  }
-
-  Future<void> _loadTrackpadStatus() async {
-    try {
-      final running = await _floatingTrackpadService.isTrackpadBubbleRunning();
-      final acc = await _floatingTrackpadService.isAccessibilityGranted();
-      if (mounted) {
-        setState(() {
-          _isTrackpadBubbleRunning = running;
-          _isAccessibilityGranted = acc;
-        });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _toggleTrackpadBubble(bool value) async {
-    if (value) {
-      final hasOverlay = await _floatingTrackpadService.canDrawOverlays();
-      if (!hasOverlay) {
-        if (!mounted) return;
-        final grant = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Permiso de superposición'),
-            content: const Text(
-              'La burbuja de trackpad requiere el permiso "Mostrar sobre otras aplicaciones" para desplegarse sobre cualquier pantalla.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Conceder permiso'),
-              ),
-            ],
-          ),
-        );
-        if (grant == true) {
-          await _floatingTrackpadService.requestOverlayPermission();
-        }
-        return;
-      }
-
-      final hasAccessibility =
-          await _floatingTrackpadService.isAccessibilityGranted();
-      if (!hasAccessibility && mounted) {
-        await _showAccessibilityGuideDialog();
-      }
-
-      final started = await _floatingTrackpadService.startTrackpadBubble();
-      if (mounted) {
-        setState(() => _isTrackpadBubbleRunning = started);
-      }
-    } else {
-      await _floatingTrackpadService.stopTrackpadBubble();
-      if (mounted) {
-        setState(() => _isTrackpadBubbleRunning = false);
-      }
-    }
-  }
-
-  Future<void> _showAccessibilityGuideDialog() async {
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.accessibility_new, color: Color(0xFF007AFF)),
-            SizedBox(width: 8),
-            Expanded(child: Text('Activar Accesibilidad')),
-          ],
-        ),
-        content: const SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Para que el mouse virtual pueda realizar clics y scroll en cualquier aplicación, es necesario activar su Servicio de Accesibilidad.',
-                style: TextStyle(fontSize: 14),
-              ),
-              SizedBox(height: 12),
-              Text(
-                'Paso 1: Toca "Abrir Accesibilidad" y activa "VoiceBubble Virtual Trackpad".',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'Nota para Android 13/14+: Si el interruptor aparece en gris ("Ajuste restringido"):',
-                style: TextStyle(fontSize: 12, color: Colors.orange),
-              ),
-              SizedBox(height: 4),
-              Text(
-                '1. Toca "Información de la App"\n2. Toca los 3 puntos arriba a la derecha\n3. Selecciona "Permitir ajustes restringidos"\n4. Vuelve y activa Accesibilidad.',
-                style: TextStyle(fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _floatingTrackpadService.openAppDetailsSettings();
-            },
-            child: const Text('Información de la App'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _floatingTrackpadService.openAccessibilitySettings();
-            },
-            child: const Text('Abrir Accesibilidad'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _ensureMicrophonePermission() async {
@@ -1239,67 +1110,6 @@ class _SettingsScreenState extends State<SettingsScreen>
               style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
             ),
             const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Burbuja flotante de mouse independiente'),
-              subtitle: Text(
-                'Permite usar el mouse virtual en cualquier pantalla o app sin depender de cuadros de texto ni del teclado.',
-                style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
-              ),
-              value: _isTrackpadBubbleRunning,
-              onChanged: _toggleTrackpadBubble,
-            ),
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: _isAccessibilityGranted
-                    ? const Color(0x144CAF50)
-                    : const Color(0x1FFF9800),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _isAccessibilityGranted
-                      ? const Color(0x4D4CAF50)
-                      : const Color(0x66FF9800),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _isAccessibilityGranted
-                        ? Icons.check_circle_outline
-                        : Icons.info_outline,
-                    size: 20,
-                    color: _isAccessibilityGranted
-                        ? Colors.green
-                        : Colors.amber.shade800,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _isAccessibilityGranted
-                          ? 'Accesibilidad: Activa (clics y scroll universales)'
-                          : 'Accesibilidad: Pendiente (requerida para clics/scroll)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _isAccessibilityGranted
-                            ? Colors.green.shade800
-                            : Colors.amber.shade900,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: _showAccessibilityGuideDialog,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: const Size(50, 30),
-                    ),
-                    child: const Text('Configurar', style: TextStyle(fontSize: 12)),
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 24),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Activar modo trackpad'),

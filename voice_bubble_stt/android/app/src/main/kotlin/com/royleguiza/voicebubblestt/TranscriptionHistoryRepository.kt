@@ -70,6 +70,35 @@ class TranscriptionHistoryRepository(private val context: Context) {
     }
 
     /**
+     * Purga historiales previos al arrancar una nueva sesión para garantizar
+     * un historial efímero acotado únicamente a la sesión activa (Session-Scoped Ephemeral History).
+     * Garantiza que solo las transcripciones generadas en la sesión activa sean retenidas.
+     */
+    fun purgePreviousSessionHistory() {
+        synchronized(lock) {
+            try {
+                val file = targetFile
+                if (file.exists()) {
+                    file.delete()
+                }
+                val tmp = File(context.filesDir, "$FILE_NAME.tmp")
+                if (tmp.exists()) {
+                    tmp.delete()
+                }
+                context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                    .edit()
+                    .remove(SHARED_HISTORY_KEY)
+                    .apply()
+            } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * Alias de conveniencia semántica para el arranque de sesión.
+     */
+    fun clearPreviousHistoryOnStartup() = purgePreviousSessionHistory()
+
+    /**
      * Agrega una nueva transcripción al tope del historial de forma atómica y thread-safe.
      */
     fun addTranscription(text: String) {

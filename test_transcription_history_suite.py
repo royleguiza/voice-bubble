@@ -131,6 +131,26 @@ def test_simulated_cross_platform_fifo():
 
     print("  [PASS] Simulación completada con éxito: FIFO-20 y consistencia temporal perfecta.")
 
+def test_session_scoped_history_purge():
+    print("  [TEST] Verificando purga de sesión única (Session-Scoped Ephemeral History)...")
+    kt_file = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/TranscriptionHistoryRepository.kt"
+    vk_file = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt"
+    dart_file = "app_source/lib/services/storage_service.dart"
+
+    with open(kt_file, "r", encoding="utf-8") as f:
+        kt_content = f.read()
+    with open(vk_file, "r", encoding="utf-8") as f:
+        vk_content = f.read()
+    with open(dart_file, "r", encoding="utf-8") as f:
+        dart_content = f.read()
+
+    assert "fun purgePreviousSessionHistory()" in kt_content, "Kotlin TranscriptionHistoryRepository debe implementar purgePreviousSessionHistory()"
+    assert "fun clearPreviousHistoryOnStartup()" in kt_content, "Kotlin TranscriptionHistoryRepository debe implementar clearPreviousHistoryOnStartup()"
+    assert "transcriptionRepo.purgePreviousSessionHistory()" in vk_content, "VoiceKeyboardService debe purgar historial anterior en onCreate()"
+    assert "clearPreviousHistoryOnStartup()" in dart_content, "StorageService debe implementar clearPreviousHistoryOnStartup()"
+    assert "purgePreviousSessionHistory()" in dart_content, "StorageService debe implementar purgePreviousSessionHistory()"
+    print("  [PASS] Purga de sesión única implementada en Kotlin y Dart.")
+
 if __name__ == "__main__":
     print("=" * 60)
     print(" INICIANDO TEST SUITE: REPOSITORIO DE HISTORIAL PROFESIONAL")
@@ -141,6 +161,7 @@ if __name__ == "__main__":
         test_flutter_prefix_handling()
         test_stale_overwrite_prevention()
         test_simulated_cross_platform_fifo()
+        test_session_scoped_history_purge()
         print("=" * 60)
         print(" RESULTADOS: Todos los tests pasaron exitosamente.")
         print("=" * 60)
