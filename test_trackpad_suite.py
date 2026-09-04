@@ -73,8 +73,9 @@ with open(manifest_path, "r", encoding="utf-8") as f:
     manifest_content = f.read()
 
 check("AndroidManifest declara SYSTEM_ALERT_WINDOW", 'android.permission.SYSTEM_ALERT_WINDOW' in manifest_content)
-check("AndroidManifest libre de BIND_ACCESSIBILITY_SERVICE (Play Protect seguro)", 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest_content)
-check("AndroidManifest no declara VoiceBubbleAccessibilityService (perfil limpio r84)", 'android:name=".VoiceBubbleAccessibilityService"' not in manifest_content)
+check("AndroidManifest declara BIND_ACCESSIBILITY_SERVICE para mouse virtual", 'android.permission.BIND_ACCESSIBILITY_SERVICE' in manifest_content)
+check("AndroidManifest declara VoiceBubbleAccessibilityService", 'android:name=".VoiceBubbleAccessibilityService"' in manifest_content)
+check("AndroidManifest declara FloatingTrackpadService para burbuja independiente", 'android:name=".FloatingTrackpadService"' in manifest_content)
 
 gradle_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/build.gradle.kts")
 with open(gradle_path, "r", encoding="utf-8") as f:
@@ -97,6 +98,7 @@ if os.path.isfile(acc_kt_path):
     check("VoiceBubbleAccessibilityService tiene singleton isConnected()", "fun isConnected(): Boolean" in acc_content)
     check("VoiceBubbleAccessibilityService sanitiza coordenadas contra NaN y valores negativos", "isNaN" in acc_content)
     check("VoiceBubbleAccessibilityService implementa batching de scroll sin colisiones (flushPendingScroll)", "flushPendingScroll" in acc_content and "isScrollActive" in acc_content)
+    check("VoiceBubbleAccessibilityService trazo no vacio via lineTo en dispatchTap", "lineTo(x, y)" in acc_content)
 
 # --- TEST 4: PointerOverlayManager ---
 pom_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/PointerOverlayManager.kt")
@@ -112,6 +114,39 @@ if os.path.isfile(pom_kt_path):
     check("PointerOverlayManager acota coordenadas a bounds de pantalla", "clampCoordinates" in pom_content)
     check("PointerOverlayManager sanitiza coordenadas contra NaN", "isNaN()" in pom_content)
     check("PointerOverlayManager alinea subpixel de punta de flecha con density", "tipOffset" in pom_content)
+    check("PointerOverlayManager limite inferior dinamico resetBottomLimit", "resetBottomLimit" in pom_content)
+
+# --- TEST 4B: FloatingTrackpadService (Burbuja Independiente de Mouse) ---
+ftp_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/FloatingTrackpadService.kt")
+check("FloatingTrackpadService.kt existe", os.path.isfile(ftp_kt_path))
+if os.path.isfile(ftp_kt_path):
+    with open(ftp_kt_path, "r", encoding="utf-8") as f:
+        ftp_content = f.read()
+    check("FloatingTrackpadService extiende Service", "class FloatingTrackpadService : Service()" in ftp_content)
+    check("FloatingTrackpadService implementa expandToDock", "fun expandToDock()" in ftp_content)
+    check("FloatingTrackpadService implementa expandToMiniPad", "fun expandToMiniPad()" in ftp_content)
+    check("FloatingTrackpadService implementa minimizeToBubble", "fun minimizeToBubble()" in ftp_content)
+    check("FloatingTrackpadService maneja idle dimming", "idleDimRunnable" in ftp_content)
+    check("FloatingTrackpadService snap a bordes", "snapBubbleToEdge" in ftp_content)
+    check("FloatingTrackpadService integra VirtualTrackpadView", "VirtualTrackpadView(" in ftp_content)
+    check("FloatingTrackpadService despacha taps a VoiceBubbleAccessibilityService", "VoiceBubbleAccessibilityService.dispatchTap" in ftp_content)
+    check("FloatingTrackpadService despacha scroll a VoiceBubbleAccessibilityService", "VoiceBubbleAccessibilityService.dispatchScroll" in ftp_content)
+
+ftp_dart_path = os.path.join(WORKSPACE, "app_source/lib/services/floating_trackpad_service.dart")
+check("floating_trackpad_service.dart existe", os.path.isfile(ftp_dart_path))
+if os.path.isfile(ftp_dart_path):
+    with open(ftp_dart_path, "r", encoding="utf-8") as f:
+        ftp_dart_content = f.read()
+    check("floating_trackpad_service.dart define canal floating_trackpad", "com.royleguiza.voicebubblestt/floating_trackpad" in ftp_dart_content)
+    check("floating_trackpad_service.dart tiene startTrackpadBubble", "startTrackpadBubble" in ftp_dart_content)
+    check("floating_trackpad_service.dart tiene isAccessibilityGranted", "isAccessibilityGranted" in ftp_dart_content)
+
+main_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/MainActivity.kt")
+with open(main_kt_path, "r", encoding="utf-8") as f:
+    main_content = f.read()
+check("MainActivity maneja TRACKPAD_CHANNEL", "TRACKPAD_CHANNEL" in main_content)
+check("MainActivity maneja startTrackpadBubble", '"startTrackpadBubble"' in main_content)
+check("MainActivity maneja isAccessibilityGranted", '"isAccessibilityGranted"' in main_content)
 
 # --- TEST 5: VirtualTrackpadView (Opción 2 Split Wings) ---
 vtv_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VirtualTrackpadView.kt")

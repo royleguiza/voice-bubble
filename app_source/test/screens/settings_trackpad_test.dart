@@ -14,6 +14,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   const channel = MethodChannel(FloatingBubbleService.channelName);
   const keyboardChannel = MethodChannel(KeyboardService.channelName);
+  const trackpadChannel = MethodChannel(FloatingTrackpadService.channelName);
 
   late StorageService storageService;
 
@@ -28,11 +29,15 @@ void main() {
     messenger.setMockMethodCallHandler(keyboardChannel, (MethodCall call) async {
       return false;
     });
+    messenger.setMockMethodCallHandler(trackpadChannel, (MethodCall call) async {
+      return false;
+    });
   });
 
   tearDown(() {
     messenger.setMockMethodCallHandler(channel, null);
     messenger.setMockMethodCallHandler(keyboardChannel, null);
+    messenger.setMockMethodCallHandler(trackpadChannel, null);
   });
 
   Widget buildTestableWidget(WidgetTester tester) {
@@ -43,6 +48,8 @@ void main() {
       home: SettingsScreen(
         storageService: storageService,
         floatingBubbleService: FloatingBubbleService(),
+        floatingTrackpadService:
+            FloatingTrackpadService(channel: trackpadChannel),
         keyboardService: KeyboardService(channel: keyboardChannel),
       ),
     );
@@ -59,6 +66,7 @@ void main() {
 
       expect(find.text('Modo Trackpad y Puntero Virtual'), findsOneWidget);
       expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
+      expect(find.text('Burbuja flotante de mouse independiente'), findsOneWidget);
       expect(find.text('Activar modo trackpad'), findsOneWidget);
     });
 

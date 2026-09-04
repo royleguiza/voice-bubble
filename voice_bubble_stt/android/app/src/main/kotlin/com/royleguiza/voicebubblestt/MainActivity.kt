@@ -20,6 +20,7 @@ class MainActivity : FlutterActivity() {
 
     private val CHANNEL = "com.royleguiza.voicebubblestt/floating_bubble"
     private val KEYBOARD_CHANNEL = "com.royleguiza.voicebubblestt/keyboard"
+    private val TRACKPAD_CHANNEL = "com.royleguiza.voicebubblestt/floating_trackpad"
     private var methodChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -125,6 +126,69 @@ class MainActivity : FlutterActivity() {
                 }
                 "isKeyboardRecording" -> {
                     result.success(VoiceKeyboardService.keyboardRecordingActive)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TRACKPAD_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "canDrawOverlays" -> {
+                    val canDraw = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Settings.canDrawOverlays(this@MainActivity)
+                    } else {
+                        true
+                    }
+                    result.success(canDraw)
+                }
+                "requestOverlayPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this@MainActivity)) {
+                        val intent = Intent(
+                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            Uri.parse("package:$packageName")
+                        )
+                        startActivity(intent)
+                        result.success(true)
+                    } else {
+                        result.success(true)
+                    }
+                }
+                "isAccessibilityGranted" -> {
+                    result.success(VoiceBubbleAccessibilityService.isConnected())
+                }
+                "openAccessibilitySettings" -> {
+                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                    result.success(true)
+                }
+                "openAppDetailsSettings" -> {
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.parse("package:$packageName")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                    result.success(true)
+                }
+                "startTrackpadBubble" -> {
+                    try {
+                        FloatingTrackpadService.start(this@MainActivity)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("START_TRACKPAD_ERROR", e.message, null)
+                    }
+                }
+                "stopTrackpadBubble" -> {
+                    try {
+                        FloatingTrackpadService.stop(this@MainActivity)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("STOP_TRACKPAD_ERROR", e.message, null)
+                    }
+                }
+                "isTrackpadBubbleRunning" -> {
+                    result.success(FloatingTrackpadService.isRunning)
                 }
                 else -> result.notImplemented()
             }

@@ -41,7 +41,10 @@ class VoiceBubbleAccessibilityService : AccessibilityService() {
             // Cancelamos cualquier acumulación de scroll previa para no mezclar gestos
             pendingScrollDelta = 0f
 
-            val path = Path().apply { moveTo(x, y) }
+            val path = Path().apply {
+                moveTo(x, y)
+                lineTo(x, y)
+            }
             val stroke = GestureDescription.StrokeDescription(path, 0L, 40L)
             val gesture = GestureDescription.Builder().addStroke(stroke).build()
             return service.dispatchGesture(
@@ -67,7 +70,10 @@ class VoiceBubbleAccessibilityService : AccessibilityService() {
 
             pendingScrollDelta = 0f
 
-            val path = Path().apply { moveTo(x, y) }
+            val path = Path().apply {
+                moveTo(x, y)
+                lineTo(x, y)
+            }
             val stroke = GestureDescription.StrokeDescription(path, 0L, durationMs)
             val gesture = GestureDescription.Builder().addStroke(stroke).build()
             return service.dispatchGesture(

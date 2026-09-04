@@ -40,7 +40,7 @@ class PointerOverlayManager(private val context: Context) {
     private var screenWidth = context.resources.displayMetrics.widthPixels
     private var screenHeight = context.resources.displayMetrics.heightPixels
     private var statusBarHeightPx = (28 * density).toInt()
-    private var keyboardTopY = (screenHeight * 0.6f)
+    private var keyboardTopY = screenHeight.toFloat()
 
     // Coordenadas actuales del puntero (punto de acción superior-izquierdo o centro)
     var posX = (screenWidth / 2f)
@@ -86,6 +86,14 @@ class PointerOverlayManager(private val context: Context) {
         if (resId > 0) {
             statusBarHeightPx = context.resources.getDimensionPixelSize(resId)
         }
+        if (keyboardTopY <= 0f || keyboardTopY > screenHeight) {
+            keyboardTopY = screenHeight.toFloat()
+        }
+    }
+
+    fun resetBottomLimit() {
+        updateScreenMetrics()
+        keyboardTopY = screenHeight.toFloat()
     }
 
     fun updateKeyboardTop(topY: Float) {
