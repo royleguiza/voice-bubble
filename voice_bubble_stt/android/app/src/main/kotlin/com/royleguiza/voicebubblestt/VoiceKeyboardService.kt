@@ -1147,7 +1147,7 @@ class VoiceKeyboardService : InputMethodService() {
         return key
     }
 
-    private fun addRow(row: LinearLayout) {
+    private fun addRow(row: View) {
         val lp = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
