@@ -85,7 +85,13 @@ void main() {
 
       expect(find.text('Píldora e Isla Dinámica'), findsOneWidget);
       expect(find.text('Pastilla Flotante Inteligente'), findsOneWidget);
-      expect(find.text('X: 0px | Y: 12px'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('island-coords-badge')),
+          matching: find.text('X: 0px | Y: 12px'),
+        ),
+        findsOneWidget,
+      );
       expect(find.text('Activar burbuja flotante'), findsOneWidget);
     });
 
@@ -115,7 +121,13 @@ void main() {
 
       expect(await storage.getIslandPosX(), -108);
       expect(await storage.getIslandPosY(), 12);
-      expect(find.text('X: -108px | Y: 12px'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('island-coords-badge')),
+          matching: find.text('X: -108px | Y: 12px'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Steppers de Eje X incrementan y decrementan la posición', (tester) async {

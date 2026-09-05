@@ -1501,6 +1501,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   ),
                 ),
                 Container(
+                  key: const ValueKey('island-coords-badge'),
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primaryContainer,
