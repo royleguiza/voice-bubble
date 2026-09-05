@@ -6,6 +6,7 @@ import android.animation.ValueAnimator
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -13,6 +14,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.Gravity
@@ -62,18 +64,28 @@ import kotlin.math.min
  *    - Transición fluida de éxito y colapso automático.
  *
  * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni telemetría de audios ni textos de transcripción.
+ *
+ * Overlay exacto sobre cámara (Y=0..12 dentro de la status-bar):
+ * créese desde VoiceBubbleAccessibilityService con
+ * overlayType = TYPE_ACCESSIBILITY_OVERLAY (capa por encima de la status-bar,
+ * recibe touch donde TYPE_APPLICATION_OVERLAY es consumido por el sistema).
+ * Sin accesibilidad, FloatingBubbleService usa TYPE_APPLICATION_OVERLAY como fallback.
  */
 class DynamicIslandController(
     private val context: Context,
     private val windowManager: WindowManager,
     private val onMicTap: () -> Unit,
     private val onCancelRecording: () -> Unit,
-    private val onStopRecording: () -> Unit
+    private val onStopRecording: () -> Unit,
+    private val overlayType: Int? = null
 ) {
 
     companion object {
         private const val MORPH_DURATION_MS = 420L
         private val FLUID_INTERPOLATOR = PathInterpolator(0.16f, 1f, 0.3f, 1f)
+        // Anti-rebote del centro: un tap = DOWN+UP+click; sin esto el toggle
+        // abrir/cerrar se dispara dos veces y se percibe como "se cierra solo".
+        private const val CENTER_DEBOUNCE_MS = 300L
     }
 
     private val density = context.resources.displayMetrics.density
@@ -105,6 +117,28 @@ class DynamicIslandController(
     private var isRecording = false
     private var isHistoryOpen = false
     private var isHistoryExtended50 = false
+    private var isHistoryTall = false
+
+    // Diagnóstico sin privacidad (solo contadores, cero texto/audio).
+    private var lastCenterActionUptime = 0L
+    private var centerTapCount = 0
+    private var centerOpenCount = 0
+    private var centerIgnoredDebounce = 0
+
+    /** Solo contadores para verificar en Settings que el centro ya no rebota. */
+    fun getCenterDiagnostics(): String =
+        "tap=$centerTapCount open=$centerOpenCount debounced=$centerIgnoredDebounce"
+
+    /** Un solo camino de disparo para tap y swipe del centro (evita doble toggle). */
+    private fun allowCenterAction(): Boolean {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastCenterActionUptime < CENTER_DEBOUNCE_MS) {
+            centerIgnoredDebounce++
+            return false
+        }
+        lastCenterActionUptime = now
+        return true
+    }
     private var recSeconds = 0
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -114,6 +148,13 @@ class DynamicIslandController(
     private val isNight: Boolean
         get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
+    private val isDarkUi: Boolean
+        get() = when (islandTheme) {
+            "light" -> false
+            "dark" -> true
+            else -> isNight
+        }
+
     private var posX: Int = 0
     private var posY: Int = 12
     private var widthDp: Int = 184
@@ -122,27 +163,49 @@ class DynamicIslandController(
     private var islandTheme: String = "glass"
     private var waveformEnabled: Boolean = true
 
+    private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key != null && key.contains("island")) {
+            mainHandler.post {
+                reloadConfiguration()
+            }
+        }
+    }
+
     init {
         loadPreferences()
         setupIslandLayout()
+        try {
+            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
+        } catch (_: Throwable) {}
     }
 
     private fun loadPreferences() {
         try {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            posX = (prefs.all["flutter.island_pos_x"] as? Number)?.toInt() ?: 0
-            posY = (prefs.all["flutter.island_pos_y"] as? Number)?.toInt() ?: 12
-            widthDp = (prefs.all["flutter.island_width"] as? Number)?.toInt() ?: 184
-            heightDp = (prefs.all["flutter.island_height"] as? Number)?.toInt() ?: 36
-            slotOrder = prefs.getString("flutter.island_slot_order", "trackpad_camera_mic") ?: "trackpad_camera_mic"
-            islandTheme = prefs.getString("flutter.island_theme", "glass") ?: "glass"
-            waveformEnabled = prefs.getBoolean("flutter.island_waveform_enabled", true)
+            posX = (prefs.all["flutter.island_pos_x"] as? Number)?.toInt()
+                ?: (prefs.all["island_pos_x"] as? Number)?.toInt() ?: 0
+            posY = (prefs.all["flutter.island_pos_y"] as? Number)?.toInt()
+                ?: (prefs.all["island_pos_y"] as? Number)?.toInt() ?: 12
+            widthDp = (prefs.all["flutter.island_width"] as? Number)?.toInt()
+                ?: (prefs.all["island_width"] as? Number)?.toInt() ?: 184
+            heightDp = (prefs.all["flutter.island_height"] as? Number)?.toInt()
+                ?: (prefs.all["island_height"] as? Number)?.toInt() ?: 36
+            slotOrder = prefs.getString("flutter.island_slot_order", null)
+                ?: prefs.getString("island_slot_order", "trackpad_camera_mic") ?: "trackpad_camera_mic"
+            islandTheme = prefs.getString("flutter.island_theme", null)
+                ?: prefs.getString("island_theme", "glass") ?: "glass"
+            waveformEnabled = if (prefs.contains("flutter.island_waveform_enabled")) {
+                prefs.getBoolean("flutter.island_waveform_enabled", true)
+            } else {
+                prefs.getBoolean("island_waveform_enabled", true)
+            }
         } catch (_: Throwable) {}
     }
 
     private fun setupIslandLayout() {
         try {
-            val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val layoutFlag = overlayType ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             } else {
                 @Suppress("DEPRECATION")
@@ -158,6 +221,7 @@ class DynamicIslandController(
                 initialH,
                 layoutFlag,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                     WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT
@@ -208,12 +272,27 @@ class DynamicIslandController(
                     try {
                         windowManager.updateViewLayout(root, islandLayoutParams)
                     } catch (_: Throwable) {}
-                }
-                compactView?.let { old ->
-                    islandContainer?.removeView(old)
-                    val newView = buildCompactView()
-                    compactView = newView
-                    islandContainer?.addView(newView)
+
+                    // Reconstruir todas las capas con el nuevo tema y orden de ranuras
+                    historyModalView?.let { old -> root.removeView(old) }
+                    recordingView?.let { old -> root.removeView(old) }
+                    statusView?.let { old -> root.removeView(old) }
+                    compactView?.let { old -> root.removeView(old) }
+
+                    val newHistory = buildHistoryModalView().apply { visibility = View.GONE; alpha = 0f }
+                    val newRecording = buildRecordingView().apply { visibility = View.GONE; alpha = 0f }
+                    val newStatus = buildStatusView().apply { visibility = View.GONE; alpha = 0f }
+                    val newCompact = buildCompactView()
+
+                    historyModalView = newHistory
+                    recordingView = newRecording
+                    statusView = newStatus
+                    compactView = newCompact
+
+                    root.addView(newHistory)
+                    root.addView(newRecording)
+                    root.addView(newStatus)
+                    root.addView(newCompact)
                 }
             }
         } catch (_: Throwable) {}
@@ -225,17 +304,17 @@ class DynamicIslandController(
             this.cornerRadius = cornerRadius
             when (islandTheme) {
                 "light" -> {
-                    setColor(Color.parseColor("#F5FFFFFF"))
-                    setStroke((1.2f * density).toInt(), Color.parseColor("#33000000"))
+                    setColor(Color.parseColor("#FFFFFFFF"))
+                    setStroke((1.2f * density).toInt(), Color.parseColor("#26000000"))
                 }
                 "dark" -> {
-                    setColor(Color.parseColor("#F00A0B10"))
+                    setColor(Color.parseColor("#000000"))
                     setStroke((1.2f * density).toInt(), Color.parseColor("#33FFFFFF"))
                 }
                 else -> {
-                    val bgColor = if (isNight) Color.parseColor("#E60A0B10") else Color.parseColor("#E61F2430")
+                    val bgColor = if (isNight) Color.parseColor("#26FFFFFF") else Color.parseColor("#33FFFFFF")
                     setColor(bgColor)
-                    setStroke((1.2f * density).toInt(), Color.parseColor("#40FFFFFF"))
+                    setStroke((1.2f * density).toInt(), Color.parseColor("#4DFFFFFF"))
                 }
             }
         }
@@ -312,7 +391,11 @@ class DynamicIslandController(
             addView(if (slotOrder == "mic_camera_trackpad") btnTrackpad else btnMic)
         }
 
-        // Punch Central con soporte para gestos: Tap (toggle), Swipe Down (open), Swipe Up (close)
+        // Punch Central: Tap (abre), Swipe Down (abre), Swipe Up (cierra).
+        // Paridad lab (cutout sin punto, pointer-events:none al expandir):
+        // NUNCA focusable (como los slots: robar foco cierra el teclado),
+        // GONE al expandir (los taps llegan al historial, no a la app de atrás),
+        // un solo camino con anti-rebote (sin doble toggle DOWN+UP+click).
         val camPunch = FrameLayout(context).apply {
             val punchW = (48 * density).toInt()
             val punchH = (heightDp * density).toInt()
@@ -320,26 +403,17 @@ class DynamicIslandController(
                 gravity = Gravity.CENTER_HORIZONTAL or Gravity.TOP
             }
 
-            val dot = View(context).apply {
-                val dotSize = (12 * density).toInt()
-                layoutParams = FrameLayout.LayoutParams(dotSize, dotSize).apply {
-                    gravity = Gravity.CENTER
-                }
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.OVAL
-                    setColor(Color.BLACK)
-                    val strokeColor = if (isLight) Color.parseColor("#33000000") else Color.parseColor("#44FFFFFF")
-                    setStroke((1f * density).toInt(), strokeColor)
-                }
-            }
-            addView(dot)
             contentDescription = "Abrir Historial de Transcripciones"
             isClickable = true
-            isFocusable = true
+            isFocusable = false
+            isFocusableInTouchMode = false
 
             setOnClickListener {
                 try {
-                    if (!isRecording) {
+                    // Fallback de accesibilidad (TalkBack): misma vía única.
+                    if (!isRecording && !isHistoryOpen && allowCenterAction()) {
+                        centerTapCount++
+                        centerOpenCount++
                         toggleHistoryModal()
                         performHaptic(isFirm = false)
                     }
@@ -353,11 +427,19 @@ class DynamicIslandController(
 
                 override fun onTouch(v: View, event: MotionEvent): Boolean {
                     try {
-                        if (isRecording) return false
+                        if (isRecording || isHistoryOpen) return false
+                        if (event.pointerCount > 1) {
+                            isDragging = false
+                            return true
+                        }
                         when (event.actionMasked) {
                             MotionEvent.ACTION_DOWN -> {
                                 startX = event.rawX
                                 startY = event.rawY
+                                isDragging = false
+                                return true
+                            }
+                            MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_POINTER_UP -> {
                                 isDragging = false
                                 return true
                             }
@@ -374,18 +456,25 @@ class DynamicIslandController(
                                 val dx = event.rawX - startX
                                 val slop = 12 * density
                                 if (isDragging || abs(dy) > slop) {
+                                    if (!allowCenterAction()) return true
                                     if (dy > slop) {
                                         // Swipe Down -> Abrir Historial
+                                        centerTapCount++
+                                        centerOpenCount++
                                         openHistoryModal()
                                         performHaptic(isFirm = false)
                                     } else if (dy < -slop) {
-                                        // Swipe Up -> Cerrar Historial
-                                        closeHistoryModal()
-                                        performHaptic(isFirm = false)
+                                        // Swipe Up con historial cerrado: nada que cerrar.
+                                        centerTapCount++
                                     }
                                 } else if (abs(dx) < slop && abs(dy) < slop) {
-                                    // Tap -> Toggle Historial vía click accesible
-                                    v.performClick()
+                                    // Tap -> vía única con anti-rebote (no performClick:
+                                    // el onClick es solo fallback de accesibilidad).
+                                    if (!allowCenterAction()) return true
+                                    centerTapCount++
+                                    centerOpenCount++
+                                    toggleHistoryModal()
+                                    performHaptic(isFirm = false)
                                 }
                                 return true
                             }
@@ -447,10 +536,11 @@ class DynamicIslandController(
         timerGroup.addView(redDot)
 
         // Cronómetro en vivo
+        val isLight = islandTheme == "light"
         val tvTimer = TextView(context).apply {
             id = View.generateViewId()
             text = "00:00"
-            setTextColor(Color.WHITE)
+            setTextColor(if (isLight) Color.parseColor("#1F2430") else Color.WHITE)
             textSize = 13f
             typeface = android.graphics.Typeface.MONOSPACE
         }
@@ -594,10 +684,11 @@ class DynamicIslandController(
             spinnerView = spinner
             addView(spinner)
 
+            val isLight = islandTheme == "light"
             val tvStatus = TextView(context).apply {
                 id = View.generateViewId()
                 text = "Procesando con Groq..."
-                setTextColor(Color.WHITE)
+                setTextColor(if (isLight) Color.parseColor("#1F2430") else Color.WHITE)
                 textSize = 13f
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
             }
@@ -612,43 +703,13 @@ class DynamicIslandController(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setPadding((12 * density).toInt(), (10 * density).toInt(), (12 * density).toInt(), 0)
+            // Paridad lab trackpad_lab.html .expanded-history { padding: 14px 16px }.
+            setPadding((16 * density).toInt(), (14 * density).toInt(), (16 * density).toInt(), 0)
         }
 
-        // Header con título y botón de cierre
-        val header = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                (32 * density).toInt()
-            )
-
-            val tvTitle = TextView(context).apply {
-                text = "HISTORIAL DE DICTADOS"
-                textSize = 11f
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-                setTextColor(Color.parseColor("#38BDF8"))
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f)
-            }
-            addView(tvTitle)
-
-            val btnClose = TextView(context).apply {
-                text = "✕"
-                textSize = 14f
-                setTextColor(if (isNight) Color.WHITE else Color.parseColor("#1C1C1E"))
-                gravity = Gravity.CENTER
-                val s = (28 * density).toInt()
-                layoutParams = LinearLayout.LayoutParams(s, s)
-                setOnClickListener {
-                    try {
-                        closeHistoryModal()
-                    } catch (_: Throwable) {}
-                }
-            }
-            addView(btnClose)
-        }
-        root.addView(header)
+        // Sin header superior ni título ni X (diseño lab trackpad_lab.html):
+        // el historial se gestiona solo con slots laterales (puntero/mic),
+        // tap en cards y rayita inferior (tap/swipe-up cierra, drag-down expande).
 
         // Contenedor scrollable de tarjetas
         val scrollView = ScrollView(context).apply {
@@ -690,7 +751,7 @@ class DynamicIslandController(
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
                     cornerRadius = 3f * density
-                    setColor(if (isNight) Color.parseColor("#E6FFFFFF") else Color.parseColor("#CC1D1D1F"))
+                    setColor(if (isDarkUi) Color.parseColor("#E6FFFFFF") else Color.parseColor("#CC1D1D1F"))
                 }
             }
             addView(rayita)
@@ -773,8 +834,15 @@ class DynamicIslandController(
         try {
             val cardsList = historyCardsList ?: run {
                 val root = historyModalView ?: return
-                val scrollView = root.getChildAt(1) as? ScrollView ?: return
-                scrollView.getChildAt(0) as? LinearLayout ?: return
+                // Sin header: child 0 = ScrollView, child 1 = rayita inferior.
+                // Búsqueda por tipo para no depender del índice.
+                var found: LinearLayout? = null
+                for (i in 0 until root.childCount) {
+                    val sv = root.getChildAt(i) as? ScrollView ?: continue
+                    found = sv.getChildAt(0) as? LinearLayout
+                    if (found != null) break
+                }
+                found ?: return
             }
             cardsList.removeAllViews()
 
@@ -809,32 +877,86 @@ class DynamicIslandController(
                 val text = item.optString("text", "")
                 if (text.isBlank()) continue
 
+                // Paridad lab: count-1 padding 12x14 align-top, count-2 padding 10x12
+                // align-top, 3+ padding 10x7 min-height 46dp radius 10dp gap 6dp.
+                val cardPaddingH = when (count) {
+                    1 -> (14 * density).toInt()
+                    2 -> (12 * density).toInt()
+                    else -> (10 * density).toInt()
+                }
+                val cardPaddingV = when (count) {
+                    1 -> (12 * density).toInt()
+                    2 -> (10 * density).toInt()
+                    else -> (7 * density).toInt()
+                }
+                val cardGravity = if (count <= 2) Gravity.TOP else Gravity.CENTER_VERTICAL
+
+                fun cardBackground(expanded: Boolean): GradientDrawable {
+                    return GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 10f * density
+                        if (expanded) {
+                            // Lab .snippet-expanded: rgba(88,166,255,0.14) + borde 0.45.
+                            setColor(Color.parseColor("#2458A6FF"))
+                            setStroke((1f * density).toInt(), Color.parseColor("#7358A6FF"))
+                        } else {
+                            val cardBg = when {
+                                islandTheme == "dark" -> Color.parseColor("#1A1A1A")
+                                islandTheme == "light" -> Color.parseColor("#F2F2F7")
+                                // Lab glass: rgba(255,255,255,0.13) + borde 0.22.
+                                else -> Color.parseColor("#21FFFFFF")
+                            }
+                            val cardStroke = when {
+                                islandTheme == "dark" -> Color.parseColor("#26FFFFFF")
+                                islandTheme == "light" -> Color.parseColor("#1F000000")
+                                else -> Color.parseColor("#38FFFFFF")
+                            }
+                            setColor(cardBg)
+                            setStroke((1f * density).toInt(), cardStroke)
+                        }
+                    }
+                }
+
+                fun copyBackground(copied: Boolean): GradientDrawable {
+                    return GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 8f * density
+                        if (copied) {
+                            // Lab .copied: bg #238636 + borde #3fb950.
+                            setColor(Color.parseColor("#FF238636"))
+                            setStroke((1f * density).toInt(), Color.parseColor("#FF3FB950"))
+                        } else if (islandTheme == "light" || (!isDarkUi && islandTheme == "glass")) {
+                            setColor(Color.parseColor("#0F000000"))
+                            setStroke((1f * density).toInt(), Color.parseColor("#1F000000"))
+                        } else {
+                            // Lab default: rgba(255,255,255,0.12).
+                            setColor(Color.parseColor("#1FFFFFFF"))
+                            setStroke((1f * density).toInt(), Color.parseColor("#26FFFFFF"))
+                        }
+                    }
+                }
+
                 val card = LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
+                    gravity = cardGravity
 
                     val cardLp = when (count) {
                         1, 2 -> LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f).apply {
                             setMargins(0, (4 * density).toInt(), 0, (4 * density).toInt())
                         }
-                        else -> LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (52 * density).toInt()).apply {
+                        else -> LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (46 * density).toInt()).apply {
                             setMargins(0, (3 * density).toInt(), 0, (3 * density).toInt())
                         }
                     }
                     layoutParams = cardLp
 
-                    background = GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = 12f * density
-                        setColor(if (isNight) Color.parseColor("#331C1D26") else Color.parseColor("#14000000"))
-                        setStroke((1f * density).toInt(), if (isNight) Color.parseColor("#26FFFFFF") else Color.parseColor("#20000000"))
-                    }
-                    setPadding((10 * density).toInt(), (6 * density).toInt(), (10 * density).toInt(), (6 * density).toInt())
+                    background = cardBackground(expanded = false)
+                    setPadding(cardPaddingH, cardPaddingV, cardPaddingH, cardPaddingV)
 
                     // Texto del snippet con contraste accesible para temas claro y oscuro
                     val tvSnippet = TextView(context).apply {
                         this.text = "\"$text\""
-                        setTextColor(if (isNight) Color.WHITE else Color.parseColor("#1C1C1E"))
+                        setTextColor(if (isDarkUi) Color.WHITE else Color.parseColor("#1C1C1E"))
                         textSize = 12f
                         maxLines = when (count) {
                             1 -> 16
@@ -845,19 +967,21 @@ class DynamicIslandController(
                     }
                     addView(tvSnippet)
 
-                    // Botón de copiado con confirmación de tilde verde usando ContextCompat.getDrawable
+                    // Botón de copiado 32dp radius 8dp (paridad lab .history-card-copy-btn).
                     val btnCopy = ImageView(context).apply {
                         try {
                             setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_copy))
                         } catch (_: Throwable) {
                             try { setImageResource(R.drawable.ic_copy) } catch (_: Throwable) {}
                         }
-                        setColorFilter(if (isNight) Color.WHITE else Color.parseColor("#3C3C43"))
-                        val p = (6 * density).toInt()
+                        setColorFilter(if (isDarkUi) Color.WHITE else Color.parseColor("#3C3C43"))
+                        background = copyBackground(copied = false)
+                        // Glifo 17-18px dentro de 32dp: padding 7dp.
+                        val p = (7 * density).toInt()
                         setPadding(p, p, p, p)
-                        val s = (28 * density).toInt()
+                        val s = (32 * density).toInt()
                         layoutParams = LinearLayout.LayoutParams(s, s).apply {
-                            setMargins((6 * density).toInt(), 0, 0, 0)
+                            setMargins((10 * density).toInt(), 0, 0, 0)
                         }
                         contentDescription = "Copiar al portapapeles"
                         setOnClickListener {
@@ -868,7 +992,8 @@ class DynamicIslandController(
                                 } catch (_: Throwable) {
                                     try { setImageResource(R.drawable.ic_check) } catch (_: Throwable) {}
                                 }
-                                setColorFilter(Color.parseColor("#30D158"))
+                                setColorFilter(Color.WHITE)
+                                background = copyBackground(copied = true)
                                 postDelayed({
                                     try {
                                         try {
@@ -876,7 +1001,8 @@ class DynamicIslandController(
                                         } catch (_: Throwable) {
                                             try { setImageResource(R.drawable.ic_copy) } catch (_: Throwable) {}
                                         }
-                                        setColorFilter(if (isNight) Color.WHITE else Color.parseColor("#3C3C43"))
+                                        setColorFilter(if (isDarkUi) Color.WHITE else Color.parseColor("#3C3C43"))
+                                        background = copyBackground(copied = false)
                                     } catch (_: Throwable) {}
                                 }, 1200L)
                             } catch (_: Throwable) {}
@@ -893,10 +1019,35 @@ class DynamicIslandController(
                         } catch (_: Throwable) {}
                     }
 
-                    // Presión larga: expande mensaje en Y para lectura completa
+                    // Presión larga: paridad lab toggleSnippetExpansion —
+                    // expande texto + pinta card azul + crece isla a history-tall 350dp.
                     setOnLongClickListener {
                         try {
-                            tvSnippet.maxLines = if (tvSnippet.maxLines == Int.MAX_VALUE) 2 else Int.MAX_VALUE
+                            val defaultLines = when (count) {
+                                1 -> 16
+                                2 -> 4
+                                else -> 2
+                            }
+                            val expanding = tvSnippet.maxLines != Int.MAX_VALUE
+                            // Colapsar las demás como en el lab (lectura enfocada).
+                            try {
+                                val parent = parent as? LinearLayout
+                                for (i in 0 until (parent?.childCount ?: 0)) {
+                                    val other = parent?.getChildAt(i) as? LinearLayout
+                                    if (other != null && other != this@apply) {
+                                        other.background = cardBackground(expanded = false)
+                                    }
+                                }
+                            } catch (_: Throwable) {}
+                            if (expanding) {
+                                tvSnippet.maxLines = Int.MAX_VALUE
+                                background = cardBackground(expanded = true)
+                                setHistoryTall(true)
+                            } else {
+                                tvSnippet.maxLines = defaultLines
+                                background = cardBackground(expanded = false)
+                                setHistoryTall(false)
+                            }
                             performHaptic(isFirm = true)
                         } catch (_: Throwable) {}
                         true
@@ -1171,6 +1322,7 @@ class DynamicIslandController(
             isRecording = false
             isHistoryOpen = false
             isHistoryExtended50 = false
+            isHistoryTall = false
             recTimerRunnable?.let { mainHandler.removeCallbacks(it) }
             recTimerRunnable = null
             collapseRunnable?.let { mainHandler.removeCallbacks(it) }
@@ -1181,6 +1333,8 @@ class DynamicIslandController(
             statusView?.visibility = View.GONE
             compactView?.visibility = View.VISIBLE
             compactView?.alpha = 1f
+            // Reingresa a hit-testing (pudo quedar GONE al colapsar desde abierto).
+            camPunch?.visibility = View.VISIBLE
 
             val compactW = (widthDp * density).toInt()
             val compactH = (heightDp * density).toInt()
@@ -1221,10 +1375,12 @@ class DynamicIslandController(
                         slotLeft?.translationY = 0f
                         slotRight?.translationX = 0f
                         slotRight?.translationY = 0f
+                        camPunch?.visibility = View.VISIBLE
                         camPunch?.alpha = 1f
                         camPunch?.translationY = 0f
                         camPunch?.isClickable = true
                         camPunch?.isEnabled = true
+                        camPunch?.contentDescription = "Abrir Historial de Transcripciones"
                         spinnerView?.visibility = View.VISIBLE
                     } catch (_: Throwable) {}
                 }
@@ -1246,6 +1402,7 @@ class DynamicIslandController(
         try {
             if (isRecording || isHistoryOpen) return
             isHistoryOpen = true
+            isHistoryTall = false
 
             collapseRunnable?.let { mainHandler.removeCallbacks(it) }
             collapseRunnable = null
@@ -1279,8 +1436,14 @@ class DynamicIslandController(
             historyModalView?.alpha = 0f
             compactView?.visibility = View.VISIBLE
 
-            camPunch?.isClickable = false
-            camPunch?.isEnabled = false
+            // Paridad lab (cutout oculto al expandir): el centro se desvanece
+            // y sale de hit-testing (GONE al final); los taps llegan al
+            // historial dentro de la ventana, jamás a la app de atrás.
+            // Siempre clicable al estar visible: no roba foco (ver construcción).
+            camPunch?.visibility = View.VISIBLE
+            camPunch?.isClickable = true
+            camPunch?.isEnabled = true
+            camPunch?.contentDescription = "Cerrar Historial de Transcripciones"
 
             animateBoundsAndMorph(
                 targetW = modalW,
@@ -1310,6 +1473,7 @@ class DynamicIslandController(
                         slotRight?.translationY = targetDeltaY
                         camPunch?.alpha = 0f
                         camPunch?.translationY = -80f * density
+                        camPunch?.visibility = View.GONE
                     } catch (_: Throwable) {}
                 }
             )
@@ -1321,6 +1485,13 @@ class DynamicIslandController(
             if (!isHistoryOpen) return
             isHistoryOpen = false
             isHistoryExtended50 = false
+            isHistoryTall = false
+
+            collapseRunnable?.let { mainHandler.removeCallbacks(it) }
+            collapseRunnable = null
+
+            // Reingresa a hit-testing antes de animar el fundido de entrada.
+            camPunch?.visibility = View.VISIBLE
 
             collapseRunnable?.let { mainHandler.removeCallbacks(it) }
             collapseRunnable = null
@@ -1366,10 +1537,12 @@ class DynamicIslandController(
                         slotLeft?.translationY = 0f
                         slotRight?.translationX = 0f
                         slotRight?.translationY = 0f
+                        camPunch?.visibility = View.VISIBLE
                         camPunch?.alpha = 1f
                         camPunch?.translationY = 0f
                         camPunch?.isClickable = true
                         camPunch?.isEnabled = true
+                        camPunch?.contentDescription = "Abrir Historial de Transcripciones"
                     } catch (_: Throwable) {}
                 }
             )
@@ -1379,8 +1552,72 @@ class DynamicIslandController(
     fun setHistoryExtended50(extended: Boolean) {
         try {
             isHistoryExtended50 = extended
+            if (extended) isHistoryTall = false
             val modalW = (screenWidth - (24 * density).toInt()).coerceAtMost((340 * density).toInt())
-            val modalH = if (extended) (screenHeight * 0.50f).toInt() else (230 * density).toInt()
+            val modalH = when {
+                extended -> (screenHeight * 0.50f).toInt()
+                isHistoryTall -> (350 * density).toInt()
+                else -> (230 * density).toInt()
+            }
+
+            val margin = (10 * density).toInt()
+            val halfModalW = modalW / 2
+            val targetCenterX = (screenWidth / 2) + (posX * density).toInt()
+            val clampedCenterX = targetCenterX.coerceIn(margin + halfModalW, screenWidth - margin - halfModalW)
+            val targetX = clampedCenterX - (screenWidth / 2)
+            val minTop = min(0, (posY * density).toInt())
+            val targetY = (posY * density).toInt().coerceIn(minTop, max(minTop, screenHeight - modalH - margin))
+
+            val slotBtnSize = (34 * density).toInt()
+            val initialSlotTop = ((heightDp * density - slotBtnSize) / 2f).coerceAtLeast(0f)
+            val deltaX = (14 - 8) * density
+
+            val startSlotDeltaY = slotLeft?.translationY ?: 0f
+            val targetSlotDeltaY = (modalH - 46 * density) - initialSlotTop
+
+            animateBoundsAndMorph(
+                targetW = modalW,
+                targetH = modalH,
+                targetX = targetX,
+                targetY = targetY,
+                targetRadiusDp = 28f,
+                onProgress = { fraction ->
+                    try {
+                        val curDeltaY = startSlotDeltaY + (targetSlotDeltaY - startSlotDeltaY) * fraction
+                        slotLeft?.translationY = curDeltaY
+                        slotRight?.translationY = curDeltaY
+                        slotLeft?.translationX = deltaX
+                        slotRight?.translationX = -deltaX
+                    } catch (_: Throwable) {}
+                },
+                onEnd = {
+                    try {
+                        slotLeft?.translationY = targetSlotDeltaY
+                        slotRight?.translationY = targetSlotDeltaY
+                        slotLeft?.translationX = deltaX
+                        slotRight?.translationX = -deltaX
+                    } catch (_: Throwable) {}
+                }
+            )
+        } catch (_: Throwable) {}
+    }
+
+    /**
+     * Paridad lab .history-tall (350px): long-press en una card expande la isla
+     * en Y para lectura completa. Si el modo 50% está activo no hace nada
+     * (ya es más alto). Misma curva 420ms e interpolador fluido.
+     */
+    fun setHistoryTall(expanded: Boolean) {
+        try {
+            if (!isHistoryOpen) return
+            if (isHistoryExtended50) {
+                isHistoryTall = false
+                return
+            }
+            if (isHistoryTall == expanded) return
+            isHistoryTall = expanded
+            val modalW = (screenWidth - (24 * density).toInt()).coerceAtMost((340 * density).toInt())
+            val modalH = if (expanded) (350 * density).toInt() else (230 * density).toInt()
 
             val margin = (10 * density).toInt()
             val halfModalW = modalW / 2
@@ -1436,6 +1673,10 @@ class DynamicIslandController(
             }
             morphAnimator = null
             stopWaveformAnimation()
+            try {
+                val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                prefs.unregisterOnSharedPreferenceChangeListener(prefChangeListener)
+            } catch (_: Throwable) {}
             if (islandContainer != null) {
                 try {
                     windowManager.removeViewImmediate(islandContainer)

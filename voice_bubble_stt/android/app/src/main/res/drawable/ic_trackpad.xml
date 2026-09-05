@@ -5,28 +5,12 @@
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="@color/kb_label">
-    <!-- Outer rounded trackpad frame -->
+    <!-- Arrow pointer cursor matching laboratorio_ui/trackpad_lab.html -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M4,5 H20 C21.1,5 22,5.9 22,7 V17 C22,18.1 21.1,19 20,19 H4 C2.9,19 2,18.1 2,17 V7 C2,5.9 2.9,5 4,5 Z"
+        android:pathData="M3,3 L10.07,19.97 L12.58,12.58 L19.97,10.07 Z"
         android:strokeColor="@color/kb_label"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="1.8" />
-    <!-- Horizontal divider between touch surface and thumb buttons -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M2,14 H22"
-        android:strokeColor="@color/kb_label"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="1.8" />
-    <!-- Vertical divider separating left and right thumb buttons -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M12,14 V19"
-        android:strokeColor="@color/kb_label"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="1.8" />
+        android:strokeWidth="2.0" />
 </vector>

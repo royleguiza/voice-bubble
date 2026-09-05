@@ -464,39 +464,46 @@ class _SettingsScreenState extends State<SettingsScreen>
     final clamped = value.clamp(-160, 160);
     setState(() => _islandPosX = clamped);
     await _storageService.setIslandPosX(clamped);
+    await _floatingBubbleService.reloadIslandConfig();
   }
 
   Future<void> _saveIslandPosY(int value) async {
     final clamped = value.clamp(-100, 120);
     setState(() => _islandPosY = clamped);
     await _storageService.setIslandPosY(clamped);
+    await _floatingBubbleService.reloadIslandConfig();
   }
 
   Future<void> _saveIslandWidth(int value) async {
     final clamped = value.clamp(130, 320);
     setState(() => _islandWidth = clamped);
     await _storageService.setIslandWidth(clamped);
+    await _floatingBubbleService.reloadIslandConfig();
   }
 
   Future<void> _saveIslandHeight(int value) async {
     final clamped = value.clamp(28, 48);
     setState(() => _islandHeight = clamped);
     await _storageService.setIslandHeight(clamped);
+    await _floatingBubbleService.reloadIslandConfig();
   }
 
   Future<void> _saveIslandSlotOrder(String value) async {
     setState(() => _islandSlotOrder = value);
     await _storageService.setIslandSlotOrder(value);
+    await _floatingBubbleService.reloadIslandConfig();
   }
 
   Future<void> _saveIslandTheme(String value) async {
     setState(() => _islandTheme = value);
     await _storageService.setIslandTheme(value);
+    await _floatingBubbleService.reloadIslandConfig();
   }
 
   Future<void> _saveIslandWaveformEnabled(bool value) async {
     setState(() => _islandWaveformEnabled = value);
     await _storageService.setIslandWaveformEnabled(value);
+    await _floatingBubbleService.reloadIslandConfig();
   }
 
   Future<void> _applyHardwarePreset(String preset) async {
@@ -521,6 +528,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _storageService.setIslandPosY(y);
     await _storageService.setIslandWidth(w);
     await _storageService.setIslandHeight(h);
+    await _floatingBubbleService.reloadIslandConfig();
   }
 
   /// Relectura manual (botón Actualizar) del estado del teclado.
@@ -1242,7 +1250,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             Row(
               children: [
                 Icon(
-                  Icons.mouse,
+                  Icons.near_me,
                   color: theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 8),

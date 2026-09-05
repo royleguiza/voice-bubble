@@ -94,4 +94,14 @@ class FloatingBubbleService {
       return false;
     }
   }
+
+  /// Notifica al servicio nativo para recargar la configuración visual de la pastilla flotante.
+  Future<bool> reloadIslandConfig() async {
+    try {
+      final res = await _channel.invokeMethod<bool>('reloadIslandConfig');
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 }

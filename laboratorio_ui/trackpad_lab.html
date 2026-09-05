@@ -632,13 +632,71 @@
       overflow: hidden;
     }
 
-    /* LIQUID GLASS TRANSLUCENT MODE */
+    /* TEMAS DE LA PASTILLA: OSCURO (NEGRO PURO #000000), LIQUID GLASS Y CLARO */
+    .dynamic-island-pill.island-theme-dark {
+      background: #000000 !important;
+      border: 1px solid rgba(255, 255, 255, 0.18) !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    .dynamic-island-pill.island-theme-dark .history-card-row {
+      background: #1a1a1a !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+
+    .dynamic-island-pill.island-theme-glass,
     .dynamic-island-pill.mode-liquid-glass {
-      background: var(--island-glass-bg);
-      backdrop-filter: blur(24px);
-      -webkit-backdrop-filter: blur(24px);
-      border-color: var(--island-glass-border);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      background: var(--island-glass-bg) !important;
+      backdrop-filter: blur(24px) !important;
+      -webkit-backdrop-filter: blur(24px) !important;
+      border-color: var(--island-glass-border) !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
+      color: #ffffff !important;
+    }
+
+    .dynamic-island-pill.island-theme-light {
+      background: #ffffff !important;
+      border: 1px solid rgba(0, 0, 0, 0.15) !important;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12) !important;
+      color: #1f2430 !important;
+    }
+
+    .dynamic-island-pill.island-theme-light .rec-timer,
+    .dynamic-island-pill.island-theme-light #recTimerText,
+    .dynamic-island-pill.island-theme-light .status-text,
+    .dynamic-island-pill.island-theme-light #statusText {
+      color: #1f2430 !important;
+    }
+
+    .dynamic-island-pill.island-theme-light .status-spinner {
+      border-color: rgba(0, 0, 0, 0.15) !important;
+      border-top-color: #0284c7 !important;
+    }
+
+    .dynamic-island-pill.island-theme-light .rec-action-btn.cancel {
+      background: rgba(0, 0, 0, 0.08) !important;
+      color: #ff453a !important;
+    }
+
+    .dynamic-island-pill.island-theme-light .history-card-row {
+      background: #f2f2f7 !important;
+      border-color: rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .dynamic-island-pill.island-theme-light .history-snippet-text {
+      color: #1c1c1e !important;
+    }
+
+    .dynamic-island-pill.island-theme-light .history-card-copy-btn {
+      color: #3c3c43 !important;
+      fill: #3c3c43 !important;
+      background: rgba(0, 0, 0, 0.06) !important;
+      border-color: rgba(0, 0, 0, 0.12) !important;
+    }
+
+    .dynamic-island-pill.island-theme-light .history-drag-handle {
+      background: #1c1c1e !important;
     }
 
     /* SYMMETRIC EXPANSION: EXPANDED IN CENTER MODE (RECORDING) */
@@ -775,16 +833,7 @@
     }
 
     .island-camera-dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #000000;
-      pointer-events: none;
-      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .island-camera-cutout:hover .island-camera-dot {
-      transform: scale(1.25);
+      display: none !important;
     }
 
     .dynamic-island-pill.expanded-history .island-camera-cutout {
@@ -2016,17 +2065,22 @@
           </label>
         </div>
 
-        <!-- MODO LIQUID GLASS -->
-        <div class="toggle-row">
-          <div class="toggle-info">
-            <span class="toggle-title">Modo Liquid Glass (Translúcido)</span>
-            <span class="toggle-desc">Vidrio transparente con iconos sutiles visibles</span>
+        <!-- TEMA DE LA PASTILLA (DARK, GLASS, LIGHT) -->
+        <div class="control-row">
+          <span class="toggle-title">Tema de la Pastilla</span>
+          <div class="segmented-control" id="islandThemeSelector">
+            <button class="segmented-btn active" id="btnIslandThemeDark" onclick="setIslandTheme('dark')">
+              <span>Oscuro Puro</span>
+            </button>
+            <button class="segmented-btn" id="btnIslandThemeGlass" onclick="setIslandTheme('glass')">
+              <span>Liquid Glass</span>
+            </button>
+            <button class="segmented-btn" id="btnIslandThemeLight" onclick="setIslandTheme('light')">
+              <span>Claro</span>
+            </button>
           </div>
-          <label class="switch">
-            <input type="checkbox" id="liquidGlassCheck" onchange="toggleLiquidGlass(this.checked)">
-            <span class="switch-slider"></span>
-          </label>
         </div>
+        <input type="checkbox" id="liquidGlassCheck" style="display:none;" onchange="toggleLiquidGlass(this.checked)">
 
         <!-- LUGAR DE EXPANSION -->
         <div class="control-row">
@@ -2342,9 +2396,7 @@
             </div>
 
             <!-- CENTER CUTOUT (CLICKABLE TO MORPH-EXPAND TRANSCRIPTION HISTORY) -->
-            <div class="island-camera-cutout" id="islandCamCutout" onclick="onCenterCutoutClick(event)" title="Toca el centro: Expande el Historial">
-              <div class="island-camera-dot"></div>
-            </div>
+            <div class="island-camera-cutout" id="islandCamCutout" onclick="onCenterCutoutClick(event)" title="Toca el centro: Expande el Historial"></div>
 
             <!-- RIGHT SLOT (GLIDES TO BOTTOM-RIGHT CORNER ON EXPAND) -->
             <div class="island-slot slot-right" id="islandSlotRight">
@@ -2638,6 +2690,7 @@
     const state = {
       theme: 'dark',
       islandActive: true,
+      islandTheme: 'dark',
       liquidGlass: false,
       expandMode: 'top',
       historyExpanded: false,
@@ -2725,16 +2778,36 @@
       appendTerminalLog(active ? 'Isla Dinámica encendida' : 'Isla Dinámica apagada', active ? '#7ee787' : '#ff7b72');
     }
 
-    function toggleLiquidGlass(enabled) {
-      state.liquidGlass = enabled;
+    /* MASTER ISLAND & THEME SELECTION */
+    function setIslandTheme(theme) {
+      state.islandTheme = theme;
+      state.liquidGlass = (theme === 'glass');
       const island = document.getElementById('dynamicIsland');
-      if (enabled) {
-        island.classList.add('mode-liquid-glass');
-        appendTerminalLog('Modo Liquid Glass activado: acabado translúcido', '#58a6ff');
-      } else {
-        island.classList.remove('mode-liquid-glass');
-        appendTerminalLog('Modo Normal activado: negro sólido profundo', '#58a6ff');
+      if (island) {
+        island.classList.remove('island-theme-dark', 'island-theme-glass', 'island-theme-light', 'mode-liquid-glass');
+        if (theme === 'dark') {
+          island.classList.add('island-theme-dark');
+          appendTerminalLog('Tema de la pastilla: Oscuro (#000000 negro puro)', '#58a6ff');
+        } else if (theme === 'light') {
+          island.classList.add('island-theme-light');
+          appendTerminalLog('Tema de la pastilla: Claro (#ffffff blanco)', '#58a6ff');
+        } else {
+          island.classList.add('island-theme-glass', 'mode-liquid-glass');
+          appendTerminalLog('Tema de la pastilla: Liquid Glass translúcido', '#58a6ff');
+        }
       }
+      const check = document.getElementById('liquidGlassCheck');
+      if (check) check.checked = (theme === 'glass');
+      const btnDark = document.getElementById('btnIslandThemeDark');
+      const btnGlass = document.getElementById('btnIslandThemeGlass');
+      const btnLight = document.getElementById('btnIslandThemeLight');
+      if (btnDark) btnDark.classList.toggle('active', theme === 'dark');
+      if (btnGlass) btnGlass.classList.toggle('active', theme === 'glass');
+      if (btnLight) btnLight.classList.toggle('active', theme === 'light');
+    }
+
+    function toggleLiquidGlass(enabled) {
+      setIslandTheme(enabled ? 'glass' : 'dark');
     }
 
     function setExpandMode(mode) {
@@ -3855,6 +3928,7 @@
     // INIT
     renderHistoryCards();
     updateIslandDOM();
+    setIslandTheme(state.islandTheme);
     setTrackpadTheme(state.trackpadTheme, true);
     setTrackpadButtonLayout(state.trackpadButtonLayout, true);
     setTrackpadScrollPosition(state.scrollPosition, true);

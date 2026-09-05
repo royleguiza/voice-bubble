@@ -30,6 +30,8 @@ void main() {
           return true;
         case 'isBubbleRunning':
           return true;
+        case 'reloadIslandConfig':
+          return true;
         default:
           return null;
       }

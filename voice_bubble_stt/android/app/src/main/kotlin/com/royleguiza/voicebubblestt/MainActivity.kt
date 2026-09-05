@@ -90,6 +90,10 @@ class MainActivity : FlutterActivity() {
                         FloatingBubbleService.updateState(state)
                         result.success(true)
                     }
+                    "reloadIslandConfig" -> {
+                        FloatingBubbleService.reloadIsland()
+                        result.success(true)
+                    }
                     else -> {
                         result.notImplemented()
                     }

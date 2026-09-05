@@ -68,6 +68,35 @@ const path = require('path');
     const leftSlotBtnIdRestored = await page.locator('#islandSlotLeft button').getAttribute('id');
     assert(leftSlotBtnIdRestored === 'islandTrackpadBtn', 'Left slot restored to Trackpad button');
 
+    // Test 4b: Trackpad logo is arrow cursor
+    const trackpadSvgPolygon = await page.locator('#islandTrackpadBtn polygon').getAttribute('points');
+    assert(trackpadSvgPolygon === '3 3 10.07 19.97 12.58 12.58 19.97 10.07 3 3', 'Trackpad logo is arrow cursor polygon');
+
+    // Test 4c: No internal dot circle inside island pill
+    const camDotCount = await page.locator('#islandCamCutout .island-camera-dot').count();
+    const isDotVisible = camDotCount > 0 ? await page.locator('#islandCamCutout .island-camera-dot').isVisible() : false;
+    assert(!isDotVisible, 'No internal dot circle inside island pill');
+
+    // Test 4d: Island Themes (Dark: pure black, Light: white, Glass: liquid glass)
+    await page.click('#btnIslandThemeDark');
+    await page.waitForTimeout(300);
+    let darkBg = await island.evaluate(el => window.getComputedStyle(el).backgroundColor);
+    assert(darkBg === 'rgb(0, 0, 0)', `Island dark theme is pure black #000000 (got ${darkBg})`);
+
+    await page.click('#btnIslandThemeLight');
+    await page.waitForTimeout(300);
+    let lightBg = await island.evaluate(el => window.getComputedStyle(el).backgroundColor);
+    assert(lightBg === 'rgb(255, 255, 255)', `Island light theme is white #ffffff (got ${lightBg})`);
+    let timerColor = await page.locator('#recTimerText').evaluate(el => window.getComputedStyle(el).color);
+    assert(timerColor === 'rgb(31, 36, 48)', `Island light theme timer text has accessible contrast (got ${timerColor})`);
+    let snippetColor = await page.locator('.history-snippet-text').first().evaluate(el => window.getComputedStyle(el).color);
+    assert(snippetColor === 'rgb(28, 28, 30)', `Island light theme snippet text has accessible contrast (got ${snippetColor})`);
+
+    await page.click('#btnIslandThemeGlass');
+    await page.waitForTimeout(300);
+    let hasGlassClass = await island.evaluate(el => el.classList.contains('mode-liquid-glass') || el.classList.contains('island-theme-glass'));
+    assert(hasGlassClass, 'Island theme switched to liquid glass');
+
     // Test 5: Mic Recording & Audio Waveform Flow
     const micBtn = page.locator('#islandMicBtn');
     await micBtn.click();

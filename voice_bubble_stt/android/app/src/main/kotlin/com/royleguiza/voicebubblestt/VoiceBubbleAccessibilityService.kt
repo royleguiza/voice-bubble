@@ -2,8 +2,11 @@ package com.royleguiza.voicebubblestt
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.content.Context
 import android.content.Intent
 import android.graphics.Path
+import android.os.Build
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import kotlin.math.abs
 
@@ -168,9 +171,11 @@ class VoiceBubbleAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        setupIslandOverlayIfNeeded()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        teardownIslandOverlay()
         instance = null
         isScrollActive = false
         pendingScrollDelta = 0f
@@ -178,10 +183,71 @@ class VoiceBubbleAccessibilityService : AccessibilityService() {
     }
 
     override fun onDestroy() {
+        teardownIslandOverlay()
         instance = null
         isScrollActive = false
         pendingScrollDelta = 0f
         super.onDestroy()
+    }
+
+    // ——— Isla exacta sobre cámara (TYPE_ACCESSIBILITY_OVERLAY) ———
+    private var islandController: DynamicIslandController? = null
+
+    /**
+     * Crea la isla con TYPE_ACCESSIBILITY_OVERLAY: capa por encima de la
+     * status-bar, recibe touch en Y=0..12 donde TYPE_APPLICATION_OVERLAY es
+     * consumido por el sistema. Solo en modo dynamic_island (default).
+     * Requiere API 26+ (minSdk 28 OK). Sin duplicados: registra el controlador
+     * en FloatingBubbleService y le pide soltar su fallback local.
+     */
+    private fun setupIslandOverlayIfNeeded() {
+        try {
+            if (islandController != null) return
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val dockingMode = prefs.getString("flutter.bubble_docking_mode", null)
+                ?: prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
+            if (dockingMode == "classic_bubble") return
+            val wm = getSystemService(Context.WINDOW_SERVICE) as? WindowManager ?: return
+            val controller = DynamicIslandController(
+                context = this,
+                windowManager = wm,
+                onMicTap = {
+                    try {
+                        FloatingBubbleService.onBubbleActionListener?.onBubbleTap()
+                    } catch (_: Throwable) {}
+                },
+                onCancelRecording = {
+                    try {
+                        FloatingBubbleService.updateState("idle")
+                    } catch (_: Throwable) {}
+                },
+                onStopRecording = {
+                    try {
+                        FloatingBubbleService.onBubbleActionListener?.onBubbleTap()
+                    } catch (_: Throwable) {}
+                },
+                overlayType = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+            )
+            islandController = controller
+            FloatingBubbleService.accessibilityIsland = controller
+            FloatingBubbleService.dropLocalIsland()
+        } catch (_: Throwable) {}
+    }
+
+    private fun teardownIslandOverlay() {
+        try {
+            islandController?.destroy()
+        } catch (_: Throwable) {}
+        islandController = null
+        try {
+            if (FloatingBubbleService.accessibilityIsland != null) {
+                FloatingBubbleService.accessibilityIsland = null
+            }
+        } catch (_: Throwable) {}
+        try {
+            FloatingBubbleService.restoreLocalIsland()
+        } catch (_: Throwable) {}
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {

@@ -43,10 +43,53 @@ class FloatingBubbleService : Service() {
 
         var onBubbleActionListener: BubbleActionListener? = null
 
+        /**
+         * Isla exacta sobre cámara: cuando el AccessibilityService está activo,
+         * él hospeda la isla con TYPE_ACCESSIBILITY_OVERLAY (por encima de la
+         * status-bar, con touch). Este servicio conserva solo el FGS + routing.
+         */
+        @Volatile
+        var accessibilityIsland: DynamicIslandController? = null
+
         fun updateState(state: String) {
+            val acc = accessibilityIsland
+            if (acc != null) {
+                val prevState = lastVisualState
+                lastVisualState = state
+                instance?.bubbleView?.setState(state)
+                when (state) {
+                    "recording" -> acc.startRecordingUI()
+                    "transcribing" -> acc.showProcessingUI()
+                    "success" -> acc.showSuccessUI("")
+                    "idle" -> {
+                        if (prevState == "transcribing") {
+                            acc.showSuccessUI("")
+                        } else {
+                            acc.collapseToCompact()
+                        }
+                    }
+                    else -> acc.collapseToCompact()
+                }
+                return
+            }
             val prevState = lastVisualState
             lastVisualState = state
             instance?.updateBubbleVisualState(state, prevState)
+        }
+
+        fun reloadIsland() {
+            accessibilityIsland?.reloadConfiguration()
+            instance?.dynamicIslandController?.reloadConfiguration()
+        }
+
+        /** La isla de accesibilidad ya está activa: soltar el duplicado local. */
+        fun dropLocalIsland() {
+            instance?.releaseLocalIslandForAccessibility()
+        }
+
+        /** Accesibilidad desconectada: restaurar fallback local si corresponde. */
+        fun restoreLocalIsland() {
+            instance?.restoreLocalIslandIfNeeded()
         }
 
         private var instance: FloatingBubbleService? = null
@@ -161,6 +204,8 @@ class FloatingBubbleService : Service() {
     }
 
     private fun setupDynamicIsland() {
+        // Si la isla de accesibilidad ya está activa, no crear duplicado local.
+        if (accessibilityIsland != null) return
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         dynamicIslandController = DynamicIslandController(
             context = this,
@@ -175,6 +220,27 @@ class FloatingBubbleService : Service() {
                 onBubbleActionListener?.onBubbleTap()
             }
         )
+    }
+
+    /** Suelta la isla local sin detener el FGS (la accesibilidad toma el relevo). */
+    fun releaseLocalIslandForAccessibility() {
+        try {
+            dynamicIslandController?.destroy()
+        } catch (_: Exception) {}
+        dynamicIslandController = null
+    }
+
+    /** Recrea el fallback local si no hay isla de accesibilidad activa. */
+    fun restoreLocalIslandIfNeeded() {
+        try {
+            if (dynamicIslandController != null) return
+            if (accessibilityIsland != null) return
+            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val dockingMode = prefs.getString("flutter.bubble_docking_mode", null)
+                ?: prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
+            if (dockingMode == "classic_bubble") return
+            setupDynamicIsland()
+        } catch (_: Exception) {}
     }
 
     private fun setupBubbleView() {
