@@ -1,16 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
+import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  const bubbleChannel = MethodChannel(FloatingBubbleService.channelName);
+  const keyboardChannel = MethodChannel(KeyboardService.channelName);
+
   late StorageService storage;
 
   setUp(() {
+    messenger.setMockMethodCallHandler(bubbleChannel, (MethodCall call) async {
+      switch (call.method) {
+        case 'canDrawOverlays':
+          return true;
+        case 'requestOverlayPermission':
+          return true;
+        case 'startBubble':
+          return true;
+        case 'stopBubble':
+          return true;
+        case 'isBubbleRunning':
+          return true;
+        default:
+          return null;
+      }
+    });
+
+    messenger.setMockMethodCallHandler(keyboardChannel, (MethodCall call) async {
+      switch (call.method) {
+        case 'isKeyboardEnabled':
+          return false;
+        case 'isKeyboardSelected':
+          return false;
+        default:
+          return null;
+      }
+    });
+
     SharedPreferences.setMockInitialValues({
       'floating_bubble_enabled': true,
       'bubble_docking_mode': 'dynamic_island',
@@ -25,11 +60,17 @@ void main() {
     storage = StorageService();
   });
 
+  tearDown(() {
+    messenger.setMockMethodCallHandler(bubbleChannel, null);
+    messenger.setMockMethodCallHandler(keyboardChannel, null);
+  });
+
   Widget createTestWidget() {
     return MaterialApp(
       home: SettingsScreen(
         storageService: storage,
         floatingBubbleService: FloatingBubbleService(),
+        keyboardService: KeyboardService(channel: keyboardChannel),
       ),
     );
   }

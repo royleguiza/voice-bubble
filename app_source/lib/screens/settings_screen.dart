@@ -727,6 +727,24 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       children: [
+        // Floating Bubble section
+        Text(
+          'Burbuja flotante',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Activar burbuja flotante'),
+          subtitle: const Text(
+            'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
+          ),
+          value: _isBubbleEnabled,
+          onChanged: _toggleBubble,
+        ),
+
+        const SizedBox(height: 16),
+
         // Sección Independiente: Píldora e Isla Dinámica
         Text(
           'Píldora e Isla Dinámica',
@@ -1506,26 +1524,11 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             const SizedBox(height: 12),
 
-            // Interruptor principal
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Activar burbuja flotante'),
-              subtitle: const Text(
-                'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
-              ),
-              value: _isBubbleEnabled,
-              onChanged: _toggleBubble,
+            // Modo de contenedor: Píldora vs Burbuja Clásica
+            Text(
+              'Tipo de Contenedor',
+              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-
-            if (_isBubbleEnabled) ...[
-              const Divider(),
-              const SizedBox(height: 8),
-
-              // Modo de contenedor: Píldora vs Burbuja Clásica
-              Text(
-                'Tipo de Contenedor',
-                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
               const SizedBox(height: 6),
               SegmentedButton<String>(
                 key: const ValueKey('island-docking-mode-selector'),
@@ -1806,10 +1809,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
               ],
             ],
-          ],
+          ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildStepperBtn(String label, VoidCallback onPressed) {
