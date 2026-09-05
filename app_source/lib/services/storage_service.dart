@@ -358,6 +358,128 @@ class StorageService {
     await prefs.setInt(kbTrackpadAutoReturnKey, seconds);
   }
 
+  // --- MEJ-18: Píldora Flotante e Isla Dinámica (Laboratorio UI) ---
+  static const String bubbleDockingModeKey = 'bubble_docking_mode';
+  static const String defaultBubbleDockingMode = 'dynamic_island'; // 'dynamic_island', 'classic_bubble'
+  static const List<String> bubbleDockingModes = ['dynamic_island', 'classic_bubble'];
+
+  static const String islandPosXKey = 'island_pos_x';
+  static const int defaultIslandPosX = 0; // px [-160, 160]
+
+  static const String islandPosYKey = 'island_pos_y';
+  static const int defaultIslandPosY = 12; // px [0, 120]
+
+  static const String islandWidthKey = 'island_width';
+  static const int defaultIslandWidth = 184; // px [130, 320]
+
+  static const String islandHeightKey = 'island_height';
+  static const int defaultIslandHeight = 36; // px [28, 48]
+
+  static const String islandSlotOrderKey = 'island_slot_order';
+  static const String defaultIslandSlotOrder = 'trackpad_camera_mic'; // 'trackpad_camera_mic', 'mic_camera_trackpad'
+  static const List<String> islandSlotOrders = ['trackpad_camera_mic', 'mic_camera_trackpad'];
+
+  static const String islandThemeKey = 'island_theme';
+  static const String defaultIslandTheme = 'glass'; // 'glass', 'dark', 'light'
+  static const List<String> islandThemes = ['glass', 'dark', 'light'];
+
+  static const String islandWaveformEnabledKey = 'island_waveform_enabled';
+  static const bool defaultIslandWaveformEnabled = true;
+
+  Future<String> getBubbleDockingMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(bubbleDockingModeKey);
+    return bubbleDockingModes.contains(val) ? val! : defaultBubbleDockingMode;
+  }
+
+  Future<void> setBubbleDockingMode(String mode) async {
+    if (!bubbleDockingModes.contains(mode)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(bubbleDockingModeKey, mode);
+  }
+
+  Future<int> getIslandPosX() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getInt(islandPosXKey) ?? defaultIslandPosX;
+    return val.clamp(-160, 160);
+  }
+
+  Future<void> setIslandPosX(int x) async {
+    final clamped = x.clamp(-160, 160);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(islandPosXKey, clamped);
+  }
+
+  Future<int> getIslandPosY() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getInt(islandPosYKey) ?? defaultIslandPosY;
+    return val.clamp(0, 120);
+  }
+
+  Future<void> setIslandPosY(int y) async {
+    final clamped = y.clamp(0, 120);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(islandPosYKey, clamped);
+  }
+
+  Future<int> getIslandWidth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getInt(islandWidthKey) ?? defaultIslandWidth;
+    return val.clamp(130, 320);
+  }
+
+  Future<void> setIslandWidth(int width) async {
+    final clamped = width.clamp(130, 320);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(islandWidthKey, clamped);
+  }
+
+  Future<int> getIslandHeight() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getInt(islandHeightKey) ?? defaultIslandHeight;
+    return val.clamp(28, 48);
+  }
+
+  Future<void> setIslandHeight(int height) async {
+    final clamped = height.clamp(28, 48);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(islandHeightKey, clamped);
+  }
+
+  Future<String> getIslandSlotOrder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(islandSlotOrderKey);
+    return islandSlotOrders.contains(val) ? val! : defaultIslandSlotOrder;
+  }
+
+  Future<void> setIslandSlotOrder(String order) async {
+    if (!islandSlotOrders.contains(order)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(islandSlotOrderKey, order);
+  }
+
+  Future<String> getIslandTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(islandThemeKey);
+    return islandThemes.contains(val) ? val! : defaultIslandTheme;
+  }
+
+  Future<void> setIslandTheme(String theme) async {
+    if (!islandThemes.contains(theme)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(islandThemeKey, theme);
+  }
+
+  Future<bool> getIslandWaveformEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(islandWaveformEnabledKey) ?? defaultIslandWaveformEnabled;
+  }
+
+  Future<void> setIslandWaveformEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(islandWaveformEnabledKey, enabled);
+  }
+
   // --- Espejo D7: credenciales STT para el teclado nativo (K3) ---
   // El teclado Kotlin lee estas claves con prefijo "flutter." en
   // FlutterSharedPreferences. La API key vive aqui en texto plano dentro de

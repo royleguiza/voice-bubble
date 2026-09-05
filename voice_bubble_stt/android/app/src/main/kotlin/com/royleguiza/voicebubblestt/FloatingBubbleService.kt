@@ -82,7 +82,8 @@ class FloatingBubbleService : Service() {
         }
 
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val dockingMode = prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
+        val dockingMode = prefs.getString("flutter.bubble_docking_mode", null)
+            ?: prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
         if (dockingMode == "classic_bubble") {
             setupBubbleView()
         } else {

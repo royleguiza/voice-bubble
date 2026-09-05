@@ -311,8 +311,39 @@ if os.path.isfile(dart_settings_test):
         stt_content = f.read()
     check("settings_trackpad_test.dart prueba renderizado y persistencia de widgets", "kb-trackpad-scroll-position-selector" in stt_content and "kb-trackpad-pointer-style-selector" in stt_content)
 
+# --- TEST 12: Batería Píldora e Isla Dinámica (MEJ-18 / Hardware Tuning) ---
+check("StorageService define clave bubble_docking_mode", "bubble_docking_mode" in storage_content)
+check("StorageService define clave island_pos_x", "island_pos_x" in storage_content)
+check("StorageService define clave island_pos_y", "island_pos_y" in storage_content)
+check("StorageService define clave island_width", "island_width" in storage_content)
+check("StorageService define clave island_height", "island_height" in storage_content)
+check("StorageService define clave island_slot_order", "island_slot_order" in storage_content)
+check("StorageService define clave island_theme", "island_theme" in storage_content)
+check("StorageService define clave island_waveform_enabled", "island_waveform_enabled" in storage_content)
+
+check("SettingsScreen tiene sección independiente 'Píldora e Isla Dinámica'", "Píldora e Isla Dinámica" in settings_content)
+check("SettingsScreen tiene tarjeta 'Pastilla Flotante Inteligente'", "Pastilla Flotante Inteligente" in settings_content)
+check("SettingsScreen tiene selector de modo de contenedor", "island-docking-mode-selector" in settings_content)
+check("SettingsScreen tiene presets de hardware de cámara", "Cámara Central" in settings_content and "Perforada Izquierda" in settings_content and "Notch Superior" in settings_content)
+check("SettingsScreen tiene sliders de calibración fina X, Y, W, H", "island-slider-x" in settings_content and "island-slider-y" in settings_content and "island-slider-w" in settings_content and "island-slider-h" in settings_content)
+check("SettingsScreen tiene steppers finos de ajuste milimétrico", "-5 px" in settings_content and "+5 px" in settings_content and "-1 px" in settings_content and "+1 px" in settings_content)
+check("SettingsScreen tiene botón de inversión de ranuras", "island-swap-slots-btn" in settings_content)
+check("SettingsScreen tiene selector de tema de la pastilla", "island-theme-selector" in settings_content)
+check("SettingsScreen tiene switch de onda de voz reactiva", "island-waveform-switch" in settings_content)
+
+check("DynamicIslandController carga preferencias nativas de posición y tamaño", "flutter.island_pos_x" in dic_content and "flutter.island_pos_y" in dic_content and "flutter.island_width" in dic_content and "flutter.island_height" in dic_content)
+check("DynamicIslandController implementa reloadConfiguration", "fun reloadConfiguration()" in dic_content)
+check("DynamicIslandController implementa orden dinámico de ranuras", "slotOrder" in dic_content and "mic_camera_trackpad" in dic_content)
+check("DynamicIslandController implementa temas visuales glass, dark y light", "islandTheme" in dic_content and "light" in dic_content and "dark" in dic_content)
+
+dart_island_storage_test = os.path.join(WORKSPACE, "app_source/test/services/island_storage_test.dart")
+dart_island_settings_test = os.path.join(WORKSPACE, "app_source/test/screens/settings_island_test.dart")
+
+check("island_storage_test.dart existe", os.path.isfile(dart_island_storage_test))
+check("settings_island_test.dart existe", os.path.isfile(dart_island_settings_test))
+
 print("\n============================================================")
-print(f" RESULTADO SUITE TRACKPAD: {PASSED} pasados, {FAILED} fallidos.")
+print(f" RESULTADO SUITE TRACKPAD & ISLA: {PASSED} pasados, {FAILED} fallidos.")
 print("============================================================\n")
 
 if FAILED > 0:

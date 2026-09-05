@@ -91,8 +91,28 @@ class DynamicIslandController(
     private val isNight: Boolean
         get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
+    private var posX: Int = 0
+    private var posY: Int = 12
+    private var widthDp: Int = 184
+    private var heightDp: Int = 36
+    private var slotOrder: String = "trackpad_camera_mic"
+    private var islandTheme: String = "glass"
+    private var waveformEnabled: Boolean = true
+
     init {
+        loadPreferences()
         setupIslandLayout()
+    }
+
+    private fun loadPreferences() {
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        posX = (prefs.all["flutter.island_pos_x"] as? Number)?.toInt() ?: 0
+        posY = (prefs.all["flutter.island_pos_y"] as? Number)?.toInt() ?: 12
+        widthDp = (prefs.all["flutter.island_width"] as? Number)?.toInt() ?: 184
+        heightDp = (prefs.all["flutter.island_height"] as? Number)?.toInt() ?: 36
+        slotOrder = prefs.getString("flutter.island_slot_order", "trackpad_camera_mic") ?: "trackpad_camera_mic"
+        islandTheme = prefs.getString("flutter.island_theme", "glass") ?: "glass"
+        waveformEnabled = prefs.getBoolean("flutter.island_waveform_enabled", true)
     }
 
     private fun setupIslandLayout() {
@@ -103,8 +123,8 @@ class DynamicIslandController(
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        val initialW = (184 * density).toInt()
-        val initialH = (36 * density).toInt()
+        val initialW = (widthDp * density).toInt()
+        val initialH = (heightDp * density).toInt()
 
         islandLayoutParams = WindowManager.LayoutParams(
             initialW,
@@ -116,11 +136,12 @@ class DynamicIslandController(
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = (12 * density).toInt()
+            x = (posX * density).toInt()
+            y = (posY * density).toInt()
         }
 
         val root = FrameLayout(context).apply {
-            background = createIslandBackground(cornerRadius = 18f * density)
+            background = createIslandBackground(cornerRadius = (heightDp / 2f) * density)
             elevation = 16f * density
         }
 
@@ -146,13 +167,47 @@ class DynamicIslandController(
         } catch (_: Exception) {}
     }
 
+    fun reloadConfiguration() {
+        loadPreferences()
+        if (!isRecording && !isHistoryOpen) {
+            islandLayoutParams.x = (posX * density).toInt()
+            islandLayoutParams.y = (posY * density).toInt()
+            islandLayoutParams.width = (widthDp * density).toInt()
+            islandLayoutParams.height = (heightDp * density).toInt()
+            islandContainer?.background = createIslandBackground(cornerRadius = (heightDp / 2f) * density)
+            islandContainer?.let { root ->
+                try {
+                    windowManager.updateViewLayout(root, islandLayoutParams)
+                } catch (_: Exception) {}
+            }
+            compactView?.let { old ->
+                islandContainer?.removeView(old)
+                val newView = buildCompactView()
+                compactView = newView
+                islandContainer?.addView(newView, 0)
+            }
+        }
+    }
+
     private fun createIslandBackground(cornerRadius: Float): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             this.cornerRadius = cornerRadius
-            val bgColor = if (isNight) Color.parseColor("#E60A0B10") else Color.parseColor("#E61F2430")
-            setColor(bgColor)
-            setStroke((1.2f * density).toInt(), Color.parseColor("#33FFFFFF"))
+            when (islandTheme) {
+                "light" -> {
+                    setColor(Color.parseColor("#F5FFFFFF"))
+                    setStroke((1.2f * density).toInt(), Color.parseColor("#33000000"))
+                }
+                "dark" -> {
+                    setColor(Color.parseColor("#F00A0B10"))
+                    setStroke((1.2f * density).toInt(), Color.parseColor("#33FFFFFF"))
+                }
+                else -> {
+                    val bgColor = if (isNight) Color.parseColor("#E60A0B10") else Color.parseColor("#E61F2430")
+                    setColor(bgColor)
+                    setStroke((1.2f * density).toInt(), Color.parseColor("#40FFFFFF"))
+                }
+            }
         }
     }
 
@@ -166,10 +221,12 @@ class DynamicIslandController(
             )
             setPadding((6 * density).toInt(), 0, (6 * density).toInt(), 0)
 
-            // Slot Izquierdo: Lanzador de Trackpad Flotante
+            val isLight = islandTheme == "light"
+            val iconColor = if (isLight) Color.parseColor("#1F2430") else Color.WHITE
+
             val btnTrackpad = ImageView(context).apply {
                 setImageResource(R.drawable.ic_trackpad)
-                setColorFilter(Color.WHITE)
+                setColorFilter(iconColor)
                 val pad = (6 * density).toInt()
                 setPadding(pad, pad, pad, pad)
                 val size = (32 * density).toInt()
@@ -179,9 +236,7 @@ class DynamicIslandController(
                     FloatingTrackpadService.start(context)
                 }
             }
-            addView(btnTrackpad)
 
-            // Espaciador / Orificio Central (Cámara frontal / Cutout)
             val camPunch = FrameLayout(context).apply {
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.0f)
                 val dot = View(context).apply {
@@ -192,7 +247,8 @@ class DynamicIslandController(
                     background = GradientDrawable().apply {
                         shape = GradientDrawable.OVAL
                         setColor(Color.BLACK)
-                        setStroke((1f * density).toInt(), Color.parseColor("#44FFFFFF"))
+                        val strokeColor = if (isLight) Color.parseColor("#33000000") else Color.parseColor("#44FFFFFF")
+                        setStroke((1f * density).toInt(), strokeColor)
                     }
                 }
                 addView(dot)
@@ -201,12 +257,11 @@ class DynamicIslandController(
                     toggleHistoryModal()
                 }
             }
-            addView(camPunch)
 
-            // Slot Derecho: Micrófono de Grabación
             val btnMic = ImageView(context).apply {
                 setImageResource(R.drawable.kb_ic_mic)
-                setColorFilter(ContextCompat.getColor(context, R.color.kb_key_bg_accent))
+                val micColor = ContextCompat.getColor(context, R.color.kb_key_bg_accent)
+                setColorFilter(micColor)
                 val pad = (6 * density).toInt()
                 setPadding(pad, pad, pad, pad)
                 val size = (32 * density).toInt()
@@ -216,7 +271,16 @@ class DynamicIslandController(
                     onMicTap()
                 }
             }
-            addView(btnMic)
+
+            if (slotOrder == "mic_camera_trackpad") {
+                addView(btnMic)
+                addView(camPunch)
+                addView(btnTrackpad)
+            } else {
+                addView(btnTrackpad)
+                addView(camPunch)
+                addView(btnMic)
+            }
         }
     }
 

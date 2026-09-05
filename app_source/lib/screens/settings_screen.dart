@@ -64,6 +64,14 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _trackpadHaptic = StorageService.defaultTrackpadHaptic;
   String _trackpadPointerStyle = StorageService.defaultTrackpadPointerStyle;
   int _trackpadAutoReturn = StorageService.defaultTrackpadAutoReturn;
+  String _bubbleDockingMode = StorageService.defaultBubbleDockingMode;
+  int _islandPosX = StorageService.defaultIslandPosX;
+  int _islandPosY = StorageService.defaultIslandPosY;
+  int _islandWidth = StorageService.defaultIslandWidth;
+  int _islandHeight = StorageService.defaultIslandHeight;
+  String _islandSlotOrder = StorageService.defaultIslandSlotOrder;
+  String _islandTheme = StorageService.defaultIslandTheme;
+  bool _islandWaveformEnabled = StorageService.defaultIslandWaveformEnabled;
   List<Snippet> _snippets = [];
 
   @override
@@ -115,6 +123,14 @@ class _SettingsScreenState extends State<SettingsScreen>
     final trackpadHaptic = await _storageService.getTrackpadHaptic();
     final trackpadPointerStyle = await _storageService.getTrackpadPointerStyle();
     final trackpadAutoReturn = await _storageService.getTrackpadAutoReturn();
+    final bubbleDockingMode = await _storageService.getBubbleDockingMode();
+    final islandPosX = await _storageService.getIslandPosX();
+    final islandPosY = await _storageService.getIslandPosY();
+    final islandWidth = await _storageService.getIslandWidth();
+    final islandHeight = await _storageService.getIslandHeight();
+    final islandSlotOrder = await _storageService.getIslandSlotOrder();
+    final islandTheme = await _storageService.getIslandTheme();
+    final islandWaveformEnabled = await _storageService.getIslandWaveformEnabled();
     // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
     if (apiKey.isNotEmpty) {
       try {
@@ -151,6 +167,14 @@ class _SettingsScreenState extends State<SettingsScreen>
       _trackpadHaptic = trackpadHaptic;
       _trackpadPointerStyle = trackpadPointerStyle;
       _trackpadAutoReturn = trackpadAutoReturn;
+      _bubbleDockingMode = bubbleDockingMode;
+      _islandPosX = islandPosX;
+      _islandPosY = islandPosY;
+      _islandWidth = islandWidth;
+      _islandHeight = islandHeight;
+      _islandSlotOrder = islandSlotOrder;
+      _islandTheme = islandTheme;
+      _islandWaveformEnabled = islandWaveformEnabled;
     });
   }
 
@@ -431,6 +455,74 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _storageService.setTrackpadAutoReturn(value);
   }
 
+  Future<void> _saveBubbleDockingMode(String value) async {
+    setState(() => _bubbleDockingMode = value);
+    await _storageService.setBubbleDockingMode(value);
+  }
+
+  Future<void> _saveIslandPosX(int value) async {
+    final clamped = value.clamp(-160, 160);
+    setState(() => _islandPosX = clamped);
+    await _storageService.setIslandPosX(clamped);
+  }
+
+  Future<void> _saveIslandPosY(int value) async {
+    final clamped = value.clamp(0, 120);
+    setState(() => _islandPosY = clamped);
+    await _storageService.setIslandPosY(clamped);
+  }
+
+  Future<void> _saveIslandWidth(int value) async {
+    final clamped = value.clamp(130, 320);
+    setState(() => _islandWidth = clamped);
+    await _storageService.setIslandWidth(clamped);
+  }
+
+  Future<void> _saveIslandHeight(int value) async {
+    final clamped = value.clamp(28, 48);
+    setState(() => _islandHeight = clamped);
+    await _storageService.setIslandHeight(clamped);
+  }
+
+  Future<void> _saveIslandSlotOrder(String value) async {
+    setState(() => _islandSlotOrder = value);
+    await _storageService.setIslandSlotOrder(value);
+  }
+
+  Future<void> _saveIslandTheme(String value) async {
+    setState(() => _islandTheme = value);
+    await _storageService.setIslandTheme(value);
+  }
+
+  Future<void> _saveIslandWaveformEnabled(bool value) async {
+    setState(() => _islandWaveformEnabled = value);
+    await _storageService.setIslandWaveformEnabled(value);
+  }
+
+  Future<void> _applyHardwarePreset(String preset) async {
+    int x = 0;
+    int y = 12;
+    int w = 184;
+    int h = 36;
+    if (preset == 'left') {
+      x = -108;
+      y = 12;
+    } else if (preset == 'notch') {
+      x = 0;
+      y = 0;
+    }
+    setState(() {
+      _islandPosX = x;
+      _islandPosY = y;
+      _islandWidth = w;
+      _islandHeight = h;
+    });
+    await _storageService.setIslandPosX(x);
+    await _storageService.setIslandPosY(y);
+    await _storageService.setIslandWidth(w);
+    await _storageService.setIslandHeight(h);
+  }
+
   /// Relectura manual (botón Actualizar) del estado del teclado.
   Future<void> _loadKeyboardStatus() async {
     final status = await _readKeyboardStatus();
@@ -635,21 +727,20 @@ class _SettingsScreenState extends State<SettingsScreen>
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       children: [
-        // Floating Bubble section
+        // Sección Independiente: Píldora e Isla Dinámica
         Text(
-          'Burbuja flotante',
+          'Píldora e Isla Dinámica',
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        const SizedBox(height: 8),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Activar burbuja flotante'),
-          subtitle: const Text(
-            'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
-          ),
-          value: _isBubbleEnabled,
-          onChanged: _toggleBubble,
+        const SizedBox(height: 4),
+        Text(
+          'Pastilla inteligente flotante sobre la cámara frontal o notch, con calibración milimétrica, ranuras de acceso y morphing de historial.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
+        const SizedBox(height: 8),
+        _buildDynamicIslandCard(context),
 
         const SizedBox(height: 24),
         const Divider(),
@@ -1368,7 +1459,423 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildSnippetsTab(BuildContext context) {
+  Widget _buildDynamicIslandCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final variantColor = theme.colorScheme.onSurfaceVariant;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.smart_button_outlined,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Pastilla Flotante Inteligente',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'X: ${_islandPosX}px | Y: ${_islandPosY}px',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Alinea la pastilla sobre el orificio de la cámara frontal o notch con precisión milimétrica.',
+              style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+            ),
+            const SizedBox(height: 12),
+
+            // Interruptor principal
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Activar burbuja flotante'),
+              subtitle: const Text(
+                'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
+              ),
+              value: _isBubbleEnabled,
+              onChanged: _toggleBubble,
+            ),
+
+            if (_isBubbleEnabled) ...[
+              const Divider(),
+              const SizedBox(height: 8),
+
+              // Modo de contenedor: Píldora vs Burbuja Clásica
+              Text(
+                'Tipo de Contenedor',
+                style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              SegmentedButton<String>(
+                key: const ValueKey('island-docking-mode-selector'),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: 'dynamic_island',
+                    label: Text('Píldora (Cámara/Notch)'),
+                  ),
+                  ButtonSegment(
+                    value: 'classic_bubble',
+                    label: Text('Burbuja Circular'),
+                  ),
+                ],
+                selected: {_bubbleDockingMode},
+                onSelectionChanged: (s) => _saveBubbleDockingMode(s.first),
+              ),
+
+              if (_bubbleDockingMode == 'dynamic_island') ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+
+                // Presets de Hardware
+                Text(
+                  'Presets de Hardware (Cámara y Notch)',
+                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Configura instantáneamente la posición según la perforación de tu pantalla.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _buildIslandPresetBtn(
+                      title: 'Cámara Central',
+                      subtitle: 'X: 0px | Y: 12px',
+                      isActive: _islandPosX == 0 && _islandPosY == 12 && _islandWidth == 184 && _islandHeight == 36,
+                      onTap: () => _applyHardwarePreset('center'),
+                    ),
+                    _buildIslandPresetBtn(
+                      title: 'Perforada Izquierda',
+                      subtitle: 'X: -108px | Y: 12px',
+                      isActive: _islandPosX == -108 && _islandPosY == 12,
+                      onTap: () => _applyHardwarePreset('left'),
+                    ),
+                    _buildIslandPresetBtn(
+                      title: 'Notch Superior',
+                      subtitle: 'X: 0px | Y: 0px',
+                      isActive: _islandPosX == 0 && _islandPosY == 0,
+                      onTap: () => _applyHardwarePreset('notch'),
+                    ),
+                    _buildIslandPresetBtn(
+                      title: 'Restablecer',
+                      subtitle: 'Valores base',
+                      isActive: false,
+                      onTap: () => _applyHardwarePreset('reset'),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+
+                // Calibración Píxel por Píxel
+                Text(
+                  'Calibración Píxel por Píxel',
+                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Ajuste milimétrico fino para hacer coincidir con exactitud la pastilla y el sensor frontal.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+                ),
+                const SizedBox(height: 12),
+
+                // Eje X
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Posición Eje X (Horizontal)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text('${_islandPosX} px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                  ],
+                ),
+                Slider(
+                  key: const ValueKey('island-slider-x'),
+                  min: -160,
+                  max: 160,
+                  divisions: 320,
+                  value: _islandPosX.toDouble(),
+                  onChanged: (v) => _saveIslandPosX(v.round()),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildStepperBtn('-5 px', () => _saveIslandPosX(_islandPosX - 5)),
+                    const SizedBox(width: 8),
+                    _buildStepperBtn('-1 px', () => _saveIslandPosX(_islandPosX - 1)),
+                    const SizedBox(width: 8),
+                    _buildStepperBtn('+1 px', () => _saveIslandPosX(_islandPosX + 1)),
+                    const SizedBox(width: 8),
+                    _buildStepperBtn('+5 px', () => _saveIslandPosX(_islandPosX + 5)),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Eje Y
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Posición Eje Y (Vertical)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text('${_islandPosY} px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                  ],
+                ),
+                Slider(
+                  key: const ValueKey('island-slider-y'),
+                  min: 0,
+                  max: 120,
+                  divisions: 120,
+                  value: _islandPosY.toDouble(),
+                  onChanged: (v) => _saveIslandPosY(v.round()),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildStepperBtn('-5 px', () => _saveIslandPosY(_islandPosY - 5)),
+                    const SizedBox(width: 8),
+                    _buildStepperBtn('-1 px', () => _saveIslandPosY(_islandPosY - 1)),
+                    const SizedBox(width: 8),
+                    _buildStepperBtn('+1 px', () => _saveIslandPosY(_islandPosY + 1)),
+                    const SizedBox(width: 8),
+                    _buildStepperBtn('+5 px', () => _saveIslandPosY(_islandPosY + 5)),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Ancho en reposo
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Ancho en Reposo', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text('${_islandWidth} px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                  ],
+                ),
+                Slider(
+                  key: const ValueKey('island-slider-w'),
+                  min: 130,
+                  max: 320,
+                  divisions: 190,
+                  value: _islandWidth.toDouble(),
+                  onChanged: (v) => _saveIslandWidth(v.round()),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildStepperBtn('-4 px', () => _saveIslandWidth(_islandWidth - 4)),
+                    const SizedBox(width: 16),
+                    _buildStepperBtn('+4 px', () => _saveIslandWidth(_islandWidth + 4)),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Grosor / Alto
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Grosor / Alto', style: TextStyle(fontWeight: FontWeight.w600)),
+                    Text('${_islandHeight} px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                  ],
+                ),
+                Slider(
+                  key: const ValueKey('island-slider-h'),
+                  min: 28,
+                  max: 48,
+                  divisions: 20,
+                  value: _islandHeight.toDouble(),
+                  onChanged: (v) => _saveIslandHeight(v.round()),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildStepperBtn('-2 px', () => _saveIslandHeight(_islandHeight - 2)),
+                    const SizedBox(width: 16),
+                    _buildStepperBtn('+2 px', () => _saveIslandHeight(_islandHeight + 2)),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+
+                // Ranuras de Acceso Rápido (Slots)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Ranuras de Acceso Rápido',
+                            style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _islandSlotOrder == 'trackpad_camera_mic'
+                                ? 'Izquierda: Trackpad | Centro: Cámara | Derecha: Mic'
+                                : 'Izquierda: Mic | Centro: Cámara | Derecha: Trackpad',
+                            style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      key: const ValueKey('island-swap-slots-btn'),
+                      icon: const Icon(Icons.swap_horiz, size: 18),
+                      label: const Text('Invertir'),
+                      onPressed: () {
+                        final next = _islandSlotOrder == 'trackpad_camera_mic'
+                            ? 'mic_camera_trackpad'
+                            : 'trackpad_camera_mic';
+                        _saveIslandSlotOrder(next);
+                      },
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+
+                // Tema visual de la píldora
+                Text(
+                  'Tema Visual de la Píldora',
+                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                SegmentedButton<String>(
+                  key: const ValueKey('island-theme-selector'),
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(
+                      value: 'glass',
+                      label: Text('Liquid Glass'),
+                    ),
+                    ButtonSegment(
+                      value: 'dark',
+                      label: Text('Oscuro'),
+                    ),
+                    ButtonSegment(
+                      value: 'light',
+                      label: Text('Claro'),
+                    ),
+                  ],
+                  selected: {_islandTheme},
+                  onSelectionChanged: (s) => _saveIslandTheme(s.first),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Onda de voz reactiva
+                SwitchListTile(
+                  key: const ValueKey('island-waveform-switch'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Simulación de Voz Reactiva'),
+                  subtitle: const Text(
+                    'Animación dinámica de audio al hablar durante la grabación.',
+                  ),
+                  value: _islandWaveformEnabled,
+                  onChanged: _saveIslandWaveformEnabled,
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepperBtn(String label, VoidCallback onPressed) {
+    return SizedBox(
+      height: 32,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          minimumSize: const Size(36, 32),
+        ),
+        onPressed: onPressed,
+        child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildIslandPresetBtn({
+    required String title,
+    required String subtitle,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive
+              ? theme.colorScheme.primaryContainer
+              : theme.colorScheme.surfaceVariant.withOpacity(0.4),
+          border: Border.all(
+            color: isActive ? theme.colorScheme.primary : Colors.transparent,
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isActive
+                    ? theme.colorScheme.onPrimaryContainer
+                    : theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 10,
+                color: isActive
+                    ? theme.colorScheme.onPrimaryContainer.withOpacity(0.8)
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       children: [
