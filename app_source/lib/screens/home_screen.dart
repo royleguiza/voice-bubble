@@ -108,6 +108,15 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final key = await _secureStorage.read(key: 'groq_api_key') ?? '';
       _transcriptionService.updateApiKey(key);
+      // Auto-cura del espejo nativo (teclado/burbuja híbrida): si secure
+      // tiene key pero el espejo privado se perdió (instalaciones que
+      // pasaron por el modo bool-only), restaurarlo sin pedir reingreso.
+      // Best-effort: un fallo aquí nunca rompe la grabación de la app.
+      if (key.trim().isNotEmpty) {
+        try {
+          await _storageService.repairSttMirror();
+        } catch (_) {}
+      }
     } catch (_) {}
   }
 
@@ -404,6 +413,12 @@ class _HomeScreenState extends State<HomeScreen>
       }
 
       try {
+        // Anti-stale: la key puede haberse configurado/rotado en Ajustes
+        // o el servicio venir con key vacía tras muerte del proceso y tap
+        // de burbuja en segundo plano. Releer siempre antes de transcribir:
+        // elimina el "API key no configurada" fantasma en burbuja cuando
+        // la app sí transcribe bien.
+        await _loadApiKey();
         final result = await _transcriptionService.transcribe(path);
         await _publishTranscriptionResult(result);
       } catch (e) {
@@ -480,6 +495,8 @@ class _HomeScreenState extends State<HomeScreen>
     await _floatingBubbleService
         .updateBubbleState(BubbleVisualState.transcribing);
     try {
+      // Anti-stale también en reintento (misma causa que en _stopRecording).
+      await _loadApiKey();
       final result = await _transcriptionService.transcribe(path);
       await _publishTranscriptionResult(result);
     } catch (e) {

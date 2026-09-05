@@ -39,22 +39,26 @@ import java.io.IOException
  *   el hilo de captura "VbKeyboardRec" (bucle `AudioRecord.read`, exigido
  *   por la API de audio; vive solo durante la grabación).
  *
- * CONTRATO K3 DE LA API KEY (plan B verificado, NO reintroducir en claro):
- * - Dart guarda la key SOLO en flutter_secure_storage (`groq_api_key`).
- *   Verificado contra el fuente del plugin v9 (default sin aOptions, sin
- *   EncryptedSharedPreferences): archivo "FlutterSecureStorage", clave
- *   "<prefijo-base64>_groq_api_key", valor AES-GCM con clave envuelta en
- *   RSA dentro del Android Keystore. El IME no la lee (duplicar esa
- *   construcción cripto se rompería con cada migración de algoritmo).
- * - Lo que SÍ viaja por prefs (contrato docs/contract-keys.txt):
+ * CONTRATO K3 DE LA API KEY (espejo restaurado, verificado r53/r57):
+ * - Dart guarda la key en flutter_secure_storage (`groq_api_key`, fuente
+ *   de verdad para la app) Y en el espejo privado de prefs que lee este
+ *   cliente (misma clave de siempre, con el prefijo habitual). El IME
+ *   nativo no tiene FlutterEngine y no puede leer el keystore de
+ *   flutter_secure_storage sin duplicar su construcción cripto (frágil
+ *   ante migraciones de algoritmo); por eso el espejo es necesario.
+ * - El espejo vive en prefs PRIVADAS del paquete (MODE_PRIVATE,
+ *   inaccesibles para otras apps), jamás se loguea, jamás va al repo y
+ *   se borra con clearSttMirror. La regresión bool-only (solo presencia,
+ *   sin key real) dejaba "Falta la API key" permanente aunque la app
+ *   transcribía bien: NO reintroducir.
+ * - Lo que viaja por prefs (contrato docs/contract-keys.txt):
  *   `kb_stt_url`, `kb_stt_model`, `kb_stt_language` (con el prefijo
- *   "flutter." habitual) y el indicador de presencia
- *   `kb_stt_key_configured` (bool, NO la key; lo escribe
- *   `StorageService.saveSttMirror`). NOTA: se nombra sin prefijo a
- *   propósito para no alterar el guard de paridad de claves.
- * - `flutter.kb_stt_api_key` se conserva SOLO como fallback legacy de
- *   versiones previas (hoy siempre ausente: Dart lo borra al migrar).
- *   Clave ausente o vacía = fail-fast en el llamador (aviso "Falta la API
+ *   habitual) más la key espejo y el indicador de presencia
+ *   `kb_stt_key_configured` (bool para fail-fast "sin key" vs 401
+ *   "key inválida"; lo escribe `StorageService.saveSttMirror`). NOTA:
+ *   se nombran sin prefijo a propósito para no alterar el guard de
+ *   paridad de claves.
+ * - Clave ausente o vacía = fail-fast en el llamador (aviso "Falta la API
  *   key" hacia Ajustes), nunca un 401 por red.
  */
 class SpeechToTextClient(
@@ -79,8 +83,8 @@ class SpeechToTextClient(
     )
 
     /** Contrato D7: los Ajustes (Flutter) escriben estas claves espejo.
-     * Ver KDoc del contrato K3 arriba: la key viaja SOLO por
-     * flutter_secure_storage; aquí solo se lee el fallback legacy. */
+     * La key llega por el espejo privado (misma clave de siempre);
+     * ver KDoc del contrato K3 arriba. */
     fun loadConfig(): Config {
         val prefs = context.getSharedPreferences(
             "FlutterSharedPreferences", Context.MODE_PRIVATE,

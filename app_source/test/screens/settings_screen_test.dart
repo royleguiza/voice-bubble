@@ -633,8 +633,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final prefs = await SharedPreferences.getInstance();
-      // Contrato seguro: la key va al keystore, en prefs solo presencia.
-      expect(prefs.getString('kb_stt_api_key'), isNull);
+      // Contrato K3: la key va al keystore (fuente de verdad) Y al espejo
+      // privado que lee el IME nativo.
+      expect(prefs.getString('kb_stt_api_key'), 'gsk_espejo_123');
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
       expect(prefs.getString('kb_stt_model'), CloudSttService.model);
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
@@ -664,8 +665,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final prefs = await SharedPreferences.getInstance();
-      // Backfill: presencia + no sensibles, nunca la key en claro.
-      expect(prefs.getString('kb_stt_api_key'), isNull);
+      // Backfill: presencia + espejo privado + no sensibles.
+      expect(prefs.getString('kb_stt_api_key'), 'previa');
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
     });
   });

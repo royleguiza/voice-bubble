@@ -300,12 +300,28 @@ void main() {
       await service.saveSttMirror(apiKey: 'gsk_prueba_123');
 
       final prefs = await SharedPreferences.getInstance();
-      // La key JAMÁS va en claro a prefs: solo presencia + no sensibles.
-      expect(prefs.getString('kb_stt_api_key'), isNull);
+      // El IME nativo (sin FlutterEngine) lee la key del espejo privado;
+      // secure sigue siendo la fuente de verdad para la app.
+      expect(prefs.getString('kb_stt_api_key'), 'gsk_prueba_123');
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
       expect(prefs.getString('kb_stt_model'), CloudSttService.model);
       expect(prefs.getString('kb_stt_language'), CloudSttService.language);
+    });
+
+    test('repairSttMirror restaura el espejo sin reingreso', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      // Simula instalación que pasó por el modo bool-only: secure con key
+      // pero espejo privado vacío.
+      const storage = FlutterSecureStorage();
+      await storage.write(key: 'groq_api_key', value: 'gsk_reparada');
+      final repaired = await service.repairSttMirror();
+      expect(repaired, isTrue);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_stt_api_key'), 'gsk_reparada');
+      expect(prefs.getBool('kb_stt_key_configured'), isTrue);
     });
 
     test('clearSttMirror elimina todas las claves del espejo', () async {
