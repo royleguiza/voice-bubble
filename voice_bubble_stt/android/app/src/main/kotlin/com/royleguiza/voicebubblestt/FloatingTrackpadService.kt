@@ -31,7 +31,7 @@ import kotlin.math.abs
  * Servicio de superposición local para la Burbuja Flotante de Trackpad Independiente (Mouse Virtual).
  *
  * Servicio NORMAL bajo demanda (START_NOT_STICKY, sin foreground, sin accesibilidad):
- * lo arranca quien lo necesita (MainActivity/DynamicIsland) y el sistema no lo
+ * lo arranca quien lo necesita (MainActivity) y el sistema no lo
  * resucita solo si el proceso muere.
  *
  * Realidad del movimiento (perfil anti-Play-Protect, sin AccessibilityService
@@ -127,7 +127,7 @@ class FloatingTrackpadService : Service() {
         // START_NOT_STICKY: servicio de UI bajo demanda, sin foreground ni
         // estado que rescatar. Si el proceso muere, el sistema NO lo resucita
         // solo (evita burbujas fantasma y loops de reinicio); quien lo necesite
-        // (MainActivity/DynamicIsland) lo vuelve a arrancar explícitamente.
+        // (MainActivity) lo vuelve a arrancar explícitamente.
         return START_NOT_STICKY
     }
 

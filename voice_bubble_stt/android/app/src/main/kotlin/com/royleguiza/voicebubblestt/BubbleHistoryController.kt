@@ -30,8 +30,8 @@ import kotlin.math.min
 import org.json.JSONObject
 
 /**
- * Modal de historial para la BURBUJA CLÁSICA (hito B1–B7, paridad lab
- * `burbuja_lab.html`): nace por morph desde el punto de la burbuja hacia el
+ * Modal de historial para la BURBUJA CLÁSICA (hito B1–B7): nace por morph
+ * desde el punto de la burbuja hacia el
  * diagonal con más espacio, sin títulos ni textos — solo micrófono (estilo
  * `kb_ic_mic`, abajo-derecha) y rayita inferior (siempre abajo) que contrae
  * de vuelta al origen.
@@ -719,7 +719,7 @@ class BubbleHistoryController(
                 return
             }
             // Inserción directa si el teclado propio está activo; el texto
-            // siempre queda además en el portapapeles (paridad píldora).
+            // siempre queda además en el portapapeles.
             try {
                 VoiceKeyboardService.commitFromExternal(text)
             } catch (_: Throwable) {}

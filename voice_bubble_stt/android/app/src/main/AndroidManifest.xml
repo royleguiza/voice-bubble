@@ -32,7 +32,7 @@
 
         <!-- Sin AccessibilityService por perfil anti-Play-Protect (2026-09-05):
              la clase queda versionada pero NO declarada: el sistema jamás la
-             instancia (isConnected()=false) y el trackpad/isla degradan por
+             instancia (isConnected()=false) y el trackpad degrada por
              sus propios fallbacks. Ver AGENTS.md Estado. -->
         <service
             android:name=".VoiceKeyboardService"

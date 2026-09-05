@@ -165,7 +165,7 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 ### 2.7 [MEJ-09] Modo Trackpad y Puntero de Mouse Virtual Flotante
 * **Origen / Necesidad**: En interfaces densas (páginas web completas, Termux con interfaces CLI/TUI, editores como Acode o paneles de servidores), seleccionar texto pequeño o acertar a botones diminutos con los dedos resulta impreciso. Un modo Trackpad que transforme el teclado en una superficie de control con puntero de mouse en pantalla brinda precisión milimétrica.
 * **Comportamiento Esperado**:
-  - **Activación Rápida**: Desde el menú rápido de espacio (`MEJ-06`), acceso en barra superior (`MEJ-03`), botón de capa o desde la burbuja flotante / Dynamic Island.
+  - **Activación Rápida**: Desde el menú rápido de espacio (`MEJ-06`), acceso en barra superior (`MEJ-03`), botón de capa o desde la burbuja flotante.
   - **Superficie Táctil del Teclado (Trackpad View)**:
     - La vista del teclado se convierte en un panel táctil suave Glass con un cuadrado/área central de navegación.
     - Fila inferior con botones táctiles dedicados:
@@ -190,7 +190,7 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
   - *Viabilidad y Ventaja del Trackpad Flotante Autónomo (`FloatingTrackpadService.kt`)*:
     - Opera como un overlay flotante persistente (`TYPE_APPLICATION_OVERLAY`), completamente desacoplado del ciclo de vida del IME.
     - **Compatibilidad Universal**: Permite su uso simultáneo con cualquier teclado del sistema (Gboard, Samsung Keyboard, SwiftKey, etc.) o con el teclado cerrado, resolviendo el problema de contexto de ventana.
-    - Puede desplegarse directamente desde la burbuja flotante o la nueva Dynamic Island.
+    - Puede desplegarse directamente desde la burbuja flotante.
   - *Estrategia*: Se implementa el `FloatingTrackpadService` como servicio universal flotante, permitiendo al usuario alternar entre el trackpad flotante libre y la capa táctil integrada del teclado.
 * **Impacto Técnico**:
   - *Kotlin nativo*: En `VoiceKeyboardService.kt` se implementa `buildTrackpadLayer()`. Servicio autónomo `FloatingTrackpadService.kt` con ventana flotante redimensionable. Vinculación con el servicio de accesibilidad (`VoiceBubbleAccessibilityService`) para inyectar gestos de clic (`dispatchGesture`) y con el `WindowManager` para el puntero flotante (`PointerOverlayManager.kt` / `PointerOverlayView`).
@@ -217,30 +217,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 * **Impacto Técnico**:
   - *Kotlin nativo*: En `FloatingBubbleService.kt`, actualización del listener táctil `onTouch` para discriminar entre `ACTION_DOWN` sostenido (Long Press / Hold) y `ACTION_UP` rápido (Tap), y despliegue del popup `FloatingHistoryOverlayView` vía `WindowManager`.
   - *Flutter (Dart)*: Switch en `SettingsScreen` (Tab Burbuja) para elegir `flutter.bubble_trigger_mode` (`tap` vs `hold`).
-* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
-
----
-
-### 2.9 [MEJ-11] Modelos de Burbuja Dinámica Expandible (Morph-to-Pill, Cronómetro, Botones Rápidos y Auto-Enter)
-* **Origen / Necesidad**: La burbuja flotante fija puede resultar demasiado estática. Incorporar una versión dinámica que se expanda visualmente (al estilo de la tecla M4 del teclado y Dynamic Island), muestre el tiempo de grabación en vivo y permita acciones inmediatas como cancelar, enviar con `Auto-Enter` o insertar espacios agiliza el flujo en mensajería y terminal.
-* **Comportamiento Esperado**:
-  1. **Selector de Modelos de Burbuja en Ajustes (Tab Burbuja)**:
-     - **Modelo A: Clásica Mínima**: Círculo Liquid Glass discreto (56x56dp), animación pulsante sutil.
-     - **Modelo B: Dinámica Expandible (Pill Island)**:
-       - **En reposo**: Círculo Glass compacto en el borde de pantalla.
-       - **Al iniciar grabación**: La burbuja se expande horizontalmente a una **pastilla roja flotante (Floating Pill)** con:
-         - Punto pulsante indicador de grabación.
-         - Cronómetro `M:SS` en vivo.
-         - Botón táctil `[ ✕ Cancelar ]` para descartar el audio sin consumir tokens/API.
-       - **Al procesar**: Animación de 3 puntos en ola Liquid Glass.
-       - **Combo de Botones Auxiliares Rápidos (Opcional / Mini-Barra Adyacente)**:
-         - Mini píldoras adyacentes de 1 toque: `[ ↵ Enter ]`, `[ ␣ Espacio ]`, `[ ⌫ Borrar ]`.
-  2. **Opción Auto-Enter / Auto-Envío**:
-     - Switch en Ajustes: *"Auto-Enter al finalizar dictado en burbuja"*.
-     - Al concluir la transcripción, la burbuja pega el texto e inmediatamente inyecta un `ENTER / ACTION_SEND`, enviando el mensaje o ejecutando el comando en Termux sin requerir toques extra.
-* **Impacto Técnico**:
-  - *Kotlin nativo*: En `FloatingBubbleService.kt`, animación interpolada de `LayoutParams.width` en `windowManager` para transicionar de círculo a pastilla durante `recording`. Manejo de botones de acción rápida e inyección de `KEYCODE_ENTER` vía accesibilidad.
-  - *Flutter (Dart)*: Controles en `SettingsScreen` (Tab Burbuja): `flutter.bubble_style_model` (`classic` vs `dynamic_pill`) y `flutter.bubble_auto_enter_enabled`.
 * **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
 
 ---
@@ -378,32 +354,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
-### 2.16 [MEJ-18] Modo Isla Dinámica / Notch Interactivo Superior (Apple-style Dynamic Island & Camera Notch Docking)
-* **Origen / Necesidad**: Ofrecer una alternativa a la burbuja flotante tradicional integrando la interfaz de voz en la parte superior de la pantalla / orificio de la cámara frontal (Dynamic Island / Notch), de modo que nunca tape botones laterales ni el contenido central y se expanda suavemente solo cuando se interactúa con ella.
-* **Comportamiento Esperado**:
-  1. **Selector de Posicionamiento en Ajustes (Tab Burbuja)**:
-     - *Modo 1: Burbuja Flotante Libre*: Flota en los bordes laterales (actual).
-     - *Modo 2: Isla Dinámica / Notch Superior*: Anclada en el centro superior / cutout de cámara frontal.
-  2. **Estados y Animaciones Fluidas (Liquid Glass Island)**:
-     - **Reposo Compacto (Compact Pill)**: Píldora delgada discreta alrededor de la cámara frontal con micro-icono `🎤`.
-     - **Expansión al Grabar (Recording Island)**:
-       - Se expande hacia los laterales y hacia abajo de forma elástica.
-       - Muestra: Onda de audio / punto pulsante rojo + Cronómetro en vivo `M:SS` + Botón `[ ✕ Cancelar ]`.
-     - **Procesando / Transcribiendo**: Indicador de 3 puntos en ola Liquid Glass.
-     - **Resultado / Mini-Vista Previa**: Muestra brevemente las primeras palabras dictadas con animación de éxito y botón de auto-pegado o copia.
-  3. **Gestos en la Isla**:
-     - *Toque simple*: Iniciar / Detener grabación.
-     - *Deslizar hacia abajo (Swipe Down)*: Despliega la tarjeta expandida con el historial reciente o controles completos (`Enter`, `Espacio`, `Portapapeles`).
-     - *Deslizar hacia arriba (Swipe Up)*: Colapsa de inmediato a reposo.
-  4. **Compatibilidad con Display Cutout de Android**:
-     - Detección automática de la posición de la cámara (API 28+ `DisplayCutout`) para centrar la píldora perfectamente según el modelo de teléfono.
-* **Impacto Técnico**:
-  - *Kotlin nativo*: En `FloatingBubbleService.kt`, nuevo controlador `DynamicIslandController` con anclaje `Gravity.TOP | Gravity.CENTER_HORIZONTAL`, lectura de `DisplayCutout` y animaciones elásticas de interpolación de tamaño.
-  - *Flutter (Dart)*: Selector `flutter.bubble_docking_mode` (`free_floating` vs `dynamic_island`) en Ajustes > Tab Burbuja.
-* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
-
----
-
 ### 2.17 [MEJ-19] Capa de Teclado Numérico Dedicado (Numpad Limpio para Carga Rápida de Datos y Contabilidad)
 * **Origen / Necesidad**: La capa de símbolos estándar mezcla dígitos con caracteres especiales y signos ortográficos en teclas reducidas, lo que dificulta la digitación rápida de importes, PINs, teléfonos, cálculos o datos contables. Un Numpad puro con teclas numéricas gigantes resuelve esto de forma ergonómica.
 * **Comportamiento Esperado**:
@@ -427,7 +377,7 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 ---
 
 ### 2.18 [MEJ-20] Widget de Control Multimedia y Música en el Teclado (Mini Reproductor Liquid Glass)
-* **Origen / Necesidad**: Cambiar de canción o pausar música y podcasts mientras se escribe o chatea requiere deslizar la barra de notificaciones de Android o cambiar de aplicación. Un micro-controlador multimedia integrado directamente en el teclado o en la isla superior permite controlar la reproducción al instante.
+* **Origen / Necesidad**: Cambiar de canción o pausar música y podcasts mientras se escribe o chatea requiere deslizar la barra de notificaciones de Android o cambiar de aplicación. Un micro-controlador multimedia integrado directamente en el teclado permite controlar la reproducción al instante.
 * **Comportamiento Esperado**:
   1. **Detección Automática de Sesiones Activas**:
      - Conexión vía Android `MediaSessionManager` / `MediaController` compatible con Spotify, YouTube Music, Apple Music, Deezer, podcasts, VLC y navegadores.
@@ -476,7 +426,7 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
   1. **Detección Automática de Audios de Chat**:
      - Detección de sesiones de audio activas provenientes de apps de mensajería (`com.whatsapp`, `org.telegram.messenger`, `com.instagram.android`, etc.) vía `AudioPlaybackCallback` y `MediaSessionManager`.
   2. **Barra de Control de Audio en el Teclado (Liquid Glass Strip)**:
-     - Aparece de forma fluida sobre la barra superior del teclado o en la isla superior.
+     - Aparece de forma fluida sobre la barra superior del teclado.
      - **Controles Integrados**:
        - `[ ⏪ -5s ]`: Salto hacia atrás de 5 segundos para reescuchar una frase.
        - `[ ⏯ Play / Pausa ]`: Alternar reproducción sin salir del área de escritura.
@@ -498,7 +448,7 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 * **Origen / Necesidad**: Cambiar a otra aplicación mientras se trabaja en el teléfono suele requerir salir a la pantalla de inicio o abrir el cajón de aplicaciones del sistema. Un buscador y lanzador rápido integrado estilo Spotlight/Raycast permite buscar cualquier app instalada y abrirla en 1 toque directamente desde el teclado o la burbuja flotante.
 * **Comportamiento Esperado**:
   1. **Acceso Inmediato**:
-     - Desde el menú rápido de espacio (`MEJ-06`), barra superior (`MEJ-03`) o menú de la burbuja/isla (`MEJ-10` / `MEJ-18`).
+     - Desde el menú rápido de espacio (`MEJ-06`), barra superior (`MEJ-03`) o menú de la burbuja (`MEJ-10`).
   2. **Interfaz de Búsqueda Rápida (Liquid Glass Spotlight)**:
      - Se despliega una barra de búsqueda sobre el teclado con cuadrícula/carrusel de aplicaciones.
      - **Fila de Apps Recientes**: Acceso a 1 toque a las 5 aplicaciones más usadas (ej. Termux, Chrome, WhatsApp, Acode, Spotify).
@@ -514,15 +464,15 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
-### 2.22 [MEJ-24] Auto-Conmutación Inteligente a Burbuja / Isla al Conectar Teclado Físico (Bluetooth / USB-OTG)
-* **Origen / Necesidad**: Al conectar un teclado físico externo (Bluetooth, dock DeX o USB-C en Termux y tablets), mantener el teclado virtual en pantalla estorba y desperdicia el 40% del área de visión. Sin embargo, el usuario aún necesita dictado por voz y snippets. Conmutar automáticamente a la burbuja flotante o isla superior resuelve esto de forma transparente.
+### 2.22 [MEJ-24] Auto-Conmutación Inteligente a Burbuja al Conectar Teclado Físico (Bluetooth / USB-OTG)
+* **Origen / Necesidad**: Al conectar un teclado físico externo (Bluetooth, dock DeX o USB-C en Termux y tablets), mantener el teclado virtual en pantalla estorba y desperdicia el 40% del área de visión. Sin embargo, el usuario aún necesita dictado por voz y snippets. Conmutar automáticamente a la burbuja flotante resuelve esto de forma transparente.
 * **Comportamiento Esperado**:
   1. **Detección Automática de Hardware**:
      - Escucha en tiempo real la conexión/desconexión de periféricos vía `InputManager.InputDeviceListener` y `Configuration.keyboard`.
      - Detecta teclados Bluetooth, teclados mecánicos USB-OTG, docks y fundas con teclado integrado.
   2. **Comportamiento al Conectar**:
      - **Oculta el Teclado Virtual**: Libera el 100% de la pantalla para el editor de código, chat o terminal.
-     - **Despliega la Burbuja / Isla Configurada**: Lanza automáticamente la burbuja flotante (`MEJ-11`) o la isla superior (`MEJ-18`), manteniendo el micrófono `🎤`, el portapapeles y los snippets flotando de forma discreta.
+     - **Despliega la Burbuja**: Lanza automáticamente la burbuja flotante, manteniendo el micrófono `🎤`, el portapapeles y los snippets flotando de forma discreta.
   3. **Comportamiento al Desconectar**:
      - Vuelve a desplegar el teclado en pantalla nativo sin requerir ninguna acción manual.
   4. **Ajustes**:
@@ -576,14 +526,12 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-26 | MEJ-08 (Pegado Secuencial Multi-Clip) | Aprobada | Permite copiar 3+ datos en distintas apps y pegarlos sucesivamente sin alternar |
 | 2026-08-26 | MEJ-09 (Modo Trackpad y Puntero Virtual) | Aprobada | Control milimétrico de precisión con puntero de mouse, clic izq/der y scroll |
 | 2026-08-26 | MEJ-10 (Gestos Duales en Burbuja + Historial) | Aprobada | Simetría de gestos (Tap vs Hold) y acceso al historial flotante sin abrir la app |
-| 2026-08-26 | MEJ-11 (Burbuja Dinámica Pill + Auto-Enter) | Aprobada | Expansión a pastilla con cronómetro, cancelación rápida y auto-envío/enter |
 | 2026-08-26 | MEJ-12 (Conmutación Teclado↔Burbuja y Micro-Barra) | Aprobada | Barra mínima de 1 sola fila para terminal/chats que deja ver el 95% de pantalla |
 | 2026-08-27 | MEJ-13 (Capa de Emojis, Kaomojis y Stickers) | Aprobada | Expresividad completa y soporte de stickers sin cambiar a otro teclado |
 | 2026-08-27 | MEJ-14 (Modo Gaming y Gamepad Virtual) | Aprobada | Mando táctil multi-touch (D-Pad + ABXY) para juegos web, PWAs y emuladores |
 | 2026-08-27 | MEJ-15 (Motor de Temas y Color Tecla por Tecla) | Aprobada | Paleta arcoíris interactiva, temas Neón/OLED/Matrix y colores por tecla |
 | 2026-08-27 | MEJ-16 (Rediseño Integral de Modal de Historial) | Aprobada | Tarjetas Glass, buscador, Pin 📌, borrado individual y dimensiones ampliadas |
 | 2026-08-27 | MEJ-17 (Sistema Modular de Micro-Widgets) | Aprobada | Widgets de notas rápidas, live clipboard, comandos y calculadora en teclado |
-| 2026-08-27 | MEJ-18 (Isla Dinámica / Notch Superior Apple-style) | Aprobada | Anclaje elástico en cámara/notch superior con animaciones elásticas Glass |
 | 2026-08-27 | MEJ-19 (Capa de Teclado Numérico Dedicado - Numpad) | Aprobada | Bloque numérico puro (3x4/4x4) para entrada veloz de números y auto-detección |
 | 2026-08-27 | MEJ-20 (Widget de Control Multimedia y Música) | Aprobada | Mini reproductor Liquid Glass con carátula, título marquee y controles ⏯ ⏮ ⏭ |
 | 2026-08-27 | MEJ-21 (Bloc de Notas de Voz y Borrador Flotante) | Aprobada | Sandbox de notas de voz aisladas para no ensuciar el input activo |

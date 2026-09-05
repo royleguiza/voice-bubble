@@ -46,72 +46,17 @@ class FloatingBubbleService : Service() {
 
         var onBubbleActionListener: BubbleActionListener? = null
 
-        /**
-         * Isla exacta sobre cámara: cuando el AccessibilityService está activo,
-         * él hospeda la isla con TYPE_ACCESSIBILITY_OVERLAY (por encima de la
-         * status-bar, con touch). Este servicio conserva solo el FGS + routing.
-         */
-        @Volatile
-        var accessibilityIsland: DynamicIslandController? = null
-
         fun updateState(state: String) {
             val svc = instance
-            val acc = accessibilityIsland
-            if (svc == null && acc == null) {
-                // Sin isla viva no hay nada que animar: normalizar a idle en
+            if (svc == null) {
+                // Sin servicio vivo no hay nada que animar: normalizar a idle en
                 // vez de retener un estado que dejaría un BUSY zombi visible
                 // vía bubbleBusy() en el teclado (M-7).
                 lastVisualState = "idle"
                 return
             }
-            if (acc != null) {
-                val prevState = lastVisualState
-                lastVisualState = state
-                instance?.bubbleView?.setState(state)
-                when (state) {
-                    "recording" -> acc.startRecordingUI()
-                    "transcribing" -> acc.showProcessingUI()
-                    "success" -> acc.showSuccessUI("")
-                    "idle" -> {
-                        if (prevState == "transcribing") {
-                            acc.showSuccessUI("")
-                        } else {
-                            acc.collapseToCompact()
-                        }
-                    }
-                    else -> acc.collapseToCompact()
-                }
-                return
-            }
-            val prevState = lastVisualState
             lastVisualState = state
-            instance?.updateBubbleVisualState(state, prevState)
-        }
-
-        fun reloadIsland() {
-            accessibilityIsland?.reloadConfiguration()
-            instance?.dynamicIslandController?.reloadConfiguration()
-        }
-
-        /** Nivel real del mic (0..1) hacia la isla activa para la onda reactiva.
-         * Sin isla viva es no-op (M-7): no hay estado que retener. */
-        fun waveformLevel(level: Float) {
-            try {
-                accessibilityIsland?.setWaveformLevel(level)
-            } catch (_: Exception) {}
-            try {
-                instance?.dynamicIslandController?.setWaveformLevel(level)
-            } catch (_: Exception) {}
-        }
-
-        /** La isla de accesibilidad ya está activa: soltar el duplicado local. */
-        fun dropLocalIsland() {
-            instance?.releaseLocalIslandForAccessibility()
-        }
-
-        /** Accesibilidad desconectada: restaurar fallback local si corresponde. */
-        fun restoreLocalIsland() {
-            instance?.restoreLocalIslandIfNeeded()
+            svc.updateBubbleVisualState(state)
         }
 
         private var instance: FloatingBubbleService? = null
@@ -120,13 +65,10 @@ class FloatingBubbleService : Service() {
     interface BubbleActionListener {
         fun onBubbleTap()
         fun onBubbleClose()
-        /** La ✕ de la isla descarta el audio: Dart debe detener y borrar, no transcribir. */
-        fun onBubbleCancel()
     }
 
     private var windowManager: WindowManager? = null
     private var bubbleView: BubbleCanvasView? = null
-    private var dynamicIslandController: DynamicIslandController? = null
     private var bubbleHistoryController: BubbleHistoryController? = null
     private var snapAnimator: ValueAnimator? = null
     private lateinit var windowLayoutParams: WindowManager.LayoutParams
@@ -166,14 +108,7 @@ class FloatingBubbleService : Service() {
         windowManager = wm
         isRunning = true
         try {
-            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val dockingMode = prefs.getString("flutter.bubble_docking_mode", null)
-                ?: prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
-            if (dockingMode == "classic_bubble") {
-                setupBubbleView()
-            } else {
-                setupDynamicIsland()
-            }
+            setupBubbleView()
         } catch (_: Exception) {
             abortStartup()
         }
@@ -190,10 +125,6 @@ class FloatingBubbleService : Service() {
         } catch (_: Exception) {}
         bubbleLongPress = null
         bubbleLongPressFired = false
-        try {
-            dynamicIslandController?.destroy()
-        } catch (_: Exception) {}
-        dynamicIslandController = null
         windowManager = null
         lastVisualState = "idle"
         isRunning = false
@@ -269,58 +200,6 @@ class FloatingBubbleService : Service() {
         }
 
         return builder.build()
-    }
-
-    private fun setupDynamicIsland() {
-        // Si la accesibilidad puede hospedar la isla exacta sobre la cámara,
-        // crearla ahí primero; si quedó activa, no duplicar la local.
-        try {
-            VoiceBubbleAccessibilityService.ensureIsland()
-        } catch (_: Exception) {}
-        if (accessibilityIsland != null) return
-        // windowManager ya se resolvió en onCreate; reintento defensivo para
-        // el camino restoreLocalIslandIfNeeded (sin !! que crashee el FGS).
-        val wm = windowManager
-            ?: getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-            ?: return
-        windowManager = wm
-        dynamicIslandController = DynamicIslandController(
-            context = this,
-            windowManager = wm,
-            onMicTap = {
-                onBubbleActionListener?.onBubbleTap()
-            },
-            onCancelRecording = {
-                updateState("idle")
-                try {
-                    onBubbleActionListener?.onBubbleCancel()
-                } catch (_: Exception) {}
-            },
-            onStopRecording = {
-                onBubbleActionListener?.onBubbleTap()
-            }
-        )
-    }
-
-    /** Suelta la isla local sin detener el FGS (la accesibilidad toma el relevo). */
-    fun releaseLocalIslandForAccessibility() {
-        try {
-            dynamicIslandController?.destroy()
-        } catch (_: Exception) {}
-        dynamicIslandController = null
-    }
-
-    /** Recrea el fallback local si no hay isla de accesibilidad activa. */
-    fun restoreLocalIslandIfNeeded() {
-        try {
-            if (dynamicIslandController != null) return
-            if (accessibilityIsland != null) return
-            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val dockingMode = prefs.getString("flutter.bubble_docking_mode", null)
-                ?: prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
-            if (dockingMode == "classic_bubble") return
-            setupDynamicIsland()
-        } catch (_: Exception) {}
     }
 
     private fun setupBubbleView() {
@@ -496,21 +375,8 @@ class FloatingBubbleService : Service() {
         animator.start()
     }
 
-    fun updateBubbleVisualState(state: String, prevState: String = lastVisualState) {
+    fun updateBubbleVisualState(state: String) {
         bubbleView?.setState(state)
-        when (state) {
-            "recording" -> dynamicIslandController?.startRecordingUI()
-            "transcribing" -> dynamicIslandController?.showProcessingUI()
-            "success" -> dynamicIslandController?.showSuccessUI("")
-            "idle" -> {
-                if (prevState == "transcribing") {
-                    dynamicIslandController?.showSuccessUI("")
-                } else {
-                    dynamicIslandController?.collapseToCompact()
-                }
-            }
-            else -> dynamicIslandController?.collapseToCompact()
-        }
     }
 
     override fun onDestroy() {
@@ -525,11 +391,7 @@ class FloatingBubbleService : Service() {
         snapAnimator?.cancel()
         snapAnimator = null
         isRunning = false
-        // Sin isla viva no retener estados: evita el BUSY zombi (M-7).
         lastVisualState = "idle"
-
-        dynamicIslandController?.destroy()
-        dynamicIslandController = null
 
         try {
             bubbleHistoryController?.destroy()
@@ -542,12 +404,7 @@ class FloatingBubbleService : Service() {
             } catch (_: Exception) {}
             bubbleView = null
         }
-        // La isla pertenece a la burbuja: al detenerse se va con ella.
-        // instance=null ANTES para que el teardown no restaure el fallback local.
         instance = null
-        try {
-            VoiceBubbleAccessibilityService.removeIsland()
-        } catch (_: Exception) {}
         onBubbleActionListener?.onBubbleClose()
     }
 

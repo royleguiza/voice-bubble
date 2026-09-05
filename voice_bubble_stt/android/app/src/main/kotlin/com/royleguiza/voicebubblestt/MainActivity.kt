@@ -90,10 +90,6 @@ class MainActivity : FlutterActivity() {
                         FloatingBubbleService.updateState(state)
                         result.success(true)
                     }
-                    "reloadIslandConfig" -> {
-                        FloatingBubbleService.reloadIsland()
-                        result.success(true)
-                    }
                     "pushHistoryEntry" -> {
                         // Write-through Dart->nativo: la modal lee el archivo
                         // unificado, así ve lo dictado con la píldora/la app.
@@ -112,11 +108,6 @@ class MainActivity : FlutterActivity() {
                             },
                             onResult = { ok -> result.success(ok ?: false) }
                         )
-                    }
-                    "updateWaveformLevel" -> {
-                        val level = (call.argument<Double>("level") ?: 0.0).toFloat()
-                        FloatingBubbleService.waveformLevel(level)
-                        result.success(true)
                     }
                     else -> {
                         result.notImplemented()
@@ -236,12 +227,6 @@ class MainActivity : FlutterActivity() {
             override fun onBubbleClose() {
                 runOnUiThread {
                     methodChannel?.invokeMethod("onBubbleClose", null)
-                }
-            }
-
-            override fun onBubbleCancel() {
-                runOnUiThread {
-                    methodChannel?.invokeMethod("onBubbleCancel", null)
                 }
             }
         }

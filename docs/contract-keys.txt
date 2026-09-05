@@ -1,13 +1,5 @@
-bubble_docking_mode
 bubble_history_enabled
 floating_bubble_enabled
-island_height
-island_pos_x
-island_pos_y
-island_slot_order
-island_theme
-island_waveform_enabled
-island_width
 kb_bottom_elevation_dp
 kb_code_key_visible
 kb_haptics_enabled
