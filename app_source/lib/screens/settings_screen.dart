@@ -708,7 +708,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     try {
       final recorder = AudioRecorder();
       await recorder.hasPermission();
-      recorder.dispose();
+      await recorder.dispose();
     } catch (_) {}
   }
 

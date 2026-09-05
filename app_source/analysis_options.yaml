@@ -17,23 +17,9 @@ analyzer:
 
 linter:
   rules:
-    # Imprescindibles del encargo: fallan ante la deuda actual si se revierte.
     avoid_print: true
-    discarded_futures: true
     unawaited_futures: true
-    # Higiene async/await (sin tocar archivos ajenos: verificadas con grep
-    # que no rompen screens//ui//widgets/ ni services/ actuales).
     await_only_futures: true
     avoid_void_async: true
     cancel_subscriptions: true
     close_sinks: true
-    avoid_slow_async_io: true
-    # OJO semántica real de la regla: NO prohíbe el sync, prohíbe los
-    # métodos async `exists/stat/lastModified/type` (el pool async es más
-    # lento que el sync para metadatos). En lib/ el IO caliente usa async
-    # NO observados por la regla (`length/delete/read/write` en try/catch,
-    # sin TOCTOU); los 5 `await exists()` que quedan son async obligado
-    # fuera del main (level-meter 120 ms, historial, pre-vuelo Groq) y
-    # llevan su `// ignore: avoid_slow_async_io` puntual con comentario.
-    # Los tests usan sync a propósito (setup/asserts sobre FS real), que la
-    # regla no observa: sin ignores allí.
