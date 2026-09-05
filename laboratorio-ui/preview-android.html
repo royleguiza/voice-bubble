@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup Android — Configuración VoiceBubble v1</title>
+<style>
+:root{--ink:#111; --mut:#5b5b63; --line:#e2e2e8; --bg:#eef0f4}
+*{box-sizing:border-box}
+body{margin:0; font-family:system-ui,"Roboto","Segoe UI",sans-serif; background:var(--bg); color:var(--ink); min-height:100dvh; display:flex; flex-direction:column; align-items:center; padding:28px 16px 60px}
+h1{margin:0; font-size:22px; letter-spacing:-.02em}
+.sub{margin:6px 0 0; color:var(--mut); font-size:14px; max-width:640px; text-align:center}
+.bar{display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:18px 0 22px}
+.bar button{min-height:44px; padding:0 18px; border-radius:100px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:14px; cursor:pointer}
+.bar button[aria-pressed="true"]{background:#111; color:#fff; border-color:#111}
+.stage{display:flex; gap:28px; flex-wrap:wrap; justify-content:center; align-items:flex-start}
+/* Pixel-style frame */
+.phone{width:412px; max-width:calc(100vw - 32px); background:#000; border-radius:44px; padding:12px; box-shadow:0 30px 80px rgba(0,0,0,.35)}
+.phone.narrow{width:360px}
+.screen{position:relative; border-radius:34px; overflow:hidden; background:#000; height:868px; max-height:82vh}
+.screen iframe{position:absolute; inset:0; width:100%; height:100%; border:0; background:#F2F2F7}
+.notch{position:absolute; top:12px; left:50%; translate:-50% 0; width:110px; height:26px; background:#000; border-radius:100px; z-index:2}
+.gest{position:absolute; bottom:6px; left:50%; translate:-50% 0; width:110px; height:4px; border-radius:99px; background:rgba(128,128,128,.7); z-index:2}
+.cap{text-align:center; font-size:13px; color:var(--mut); margin-top:10px}
+.howto{max-width:640px; background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px 20px; margin-top:26px; font-size:14px; line-height:1.65}
+.howto code{background:#f1f1f5; padding:2px 8px; border-radius:8px; font-size:13px}
+</style>
+</head>
+<body>
+<h1>Mockup Android · Configuración v1</h1>
+<p class="sub">El prototipo real es <b>settings-reestructuracion-v1.html</b> (se carga aquí dentro). En el teléfono ábrelo directo: es 100% táctil, sin este marco.</p>
+<div class="bar" role="group" aria-label="Ancho de dispositivo">
+  <button id="w412" aria-pressed="true">Pixel · 412px</button>
+  <button id="w360" aria-pressed="false">Compacto · 360px</button>
+</div>
+<div class="stage">
+  <div>
+    <div class="phone" id="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <iframe src="./settings-reestructuracion-v1.html" title="Prototipo Configuración VoiceBubble"></iframe>
+        <div class="gest"></div>
+      </div>
+    </div>
+    <p class="cap" id="cap">412 × 868 · marco Pixel (punch-hole + gesto)</p>
+  </div>
+</div>
+<div class="howto">
+  <b>Verlo en tu Android real (interactividad total):</b><br>
+  1. En Termux: <code>cd ~/projects/activos/voice-bubble/laboratorio-ui &amp;&amp; python3 -m http.server 8090</code><br>
+  2. En Chrome del teléfono abre <code>http://localhost:8090/settings-reestructuracion-v1.html</code><br>
+  3. O abre el archivo directo desde el gestor de archivos con Chrome.<br>
+  Prueba: cambiar de sección en el dock (siempre visible) · CTA “Ingresa tu API Key” → guardar → botón verde → toggles · claro/oscuro desde el sol del header.
+</div>
+<script>
+var p=document.getElementById('phone'), c=document.getElementById('cap');
+document.getElementById('w412').onclick=function(){p.classList.remove('narrow');c.textContent='412 × 868 · marco Pixel (punch-hole + gesto)';this.setAttribute('aria-pressed','true');document.getElementById('w360').setAttribute('aria-pressed','false');};
+document.getElementById('w360').onclick=function(){p.classList.add('narrow');c.textContent='360 × 780 · compacto (gama media-baja)';this.setAttribute('aria-pressed','false');document.getElementById('w412').setAttribute('aria-pressed','true');};
+</script>
+</body>
+</html>
