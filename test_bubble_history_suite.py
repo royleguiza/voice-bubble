@@ -14,20 +14,14 @@ Verifica al 100% de certeza:
 """
 
 import os
+import re
 import sys
 
-WORKSPACE = os.path.dirname(os.path.abspath(__file__))
-PASSED = 0
-FAILED = 0
+from test_helpers import WORKSPACE, Suite
 
-def check(name, condition, error_msg=""):
-    global PASSED, FAILED
-    if condition:
-        print(f"  [PASS] {name}")
-        PASSED += 1
-    else:
-        print(f"  [FAIL] {name} -> {error_msg}")
-        FAILED += 1
+suite = Suite()
+check = suite.check
+
 
 def read(rel):
     with open(os.path.join(WORKSPACE, rel), "r", encoding="utf-8") as f:
@@ -135,22 +129,47 @@ check("Tests de render y toggle del switch (hito B6)",
 
 # --- 8. Perfil anti-Play-Protect: SettingsScreen NO debe leer el canal
 # trackpad en su init (lectura colgada sin mock + superficie declarada sin
-# accesibilidad). Si algún día vuelve, este guard avisa y hay que mockear
-# en todos los tests que monten SettingsScreen ---
+# accesibilidad). Permitido: arrancar/detener la burbuja desde el handler
+# del toggle (best-effort con canal ausente = false, sin lecturas en init
+# ni en _loadInitialState). Si algún día vuelve una LECTURA de estado en
+# init (isTrackpadBubbleRunning), este guard avisa y hay que mockear en
+# todos los tests que monten SettingsScreen ---
 settings_dart = read("app_source/lib/screens/settings_screen.dart")
 check("SettingsScreen sin lecturas del canal trackpad en init",
-      "FloatingTrackpadService" not in settings_dart
+      "isTrackpadBubbleRunning" not in settings_dart
       and "isAccessibilityGranted" not in settings_dart,
       "reintroduce colgadas en tests sin mock")
 manifest_txt = read("voice_bubble_stt/android/app/src/main/AndroidManifest.xml")
+# Sin comentarios XML: un comentario que documenta la AUSENCIA (p. ej.
+# "Sin BIND_ACCESSIBILITY_SERVICE por perfil anti-Play-Protect") no es
+# una declaración. Lo prohibido es el elemento <service>/<uses-permission>.
+manifest_decls = re.sub(r"<!--.*?-->", "", manifest_txt, flags=re.DOTALL)
 check("Manifest sin servicio de accesibilidad (perfil anti-Play-Protect)",
-      "VoiceBubbleAccessibilityService" not in manifest_txt
-      and "BIND_ACCESSIBILITY_SERVICE" not in manifest_txt)
+      "VoiceBubbleAccessibilityService" not in manifest_decls
+      and "BIND_ACCESSIBILITY_SERVICE" not in manifest_decls)
+
+# --- 9. Rotación con popup abierto: dismiss seguro, sin recreación ---
+# La Activity declara configChanges de orientación (el sistema NO la
+# recrea al rotar) y todo setState/popup tras await va tras `mounted`;
+# el AnimationController del popup se libera en dispose().
+home_screen = read("app_source/lib/screens/home_screen.dart")
+check("Activity sobrevive a la rotación (configChanges con orientation)",
+      'android:configChanges="orientation|keyboardHidden|keyboard|screenSize' in manifest_txt,
+      "Falta orientation en configChanges: rotar recrearía la Activity")
+check("Popup de resultado tras await solo toca UI si mounted",
+      "if (mounted) {" in home_screen and "_popupCtrl.forward(from: 0)" in home_screen,
+      "El popup post-transcripción no está tras guarda mounted")
+check("Popup usa SnackBar de error con reintento (rotación no pierde el audio)",
+      "label: 'Reintentar'" in home_screen and "_pendingAudioPath" in home_screen,
+      "Falta el camino de reintento tras error")
+check("AnimationController del popup se libera en dispose",
+      "_popupCtrl.dispose();" in home_screen,
+      "Falta _popupCtrl.dispose()")
 
 print("\n============================================================")
-print(f" RESULTADO SUITE BURBUJA-HISTORIAL: {PASSED} pasados, {FAILED} fallidos.")
+print(f" RESULTADO SUITE BURBUJA-HISTORIAL: {suite.passed} pasados, {suite.failed} fallidos.")
 print("============================================================\n")
 
-if FAILED > 0:
+if suite.failed > 0:
     sys.exit(1)
 sys.exit(0)

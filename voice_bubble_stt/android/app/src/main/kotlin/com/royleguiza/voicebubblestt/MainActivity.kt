@@ -97,14 +97,21 @@ class MainActivity : FlutterActivity() {
                     "pushHistoryEntry" -> {
                         // Write-through Dart->nativo: la modal lee el archivo
                         // unificado, así ve lo dictado con la píldora/la app.
+                        // I/O fuera del main (disco + prefs): la respuesta
+                        // vuelve al main porque MethodChannel lo exige.
                         val text = call.argument<String>("text") ?: ""
-                        try {
-                            TranscriptionHistoryRepository(this@MainActivity)
-                                .addTranscription(text)
-                            result.success(true)
-                        } catch (e: Exception) {
-                            result.success(false)
-                        }
+                        BackgroundWork.executeWithResult(
+                            block = {
+                                try {
+                                    TranscriptionHistoryRepository(this@MainActivity)
+                                        .addTranscription(text)
+                                    true
+                                } catch (_: Exception) {
+                                    false
+                                }
+                            },
+                            onResult = { ok -> result.success(ok ?: false) }
+                        )
                     }
                     "updateWaveformLevel" -> {
                         val level = (call.argument<Double>("level") ?: 0.0).toFloat()

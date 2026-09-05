@@ -30,6 +30,17 @@ android {
     }
 
     signingConfigs {
+        // `debug.keystore` VERSIONADO A PROPÓSITO (práctica estándar de
+        // Android, no un descuido): la keystore de debug solo firma builds
+        // de desarrollo/CI y su password ("android") es pública por diseño
+        // del SDK. Versionarla da reproducibilidad: mismo fingerprint de
+        // firma en cada run de CI y en cada clon, así el APK debug se puede
+        // reinstalar sin desinstalar (misma firma) y no depende de la
+        // keystore efímera que Gradle generaría por defecto en cada máquina.
+        // JAMÁS usar para publicar en Play. Release real: exportar
+        // KEYSTORE_FILE (ruta al upload keystore), KEYSTORE_PASSWORD,
+        // KEY_ALIAS y KEY_PASSWORD (p. ej. desde secrets del CI) y compilar
+        // con `flutter build apk/appbundle --release`; ver bloque "release".
         getByName("debug") {
             val persistentKeystore = file("debug.keystore")
             if (persistentKeystore.exists()) {
@@ -39,13 +50,35 @@ android {
                 keyPassword = "android"
             }
         }
+        // Release por variables de entorno (forma correcta sin romper CI: los
+        // builds debug de CI no tocan esta config). Para firmar un release real,
+        // exportar KEYSTORE_FILE (ruta al upload keystore), KEYSTORE_PASSWORD,
+        // KEY_ALIAS y KEY_PASSWORD (p. ej. desde secrets del CI) y compilar
+        // con `flutter build apk/appbundle --release`.
+        // Fallback SOLO para builds locales (`flutter run --release` sin
+        // keystore configurado): reutiliza el debug.keystore persistente.
+        create("release") {
+            val envStoreFile = System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { file(it) }
+            if (envStoreFile != null && envStoreFile.exists()) {
+                storeFile = envStoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            } else {
+                val fallbackDebug = file("debug.keystore")
+                if (fallbackDebug.exists()) {
+                    storeFile = fallbackDebug
+                    storePassword = "android"
+                    keyAlias = "androiddebugkey"
+                    keyPassword = "android"
+                }
+            }
+        }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

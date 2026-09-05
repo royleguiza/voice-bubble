@@ -8,8 +8,10 @@ import '../services/storage_service.dart';
 import '../services/cloud_stt_service.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/keyboard_service.dart';
+import '../models/transcription.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
+import '../ui/transcription_feedback.dart';
 import 'settings_screen.dart';
 import '../widgets/record_button.dart';
 import '../widgets/history_list.dart';
@@ -100,7 +102,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _handleBubbleClose() {
-    _storageService.saveFloatingBubbleEnabled(false);
+    // El callback nativo es sync-void pero el guardado es async: observar
+    // el futuro (unawaited + catch) en vez de disparar y olvidar. Sin esto,
+    // un canal roto dejaba un Future sin observar y el toggle mentía.
+    unawaited(() async {
+      try {
+        await _storageService.saveFloatingBubbleEnabled(false);
+      } catch (_) {}
+    }());
   }
 
   /// La ✕ de la isla descarta la grabación en curso: detener el recorder,
@@ -263,15 +272,22 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Medidor de nivel real para la onda reactiva de la isla: pico de los
+  /// Medidor de nivel para la onda reactiva de la isla: pico de los
   /// últimos ~100 ms del WAV en curso (PCM 16 bits mono 16 kHz, cabecera
-  /// RIFF de 44 bytes). IO síncrona (segura bajo fakeAsync) cada 120 ms.
+  /// RIFF de 44 bytes). Muestreo ASÍNCRONO cada 120 ms con dart:io async
+  /// (pool de threads, sin bloquear el hilo UI): la versión anterior hacía
+  /// existsSync/lengthSync/openSync/readSync en el callback del Timer y
+  /// atascaba frames en eMMC lentas (jank/ANR en gama baja). El callback es
+  /// unawaited con guarda anti-solape [_levelSampling]; la UX de la onda
+  /// (ataque rápido / caída lenta + canal de waveform) no cambia.
+  bool _levelSampling = false;
+
   void _startLevelMeter(String path) {
     _stopLevelMeter();
     _recordingPath = path;
     _lastLevel = 0;
-    _levelTimer =
-        Timer.periodic(const Duration(milliseconds: 120), (_) => _emitLevel());
+    _levelTimer = Timer.periodic(
+        const Duration(milliseconds: 120), (_) => unawaited(_emitLevel()));
   }
 
   void _stopLevelMeter() {
@@ -281,22 +297,26 @@ class _HomeScreenState extends State<HomeScreen>
     _lastLevel = 0;
   }
 
-  void _emitLevel() {
+  Future<void> _emitLevel() async {
     final path = _recordingPath;
-    if (path == null || !_isRecording) return;
+    if (path == null || !_isRecording || _levelSampling) return;
+    _levelSampling = true;
     double level = 0;
     try {
       final file = File(path);
-      if (file.existsSync()) {
-        final len = file.lengthSync();
+      // Async obligado: muestreo cada 120 ms en Timer de UI (el sync
+      // atascaba frames en eMMC lentas).
+      // ignore: avoid_slow_async_io
+      if (await file.exists()) {
+        final len = await file.length();
         const header = 44;
         const window = 3200;
         if (len > header + 64) {
           final start = (len - window).clamp(header, len);
-          final raf = file.openSync(mode: FileMode.read);
+          final raf = await file.open(mode: FileMode.read);
           try {
-            raf.setPositionSync(start);
-            final bytes = raf.readSync(len - start);
+            await raf.setPosition(start);
+            final bytes = await raf.read(len - start);
             final bd = ByteData.sublistView(bytes);
             int peak = 0;
             for (int i = 0; i + 1 < bd.lengthInBytes; i += 2) {
@@ -305,11 +325,14 @@ class _HomeScreenState extends State<HomeScreen>
             }
             level = (peak / 32768).clamp(0.0, 1.0);
           } finally {
-            raf.closeSync();
+            await raf.close();
           }
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _levelSampling = false;
+    }
     // Ataque rápido, caída lenta para una onda estable.
     _lastLevel =
         level > _lastLevel ? level : _lastLevel * 0.6 + level * 0.4;
@@ -337,23 +360,120 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Intenta pegar en el cursor con el teclado propio; con otro teclado
   /// Android lo prohíbe y queda el portapapeles: avisar pegado manual.
-  Future<void> _pasteOrCopyFeedback(String text) async {
+  /// [showCopyFallback]: en falso no muestra SnackBar (el llamador ya
+  /// notificó un fallo de clipboard y no debe pisarse con un "copiado").
+  Future<void> _pasteOrCopyFeedback(String text,
+      {bool showCopyFallback = true}) async {
     bool pasted = false;
     try {
       pasted = await _keyboardService.commitText(text);
     } catch (_) {}
-    if (!pasted && mounted) {
+    if (!pasted && showCopyFallback && mounted) {
       try {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
-              content: Text('Copiado al portapapeles'),
+              content: Text(copiedToClipboardMessage),
               duration: Duration(seconds: 2),
             ),
           );
       } catch (_) {}
     }
+  }
+
+  void _showClipboardFailure() {
+    if (!mounted) return;
+    try {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text(clipboardFailureMessage)),
+        );
+    } catch (_) {}
+  }
+
+  /// Audio mínimo útil para llamar a Groq (>1000 bytes). Se exige tanto en
+  /// [_stopRecording] como en [_retryPending]: por debajo se limpia el
+  /// temporal sin transcribir y sin mostrar error.
+  static const int _minAudioBytes = 1000;
+
+  /// Chequeo asíncrono a propósito: el sync atascaba frames en eMMC lentas
+  /// (jank/ANR en gama baja). Se usa `length()` en try/catch en vez de
+  /// `exists()` (sin TOCTOU y fuera de la lista de `avoid_slow_async_io`).
+  /// Estas rutas son awaited en código async real (sin fakeAsync en los
+  /// tests que las tocan: verificado por grep). Solo el level-meter usa el
+  /// path unawaited con guarda anti-solape (ver [_emitLevel]).
+  Future<bool> _hasUsableAudio(String path) async {
+    try {
+      return await File(path).length() >= _minAudioBytes;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _audioFileExists(String path) async {
+    try {
+      await File(path).length();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Flujo compartido transcribe→clipboard→push→feedback (antes duplicado
+  /// ~30 líneas entre [_stopRecording] y [_retryPending]).
+  ///
+  /// El clipboard va clasificado: si falla NO es error de red, NO marca
+  /// [_pendingAudioPath] (transcribe() ya borró el audio en éxito) y la
+  /// transcripción igualmente se muestra y guarda en historial.
+  Future<void> _publishTranscriptionResult(Transcription result) async {
+    final copy = await copyTranscriptionText(result.text);
+    // Write-through al historial unificado nativo para la modal de la isla.
+    await _floatingBubbleService.pushHistoryEntry(result.text);
+    if (copy == ClipboardCopyResult.failed) {
+      _showClipboardFailure();
+      // Pegado silencioso: no pisa el aviso de clipboard con un "copiado".
+      await _pasteOrCopyFeedback(result.text, showCopyFallback: false);
+    } else {
+      await _pasteOrCopyFeedback(result.text);
+    }
+    await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+    if (mounted) {
+      setState(() {
+        _resultText = result.text;
+        _resultTimestamp = result.timestamp;
+        _pendingAudioPath = null;
+        _isTranscribing = false;
+      });
+      if (motionSafe) {
+        _popupCtrl.forward(from: 0);
+      } else {
+        _popupCtrl.value = 1.0;
+      }
+    } else {
+      _pendingAudioPath = null;
+      _isTranscribing = false;
+    }
+  }
+
+  void _showTranscribeError(Object e, {required bool canRetry}) {
+    if (!mounted) return;
+    try {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            action: canRetry
+                ? SnackBarAction(
+                    label: 'Reintentar',
+                    onPressed: _retryPending,
+                  )
+                : null,
+          ),
+        );
+    } catch (_) {}
   }
 
   Future<void> _stopRecording() async {
@@ -367,122 +487,137 @@ class _HomeScreenState extends State<HomeScreen>
     }
     _isStoppingRecording = true;
     _hapticStop();
-    await _floatingBubbleService
-        .updateBubbleState(BubbleVisualState.transcribing);
-
-    // Pasar a "Procesando" de inmediato: no dejar un frame de botón rojo
-    // con overflow mientras se cierra el recorder.
-    if (mounted) {
-      setState(() {
-        _isRecording = false;
-        _isTranscribing = true;
-      });
-    }
-    final path = await _transcriptionService.stopRecording();
-    _isStoppingRecording = false;
-
-    if (path == null) {
-      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
-      if (mounted) {
-        setState(() => _isTranscribing = false);
-      }
-      return;
-    }
-
-    // Verificar si el archivo tiene audio suficiente (>1000 bytes).
-    // Si la grabación fue instantánea o vacía, se limpia sin llamar a Groq ni arrojar error.
-    final file = File(path);
-    if (!file.existsSync() || file.lengthSync() < 1000) {
-      await _transcriptionService.cleanupTempFile(path);
-      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
-      if (mounted) {
-        setState(() => _isTranscribing = false);
-      }
-      return;
-    }
-
     try {
-      final result = await _transcriptionService.transcribe(path);
-      await Clipboard.setData(ClipboardData(text: result.text));
-      // Write-through al historial unificado nativo para la modal de la isla.
-      await _floatingBubbleService.pushHistoryEntry(result.text);
-      await _pasteOrCopyFeedback(result.text);
-      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+      await _floatingBubbleService
+          .updateBubbleState(BubbleVisualState.transcribing);
+
+      // Pasar a "Procesando" de inmediato: no dejar un frame de botón rojo
+      // con overflow mientras se cierra el recorder.
       if (mounted) {
         setState(() {
-          _resultText = result.text;
-          _resultTimestamp = result.timestamp;
-          _isTranscribing = false;
+          _isRecording = false;
+          _isTranscribing = true;
         });
-        if (motionSafe) {
-          _popupCtrl.forward(from: 0);
+      } else {
+        _isRecording = false;
+        _isTranscribing = true;
+      }
+      final path = await _transcriptionService.stopRecording();
+
+      if (path == null) {
+        await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+        if (mounted) {
+          setState(() => _isTranscribing = false);
         } else {
-          _popupCtrl.value = 1.0;
+          _isTranscribing = false;
+        }
+        return;
+      }
+
+      // Verificar si el archivo tiene audio suficiente (>1000 bytes).
+      // Si la grabación fue instantánea o vacía, se limpia sin llamar a Groq ni arrojar error.
+      if (!await _hasUsableAudio(path)) {
+        await _transcriptionService.cleanupTempFile(path);
+        await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+        if (mounted) {
+          setState(() => _isTranscribing = false);
+        } else {
+          _isTranscribing = false;
+        }
+        return;
+      }
+
+      try {
+        final result = await _transcriptionService.transcribe(path);
+        await _publishTranscriptionResult(result);
+      } catch (e) {
+        await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+        // Conservar el audio para reintento sin regrabar, SALVO si ya se
+        // borró: transcribe() borra el temporal en éxito, así que un fallo
+        // tardío (p.ej. clipboard, ya clasificado aparte) con archivo
+        // ausente no debe dejar un pendiente que reintentaría con
+        // "archivo no encontrado".
+        final stillExists = await _audioFileExists(path);
+        if (mounted) {
+          setState(() {
+            _pendingAudioPath = stillExists ? path : null;
+            _isTranscribing = false;
+          });
+          _showTranscribeError(e, canRetry: stillExists);
+        } else {
+          _pendingAudioPath = stillExists ? path : null;
+          _isTranscribing = false;
         }
       }
     } catch (e) {
-      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
-      // Conservar el audio para reintento sin regrabar.
+      // stopRecording() o el canal de la burbuja lanzaron: jamás dejar la
+      // UI en "Procesando…" eterno con botón muerto.
+      try {
+        await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+      } catch (_) {}
       if (mounted) {
-        setState(() {
-          _pendingAudioPath = path;
-          _isTranscribing = false;
-        });
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text('Error: $e'),
-              action: SnackBarAction(
-                label: 'Reintentar',
-                onPressed: _retryPending,
-              ),
-            ),
-          );
+        setState(() => _isTranscribing = false);
+        _showTranscribeError(e, canRetry: false);
+      } else {
+        _isTranscribing = false;
       }
+    } finally {
+      // Ambos flags SIEMPRE se resetean aunque stop/transcribe/canal lancen.
+      _isStoppingRecording = false;
+      if (mounted) setState(() {});
     }
   }
 
   Future<void> _retryPending() async {
     final path = _pendingAudioPath;
     if (path == null || _isTranscribing || _isRecording) return;
-    setState(() => _isTranscribing = true);
+    if (!await _hasUsableAudio(path)) {
+      // El temporal se perdió o quedó vacío entre el fallo y el reintento:
+      // limpiar el pendiente en vez de fallar con "archivo no encontrado".
+      await _transcriptionService.cleanupTempFile(path);
+      if (mounted) {
+        setState(() {
+          _pendingAudioPath = null;
+          _isTranscribing = false;
+        });
+        try {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                content:
+                    Text('El audio pendiente ya no está disponible'),
+              ),
+            );
+        } catch (_) {}
+      } else {
+        _pendingAudioPath = null;
+        _isTranscribing = false;
+      }
+      return;
+    }
+    if (mounted) {
+      setState(() => _isTranscribing = true);
+    } else {
+      _isTranscribing = true;
+    }
     await _floatingBubbleService
         .updateBubbleState(BubbleVisualState.transcribing);
     try {
       final result = await _transcriptionService.transcribe(path);
-      await Clipboard.setData(ClipboardData(text: result.text));
-      await _floatingBubbleService.pushHistoryEntry(result.text);
-      await _pasteOrCopyFeedback(result.text);
-      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
-      if (mounted) {
-        setState(() {
-          _resultText = result.text;
-          _resultTimestamp = result.timestamp;
-          _pendingAudioPath = null;
-          _isTranscribing = false;
-        });
-        if (motionSafe) {
-          _popupCtrl.forward(from: 0);
-        } else {
-          _popupCtrl.value = 1.0;
-        }
-      }
+      await _publishTranscriptionResult(result);
     } catch (e) {
       await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+      final stillExists = await _audioFileExists(path);
       if (mounted) {
-        setState(() => _isTranscribing = false);
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: Text('Error: $e'),
-              action: SnackBarAction(
-                label: 'Reintentar',
-                onPressed: _retryPending,
-              ),
-            ),
-          );
+        setState(() {
+          _pendingAudioPath = stillExists ? path : null;
+          _isTranscribing = false;
+        });
+        _showTranscribeError(e, canRetry: stillExists);
+      } else {
+        _pendingAudioPath = stillExists ? path : null;
+        _isTranscribing = false;
       }
     }
   }
@@ -576,17 +711,19 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _copyToClipboard() async {
-    if (_resultText.isNotEmpty) {
-      await Clipboard.setData(ClipboardData(text: _resultText));
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Texto copiado al portapapeles'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    }
+    if (_resultText.isEmpty) return;
+    final copy = await copyTranscriptionText(_resultText);
+    if (!mounted) return;
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(copy == ClipboardCopyResult.ok
+              ? copiedToClipboardMessage
+              : clipboardFailureMessage),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (_) {}
   }
 
   /// El teclado nativo escribe dictados en disco mientras la app está en

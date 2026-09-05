@@ -5,7 +5,7 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 ## Características principales
 
 * Transcripción de voz a texto **solo** (nada de notas, resúmenes, traducción, etc.).
-* **Motor único Cloud**: Groq `whisper-large-v3` (compatible con OpenAI). La API key la configura el usuario en Settings: queda cifrada en `flutter_secure_storage` dentro de la app, y el teclado la consume a través de una copia espejo en texto plano en las preferencias privadas del paquete (inaccesibles a otras apps), tal como documenta `INSTALL.md`. El modo local offline fue **removido** en el Hito 2 (decisión del dueño); su regreso está pospuesto (`teclado-voice.md`, D4).
+* **Motor único Cloud**: Groq `whisper-large-v3` (compatible con OpenAI). La API key la configura el usuario en Settings (detalle: `INSTALL.md` §3). El modo local offline fue **removido** en el Hito 2 (decisión del dueño); su regreso está pospuesto (`docs/archive/teclado-voice.md`, D4).
 * UI minimalista: botón Grabar → texto → **Copiar con un solo click**.
 * Historial persistente de las **últimas 20 transcripciones** (FIFO) con timestamp y modo usado.
 * **Burbuja flotante** (overlay) arrastrable:
@@ -32,14 +32,14 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 |-|-|
 |Framework|Flutter 3.24+|
 |UI|Material 3 / Cupertino|
-|STT Local|`sherpa\_onnx` o `whisper\_ggml` / `whisper\_edge`|
+|STT Local|histórico — removido en Hito 2 (solo Cloud vigente; ver `docs/archive/teclado-voice.md` D4)|
 |STT Cloud|`http` + cliente OpenAI/Groq|
-|Audio recording|`record` o `flutter\_sound`|
-|Storage|`hive` o `shared\_preferences`|
-|Secure storage|`flutter\_secure\_storage`|
-|Floating bubble|Platform Channel + WindowManager nativo o plugin `flutter\_overlay\_window` / similar|
-|Accessibility|Platform Channel|
-|Build APK|`flutter build apk`|
+|Audio recording|`record` o `flutter_sound`|
+|Storage|`hive` o `shared_preferences`|
+|Secure storage|`flutter_secure_storage`|
+|Floating bubble|Platform Channel + WindowManager nativo o plugin `flutter_overlay_window` / similar|
+|Accessibility|histórico — BLOQUEADO 2026-09-05 (perfil anti-Play-Protect; sin servicio declarado)|
+|Build APK|CI en GitHub Actions (única vía; ver abajo)|
 
 **Ventajas**: desarrollo rápido, packages maduros de Whisper local, builds APK triviales.  
 **Desventajas**: el overlay y Accessibility requieren algo de código nativo (Kotlin/Java).
@@ -50,12 +50,12 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 |-|-|
 |Lenguaje|Kotlin 2.0+|
 |UI|Jetpack Compose + Material 3|
-|STT Local|whisper.cpp (JNI) / sherpa-onnx / Vosk / ML Kit GenAI Speech Recognition|
+|STT Local|histórico — removido en Hito 2 (solo Cloud vigente)|
 |STT Cloud|OkHttp / Retrofit + coroutines|
 |Audio|MediaRecorder o AudioRecord (16 kHz mono)|
 |Storage|DataStore Preferences + (opcional) Room|
 |Secure storage|EncryptedSharedPreferences / Keystore|
-|Floating bubble|WindowManager (TYPE\_APPLICATION\_OVERLAY) + Foreground Service|
+|Floating bubble|WindowManager (TYPE_APPLICATION_OVERLAY) + Foreground Service|
 |Accessibility|AccessibilityService nativo|
 |Build APK|Gradle (`assembleDebug` / `assembleRelease`)|
 
@@ -90,22 +90,14 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 │                 │ │ + Overlay   │ │ secure storage   │
 └─────────────────┘ └─────────────┘ └──────────────────┘
 
-  (K1+ añade VoiceKeyboardService: teclado nativo Kotlin, ver teclado-voice.md)
+  (K1+ añade VoiceKeyboardService: teclado nativo Kotlin, ver docs/archive/teclado-voice.md)
 ```
 
 ## Permisos requeridos
 
-```xml
-<uses-permission android:name="android.permission.RECORD\_AUDIO" />
-<uses-permission android:name="android.permission.SYSTEM\_ALERT\_WINDOW" />
-<uses-permission android:name="android.permission.FOREGROUND\_SERVICE" />
-<uses-permission android:name="android.permission.FOREGROUND\_SERVICE\_MICROPHONE" /> <!-- Android 14+ -->
-<uses-permission android:name="android.permission.POST\_NOTIFICATIONS" />
-<uses-permission android:name="android.permission.INTERNET" /> <!-- solo transcripciones iniciadas por el usuario -->
-```
+Fuente canónica de permisos y justificación: **`INSTALL.md` §4** (única fuente de verdad; no se duplica aquí).
 
 * Sin `AccessibilityService` declarado (perfil anti-Play-Protect desde 2026-09-05): cero fricción de accesibilidad al instalar. La clase nativa queda versionada pero dormida; isla y trackpad usan sus fallbacks locales.
-* El servicio de teclado (K1) se declara con `android:permission="android.permission.BIND_INPUT_METHOD"` (la firma el sistema; no requiere acción del usuario).
 
 ## Flujo de usuario ideal
 
@@ -118,13 +110,13 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 
 ## Modo Teclado – VoiceBubble Keyboard (hitos K1–K5)
 
-Además de la burbuja, la misma app (mismo APK) ofrece un **teclado del sistema** con nombre visible **"VoiceBubble Keyboard"**, construido nativamente en Kotlin (sin Flutter embebido, por rendimiento). Decisiones cerradas D1–D9: `teclado-voice.md` §3.
+Además de la burbuja, la misma app (mismo APK) ofrece un **teclado del sistema** con nombre visible **"VoiceBubble Keyboard"**, construido nativamente en Kotlin (sin Flutter embebido, por rendimiento). Decisiones cerradas D1–D9: `docs/archive/teclado-voice.md` §3.
 
 ### Cómo activarlo
 
 1. Ajustes de Android → Sistema → "Manage keyboards" / Métodos de entrada → activar **VoiceBubble Keyboard** (Android mostrará la advertencia estándar sobre teclados de terceros).
 2. Seleccionarlo como teclado actual (botón selector de IME, o la tarjeta "Teclado VoiceBubble" en Settings de la app, que muestra el estado y lleva directo a los Ajustes del sistema).
-3. Sin configuración extra: la API key ya guardada se comparte con el teclado vía copia espejo en las preferencias privadas de la app (D7).
+3. Sin configuración extra: la API key ya guardada se comparte con el teclado (detalle del espejo: **`INSTALL.md`** §3).
 
 ### Funciones
 
@@ -137,7 +129,7 @@ Además de la burbuja, la misma app (mismo APK) ofrece un **teclado del sistema*
 * **Exclusión mutua de micrófono burbuja↔teclado**: si uno está grabando, el otro muestra estado ocupado (flag en memoria del proceso + audio focus).
 * **Pulido y personalización** (K5): tema claro/oscuro completo siguiendo el sistema, altura del teclado configurable (baja/media/alta), vibración on/off, e i18n completo es/en de las etiquetas internas (incluidos los avisos de error de red/API).
 
-Spec completa e investigación: **`teclado-voice.md`**.
+Spec completa e investigación: **`docs/archive/teclado-voice.md`**.
 
 ### Promesa de privacidad del teclado
 
@@ -149,46 +141,33 @@ Spec completa e investigación: **`teclado-voice.md`**.
 ## Limitaciones conocidas de Android
 
 * Algunos fabricantes (Xiaomi, Huawei, Oppo, Samsung, etc.) matan agresivamente los servicios en segundo plano → el usuario debe desactivar la optimización de batería para la app (guía por fabricante en **`INSTALL.md`** §5).
-* `SYSTEM\_ALERT\_WINDOW` y Accessibility Service son permisos “especiales” que el usuario debe conceder manualmente (guía de avisos de Play Protect y ajustes restringidos: `INSTALL.md` §2c).
+* `SYSTEM_ALERT_WINDOW` es permiso “especial” que el usuario concede manualmente (guía de avisos de Play Protect y ajustes restringidos: `INSTALL.md` §2b).
 * En Android Go o dispositivos con poca RAM el overlay puede estar restringido.
 * Android muestra la advertencia estándar sobre teclados de terceros al activar un IME; se mitiga con cero logging y código auditable.
 
-## Cómo generar APK de testing
+## Cómo obtener el APK de testing (CI como única vía)
 
-### Flutter
+No hay builds locales (esta máquina es Termux/proot ARM64 sin Flutter/SDK; ver `AGENTS.md` §6).
+El APK se compila en GitHub Actions (`.github/workflows/android.yml`):
 
-```bash
-flutter build apk --debug          # testing rápido
-flutter build apk --release        # más optimizado
-```
-
-### Kotlin nativo
-
-```bash
-./gradlew assembleDebug
-./gradlew assembleRelease
-```
-
-### Expo (si se elige RN)
-
-```bash
-eas build --platform android --profile preview
-```
+- Cada push a `main` que toque código ejecuta: pub get → analyze estricto → test → `flutter build apk --debug --split-per-abi` → sube el artefacto `voice-bubble-arm64-debug-apk-r<N>` (retención 7 días).
+- Dentro del ZIP está `app-arm64-v8a-debug.apk`.
+- Descarga: GitHub → Actions → run verde más reciente → Artifacts. Ver paso a paso en **`INSTALL.md`** §1.
 
 Los APKs se instalan activando “Orígenes desconocidos” / “Instalar apps desconocidas”. Para la instalación paso a paso, la activación de burbuja/teclado y la guía de batería por fabricante, ver **`INSTALL.md`**.
 
 ## Privacidad
 
 * El audio se envía únicamente al proveedor configurado por el usuario (Groq/OpenAI) y solo cuando este inicia una transcripción.
-* La API key se almacena cifrada (`flutter_secure_storage`); el teclado accede a una copia espejo en preferencias privadas del paquete, inaccesibles para otras apps.
+* La API key se almacena cifrada (`flutter_secure_storage`); detalle del espejo para el teclado en **`INSTALL.md`** §3.
 * No se recolectan analytics ni se envían datos de uso.
 * Teclado: jamás registra texto tecleado (ver "Promesa de privacidad del teclado").
 
 ## Roadmap de alto nivel
 
-Ver **PLAN.md** para el desglose completo de hitos, tareas y criterios de aceptación listos para ejecución por una IA o desarrollador.
+Ver **docs/archive/plan.md** para el desglose completo de hitos, tareas y criterios de aceptación listos para ejecución por una IA o desarrollador.
 
 \---
 
-**Estado actual del proyecto**: Hitos 0–3 completados y verificados en dispositivo real (ago 2026). Hito 4 (Accessibility) en modo HÍBRIDO aprobado 2026-09-05: el dictado del teclado sigue cubriendo la inserción con nuestro IME; la burbuja suma inyección puntual con terceros teclados (HB0 en curso, HB1+ pendientes). Alcance dual según `teclado-voice.md` (T0–K5) completado y auditado. Lote v1.2 completado con CI verde (runs `32679923216` y `32682031857`, APK r64): Configuración reestructurada a 4 tabs glass inferiores C2 (`IndexedStack` persistente en memoria), tecla micrófono M4 con morphing a pastilla roja expandida, cronómetro en vivo `M:SS`, botón cancelar $\ge 44\text{dp}$, ícono vectorial nativo Liquid Glass `kb_ic_mic.xml` (reemplazo definitivo del emoji) y animación de 3 puntos en ola en estado de procesamiento (`PROCESSING`). Pipeline CI optimizado con APK split arm64 que redujo el tamaño de 168 MB a ~54 MB (-67%).
+**Estado actual del proyecto**: Hitos 0–3 completados y verificados en dispositivo real (ago 2026). Hito 4 (Accessibility) → **BLOQUEADO 2026-09-05** (perfil anti-Play-Protect): sin servicio declarado, sin inyección con tercer teclado; la burbuja pega vía IME propio (`commitText`) o portapapeles. Spec archivada en `plan-hito4-burbuja-hibrida.md` §6. Alcance dual según `docs/archive/teclado-voice.md` (T0–K5) completado y auditado. Lote v1.2 completado con CI verde (runs `32679923216` y `32682031857`, APK r64): Configuración reestructurada a 4 tabs glass inferiores C2 (`IndexedStack` persistente en memoria), tecla micrófono M4 con morphing a pastilla roja expandida, cronómetro en vivo `M:SS`, botón cancelar $\ge 44\text{dp}$, ícono vectorial nativo Liquid Glass `kb_ic_mic.xml` (reemplazo definitivo del emoji) y animación de 3 puntos en ola en estado de procesamiento (`PROCESSING`). Pipeline CI optimizado con APK split arm64 que redujo el tamaño de 168 MB a ~54 MB (-67%).
 

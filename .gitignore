@@ -47,7 +47,12 @@ Thumbs.db
 # Logs
 *.log
 
-/.agent/
+# Agentes: .agents/skills se versiona a propósito (NO ignorar).
+# Solo el secreto puntual sigue ignorado abajo (.agents/secrets.env).
+# (Se eliminó la regla typo `/.agent/` — ese dir no existe.)
+
+# APK locales (el CI sube el artefacto; retención 7 días en Actions)
+build_apk/
 
 # Node.js
 node_modules/

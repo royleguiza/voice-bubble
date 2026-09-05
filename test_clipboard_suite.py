@@ -7,29 +7,23 @@ Verifica al 100% de certeza:
 3. Ausencia absoluta de filtración en logs (Sin contenido en Logs)
 4. Paridad de claves del puente Kotlin-Dart (contract-keys.txt)
 5. Validación de colores hexadecimales (Liquid Glass)
-6. Algoritmo FIFO, Pinning y Deduplicación de ClipboardStore
-7. Heurística de detección de código y preservación de tabs/espacios
+6. FIFO-25, pinning y deduplicación: asserts estáticos sobre el código REAL
+   de ClipboardStore.kt (sin mocks que repliquen la lógica).
+7. Clasificación de contenido: asserts estáticos sobre classifyTextContent()
+   y detectCodeHeuristic() REALES en ClipboardStore.kt.
 8. Sintaxis y ejecución JS de laboratorio_ui/index.html
+9. Resiliencia de escritura atómica ante disco lleno (try/catch + .tmp).
 """
 
 import os
 import re
 import sys
-import json
 import xml.etree.ElementTree as ET
 
-WORKSPACE = os.path.dirname(os.path.abspath(__file__))
-PASSED = 0
-FAILED = 0
+from test_helpers import WORKSPACE, Suite
 
-def check(name, condition, error_msg=""):
-    global PASSED, FAILED
-    if condition:
-        print(f"  [PASS] {name}")
-        PASSED += 1
-    else:
-        print(f"  [FAIL] {name} -> {error_msg}")
-        FAILED += 1
+suite = Suite()
+check = suite.check
 
 print("\n============================================================")
 print(" INICIANDO TEST SUITE: CLIPBOARD MANAGER MULTIMODAL (100%)")
@@ -88,6 +82,10 @@ check("Sin filtraciones de contenido en Log.* (CI Guard)", len(found_leaks) == 0
 contract_keys_file = os.path.join(WORKSPACE, "docs/contract-keys.txt")
 kotlin_keys = set()
 flutter_key_regex = re.compile(r'flutter\.([a-z_0-9]+)')
+# Lectores tolerantes con "flutter.$key" interpolado (DynamicIslandController:
+# intPref/stringPref/booleanPref): la clave viaja como argumento, no como
+# literal flutter.*. Sin este segundo patrón el guard daría falsos rojos.
+helper_key_regex = re.compile(r'(?:intPref|stringPref|booleanPref)\(prefs,\s*"([a-z_0-9]+)"')
 import_regex = re.compile(r'^\s*import ')
 
 for root_dir, _, files in os.walk(kt_dir):
@@ -97,6 +95,8 @@ for root_dir, _, files in os.walk(kt_dir):
                 for line in kf:
                     if not import_regex.match(line):
                         for match in flutter_key_regex.finditer(line):
+                            kotlin_keys.add(match.group(1))
+                        for match in helper_key_regex.finditer(line):
                             kotlin_keys.add(match.group(1))
 
 with open(contract_keys_file, "r", encoding="utf-8") as cf:
@@ -125,86 +125,92 @@ for cp in color_paths:
 
 check("Hex de colores Liquid Glass válidos", len(invalid_colors) == 0, f"Colores inválidos: {invalid_colors}")
 
-# --- TEST 6: Simulación Algorítmica del ClipboardStore ---
-# Verificamos lógica FIFO (max 25 unpinned), deduplicación y fijados (pinned)
-class MockClip:
-    def __init__(self, clip_id, clip_type, text, is_pinned=False, timestamp=1000):
-        self.id = clip_id
-        self.type = clip_type
-        self.text = text
-        self.is_pinned = is_pinned
-        self.timestamp = timestamp
+# --- TEST 6: FIFO-25, pinning y deduplicación sobre el código REAL ---
+# ClipboardStore.kt verificado (453 líneas): MAX_UNPINNED_ITEMS=25,
+# isPinned permanente, dedup que conserva pin, orden pin+timestamp.
+store_path = os.path.join(
+    WORKSPACE,
+    "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/ClipboardStore.kt",
+)
+check("ClipboardStore.kt existe", os.path.isfile(store_path))
+with open(store_path, "r", encoding="utf-8") as f:
+    store = f.read()
 
-# Test 6.1: FIFO Desalojo a 25 elementos no fijados
-items = []
-MAX_UNPINNED = 25
-for i in range(40):
-    new_clip = MockClip(f"clip-{i}", "TEXT", f"Text number {i}", is_pinned=False, timestamp=i)
-    # Deduplicación
-    items = [x for x in items if x.text != new_clip.text]
-    items.insert(0, new_clip)
-    pinned = [x for x in items if x.is_pinned]
-    unpinned = [x for x in items if not x.is_pinned]
-    if len(unpinned) > MAX_UNPINNED:
-        unpinned = unpinned[:MAX_UNPINNED]
-    items = sorted(pinned + unpinned, key=lambda x: (x.is_pinned, x.timestamp), reverse=True)
+check(
+    "ClipboardStore declara límite FIFO-25 real",
+    "const val MAX_UNPINNED_ITEMS = 25" in store,
+    "Falta MAX_UNPINNED_ITEMS = 25",
+)
+check(
+    "ClipboardStore desaloja solo no-fijados (drop/take sobre unpinned)",
+    "val pinned = current.filter { it.isPinned }" in store
+    and "val unpinned = current.filter { !it.isPinned }" in store
+    and "unpinned.drop(MAX_UNPINNED_ITEMS)" in store
+    and "unpinned.take(MAX_UNPINNED_ITEMS)" in store,
+    "La evicción FIFO no opera sobre la partición unpinned",
+)
+check(
+    "ClipboardItem tiene isPinned con default false",
+    "val isPinned: Boolean = false" in store,
+    "Falta isPinned en el modelo",
+)
+check(
+    "Deduplicación REAL conserva el pin y refresca timestamp",
+    "current.add(0, newItem.copy(isPinned = old.isPinned, timestamp = System.currentTimeMillis()))" in store,
+    "La dedup no preserva isPinned del elemento previo",
+)
+check(
+    "Orden REAL: fijados primero, luego más recientes",
+    "compareByDescending<ClipboardItem> { it.isPinned }.thenByDescending { it.timestamp }" in store,
+    "Falta sortAndNormalize pin+timestamp",
+)
+check(
+    "togglePin / clearAllUnpinned existen (borrado explícito)",
+    "fun togglePin(itemId: String)" in store
+    and "fun clearAllUnpinned()" in store,
+    "Falta API de borrado explícito por usuario",
+)
+check(
+    "Evicción limpia archivos huérfanos de imagen",
+    "evicted.mediaFileName" in store and "thumbnailCache.remove(evicted.id)" in store,
+    "La evicción FIFO no limpia medios desalojados",
+)
 
-check("FIFO limita a exactamente 25 clips no fijados", len(items) == 25)
-check("El elemento más reciente es el tope del FIFO", items[0].text == "Text number 39")
-
-# Test 6.2: Pinning Retiene elementos permanentemente
-pinned_clip = MockClip("pin-1", "CODE", "def crucial(): pass", is_pinned=True, timestamp=9999)
-items.insert(0, pinned_clip)
-for i in range(40, 80):
-    new_clip = MockClip(f"clip-{i}", "TEXT", f"Text number {i}", is_pinned=False, timestamp=i)
-    items = [x for x in items if x.text != new_clip.text]
-    items.insert(0, new_clip)
-    pinned = [x for x in items if x.is_pinned]
-    unpinned = [x for x in items if not x.is_pinned]
-    if len(unpinned) > MAX_UNPINNED:
-        unpinned = unpinned[:MAX_UNPINNED]
-    items = sorted(pinned + unpinned, key=lambda x: (x.is_pinned, x.timestamp), reverse=True)
-
-check("Clips fijados (pinned) se conservan tras 40 inserciones adicionales", any(x.id == "pin-1" for x in items))
-check("Cantidad total es 26 (1 fijado + 25 FIFO)", len(items) == 26)
-
-# Test 6.3: Deduplicación preserva estado fijado y actualiza timestamp
-clip_dup = MockClip("dup-1", "CODE", "def crucial(): pass", is_pinned=False, timestamp=15000)
-existing_idx = next((idx for idx, x in enumerate(items) if x.text == clip_dup.text), None)
-if existing_idx is not None:
-    old = items.pop(existing_idx)
-    clip_dup.is_pinned = old.is_pinned
-    items.insert(0, clip_dup)
-items = sorted(items, key=lambda x: (x.is_pinned, x.timestamp), reverse=True)
-
-check("Deduplicación preserva estado isPinned del elemento", items[0].text == "def crucial(): pass" and items[0].is_pinned)
-
-# --- TEST 7: Heurística de Clasificación de Contenido ---
-def classify_text(raw):
-    trimmed = raw.strip()
-    if trimmed.startswith("http://") or trimmed.startswith("https://"):
-        return "URL"
-    if "\\int" in trimmed or "\\frac" in trimmed or "\\sqrt" in trimmed or "$$" in trimmed:
-        return "MATH"
-    lines = raw.split("\n")
-    if len(lines) >= 2 and (raw.startswith("    ") or raw.startswith("\t")):
-        return "CODE"
-    code_markers = [
-        "const ", "let ", "var ", "function", "def ", "import ", "class ", "return ",
-        "SELECT ", "FROM ", "WHERE ", "CREATE ", "INSERT ", "UPDATE ", "{", "}", "=>", "#!/bin/", "public static", "void ",
-        "fun ", "val ", "println", "git "
-    ]
-    matches = sum(1 for m in code_markers if m.lower() in raw.lower())
-    if matches >= 2 or "select " in raw.lower() or ("{\n" in raw and "}" in raw) or ";\n" in raw:
-        return "CODE"
-    return "TEXT"
-
-check("Heurística detecta Python indentado como CODE", classify_text("def test():\n    return 42") == "CODE")
-check("Heurística detecta SQL como CODE", classify_text("SELECT id, name FROM users WHERE active = 1") == "CODE")
-check("Heurística detecta LaTeX como MATH", classify_text("E = \\sqrt{m^2 c^4 + p^2 c^2}") == "MATH")
-check("Heurística detecta URLs", classify_text("https://github.com/royleguiza/voice-bubble") == "URL")
-check("Heurística clasifica notas normales como TEXT", classify_text("Comprar leche y pan esta tarde") == "TEXT")
-check("Preservación de tabulaciones y saltos de línea intactos", "\tSELECT * FROM test\n\tWHERE x=1" == "\tSELECT * FROM test\n\tWHERE x=1")
+# --- TEST 7: Clasificación REAL en ClipboardStore.kt ---
+check(
+    "Enum ClipType REAL con TEXT/CODE/IMAGE/MATH/URL",
+    "enum class ClipType { TEXT, CODE, IMAGE, MATH, URL }" in store,
+    "El enum ClipType no coincide",
+)
+check(
+    "classifyTextContent REAL existe y distingue URL/MATH/CODE/TEXT",
+    "fun classifyTextContent(raw: String): ClipType" in store
+    and 'trimmed.startsWith("http://")' in store
+    and 'trimmed.startsWith("https://")' in store
+    and "return ClipType.URL" in store
+    and "return ClipType.MATH" in store
+    and "return ClipType.CODE" in store
+    and "return ClipType.TEXT" in store,
+    "classifyTextContent no implementa las 4 ramas",
+)
+check(
+    "Rama MATH REAL detecta marcadores LaTeX",
+    '"\\\\int"' in store and '"\\\\frac"' in store and '"\\\\sqrt"' in store,
+    "Faltan marcadores LaTeX en la rama MATH",
+)
+check(
+    "Heurística REAL de código con indentación + marcadores",
+    "private fun detectCodeHeuristic(text: String): Boolean" in store
+    and 'text.lines().size >= 2' in store
+    and '"def "' in store and '"SELECT "' in store and '"fun "' in store,
+    "detectCodeHeuristic no implementa indentación ni marcadores",
+)
+check(
+    "Preview REAL acotada a 120 caracteres",
+    "const val MAX_TEXT_PREVIEW_CHARS = 120" in store
+    and "private fun generateTextPreview(text: String)" in store,
+    "Falta generateTextPreview acotado",
+)
 
 # --- TEST 8: Validación de UI Laboratorio (index.html) ---
 lab_html_path = os.path.join(WORKSPACE, "laboratorio_ui/index.html")
@@ -217,12 +223,24 @@ check("Laboratorio UI contiene clipboardLayerArea", "id=\"clipboardLayerArea\"" 
 check("Laboratorio UI contiene función toggleClipboardLayer", "toggleClipboardLayer" in lab_html)
 check("Laboratorio UI contiene renderOption2FilmstripReel", "renderOption2FilmstripReel" in lab_html)
 
+# --- TEST 9: Escritura atómica resiliente (disco lleno no corrompe) ---
+save_block_start = store.find("private fun saveToDisk(list: List<ClipboardItem>)")
+check(
+    "ClipboardStore.saveToDisk escribe .tmp + rename dentro de try/catch",
+    save_block_start != -1
+    and '"$FILE_HISTORY.tmp"' in store
+    and "tmpFile.renameTo(targetFile)" in store
+    and "try {" in store[save_block_start:save_block_start + 600]
+    and "catch (e: Exception)" in store[save_block_start:save_block_start + 600],
+    "saveToDisk no usa reemplazo atómico bajo try/catch",
+)
+
 # --- RESUMEN FINAL ---
 print("\n============================================================")
-print(f" RESULTADOS: {PASSED} Pasados, {FAILED} Fallidos")
+print(f" RESULTADOS: {suite.passed} Pasados, {suite.failed} Fallidos")
 print("============================================================\n")
 
-if FAILED > 0:
+if suite.failed > 0:
     print("❌ ERROR: Existen fallas en la suite de pruebas.")
     sys.exit(1)
 else:

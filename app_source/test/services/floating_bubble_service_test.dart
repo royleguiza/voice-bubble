@@ -59,6 +59,63 @@ void main() {
       expect(res, isFalse);
     });
 
+    test('canDrawOverlays returns false when overlay permission denied', () async {
+      messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
+        if (call.method == 'canDrawOverlays') return false;
+        return true;
+      });
+      final res = await service.canDrawOverlays();
+      expect(res, isFalse);
+    });
+
+    test('requestOverlayPermission returns false when user denies it', () async {
+      messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
+        if (call.method == 'requestOverlayPermission') return false;
+        return true;
+      });
+      final res = await service.requestOverlayPermission();
+      expect(res, isFalse);
+    });
+
+    test('startBubble returns false when native start throws', () async {
+      messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
+        if (call.method == 'startBubble') {
+          throw PlatformException(code: 'START_FAILED', message: 'denied');
+        }
+        return true;
+      });
+      final res = await service.startBubble();
+      expect(res, isFalse);
+    });
+
+    test('stopBubble returns false when native stop throws', () async {
+      messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
+        if (call.method == 'stopBubble') {
+          throw PlatformException(code: 'STOP_FAILED', message: 'dead');
+        }
+        return true;
+      });
+      final res = await service.stopBubble();
+      expect(res, isFalse);
+    });
+
+    test('pushHistoryEntry returns false when clipboard write fails', () async {
+      messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
+        if (call.method == 'pushHistoryEntry') {
+          throw PlatformException(code: 'CLIPBOARD_FAILED', message: 'locked');
+        }
+        return true;
+      });
+      final res = await service.pushHistoryEntry('texto que no se pudo copiar');
+      expect(res, isFalse);
+    });
+
+    test('pushHistoryEntry returns false when native returns null', () async {
+      messenger.setMockMethodCallHandler(channel, (MethodCall call) async => null);
+      final res = await service.pushHistoryEntry('hola');
+      expect(res, isFalse);
+    });
+
     test('requestOverlayPermission invokes native method', () async {
       final res = await service.requestOverlayPermission();
       expect(res, isTrue);

@@ -28,8 +28,9 @@ def test_dart_keyboard_service():
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    assert "Future<bool> showInputMethodPicker() async" in content, "KeyboardService no define showInputMethodPicker()"
-    assert "'showInputMethodPicker'" in content, "KeyboardService no llama a 'showInputMethodPicker'"
+    assert "_mShowInputMethodPicker = 'showInputMethodPicker'" in content, "KeyboardService no define la constante del canal showInputMethodPicker"
+    assert "Future<bool> showInputMethodPicker()" in content, "KeyboardService no define showInputMethodPicker()"
+    assert "_invokeBool(_mShowInputMethodPicker)" in content, "KeyboardService no invoca el canal showInputMethodPicker"
     print("  [PASS] KeyboardService.dart tiene showInputMethodPicker() integrado.")
 
 def test_settings_screen_lifecycle_and_mic():

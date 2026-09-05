@@ -16,7 +16,6 @@ def test_height_profiles():
     with open(dart_file, "r", encoding="utf-8") as f:
         dart_content = f.read()
 
-    expected_profiles = "kbHeightProfiles = [\n    'baja',\n    'media',\n    'alta',\n    'muy_alta',\n  ];"
     assert "kbHeightProfiles" in dart_content
     assert "'baja'" in dart_content
     assert "'media'" in dart_content

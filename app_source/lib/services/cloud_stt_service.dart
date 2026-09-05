@@ -4,8 +4,13 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/transcription.dart';
 
-/// Clasificación de errores de transcripción para decidir si conviene
-/// ofrecer reintento sin regrabar.
+/// Contrato de reintento (para la UI sin tocar screens/):
+/// - Este servicio NUNCA reintenta por su cuenta: cada `transcribe()` envía
+///   exactamente UNA petición HTTP, gane o pierda.
+/// - Todo fallo se propaga como [TranscriptionException] con [TranscriptionErrorKind]
+///   ya clasificado. El llamador decide con `e.isRetryable` (true solo para
+///   `network`/`server`) si ofrece "Reintentar sin regrabar" o pide regrabar.
+/// - `network`/`server` = reintentable; `auth`/`badRequest`/`unknown` = no.
 enum TranscriptionErrorKind {
   /// Sin conexión / red intermitente / timeout.
   network,
@@ -38,15 +43,33 @@ class TranscriptionException implements Exception {
 }
 
 class CloudSttService {
+  // --- Constantes del motor (sin literales mágicos) ---
   static const String _endpoint =
       'https://api.groq.com/openai/v1/audio/transcriptions';
   static const String _model = 'whisper-large-v3';
+  static const String _language = 'es';
+  static const String _multipartFieldFile = 'file';
+  static const String _multipartFieldModel = 'model';
+  static const String _multipartFieldLanguage = 'language';
+  static const String _headerAuthorization = 'Authorization';
+
+  // Timeout adaptativo: 1 s por cada bloque completo subido + base.
+  static const int _timeoutBaseSeconds = 60;
+  static const int _timeoutBytesPerSecond = 50000; // ~50 KB/s efectivos
+  static const int _timeoutMinSeconds = 60;
+  static const int _timeoutMaxSeconds = 600;
+
+  // Status HTTP clasificados.
+  static const int _httpOk = 200;
+  static const int _httpUnauthorized = 401;
+  static const int _httpForbidden = 403;
+  static const int _httpRateLimit = 429;
+  static const int _httpServerErrorFloor = 500;
 
   /// Valores canonicos compartidos con el teclado nativo (espejo D7).
   static const String endpoint = _endpoint;
   static const String model = _model;
-  static const String provider = 'groq';
-  static const String language = 'es';
+  static const String language = _language;
 
   final String apiKey;
   final http.Client? client;
@@ -56,11 +79,14 @@ class CloudSttService {
     this.client,
   });
 
-  /// Timeout adaptativo: subida (~125 KB/s en red móvil) + procesamiento.
-  /// WAV 16kHz mono 16-bit ≈ 32 KB/s de audio; clamp [60s, 600s].
+  /// Timeout adaptativo: base de procesamiento + 1 s por cada
+  /// [_timeoutBytesPerSecond] bytes del audio (subida a ~50 KB/s efectivos
+  /// en red móvil, conservador). WAV 16kHz mono 16-bit ≈ 32 KB/s de audio;
+  /// clamp [_timeoutMinSeconds]..[_timeoutMaxSeconds].
   Duration timeoutForBytes(int bytes) {
-    final seconds = 60 + (bytes ~/ 50000);
-    return Duration(seconds: seconds.clamp(60, 600));
+    final seconds =
+        _timeoutBaseSeconds + (bytes ~/ _timeoutBytesPerSecond);
+    return Duration(seconds: seconds.clamp(_timeoutMinSeconds, _timeoutMaxSeconds));
   }
 
   Future<Transcription> transcribe(String audioPath) async {
@@ -72,6 +98,9 @@ class CloudSttService {
     }
 
     final file = File(audioPath);
+    // Async obligado: este chequeo corre en el hilo UI antes de subir a
+    // Groq; el sync atascaba frames en eMMC lentas.
+    // ignore: avoid_slow_async_io
     if (!await file.exists()) {
       throw const TranscriptionException(
         'Archivo de audio no encontrado.',
@@ -83,10 +112,29 @@ class CloudSttService {
     final timeout = timeoutForBytes(fileLength);
 
     final request = http.MultipartRequest('POST', Uri.parse(_endpoint));
-    request.headers['Authorization'] = 'Bearer $apiKey';
-    request.fields['model'] = _model;
-    request.fields['language'] = 'es';
-    request.files.add(await http.MultipartFile.fromPath('file', audioPath));
+    request.headers[_headerAuthorization] = 'Bearer $apiKey';
+    request.fields[_multipartFieldModel] = _model;
+    request.fields[_multipartFieldLanguage] = _language;
+    try {
+      request.files.add(
+        await http.MultipartFile.fromPath(_multipartFieldFile, audioPath),
+      );
+    } on FileSystemException catch (e) {
+      throw TranscriptionException(
+        'No se pudo leer el audio para subirlo: ${e.message}',
+        kind: TranscriptionErrorKind.badRequest,
+      );
+    } on OSError catch (e) {
+      throw TranscriptionException(
+        'No se pudo leer el audio para subirlo: ${e.message}',
+        kind: TranscriptionErrorKind.badRequest,
+      );
+    } catch (_) {
+      throw const TranscriptionException(
+        'No se pudo leer el audio para subirlo.',
+        kind: TranscriptionErrorKind.badRequest,
+      );
+    }
 
     final response = await _guardNetworkCall(() {
       final effectiveClient = client;
@@ -100,28 +148,24 @@ class CloudSttService {
       return response.stream.bytesToString().timeout(timeout);
     });
 
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(body) as Map<String, dynamic>;
-      final text = decoded['text'] as String;
-      return Transcription(
-        text: text,
-        timestamp: DateTime.now(),
-      );
+    if (response.statusCode == _httpOk) {
+      return _parseSuccessBody(body);
     }
 
-    if (response.statusCode == 401 || response.statusCode == 403) {
+    if (response.statusCode == _httpUnauthorized ||
+        response.statusCode == _httpForbidden) {
       throw const TranscriptionException(
         'API key inválida. Verifica tu clave en Settings.',
         kind: TranscriptionErrorKind.auth,
       );
     }
-    if (response.statusCode == 429) {
+    if (response.statusCode == _httpRateLimit) {
       throw const TranscriptionException(
         'Límite de solicitudes alcanzado. Espera un momento e intenta de nuevo.',
         kind: TranscriptionErrorKind.server,
       );
     }
-    if (response.statusCode >= 500) {
+    if (response.statusCode >= _httpServerErrorFloor) {
       throw TranscriptionException(
         _serverErrorDetail(response.statusCode, body),
         kind: TranscriptionErrorKind.server,
@@ -131,6 +175,47 @@ class CloudSttService {
     throw TranscriptionException(
       _serverErrorDetail(response.statusCode, body),
       kind: TranscriptionErrorKind.badRequest,
+    );
+  }
+
+  /// Parseo defensivo del 200 sin `as` duros: valida `text` String no vacío.
+  /// - Body no-JSON o no-Map → `server` (payload del servidor malformado,
+  ///   reintentable).
+  /// - `text` ausente/no-String → `server` (reintentable).
+  /// - `text` vacío/solo-espacios → `badRequest` (nada que transcribir en
+  ///   ese audio; reintentar el mismo archivo no ayuda).
+  Transcription _parseSuccessBody(String body) {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(body);
+    } catch (_) {
+      throw const TranscriptionException(
+        'Respuesta inválida del servidor. Intenta de nuevo.',
+        kind: TranscriptionErrorKind.server,
+      );
+    }
+    if (decoded is! Map<dynamic, dynamic>) {
+      throw const TranscriptionException(
+        'Respuesta inválida del servidor. Intenta de nuevo.',
+        kind: TranscriptionErrorKind.server,
+      );
+    }
+    final rawText = decoded['text'];
+    if (rawText is! String) {
+      throw const TranscriptionException(
+        'Respuesta inválida del servidor. Intenta de nuevo.',
+        kind: TranscriptionErrorKind.server,
+      );
+    }
+    if (rawText.trim().isEmpty) {
+      throw const TranscriptionException(
+        'El servidor no devolvió texto para ese audio.',
+        kind: TranscriptionErrorKind.badRequest,
+      );
+    }
+    return Transcription(
+      text: rawText,
+      timestamp: DateTime.now(),
     );
   }
 
@@ -158,9 +243,14 @@ class CloudSttService {
         kind: TranscriptionErrorKind.network,
       );
     } catch (e) {
+      // No tragar la clasificación ya decidida: el llamador la usa vía kind/isRetryable.
       if (e is TranscriptionException) rethrow;
-      throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
+      // Error inesperado fuera de red (p.ej. bug de programación): no
+      // clasificar como red para no ofrecer un reintento inútil.
+      throw const TranscriptionException(
+        'Error inesperado al transcribir.',
+        kind: TranscriptionErrorKind.unknown,
+      );
     }
   }
 
@@ -169,9 +259,10 @@ class CloudSttService {
   String _serverErrorDetail(int statusCode, String body) {
     try {
       final decoded = jsonDecode(body);
-      if (decoded is Map) {
+      if (decoded is Map<dynamic, dynamic>) {
         final error = decoded['error'];
-        final message = error is Map ? error['message'] : null;
+        final message =
+            error is Map<dynamic, dynamic> ? error['message'] : null;
         if (message is String && message.isNotEmpty) {
           return 'Error $statusCode de Groq: $message';
         }

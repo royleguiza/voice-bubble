@@ -38,6 +38,14 @@ class _RecordButtonState extends State<RecordButton>
 
   bool _pulseActive = false;
 
+  /// Tweens del anillo pulsante creados UNA vez: antes se reconstruían
+  /// (`Tween(...).animate(_pulse)`) en cada build del botón, asignando
+  /// objetos de animación por frame sin necesidad.
+  late final Animation<double> _ringOpacity =
+      Tween(begin: 0.35, end: 0.0).animate(_pulse);
+  late final Animation<double> _ringScale =
+      Tween(begin: 0.88, end: 1.0).animate(_pulse);
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -108,12 +116,11 @@ class _RecordButtonState extends State<RecordButton>
           children: [
             if (isRecording && motionSafe)
               FadeTransition(
-                opacity: Tween(begin: 0.35, end: 0.0).animate(_pulse),
+                opacity: _ringOpacity,
                 child: ScaleTransition(
                   // Escala hacia adentro para no desbordar el Ø104
                   // (el overflow amarillo/negro de Flutter se veía sobre el rojo).
-                  scale:
-                      Tween(begin: 0.88, end: 1.0).animate(_pulse),
+                  scale: _ringScale,
                   child: Container(
                     width: kRecordButtonSize,
                     height: kRecordButtonSize,

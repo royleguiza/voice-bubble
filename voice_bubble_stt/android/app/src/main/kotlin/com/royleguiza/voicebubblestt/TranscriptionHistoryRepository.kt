@@ -83,10 +83,13 @@ class TranscriptionHistoryRepository(private val context: Context) {
                 }
                 val file = targetFile
                 file.writeText("[]", Charsets.UTF_8)
+                // apply(), no commit(): esta purga sigue muerta (sin purga
+                // automática), pero un commit() sincrónico en el main sería
+                // una trampa de ANR si alguien la invoca en el futuro.
                 context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                     .edit()
                     .remove(SHARED_HISTORY_KEY)
-                    .commit()
+                    .apply()
             } catch (_: Exception) {}
         }
     }

@@ -7,10 +7,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
-import android.os.Build
 import android.provider.Settings
-import android.util.DisplayMetrics
-import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -142,8 +139,6 @@ class PointerOverlayManager(private val context: Context) {
             isVisible = false
         }
     }
-
-    fun isShowing(): Boolean = isVisible && isAttached
 
     fun getPosition(): Pair<Float, Float> {
         // Devuelve el punto de impacto exacto según el estilo

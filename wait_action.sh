@@ -1,5 +1,7 @@
 #!/bin/bash
-TOKEN="***REVOKADO-SPK01***"
+# El token JAMÁS se hardcodea aquí: se lee del entorno (ver AGENTS.md §9.4).
+: "${GITHUB_TOKEN:?Define GITHUB_TOKEN en el entorno (export GITHUB_TOKEN=...) — nunca lo pegues en archivos.}"
+TOKEN="$GITHUB_TOKEN"
 RUN_ID="33560253236"
 REPO="royleguiza/voice-bubble"
 

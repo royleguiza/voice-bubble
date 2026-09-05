@@ -21,18 +21,10 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 
-WORKSPACE = os.path.dirname(os.path.abspath(__file__))
-PASSED = 0
-FAILED = 0
+from test_helpers import WORKSPACE, Suite
 
-def check(name, condition, error_msg=""):
-    global PASSED, FAILED
-    if condition:
-        print(f"  [PASS] {name}")
-        PASSED += 1
-    else:
-        print(f"  [FAIL] {name} -> {error_msg}")
-        FAILED += 1
+suite = Suite()
+check = suite.check
 
 print("\n============================================================")
 print(" 🚀 INICIANDO TEST SUITE: MODO TRACKPAD Y PUNTERO VIRTUAL (MEJ-09)")
@@ -76,7 +68,9 @@ with open(manifest_path, "r", encoding="utf-8") as f:
 check("AndroidManifest declara SYSTEM_ALERT_WINDOW", 'android.permission.SYSTEM_ALERT_WINDOW' in manifest_content)
 check("AndroidManifest libre de BIND_ACCESSIBILITY_SERVICE (perfil anti-Play-Protect)", 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest_content)
 check("AndroidManifest no declara VoiceBubbleAccessibilityService (perfil anti-Play-Protect)", 'android:name=".VoiceBubbleAccessibilityService"' not in manifest_content)
-check("AndroidManifest no declara FloatingTrackpadService (Play Protect seguro)", 'android:name=".FloatingTrackpadService"' not in manifest_content)
+# NOTA: la exigencia de FloatingTrackpadService vive en TEST 13 (declarado
+# como servicio normal por otro agente). Aquí solo se conserva el perfil
+# dormido de ACCESIBILIDAD, que sí debe seguir sin declarar.
 
 gradle_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/build.gradle.kts")
 with open(gradle_path, "r", encoding="utf-8") as f:
@@ -247,7 +241,12 @@ check("StorageService tiene getTrackpadScrollDirection / setTrackpadScrollDirect
 check("StorageService tiene getTrackpadHaptic / setTrackpadHaptic", "getTrackpadHaptic" in storage_content and "setTrackpadHaptic" in storage_content)
 check("StorageService tiene getTrackpadPointerStyle / setTrackpadPointerStyle", "getTrackpadPointerStyle" in storage_content and "setTrackpadPointerStyle" in storage_content)
 check("StorageService tiene getTrackpadAutoReturn / setTrackpadAutoReturn", "getTrackpadAutoReturn" in storage_content and "setTrackpadAutoReturn" in storage_content)
-check("StorageService acota getTrackpadSensitivity a [0.5, 2.5]", ".clamp(0.5, 2.5)" in storage_content)
+check("StorageService acota get/setTrackpadSensitivity a [0.5, 2.5] centralizado",
+      "static const double minTrackpadSensitivity = 0.5;" in storage_content
+      and "static const double maxTrackpadSensitivity = 2.5;" in storage_content
+      and "clampTrackpadSensitivity(raw)" in storage_content
+      and "clampTrackpadSensitivity(sensitivity)" in storage_content,
+      "El clamp de sensibilidad no es central [0.5, 2.5] en get+set")
 
 # --- TEST 9: SettingsScreen (Dart) ---
 dart_settings_path = os.path.join(WORKSPACE, "app_source/lib/screens/settings_screen.dart")
@@ -285,10 +284,43 @@ for d_name, d_path in [
     check(f"{d_name} existe", os.path.isfile(d_path))
     if os.path.isfile(d_path):
         try:
-            ET.parse(d_path)
-            check(f"{d_name} es XML válido", True)
+            with open(d_path, "r", encoding="utf-8") as _df:
+                d_text = _df.read()
+            root = ET.fromstring(d_text)
+            check(f"{d_name} raíz es <vector>", root.tag == "vector", f"raíz real: {root.tag}")
+            ns_w = "{http://schemas.android.com/apk/res/android}width"
+            ns_h = "{http://schemas.android.com/apk/res/android}height"
+            check(f"{d_name} tamaño 24dp", root.get(ns_w) == "24dp" and root.get(ns_h) == "24dp",
+                  f"width={root.get(ns_w)} height={root.get(ns_h)}")
+            paths = root.findall("path")
+            check(f"{d_name} contiene >=1 <path>", len(paths) >= 1, f"paths reales: {len(paths)}")
         except Exception as e:
-            check(f"{d_name} es XML válido", False, str(e))
+            check(f"{d_name} es XML válido y parseable", False, str(e))
+            continue
+        if d_name == "ic_trackpad.xml":
+            check("ic_trackpad.xml flecha puntero (path M3,3…)", "M3,3 L10.07,19.97" in d_text)
+            check("ic_trackpad.xml tint kb_label", 'android:tint="@color/kb_label"' in d_text)
+        elif d_name == "ic_keyboard.xml":
+            check("ic_keyboard.xml 4 paths (marco+filas+espacio)", d_text.count("<path") == 4, f"<path reales: {d_text.count('<path')}")
+            check("ic_keyboard.xml línea de espacio (M8,16 H16)", "M8,16 H16" in d_text)
+        elif d_name == "ic_mouse_left.xml":
+            check("ic_mouse_left.xml cuadrante izquierdo relleno", "M 12,2 C 8.13,2 5,5.13 5,9 L 12,9 Z" in d_text)
+        elif d_name == "ic_mouse_right.xml":
+            check("ic_mouse_right.xml cuadrante derecho relleno", "M 12,2 C 15.87,2 19,5.13 19,9 L 12,9 Z" in d_text)
+        elif d_name == "ic_copy.xml":
+            check("ic_copy.xml rectángulo frontal (M 9,9…)", "M 9,9 H 19 V 21 H 9 Z" in d_text)
+        elif d_name == "ic_check.xml":
+            check("ic_check.xml trazo verde #FF30D158", 'android:strokeColor="#FF30D158"' in d_text)
+            check("ic_check.xml tick (M 4,12…)", "M 4,12 L 9,17 L 20,6" in d_text)
+
+check("AndroidManifest declara permiso VIBRATE (háptica trackpad/píldora)",
+      'android:name="android.permission.VIBRATE"' in manifest_content)
+check("AndroidManifest declara FloatingBubbleService con exported=false",
+      re.search(r'<service[^>]*\.FloatingBubbleService[^>]*android:exported="false"', manifest_content, re.DOTALL) is not None,
+      "FloatingBubbleService sin exported=false")
+check("AndroidManifest declara FloatingTrackpadService con exported=false",
+      re.search(r'<service[^>]*\.FloatingTrackpadService[^>]*android:exported="false"', manifest_content, re.DOTALL) is not None,
+      "FloatingTrackpadService sin exported=false")
 
 with open(strings_xml, "r", encoding="utf-8") as f:
     str_content = f.read()
@@ -331,7 +363,12 @@ check("SettingsScreen tiene botón de inversión de ranuras", "island-swap-slots
 check("SettingsScreen tiene selector de tema de la pastilla", "island-theme-selector" in settings_content)
 check("SettingsScreen tiene switch de onda de voz reactiva", "island-waveform-switch" in settings_content)
 
-check("DynamicIslandController carga preferencias nativas de posición y tamaño", "flutter.island_pos_x" in dic_content and "flutter.island_pos_y" in dic_content and "flutter.island_width" in dic_content and "flutter.island_height" in dic_content)
+# La isla lee vía literales flutter.* o vía helpers intPref(prefs, "clave")
+# con "flutter.$key" interpolado (misma paridad, tolerante a tipos).
+check("DynamicIslandController carga preferencias nativas de posición y tamaño",
+      all((f'flutter.{k}' in dic_content or f'intPref(prefs, "{k}"' in dic_content)
+          for k in ["island_pos_x", "island_pos_y", "island_width", "island_height"]),
+      "La isla no lee su geometría de FlutterSharedPreferences")
 check("DynamicIslandController implementa reloadConfiguration", "fun reloadConfiguration()" in dic_content)
 check("DynamicIslandController implementa orden dinámico de ranuras", "slotOrder" in dic_content and "mic_camera_trackpad" in dic_content)
 check("DynamicIslandController implementa temas visuales glass, dark y light", "islandTheme" in dic_content and "light" in dic_content and "dark" in dic_content)
@@ -342,10 +379,55 @@ dart_island_settings_test = os.path.join(WORKSPACE, "app_source/test/screens/set
 check("island_storage_test.dart existe", os.path.isfile(dart_island_storage_test))
 check("settings_island_test.dart existe", os.path.isfile(dart_island_settings_test))
 
+# --- TEST 13: FloatingTrackpadService declarado como servicio NORMAL ---
+# Es un Service corriente (no accesibilidad): declararlo es Play-Protect
+# seguro. Lo declara otro agente; este test pasa con el manifest final.
+# Si aún no está declarado se reporta como ITEM-INTERFAZ, no se adivina.
+check("AndroidManifest declara FloatingTrackpadService como servicio normal",
+      'android:name=".FloatingTrackpadService"' in manifest_content,
+      "ITEM-INTERFAZ: otro agente debe declarar el servicio normal en el manifest")
+
+# --- TEST 14: Contrato kb_trackpad_haptic consistente en tipo (String) ---
+# Dart guarda String ('subtle'/'none'/'firm', default 'subtle') y
+# VoiceKeyboardService lee getString: ambos lados coinciden.
+check("Dart getTrackpadHaptic es String con dominio subtle/none/firm",
+      "Future<String> getTrackpadHaptic()" in storage_content
+      and "static const String defaultTrackpadHaptic = 'subtle'" in storage_content
+      and "kbTrackpadHaptics = ['subtle', 'none', 'firm']" in storage_content,
+      "El contrato Dart de kb_trackpad_haptic no es String")
+check("VoiceKeyboardService lee kb_trackpad_haptic como String",
+      'private var trackpadHaptic = "subtle"' in vk_content
+      and '.getString("flutter.kb_trackpad_haptic", "subtle")' in vk_content
+      and "when (trackpadHaptic)" in vk_content,
+      "VoiceKeyboardService no lee el haptic como String")
+with open(ftp_kt_path, "r", encoding="utf-8") as f:
+    ftp_content_recheck = f.read()
+check("FloatingTrackpadService lee kb_trackpad_haptic como String (sin getBoolean)",
+      '.getString("flutter.kb_trackpad_haptic"' in ftp_content_recheck,
+      "ITEM-INTERFAZ CR-10: FloatingTrackpadService.kt usa getBoolean para una clave String (ClassCastException)")
+
+# --- TEST 15: La UI no promete clics en otra app + degradación real ---
+# Los textos del trackpad describen capa DENTRO del teclado; jamás se
+# promete inyección/clics en otras apps (el despacho nativo exige el
+# servicio conectado y degrada por fallback local).
+check("UI del trackpad describe capa dentro del teclado",
+      "Habilita la capa de trackpad con puntero de mouse en el teclado." in settings_content
+      and "Controla un puntero virtual en pantalla con aceleración cinemática" in settings_content,
+      "Faltan los textos honestos de la tarjeta de trackpad")
+check("UI del trackpad sin promesas de clics en otra app",
+      "inyecta" not in settings_content
+      and "clic en otra" not in settings_content
+      and "clics en otra" not in settings_content
+      and "controla otras" not in settings_content,
+      "La UI promete interacción fuera de la app")
+check("VoiceKeyboardService degrada sin accesibilidad (gate isConnected)",
+      "if (VoiceBubbleAccessibilityService.isConnected())" in vk_content,
+      "El despacho del trackpad no verifica conexión antes de inyectar")
+
 print("\n============================================================")
-print(f" RESULTADO SUITE TRACKPAD & ISLA: {PASSED} pasados, {FAILED} fallidos.")
+print(f" RESULTADO SUITE TRACKPAD & ISLA: {suite.passed} pasados, {suite.failed} fallidos.")
 print("============================================================\n")
 
-if FAILED > 0:
+if suite.failed > 0:
     sys.exit(1)
 sys.exit(0)

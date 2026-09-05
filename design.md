@@ -25,7 +25,7 @@ Liquid Glass es un **meta-material dinámico** que combina las propiedades ópti
 
 1. **Jerarquía de capas**: hay una capa **funcional** (controles y navegación, hecha de Liquid Glass) que flota por encima de la **capa de contenido**. Nunca se mezclan.
 2. **El contenido manda**: el vidrio se adapta al contenido; el contenido nunca se adapta al vidrio.
-3. **Simplicidad radical**: el usuario debe entender la app en 10 segundos (regla del plan.md).
+3. **Simplicidad radical**: el usuario debe entender la app en 10 segundos (regla de docs/archive/plan.md).
 4. **Menos es más**: Liquid Glass se usa con moderación, solo en los elementos funcionales más importantes.
 
 ---
@@ -38,7 +38,7 @@ Liquid Glass es un **meta-material dinámico** que combina las propiedades ópti
 │  · Burbuja flotante                          │
 │  · Botón principal Grabar/Detener            │
 │  · Botón Copiar                              │
-│  · Selector Local/Cloud                      │
+│  · (histórico — removido en Hito 2: selector Local/Cloud; solo Cloud vigente) │
 │  · Barras / sheets / menús                   │
 ├──────────────────────────────────────────────┤
 │  CAPA DE CONTENIDO (materiales estándar)     │
@@ -143,8 +143,8 @@ Notas:
 
 - Forma por defecto de botones: **cápsula**.
 - Los controles "cobran vida" al tocarlos: escala sutil (0.96→1.0), rebote tipo spring, shimmer del material.
-- El selector Local/Cloud: segmented control estilo iOS 26 — pastillas de vidrio dentro de un contenedor de vidrio con separadores finos.
-- Feedback háptico al iniciar/detener grabación (ya previsto en plan.md, Hito 2).
+- Histórico (removido en Hito 2, solo Cloud vigente): el selector Local/Cloud era un segmented control estilo iOS 26 — pastillas de vidrio dentro de un contenedor de vidrio con separadores finos.
+- Feedback háptico al iniciar/detener grabación (ya previsto en docs/archive/plan.md, Hito 2).
 
 ### Espaciado
 
@@ -244,7 +244,7 @@ Además:
 > El teclado es UI **nativa Kotlin**: estos tokens traducen el sistema Liquid Glass a
 > recursos nativos (`res/values/colors.xml` + `dimens.xml`). Rigen las mismas reglas de
 > jerarquía funcional/contenido (§2), variantes (§3), modo del sistema (§4) y
-> accesibilidad (§9). Spec funcional completa: `teclado-voice.md`.
+> accesibilidad (§9). Spec funcional completa: `docs/archive/teclado-voice.md`.
 
 ### Tokens de color (recursos nativos)
 
@@ -281,6 +281,6 @@ Además:
 - Vidrio **Regular siempre**: el fondo detrás es arbitrario (cualquier app); la variante Clear queda prohibida aquí.
 - **Insets obligatorios**: con targetSdk edge-to-edge, la vista del teclado aplica los insets de `navigationBars` + `displayCutout` como padding inferior — la fila inferior nunca queda bajo la barra de gestos ni bajo los controles del sistema (flecha minimizar, selector de IME). Prohibido compensar con porcentajes fijos.
 - Las teclas (elementos pequeños) pueden flip claro/oscuro según el modo del sistema; nunca toggle manual.
-- Campos de contraseña: micrófono oculto, snippets deshabilitados, cero sugerencias visuales. La burbuja híbrida (`plan-hito4-burbuja-hibrida.md`) tampoco inyecta jamás ahí.
-- Prohibido por alcance (anti-patrones `teclado-voice.md` §8): temas, emojis, autocorrector predictivo, glide typing, portapapeles multinivel.
-- Burbuja híbrida (HB2+): sin componentes nuevos. El feedback por camino (`Insertado en el campo` / `Pegado` / `Copiado al portapapeles`) reutiliza Snackbar Material existente e i18n es/en; Reduced Motion = texto estático sin rebote. El switch de Ajustes sigue SwitchListTile y tokens existentes.
+- Campos de contraseña: micrófono oculto, snippets deshabilitados, cero sugerencias visuales. La burbuja tampoco inyecta jamás ahí: solo portapapeles neutro (Hito 4 BLOQUEADO 2026-09-05, perfil anti-Play-Protect; spec archivada en `plan-hito4-burbuja-hibrida.md` §6).
+- Prohibido por alcance (anti-patrones `docs/archive/teclado-voice.md` §8): temas, emojis, autocorrector predictivo, glide typing, portapapeles multinivel.
+- Burbuja (2 caminos vigentes): sin componentes nuevos. El feedback por camino (`Insertado en el campo` / `Copiado al portapapeles`) reutiliza Snackbar Material existente e i18n es/en; Reduced Motion = texto estático sin rebote. El switch de Ajustes sigue SwitchListTile y tokens existentes. El tercer camino híbrido (HB2+, `Pegado` por accesibilidad con tercer teclado) quedó BLOQUEADO 2026-09-05 por perfil anti-Play-Protect: archivado, no vigente (ver `plan-hito4-burbuja-hibrida.md` §6).

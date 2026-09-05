@@ -5,16 +5,29 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Permiso normal (sin impacto Play Protect): háptica del trackpad/píldora vía Vibrator. -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <application
         android:label="VoiceBubble STT"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:hasFragileUserData="true"
-        android:allowBackup="true">
+        android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules">
         <service
             android:name=".FloatingBubbleService"
             android:foregroundServiceType="microphone"
+            android:exported="false" />
+
+        <!-- Trackpad flotante: servicio NORMAL (no foreground, no accesibilidad),
+             igual que FloatingBubbleService en exported=false. Sin él, startService
+             lanza IllegalArgumentException (CR-2). Sin BIND_ACCESSIBILITY_SERVICE
+             por perfil anti-Play-Protect: solo overlay local + movimiento de puntero;
+             el dispatch en otra app queda dormido (ver cabecera del servicio). -->
+        <service
+            android:name=".FloatingTrackpadService"
             android:exported="false" />
 
         <!-- Sin AccessibilityService por perfil anti-Play-Protect (2026-09-05):

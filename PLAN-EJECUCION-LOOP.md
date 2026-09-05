@@ -24,20 +24,20 @@
 
 - Hitos 0–3 ✅ · T0 ✅ · K1 ✅ · K2/K2.1/K3 implementados, CI verde r55 (`32619043596`, 304 tests).
 - Lote pulido visual r54 ✅ verificado por el dueño.
-- Lote historial + audios largos r55: fix de historial **verificado por el dueño hoy (2026-08-23)** — marcado en `AGENTS.md` §Estado y `teclado-voice.md` §K3.
-- Hito 4 (Accessibility): CONGELADO — fuera de alcance de este plan.
+- Lote historial + audios largos r55: fix de historial **verificado por el dueño hoy (2026-08-23)** — marcado en `AGENTS.md` §Estado y `docs/archive/teclado-voice.md` §K3.
+- Hito 4 (Accessibility): BLOQUEADO 2026-09-05 (perfil anti-Play-Protect) — fuera de alcance de este plan.
 - Deuda menor registrada: mocks muertos `plugin.speech_to_text.*` en `home_screen_test.dart` (se limpia en K5-T7).
 
 ## 3. Alcance total restante (inventario)
 
 | Bloque | Contenido | Estado origen |
 |---|---|---|
-| **K4** – Snippets y comandos | Modelo+persistencia+seeds, SnippetStore.kt tolerante, capa snippets en teclado, CRUD en Settings, tests puente | `teclado-voice.md` §K4 |
-| **K5** – Pulido y entrega beta | Tema nativo completo, altura configurable, vibración on/off, i18n es/en teclado, escenarios hostiles, auditoría privacidad, regresión completa, docs, tag `v0.9.0-keyboard-beta` | `teclado-voice.md` §K5 |
-| **Hito 5 re-definido** | Robustez Android 14/15, guía batería fabricantes, icono/splash, INSTALL.md, matriz de tests exhaustiva, preparación release firmado (docs) | `plan.md` §Hito 5 adaptado a decisión "solo Cloud" (tareas 1–3 de modelos locales = N/A) |
-| **Hito 6** – Entrega | Coherencia docs cruzada, README final, checklist dispositivo del dueño, push único + CI ritual + tags `v0.9.0-keyboard-beta` y `v1.0.0` | `plan.md` §Hito 6 |
+| **K4** – Snippets y comandos | Modelo+persistencia+seeds, SnippetStore.kt tolerante, capa snippets en teclado, CRUD en Settings, tests puente | `docs/archive/teclado-voice.md` §K4 |
+| **K5** – Pulido y entrega beta | Tema nativo completo, altura configurable, vibración on/off, i18n es/en teclado, escenarios hostiles, auditoría privacidad, regresión completa, docs, tag `v0.9.0-keyboard-beta` | `docs/archive/teclado-voice.md` §K5 |
+| **Hito 5 re-definido** | Robustez Android 14/15, guía batería fabricantes, icono/splash, INSTALL.md, matriz de tests exhaustiva, preparación release firmado (docs) | `docs/archive/plan.md` §Hito 5 adaptado a decisión "solo Cloud" (tareas 1–3 de modelos locales = N/A) |
+| **Hito 6** – Entrega | Coherencia docs cruzada, README final, checklist dispositivo del dueño, push único + CI ritual + tags `v0.9.0-keyboard-beta` y `v1.0.0` | `docs/archive/plan.md` §Hito 6 |
 
-Fuera de alcance: Hito 4 (congelado), D9 opcional (skip registrado, requiere decisión del dueño), cualquier feature no listada arriba (anti-patrón §8).
+Fuera de alcance: Hito 4 (BLOQUEADO 2026-09-05), D9 opcional (skip registrado, requiere decisión del dueño), cualquier feature no listada arriba (anti-patrón §8).
 
 ## 4. Restricciones duras de todo el loop
 
@@ -161,7 +161,7 @@ Defectos menores: <lista o "ninguno">
   - Crear/editar/borrar/reordenar; preview multilínea; validación de límites con feedback claro; Liquid Glass estricto según design.md; textos es/en.
   - Widget tests: render · crear/editar/borrar · límite 50 · persistencia.
 
-**Cierre K4 (K4-T5, coordinador)**: verificación cruzada del contrato entre lanes, regresión historial/micrófono intacta, checkboxes automatizables de K4 marcados en `teclado-voice.md`, commit local `Hito K4: snippets y comandos`.
+**Cierre K4 (K4-T5, coordinador)**: verificación cruzada del contrato entre lanes, regresión historial/micrófono intacta, checkboxes automatizables de K4 marcados en `docs/archive/teclado-voice.md`, commit local `Hito K4: snippets y comandos`.
 
 ### HITO K5 — Pulido, robustez y entrega beta
 
@@ -201,11 +201,11 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 
 1. Verificación previa del coordinador: diff global releído; YAML validado con python3-yaml si se tocó; colores hex ≤8 dígitos; imports Kotlin/Dart revisados contra lecciones §9.1.
 2. **PUSH ÚNICO a `main`** con los commits locales acumulados (uno por hito aprobado).
-3. Ritual obligatorio AGENTS.md §9.4: monitorear el run hasta `completed` con el token de `/root/.local/share/gh-actions/token` (NUNCA exponer/imprimir/commitear su valor).
+3. Ritual obligatorio AGENTS.md §9.4: monitorear el run hasta `completed` con `gh` y auth existente (AGENTS.md §9.4; NUNCA exponer/imprimir/commitear secretos).
    - `failure` → fix-wave inmediata (tanda limpia con logs del job/step fallido) → nuevo push → repetir hasta verde.
-   - `success` → reportar Run ID, link de Actions, artefacto `voice-bubble-debug-apk-r<N>` y total de tests.
+   - `success` → reportar Run ID, link de Actions, artefacto `voice-bubble-arm64-debug-apk-r<N>` y total de tests.
 4. Tags en orden: `v0.9.0-keyboard-beta` (cierre K5) y `v1.0.0` (entrega final).
-5. Actualizar §Estado de AGENTS.md y checkboxes de plan.md / teclado-voice.md con los resultados CI reales.
+5. Actualizar §Estado de AGENTS.md y checkboxes de docs/archive/plan.md / docs/archive/teclado-voice.md con los resultados CI reales.
 6. Informe final al dueño + checklist §11 completa para verificación en dispositivo.
 
 ## 10. Registro vivo
@@ -254,7 +254,7 @@ Cierre K5: auditoría oleadas 3–4 → commit local + checklist dueño actualiz
 
 | Fecha | Decisión | Motivo |
 |---|---|---|
-| 2026-08-23 | D9 (snippets multi-app) fuera de alcance v1 | Opcional según teclado-voice.md §3/D9; requiere decisión del dueño para activarla |
+| 2026-08-23 | D9 (snippets multi-app) fuera de alcance v1 | Opcional según docs/archive/teclado-voice.md §3/D9; requiere decisión del dueño para activarla |
 | 2026-08-23 | Tests se ejecutan recién en el push final | No existe runner Flutter local (Termux); validación intermedia = análisis estático + auditoría |
 | 2026-08-23 | Commits locales por hito aprobado, push único al final | Directiva del dueño: nada se pushea hasta completar TODO el alcance |
 | 2026-08-23 | Ids de seeds alineados entre lanes (`seed-codex`…`seed-supabase-push` en ambos lados) | Integración O1 detectó divergencia `seed-N` vs `seed-*`; el contrato exige ids estables compartidos |
@@ -356,54 +356,15 @@ Defectos menores: finder byType(ListView) sin scoping al Scaffold (hoy imposible
 
 ---
 
-## 11. Checklist acumulada de verificación en dispositivo (para el dueño)
+## 11. Checklist de verificación en dispositivo — fuente canónica: CHECKLIST-TESTING.md
 
-> Se completa durante el loop con todo lo no automatizable. Se entrega al final junto al APK.
+> Fuente canónica: [`CHECKLIST-TESTING.md`](CHECKLIST-TESTING.md) (única lista vigente para el dueño; no se duplica aquí).
+> Este §11 queda como registro histórico del origen (K2/K3 + K4 + K5 + Hito 5, cerrados 2026-08-23 sin incidencias).
 
-**Pendientes heredadas (K2/K3):**
-- [x] Termux: `ls`+TAB autocompleta; Ctrl+C corta; Ctrl+L limpia; Ctrl+[ = ESC; flechas navegan historial bash.
-- [x] Acode: llaves/corchetes correctos; par auto-cerrado con toque largo.
-- [x] Teclas terminales no rompen apps normales (Chrome ignora ESC/CTRL sin error).
-- [x] Dictado es/en en Chrome, WhatsApp y Acode deja el texto exacto en el cursor.
-- [x] Burbuja grabando → teclado avisa ocupado (y viceversa).
-- [x] Campo de contraseña → micrófono invisible.
-
-**Se agregan al cerrar cada hito:**
-
-*Cierre K4 (verificar con APK del push final):*
-- [x] Seeds visibles en la primera apertura de la capa ☰ del teclado.
-- [x] Crear snippet en la app → aparece en el teclado al reabrir la capa, sin reiniciar nada (≤ 2 s).
-- [x] Editar/borrar en la app se refleja igual en el teclado.
-- [x] Insertar un snippet multilínea en Acode y en Termux funciona íntegro.
-- [x] Toque largo en chip: Insertar / Copiar al portapapeles / Abrir app para editar funcionan.
-- [x] Búsqueda filtra por nombre en tiempo real (probar con dictado 🎤 y espacio/coma; las letras tecleadas llegan con K5-T1).
-- [x] Modo búsqueda: campo iluminado captura teclas; ↵ sale del modo; ⌫ borra el query sin tocar el documento.
-- [x] Corromper el JSON manualmente → teclado vivo con lista vacía, sin crash.
-- [x] En un campo de contraseña NO aparece la tecla ☰.
-
-*Cierre K5 (verificar con APK del push final):*
-- [x] Tema correcto en claro/oscuro y al cambiar el modo del sistema en caliente (todas las capas, popups y menús).
-- [x] Filas QWERTY de la capa snippets: teclear filtra en vivo; backspace borra el query; nada escribe en el documento.
-- [x] Altura baja/media/alta desde Ajustes se aplica al reabrir el teclado; insets de la barra de gestos intactos en los 3 perfiles.
-- [x] Switch Vibración OFF elimina el haptic feedback del teclado.
-- [x] Con idioma EN: avisos de dictado (sin conexión, API key, permiso, ocupado) salen en inglés.
-- [x] Rotación a mitad de dictado cancela limpio (sin grabación fantasma ni crash).
-- [x] Cambiar de campo/app mientras graba cancela el dictado.
-- [x] Llamada entrante durante dictado: la grabación se cancela al perder audio focus.
-- [x] Uso mixto de 15 minutos (dictado + código + snippets + Termux) sin crash ni ANR.
-
-*Cierre Hito 5 (verificar con APK del push final):*
-- [x] Icono adaptive visible en launcher (claro/oscuro) y splash de marca al arrancar.
-- [x] Burbuja funciona con Android 14/15 (FGS tipado micrófono; notificación visible mientras graba).
-- [x] POST_NOTIFICATIONS se solicita la primera vez que inicias la burbuja en Android 13+.
-- [x] Con micrófono denegado permanentemente, activar la burbuja NO crashea la app (edge case registrado por auditoría; verificar comportamiento).
-- [x] Matriz H5: grabación larga (~10 min) estable; reintento usa el mismo audio sin regrabar; FIFO exacto de 20; errores de red reintentables y 401/400 no reintentables.
-
----
 
 ## 12. Resumen del flujo para cualquier agente que lea este archivo
 
-1. Este archivo es la fuente de verdad del ESTADO del loop; `plan.md`/`teclado-voice.md` siguen siendo la fuente del QUÉ.
+1. Este archivo es la fuente de verdad del ESTADO del loop; `docs/archive/plan.md`/`docs/archive/teclado-voice.md` siguen siendo la fuente del QUÉ.
 2. Los subagentes NUNCA editan este archivo salvo el auditor vía el coordinador (los veredictos los vuelca el coordinador en §10.5).
 3. Toda desviación de spec se registra en §10.3 antes de ejecutarse.
 4. El loop termina únicamente cuando: todas las tarjetas APROBADAS ≥8.5 + push final verde + tags creados + informe entregado.

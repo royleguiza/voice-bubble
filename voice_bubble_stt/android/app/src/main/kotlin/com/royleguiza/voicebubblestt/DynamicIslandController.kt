@@ -87,9 +87,15 @@ class DynamicIslandController(
         private const val CENTER_DEBOUNCE_MS = 300L
     }
 
-    private val density = context.resources.displayMetrics.density
-    private val screenWidth = context.resources.displayMetrics.widthPixels
-    private val screenHeight = context.resources.displayMetrics.heightPixels
+    // Métricas SIEMPRE frescas (getters, no vals de init): tras una rotación
+    // los valores cacheados dejaban la isla fuera de pantalla o con el
+    // tamaño del modo anterior.
+    private val density: Float
+        get() = context.resources.displayMetrics.density
+    private val screenWidth: Int
+        get() = context.resources.displayMetrics.widthPixels
+    private val screenHeight: Int
+        get() = context.resources.displayMetrics.heightPixels
 
     private var islandContainer: FrameLayout? = null
     private lateinit var islandLayoutParams: WindowManager.LayoutParams
@@ -122,21 +128,15 @@ class DynamicIslandController(
     private var isHistoryExtended50 = false
     private var isHistoryTall = false
 
-    // Diagnóstico sin privacidad (solo contadores, cero texto/audio).
+    // Anti-rebote del centro: un tap = DOWN+UP+click; sin esto el toggle
+    // abrir/cerrar se dispara dos veces y se percibe como "se cierra solo".
+    // (Los contadores de diagnóstico se retiraron: sin lector.)
     private var lastCenterActionUptime = 0L
-    private var centerTapCount = 0
-    private var centerOpenCount = 0
-    private var centerIgnoredDebounce = 0
-
-    /** Solo contadores para verificar en Settings que el centro ya no rebota. */
-    fun getCenterDiagnostics(): String =
-        "tap=$centerTapCount open=$centerOpenCount debounced=$centerIgnoredDebounce"
 
     /** Un solo camino de disparo para tap y swipe del centro (evita doble toggle). */
     private fun allowCenterAction(): Boolean {
         val now = SystemClock.uptimeMillis()
         if (now - lastCenterActionUptime < CENTER_DEBOUNCE_MS) {
-            centerIgnoredDebounce++
             return false
         }
         lastCenterActionUptime = now
@@ -193,7 +193,7 @@ class DynamicIslandController(
                 }
                 statusDp + 8
             }
-        } catch (_: Throwable) {
+        } catch (_: Exception) {
             48
         }
     }
@@ -204,38 +204,61 @@ class DynamicIslandController(
         try {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             prefs.registerOnSharedPreferenceChangeListener(prefChangeListener)
-        } catch (_: Throwable) {}
+        } catch (_: Exception) {}
     }
 
     private fun loadPreferences() {
-        try {
-            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            posX = (prefs.all["flutter.island_pos_x"] as? Number)?.toInt()
-                ?: (prefs.all["island_pos_x"] as? Number)?.toInt() ?: 0
-            posY = (prefs.all["flutter.island_pos_y"] as? Number)?.toInt()
-                ?: (prefs.all["island_pos_y"] as? Number)?.toInt() ?: 12
-            // Piso táctil solo sin overlay de accesibilidad: el
-            // APPLICATION_OVERLAY no recibe touch dentro de la status-bar.
-            // Con accesibilidad (trial B) la isla vive sobre la cámara (Y≈0).
-            posY = if (overlayType == WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY) {
-                max(posY, -100)
-            } else {
-                max(posY, statusBarFloorDp())
-            }
-            widthDp = (prefs.all["flutter.island_width"] as? Number)?.toInt()
-                ?: (prefs.all["island_width"] as? Number)?.toInt() ?: 184
-            heightDp = (prefs.all["flutter.island_height"] as? Number)?.toInt()
-                ?: (prefs.all["island_height"] as? Number)?.toInt() ?: 36
-            slotOrder = prefs.getString("flutter.island_slot_order", null)
-                ?: prefs.getString("island_slot_order", "trackpad_camera_mic") ?: "trackpad_camera_mic"
-            islandTheme = prefs.getString("flutter.island_theme", null)
-                ?: prefs.getString("island_theme", "dark") ?: "dark"
-            waveformEnabled = if (prefs.contains("flutter.island_waveform_enabled")) {
-                prefs.getBoolean("flutter.island_waveform_enabled", true)
-            } else {
-                prefs.getBoolean("island_waveform_enabled", true)
-            }
-        } catch (_: Throwable) {}
+        val prefs = try {
+            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        } catch (_: Exception) {
+            return
+        }
+        // Try FINO por clave: un mismatch de tipos en una sola (p.ej. String
+        // donde se espera Boolean lanza ClassCastException) no debe tumbar
+        // ni ocultar la lectura del resto. Sin catch Throwable genérico.
+        // (Claves literales a propósito: el CI valida la paridad
+        // Flutter↔Kotlin con grep sobre `flutter.*`, sin interpolación.)
+        posX = intPref(prefs, "flutter.island_pos_x", "island_pos_x", 0)
+        posY = intPref(prefs, "flutter.island_pos_y", "island_pos_y", 12)
+        // Piso táctil solo sin overlay de accesibilidad: el
+        // APPLICATION_OVERLAY no recibe touch dentro de la status-bar.
+        // Con accesibilidad (trial B) la isla vive sobre la cámara (Y≈0).
+        posY = if (overlayType == WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY) {
+            max(posY, -100)
+        } else {
+            max(posY, statusBarFloorDp())
+        }
+        widthDp = intPref(prefs, "flutter.island_width", "island_width", 184)
+        heightDp = intPref(prefs, "flutter.island_height", "island_height", 36)
+        slotOrder = stringPref(prefs, "flutter.island_slot_order", "island_slot_order", "trackpad_camera_mic")
+        islandTheme = stringPref(prefs, "flutter.island_theme", "island_theme", "dark")
+        waveformEnabled = booleanPref(prefs, "flutter.island_waveform_enabled", "island_waveform_enabled", true)
+    }
+
+    /** Entero tolerante con espejo flutter. primero (paridad Flutter↔Kotlin). */
+    private fun intPref(prefs: SharedPreferences, flutterKey: String, plainKey: String, default: Int): Int = try {
+        (prefs.all[flutterKey] as? Number)?.toInt()
+            ?: (prefs.all[plainKey] as? Number)?.toInt() ?: default
+    } catch (_: Exception) {
+        default
+    }
+
+    /** Texto tolerante con espejo flutter. primero (paridad Flutter↔Kotlin). */
+    private fun stringPref(prefs: SharedPreferences, flutterKey: String, plainKey: String, default: String): String = try {
+        prefs.getString(flutterKey, null) ?: prefs.getString(plainKey, default) ?: default
+    } catch (_: Exception) {
+        default
+    }
+
+    /** Booleano tolerante que respeta el espejo escrito por Ajustes. */
+    private fun booleanPref(prefs: SharedPreferences, flutterKey: String, plainKey: String, default: Boolean): Boolean = try {
+        if (prefs.contains(flutterKey)) {
+            prefs.getBoolean(flutterKey, default)
+        } else {
+            prefs.getBoolean(plainKey, default)
+        }
+    } catch (_: Exception) {
+        default
     }
 
     private fun setupIslandLayout() {
@@ -333,25 +356,32 @@ class DynamicIslandController(
         } catch (_: Throwable) {}
     }
 
+    /**
+     * Colores de la píldora para el tema vigente, resueltos UNA vez por
+     * llamada (parseColor es caro y no debe correr por frame de animación).
+     */
+    private fun islandBackgroundColors(): Pair<Int, Int> {
+        return try {
+            when (islandTheme) {
+                "light" -> Pair(Color.parseColor("#FFFFFFFF"), Color.parseColor("#26000000"))
+                "dark" -> Pair(Color.parseColor("#000000"), Color.parseColor("#33FFFFFF"))
+                else -> {
+                    val bgColor = if (isNight) Color.parseColor("#26FFFFFF") else Color.parseColor("#33FFFFFF")
+                    Pair(bgColor, Color.parseColor("#4DFFFFFF"))
+                }
+            }
+        } catch (_: Exception) {
+            Pair(Color.BLACK, Color.WHITE)
+        }
+    }
+
     private fun createIslandBackground(cornerRadius: Float): GradientDrawable {
+        val (bgColor, strokeColor) = islandBackgroundColors()
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             this.cornerRadius = cornerRadius
-            when (islandTheme) {
-                "light" -> {
-                    setColor(Color.parseColor("#FFFFFFFF"))
-                    setStroke((1.2f * density).toInt(), Color.parseColor("#26000000"))
-                }
-                "dark" -> {
-                    setColor(Color.parseColor("#000000"))
-                    setStroke((1.2f * density).toInt(), Color.parseColor("#33FFFFFF"))
-                }
-                else -> {
-                    val bgColor = if (isNight) Color.parseColor("#26FFFFFF") else Color.parseColor("#33FFFFFF")
-                    setColor(bgColor)
-                    setStroke((1.2f * density).toInt(), Color.parseColor("#4DFFFFFF"))
-                }
-            }
+            setColor(bgColor)
+            setStroke((1.2f * density).toInt(), strokeColor)
         }
     }
 
@@ -447,8 +477,6 @@ class DynamicIslandController(
                 try {
                     // Fallback de accesibilidad (TalkBack): misma vía única.
                     if (!isRecording && !isHistoryOpen && allowCenterAction()) {
-                        centerTapCount++
-                        centerOpenCount++
                         toggleHistoryModal()
                         performHaptic(isFirm = false)
                     }
@@ -494,20 +522,15 @@ class DynamicIslandController(
                                     if (!allowCenterAction()) return true
                                     if (dy > slop) {
                                         // Swipe Down -> Abrir Historial
-                                        centerTapCount++
-                                        centerOpenCount++
                                         openHistoryModal()
                                         performHaptic(isFirm = false)
                                     } else if (dy < -slop) {
                                         // Swipe Up con historial cerrado: nada que cerrar.
-                                        centerTapCount++
                                     }
                                 } else if (abs(dx) < slop && abs(dy) < slop) {
                                     // Tap -> vía única con anti-rebote (no performClick:
                                     // el onClick es solo fallback de accesibilidad).
                                     if (!allowCenterAction()) return true
-                                    centerTapCount++
-                                    centerOpenCount++
                                     toggleHistoryModal()
                                     performHaptic(isFirm = false)
                                 }
@@ -917,13 +940,30 @@ class DynamicIslandController(
         return root
     }
 
+    fun populateHistoryCards() {
+        // I/O fuera del main (disco + XML + prefs del repositorio): el render
+        // vuelve al main y re-resuelve la lista vigente (un reload en el
+        // medio puede haber reconstruido las vistas).
+        BackgroundWork.executeWithResult(
+            block = {
+                try {
+                    TranscriptionHistoryRepository(context).loadHistory()
+                        .filter { it.optString("text", "").isNotBlank() }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            },
+            onResult = { items -> renderHistoryCards(items ?: emptyList()) }
+        )
+    }
+
     /**
      * Renderiza las tarjetas adaptativas de historial:
      * - 1 elemento: 100% de la altura
      * - 2 elementos: 50% de la altura
      * - 3+ elementos: 3 elementos visibles + scroll
      */
-    fun populateHistoryCards() {
+    private fun renderHistoryCards(items: List<JSONObject>) {
         try {
             val cardsList = historyCardsList ?: run {
                 val root = historyModalView ?: return
@@ -938,15 +978,6 @@ class DynamicIslandController(
                 found ?: return
             }
             cardsList.removeAllViews()
-
-            val repo = TranscriptionHistoryRepository(context)
-            val rawItems = try {
-                repo.loadHistory()
-            } catch (e: Throwable) {
-                emptyList<JSONObject>()
-            }
-
-            val items = rawItems.filter { it.optString("text", "").isNotBlank() }
 
             if (items.isEmpty()) {
                 val emptyTv = TextView(context).apply {
@@ -1217,6 +1248,11 @@ class DynamicIslandController(
                 return
             }
 
+            // Fondo precalculado UNA vez para el morph completo (colores del
+            // tema vigente): por frame solo muta el radio del MISMO drawable.
+            // Antes se alojaba un GradientDrawable + 2 parseColor por frame.
+            val frameBg = createIslandBackground(cornerRadius = startR * density)
+            islandContainer?.background = frameBg
             morphAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
                 duration = MORPH_DURATION_MS
                 interpolator = FLUID_INTERPOLATOR
@@ -1230,7 +1266,9 @@ class DynamicIslandController(
 
                         val curR = startR + (targetRadiusDp - startR) * f
                         currentRadiusDp = curR
-                        islandContainer?.background = createIslandBackground(cornerRadius = curR * density)
+                        try {
+                            frameBg.cornerRadius = curR * density
+                        } catch (_: Exception) {}
 
                         onProgress?.invoke(f)
 
@@ -1247,7 +1285,10 @@ class DynamicIslandController(
                             islandLayoutParams.x = targetX
                             islandLayoutParams.y = targetY
                             currentRadiusDp = targetRadiusDp
-                            islandContainer?.background = createIslandBackground(cornerRadius = targetRadiusDp * density)
+                            try {
+                                frameBg.cornerRadius = targetRadiusDp * density
+                            } catch (_: Exception) {}
+                            islandContainer?.background = frameBg
                             islandContainer?.let { root ->
                                 windowManager.updateViewLayout(root, islandLayoutParams)
                             }
@@ -1763,7 +1804,7 @@ class DynamicIslandController(
             try {
                 val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 prefs.unregisterOnSharedPreferenceChangeListener(prefChangeListener)
-            } catch (_: Throwable) {}
+            } catch (_: Exception) {}
             if (islandContainer != null) {
                 try {
                     windowManager.removeViewImmediate(islandContainer)

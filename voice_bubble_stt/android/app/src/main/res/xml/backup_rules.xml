@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reglas de backup (API <31, android:fullBackupContent): excluye historial de
+     dictados, historial de portapapeles e imágenes copiadas; el resto de la app
+     (ajustes, snippets) sigue respaldándose con normalidad. -->
+<full-backup-content>
+    <exclude domain="file" path="transcription_history.json" />
+    <exclude domain="file" path="transcription_history.json.tmp" />
+    <exclude domain="file" path="clipboard_history.json" />
+    <exclude domain="file" path="clipboard_history.json.tmp" />
+    <exclude domain="file" path="clipboard_media" />
+</full-backup-content>

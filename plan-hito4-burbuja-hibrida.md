@@ -3,7 +3,7 @@
 > **Estado**: 🛑 BLOQUEADO 2026-09-05 (decisión del dueño: perfil anti-Play-Protect). El servicio de accesibilidad se retiró del manifest; sin declaración no hay `SET_TEXT/PASTE` posible. D-HB0…D-HB7 quedan archivadas como spec válida para el día que vuelva (vía Play Store o flavor `full`). La burbuja pega vía IME propio o portapapeles.
 > **Fecha**: 5 de septiembre de 2026
 > **Origen**: pedido del dueño: usar la burbuja (normal e isla/píldora) con un teclado de terceros (ej. DigiWord, con contraseñas guardadas) y lograr pegado directo en inputs, al estilo WhisperFlow/Wispr Flow, sin perder el path actual con nuestro teclado.
-> **Precedentes internos**: `plan.md` Hito 4 (congelado 2026-08-22); `teclado-voice.md` D1–D9; `plan-clipboard.md` (excepción §8, TTL, máscara sensibles); `plan-ciclar-mayusculas.md` (lectura tolerante, degradación honesta); puente Flutter↔Kotlin K2.1.
+> **Precedentes internos**: `docs/archive/plan.md` Hito 4 (congelado 2026-08-22); `docs/archive/teclado-voice.md` D1–D9; `docs/archive/plan-clipboard.md` (excepción §8, TTL, máscara sensibles); `docs/archive/plan-ciclar-mayusculas.md` (lectura tolerante, degradación honesta); puente Flutter↔Kotlin K2.1.
 > **Reglas madre**: `AGENTS.md` (privacidad, anti-patrones §8, lecciones §9), `MODO-LOOP.md`, `design.md` §12.
 
 ---
@@ -20,9 +20,9 @@ La misma burbuja de siempre (vista clásica + isla/píldora `DynamicIslandContro
 - La accesibilidad **solo** se usa en el instante de transcribir (lectura puntual del foco), nunca monitoreo continuo, nunca logs de contenido.
 - Opt-in doble: interruptor del sistema (Accesibilidad) + switch propio en Ajustes. Sin ambos, el modo 2 no existe.
 
-### Por qué esto toca una decisión congelada (aprobación explícita requerida)
+### Por qué esto tocó una decisión congelada (registro histórico — NO vigente)
 
-`plan.md:225-227` y `AGENTS.md` Estado congelaron el Hito 4 ("el dictado desde el teclado cubre la inserción"). Este plan lo **descongela parcialmente**: solo inyección desde burbuja con tercer teclado, sin reabrir Accessibility para nada más (ni lectura masiva, ni gestos nuevos salvo trackpad MEJ-09 ya existente). Solo procede si el dueño aprueba D-HB0. Sin eso, archivar.
+`docs/archive/plan.md:225-227` y `AGENTS.md` Estado habían congelado el Hito 4. Este plan propuso **descongelarlo parcialmente** solo para inyección puntual (sin monitoreo continuo ni otros usos). Las respuestas D-HB0…D-HB7 (§6) quedaron registradas el 2026-09-05 como spec, pero la **ejecución está BLOQUEADA** por el perfil anti-Play-Protect vigente: HB1+ son archivo, no instrucción de reactivar accesibilidad.
 
 ---
 
@@ -77,16 +77,15 @@ Flujo de contraseñas (protegido):
 
 | Pieza | Evidencia |
 |---|---|
-| 3 servicios ya declarados en el mismo APK | `voice_bubble_stt/android/app/src/main/AndroidManifest.xml:15,21,34` (`FloatingBubbleService`, `VoiceBubbleAccessibilityService`, `VoiceKeyboardService`) |
-| Accesibilidad hoy ciega por diseño | `res/xml/accessibility_service_config.xml:7` `canRetrieveWindowContent="false"`; `VoiceBubbleAccessibilityService.kt:274-276` `onAccessibilityEvent` vacío; cabecera `:13-21` promete CERO monitoreo |
-| Accesibilidad hoy solo gestos + isla | `VoiceBubbleAccessibilityService.kt:54-182` `dispatchTap/LongPress/Scroll` vía `dispatchGesture`; `:217-257` hospeda isla con `TYPE_ACCESSIBILITY_OVERLAY` |
+| 2 servicios declarados (BLOQUEADO 2026-09-05) | `voice_bubble_stt/android/app/src/main/AndroidManifest.xml` (`FloatingBubbleService` + `VoiceKeyboardService`); sin `VoiceBubbleAccessibilityService`, sin `BIND_ACCESSIBILITY_SERVICE` (verificado: `test_master_suite.py:test_manifest_retention`) |
+| Sin config de accesibilidad | `res/xml/` solo tiene `clipboard_file_paths.xml` + `method.xml` (verificado 2026-09-05): no existe `accessibility_service_config.xml`; la clase queda versionada pero dormida (`isConnected()` siempre falso) |
+| Sin gestos/isla por accesibilidad | Isla y trackpad usan fallbacks locales; sin `dispatchGesture` posible sin servicio declarado |
 | Burbuja solo overlay + FGS micrófono | `FloatingBubbleService.kt:29-106` sin inyección; notifica taps a Dart vía `BubbleActionListener:108-113` |
 | Post-transcripción burbuja = clipboard + intento IME | `app_source/lib/screens/home_screen.dart:405-408` `Clipboard.setData + pushHistoryEntry + _pasteOrCopyFeedback`; `:339-356` `_pasteOrCopyFeedback` intenta `commitText`, si `false` muestra `Copiado al portapapeles` |
 | IME propio inserta directo | `VoiceKeyboardService.kt:3844-3848` `commitFromExternal()` → `currentInputConnection?.commitText(text, 1)`; canal Dart `keyboard_service.dart:54-61`, nativo `MainActivity.kt:151-154` |
 | Isla también intenta IME y copia | `DynamicIslandController.kt:1109-1112` `commitFromExternal + copyToClipboard + closeHistoryModal`; `:1265-1272` `copyToClipboard` |
 | Detección de contraseña ya existe (teclado) | `VoiceKeyboardService.kt:217-224` `isPasswordInput()`; mic oculto `:443`, snippets ocultos `:473` |
-| Estado accesibilidad ya consultable | `MainActivity.kt:181-190` `isAccessibilityGranted/openAccessibilitySettings` en canal `floating_trackpad` |
-| Hito 4 congelado | `plan.md:225-254` objetivo `ACTION_SET_TEXT` + fallback clipboard, criterios sin marcar |
+| Hito 4 BLOQUEADO | `docs/archive/plan.md` Hito 4 (BLOQUEADO 2026-09-05, perfil anti-Play-Protect); spec de inyección archivada, no vigente |
 
 Conclusión: la burbuja clásica y la píldora comparten el mismo flujo Dart (`home_screen.dart`). Ninguna inyecta por accesibilidad hoy. El `commitText` solo gana cuando nuestro IME está activo.
 
@@ -109,11 +108,11 @@ Conclusión: la burbuja clásica y la píldora comparten el mismo flujo Dart (`h
 ### 5.3 Fallback: `clipboard + ACTION_PASTE` — SÍ, con límites conocidos
 
 - Secuencia: `ClipboardManager.setPrimaryClip` + `node.performAction(ACTION_PASTE)`. El nodo debe estar enfocado y aceptar paste.
-- Límites: Android 10+ restringe lectura de clipboard a IME por defecto o app enfocada — aquí quien LEE es el destino al pegar, no nosotros, así que aplica igual que un paste manual. En Android 13+ el sistema puede mostrar toast de pegado y auto-borrar el clip tras ~1h (mismo costo ya documentado en `plan-clipboard.md:109-118`).
+- Límites: Android 10+ restringe lectura de clipboard a IME por defecto o app enfocada — aquí quien LEE es el destino al pegar, no nosotros, así que aplica igual que un paste manual. En Android 13+ el sistema puede mostrar toast de pegado y auto-borrar el clip tras ~1h (mismo costo ya documentado en `docs/archive/plan-clipboard.md:109-118`).
 
 ### 5.4 Termux/terminales — MATIZ CRÍTICO (condiciona D-HB4)
 
-- La vista de Termux (`TerminalView`) no es un `EditText` estándar: `findFocus(FOCUS_INPUT)` suele devolver null y `SET_TEXT`/`PASTE` fallan. Precedente interno análogo: `plan-ciclar-mayusculas.md:73-79` documenta que `getSelectedText` devuelve null en `TerminalView`.
+- La vista de Termux (`TerminalView`) no es un `EditText` estándar: `findFocus(FOCUS_INPUT)` suele devolver null y `SET_TEXT`/`PASTE` fallan. Precedente interno análogo: `docs/archive/plan-ciclar-mayusculas.md:73-79` documenta que `getSelectedText` devuelve null en `TerminalView`.
 - Traducción: para Termux el **Modo IME propio sigue siendo superior** (`InputConnection.commitText` sí entra). El Modo Accesibilidad brillará en inputs estándar (WhatsApp, Gmail, Chrome, Acode, Notes). El plan no promete inyección universal en terminal.
 
 ### 5.5 Contraseñas y `FLAG_SECURE` — BLOQUEO POR DISEÑO
@@ -132,7 +131,7 @@ Conclusión: la burbuja clásica y la píldora comparten el mismo flujo Dart (`h
 | Switch propio + estado + deep-link | switches Teclado + `isAccessibilityGranted/openAccessibilitySettings` | `settings_screen.dart:613-755`, `MainActivity.kt:181-190` |
 | Claves contrato `flutter.` | `loadKeyboardPrefs` cache por ciclo (AT-A13) | `VoiceKeyboardService.kt:2509-2531`, `storage_service.dart:49-90`, `docs/contract-keys.txt` |
 
-Cero dependencias nuevas, cero permisos manifest nuevos (`BIND_ACCESSIBILITY_SERVICE` ya declarado `:23`). Impacto APK ≈ solo Kotlin plano + strings.
+Cero dependencias nuevas. Bajo el perfil vigente BLOQUEADO 2026-09-05: cero permisos nuevos y `BIND_ACCESSIBILITY_SERVICE` NO declarado (sin reactivación; esta fila es spec archivada, no instrucción).
 
 ---
 
@@ -164,30 +163,31 @@ Respuestas del dueño (2026-09-05, con recomendaciones del investigador):
 
 ---
 
-## 7. Plan por hitos
+## 7. Plan por hitos (ARCHIVADO — NO EJECUTAR bajo perfil anti-Play-Protect vigente)
 
-> Convenciones heredadas: un hito a la vez, commits chicos en español, editar nativo directo en `voice_bubble_stt/android/` + `app_source/` para Dart (regla §9.2-1), push → ritual CI §9.4 → APK al dueño → prueba en dispositivo → marcar casillas.
+> 🛑 HB0–HB4 son spec archivada del 2026-09-05, **BLOQUEADA**: no instruyen reactivar accesibilidad hoy. Solo serían ejecutables en un futuro flavor `full`/Play Store con aprobación explícita nueva del dueño.
+> Convenciones heredadas (históricas): un hito a la vez, commits chicos en español, editar nativo directo en `voice_bubble_stt/android/` + `app_source/` para Dart (regla §9.2-1), push → ritual CI §9.4 → APK al dueño → prueba en dispositivo → marcar casillas.
 
 ---
 
-### HB0 — Contrato documental (bloqueante, ~media sesión)
+### HB0 — Contrato documental (ARCHIVADO — superado por BLOQUEADO 2026-09-05, no aplicar)
 
-**Objetivo**: dejar el descongelamiento parcial por escrito antes de codear (misma lección que T0/CB0).
+**Objetivo (histórico)**: dejar el descongelamiento parcial por escrito antes de codear (misma lección que T0/CB0). **Vigente hoy**: BLOQUEADO, 2 caminos (IME propio → portapapeles); no se promete tercer camino.
 
-Tareas:
+Tareas (históricas — NO ejecutar bajo perfil actual):
 
 1. Registrar D-HB0…D-HB7 en §6.
-2. `AGENTS.md` §8 + Estado: reescribir "Hito 4 CONGELADO" como "Hito 4 HÍBRIDO aprobado (fecha): excepción acotada a inyección puntual burbuja; prohibido monitoreo continuo, prohibido log de contenido, prohibido inyectar en contraseñas".
-3. `README.md`: prometer por escrito los 3 modos (IME → A11y → clipboard) + sección Termux honesta (§5.4) + privacidad burbuja.
+2. [HISTÓRICO — NO APLICADO: la redacción vigente es "Hito 4 BLOQUEADO 2026-09-05", no híbrido] `AGENTS.md` §8 + Estado: reescribir "Hito 4 CONGELADO" como "Hito 4 HÍBRIDO aprobado (fecha)…".
+3. [HISTÓRICO — NO APLICADO: la redacción vigente es 2 caminos, ver `INSTALL.md` §2 + `README.md`] `README.md`: prometer por escrito los 3 modos (IME → A11y → clipboard) + sección Termux honesta (§5.4) + privacidad burbuja.
 4. `INSTALL.md`: guía de activación (burbuja sola vs teclado propio vs ambos) + aviso Play Protect esperado + guía batería/OEM existente.
 5. `design.md` §12 si menciona Hito 4: tokens de snackbars del §D-HB5 (reutilizar existentes, sin inventar componentes).
 6. `docs/contract-keys.txt`: NO tocar en HB0 — el guard de paridad (`test_master_suite.py:test_contract_keys`) exige que cada clave exista en Kotlin. La clave `kb_bubble_a11y_inject_enabled` (bool, default false según D-HB1) se añade en HB3 junto con su código Dart+Kotlin.
 7. `res/values/strings.xml`: borrador honesto de `accessibility_service_name/desc` ("pegar dictados en el campo enfocado al usar otros teclados; no lee ni guarda pantalla").
 
-Criterios de aceptación:
+Criterios de aceptación (históricos):
 
 - [x] D-HB0…D-HB7 respondidas y fechadas (2026-09-05, §6).
-- [x] Los documentos reflejan la excepción (AGENTS, README, INSTALL, design §12, `strings.xml` desc) — locales, SIN push por pedido del dueño.
+- [x] Los documentos reflejan la excepción (AGENTS, README, INSTALL, design §12, `strings.xml` desc) — locales, SIN push por pedido del dueño. [SUPERADO 2026-09-05: la redacción vigente en el árbol es BLOQUEADO 2 caminos, no híbrido.]
 - [x] Ninguna línea Kotlin/Dart de esta funcionalidad escrita todavía (solo texto de `strings.xml`, sin lógica; `contract-keys.txt` intacto por el guard de paridad).
 
 ---

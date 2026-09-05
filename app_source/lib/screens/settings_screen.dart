@@ -6,7 +6,9 @@ import 'package:record/record.dart';
 import '../models/snippet.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
+import '../services/floating_trackpad_service.dart';
 import '../services/keyboard_service.dart';
+import '../ui/debouncer.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import '../widgets/settings_tab_bar.dart';
@@ -15,6 +17,7 @@ class SettingsScreen extends StatefulWidget {
   final StorageService? storageService;
   final FlutterSecureStorage? secureStorage;
   final FloatingBubbleService? floatingBubbleService;
+  final FloatingTrackpadService? floatingTrackpadService;
   final KeyboardService? keyboardService;
 
   const SettingsScreen({
@@ -22,6 +25,7 @@ class SettingsScreen extends StatefulWidget {
     this.storageService,
     this.secureStorage,
     this.floatingBubbleService,
+    this.floatingTrackpadService,
     this.keyboardService,
   });
 
@@ -36,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   late final FlutterSecureStorage _secureStorage;
   late final StorageService _storageService;
   late final FloatingBubbleService _floatingBubbleService;
+  late final FloatingTrackpadService _floatingTrackpadService;
   late final KeyboardService _keyboardService;
 
   bool _hasApiKey = false;
@@ -75,6 +80,14 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _islandWaveformEnabled = StorageService.defaultIslandWaveformEnabled;
   List<Snippet> _snippets = [];
 
+  /// Tabs ya visitados: la pila es perezosa (solo construye lo visitado)
+  /// pero conserva el estado (lo visitado nunca se desmonta).
+  final Set<int> _builtTabs = {0};
+
+  /// Debouncers por slider para persistencia (prefs + canal nativo).
+  /// El thumb hace setState inmediato; solo el guardado se difiere 150 ms.
+  final Map<String, Debouncer> _sliderDebouncers = {};
+
   @override
   void initState() {
     super.initState();
@@ -83,11 +96,22 @@ class _SettingsScreenState extends State<SettingsScreen>
     _storageService = widget.storageService ?? StorageService();
     _floatingBubbleService =
         widget.floatingBubbleService ?? FloatingBubbleService();
+    _floatingTrackpadService =
+        widget.floatingTrackpadService ?? FloatingTrackpadService();
     _keyboardService = widget.keyboardService ?? KeyboardService();
     _loadInitialState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureMicrophonePermission();
-    });
+    // Sin petición de mic al abrir Ajustes: hasPermission() dispara el
+    // prompt del sistema y molesta sin motivo. Se pide solo en intención
+    // explícita de usar el mic (activar la burbuja, ver _toggleBubble).
+  }
+
+  /// Persistencia diferida de sliders: crea o reutiliza un Debouncer por
+  /// clave para no cancelar guardados de sliders distintos entre sí.
+  void _persistSliderDebounced(
+      String key, Future<void> Function() persist) {
+    final debouncer =
+        _sliderDebouncers.putIfAbsent(key, () => Debouncer());
+    debouncer.run(persist);
   }
 
   /// Carga inicial de toda la pantalla: las lecturas corren en paralelo y
@@ -183,9 +207,16 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   /// Modal de historial de la burbuja clásica (hito B1–B7): el toque largo
   /// la abre solo con el switch ON (aplica al abrir la próxima vez).
+  /// Notifica al nativo igual que la isla (reloadIslandConfig): el FGS
+  /// cachea la config y sin recarga el gate no se entera hasta reinicio.
   Future<void> _toggleBubbleHistory(bool enabled) async {
-    await _storageService.saveBubbleHistoryEnabled(enabled);
+    try {
+      await _storageService.saveBubbleHistoryEnabled(enabled);
+    } catch (_) {}
     if (mounted) setState(() => _showBubbleHistory = enabled);
+    try {
+      await _floatingBubbleService.reloadIslandConfig();
+    } catch (_) {}
   }
 
   /// Lee la API key del secure storage. Frontera de canal: el keystore de
@@ -408,6 +439,17 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleTrackpadEnabled(bool value) async {
     setState(() => _trackpadEnabled = value);
     await _storageService.setTrackpadEnabled(value);
+    // La burbuja overlay del trackpad se gobierna desde este toggle (antes
+    // el servicio Dart no tenía ningún llamador). Best-effort sin diálogos:
+    // sin permiso de overlay el nativo devuelve false y la pref sigue
+    // siendo la fuente de verdad que lee el teclado.
+    try {
+      if (value) {
+        await _floatingTrackpadService.startTrackpadBubble();
+      } else {
+        await _floatingTrackpadService.stopTrackpadBubble();
+      }
+    } catch (_) {}
   }
 
   Future<void> _toggleTrackpadToolbarVisible(bool value) async {
@@ -425,9 +467,13 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _storageService.setTrackpadScrollPosition(value);
   }
 
-  Future<void> _saveTrackpadSensitivity(double value) async {
+  /// Entrada del slider de sensibilidad: estado local inmediato (thumb
+  /// sin lag) + persistencia diferida 150 ms (helper reutilizable).
+  void _onTrackpadSensitivitySlider(double value) {
     setState(() => _trackpadSensitivity = value);
-    await _storageService.setTrackpadSensitivity(value);
+    _persistSliderDebounced(
+        'trackpadSensitivity',
+        () => _storageService.setTrackpadSensitivity(value));
   }
 
   Future<void> _saveTrackpadAccelCurve(String value) async {
@@ -498,6 +544,46 @@ class _SettingsScreenState extends State<SettingsScreen>
     setState(() => _islandHeight = clamped);
     await _storageService.setIslandHeight(clamped);
     await _floatingBubbleService.reloadIslandConfig();
+  }
+
+  /// Variantes para sliders (arrastre continuo): estado local inmediato
+  /// para que el thumb no lagee + persistencia (prefs + canal nativo)
+  /// diferida 150 ms con el helper reutilizable [Debouncer]. Los steppers
+  /// discretos siguen usando los [_saveIsland*] directos.
+  void _onIslandPosXSlider(double v) {
+    final clamped = v.round().clamp(-160, 160);
+    setState(() => _islandPosX = clamped);
+    _persistSliderDebounced('islandX', () async {
+      await _storageService.setIslandPosX(clamped);
+      await _floatingBubbleService.reloadIslandConfig();
+    });
+  }
+
+  void _onIslandPosYSlider(double v) {
+    final clamped = v.round().clamp(-100, 120);
+    setState(() => _islandPosY = clamped);
+    _persistSliderDebounced('islandY', () async {
+      await _storageService.setIslandPosY(clamped);
+      await _floatingBubbleService.reloadIslandConfig();
+    });
+  }
+
+  void _onIslandWidthSlider(double v) {
+    final clamped = v.round().clamp(130, 320);
+    setState(() => _islandWidth = clamped);
+    _persistSliderDebounced('islandW', () async {
+      await _storageService.setIslandWidth(clamped);
+      await _floatingBubbleService.reloadIslandConfig();
+    });
+  }
+
+  void _onIslandHeightSlider(double v) {
+    final clamped = v.round().clamp(28, 48);
+    setState(() => _islandHeight = clamped);
+    _persistSliderDebounced('islandH', () async {
+      await _storageService.setIslandHeight(clamped);
+      await _floatingBubbleService.reloadIslandConfig();
+    });
   }
 
   Future<void> _saveIslandSlotOrder(String value) async {
@@ -628,7 +714,15 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Future<void> _toggleBubble(bool enable) async {
     if (enable) {
-      final hasPermission = await _floatingBubbleService.canDrawOverlays();
+      // Intención explícita de usar el mic (la burbuja graba): aquí SÍ se
+      // puede pedir el permiso, nunca al abrir Ajustes (ver initState).
+      unawaited(_ensureMicrophonePermission());
+      bool hasPermission = false;
+      try {
+        hasPermission = await _floatingBubbleService.canDrawOverlays();
+      } catch (_) {
+        hasPermission = false;
+      }
       if (!hasPermission) {
         if (!mounted) return;
         final grant = await showDialog<bool>(
@@ -650,19 +744,44 @@ class _SettingsScreenState extends State<SettingsScreen>
             ],
           ),
         );
-        if (grant == true) {
+        if (grant != true) return;
+        try {
           await _floatingBubbleService.requestOverlayPermission();
+        } catch (_) {}
+        // Un solo gesto: al volver del ajuste del sistema se relee el
+        // permiso y, si ya está concedido, se arranca + guarda + setState
+        // sin exigir un segundo toque. Antes se retornaba aquí.
+        try {
+          hasPermission = await _floatingBubbleService.canDrawOverlays();
+        } catch (_) {
+          hasPermission = false;
         }
-        return;
+        if (!hasPermission) return;
       }
-      final started = await _floatingBubbleService.startBubble();
+      bool started = false;
+      try {
+        started = await _floatingBubbleService.startBubble();
+      } catch (_) {
+        started = false;
+      }
       if (started) {
-        await _storageService.saveFloatingBubbleEnabled(true);
+        try {
+          await _storageService.saveFloatingBubbleEnabled(true);
+        } catch (_) {}
         if (mounted) setState(() => _isBubbleEnabled = true);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('No se pudo activar la burbuja flotante')),
+        );
       }
     } else {
-      await _floatingBubbleService.stopBubble();
-      await _storageService.saveFloatingBubbleEnabled(false);
+      try {
+        await _floatingBubbleService.stopBubble();
+      } catch (_) {}
+      try {
+        await _storageService.saveFloatingBubbleEnabled(false);
+      } catch (_) {}
       if (mounted) setState(() => _isBubbleEnabled = false);
     }
   }
@@ -674,37 +793,63 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Future<void> _saveApiKey() async {
     final key = _apiKeyController.text.trim();
-    await _secureStorage.write(key: 'groq_api_key', value: key);
-    if (key.isNotEmpty) {
-      await _storageService.saveSttMirror(apiKey: key);
-    } else {
-      await _storageService.clearSttMirror();
-    }
-    if (mounted) {
-      setState(() => _hasApiKey = key.isNotEmpty);
+    try {
+      await _secureStorage.write(key: 'groq_api_key', value: key);
+      if (key.isNotEmpty) {
+        await _storageService.saveSttMirror(apiKey: key);
+      } else {
+        await _storageService.clearSttMirror();
+      }
+    } catch (_) {
+      // Keystore bloqueado / prefs caído: SnackBar, nunca pantalla roja.
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('API key guardada')),
+        const SnackBar(content: Text('No se pudo guardar la API key')),
       );
+      return;
     }
+    if (!mounted) return;
+    setState(() => _hasApiKey = key.isNotEmpty);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('API key guardada')),
+    );
   }
 
   Future<void> _clearApiKey() async {
-    await _secureStorage.delete(key: 'groq_api_key');
-    await _storageService.clearSttMirror();
-    if (mounted) {
-      _apiKeyController.clear();
-      setState(() => _hasApiKey = false);
+    try {
+      await _secureStorage.delete(key: 'groq_api_key');
+      await _storageService.clearSttMirror();
+    } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('API key eliminada')),
+        const SnackBar(content: Text('No se pudo eliminar la API key')),
       );
+      return;
     }
+    if (!mounted) return;
+    _apiKeyController.clear();
+    setState(() => _hasApiKey = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('API key eliminada')),
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _apiKeyController.dispose();
+    for (final debouncer in _sliderDebouncers.values) {
+      debouncer.dispose();
+    }
+    _sliderDebouncers.clear();
     super.dispose();
+  }
+
+  void _selectTab(int index) {
+    setState(() {
+      _currentTab = index;
+      _builtTabs.add(index);
+    });
   }
 
   @override
@@ -716,13 +861,25 @@ class _SettingsScreenState extends State<SettingsScreen>
       ),
       body: Stack(
         children: [
+          // Construcción perezosa por tab con estado preservado: solo los
+          // tabs visitados se construyen (antes IndexedStack montaba los 4
+          // con sus ~10 lecturas iniciales), y lo visitado nunca se
+          // desmonta, así que inputs y scrolls sobreviven al cambio de tab.
           IndexedStack(
             index: _currentTab,
             children: [
-              _buildGeneralTab(context),
-              _buildKeyboardTab(context),
-              _buildSnippetsTab(context),
-              _buildAboutTab(context),
+              _builtTabs.contains(0)
+                  ? _buildGeneralTab(context)
+                  : const SizedBox.shrink(),
+              _builtTabs.contains(1)
+                  ? _buildKeyboardTab(context)
+                  : const SizedBox.shrink(),
+              _builtTabs.contains(2)
+                  ? _buildSnippetsTab(context)
+                  : const SizedBox.shrink(),
+              _builtTabs.contains(3)
+                  ? _buildAboutTab(context)
+                  : const SizedBox.shrink(),
             ],
           ),
           Positioned(
@@ -731,11 +888,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             bottom: 0,
             child: SettingsTabBar(
               selectedIndex: _currentTab,
-              onTabSelected: (index) {
-                setState(() {
-                  _currentTab = index;
-                });
-              },
+              onTabSelected: _selectTab,
             ),
           ),
         ],
@@ -963,6 +1116,14 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
+  /// Flexes de la fila inferior por alineación: el valor 3 marca la
+  /// barra espaciadora. Una sola tabla en vez de 3 ramas if/else.
+  static const Map<String, List<int>> _miniKbSpaceFlex = {
+    'left': [1, 3, 1, 1, 1],
+    'center': [1, 1, 3, 1, 1],
+    'right': [1, 1, 1, 3, 1],
+  };
+
   Widget _buildMiniKbRow(String layout, ColorScheme colorScheme) {
     Widget miniKey(int flex, {bool isSpace = false}) {
       return Expanded(
@@ -978,17 +1139,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       );
     }
 
-    List<Widget> keys;
-    if (layout == 'left') {
-      keys = [miniKey(1), miniKey(3, isSpace: true), miniKey(1), miniKey(1), miniKey(1)];
-    } else if (layout == 'right') {
-      keys = [miniKey(1), miniKey(1), miniKey(1), miniKey(3, isSpace: true), miniKey(1)];
-    } else {
-      // center
-      keys = [miniKey(1), miniKey(1), miniKey(3, isSpace: true), miniKey(1), miniKey(1)];
-    }
-
-    return Row(children: keys);
+    final flexes = _miniKbSpaceFlex[layout] ?? _miniKbSpaceFlex['center']!;
+    return Row(
+      children: [for (final flex in flexes) miniKey(flex, isSpace: flex == 3)],
+    );
   }
 
   Widget _buildKeyboardTab(BuildContext context) {
@@ -1380,7 +1534,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 max: 2.5,
                 divisions: 20,
                 label: '${_trackpadSensitivity.toStringAsFixed(1)}x',
-                onChanged: _saveTrackpadSensitivity,
+                onChanged: _onTrackpadSensitivitySlider,
               ),
               const SizedBox(height: 8),
               Text(
@@ -1655,7 +1809,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   max: 160,
                   divisions: 320,
                   value: _islandPosX.toDouble(),
-                  onChanged: (v) => _saveIslandPosX(v.round()),
+                  onChanged: _onIslandPosXSlider,
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1686,7 +1840,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   max: 120,
                   divisions: 220,
                   value: _islandPosY.toDouble().clamp(-100, 120),
-                  onChanged: (v) => _saveIslandPosY(v.round()),
+                  onChanged: _onIslandPosYSlider,
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1717,7 +1871,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   max: 320,
                   divisions: 190,
                   value: _islandWidth.toDouble(),
-                  onChanged: (v) => _saveIslandWidth(v.round()),
+                  onChanged: _onIslandWidthSlider,
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1744,7 +1898,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   max: 48,
                   divisions: 20,
                   value: _islandHeight.toDouble(),
-                  onChanged: (v) => _saveIslandHeight(v.round()),
+                  onChanged: _onIslandHeightSlider,
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1986,7 +2140,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'VoiceBubble STT v0.1.0',
+                        'VoiceBubble STT v1.0.0+87',
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
                       const SizedBox(height: 4),
@@ -2033,6 +2187,10 @@ class _SnippetFormSheet extends StatefulWidget {
 class _SnippetFormSheetState extends State<_SnippetFormSheet> {
   late final TextEditingController _nombreController;
   late final TextEditingController _contenidoController;
+  // Contador de caracteres reactivo: antes onChanged hacía setState() y
+  // reconstruía TODO el sheet (incluido el BackdropFilter blur del
+  // GlassContainer) por cada carácter. Ahora solo se redibuja el contador.
+  late final ValueNotifier<int> _contentLength;
   String? _nombreError;
   String? _contenidoError;
   String? _generalError;
@@ -2047,12 +2205,15 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
         TextEditingController(text: widget.existing?.nombre ?? '');
     _contenidoController =
         TextEditingController(text: widget.existing?.contenido ?? '');
+    _contentLength =
+        ValueNotifier<int>(_contenidoController.text.length);
   }
 
   @override
   void dispose() {
     _nombreController.dispose();
     _contenidoController.dispose();
+    _contentLength.dispose();
     super.dispose();
   }
 
@@ -2104,8 +2265,6 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final labelSecondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
-    final length = _contenidoController.text.length;
-    final overLimit = length > widget.maxContentLength;
 
     return Padding(
       padding:
@@ -2148,18 +2307,26 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                 border: const OutlineInputBorder(),
                 errorText: _contenidoError,
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: (value) {
+                _contentLength.value = value.length;
+              },
             ),
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerRight,
-              child: Text(
-                '$length / ${widget.maxContentLength}',
-                style: kTextCaption.copyWith(
-                  color: overLimit
-                      ? Theme.of(context).colorScheme.error
-                      : labelSecondary,
-                ),
+              child: ValueListenableBuilder<int>(
+                valueListenable: _contentLength,
+                builder: (_, length, __) {
+                  final overLimit = length > widget.maxContentLength;
+                  return Text(
+                    '$length / ${widget.maxContentLength}',
+                    style: kTextCaption.copyWith(
+                      color: overLimit
+                          ? Theme.of(context).colorScheme.error
+                          : labelSecondary,
+                    ),
+                  );
+                },
               ),
             ),
             if (_generalError != null)

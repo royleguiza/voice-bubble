@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 """
 MASTER VERIFICATION SUITE - VoiceBubble STT
-Ejecuta todas las comprobaciones de extremo a extremo:
-1. CI Guards (Contrato de Claves del Puente, Logs sin filtraciones, Hex de Colores).
-2. Retención de Datos en Desinstalación (hasFragileUserData y allowBackup).
-3. Edición de Snippets en Teclado (Subcapas ?123 / Código, soporte de '@', retención de borrador).
-4. Onboarding de Micrófono y Activación Modal de Teclado (showInputMethodPicker + WidgetsBindingObserver).
-5. Escala y Perfiles de Altura de Teclas (Muy alta - 1.30f).
-6. Repositorio de Historial de Transcripciones Profesional (Escritura atómica, sincronización y FIFO-20).
-7. Suite de Portapapeles Multimodal (FIFO-25, Pinned, Heurísticas y UI).
+Delega cada suite Python vía subprocess (fallo real si fallan) y conserva
+inline SOLO los CI guards propios (contrato de claves, logs limpios y
+retención al desinstalar). La versión NO se congela en un literal: se
+exige consistencia del MISMO valor entre ambos pubspec (el bump futuro
+no debe romper master).
 """
 
 import os
+import re
 import subprocess
 import sys
+
+SUITES = [
+    ("Snippets: subcapas ?123/Código y retención", "test_snippets_suite.py"),
+    ("Onboarding: micrófono y activación modal", "test_onboarding_and_activation_suite.py"),
+    ("Ergonomía: perfil de altura 'Muy alta' (1.30f)", "test_height_profile_suite.py"),
+    ("Historial: repositorio atómico FIFO-20", "test_transcription_history_suite.py"),
+    ("Portapapeles: suite multimodal FIFO-25", "test_clipboard_suite.py"),
+    ("Trackpad: suite split wings y puntero virtual", "test_trackpad_suite.py"),
+    ("Burbuja: modal de historial clásica (B1-B7)", "test_bubble_history_suite.py"),
+]
 
 def run_test(name, func):
     sys.stdout.write(f"  ▶ {name}... ")
@@ -35,15 +43,34 @@ def test_contract_keys():
         "| sort -u"
     )
     result = subprocess.check_output(cmd, shell=True, text=True).strip()
+    # Lectores con "flutter.$key" interpolado (intPref/stringPref/booleanPref):
+    # la clave viaja como argumento; se extrae para no dar falsos rojos.
+    cmd2 = (
+        f"grep -rhoE '(intPref|stringPref|booleanPref)\\(prefs, \"[a-z_0-9]+\"' '{kt_dir}' "
+        "| grep -oE '\"[a-z_0-9]+\"' "
+        "| tr -d '\"' "
+        "| sort -u"
+    )
+    result2 = subprocess.check_output(cmd2, shell=True, text=True).strip()
+    got = set(result.split()) | set(result2.split())
     with open("docs/contract-keys.txt", "r", encoding="utf-8") as f:
         expected = f.read().strip()
-    assert result == expected, f"Discrepancia en claves de contrato:\nEsperado:\n{expected}\nObtenido:\n{result}"
+    assert "\n".join(sorted(got)) == expected, (
+        f"Discrepancia en claves de contrato:\nEsperado:\n{expected}\nObtenido:\n" + "\n".join(sorted(got))
+    )
 
 def test_clean_logs():
     kt_dir = "voice_bubble_stt/android/app/src/main/kotlin"
     cmd = f"grep -rniE 'Log\\.[a-z]+\\(.*\\b(texto|contenido|api_?key|token)\\b' '{kt_dir}' || true"
     out = subprocess.check_output(cmd, shell=True, text=True).strip()
     assert not out, f"Filtración de contenido detectada en Logs:\n{out}"
+
+def _pubspec_version(path):
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+    m = re.search(r"^version:\s*(\S+)\s*$", content, re.MULTILINE)
+    assert m, f"Sin clave version en {path}"
+    return m.group(1)
 
 def test_manifest_retention():
     manifest_path = "voice_bubble_stt/android/app/src/main/AndroidManifest.xml"
@@ -53,89 +80,21 @@ def test_manifest_retention():
     assert 'android:allowBackup="true"' in content, "Falta android:allowBackup=\"true\""
     assert 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in content, "Falla de seguridad: AndroidManifest no debe declarar BIND_ACCESSIBILITY_SERVICE (perfil anti-Play-Protect 2026-09-05)"
     assert 'VoiceBubbleAccessibilityService' not in content, "AndroidManifest no debe registrar VoiceBubbleAccessibilityService (perfil anti-Play-Protect)"
-    assert 'FloatingTrackpadService' not in content, "AndroidManifest no debe registrar FloatingTrackpadService (Play Protect seguro)"
+    assert 'android:name=".FloatingTrackpadService"' in content, "ITEM-INTERFAZ: AndroidManifest debe declarar FloatingTrackpadService como servicio normal (otro agente lo declara)"
     assert os.path.isfile("voice_bubble_stt/android/app/debug.keystore"), "Falta voice_bubble_stt/android/app/debug.keystore persistente"
-    with open("app_source/pubspec.yaml", "r", encoding="utf-8") as f:
-        pubspec = f.read()
-    assert "version: 1.0.0+87" in pubspec, "Version en app_source/pubspec.yaml debe ser 1.0.0+87"
-    with open("voice_bubble_stt/pubspec.yaml", "r", encoding="utf-8") as f:
-        vb_pubspec = f.read()
-    assert "version: 1.0.0+87" in vb_pubspec, "Version en voice_bubble_stt/pubspec.yaml debe ser 1.0.0+87"
+    # Consistencia de versión entre ambos pubspec (sin literal congelado).
+    v_app = _pubspec_version("app_source/pubspec.yaml")
+    v_vb = _pubspec_version("voice_bubble_stt/pubspec.yaml")
+    assert v_app == v_vb, f"Versiones divergentes: app_source={v_app} vs voice_bubble_stt={v_vb}"
     with open("voice_bubble_stt/android/app/build.gradle.kts", "r", encoding="utf-8") as f:
         gradle_kts = f.read()
     assert 'debug.keystore' in gradle_kts, "build.gradle.kts debe configurar debug.keystore persistente"
 
-
-def test_snippet_keyboard_sublayer():
-    kt_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt"
-    with open(kt_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    assert "private var snippetSubLayer = Layer.LETTERS" in content
-    assert "private var snippetDraftName = \"\"" in content
-    assert "saveSnippetDraftState()" in content
-    assert "when (snippetSubLayer)" in content
-    assert "Layer.SYMBOLS -> buildSymbolRows()" in content
-    assert "Layer.CODE -> buildCodeRows()" in content
-    assert "toggleShift()" in content
-
-def test_onboarding_and_activation():
-    # MainActivity
-    with open("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/MainActivity.kt", "r", encoding="utf-8") as f:
-        ma = f.read()
-    assert '"showInputMethodPicker"' in ma
-    assert "imm.showInputMethodPicker()" in ma
-
-    # KeyboardService
-    with open("app_source/lib/services/keyboard_service.dart", "r", encoding="utf-8") as f:
-        ks = f.read()
-    assert "showInputMethodPicker" in ks
-
-    # SettingsScreen
-    with open("app_source/lib/screens/settings_screen.dart", "r", encoding="utf-8") as f:
-        ss = f.read()
-    assert "with WidgetsBindingObserver" in ss
-    assert "didChangeAppLifecycleState" in ss
-    assert "_showInputMethodPicker" in ss
-    assert "_ensureMicrophonePermission" in ss
-    assert "Seleccionar VoiceBubble como teclado" in ss
-
-    # HomeScreen
-    with open("app_source/lib/screens/home_screen.dart", "r", encoding="utf-8") as f:
-        hs = f.read()
-    assert "_transcriptionService.requestPermissions()" in hs
-
-def test_height_profiles():
-    with open("app_source/lib/services/storage_service.dart", "r", encoding="utf-8") as f:
-        ss = f.read()
-    assert "'muy_alta'" in ss
-
-    with open("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt", "r", encoding="utf-8") as f:
-        vk = f.read()
-    assert 'HEIGHT_PROFILE_MUY_ALTA = "muy_alta"' in vk
-    assert "HEIGHT_FACTOR_MUY_ALTA = 1.30f" in vk
-
-def test_transcription_history_atomic():
-    with open("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/TranscriptionHistoryRepository.kt", "r", encoding="utf-8") as f:
-        repo = f.read()
-    assert 'FILE_NAME = "transcription_history.json"' in repo
-    assert "tmp.renameTo(targetFile)" in repo
-
-    with open("app_source/lib/services/storage_service.dart", "r", encoding="utf-8") as f:
-        ss = f.read()
-    assert "historyFileName = 'transcription_history.json'" in ss
-    assert "renameSync" in ss
-
-def test_clipboard_suite():
-    res = subprocess.run(["python3", "test_clipboard_suite.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    assert res.returncode == 0, f"Fallo en clipboard suite: {res.stderr}\n{res.stdout}"
-
-def test_trackpad_suite():
-    res = subprocess.run(["python3", "test_trackpad_suite.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    assert res.returncode == 0, f"Fallo en trackpad suite: {res.stderr}\n{res.stdout}"
-
-def test_bubble_history_suite():
-    res = subprocess.run(["python3", "test_bubble_history_suite.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    assert res.returncode == 0, f"Fallo en bubble-history suite: {res.stderr}\n{res.stdout}"
+def _delegate(script):
+    def run():
+        res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        assert res.returncode == 0, f"Fallo en {script}: {res.stderr}\n{res.stdout}"
+    return run
 
 def main():
     print("=" * 70)
@@ -145,14 +104,9 @@ def main():
         ("CI Guard: Paridad de Claves de Contrato", test_contract_keys),
         ("CI Guard: Ausencia de Filtraciones en Logs", test_clean_logs),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
-        ("Snippets: Subcapas ?123/Código y soporte para '@' sin cierre de editor", test_snippet_keyboard_sublayer),
-        ("Onboarding: Petición de micrófono y activación modal sin salir de la app", test_onboarding_and_activation),
-        ("Ergonomía: Perfil de altura de tecla 'Muy alta' (factor 1.30f)", test_height_profiles),
-        ("Historial: Repositorio JSON atómico y sincronización FIFO-20", test_transcription_history_atomic),
-        ("Portapapeles: Suite Multimodal 24/24", test_clipboard_suite),
-        ("Trackpad: Suite Split Wings y Puntero Virtual", test_trackpad_suite),
-        ("Burbuja: Modal de historial clasica (B1-B7)", test_bubble_history_suite),
     ]
+    for name, script in SUITES:
+        tests.append((f"{name} [{script}]", _delegate(script)))
 
     passed = 0
     for name, func in tests:

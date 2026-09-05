@@ -43,6 +43,8 @@ final List<String> appMockedChannels = [
 void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
   try {
     final file = File('$temporaryDirectory/transcription_history.json');
+    // Sync a propósito: setup de tests con archivos reales (la regla
+    // avoid_slow_async_io solo observa métodos async, no estos).
     if (file.existsSync()) file.deleteSync();
     final tmp = File('$temporaryDirectory/transcription_history.json.tmp');
     if (tmp.existsSync()) tmp.deleteSync();
@@ -106,6 +108,7 @@ void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
 void unregisterAppChannelMocks() {
   try {
     final file = File('/tmp/transcription_history.json');
+    // Sync a propósito en teardown (ver arriba).
     if (file.existsSync()) file.deleteSync();
     final tmp = File('/tmp/transcription_history.json.tmp');
     if (tmp.existsSync()) tmp.deleteSync();
@@ -114,6 +117,59 @@ void unregisterAppChannelMocks() {
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   for (final channel in appMockedChannels) {
+    messenger.setMockMethodCallHandler(MethodChannel(channel), null);
+  }
+}
+
+/// Solo los dos canales del plugin record 7.x, con el handler canónico
+/// (el mismo de [registerAppChannelMocks]): permiso concedido, 'create' /
+/// 'start' sin efecto, 'stop' devuelve un .wav, etc.
+///
+/// Para tests de servicio que NO montan la app (recording_design,
+/// mic_exclusion): conserva su setUp/tearDown propio sin arrastrar los
+/// canales de path_provider/burbuja/teclado.
+void registerRecordChannelMocks({String temporaryDirectory = '/tmp'}) {
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+
+  for (final channel in _recordChannels) {
+    messenger.setMockMethodCallHandler(
+      MethodChannel(channel),
+      (MethodCall call) async {
+        if (call.method.toLowerCase().contains('permission')) return true;
+        switch (call.method) {
+          case 'start':
+          case 'create':
+          case 'dispose':
+          case 'pause':
+          case 'resume':
+          case 'cancel':
+            return null;
+          case 'stop':
+            return '$temporaryDirectory/recording.wav';
+          case 'isRecording':
+          case 'is_recording':
+            return true;
+          case 'isPaused':
+          case 'is_paused':
+            return false;
+          case 'getAmplitude':
+            return {'current': -160.0, 'max': -160.0};
+          case 'listInputDevices':
+            return <Map<String, dynamic>>[];
+          default:
+            return true;
+        }
+      },
+    );
+  }
+}
+
+/// Libera solo los canales registrados por [registerRecordChannelMocks].
+void unregisterRecordChannelMocks() {
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  for (final channel in _recordChannels) {
     messenger.setMockMethodCallHandler(MethodChannel(channel), null);
   }
 }

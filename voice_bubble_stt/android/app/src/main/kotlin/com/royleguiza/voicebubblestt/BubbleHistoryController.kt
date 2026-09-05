@@ -86,8 +86,23 @@ class BubbleHistoryController(
     private var originX = 0
     private var originY = 0
     private var originSize = 0
+    // Selección estable por CLAVE (timestamp|texto), jamás por texto solo:
+    // dos dictados idénticos son tarjetas distintas y seleccionar una no
+    // debe arrastrar a la otra ni duplicarla en copiar-todo.
     private val selected = LinkedHashSet<String>()
+    // Clave -> texto visible de las tarjetas vigentes (se reconstruye con ellas).
+    private val keyToText = LinkedHashMap<String, String>()
     private var isShowing = false
+
+    /**
+     * Clave estable de selección. El repositorio no da ids, así que se
+     * compone con timestamp ISO + texto.
+     * Colisión residual documentada: dos dictados con el MISMO texto en el
+     * MISMO instante comparten selección (el repo estampa Instant.now() por
+     * inserción, así que requiere dos adds en el mismo milisegundo con texto
+     * idéntico: despreciable y sin pérdida de datos, solo UX de selección).
+     */
+    private fun selectionKey(timestamp: String, text: String): String = "$timestamp|$text"
 
     private fun isDarkUi(): Boolean {
         return try {
@@ -188,6 +203,7 @@ class BubbleHistoryController(
         overlay = null
         params = null
         selected.clear()
+        keyToText.clear()
         if (isShowing) {
             isShowing = false
             try {
@@ -417,12 +433,25 @@ class BubbleHistoryController(
             list.removeAllViews()
         } catch (_: Throwable) {}
         selected.clear()
+        keyToText.clear()
         refreshCopyAll()
-        val items: List<JSONObject> = try {
-            TranscriptionHistoryRepository(context).loadHistory()
-        } catch (_: Throwable) {
-            emptyList()
-        }
+        // I/O fuera del main (disco + XML + prefs del repositorio): el render
+        // vuelve al main y pinta solo si la modal sigue abierta.
+        BackgroundWork.executeWithResult(
+            block = {
+                try {
+                    TranscriptionHistoryRepository(context).loadHistory()
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            },
+            onResult = { items -> renderCards(items ?: emptyList()) }
+        )
+    }
+
+    private fun renderCards(items: List<JSONObject>) {
+        if (!isShowing) return
+        val list = cardsList ?: return
         if (items.isEmpty()) {
             val dark = isDarkUi()
             val empty = TextView(context).apply {
@@ -443,7 +472,12 @@ class BubbleHistoryController(
                 ""
             }
             if (text.isEmpty()) continue
-            list.addView(buildCard(text))
+            val timestamp = try {
+                obj.optString("timestamp", "")
+            } catch (_: Throwable) {
+                ""
+            }
+            list.addView(buildCard(text, timestamp))
         }
     }
 
@@ -478,8 +512,10 @@ class BubbleHistoryController(
         }
     }
 
-    private fun buildCard(text: String): View {
+    private fun buildCard(text: String, timestamp: String): View {
         val dark = isDarkUi()
+        val key = selectionKey(timestamp, text)
+        keyToText[key] = text
         val frame = FrameLayout(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -499,7 +535,7 @@ class BubbleHistoryController(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
             )
-            tag = text
+            tag = key
         }
         val tv = TextView(context).apply {
             this.text = "\"$text\""
@@ -557,7 +593,7 @@ class BubbleHistoryController(
         }
         frame.addView(row)
         frame.addView(badge)
-        attachCardGestures(row = row, tv = tv, badge = badge, text = text, dark = dark)
+        attachCardGestures(row = row, tv = tv, badge = badge, text = text, key = key, dark = dark)
         return frame
     }
 
@@ -566,6 +602,7 @@ class BubbleHistoryController(
         tv: TextView,
         badge: ImageView,
         text: String,
+        key: String,
         dark: Boolean
     ) {
         val armPx = SWIPE_ARM_DP * density
@@ -613,7 +650,7 @@ class BubbleHistoryController(
                     if (swiping) {
                         val clamped = dx.coerceIn(-maxPx, maxPx)
                         row.translationX = clamped
-                        badge.visibility = if (abs(clamped) >= armPx || selected.contains(text)) {
+                        badge.visibility = if (abs(clamped) >= armPx || selected.contains(key)) {
                             View.VISIBLE
                         } else {
                             View.GONE
@@ -634,12 +671,12 @@ class BubbleHistoryController(
                         }
                         suppressTap = true
                         if (armed) {
-                            if (selected.contains(text)) {
-                                selected.remove(text)
+                            if (selected.contains(key)) {
+                                selected.remove(key)
                                 badge.visibility = View.GONE
                                 row.background = cardBackground(selected = false, dark = dark)
                             } else {
-                                selected.add(text)
+                                selected.add(key)
                                 badge.visibility = View.VISIBLE
                                 row.background = cardBackground(selected = true, dark = dark)
                             }
@@ -648,7 +685,7 @@ class BubbleHistoryController(
                                 v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                             } catch (_: Throwable) {}
                         } else {
-                            badge.visibility = if (selected.contains(text)) View.VISIBLE else View.GONE
+                            badge.visibility = if (selected.contains(key)) View.VISIBLE else View.GONE
                         }
                     } else if (!longFired) {
                         handleCardTap(tv = tv, text = text)
@@ -666,7 +703,7 @@ class BubbleHistoryController(
                             row.translationX = 0f
                         }
                         suppressTap = true
-                        badge.visibility = if (selected.contains(text)) View.VISIBLE else View.GONE
+                        badge.visibility = if (selected.contains(key)) View.VISIBLE else View.GONE
                     }
                     true
                 }
@@ -705,12 +742,19 @@ class BubbleHistoryController(
         try {
             if (selected.size < 2) return
             val list = cardsList ?: return
+            // Recorrido en orden visual: cada tarjeta aporta su texto UNA sola
+            // vez (clave estable por tarjeta, no por texto). Sin duplicados
+            // por construcción: el loop visita cada hija una vez y cada clave
+            // seleccionada corresponde a una sola tarjeta. Dos dictados con
+            // texto idéntico aportan sus dos líneas (son dictados distintos).
             val ordered = ArrayList<String>()
             for (i in 0 until list.childCount) {
                 val frame = list.getChildAt(i) as? FrameLayout ?: continue
                 val row = frame.getChildAt(0) as? LinearLayout ?: continue
-                val t = row.tag as? String ?: continue
-                if (selected.contains(t)) ordered.add(t)
+                val key = row.tag as? String ?: continue
+                if (!selected.contains(key)) continue
+                val text = keyToText[key] ?: continue
+                ordered.add(text)
             }
             if (ordered.isEmpty()) return
             copyToClipboard(ordered.joinToString("\n"))
@@ -789,6 +833,12 @@ class BubbleHistoryController(
         }, 1200)
     }
 
+    /**
+     * Copia al portapapeles del sistema. Decisión documentada: NO se vacía
+     * con clearPrimaryClip ni expira el contenido (eso rompería el flujo
+     * copiar-acá → pegar-allá). Lo que expira es el feedback visual (check
+     * verde → icono copiar a los ~1100 ms) y la selección tras copiar-todo.
+     */
     private fun copyToClipboard(text: String) {
         try {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager

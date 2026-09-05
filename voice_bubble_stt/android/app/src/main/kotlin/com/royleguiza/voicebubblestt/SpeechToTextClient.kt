@@ -23,6 +23,39 @@ import java.io.IOException
  * K5-T4: los mensajes de error se localizan es/en consultando el idioma
  * activo del teclado via [spanishModeProvider] en el momento del fallo,
  * sin estado propio que pueda quedar desincronizado a mitad de sesion.
+ *
+ * CONTRATO DE HILOS (causa raíz de ANR):
+ * - [startRecording], [stopRecording] y [cancelRecording] bloquean (setup
+ *   nativo de AudioRecord + join del hilo de captura con tope 2.5 s):
+ *   JAMÁS invocarlos desde el hilo principal. Los llamadores en el main
+ *   usan `BackgroundWork.execute` (pool canónico único) y publican a UI
+ *   con `BackgroundWork.postMain` / `runOnMain`.
+ * - [transcribe] jamás bloquea al llamante: deriva a [BackgroundWork] y
+ *   sus callbacks [onDone]/[onError] llegan en hilo de fondo.
+ * - Los tres métodos de captura están serializados con [audioLock]: un
+ *   stop/cancel concurrente con un start a medio camino no deja una
+ *   captura viva (el start tardío queda cubierto por el abort del llamador).
+ * - Hilos propios legítimos (los únicos fuera de [BackgroundWork]):
+ *   el hilo de captura "VbKeyboardRec" (bucle `AudioRecord.read`, exigido
+ *   por la API de audio; vive solo durante la grabación).
+ *
+ * CONTRATO K3 DE LA API KEY (plan B verificado, NO reintroducir en claro):
+ * - Dart guarda la key SOLO en flutter_secure_storage (`groq_api_key`).
+ *   Verificado contra el fuente del plugin v9 (default sin aOptions, sin
+ *   EncryptedSharedPreferences): archivo "FlutterSecureStorage", clave
+ *   "<prefijo-base64>_groq_api_key", valor AES-GCM con clave envuelta en
+ *   RSA dentro del Android Keystore. El IME no la lee (duplicar esa
+ *   construcción cripto se rompería con cada migración de algoritmo).
+ * - Lo que SÍ viaja por prefs (contrato docs/contract-keys.txt):
+ *   `kb_stt_url`, `kb_stt_model`, `kb_stt_language` (con el prefijo
+ *   "flutter." habitual) y el indicador de presencia
+ *   `kb_stt_key_configured` (bool, NO la key; lo escribe
+ *   `StorageService.saveSttMirror`). NOTA: se nombra sin prefijo a
+ *   propósito para no alterar el guard de paridad de claves.
+ * - `flutter.kb_stt_api_key` se conserva SOLO como fallback legacy de
+ *   versiones previas (hoy siempre ausente: Dart lo borra al migrar).
+ *   Clave ausente o vacía = fail-fast en el llamador (aviso "Falta la API
+ *   key" hacia Ajustes), nunca un 401 por red.
  */
 class SpeechToTextClient(
     private val context: Context,
@@ -45,7 +78,9 @@ class SpeechToTextClient(
         val language: String,
     )
 
-    /** Contrato D7: los Ajustes (Flutter) escriben estas claves espejo. */
+    /** Contrato D7: los Ajustes (Flutter) escriben estas claves espejo.
+     * Ver KDoc del contrato K3 arriba: la key viaja SOLO por
+     * flutter_secure_storage; aquí solo se lee el fallback legacy. */
     fun loadConfig(): Config {
         val prefs = context.getSharedPreferences(
             "FlutterSharedPreferences", Context.MODE_PRIVATE,
@@ -66,6 +101,9 @@ class SpeechToTextClient(
     private var audioRecord: AudioRecord? = null
     private var recordThread: Thread? = null
 
+    /** Serializa start/stop/cancel (ver contrato de hilos del KDoc). */
+    private val audioLock = Any()
+
     @Volatile
     private var capturing = false
 
@@ -79,35 +117,39 @@ class SpeechToTextClient(
             context, Manifest.permission.RECORD_AUDIO,
         ) == PackageManager.PERMISSION_GRANTED
 
-    /** true si la grabacion arranco; false ante permiso o inicializacion fallida. */
+    /** true si la grabacion arranco; false ante permiso o inicializacion fallida.
+     * Síncrono y BLOQUEANTE: solo fuera del main (ver contrato de hilos);
+     * desde el main envolver con `BackgroundWork.execute`. */
     fun startRecording(): Boolean {
-        if (capturing) return true
-        if (!hasMicPermission()) return false
-        val minBuf = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-        )
-        if (minBuf <= 0) return false
-        val rec = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            maxOf(minBuf * 2, 8192),
-        )
-        if (rec.state != AudioRecord.STATE_INITIALIZED) {
-            try { rec.release() } catch (_: Exception) {}
-            return false
+        synchronized(audioLock) {
+            if (capturing) return true
+            if (!hasMicPermission()) return false
+            val minBuf = AudioRecord.getMinBufferSize(
+                SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
+            )
+            if (minBuf <= 0) return false
+            val rec = AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                SAMPLE_RATE,
+                AudioFormat.CHANNEL_IN_MONO,
+                AudioFormat.ENCODING_PCM_16BIT,
+                maxOf(minBuf * 2, 8192),
+            )
+            if (rec.state != AudioRecord.STATE_INITIALIZED) {
+                try { rec.release() } catch (_: Exception) {}
+                return false
+            }
+            pcmBuffer.reset()
+            cancelRequested = false
+            audioRecord = rec
+            rec.startRecording()
+            capturing = true
+            recordThread = Thread { captureLoop(rec) }.apply {
+                name = "VbKeyboardRec"
+                start()
+            }
+            return true
         }
-        pcmBuffer.reset()
-        cancelRequested = false
-        audioRecord = rec
-        rec.startRecording()
-        capturing = true
-        recordThread = Thread { captureLoop(rec) }.apply {
-            name = "VbKeyboardRec"
-            start()
-        }
-        return true
     }
 
     private fun captureLoop(rec: AudioRecord) {
@@ -125,28 +167,36 @@ class SpeechToTextClient(
         try { rec.release() } catch (_: Exception) {}
     }
 
-    /** Detiene la captura y devuelve el WAV completo (cabecera RIFF + PCM). */
+    /** Detiene la captura y devuelve el WAV completo (cabecera RIFF + PCM).
+     * Síncrono y BLOQUEANTE (join hasta 2.5 s): solo fuera del main;
+     * desde el main envolver con `BackgroundWork.execute`. */
     fun stopRecording(): ByteArray {
-        capturing = false
-        try { recordThread?.join(2500) } catch (_: Exception) {}
-        recordThread = null
-        audioRecord = null
-        val pcm = synchronized(pcmBuffer) {
-            val bytes = pcmBuffer.toByteArray()
-            pcmBuffer.reset()
-            bytes
+        synchronized(audioLock) {
+            capturing = false
+            try { recordThread?.join(2500) } catch (_: Exception) {}
+            recordThread = null
+            audioRecord = null
+            val pcm = synchronized(pcmBuffer) {
+                val bytes = pcmBuffer.toByteArray()
+                pcmBuffer.reset()
+                bytes
+            }
+            return buildWav(pcm)
         }
-        return buildWav(pcm)
     }
 
-    /** Cancela sin transcribir: descarta el audio capturado. */
+    /** Cancela sin transcribir: descarta el audio capturado.
+     * Síncrono y BLOQUEANTE (join hasta 2.5 s): solo fuera del main;
+     * desde el main envolver con `BackgroundWork.execute`. Idempotente. */
     fun cancelRecording() {
-        cancelRequested = true
-        capturing = false
-        try { recordThread?.join(2500) } catch (_: Exception) {}
-        recordThread = null
-        audioRecord = null
-        synchronized(pcmBuffer) { pcmBuffer.reset() }
+        synchronized(audioLock) {
+            cancelRequested = true
+            capturing = false
+            try { recordThread?.join(2500) } catch (_: Exception) {}
+            recordThread = null
+            audioRecord = null
+            synchronized(pcmBuffer) { pcmBuffer.reset() }
+        }
     }
 
     /** Cabecera RIFF valida (leccion 9.1-13: contenedor WAV real). */
@@ -173,8 +223,10 @@ class SpeechToTextClient(
         wav.size <= WAV_HEADER_BYTES + SAMPLE_RATE / 20 * 2
 
     /**
-     * POST multipart al endpoint configurado. Callbacks SIEMPRE desde un hilo
-     * de fondo: quien llama debe publicar a UI. onDone(null) = cancelacion.
+     * POST multipart al endpoint configurado. No bloquea: el trabajo corre
+     * en [BackgroundWork] (pool canónico único). Callbacks SIEMPRE desde un
+     * hilo de fondo: quien llama debe publicar a UI. onDone(null) =
+     * cancelacion.
      */
     fun transcribe(
         wav: ByteArray,
@@ -182,23 +234,25 @@ class SpeechToTextClient(
         onDone: (String?) -> Unit,
         onError: (String) -> Unit,
     ) {
-        Thread {
+        BackgroundWork.execute {
             if (cancelRequested) {
                 onDone(null)
-                return@Thread
+                return@execute
             }
+            var conn: HttpURLConnection? = null
             try {
                 val boundary = "vb${System.currentTimeMillis()}"
-                val conn = URL(config.url).openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.doOutput = true
-                conn.connectTimeout = 15000
-                conn.readTimeout = 240000
-                conn.setRequestProperty("Authorization", "Bearer ${config.apiKey}")
-                conn.setRequestProperty(
+                val active = URL(config.url).openConnection() as HttpURLConnection
+                conn = active
+                active.requestMethod = "POST"
+                active.doOutput = true
+                active.connectTimeout = 15000
+                active.readTimeout = 240000
+                active.setRequestProperty("Authorization", "Bearer ${config.apiKey}")
+                active.setRequestProperty(
                     "Content-Type", "multipart/form-data; boundary=$boundary",
                 )
-                DataOutputStream(conn.outputStream).use { d ->
+                DataOutputStream(active.outputStream).use { d ->
                     fun field(name: String, value: String) {
                         d.writeBytes("--$boundary\r\n")
                         d.writeBytes("Content-Disposition: form-data; name=\"$name\"\r\n\r\n")
@@ -213,14 +267,14 @@ class SpeechToTextClient(
                     d.writeBytes("\r\n--$boundary--\r\n")
                     d.flush()
                 }
-                val code = conn.responseCode
-                val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                val code = active.responseCode
+                val body = (if (code in 200..299) active.inputStream else active.errorStream)
                     ?.bufferedReader()?.use { it.readText() } ?: ""
                 // La respuesta puede llegar despues de que el usuario cancelo:
                 // el upload siguio corriendo. onDone(null) senala cancelacion.
                 if (cancelRequested) {
                     onDone(null)
-                    return@Thread
+                    return@execute
                 }
                 if (code in 200..299) {
                     onDone(JSONObject(body).optString("text", ""))
@@ -237,10 +291,14 @@ class SpeechToTextClient(
                     if (spanishModeProvider()) "No se pudo procesar la respuesta."
                     else "Could not process the response."
                 )
+            } finally {
+                // La conexión se libera en TODOS los caminos (éxito, error,
+                // cancelación a mitad de vuelo y fallo de setup): sin esto el
+                // pool de conexiones retiene sockets hasta el GC finalizer.
+                try {
+                    conn?.disconnect()
+                } catch (_: Exception) {}
             }
-        }.apply {
-            name = "VbKeyboardStt"
-            start()
         }
     }
 

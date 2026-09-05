@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/ui/design_tokens.dart';
+import 'package:voice_bubble_stt/widgets/history_list.dart';
 
 void main() {
   group('Color constants', () {
@@ -132,6 +134,62 @@ void main() {
       final dark = buildDarkTheme();
       expect(light, isNot(equals(dark)));
       expect(light.colorScheme.primary, isNot(equals(dark.colorScheme.primary)));
+    });
+  });
+
+  group('Historial smoke en claro y oscuro (pump real)', () {
+    Transcription makeT(String text) => Transcription(
+          text: text,
+          timestamp: DateTime(2026, 9, 5, 12, 0),
+        );
+
+    testWidgets('HistoryList se monta bajo buildLightTheme', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildLightTheme(),
+          home: Scaffold(
+            body: SizedBox(
+              height: 600,
+              child: HistoryList(transcriptions: [makeT('hola claro')]),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('hola claro'), findsOneWidget);
+      expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+    });
+
+    testWidgets('HistoryList se monta bajo buildDarkTheme', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildDarkTheme(),
+          home: Scaffold(
+            body: SizedBox(
+              height: 600,
+              child: HistoryList(transcriptions: [makeT('hola oscuro')]),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('hola oscuro'), findsOneWidget);
+      expect(find.byIcon(Icons.copy_rounded), findsOneWidget);
+    });
+
+    testWidgets('tarjeta con tokens de texto se monta en ambos brillos',
+        (tester) async {
+      for (final theme in [buildLightTheme(), buildDarkTheme()]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: const Scaffold(
+              body: Card(
+                child: Text('token smoke', style: kTextBody),
+              ),
+            ),
+          ),
+        );
+        expect(find.text('token smoke'), findsOneWidget);
+      }
     });
   });
 }

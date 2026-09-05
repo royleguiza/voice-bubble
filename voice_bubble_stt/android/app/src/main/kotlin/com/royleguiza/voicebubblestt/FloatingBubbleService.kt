@@ -55,7 +55,15 @@ class FloatingBubbleService : Service() {
         var accessibilityIsland: DynamicIslandController? = null
 
         fun updateState(state: String) {
+            val svc = instance
             val acc = accessibilityIsland
+            if (svc == null && acc == null) {
+                // Sin isla viva no hay nada que animar: normalizar a idle en
+                // vez de retener un estado que dejaría un BUSY zombi visible
+                // vía bubbleBusy() en el teclado (M-7).
+                lastVisualState = "idle"
+                return
+            }
             if (acc != null) {
                 val prevState = lastVisualState
                 lastVisualState = state
@@ -85,7 +93,8 @@ class FloatingBubbleService : Service() {
             instance?.dynamicIslandController?.reloadConfiguration()
         }
 
-        /** Nivel real del mic (0..1) hacia la isla activa para la onda reactiva. */
+        /** Nivel real del mic (0..1) hacia la isla activa para la onda reactiva.
+         * Sin isla viva es no-op (M-7): no hay estado que retener. */
         fun waveformLevel(level: Float) {
             try {
                 accessibilityIsland?.setWaveformLevel(level)
@@ -130,7 +139,9 @@ class FloatingBubbleService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        isRunning = true
+        // Encarnación nueva = visual idle: sin este reset un "recording"
+        // retenido de una vida anterior deja un BUSY zombi (M-7).
+        lastVisualState = "idle"
         createNotificationChannel()
         // Android 14+ exige declarar el tipo de FGS en tiempo de inicio para que
         // la burbuja mantenga acceso while-in-use al microfono en background.
@@ -144,14 +155,52 @@ class FloatingBubbleService : Service() {
             startForeground(NOTIFICATION_ID, buildNotification())
         }
 
-        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val dockingMode = prefs.getString("flutter.bubble_docking_mode", null)
-            ?: prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
-        if (dockingMode == "classic_bubble") {
-            setupBubbleView()
-        } else {
-            setupDynamicIsland()
+        // Causa raíz del NPE histórico (windowManager!!): resolver el servicio
+        // UNA vez acá con cast seguro. Si es null o el setup falla, abortar
+        // limpiamente sin dejar isRunning colgado (Dart relee isBubbleRunning).
+        val wm = getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        if (wm == null) {
+            abortStartup()
+            return
         }
+        windowManager = wm
+        isRunning = true
+        try {
+            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val dockingMode = prefs.getString("flutter.bubble_docking_mode", null)
+                ?: prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
+            if (dockingMode == "classic_bubble") {
+                setupBubbleView()
+            } else {
+                setupDynamicIsland()
+            }
+        } catch (_: Exception) {
+            abortStartup()
+        }
+    }
+
+    /**
+     * Apagado limpio de un arranque fallido: suelta lo creado, baja
+     * isRunning/instance y detiene el servicio. Sin esto el teclado leía
+     * bubbleBusy() con una burbuja que jamás mostró nada.
+     */
+    private fun abortStartup() {
+        try {
+            bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
+        } catch (_: Exception) {}
+        bubbleLongPress = null
+        bubbleLongPressFired = false
+        try {
+            dynamicIslandController?.destroy()
+        } catch (_: Exception) {}
+        dynamicIslandController = null
+        windowManager = null
+        lastVisualState = "idle"
+        isRunning = false
+        instance = null
+        try {
+            stopSelf()
+        } catch (_: Exception) {}
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -229,10 +278,15 @@ class FloatingBubbleService : Service() {
             VoiceBubbleAccessibilityService.ensureIsland()
         } catch (_: Exception) {}
         if (accessibilityIsland != null) return
-        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        // windowManager ya se resolvió en onCreate; reintento defensivo para
+        // el camino restoreLocalIslandIfNeeded (sin !! que crashee el FGS).
+        val wm = windowManager
+            ?: getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+            ?: return
+        windowManager = wm
         dynamicIslandController = DynamicIslandController(
             context = this,
-            windowManager = windowManager!!,
+            windowManager = wm,
             onMicTap = {
                 onBubbleActionListener?.onBubbleTap()
             },
@@ -270,7 +324,10 @@ class FloatingBubbleService : Service() {
     }
 
     private fun setupBubbleView() {
-        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val wm = windowManager
+            ?: getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+            ?: return
+        windowManager = wm
         val density = resources.displayMetrics.density
         val bubbleSize = (64 * density).toInt()
 
@@ -409,6 +466,12 @@ class FloatingBubbleService : Service() {
     }
 
     private fun snapToNearestEdge() {
+        // Cancelar el animador previo: sin esto dos snaps encadenados pelean
+        // por windowLayoutParams.x y la burbuja termina en tierra de nadie.
+        try {
+            snapAnimator?.cancel()
+        } catch (_: Exception) {}
+        snapAnimator = null
         val screenWidth = resources.displayMetrics.widthPixels
         val density = resources.displayMetrics.density
         val margin = (12 * density).toInt()
@@ -452,11 +515,18 @@ class FloatingBubbleService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // Runnable pendiente sobre una vista removida = disparo fantasma del
+        // historial tras destruir el servicio. Fuera antes que las vistas.
+        bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
+        bubbleLongPress = null
+        bubbleLongPressFired = false
         // Cancelar antes de remover la vista: un frame pendiente del animator
         // sobre una vista desasociada lanza IllegalArgumentException.
         snapAnimator?.cancel()
         snapAnimator = null
         isRunning = false
+        // Sin isla viva no retener estados: evita el BUSY zombi (M-7).
+        lastVisualState = "idle"
 
         dynamicIslandController?.destroy()
         dynamicIslandController = null
@@ -516,6 +586,13 @@ class FloatingBubbleService : Service() {
             style = Paint.Style.STROKE
             strokeWidth = 3f * resources.displayMetrics.density
             color = recordingColor
+        }
+        // Cacheado: drawMicIcon corre por frame y antes alojaba un Paint por
+        // llamada (GC churn en plena animación). Solo el strokeWidth muta.
+        private val micArcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+            color = accentColor
         }
 
         init {
@@ -591,11 +668,6 @@ class FloatingBubbleService : Service() {
             )
             canvas.drawRoundRect(capsuleRect, capsuleWidth / 2f, capsuleWidth / 2f, iconPaint)
 
-            val arcPaint = Paint(iconPaint).apply {
-                style = Paint.Style.STROKE
-                strokeWidth = 2f * density
-                strokeCap = Paint.Cap.ROUND
-            }
             val arcRadius = capsuleWidth * 0.85f
             val arcRect = RectF(
                 cx - arcRadius,
@@ -603,13 +675,14 @@ class FloatingBubbleService : Service() {
                 cx + arcRadius,
                 cy + capsuleHeight * 0.55f
             )
-            canvas.drawArc(arcRect, 0f, 180f, false, arcPaint)
+            micArcPaint.strokeWidth = 2f * density
+            canvas.drawArc(arcRect, 0f, 180f, false, micArcPaint)
 
             val baseTopY = cy + capsuleHeight * 0.55f
             val baseBottomY = baseTopY + size * 0.35f
-            canvas.drawLine(cx, baseTopY, cx, baseBottomY, arcPaint)
+            canvas.drawLine(cx, baseTopY, cx, baseBottomY, micArcPaint)
             val baseFootWidth = size * 0.45f
-            canvas.drawLine(cx - baseFootWidth / 2f, baseBottomY, cx + baseFootWidth / 2f, baseBottomY, arcPaint)
+            canvas.drawLine(cx - baseFootWidth / 2f, baseBottomY, cx + baseFootWidth / 2f, baseBottomY, micArcPaint)
         }
     }
 }

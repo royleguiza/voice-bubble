@@ -101,10 +101,8 @@ class SnippetStore(private val context: Context) {
                 val seeds = buildSeeds()
                 writeAll(seeds)
                 synchronized(cacheLock) { cache = seeds }
-                Log.i(TAG, "seeds escritos: ${seeds.size}")
             } else {
                 synchronized(cacheLock) { cache = existing }
-                Log.i(TAG, "seeds omitidos: existentes=${existing.size}")
             }
             prefs.edit().putBoolean(KEY_SEEDED, true).apply()
         } catch (_: Exception) {
@@ -127,7 +125,6 @@ class SnippetStore(private val context: Context) {
             }
             writeAll(current)
             cache = current
-            Log.i(TAG, "snippet guardado: id=${snippet.id.take(8)}")
         }
     }
 
@@ -137,7 +134,6 @@ class SnippetStore(private val context: Context) {
             val current = load().filter { it.id != id }
             writeAll(current)
             cache = current
-            Log.i(TAG, "snippet eliminado: id=${id.take(8)}")
         }
     }
 
@@ -185,15 +181,6 @@ class SnippetStore(private val context: Context) {
                     ),
                 )
             }
-            // Reportes informativos de tamano (no se rechaza nada).
-            if (out.size > MAX_SNIPPETS) {
-                Log.i(TAG, "sobre el maximo: ${out.size} de $MAX_SNIPPETS")
-            }
-            val oversized = out.count { it.contenido.length > MAX_CONTENIDO }
-            if (oversized > 0) {
-                Log.i(TAG, "contenidos largos: $oversized")
-            }
-            Log.d(TAG, "snippets parseados: ${out.size}")
             out.sortedBy { it.orden }
         } catch (_: Exception) {
             Log.w(TAG, "json invalido")

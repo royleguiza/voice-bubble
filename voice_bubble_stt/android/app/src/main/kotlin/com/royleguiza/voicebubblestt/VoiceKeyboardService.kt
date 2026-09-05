@@ -13,8 +13,10 @@ import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.os.Build
+import android.os.DeadObjectException
 import android.os.Handler
 import android.os.Looper
+import android.os.RemoteException
 import android.os.SystemClock
 import android.provider.Settings
 import android.text.Editable
@@ -27,7 +29,6 @@ import android.transition.TransitionManager
 import android.transition.TransitionSet
 import android.view.animation.DecelerateInterpolator
 import android.util.TypedValue
-import android.util.Xml
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
@@ -53,10 +54,6 @@ import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
 import org.json.JSONArray
 import org.json.JSONObject
-import org.xmlpull.v1.XmlPullParser
-import java.io.File
-import java.io.FileInputStream
-import java.io.InputStreamReader
 import kotlin.math.abs
 
 /**
@@ -119,6 +116,21 @@ class VoiceKeyboardService : InputMethodService() {
     private var transcriptionGeneration = 0
     private var focusRequest: AudioFocusRequest? = null
     private var pulseAnimators: List<ObjectAnimator> = emptyList()
+
+    // Arranque de AudioRecord en vuelo (hilo de fondo): un segundo tap
+    // mientras tanto se ignora en vez de duplicar la captura.
+    private var dictationStartPending = false
+
+    // Handler/runnable vigentes de la barra espaciadora: attachSpacebarGestures
+    // los publica acá para poder cancelarlos en rebuild/onDestroy (sin esto
+    // el blank-out disparaba sobre vistas ya removidas).
+    private var spacebarGestureHandler: Handler? = null
+    private var spacebarLongPressRunnable: Runnable? = null
+
+    // Canceladores de los long-press pendientes de attachLongPress: rebuild
+    // los invoca a todos antes de removeAllViews para no dejar disparos
+    // zombis sobre teclas descartadas.
+    private val longPressCancellations = mutableListOf<() -> Unit>()
 
     // --- Snippets (K4) ---
     private enum class SnippetMode { NORMAL, EDIT, DELETE }
@@ -325,6 +337,7 @@ class VoiceKeyboardService : InputMethodService() {
             cm?.removePrimaryClipChangedListener(clipboardListener)
         } catch (_: Exception) {}
         stopRecordingTimer()
+        cancelPendingKeyGestures()
         pulseAnimators.forEach { it.cancel() }
         pulseAnimators = emptyList()
         handler.removeCallbacksAndMessages(null)
@@ -354,6 +367,9 @@ class VoiceKeyboardService : InputMethodService() {
         stopRecordingTimer()
         pulseAnimators.forEach { it.cancel() }
         pulseAnimators = emptyList()
+        // Los pendings referencian las vistas viejas: cancelarlos ANTES de
+        // soltarlas o sus long-press disparan sobre teclas descartadas.
+        cancelPendingKeyGestures()
         letterKeys.clear()
         shiftKeyViews.clear()
         modifierKeyViews.clear()
@@ -399,7 +415,7 @@ class VoiceKeyboardService : InputMethodService() {
         clipboardFilmstripView = filmstrip
         if (isFilmstripExpanded) {
             filmstrip.visibility = View.VISIBLE
-            filmstrip.renderClips(clipboardStore.loadItems())
+            loadFilmstripAsync(filmstrip)
         } else {
             filmstrip.visibility = View.GONE
         }
@@ -1132,36 +1148,6 @@ class VoiceKeyboardService : InputMethodService() {
         return key
     }
 
-    private fun makeFixedTextKey(
-        label: String,
-        bgRes: Int,
-        weight: Float,
-        description: String?,
-        onClick: () -> Unit,
-    ): TextView {
-        val key = TextView(this)
-        key.text = label
-        key.gravity = Gravity.CENTER
-        key.isClickable = true
-        key.isFocusable = true
-        key.includeFontPadding = false
-        key.setBackgroundResource(bgRes)
-        key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-        key.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-        key.setTypeface(null, Typeface.BOLD)
-        if (description != null) {
-            key.contentDescription = description
-        }
-        val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
-        val lp = LinearLayout.LayoutParams(0, hPx, weight)
-        val m = dimen(R.dimen.kb_key_gap_h) / 2
-        lp.setMargins(m, m, m, m)
-        key.layoutParams = lp
-        
-        attachFastKeyTouch(key, onClick)
-        return key
-    }
-
     private fun makeKey(
         label: String,
         weight: Float,
@@ -1765,13 +1751,66 @@ class VoiceKeyboardService : InputMethodService() {
             )
             return
         }
+        // Segundo tap mientras el arranque sigue en vuelo: ignorar en vez de
+        // duplicar la captura (el primero resolverá por callback).
+        if (dictationStartPending || micState == MicState.RECORDING || micState == MicState.PROCESSING) {
+            return
+        }
+        dictationStartPending = true
         keyboardRecordingActive = true
         gainAudioFocus()
-        val started = sttClient.startRecording()
-        if (!started) {
-            abandonAudioFocus()
+        // El setup de AudioRecord bloquea (contrato SpeechToTextClient):
+        // jamás en el main. El resultado vuelve por callback al main.
+        val startGeneration = transcriptionGeneration
+        BackgroundWork.execute {
+            val started = try {
+                sttClient.startRecording()
+            } catch (_: Exception) {
+                false
+            }
+            BackgroundWork.postMain {
+                onDictationStartResult(started, startGeneration)
+            }
+        }
+    }
+
+    /**
+     * Cierre del arranque asíncrono en el main. Si el usuario cambió de
+     * campo o se destruyó el servicio mientras tanto (generación avanzada),
+     * la captura que haya llegado a arrancar se aborta en fondo: sin
+     * grabación fantasma ni píldora zombi.
+     */
+    private fun onDictationStartResult(started: Boolean, startGeneration: Int) {
+        dictationStartPending = false
+        if (instance !== this) {
             keyboardRecordingActive = false
-            showStatus(if (spanishMode) "No se pudo iniciar la grabación." else "Could not start recording.")
+            if (started) {
+                BackgroundWork.execute {
+                    try {
+                        sttClient.cancelRecording()
+                    } catch (_: Exception) {}
+                    abandonAudioFocus()
+                }
+            }
+            return
+        }
+        if (!started || startGeneration != transcriptionGeneration) {
+            keyboardRecordingActive = false
+            if (started) {
+                BackgroundWork.execute {
+                    try {
+                        sttClient.cancelRecording()
+                    } catch (_: Exception) {}
+                    abandonAudioFocus()
+                }
+            } else {
+                abandonAudioFocus()
+            }
+            if (!started && startGeneration == transcriptionGeneration && micState == MicState.IDLE) {
+                showStatus(if (spanishMode) "No se pudo iniciar la grabación." else "Could not start recording.")
+            } else {
+                refreshMicVisual()
+            }
             return
         }
         micState = MicState.RECORDING
@@ -1794,7 +1833,7 @@ class VoiceKeyboardService : InputMethodService() {
         // AT-A1: los callbacks capturan la generacion vigente; si una
         // cancelacion la avanza mientras transcribiamos, se abortan solos.
         val generation = transcriptionGeneration
-        Thread {
+        BackgroundWork.execute {
             val wav = sttClient.stopRecording()
             abandonAudioFocus()
             keyboardRecordingActive = false
@@ -1804,7 +1843,7 @@ class VoiceKeyboardService : InputMethodService() {
                     micIdle()
                     showStatus(if (spanishMode) "No se detectó voz." else "No voice detected.")
                 }
-                return@Thread
+                return@execute
             }
             sttClient.transcribe(
                 wav,
@@ -1834,7 +1873,7 @@ class VoiceKeyboardService : InputMethodService() {
                     }
                 },
             )
-        }.apply { name = "VbKeyboardFinish"; start() }
+        }
     }
 
     private fun cancelDictation() {
@@ -1843,11 +1882,11 @@ class VoiceKeyboardService : InputMethodService() {
         timeoutRunnable = null
         micState = MicState.IDLE
         refreshMicVisual()
-        Thread {
+        BackgroundWork.execute {
             sttClient.cancelRecording()
             abandonAudioFocus()
             keyboardRecordingActive = false
-        }.start()
+        }
     }
 
     /**
@@ -1867,12 +1906,12 @@ class VoiceKeyboardService : InputMethodService() {
         transcriptionGeneration++
         micIdle()
         if (client != null) {
-            Thread {
+            BackgroundWork.execute {
                 try {
                     client.cancelRecording()
                 } catch (_: Exception) {}
                 abandonAudioFocus()
-            }.start()
+            }
         }
     }
 
@@ -1904,7 +1943,7 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun runOnMain(block: () -> Unit) {
-        Handler(Looper.getMainLooper()).post(block)
+        sharedMainHandler.post(block)
     }
 
     private fun refreshMicVisual() {
@@ -2133,7 +2172,20 @@ class VoiceKeyboardService : InputMethodService() {
      */
     private fun showHistoryPopup(anchor: View) {
         dismissPopup()
-        val entries = sharedHistoryEntries()
+        // I/O fuera del main (disco + XML + prefs vía sharedHistoryEntries);
+        // la construcción vuelve al main con la vista vigente.
+        BackgroundWork.executeWithResult(
+            block = { sharedHistoryEntries() },
+            onResult = { entries -> buildHistoryPopup(anchor, entries ?: emptyList()) }
+        )
+    }
+
+    /**
+     * Construye la ventana del historial en el main con entradas ya cargadas.
+     * Si el servicio murió o la vista cambió en el medio, no pinta nada.
+     */
+    private fun buildHistoryPopup(anchor: View, entries: List<JSONObject>) {
+        if (instance !== this) return
         val pad = dimen(R.dimen.kb_popup_padding)
 
         val box = LinearLayout(this).apply {
@@ -2264,7 +2316,14 @@ class VoiceKeyboardService : InputMethodService() {
         box.scaleY = 0.8f
 
         activePopup = popup
-        popup.showAtLocation(root, Gravity.NO_GRAVITY, posX, posY)
+        // El ancla puede haberse desmontado mientras cargaba el historial
+        // en fondo (rebuild en el medio): sin ventana no hay popup.
+        try {
+            popup.showAtLocation(root, Gravity.NO_GRAVITY, posX, posY)
+        } catch (_: Exception) {
+            activePopup = null
+            return
+        }
 
         box.animate()
             .alpha(1f)
@@ -3121,15 +3180,39 @@ class VoiceKeyboardService : InputMethodService() {
 
         if (isFilmstripExpanded) {
             container.visibility = View.VISIBLE
-            container.renderClips(clipboardStore.loadItems())
+            loadFilmstripAsync(container)
         } else {
             container.visibility = View.GONE
         }
     }
 
+    /**
+     * Carga de clips fuera del main (I/O de disco vía BackgroundWork) con
+     * render en el main solo si la vista sigue vigente y expandida: un
+     * rebuild en el medio no debe pintar sobre el filmstrip descartado.
+     */
+    private fun loadFilmstripAsync(target: ClipboardFilmstripLayout) {
+        BackgroundWork.executeWithResult(
+            block = {
+                try {
+                    clipboardStore.loadItems()
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            },
+            onResult = { clips ->
+                if (isFilmstripExpanded && clipboardFilmstripView === target) {
+                    try {
+                        target.renderClips(clips ?: emptyList())
+                    } catch (_: Exception) {}
+                }
+            }
+        )
+    }
+
     private fun refreshFilmstripIfVisible() {
         if (isFilmstripExpanded) {
-            clipboardFilmstripView?.renderClips(clipboardStore.loadItems())
+            clipboardFilmstripView?.let { loadFilmstripAsync(it) }
         }
     }
 
@@ -3234,6 +3317,24 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /**
+     * Cancela los gestos pendientes de las teclas vigentes: long-press y
+     * repeticiones de attachLongPress más el long-press de la espaciadora.
+     * Se invoca en rebuild() antes de removeAllViews() y en onDestroy().
+     */
+    private fun cancelPendingKeyGestures() {
+        for (cancel in longPressCancellations) {
+            try {
+                cancel()
+            } catch (_: Exception) {}
+        }
+        longPressCancellations.clear()
+        try {
+            spacebarLongPressRunnable?.let { spacebarGestureHandler?.removeCallbacks(it) }
+        } catch (_: Exception) {}
+        spacebarLongPressRunnable = null
+    }
+
+    /**
      * Logica comun de toque largo: programa accion diferida y decide en UP.
      * Modo autorrepeticion (onRepeat != null, usado por ⌫ / P6): al disparar
      * el long press se ejecuta onLongPress UNA vez y arrancan repeticiones
@@ -3280,6 +3381,10 @@ class VoiceKeyboardService : InputMethodService() {
             repeating?.let { handler.removeCallbacks(it) }
             repeating = null
         }
+
+        // Registrar el cancelador para que rebuild() lo invoque antes de
+        // soltar las vistas (sin esto el long-press disparaba en zombi).
+        longPressCancellations.add { cancelPending(); cancelRepeating() }
 
         key.setOnTouchListener { v, ev ->
             when (ev.actionMasked) {
@@ -3393,6 +3498,13 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     private fun attachSpacebarGestures(space: View) {
+        // El listener anterior muere con su vista en rebuild: cancelar su
+        // long-press pendiente acá mismo además del barrido de rebuild().
+        try {
+            spacebarLongPressRunnable?.let { spacebarGestureHandler?.removeCallbacks(it) }
+        } catch (_: Exception) {}
+        val gestureHandler = Handler(Looper.getMainLooper())
+        spacebarGestureHandler = gestureHandler
         space.setOnTouchListener(object : View.OnTouchListener {
             private var startX = 0f
             private var startY = 0f
@@ -3401,13 +3513,18 @@ class VoiceKeyboardService : InputMethodService() {
             private var isLongPressTriggered = false
             private var isDragNavTriggered = false
             private var isSelecting = false
-            private val gestureHandler = Handler(Looper.getMainLooper())
             private val longPressRunnable = Runnable {
                 if (spacebarTrackpadMode == "ios_2d") {
                     isLongPressTriggered = true
                     setTrackpadBlankOutMode(true)
                     haptic(space)
                 }
+            }
+
+            init {
+                // Publicar el runnable vigente para cancelarlo en
+                // rebuild/onDestroy aunque su vista ya no exista.
+                spacebarLongPressRunnable = longPressRunnable
             }
 
             private fun dispatchNavKey(keyCode: Int) {
@@ -3783,9 +3900,6 @@ class VoiceKeyboardService : InputMethodService() {
     /** Altura de tecla estandar escalada por el perfil activo. */
     private fun keyHeightPx(): Int = scaleV(dimen(R.dimen.kb_key_height))
 
-    /** Altura de teclas QWERTY de snippets: unificada al perfil estándar activo. */
-    private fun snippetKeyHeightPx(): Int = keyHeightPx()
-
     /** Margen vertical entre filas, escalado ergonómico estilo Gboard. */
     private fun rowGapPx(): Int = scaleV(dimen(R.dimen.kb_key_gap_v))
 
@@ -3797,6 +3911,9 @@ class VoiceKeyboardService : InputMethodService() {
     private fun scaleV(px: Int): Int = (px * heightFactor).toInt()
 
     companion object {
+        /** Handler principal compartido: runOnMain no aloja uno por llamada. */
+        private val sharedMainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
+
         private const val LONG_PRESS_MILLIS = 350L
 
         /** Autorrepeticion de ⌫ (P6): primer ciclo y aceleracion geometrica
@@ -3842,9 +3959,26 @@ class VoiceKeyboardService : InputMethodService() {
             private set
 
         fun commitFromExternal(text: String): Boolean {
-            val s = instance ?: return false
-            val ic = s.currentInputConnection ?: return false
-            return ic.commitText(text, 1)
+            return try {
+                // Snapshot local: instance puede nularse en otro hilo
+                // (onDestroy) entre el chequeo y el uso.
+                val service = instance ?: return false
+                val ic = service.currentInputConnection ?: return false
+                ic.commitText(text, 1)
+            } catch (_: DeadObjectException) {
+                // El editor murió a mitad del commit (proceso destino caído).
+                false
+            } catch (_: RemoteException) {
+                // Binder roto con el InputMethodManager.
+                false
+            } catch (_: IllegalStateException) {
+                // Conexión de entrada ya inactiva.
+                false
+            } catch (_: Exception) {
+                // Red de seguridad: un SecurityException/NPE inesperado del
+                // binder jamás debe tumbar el IME; se informa false.
+                false
+            }
         }
     }
 }

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Reglas de extracción (API 31+, android:dataExtractionRules; el targetSdk
+     efectivo viene de flutter.targetSdkVersion, >=31 en Flutter actual, por lo
+     que esta es la regla vigente en Android 12+; backup_rules.xml queda para
+     compatibilidad en API <31). Mismas exclusiones en cloud y en
+     transferencia dispositivo-a-dispositivo: historial de dictados, historial
+     de portapapeles e imágenes; el resto se respalda/migra con normalidad. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="transcription_history.json" />
+        <exclude domain="file" path="transcription_history.json.tmp" />
+        <exclude domain="file" path="clipboard_history.json" />
+        <exclude domain="file" path="clipboard_history.json.tmp" />
+        <exclude domain="file" path="clipboard_media" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="transcription_history.json" />
+        <exclude domain="file" path="transcription_history.json.tmp" />
+        <exclude domain="file" path="clipboard_history.json" />
+        <exclude domain="file" path="clipboard_history.json.tmp" />
+        <exclude domain="file" path="clipboard_media" />
+    </device-transfer>
+</data-extraction-rules>

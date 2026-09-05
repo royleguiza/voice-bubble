@@ -1,6 +1,6 @@
 # CHECKLIST-TESTING.md — Verificación en dispositivo (dueño)
 
-> **APK a usar**: `voice-bubble-debug-apk-r57` · Run [`32634338510`](https://github.com/royleguiza/voice-bubble/actions/runs/32634338510) (CI verde, 368 tests)
+> **APK a usar**: `voice-bubble-arm64-debug-apk-r57` · Run [`32634338510`](https://github.com/royleguiza/voice-bubble/actions/runs/32634338510) (CI verde, 368 tests; retención 7 días; dentro del ZIP: `app-arm64-v8a-debug.apk`)
 > **Cómo descargarlo**: GitHub → repo → pestaña **Actions** → run r57 (o el más reciente verde) → sección **Artifacts** → descargar y descomprimir el ZIP.
 > **Estado**: v1.0.0 tagged. Todo lo automatizable ya pasó CI; ESTA lista es lo que solo puede validar el dueño en el teléfono físico.
 > **Resultado**: verificación completa del dueño el 2026-08-23 con APK r57 — todos los ítems OK, sin incidencias.

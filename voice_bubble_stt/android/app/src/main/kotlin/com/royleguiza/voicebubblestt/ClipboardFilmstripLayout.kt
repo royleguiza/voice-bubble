@@ -1,7 +1,6 @@
 package com.royleguiza.voicebubblestt
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.Typeface
 import android.text.TextUtils
 import android.util.TypedValue
@@ -41,6 +40,14 @@ class ClipboardFilmstripLayout(
         gravity = Gravity.CENTER_VERTICAL
     }
 
+    // Generación monótona: invalida callbacks asíncronos viejos cuando la vista
+    // se desmonta o se re-renderiza (evita pintar miniaturas sobre vista
+    // desmontada o sobre tarjetas recicladas de otro clip).
+    private var renderGeneration = 0
+    // Firma del último dataset renderizado: evita re-inflat masivo si los datos
+    // no cambiaron (p. ej. renders repetidos del mismo historial).
+    private var lastSignature: String? = null
+
     init {
         orientation = VERTICAL
         val hPx = dpToPx(86)
@@ -58,8 +65,15 @@ class ClipboardFilmstripLayout(
 
     /**
      * Renderiza la lista de clips en la cinta horizontal.
+     *
+     * Sin re-inflat si la firma del dataset no cambió; cada render bump la
+     * generación para que los callbacks de miniaturas viejos se descarten.
      */
     fun renderClips(clips: List<ClipboardItem>) {
+        val signature = buildSignature(clips)
+        if (signature == lastSignature) return
+        lastSignature = signature
+        val generation = ++renderGeneration
         cardsContainer.removeAllViews()
 
         if (clips.isEmpty()) {
@@ -83,12 +97,29 @@ class ClipboardFilmstripLayout(
         val marginPx = dpToPx(3)
 
         for (clip in clips) {
-            val card = createClipCard(clip, cardWidthPx, cardHeightPx, marginPx)
+            val card = createClipCard(clip, cardWidthPx, cardHeightPx, marginPx, generation)
             cardsContainer.addView(card)
         }
     }
 
-    private fun createClipCard(clip: ClipboardItem, widthPx: Int, heightPx: Int, marginPx: Int): View {
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        // Invalida miniaturas en vuelo: sus callbacks se descartan por generación.
+        renderGeneration++
+    }
+
+    private fun buildSignature(clips: List<ClipboardItem>): String {
+        if (clips.isEmpty()) return "empty"
+        return buildString(clips.size * 32) {
+            append(clips.size).append('|')
+            for (c in clips) {
+                append(c.id).append(':').append(if (c.isPinned) '1' else '0').append(':')
+                append(c.preview ?: c.text ?: c.mediaFileName ?: c.type.name).append('|')
+            }
+        }
+    }
+
+    private fun createClipCard(clip: ClipboardItem, widthPx: Int, heightPx: Int, marginPx: Int, generation: Int): View {
         val card = LinearLayout(context).apply {
             orientation = VERTICAL
             val lp = LayoutParams(widthPx, heightPx).apply {
@@ -149,10 +180,16 @@ class ClipboardFilmstripLayout(
                     topMargin = dpToPx(2)
                 }
                 setImageResource(R.drawable.ic_paste)
+                tag = clip.id
             }
             card.addView(iv)
-            // Decodificación y carga asíncrona fuera del hilo principal
+            // Decodificación y carga asíncrona fuera del hilo principal.
+            // Guarda de vista desmontada/reciclada: descarta si la generación
+            // cambió, si ya no estamos attached, o si el tag ya no coincide.
             store.loadThumbnailAsync(clip, widthPx, heightPx) { bmp ->
+                if (generation != renderGeneration) return@loadThumbnailAsync
+                if (!isAttachedToWindow) return@loadThumbnailAsync
+                if (iv.parent == null || iv.tag != clip.id) return@loadThumbnailAsync
                 if (bmp != null) {
                     iv.setImageBitmap(bmp)
                 }

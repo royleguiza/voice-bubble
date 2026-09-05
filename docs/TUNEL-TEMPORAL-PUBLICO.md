@@ -7,7 +7,7 @@
 
 **Stack probado el 2026-08-31:**
 - `http.server` en `127.0.0.1:8000` sirviendo `laboratorio_ui/` vía `systemd-run --user`
-- `cloudflared tunnel --url http://127.0.0.1:8000 --no-autoupdate` vía `systemd-run --user` → URL `https://<random>.trycloudflare.com` (Quick Tunnel, sin cuenta, QUIC). Verificado con `curl -I https://colony-enb-const-sub.trycloudflare.com/` → `200` el 2026-08-31.
+- `cloudflared tunnel --url http://127.0.0.1:8000 --no-autoupdate` vía `systemd-run --user` → URL `https://<random>.trycloudflare.com` (Quick Tunnel, sin cuenta, QUIC, **efímera**: muere al parar el servicio, no reutilizar entre demos). Verificado una vez con `curl -I https://<ejemplo-efímero>.trycloudflare.com/` → `200` el 2026-08-31.
 
 **Por qué cloudflared y no solo http.server:** El router bloquea inbound. Cloudflared hace **túnel saliente** (outbound) hacia Cloudflare y publica una URL aleatoria. Cualquiera con el link lo ve, sin instalar Tailscale ni estar en la misma red. Al parar el servicio la URL muere.
 
@@ -52,9 +52,9 @@ curl -s https://<URL>/ | head -n 5     # debe contener "<title>VoiceBubble"
 **Si da 502 `Unable to reach origin`:** es porque `lab-http` murió (nohup no sobrevive). Repetir paso 2 con `systemd-run` y reintentar. No usar `nohup ... &` en esta máquina.
 
 ### 4. Compartir con el usuario externo
-Dar la URL exacta, ejemplo real del 2026-08-31:
+Dar la URL exacta que muestre el log en ese momento. Ejemplo **efímero** del 2026-08-31 (ya muerto, no reutilizar):
 ```
-https://colony-enb-const-sub.trycloudflare.com
+https://colony-enb-const-sub.trycloudflare.com  ← ejemplo vencido, cada túnel genera una URL nueva aleatoria
 ```
 Instrucciones para la otra computadora (sin Tailscale, sin misma red):
 > Abre Chrome/Firefox y pega tal cual `https://<random>.trycloudflare.com/` y dale Enter. No necesita instalar nada, no necesita VPN, funciona con datos móviles o cualquier WiFi. Verá el laboratorio con menú de 24 MEJ y 81 teléfonos.
@@ -79,4 +79,4 @@ journalctl --user -u cf-tunnel -n 20 --no-pager | tail
 - **Tailscale ya está activo:** `debian 100.78.99.51`, `moto-g05 100.66.223.82 direct`. Para usuarios con Tailscale basta `http://100.78.99.51:8000/`, no hace falta túnel público. Usar túnel solo para externos sin Tailscale.
 - **Seguridad:** URL aleatoria, efímera, sin auth. No exponer si el contenido tiene secretos. Cerrar con `systemctl --user stop` al terminar.
 - **Logs:** `journalctl --user -u lab-http -n 50` y `journalctl --user -u cf-tunnel -n 50` + `/tmp/lab_http.log` si se usó nohup.
-- **Congelamiento CI:** Hasta 2026-09-01 no pushear `app_source/`/`voice_bubble_stt/`. El túnel no toca CI, es `systemd` local, seguro.
+- **Política de push vigente**: ver `AGENTS.md` (ventana de docs con `paths-ignore` + `[skip ci]`; ningún push de código sin autorización del dueño). El túnel no toca CI, es `systemd` local, seguro.

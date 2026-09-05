@@ -21,6 +21,19 @@ class GlassContainer extends StatelessWidget {
     this.padding,
   });
 
+  /// Filtros compartidos: ImageFilter.blur crea un objeto nativo por
+  /// construcción y GlassContainer se reconstruye en cada frame de
+  /// animaciones y por cada carácter del form de snippets. Reutilizar dos
+  /// instancias elimina ese costo GPU sin cambiar el efecto visual.
+  static final ImageFilter _blurSmall = ImageFilter.blur(
+    sigmaX: kGlassBlurSmall,
+    sigmaY: kGlassBlurSmall,
+  );
+  static final ImageFilter _blurLarge = ImageFilter.blur(
+    sigmaX: kGlassBlurLarge,
+    sigmaY: kGlassBlurLarge,
+  );
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -28,10 +41,7 @@ class GlassContainer extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: small ? kGlassBlurSmall : kGlassBlurLarge,
-          sigmaY: small ? kGlassBlurSmall : kGlassBlurLarge,
-        ),
+        filter: small ? _blurSmall : _blurLarge,
         child: Container(
           padding: padding,
           decoration: BoxDecoration(

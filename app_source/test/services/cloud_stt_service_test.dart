@@ -22,79 +22,6 @@ void main() {
     }
   });
 
-  group('TranscriptionException', () {
-    test('stores message correctly', () {
-      const exception = TranscriptionException('test message');
-      expect(exception.message, 'test message');
-    });
-
-    test('toString returns the message', () {
-      const exception = TranscriptionException('something went wrong');
-      expect(exception.toString(), 'something went wrong');
-    });
-
-    test('handles empty message', () {
-      const exception = TranscriptionException('');
-      expect(exception.message, '');
-      expect(exception.toString(), '');
-    });
-
-    test('handles message with special characters', () {
-      const exception = TranscriptionException('Error: API key inválida (401)');
-      expect(exception.message, 'Error: API key inválida (401)');
-      expect(exception.toString(), 'Error: API key inválida (401)');
-    });
-
-    test('handles long message', () {
-      final longMessage = 'A' * 500;
-      final exception = TranscriptionException(longMessage);
-      expect(exception.message, longMessage);
-      expect(exception.toString(), longMessage);
-    });
-  });
-
-  group('CloudSttService constructor', () {
-    test('stores apiKey correctly', () {
-      const service = CloudSttService(apiKey: 'my-secret-key');
-      expect(service.apiKey, 'my-secret-key');
-    });
-
-    test('stores different apiKey values', () {
-      const service1 = CloudSttService(apiKey: 'key-one');
-      const service2 = CloudSttService(apiKey: 'key-two');
-      expect(service1.apiKey, 'key-one');
-      expect(service2.apiKey, 'key-two');
-    });
-
-    test('handles apiKey with special characters', () {
-      const service =
-          CloudSttService(apiKey: 'gsk_abc123!@#\$%^&*()_+-=');
-      expect(service.apiKey, 'gsk_abc123!@#\$%^&*()_+-=');
-    });
-
-    test('handles apiKey with spaces', () {
-      const service = CloudSttService(apiKey: 'key with spaces');
-      expect(service.apiKey, 'key with spaces');
-    });
-
-    test('handles empty apiKey in constructor', () {
-      const service = CloudSttService(apiKey: '');
-      expect(service.apiKey, '');
-    });
-
-    test('handles very long apiKey', () {
-      final longKey = 'k' * 1000;
-      final service = CloudSttService(apiKey: longKey);
-      expect(service.apiKey, longKey);
-    });
-
-    test('stores custom client correctly', () {
-      final customClient = MockClient((request) async => http.Response('{}', 200));
-      final service = CloudSttService(apiKey: 'key', client: customClient);
-      expect(service.client, same(customClient));
-    });
-  });
-
   group('CloudSttService.transcribe - validación de parámetros', () {
     test('empty API key throws TranscriptionException', () async {
       const service = CloudSttService(apiKey: '');
@@ -169,8 +96,13 @@ void main() {
   });
 
   group('CloudSttService.transcribe - llamadas HTTP simuladas', () {
-    test('retorna Transcription exitosa con status 200', () async {
+    test('retorna Transcription exitosa con status 200 (Bearer + endpoint Groq)', () async {
+      var requestSent = false;
       final mockClient = MockClient.streaming((request, bodyStream) async {
+        requestSent = true;
+        expect(request.url.toString(),
+            'https://api.groq.com/openai/v1/audio/transcriptions');
+        expect(request.headers['Authorization'], 'Bearer valid-key');
         return http.StreamedResponse(
           Stream.value(utf8.encode('{"text": "Transcripción completada con éxito"}')),
           200,
@@ -180,6 +112,7 @@ void main() {
       final service = CloudSttService(apiKey: 'valid-key', client: mockClient);
       final result = await service.transcribe(tempAudioFile.path);
 
+      expect(requestSent, isTrue);
       expect(result.text, 'Transcripción completada con éxito');
       expect(result.timestamp, isA<DateTime>());
     });
@@ -283,6 +216,60 @@ void main() {
       );
     });
 
+    test('HttpException lanza TranscriptionException con mensaje de red', () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw const HttpException('Connection closed');
+      });
+
+      final service = CloudSttService(apiKey: 'key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Sin conexión a internet.',
+          ),
+        ),
+      );
+    });
+
+    test('HandshakeException lanza TranscriptionException con mensaje de red', () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw const HandshakeException('Handshake error');
+      });
+
+      final service = CloudSttService(apiKey: 'key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Sin conexión a internet.',
+          ),
+        ),
+      );
+    });
+
+    test('TlsException lanza TranscriptionException con mensaje de red', () async {
+      final mockClient = MockClient.streaming((request, bodyStream) async {
+        throw const TlsException('TLS error');
+      });
+
+      final service = CloudSttService(apiKey: 'key', client: mockClient);
+      await expectLater(
+        service.transcribe(tempAudioFile.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            'Sin conexión a internet.',
+          ),
+        ),
+      );
+    });
+
     test('TimeoutException lanza TranscriptionException con mensaje de timeout', () async {
       final mockClient = MockClient.streaming((request, bodyStream) async {
         throw TimeoutException('Request timeout');
@@ -302,10 +289,28 @@ void main() {
     });
   });
 
-  group('CloudSttService constants', () {
-    test('is a const constructible class', () {
-      const service = CloudSttService(apiKey: 'test');
-      expect(service.apiKey, 'test');
+  group('timeoutForBytes - clamp [60s, 600s]', () {
+    test('archivos chicos quedan en el piso de 60 s', () {
+      const service = CloudSttService(apiKey: 'k');
+      expect(service.timeoutForBytes(0), const Duration(seconds: 60));
+      expect(service.timeoutForBytes(49999), const Duration(seconds: 60));
+    });
+
+    test('crece 1 s por cada 50 KB completo', () {
+      const service = CloudSttService(apiKey: 'k');
+      expect(service.timeoutForBytes(50000), const Duration(seconds: 61));
+      expect(service.timeoutForBytes(250000), const Duration(seconds: 65));
+    });
+
+    test('archivos enormes quedan en el techo de 600 s', () {
+      const service = CloudSttService(apiKey: 'k');
+      // Justo el umbral del techo.
+      expect(service.timeoutForBytes(540 * 50000),
+          const Duration(seconds: 600));
+      // Por encima del techo.
+      expect(service.timeoutForBytes(540 * 50000 + 1),
+          const Duration(seconds: 600));
+      expect(service.timeoutForBytes(1 << 30), const Duration(seconds: 600));
     });
   });
 }

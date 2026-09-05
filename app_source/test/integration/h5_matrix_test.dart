@@ -110,6 +110,8 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
     clipboardText = null;
 
+    // Sync a propósito: setup/teardown con directorio real (la regla
+    // avoid_slow_async_io solo observa métodos async, no estos).
     tempDir = Directory.systemTemp.createTempSync('h5_matrix_');
 
     final messenger =
@@ -189,6 +191,7 @@ void main() {
     }
     messenger.setMockMethodCallHandler(SystemChannels.platform, null);
 
+    // Sync a propósito en teardown (ver arriba).
     if (tempDir.existsSync()) {
       tempDir.deleteSync(recursive: true);
     }
@@ -277,7 +280,8 @@ void main() {
       expect(find.textContaining('dictado largo exitoso'), findsOneWidget);
       expect(find.text('Grabando...'), findsNothing);
       expect(find.text('Procesando...'), findsNothing);
-      // Exito borra el temporal (IO sincrona en produccion y aqui).
+      // Exito borra el temporal (IO async en produccion; expect sync
+      // sobre FS real aquí, a propósito).
       expect(File(bundle.cloud.requestedPaths.single).existsSync(), isFalse);
       // Sin animaciones transitorias pendientes -> sin timers colgados.
       expect(tester.binding.transientCallbackCount, 0);

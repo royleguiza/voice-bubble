@@ -5,6 +5,8 @@ import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 
+import '../helpers/mock_channels.dart';
+
 /// Exclusion mutua de microfono burbuja<->teclado (K3, tarea 6).
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -14,28 +16,8 @@ void main() {
   setUp(() {
     // Canales del plugin record 7.x: permiso concedido y start sin efecto,
     // para que el camino feliz de startRecording complete en tests.
-    for (final channel in [
-      'com.llfbandit.record',
-      'com.llfbandit.record/messages',
-    ]) {
-      messenger.setMockMethodCallHandler(
-        MethodChannel(channel),
-        (MethodCall call) async {
-          if (call.method.toLowerCase().contains('permission')) return true;
-          switch (call.method) {
-            case 'start':
-            case 'create':
-            case 'dispose':
-              return null;
-            case 'stop':
-              // stop devuelve el path del archivo (String?).
-              return '/tmp/recording.wav';
-            default:
-              return null;
-          }
-        },
-      );
-    }
+    // Handler canónico compartido (helpers/mock_channels.dart).
+    registerRecordChannelMocks();
   });
 
   tearDown(() {

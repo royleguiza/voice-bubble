@@ -107,27 +107,40 @@ class ClipboardStore(
 
     /**
      * Carga y devuelve la lista actual de clips ordenada (fijados primero y más recientes primero).
+     *
+     * El I/O de disco corre FUERA del lock (antes `file.readText()` estaba
+     * dentro del `synchronized`: ANR en eMMC lentas). El lock solo protege
+     * la caché en memoria; la doble comprobación evita adoptar un snapshot
+     * obsoleto si otro hilo pobló la caché mientras leíamos el disco.
      */
     fun loadItems(): List<ClipboardItem> {
+        itemsCache?.let { return ArrayList(it) }
+        val fromDisk = readFromDisk()
         synchronized(lock) {
             itemsCache?.let { return ArrayList(it) }
-            val list = mutableListOf<ClipboardItem>()
-            val file = File(context.filesDir, FILE_HISTORY)
-            if (file.exists()) {
-                try {
-                    val raw = file.readText()
-                    val array = JSONArray(raw)
-                    for (i in 0 until array.length()) {
-                        list.add(ClipboardItem.fromJson(array.getJSONObject(i)))
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error leyendo clipboard_history.json", e)
-                }
-            }
+            val list = fromDisk
             sortAndNormalize(list)
             itemsCache = list
             return ArrayList(list)
         }
+    }
+
+    /** Lee y parsea el JSON del historial sin tomar el lock (solo disco). */
+    private fun readFromDisk(): MutableList<ClipboardItem> {
+        val list = mutableListOf<ClipboardItem>()
+        val file = File(context.filesDir, FILE_HISTORY)
+        if (file.exists()) {
+            try {
+                val raw = file.readText()
+                val array = JSONArray(raw)
+                for (i in 0 until array.length()) {
+                    list.add(ClipboardItem.fromJson(array.getJSONObject(i)))
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error leyendo clipboard_history.json", e)
+            }
+        }
+        return list
     }
 
     /**
@@ -190,20 +203,16 @@ class ClipboardStore(
         }
     }
 
-    /**
-     * Agrega un clip pre-creado (útil para pruebas o inyección directa).
-     */
-    fun addDirectItem(item: ClipboardItem, onComplete: ((List<ClipboardItem>) -> Unit)? = null) {
-        executor.execute {
-            insertAndPersist(item)
-            val updated = loadItems()
-            onComplete?.invoke(updated)
-        }
-    }
-
     private fun insertAndPersist(newItem: ClipboardItem) {
+        // Snapshot de disco fuera del lock (el lock solo protege la
+        // memoria); dentro se prefiere la caché vigente por si otro hilo
+        // la pobló mientras tanto. Sin llamadas anidadas bajo lock: antes
+        // se invocaba loadItems() (synchronized) desde este mismo lock.
+        val diskSnapshot = if (itemsCache == null) readFromDisk() else null
+        val updated: List<ClipboardItem>
+        var evictedMedia: List<String> = emptyList()
         synchronized(lock) {
-            val current = loadItems().toMutableList()
+            val current = (itemsCache ?: diskSnapshot ?: mutableListOf()).toMutableList()
 
             // Deduplicación: actualizar si ya existía el mismo texto exacto o archivo
             val existingIdx = current.indexOfFirst { existing ->
@@ -230,14 +239,8 @@ class ClipboardStore(
                 val toEvict = unpinned.drop(MAX_UNPINNED_ITEMS)
                 val toKeep = unpinned.take(MAX_UNPINNED_ITEMS)
 
-                // Limpieza física de imágenes desalojadas
-                toEvict.forEach { evicted ->
-                    evicted.mediaFileName?.let { fname ->
-                        val f = File(mediaDir, fname)
-                        if (f.exists()) f.delete()
-                    }
-                    thumbnailCache.remove(evicted.id)
-                }
+                evictedMedia = toEvict.mapNotNull { evicted -> evicted.mediaFileName }
+                toEvict.forEach { evicted -> thumbnailCache.remove(evicted.id) }
 
                 current.clear()
                 current.addAll(pinned + toKeep)
@@ -245,88 +248,75 @@ class ClipboardStore(
 
             sortAndNormalize(current)
             itemsCache = current
-            saveToDisk(current)
+            updated = ArrayList(current)
+        }
+        // I/O fuera del lock: borrado de imágenes desalojadas + escritura
+        // atómica del JSON. El lock solo cubrió la mutación en memoria.
+        deleteEvictedMedia(evictedMedia)
+        saveToDisk(updated)
+    }
+
+    private fun deleteEvictedMedia(names: List<String>) {
+        names.forEach { fname ->
+            try {
+                val f = File(mediaDir, fname)
+                if (f.exists()) f.delete()
+            } catch (_: Exception) {}
         }
     }
 
     /**
      * Alterna el estado de fijado (pin / unpin) de un clip.
+     * Sin llamadas anidadas bajo lock: el snapshot se lee fuera y dentro
+     * solo se muta la caché (la escritura a disco ya corría en executor).
      */
     fun togglePin(itemId: String): List<ClipboardItem> {
+        val snapshot = loadItems()
+        val toPersist: List<ClipboardItem>?
+        val updated: List<ClipboardItem>
         synchronized(lock) {
-            val current = loadItems().toMutableList()
+            val current = (itemsCache ?: snapshot.toMutableList()).toMutableList()
             val idx = current.indexOfFirst { it.id == itemId }
             if (idx != -1) {
                 val old = current[idx]
                 current[idx] = old.copy(isPinned = !old.isPinned)
                 sortAndNormalize(current)
                 itemsCache = current
-                executor.execute { saveToDisk(current) }
+                toPersist = ArrayList(current)
+            } else {
+                toPersist = null
             }
-            return ArrayList(current)
+            updated = ArrayList(current)
         }
-    }
-
-    /**
-     * Elimina un clip individual del historial y remueve su archivo de medios si aplica.
-     */
-    fun deleteItem(itemId: String): List<ClipboardItem> {
-        synchronized(lock) {
-            val current = loadItems().toMutableList()
-            val removed = current.find { it.id == itemId }
-            if (removed != null) {
-                current.remove(removed)
-                removed.mediaFileName?.let { fname ->
-                    executor.execute {
-                        val f = File(mediaDir, fname)
-                        if (f.exists()) f.delete()
-                    }
-                }
-                thumbnailCache.remove(itemId)
-                itemsCache = current
-                executor.execute { saveToDisk(current) }
-            }
-            return ArrayList(current)
-        }
+        toPersist?.let { executor.execute { saveToDisk(it) } }
+        return updated
     }
 
     /**
      * Limpia todos los clips que NO estén fijados.
+     * Sin llamadas anidadas bajo lock (ver [togglePin]).
      */
     fun clearAllUnpinned(): List<ClipboardItem> {
+        val snapshot = loadItems()
+        val unpinned: List<ClipboardItem>
+        val updated: List<ClipboardItem>
         synchronized(lock) {
-            val current = loadItems().toMutableList()
-            val unpinned = current.filter { !it.isPinned }
+            val current = (itemsCache ?: snapshot.toMutableList()).toMutableList()
+            unpinned = current.filter { !it.isPinned }
             current.removeAll(unpinned)
-            executor.execute {
-                unpinned.forEach { item ->
-                    item.mediaFileName?.let { fname ->
-                        val f = File(mediaDir, fname)
-                        if (f.exists()) f.delete()
-                    }
-                }
-                saveToDisk(current)
-            }
             itemsCache = current
-            return ArrayList(current)
+            updated = ArrayList(current)
         }
-    }
-
-    /**
-     * Obtiene una miniatura Bitmap decodificada de forma segura con downsampling y cache en RAM.
-     */
-    fun getThumbnail(item: ClipboardItem, targetW: Int, targetH: Int): Bitmap? {
-        if (item.type != ClipType.IMAGE || item.mediaFileName == null) return null
-        thumbnailCache.get(item.id)?.let { return it }
-
-        val file = File(mediaDir, item.mediaFileName)
-        if (!file.exists()) return null
-
-        val bmp = decodeSampledBitmap(file.absolutePath, targetW, targetH)
-        if (bmp != null) {
-            thumbnailCache.put(item.id, bmp)
+        executor.execute {
+            unpinned.forEach { item ->
+                item.mediaFileName?.let { fname ->
+                    val f = File(mediaDir, fname)
+                    if (f.exists()) f.delete()
+                }
+            }
+            saveToDisk(updated)
         }
-        return bmp
+        return updated
     }
 
     /**
@@ -385,7 +375,10 @@ class ClipboardStore(
             val tmpFile = File(context.filesDir, "$FILE_HISTORY.tmp")
             val targetFile = File(context.filesDir, FILE_HISTORY)
             tmpFile.writeText(array.toString())
-            tmpFile.renameTo(targetFile)
+            if (!tmpFile.renameTo(targetFile)) {
+                tmpFile.copyTo(targetFile, overwrite = true)
+                try { tmpFile.delete() } catch (_: Exception) {}
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error guardando clipboard a disco", e)
         }

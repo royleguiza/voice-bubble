@@ -175,14 +175,14 @@ void main() {
       expect(find.text('Acerca de'), findsOneWidget);
     });
 
-    testWidgets('shows version "VoiceBubble STT v0.1.0"', (tester) async {
+    testWidgets('shows version "VoiceBubble STT v1.0.0+87"', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('tab-acerca')));
       await tester.pumpAndSettle();
 
-      expect(find.text('VoiceBubble STT v0.1.0'), findsOneWidget);
+      expect(find.text('VoiceBubble STT v1.0.0+87'), findsOneWidget);
     });
 
     testWidgets('shows app description text', (tester) async {
@@ -633,7 +633,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_stt_api_key'), 'gsk_espejo_123');
+      // Contrato seguro: la key va al keystore, en prefs solo presencia.
+      expect(prefs.getString('kb_stt_api_key'), isNull);
+      expect(prefs.getBool('kb_stt_key_configured'), isTrue);
       expect(prefs.getString('kb_stt_model'), CloudSttService.model);
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
     });
@@ -645,12 +647,13 @@ void main() {
 
       await storageService.saveSttMirror(apiKey: 'a_borrar');
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_stt_api_key'), 'a_borrar');
+      expect(prefs.getBool('kb_stt_key_configured'), isTrue);
 
       await tester.tap(find.byIcon(Icons.delete_outline));
       await tester.pumpAndSettle();
 
       expect(prefs.getString('kb_stt_api_key'), isNull);
+      expect(prefs.getBool('kb_stt_key_configured'), isFalse);
     });
 
     testWidgets('al abrir Ajustes con key existente se re-espeja (backfill)',
@@ -661,7 +664,9 @@ void main() {
       await tester.pumpAndSettle();
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_stt_api_key'), 'previa');
+      // Backfill: presencia + no sensibles, nunca la key en claro.
+      expect(prefs.getString('kb_stt_api_key'), isNull);
+      expect(prefs.getBool('kb_stt_key_configured'), isTrue);
     });
   });
 
@@ -702,7 +707,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-acerca')));
       await tester.pumpAndSettle();
       expect(find.text('Acerca de'), findsOneWidget);
-      expect(find.text('VoiceBubble STT v0.1.0'), findsOneWidget);
+      expect(find.text('VoiceBubble STT v1.0.0+87'), findsOneWidget);
 
       // Regresar a General
       await tester.tap(find.byKey(const ValueKey('tab-general')));

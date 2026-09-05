@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
+import '../ui/transcription_feedback.dart';
 
 /// Tarjeta emergente glass que flota sobre el botón de grabar mostrando la
 /// última transcripción. Animación: expand (scale 0.85→1, easeOutBack) +
-/// fade del shell y fade diferido del bloque de texto. El botón Copiar está
-/// disponible desde t=0 (no participa del fade).
+/// fade del bloque de texto con fade diferido. El botón Copiar está
+/// disponible desde t=0: vive FUERA de los FadeTransition (solo el scale
+/// lo afecta), así que es tocable desde el primer frame.
 class TranscriptionPopup extends StatelessWidget {
   final String text;
   final DateTime timestamp;
@@ -44,30 +46,25 @@ class TranscriptionPopup extends StatelessWidget {
             ? const Interval(0.18, 0.95, curve: Curves.easeOutCubic)
             : Curves.easeOut);
 
-    final day = timestamp.day.toString().padLeft(2, '0');
-    final month = timestamp.month.toString().padLeft(2, '0');
-    final hh = timestamp.hour.toString().padLeft(2, '0');
-    final mm = timestamp.minute.toString().padLeft(2, '0');
-
     return ScaleTransition(
       scale: scale,
       alignment: Alignment.bottomCenter,
-      child: FadeTransition(
-        opacity: shellFade,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: kPopupMaxWidth,
-            maxHeight: maxHeight,
-          ),
-          child: GlassContainer(
-            borderRadius: kBorderRadiusCard,
-            small: false,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Flexible(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: kPopupMaxWidth,
+          maxHeight: maxHeight,
+        ),
+        child: GlassContainer(
+          borderRadius: kBorderRadiusCard,
+          small: false,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Flexible(
+                child: FadeTransition(
+                  opacity: shellFade,
                   child: FadeTransition(
                     opacity: textFade,
                     child: SingleChildScrollView(
@@ -78,25 +75,35 @@ class TranscriptionPopup extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 36,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.cloud, size: 16, color: labelSecondary),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$day/$month $hh:$mm',
-                            style: kTextCaption.copyWith(color: labelSecondary),
-                          ),
-                        ],
-                      ),
-                      Tooltip(
-                        message: 'Copiar al portapapeles',
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 36,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.cloud, size: 16, color: labelSecondary),
+                        const SizedBox(width: 6),
+                        Text(
+                          formatTranscriptionTimestamp(timestamp),
+                          style: kTextCaption.copyWith(color: labelSecondary),
+                        ),
+                      ],
+                    ),
+                    // Un solo anuncio para lectores de pantalla: el Tooltip
+                    // visual se excluye de semántica y el Semantics interno
+                    // oculta icono+texto, anunciando solo el label canónico.
+                    // Antes Tooltip+Text se anunciaban dos veces.
+                    Tooltip(
+                      message: copyTooltipMessage,
+                      excludeFromSemantics: true,
+                      child: Semantics(
+                        button: true,
+                        label: copyTooltipMessage,
+                        excludeSemantics: true,
                         child: InkWell(
                           onTap: onCopy,
                           borderRadius:
@@ -112,7 +119,7 @@ class TranscriptionPopup extends StatelessWidget {
                                 Icon(Icons.copy_rounded,
                                     size: 18, color: accent),
                                 const SizedBox(width: 6),
-                                Text('Copiar',
+                                Text(copyButtonLabel,
                                     style:
                                         kTextCallout.copyWith(color: accent)),
                               ],
@@ -120,11 +127,11 @@ class TranscriptionPopup extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

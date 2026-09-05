@@ -1,11 +1,12 @@
 import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
+
+import '../helpers/mock_channels.dart';
 
 class _RecordingMockAudioRecorder implements AudioRecorder {
   RecordConfig? lastConfig;
@@ -32,22 +33,8 @@ void main() {
 
   // record 7.x: el constructor de AudioRecorder invoca 'create' en el canal;
   // sin mock lanza MissingPluginException y contamina los tests siguientes.
-  for (final channel in [
-    'com.llfbandit.record',
-    'com.llfbandit.record/messages',
-  ]) {
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(
-      MethodChannel(channel),
-      (MethodCall methodCall) async {
-        final m = methodCall.method.toLowerCase();
-        if (m.contains('permission')) {
-          return true;
-        }
-        return null;
-      },
-    );
-  }
+  // Handler canónico compartido (helpers/mock_channels.dart).
+  registerRecordChannelMocks();
 
   group('Encoder PCM 16 bits (WAV)', () {
     test('startRecording pasa configuración PCM 16 bits mono 16kHz al grabador', () async {
@@ -77,6 +64,8 @@ void main() {
         cloudService: const CloudSttService(apiKey: 'test'),
         storageService: StorageService(),
       );
+      // Sync a propósito: setup/teardown/asserts con directorio real (la
+      // regla avoid_slow_async_io solo observa métodos async, no estos).
       tempDir = Directory.systemTemp.createTempSync('voice_bubble_test_');
     });
 

@@ -2,10 +2,14 @@ import re
 import html
 import os
 
-MARKDOWN_PATH = "/home/roy/projects/apps/voice-bubble/MEJORAS-SEPTIEMBRE.md"
-OUTPUT_HTML_PATH = "/home/roy/projects/apps/voice-bubble/laboratorio_ui/mejoras-septiembre.html"
+# ARCHIVADO 2026-09-05: script movido de raíz a docs/archive/ con su HTML derivado
+# (docs/archive/mejoras-septiembre.html). Rutas actualizadas a la nueva ubicación.
+MARKDOWN_PATH = "/home/roy/projects/apps/voice-bubble/docs/archive/MEJORAS-SEPTIEMBRE.md"
+OUTPUT_HTML_PATH = "/home/roy/projects/apps/voice-bubble/docs/archive/mejoras-septiembre.html"
 INDEX_HTML_PATH = "/home/roy/projects/apps/voice-bubble/laboratorio_ui/index.html"
-BACKUP_INDEX_PATH = "/home/roy/projects/apps/voice-bubble/laboratorio_ui/laboratorio_componentes_previo.html"
+# Backup histórico eliminado por duplicado byte-idéntico (md5 2c17aa6105365b5b90c80793844cc3a1, 2026-09-05):
+# se apunta al propio index para que el guard `not exists(BACKUP)` sea False y no regenere el dup.
+BACKUP_INDEX_PATH = "/home/roy/projects/apps/voice-bubble/laboratorio_ui/index.html"
 
 with open(MARKDOWN_PATH, "r", encoding="utf-8") as f:
     raw_md = f.read()

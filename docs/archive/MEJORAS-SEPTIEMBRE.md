@@ -10,10 +10,10 @@
 
 Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
-1. **Bandeja de Portapapeles (Clipboard Tray)**: [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md)
+1. **Bandeja de Portapapeles (Clipboard Tray)**: [`plan-clipboard.md`](plan-clipboard.md)
    * Captura de clips copiados fuera de la app (opt-in).
    * Tecla `📋` en barra inferior o superior para insertar clips en cursor.
-2. **Ciclar Mayúsculas/Minúsculas con ⇧**: [`plan-ciclar-mayusculas.md`](file:///root/projects/activos/voice-bubble/plan-ciclar-mayusculas.md)
+2. **Ciclar Mayúsculas/Minúsculas con ⇧**: [`plan-ciclar-mayusculas.md`](plan-ciclar-mayusculas.md)
    * Ciclo `minúsculas` → `Mayúscula Inicial` → `MAYÚSCULAS` en texto seleccionado.
 
 ---
@@ -156,9 +156,9 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
      - **Extremo Derecho `[ ➕ Agregar ]`**: Al tocarlo, despliega un mini-editor de texto Liquid Glass en la cabecera para escribir o pegar un texto personalizado y guardarlo al instante en el portapapeles/fijados, **sin necesidad de navegar a Ajustes**.
      - **Ciclo de Interfaz**: Alternancia suave con 1 toque entre la vista normal de lista, la barra de búsqueda y el formulario de nuevo clip.
 * **Impacto Técnico**:
-  - *Kotlin nativo*: Ampliación del motor de [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md) en `VoiceKeyboardService.kt`: soporte para modo "Keep Open / Sticky" en `showClipboardPopup()`, inserción sucesiva mediante `currentInputConnection?.commitText()`, header con conmutación dinámica de vistas (búsqueda y mini-input `EditText` para nuevo clip), y flags de retención de clips fijados.
+  - *Kotlin nativo*: Ampliación del motor de [`plan-clipboard.md`](plan-clipboard.md) en `VoiceKeyboardService.kt`: soporte para modo "Keep Open / Sticky" en `showClipboardPopup()`, inserción sucesiva mediante `currentInputConnection?.commitText()`, header con conmutación dinámica de vistas (búsqueda y mini-input `EditText` para nuevo clip), y flags de retención de clips fijados.
   - *Flutter (Dart)*: Switch en Ajustes > Portapapeles: *"Mantener bandeja abierta tras pegar (Pegado secuencial)"*.
-* **Estado**: **En Diseño (Aprobada como extensión clave de MEJ-01 para Septiembre)**.
+* **Estado**: **DONE (base ya existente, verificado 2026-09-05) + En Diseño (extensión pendiente)**. DONE: fijar clips 📌 y vaciado — `ClipboardStore.kt:255` `togglePin`, `:296` `clearAllUnpinned`, `VoiceKeyboardService.kt:3093,3097`, suite `test_clipboard_suite.py` 24/24. Pendiente (En Diseño): modo Keep Open/Sticky + cabecera dual búsqueda/agregar + switch *"Mantener bandeja abierta"*.
 
 ---
 

@@ -1,10 +1,9 @@
 # AGENTS.md – Guía para Agentes de IA en VoiceBubble STT
 
-> ⚠️ **ATENCIÓN - CONGELAMIENTO DE CI EN GITHUB ACTIONS (VIGENTE HASTA EL 1 DE SEPTIEMBRE DE 2026)**:
-> **PROHIBIDO DISPARAR WORKFLOWS DE CI / BUILDS EN GITHUB ACTIONS (CUOTAS AL 100%).**
-> - Para evitar facturación en GitHub, **está terminantemente prohibido hacer commits/pushes que modifiquen código** (`app_source/`, `voice_bubble_stt/`, etc.).
-> - Los pushes de documentación `.md` están protegidos por `paths-ignore: '*.md'` en el workflow y **SIEMPRE deben incluir `[skip ci]`** en el mensaje de commit.
-> - El backlog maestro de mejoras, ideas y arquitectura diseñado para el ciclo de Septiembre reside en [`MEJORAS-SEPTIEMBRE.md`](file:///root/projects/activos/voice-bubble/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-24).
+> ⚠️ **POLÍTICA DE PUSH VIGENTE (sin fechas vencidas)**:
+> - **Ningún push de código sin autorización explícita del dueño** (`app_source/`, `voice_bubble_stt/`, etc.). Tras HB0/B1–B7 en local, el CI solo se dispara con su visto bueno.
+> - **Ventana de docs**: los pushes que solo tocan `*.md` están excluidos del CI por `paths-ignore: '*.md'` en `.github/workflows/android.yml` y **SIEMPRE deben incluir `[skip ci]`** en el mensaje. No tocar el `.yml` para esto: es la ventana documentada.
+> - El backlog de mejoras (MEJ-01 a MEJ-24) vive en [`docs/archive/MEJORAS-SEPTIEMBRE.md`](docs/archive/MEJORAS-SEPTIEMBRE.md).
 
 > Este archivo es el **manual de onboarding** para cualquier agente de IA (Claude, Cursor, Copilot, etc.) que trabaje en este repositorio. Léelo completo antes de escribir código.
 
@@ -14,10 +13,10 @@
 
 **VoiceBubble STT**: app Android de transcripción de voz a texto, extremadamente simple.
 
-- Motor **Cloud** único (Groq `whisper-large-v3`; compatible también con OpenAI). El modo **Local offline fue removido** en el Hito 2 (decisión del dueño, 2026-08-22; restaurable desde git history; su regreso está pospuesto — ver `teclado-voice.md` D4).
+- Motor **Cloud** único (Groq `whisper-large-v3`; compatible también con OpenAI). El modo **Local offline fue removido** en el Hito 2 (decisión del dueño, 2026-08-22; restaurable desde git history; su regreso está pospuesto — ver `docs/archive/teclado-voice.md` D4).
 - Historial de las últimas **20** transcripciones (FIFO).
 - **Burbuja flotante** para transcribir desde cualquier otra app y copiar el resultado (Hito 3, verificada en dispositivo real).
-- Próxima extensión planificada: **teclado del sistema con dictado** (`teclado-voice.md`, hitos T0–K5).
+- Próxima extensión planificada: **teclado del sistema con dictado** (`docs/archive/teclado-voice.md`, hitos T0–K5).
 - Nada más fuera de alcance (no notas, no traducción, no resúmenes).
 
 ## 2. Stack y decisiones tomadas (NO re-decidir)
@@ -31,22 +30,22 @@
 | targetSdkVersion | La más actual disponible al crear el proyecto |
 | Idioma de la UI | Español e inglés (mínimo) |
 | Diseño | Apple **Liquid Glass**, claro + oscuro → ver `design.md` |
-| Alcance dual | Burbuja (existente) + **teclado del sistema nativo Kotlin** — decisiones D1–D9 aprobadas en `teclado-voice.md` §3 (2026-08-22) |
-| Seeds de snippets | SÍ, 5 ejemplos precargados editables/borrables (`teclado-voice.md`, K4 tarea 7) |
+| Alcance dual | Burbuja (existente) + **teclado del sistema nativo Kotlin** — decisiones D1–D9 aprobadas en `docs/archive/teclado-voice.md` §3 (2026-08-22) |
+| Seeds de snippets | SÍ, 5 ejemplos precargados editables/borrables (`docs/archive/teclado-voice.md`, K4 tarea 7) |
 
-Estas decisiones están documentadas en `plan.md` (Hito 0). Si algún agente propone cambiarlas, requiere aprobación explícita del usuario.
+Estas decisiones están documentadas en `docs/archive/plan.md` (Hito 0). Si algún agente propone cambiarlas, requiere aprobación explícita del usuario.
 
 ## 3. Estructura del repo
 
 ```
 voice-bubble/                  ← raíz del repo git
 ├── README.md                  ← spec funcional del producto
-├── plan.md                    ← plan de ejecución por hitos (LA FUENTE DE VERDAD del qué y cuándo)
+├── docs/archive/plan.md       ← plan de ejecución por hitos (histórico; LA FUENTE DE VERDAD del qué y cuándo en su momento)
 ├── design.md                  ← sistema de diseño Liquid Glass (LA FUENTE DE VERDAD del cómo se ve)
-├── teclado-voice.md           ← plan del teclado del sistema (T0–K5); se integra a la secuencia desde la posición del Hito 4
-├── MEJORAS-SEPTIEMBRE.md      ← backlog de mejoras, arquitectura y especificaciones para el ciclo Septiembre 2026 (MEJ-01 a MEJ-24)
-├── plan-clipboard.md          ← plan de la bandeja de portapapeles del teclado (MEJ-01 / MEJ-08)
-├── plan-ciclar-mayusculas.md  ← plan para ciclar mayúsculas/minúsculas con Shift ⇧ (MEJ-02)
+├── docs/archive/teclado-voice.md ← plan del teclado del sistema (T0–K5, histórico)
+├── docs/archive/MEJORAS-SEPTIEMBRE.md ← backlog de mejoras (MEJ-01 a MEJ-24, histórico)
+├── docs/archive/plan-clipboard.md ← bandeja de portapapeles (MEJ-01 / MEJ-08, histórico)
+├── docs/archive/plan-ciclar-mayusculas.md ← ciclar mayúsculas con Shift ⇧ (MEJ-02, histórico)
 ├── AGENTS.md                  ← este archivo
 ├── app_source/                ← FUENTE DE EDICIÓN de la app (pubspec, analysis_options, lib/, test/)
 ├── voice_bubble_stt/          ← proyecto Flutter que compila el CI; android/ generado por CI,
@@ -56,20 +55,20 @@ voice-bubble/                  ← raíz del repo git
 
 ## 4. Flujo de trabajo obligatorio
 
-1. Leer `plan.md` completo antes de empezar.
+1. Leer `docs/archive/plan.md` completo antes de empezar.
 2. **Un hito a la vez.** Nunca mezclar tareas de hitos distintos en un mismo commit/PR.
-3. No avanzar al hito siguiente hasta que el actual cumpla **todos** sus criterios de aceptación (están checklisteados en `plan.md`).
+3. No avanzar al hito siguiente hasta que el actual cumpla **todos** sus criterios de aceptación (están checklisteados en `docs/archive/plan.md`).
 4. Toda decisión de UI sigue `design.md`. Si `design.md` no cubre un caso, proponer antes que improvisar.
-5. Al completar un hito: actualizar checkboxes de criterios en `plan.md`, commitear y pushear.
-6. Después de cada cambio importante: generar APK debug (`flutter build apk --debug`) y avisar al usuario para prueba en dispositivo real.
+5. Al completar un hito: actualizar checkboxes de criterios en `docs/archive/plan.md`, commitear y pushear.
+6. Después de cada cambio importante: avisar al usuario para prueba en dispositivo real con el APK del CI (ver §6; no hay builds locales).
 
 ### Modo loop (estilo de trabajo del dueño)
 
-Cuando el dueño pida "trabajar en modo loop", rige `MODO-LOOP.md`: coordinador + escritores paralelos por archivos disjuntos (serie para archivos compartidos) → auditor ultracrítico SIEMPRE con contexto limpio que califica 0–10 → todo lo < 9.0 vuelve a escritores nuevos limpios hasta aprobar → batería final → push con CI monitoreado → APK al dueño. Cero deuda técnica, cero parches, menos es más. Los planes vigentes (ej. `AUDITORIA-TOTAL-V1.md`, `PLAN-PULIDO-TECLADO.md`) llevan su sección "Registro del loop".
+Cuando el dueño pida "trabajar en modo loop", rige `MODO-LOOP.md`: coordinador + escritores paralelos por archivos disjuntos (serie para archivos compartidos) → auditor ultracrítico SIEMPRE con contexto limpio que califica 0–10 → todo lo < 9.0 vuelve a escritores nuevos limpios hasta aprobar → batería final → push con CI monitoreado → APK al dueño. Cero deuda técnica, cero parches, menos es más. Los planes archivados (ej. `docs/archive/AUDITORIA-TOTAL-V1.md`, `docs/archive/PLAN-PULIDO-TECLADO.md`) llevan su sección "Registro del loop".
 
 ### Estado actual
 
-Ver sección "Estado" al final de este archivo y los checkboxes de `plan.md`.
+Ver sección "Estado" al final de este archivo y los checkboxes de `docs/archive/plan.md`.
 
 ## 5. Reglas técnicas
 
@@ -77,7 +76,7 @@ Ver sección "Estado" al final de este archivo y los checkboxes de `plan.md`.
 
 - Seguir las [convenciones oficiales de Dart](https://dart.dev/effective-dart) y `flutter analyze` ESTRICTO (sin `--no-fatal-*`): infos y warnings también rompen el CI.
 - Todo widget test que use widgets Material importa explícitamente `package:flutter/material.dart` (flutter_test NO lo re-exporta).
-- Estructura de carpetas sugerida por hito: ver `plan.md` § "Estructura de carpetas sugerida (Flutter)". No inventar estructuras paralelas.
+- Estructura de carpetas sugerida por hito: ver `docs/archive/plan.md` § "Estructura de carpetas sugerida (Flutter)". No inventar estructuras paralelas.
 - Comentarios solo cuando aporten contexto no obvio. En inglés o español, consistente.
 - Sin lógica de UI dentro de widgets: servicios separados (`transcription_service`, `cloud_stt_service`, `keyboard_service`, etc.).
 
@@ -87,16 +86,13 @@ Ver sección "Estado" al final de este archivo y los checkboxes de `plan.md`.
 - El audio SOLO viaja a internet cuando el usuario inicia explícitamente una transcripción Cloud. Sin transcripción en curso = cero tráfico de red con audio.
 - **El teclado JAMÁS registra, guarda ni transmite texto tecleado** (ni en logs de debug). Sin dictado, snippets ni sugerencias en campos de contraseña.
 - **Exclusión mutua de micrófono burbuja↔teclado**: si uno está grabando, el otro muestra estado ocupado (flag en memoria del proceso + audio focus).
-- Sin analytics, sin telemetría, sin permisos que no estén justificados en README.md.
+- Sin analytics, sin telemetría, sin permisos que no estén justificados en INSTALL.md.
 
-### Permisos Android (solo los necesarios, declarar en manifest)
+### Permisos Android (solo los necesarios — fuente canónica: `INSTALL.md` §4)
 
-```xml
-RECORD_AUDIO, SYSTEM_ALERT_WINDOW, FOREGROUND_SERVICE,
-FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
-```
+Ver `INSTALL.md` §4 para la lista vigente y su justificación (única fuente de verdad para usuario).
 
-- `SYSTEM_ALERT_WINDOW` y Accessibility Service se solicitan solo en Hitos 3–4, no antes.
+- Sin `AccessibilityService` declarado (BLOQUEADO 2026-09-05, perfil anti-Play-Protect).
 
 ### Dependencias
 
@@ -117,7 +113,7 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 - El APK se compila con **GitHub Actions** (`.github/workflows/android.yml`) en runners ubuntu x86_64.
 - La fuente de la app vive en `app_source/`; el primer run de CI la scaffoldingea a `voice_bubble_stt/` vía `flutter create`, aplica parches (minSdk 28, RECORD_AUDIO, label) y commitea el scaffold.
 - **Cada run sincroniza incondicionalmente** `app_source/{pubspec,analysis_options,lib,test}` → `voice_bubble_stt/` antes de compilar: `app_source/` es la única fuente de edición.
-- Cada push a `main` (que toque código) ejecuta: pub get → analyze (estricto) → test → `flutter build apk --debug` → sube el artefacto `voice-bubble-debug-apk-r<N>` (retención 7 días).
+- Cada push a `main` (que toque código) ejecuta: pub get → analyze (estricto) → test → `flutter build apk --debug --split-per-abi` → sube el artefacto `voice-bubble-arm64-debug-apk-r<N>` (retención 7 días; dentro: `app-arm64-v8a-debug.apk`).
 - El usuario descarga el APK desde GitHub → Actions → run → Artifacts, y lo prueba en el teléfono físico ("Instalar apps desconocidas").
 - No intentar correr emuladores ni builds locales. Los unit tests de Dart corren en CI.
 
@@ -212,49 +208,36 @@ FOREGROUND_SERVICE_MICROPHONE, POST_NOTIFICATIONS
 ### 9.4 Ritual post-push y Monitoreo de GitHub Actions (OBLIGATORIO)
 
 Para asegurar la integridad de las compilaciones sin acceso local a SDK:
-- **Token de lectura de GitHub Actions**: Ubicado en `/root/.local/share/gh-actions/token` (permisos de solo lectura para workflows/runs/artefactos, vigencia temporal de 7 días).
-- **SEGURIDAD**: **NUNCA** exponer, imprimir en consola ni commitear el valor del token en ningún archivo o mensaje.
+- **Auth**: usar `gh` con la autenticación ya existente en la máquina (`gh auth status`).
+  No crear ni leer archivos de token, no exportar `GITHUB_TOKEN` salvo que el entorno
+  ya lo provea, y **NUNCA** imprimir, redirigir a logs ni commitear ningún secreto.
+- **Redacción**: si un comando pudiera mostrar credenciales, anteponer
+  `GH_TOKEN="<redacted>"` en el reporte y usar `gh` (que no imprime el token).
 
-#### Procedimiento obligatorio tras CADA push:
-1. **Monitorear el workflow en segundo plano** consultando la API de GitHub Actions hasta que el estado sea `completed`:
-   ```python
-   import urllib.request, json, time
-
-   token = open('/root/.local/share/gh-actions/token').read().strip()
-   commit_sha = '<SHORT_COMMIT_SHA>'
-
-   # 1. Obtener Run ID correspondiente al commit
-   req = urllib.request.Request(
-       'https://api.github.com/repos/royleguiza/voice-bubble/actions/runs?per_page=3',
-       headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json'}
-   )
-   runs = json.loads(urllib.request.urlopen(req).read()).get('workflow_runs', [])
-   run_id = next(r['id'] for r in runs if r['head_sha'].startswith(commit_sha))
-
-   # 2. Pollear estado cada 15 segundos
-   while True:
-       req_run = urllib.request.Request(
-           f'https://api.github.com/repos/royleguiza/voice-bubble/actions/runs/{run_id}',
-           headers={'Authorization': f'Bearer {token}', 'Accept': 'application/vnd.github+json'}
-       )
-       run = json.loads(urllib.request.urlopen(req_run).read())
-       if run['status'] == 'completed':
-           break
-       time.sleep(15)
+#### Procedimiento obligatorio tras CADA push (sin exponer secretos):
+1. **Monitorear el workflow** con `gh` hasta que el estado sea `completed`:
+   ```bash
+   SHORT_SHA="<SHORT_COMMIT_SHA>"
+   RUN_ID=$(gh run list --repo royleguiza/voice-bubble --limit 5 --json databaseId,headSha \
+     --jq ".[] | select(.headSha | startswith(\"$SHORT_SHA\")) | .databaseId" | head -n 1)
+   test -n "$RUN_ID" || { echo "run no encontrado para $SHORT_SHA"; exit 1; }
+   gh run watch "$RUN_ID" --repo royleguiza/voice-bubble --interval 15
+   gh run view "$RUN_ID" --repo royleguiza/voice-bubble --json status,conclusion
    ```
 2. **Si el build falla (`conclusion == 'failure'`)**:
-   - Consultar los jobs y steps (`/actions/runs/{run_id}/jobs`).
-   - Mapear el step exacto que falló (ej. analyze, test o Gradle) y obtener los logs para corregir la causa raíz.
+   - Listar jobs fallidos sin exponer secretos: `gh run view "$RUN_ID" --repo royleguiza/voice-bubble --json jobs`.
+   - Mapear el step exacto que falló (ej. analyze, test o Gradle) y leer solo sus logs
+     (`gh run view "$RUN_ID" --log-failed --repo royleguiza/voice-bubble`).
 3. **Si el build tiene éxito (`conclusion == 'success'`)**:
-   - Consultar los artefactos (`/actions/runs/{run_id}/artifacts`).
-   - Proveer al usuario el Run ID, enlace directo a GitHub y el nombre del APK generado (`voice-bubble-debug-apk-r<N>`).
+   - Listar artefactos: `gh api repos/royleguiza/voice-bubble/actions/runs/"$RUN_ID"/artifacts --jq '.artifacts[].name'`.
+   - Proveer al usuario el Run ID, enlace directo a GitHub y el nombre del APK generado (`voice-bubble-arm64-debug-apk-r<N>`).
 
 ---
 
 ## Estado del proyecto
 
 > **Actualizar esta sección al final de cada hito completado.**
-> Última actualización: 2026-08-23 (AUDITORÍA TOTAL v1 ejecutada en MODO-LOOP: 59 hallazgos corregidos en 11 tarjetas F1–F11 auditadas >9.0; CI verde run `32666610965`, APK r62, suite depurada a 280 tests reales). Ver `AUDITORIA-TOTAL-V1.md`.
+> Última actualización: 2026-08-23 (AUDITORÍA TOTAL v1 ejecutada en MODO-LOOP: 59 hallazgos corregidos en 11 tarjetas F1–F11 auditadas >9.0; CI verde run `32666610965`, APK r62, suite depurada a 280 tests reales). Ver `docs/archive/AUDITORIA-TOTAL-V1.md`.
 
 - [x] Planificación (README + plan + design + agents)
 - [x] Hito 0 – Setup
@@ -272,11 +255,11 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] K5 – Pulido, robustez y entrega → **implementado y auditado** (K5-T1..T8 aprobadas ≥ 8.9 tras reproceso de i18n de errores; auditoría de privacidad **LIMPIA**; commit `079f8e8`; CI verde r57)
 - [ ] Hito 4 – Pegado inteligente (Accessibility) → **BLOQUEADO 2026-09-05** (perfil anti-Play-Protect): el servicio `VoiceBubbleAccessibilityService` se retiró del manifest (clase versionada pero dormida, `isConnected()` siempre falso). Sin declaración no hay inyección con tercer teclado: la burbuja pega vía IME propio (`commitText`) o portapapeles. Isla exacta sobre cámara y clics de trackpad, dormidos (fallbacks locales intactos). Ver `plan-hito4-burbuja-hibrida.md` §6.
 - [x] Hito 5 – Robustez Android 14/15 (re-definido) → **implementado y auditado** (FGS tipado micrófono + `POST_NOTIFICATIONS` runtime, icono adaptive + splash, `INSTALL.md` con guía de batería, matriz de tests; commit `d569ab6`; fix-wave `c146c09` tras fallo de test; CI verde r57)
-- [x] Hito 6 – Testing final y entrega → push único a `main` (`c146c09`, 6 commits), ritual CI completado: run [`32634338510`](https://github.com/royleguiza/voice-bubble/actions/runs/32634338510) success · **368 tests** · artefacto `voice-bubble-debug-apk-r57`; tags [`v0.9.0-keyboard-beta`](https://github.com/royleguiza/voice-bubble/tree/v0.9.0-keyboard-beta) (commit `079f8e8`) y [`v1.0.0`](https://github.com/royleguiza/voice-bubble/tree/v1.0.0)
+- [x] Hito 6 – Testing final y entrega → push único a `main` (`c146c09`, 6 commits), ritual CI completado: run [`32634338510`](https://github.com/royleguiza/voice-bubble/actions/runs/32634338510) success · **368 tests** · artefacto `voice-bubble-arm64-debug-apk-r57` (dentro: `app-arm64-v8a-debug.apk`; retención 7 días); tags [`v0.9.0-keyboard-beta`](https://github.com/royleguiza/voice-bubble/tree/v0.9.0-keyboard-beta) (commit `079f8e8`) y [`v1.0.0`](https://github.com/royleguiza/voice-bubble/tree/v1.0.0)
 
-- [x] Lote v1.2 – Configuración con Tabs C2, Tecla Micrófono M4 Morph-to-Pill y APK split arm64 (2026-08-24, `plan-v1.2.md`, auditado en MODO-LOOP >9.0): Settings con 4 tabs glass inferiores (`IndexedStack` que preserva estado + 96dp bottom padding); tecla mic M4 en teclado nativo Kotlin con expansión a pastilla roja, punto pulsante, cronómetro M:SS y touch target cancelar >=44dp; ícono vectorial limpio `kb_ic_mic.xml` (reemplazo definitivo del emoji 🎤) y animación de 3 puntos en ola en `PROCESSING` (`kb_proc_dot.xml`); optimización de CI a split arm64 (-67% de peso, 168MB -> 48MB en storage GitHub). CI verde a la primera: run [`32682031857`](https://github.com/royleguiza/voice-bubble/actions/runs/32682031857) success · artefacto `voice-bubble-arm64-debug-apk-r64` (48.35 MB comprimido).
+- [x] Lote v1.2 – Configuración con Tabs C2, Tecla Micrófono M4 Morph-to-Pill y APK split arm64 (2026-08-24, auditado en MODO-LOOP >9.0; evidencia verificable: `IndexedStack` en `app_source/lib/screens/settings_screen.dart:719`, icono `kb_ic_mic` en `VoiceKeyboardService.kt:1577`, `SpeechToTextClient.MAX_SECONDS`): Settings con 4 tabs glass inferiores (`IndexedStack` que preserva estado + 96dp bottom padding); tecla mic M4 en teclado nativo Kotlin con expansión a pastilla roja, punto pulsante, cronómetro M:SS y touch target cancelar >=44dp; ícono vectorial limpio `kb_ic_mic.xml` (reemplazo definitivo del emoji 🎤) y animación de 3 puntos en ola en `PROCESSING` (`kb_proc_dot.xml`); optimización de CI a split arm64 (-67% de peso, 168MB -> 48MB en storage GitHub). CI verde a la primera: run [`32682031857`](https://github.com/royleguiza/voice-bubble/actions/runs/32682031857) success · artefacto `voice-bubble-arm64-debug-apk-r64` (48.35 MB comprimido; dentro: `app-arm64-v8a-debug.apk`).
 
-**Siguiente etapa (Reinicio Septiembre 2026)**: Ejecución del backlog de 24 mejoras estructurado en [`MEJORAS-SEPTIEMBRE.md`](file:///root/projects/activos/voice-bubble/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-24), comenzando por los planes aprobados [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md), [`plan-ciclar-mayusculas.md`](file:///root/projects/activos/voice-bubble/plan-ciclar-mayusculas.md) y [`plan-hito4-burbuja-hibrida.md`](plan-hito4-burbuja-hibrida.md) (HB0 en ejecución local, sin push por pedido del dueño).
+**Siguiente etapa (Reinicio Septiembre 2026)**: Ejecución del backlog de 24 mejoras estructurado en [`docs/archive/MEJORAS-SEPTIEMBRE.md`](docs/archive/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-24), comenzando por los planes aprobados [`docs/archive/plan-clipboard.md`](docs/archive/plan-clipboard.md), [`docs/archive/plan-ciclar-mayusculas.md`](docs/archive/plan-ciclar-mayusculas.md) y [`plan-hito4-burbuja-hibrida.md`](plan-hito4-burbuja-hibrida.md) (HB0 en ejecución local, sin push por pedido del dueño).
 
 **Burbuja clásica + modal historial (B1–B7, [`plan-burbuja-historial.md`](plan-burbuja-historial.md))**: implementado local 2026-09-05 (controlador nativo + switch `bubble_history_enabled` + suite `test_bubble_history_suite.py` 55/55 + master 10/10 en verde), pendiente CI tras autorización de push del dueño.
 

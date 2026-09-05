@@ -20,8 +20,6 @@
     <dimen name="kb_row_padding_v">6dp</dimen>
     <dimen name="kb_popup_padding">6dp</dimen>
     <dimen name="kb_snippets_grid_height">100dp</dimen>
-    <!-- Altura compacta de las filas QWERTY dentro de la capa snippets. -->
-    <dimen name="kb_snippet_key_height">34dp</dimen>
     <!-- Altura compacta del campo de busqueda de snippets. -->
     <dimen name="kb_snippet_search_height">36dp</dimen>
     <!-- Altura compacta de chips de snippets (area tactil minima 32dp). -->

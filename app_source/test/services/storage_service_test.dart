@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
@@ -294,23 +295,28 @@ void main() {
 
   group('StorageService - espejo D7 de credenciales STT (K3)', () {
     test('saveSttMirror escribe key y valores canonicos del motor', () async {
+      FlutterSecureStorage.setMockInitialValues({});
       final service = StorageService();
       await service.saveSttMirror(apiKey: 'gsk_prueba_123');
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_stt_api_key'), 'gsk_prueba_123');
+      // La key JAMÁS va en claro a prefs: solo presencia + no sensibles.
+      expect(prefs.getString('kb_stt_api_key'), isNull);
+      expect(prefs.getBool('kb_stt_key_configured'), isTrue);
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
       expect(prefs.getString('kb_stt_model'), CloudSttService.model);
       expect(prefs.getString('kb_stt_language'), CloudSttService.language);
     });
 
     test('clearSttMirror elimina todas las claves del espejo', () async {
+      FlutterSecureStorage.setMockInitialValues({});
       final service = StorageService();
       await service.saveSttMirror(apiKey: 'gsk_temporal');
       await service.clearSttMirror();
 
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('kb_stt_api_key'), isNull);
+      expect(prefs.getBool('kb_stt_key_configured'), isFalse);
       expect(prefs.getString('kb_stt_url'), isNull);
       expect(prefs.getString('kb_stt_model'), isNull);
       expect(prefs.getString('kb_stt_language'), isNull);

@@ -55,7 +55,7 @@ La única app de transcripción que ofrece:
 - Almacenamiento GitHub Actions limitado (APKs comprimidos)
 
 ### Decisiones pendientes
-- (Ninguna pendiente - todas las decisiones están documentadas en plan.md y teclado-voice.md)
+- (Ninguna pendiente - todas las decisiones están documentadas en docs/archive/plan.md y docs/archive/teclado-voice.md)
 
 ## Brand Commitments
 
@@ -69,8 +69,8 @@ La única app de transcripción que ofrece:
 
 - App funcional con 368+ tests
 - Diseño documentado en design.md con tokens Liquid Glass
-- Backlog de 24 mejoras en MEJORAS-SEPTIEMBRE.md
-- Planes aprobados: plan-clipboard.md, plan-ciclar-mayusculas.md
+- Backlog de 24 mejoras en docs/archive/MEJORAS-SEPTIEMBRE.md
+- Planes aprobados (históricos): docs/archive/plan-clipboard.md, docs/archive/plan-ciclar-mayusculas.md
 - UI de laboratorio en laboratorio_ui/index.html (24 variantes de diseño)
 
 ## Product Principles

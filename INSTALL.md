@@ -8,9 +8,9 @@ Los APK se generan automáticamente con **GitHub Actions**; no hay builds locale
 
 1. Abre el repositorio en GitHub (`royleguiza/voice-bubble`) → pestaña **Actions**.
 2. Entra al **run verde más reciente** (check verde junto al nombre del commit).
-3. Baja a la sección **Artifacts** y descarga **`voice-bubble-debug-apk-rN`** (donde `N` es el número del run).
+3. Baja a la sección **Artifacts** y descarga **`voice-bubble-arm64-debug-apk-rN`** (donde `N` es el número del run).
    - Los artefactos se conservan **7 días**; después expiran y hay que usar un run más reciente.
-4. Descomprime el ZIP descargado: dentro está el archivo `.apk`.
+4. Descomprime el ZIP descargado: dentro está `app-arm64-v8a-debug.apk`.
 5. En el teléfono, permite instalar apps de orígenes desconocidos para tu navegador o gestor de archivos:
    - Ajustes de Android → Aplicaciones → Acceso especial → Instalar apps desconocidas → concede el permiso al navegador/gestor de archivos que uses.
 6. Abre el `.apk` y confirma la instalación. Android mostrará el aviso estándar de fuentes desconocidas (es normal: es un APK debug distribuido fuera de una tienda).
@@ -23,14 +23,12 @@ La burbuja requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW
 2. Activa el interruptor de la **burbuja**: la app te llevará al ajuste de sistema "Mostrar sobre otras apps"; concede el permiso a VoiceBubble STT y vuelve.
 3. Con el permiso concedido, la burbuja aparece flotando sobre cualquier app:
    - Arrastrable, con snap al borde (o isla/píldora según tu modo de acople).
-   - Tocar → graba; tocar de nuevo → detiene y transcribe → pegado híbrido en 3 caminos (prioridad fija): 1) nuestro teclado activo → directo en cursor; 2) otro teclado + accesibilidad + switch propio ON → inyectado en el campo; 3) resto → portapapeles + pegado manual. En el APK actual (pre-HB1) el paso 2 aún no inyecta: deja clipboard + aviso.
+   - Tocar → graba; tocar de nuevo → detiene y transcribe → pegado en 2 caminos (prioridad fija): 1) nuestro teclado activo → inserción directa en cursor (`commitText`, sin permisos extra); 2) resto → portapapeles + pegado manual con aviso. Sin accesibilidad declarada (BLOQUEADO 2026-09-05, perfil anti-Play-Protect): no hay inyección con tercer teclado.
 4. Mientras el servicio está activo verás su **notificación persistente** (es obligatoria en Android para un servicio en primer plano).
 
-## 2b. Pegado con otro teclado (modo híbrido) — SUSPENDIDO
+> Histórico: el tercer camino por accesibilidad (inyectar con otro teclado) quedó BLOQUEADO el 2026-09-05 y no se documenta como vigente. Spec archivada en `plan-hito4-burbuja-hibrida.md` §6.
 
-Esta sección queda archivada: desde 2026-09-05 la app no declara servicio de accesibilidad (perfil anti-Play-Protect), así que no hay inyección con tercer teclado. Con otro teclado (DigiWord/Gboard), la burbuja deja el dictado en portapapeles con aviso para pegado manual. Con nuestro teclado, inserción directa en cursor.
-
-## 2c. Alerta de Play Protect (leer si aparece un aviso)
+## 2b. Alerta de Play Protect (leer si aparece un aviso)
 
 1. Al instalar el APK, Play Protect puede mostrar "Aplicación desconocida": es **esperado** en sideload debug sin verificación de identidad de desarrollador (obligatoria desde septiembre 2026). Desde 2026-09-05 la app **no declara accesibilidad**, así que no verás alertas de ese permiso ni bloqueos de protección mejorada por nuestra parte. Si el aviso ofrece "Más detalles → **Instalar de todas formas**", podés continuar; es tu decisión.
 2. Si el sistema **bloquea sin opción de continuar**: es la protección mejorada contra fraude de Google (activa en 185 mercados), una decisión automática, no un error de la app. Avisanos con captura del mensaje exacto.
@@ -96,8 +94,8 @@ Fuera de estos, no hay otros permisos: cero analytics, cero telemetría, y el te
 | El teclado no aparece en el selector | Confirma que está activado en Ajustes → Métodos de entrada (sección 3). Si acabas de instalar, reinicia el teléfono: algunos sistemas tardan en registrar el nuevo IME. |
 | El dictado falla sin conexión | El motor es únicamente cloud (Groq): la transcripción **requiere internet** por diseño. Sin red no hay transcripción; cuando vuelva la conexión, reintenta. |
 | No pide permiso de micrófono | Probablemente se denegó antes ("no volver a preguntar"). Concede `RECORD_AUDIO` manualmente: Ajustes → Aplicaciones → VoiceBubble STT → Permisos → Micrófono. |
-| Play Protect advierte al instalar | Aviso genérico de app desconocida en sideload (§2c): continuar con "Instalar de todas formas". Sin accesibilidad declarada no hay alerta de ese permiso. |
-| Instalación bloqueada sin opción de continuar | Protección mejorada contra fraude de Google en tu región (§2c paso 2); no es un error de la app. |
+| Play Protect advierte al instalar | Aviso genérico de app desconocida en sideload (§2b): continuar con "Instalar de todas formas". Sin accesibilidad declarada no hay alerta de ese permiso. |
+| Instalación bloqueada sin opción de continuar | Protección mejorada contra fraude de Google en tu región (§2b paso 2); no es un error de la app. |
 | El historial está vacío | Es normal tras instalar o reinstalar: el historial empieza vacío y conserva las últimas **20** transcripciones. Los dictados hechos desde el teclado aparecen al volver a abrir la app (se relee el historial compartido al pasar a primer plano). |
 
 ## 7. Requisitos mínimos

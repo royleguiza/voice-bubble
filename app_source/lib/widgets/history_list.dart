@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/transcription.dart';
+import '../ui/transcription_feedback.dart';
 
 class HistoryList extends StatelessWidget {
   final List<Transcription> transcriptions;
@@ -61,19 +61,23 @@ class HistoryList extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           subtitle: Text(
-            _formatTimestamp(t.timestamp),
+            formatTranscriptionTimestamp(t.timestamp),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           trailing: IconButton(
             icon: const Icon(Icons.copy_rounded, size: 18),
-            tooltip: 'Copiar texto',
+            tooltip: copyTooltipMessage,
             onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: t.text));
+              // Fallo de clipboard clasificado: avisa de portapapeles, no
+              // de red, y nunca deja pendiente/reintento (ver helper).
+              final copy = await copyTranscriptionText(t.text);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Texto copiado'),
-                    duration: Duration(seconds: 2),
+                  SnackBar(
+                    content: Text(copy == ClipboardCopyResult.ok
+                        ? copiedToClipboardMessage
+                        : clipboardFailureMessage),
+                    duration: const Duration(seconds: 2),
                   ),
                 );
               }
@@ -84,13 +88,5 @@ class HistoryList extends StatelessWidget {
         );
       },
     );
-  }
-
-  String _formatTimestamp(DateTime dt) {
-    final day = dt.day.toString().padLeft(2, '0');
-    final month = dt.month.toString().padLeft(2, '0');
-    final hour = dt.hour.toString().padLeft(2, '0');
-    final minute = dt.minute.toString().padLeft(2, '0');
-    return '$day/$month/${dt.year} $hour:$minute';
   }
 }

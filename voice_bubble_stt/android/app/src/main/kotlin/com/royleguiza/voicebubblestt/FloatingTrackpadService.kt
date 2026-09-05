@@ -24,17 +24,25 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.core.content.ContextCompat
 import kotlin.math.abs
 
 /**
- * Servicio de superposición universal para la Burbuja Flotante de Trackpad Independiente (Mouse Virtual).
+ * Servicio de superposición local para la Burbuja Flotante de Trackpad Independiente (Mouse Virtual).
  *
- * Permite utilizar un mouse virtual sobre cualquier teclado (Gboard, Samsung, SwiftKey, etc.)
- * o como overlay autónomo en cualquier aplicación sin depender del teclado del sistema.
+ * Servicio NORMAL bajo demanda (START_NOT_STICKY, sin foreground, sin accesibilidad):
+ * lo arranca quien lo necesita (MainActivity/DynamicIsland) y el sistema no lo
+ * resucita solo si el proceso muere.
  *
- * Características avanzadas (MEJ-09 / MEJORAS-SEPTIEMBRE):
+ * Realidad del movimiento (perfil anti-Play-Protect, sin AccessibilityService
+ * declarado): el puntero se mueve SOLO dentro de nuestro propio overlay
+ * (PointerOverlayManager sobre TYPE_APPLICATION_OVERLAY) y los clics/scrolls
+ * hacia otra app están dormidos — VoiceBubbleAccessibilityService.isConnected()
+ * es siempre falso sin declaración en el manifest, así que dispatchTap/
+ * dispatchLongPress/dispatchScroll son no-ops. Movimiento local sí, dispatch
+ * en otra app no sin accesibilidad.
+ *
+ * Características (MEJ-09 / MEJORAS-SEPTIEMBRE):
  * - Rayita superior interactiva (drag handle):
  *   * 1 tap cierra / minimiza directamente.
  *   * Swipe-down cierra (o contrae si está extendido).
@@ -42,7 +50,6 @@ import kotlin.math.abs
  * - Modo bimodal: Dock inferior y MiniPad flotante con snap a bordes.
  * - Soporte de distribución bimodal (Top 50/50 y Wings).
  * - Iconos de mouse limpios con CERO etiquetas de texto.
- * - Despacho universal vía VoiceBubbleAccessibilityService (dispatchTap, dispatchLongPress, dispatchScroll).
  * - Temas: Liquid Glass, Modo Oscuro, Modo Claro.
  *
  * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni persistencia de coordenadas o eventos táctiles.
@@ -52,7 +59,6 @@ class FloatingTrackpadService : Service() {
     companion object {
         const val ACTION_STOP = "com.royleguiza.voicebubblestt.ACTION_STOP_TRACKPAD"
         const val ACTION_SHOW_DOCK = "com.royleguiza.voicebubblestt.ACTION_SHOW_DOCK"
-        const val ACTION_SHOW_MINIPAD = "com.royleguiza.voicebubblestt.ACTION_SHOW_MINIPAD"
 
         @Volatile
         var isRunning: Boolean = false
@@ -69,18 +75,6 @@ class FloatingTrackpadService : Service() {
             val intent = Intent(context, FloatingTrackpadService::class.java)
             context.stopService(intent)
         }
-
-        fun showDock() {
-            instance?.expandToDock()
-        }
-
-        fun showMiniPad() {
-            instance?.expandToMiniPad()
-        }
-
-        fun minimize() {
-            instance?.minimizeToBubble()
-        }
     }
 
     private var windowManager: WindowManager? = null
@@ -96,6 +90,7 @@ class FloatingTrackpadService : Service() {
     private var isExpanded = false
     private var currentMode = "dock" // "dock" o "minipad"
     private var isExtendedHeight = false
+    private var snapAnimator: ValueAnimator? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private val idleDimRunnable = Runnable {
@@ -128,9 +123,12 @@ class FloatingTrackpadService : Service() {
         }
         when (intent?.action) {
             ACTION_SHOW_DOCK -> expandToDock()
-            ACTION_SHOW_MINIPAD -> expandToMiniPad()
         }
-        return START_STICKY
+        // START_NOT_STICKY: servicio de UI bajo demanda, sin foreground ni
+        // estado que rescatar. Si el proceso muere, el sistema NO lo resucita
+        // solo (evita burbujas fantasma y loops de reinicio); quien lo necesite
+        // (MainActivity/DynamicIsland) lo vuelve a arrancar explícitamente.
+        return START_NOT_STICKY
     }
 
     private fun isNightMode(): Boolean {
@@ -262,7 +260,8 @@ class FloatingTrackpadService : Service() {
         }
 
         val startX = bubbleLayoutParams.x
-        ValueAnimator.ofInt(startX, targetX).apply {
+        snapAnimator?.cancel()
+        snapAnimator = ValueAnimator.ofInt(startX, targetX).apply {
             duration = 240L
             interpolator = DecelerateInterpolator()
             addUpdateListener { anim ->
@@ -454,19 +453,38 @@ class FloatingTrackpadService : Service() {
         val tapClick = prefs.getBoolean("flutter.kb_trackpad_tap_to_click", true)
         val secClick = prefs.getString("flutter.kb_trackpad_secondary_click", "2fingers") ?: "2fingers"
         val scrollDir = prefs.getString("flutter.kb_trackpad_scroll_direction", "natural") ?: "natural"
-        val autoReturn = when (val raw = prefs.all["flutter.kb_trackpad_auto_return"]) {
-            is Int -> raw
-            is Long -> raw.toInt()
-            else -> 0
+        val autoReturn = try {
+            when (val raw = prefs.all["flutter.kb_trackpad_auto_return"]) {
+                is Number -> raw.toInt()
+                is String -> raw.toIntOrNull() ?: 0
+                else -> 0
+            }
+        } catch (_: Exception) {
+            0
         }
         val sens = try {
-            prefs.getFloat("flutter.kb_trackpad_sensitivity", 1.2f)
+            when (val raw = prefs.all["flutter.kb_trackpad_sensitivity"]) {
+                is Float -> raw
+                is Double -> raw.toFloat()
+                is Number -> raw.toFloat()
+                is String -> raw.toFloatOrNull() ?: 1.2f
+                else -> 1.2f
+            }
         } catch (_: Exception) {
             1.2f
         }
         val accel = prefs.getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
         val style = prefs.getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
-        val hapticEnabled = prefs.getBoolean("flutter.kb_trackpad_haptic", true)
+        // Contrato kb_trackpad_haptic: el lado Dart guarda String ("subtle"/"none"/"firm").
+        // Leer con getString + default seguro: getBoolean lanzaría ClassCastException
+        // cuando el valor almacenado es String. Solo estos tres valores son válidos.
+        val hapticMode = try {
+            (prefs.getString("flutter.kb_trackpad_haptic", "subtle") ?: "subtle").takeIf {
+                it == "subtle" || it == "none" || it == "firm"
+            } ?: "subtle"
+        } catch (_: Exception) {
+            "subtle"
+        }
         val buttonLayout = prefs.getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
 
         pointerManager?.apply {
@@ -513,12 +531,13 @@ class FloatingTrackpadService : Service() {
                 }
 
                 override fun performHaptic(isFirm: Boolean) {
-                    if (!hapticEnabled) return
+                    if (hapticMode == "none") return
+                    val useFirm = isFirm || hapticMode == "firm"
                     try {
                         val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
                         if (vibrator?.hasVibrator() == true) {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                val effect = if (isFirm) {
+                                val effect = if (useFirm) {
                                     VibrationEffect.createOneShot(35L, VibrationEffect.DEFAULT_AMPLITUDE)
                                 } else {
                                     VibrationEffect.createOneShot(18L, 90)
@@ -526,7 +545,7 @@ class FloatingTrackpadService : Service() {
                                 vibrator.vibrate(effect)
                             } else {
                                 @Suppress("DEPRECATION")
-                                vibrator.vibrate(if (isFirm) 35L else 18L)
+                                vibrator.vibrate(if (useFirm) 35L else 18L)
                             }
                         }
                     } catch (_: Exception) {}
@@ -617,14 +636,6 @@ class FloatingTrackpadService : Service() {
         handler.removeCallbacks(idleDimRunnable)
     }
 
-    fun toggleMode() {
-        if (currentMode == "dock") {
-            expandToMiniPad()
-        } else {
-            expandToDock()
-        }
-    }
-
     fun minimizeToBubble() {
         val wm = windowManager ?: return
         val container = expandedContainer ?: return
@@ -645,6 +656,8 @@ class FloatingTrackpadService : Service() {
     override fun onDestroy() {
         val wm = windowManager
         handler.removeCallbacks(idleDimRunnable)
+        snapAnimator?.cancel()
+        snapAnimator = null
 
         pointerManager?.destroy()
         pointerManager = null
