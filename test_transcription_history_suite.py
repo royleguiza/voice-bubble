@@ -108,8 +108,10 @@ def test_atomic_writes():
           "'${file.path}$_historyTmpSuffix'" in dart_content,
           "Dart debe escribir a .tmp primero")
     check("Dart usa rename con fallback a copy",
-          "await tmpFile.rename(file.path);" in dart_content
-          and "await tmpFile.copy(file.path);" in dart_content,
+          ("tmpFile.renameSync(file.path);" in dart_content
+           or "await tmpFile.rename(file.path);" in dart_content)
+          and ("tmpFile.copySync(file.path);" in dart_content
+               or "await tmpFile.copy(file.path);" in dart_content),
           "Dart debe usar rename con fallback")
 
 

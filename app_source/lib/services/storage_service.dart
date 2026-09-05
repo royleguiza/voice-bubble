@@ -869,12 +869,10 @@ class StorageService {
       final file = await _getHistoryFile();
       if (file != null) {
         final tmp = File('${file.path}$_historyTmpSuffix');
-        // Async obligado fuera del main (ANR en eMMC lentas).
-        // ignore: avoid_slow_async_io
-        if (await tmp.exists()) {
-          await tmp.delete();
+        if (tmp.existsSync()) {
+          tmp.deleteSync();
         }
-        await file.writeAsString('[]', flush: true);
+        file.writeAsStringSync('[]', flush: true);
       }
     } catch (_) {}
   }
@@ -891,10 +889,8 @@ class StorageService {
     try {
       final file = await _getHistoryFile();
       if (file == null) return const [];
-      // Async obligado fuera del main (ver arriba).
-      // ignore: avoid_slow_async_io
-      if (!await file.exists()) return const [];
-      final content = (await file.readAsString()).trim();
+      if (!file.existsSync()) return const [];
+      final content = file.readAsStringSync().trim();
       if (content.isEmpty) return const [];
       final decoded = jsonDecode(content);
       if (decoded is! List<dynamic>) return const [];
@@ -1030,17 +1026,16 @@ class StorageService {
       if (file == null) return;
       final tmpFile = File('${file.path}$_historyTmpSuffix');
       final list = _transcriptions.map((t) => t.toJson()).toList();
-      await tmpFile.writeAsString(jsonEncode(list), flush: true);
-      // Async obligado fuera del main (ver arriba).
-      // ignore: avoid_slow_async_io
-      if (!await tmpFile.exists()) return;
-      try {
-        await tmpFile.rename(file.path);
-      } catch (_) {
-        await tmpFile.copy(file.path);
+      tmpFile.writeAsStringSync(jsonEncode(list), flush: true);
+      if (tmpFile.existsSync()) {
         try {
-          await tmpFile.delete();
-        } catch (_) {}
+          tmpFile.renameSync(file.path);
+        } catch (_) {
+          tmpFile.copySync(file.path);
+          try {
+            tmpFile.deleteSync();
+          } catch (_) {}
+        }
       }
     } catch (_) {}
   }

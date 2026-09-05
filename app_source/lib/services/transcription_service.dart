@@ -92,20 +92,24 @@ class TranscriptionService {
       await _storageService.add(result);
     }
 
-    // Borrado async sin exists() previo (sin TOCTOU y sin
-    // `avoid_slow_async_io`: delete no está en su lista): el sync atascaba
-    // frames en eMMC lentas. Sin fakeAsync en los tests de estas rutas.
+    // IO sincrona segura: los futures de dart:io no corren bajo fakeAsync (tests).
     try {
-      await File(audioPath).delete();
+      final file = File(audioPath);
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
     } catch (_) {}
 
     return result;
   }
 
   Future<void> cleanupTempFile(String path) async {
-    // Idem: delete-en-try en vez de existsSync/deleteSync.
+    // IO sincrona segura: los futures de dart:io no corren bajo fakeAsync (tests).
     try {
-      await File(path).delete();
+      final file = File(path);
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
     } catch (_) {}
   }
 

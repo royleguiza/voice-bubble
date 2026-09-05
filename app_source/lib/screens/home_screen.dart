@@ -488,6 +488,7 @@ class _HomeScreenState extends State<HomeScreen>
         _isTranscribing = true;
       }
       final path = await _transcriptionService.stopRecording();
+      _isStoppingRecording = false;
 
       if (path == null) {
         await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
