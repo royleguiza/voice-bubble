@@ -468,6 +468,8 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _saveIslandPosY(int value) async {
+    // Rango libre: con accesibilidad (trial B) la isla llega a la cámara
+    // (Y≈0); sin ella el nativo aplica el piso táctil bajo la status-bar.
     final clamped = value.clamp(-100, 120);
     setState(() => _islandPosY = clamped);
     await _storageService.setIslandPosY(clamped);

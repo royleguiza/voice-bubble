@@ -4,5 +4,5 @@
     <string name="subtype_es">Español</string>
     <string name="subtype_en">English (US)</string>
     <string name="accessibility_service_name">VoiceBubble Virtual Trackpad</string>
-    <string name="accessibility_service_desc">Permite al trackpad virtual de VoiceBubble realizar clics y desplazamientos en pantalla.</string>
+    <string name="accessibility_service_desc">Permite al trackpad virtual realizar clics y desplazamientos, a la isla dinámica mostrarse sobre la cámara, y (solo si activas el interruptor correspondiente en Ajustes) pegar los dictados de la burbuja en el campo de texto enfocado al usar otros teclados. No lee ni guarda el contenido de la pantalla y nunca actúa en contraseñas.</string>
 </resources>

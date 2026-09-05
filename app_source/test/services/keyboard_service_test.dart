@@ -38,6 +38,8 @@ void main() {
           return openResult;
         case 'showInputMethodPicker':
           return openResult;
+        case 'commitText':
+          return true;
         default:
           return null;
       }
@@ -88,6 +90,14 @@ void main() {
       expect(log.single.method, 'showInputMethodPicker');
     });
 
+    test('commitText envía el texto y refleja el pegado real', () async {
+      mockKeyboardChannel();
+      final service = KeyboardService();
+      expect(await service.commitText('hola'), isTrue);
+      expect(log.single.method, 'commitText');
+      expect(log.single.arguments, {'text': 'hola'});
+    });
+
     test('devuelve false si el nativo lanza error (defensivo)', () async {
       mockKeyboardChannel(failAll: true);
       final service = KeyboardService();
@@ -95,6 +105,7 @@ void main() {
       expect(await service.isKeyboardSelected(), isFalse);
       expect(await service.openKeyboardSettings(), isFalse);
       expect(await service.showInputMethodPicker(), isFalse);
+      expect(await service.commitText('hola'), isFalse);
     });
 
     test('devuelve false sin handler registrado (MissingPluginException)',

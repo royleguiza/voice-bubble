@@ -28,6 +28,10 @@ void main() {
           return true;
         case 'updateBubbleState':
           return true;
+        case 'pushHistoryEntry':
+          return true;
+        case 'updateWaveformLevel':
+          return null;
         default:
           return null;
       }
@@ -117,8 +121,7 @@ void main() {
       expect(tapped, isTrue);
     });
 
-    test('onBubbleClose callback is triggered when platform calls onBubbleClose',
-        () async {
+    test('onBubbleClose callback is triggered when platform calls onBubbleClose',        () async {
       bool closed = false;
       service.onBubbleClose = () {
         closed = true;
@@ -133,6 +136,39 @@ void main() {
       );
 
       expect(closed, isTrue);
+    });
+
+    test('onBubbleCancel callback is triggered when platform calls onBubbleCancel',
+        () async {
+      bool cancelled = false;
+      service.onBubbleCancel = () {
+        cancelled = true;
+      };
+
+      await messenger.handlePlatformMessage(
+        FloatingBubbleService.channelName,
+        const StandardMethodCodec().encodeMethodCall(
+          const MethodCall('onBubbleCancel'),
+        ),
+        (ByteData? data) {},
+      );
+
+      expect(cancelled, isTrue);
+    });
+
+    test('pushHistoryEntry sends text to native history', () async {
+      final res = await service.pushHistoryEntry('hola mundo');
+      expect(res, isTrue);
+      expect(log.last.method, 'pushHistoryEntry');
+      expect(log.last.arguments, {'text': 'hola mundo'});
+    });
+
+    test('updateWaveformLevel sends clamped level without throwing', () async {
+      await service.updateWaveformLevel(0.5);
+      expect(log.last.method, 'updateWaveformLevel');
+      expect(log.last.arguments, {'level': 0.5});
+      await service.updateWaveformLevel(9.9);
+      expect(log.last.arguments, {'level': 1.0});
     });
   });
 }

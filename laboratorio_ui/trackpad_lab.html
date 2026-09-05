@@ -663,9 +663,7 @@
     }
 
     .dynamic-island-pill.island-theme-light .rec-timer,
-    .dynamic-island-pill.island-theme-light #recTimerText,
-    .dynamic-island-pill.island-theme-light .status-text,
-    .dynamic-island-pill.island-theme-light #statusText {
+    .dynamic-island-pill.island-theme-light #recTimerText {
       color: #1f2430 !important;
     }
 
@@ -675,8 +673,8 @@
     }
 
     .dynamic-island-pill.island-theme-light .rec-action-btn.cancel {
-      background: rgba(0, 0, 0, 0.08) !important;
-      color: #ff453a !important;
+      background: #ff453a !important;
+      color: #ffffff !important;
     }
 
     .dynamic-island-pill.island-theme-light .history-card-row {
@@ -892,6 +890,7 @@
       height: 22px;
       flex: 1;
       justify-content: center;
+      cursor: pointer;
     }
 
     .wave-bar {
@@ -947,20 +946,21 @@
     .rec-actions {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 10px;
     }
 
     .rec-action-btn {
-      width: 30px;
-      height: 30px;
-      border-radius: 15px;
+      width: 32px;
+      height: 32px;
+      border-radius: 16px;
       border: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       color: #ffffff;
-      font-size: 15px;
+      font-size: 16px;
+      font-weight: 700;
       transition: transform 0.1s;
     }
 
@@ -969,7 +969,7 @@
     }
 
     .rec-action-btn.cancel {
-      background: rgba(255, 255, 255, 0.22);
+      background: #ff453a;
     }
 
     .rec-action-btn:hover {
@@ -997,16 +997,6 @@
 
     @keyframes spin {
       to { transform: rotate(360deg); }
-    }
-
-    .status-text {
-      font-size: 15px;
-      font-weight: 600;
-      color: #ffffff;
-    }
-
-    .dynamic-island-pill.mode-liquid-glass .status-text {
-      color: var(--text-primary);
     }
 
     /* ================================================================
@@ -2413,7 +2403,7 @@
                   <span class="rec-timer" id="recTimerText">00:03</span>
                 </div>
 
-                <div class="waveform-visualizer">
+                <div class="waveform-visualizer" onclick="stopRecording(event)" title="Toca para confirmar y transcribir">
                   <div class="wave-bar speaking"></div>
                   <div class="wave-bar speaking"></div>
                   <div class="wave-bar speaking"></div>
@@ -2436,10 +2426,10 @@
               </div>
             </div>
 
-            <!-- PROCESSING & COMPLETED FEEDBACK VIEW -->
+            <!-- PROCESSING & COMPLETED FEEDBACK VIEW (solo animación, sin textos) -->
             <div class="island-status-view" id="islandStatusView">
               <div class="status-spinner" id="statusSpinner"></div>
-              <span class="status-text" id="statusText">Procesando con Groq...</span>
+              <svg id="statusCheck" viewBox="0 0 24 24" style="display:none; width:22px; height:22px; fill:none; stroke:#30d158; stroke-width:2.5;"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
 
             <!-- INTEGRATED HISTORY MODAL (MORPHS INSIDE THE EXPANDED PILL) -->
@@ -3029,13 +3019,13 @@
       const island = document.getElementById('dynamicIsland');
       const recView = document.getElementById('islandRecordingView');
       const statusView = document.getElementById('islandStatusView');
-      const statusText = document.getElementById('statusText');
+      const statusCheck = document.getElementById('statusCheck');
       const spinner = document.getElementById('statusSpinner');
 
       recView.style.display = 'none';
       statusView.style.display = 'flex';
       spinner.style.display = 'block';
-      statusText.textContent = 'Procesando con Groq...';
+      statusCheck.style.display = 'none';
 
       if (state.expandMode !== 'center') {
         applyAdaptiveRecordingBounds(island, 240, 48);
@@ -3043,7 +3033,7 @@
 
       setTimeout(() => {
         spinner.style.display = 'none';
-        statusText.textContent = '✓ ¡Copiado y pegado!';
+        statusCheck.style.display = 'block';
         appendTerminalLog('Transcripción: "Dictado completado con éxito."', '#7ee787');
         appendTerminalLog('Pegado automático en el cursor vía Accesibilidad', '#58a6ff');
 

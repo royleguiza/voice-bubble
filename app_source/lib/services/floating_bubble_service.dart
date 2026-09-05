@@ -13,6 +13,9 @@ class FloatingBubbleService {
   final MethodChannel _channel;
   void Function()? onBubbleTap;
   void Function()? onBubbleClose;
+  /// La ✕ nativa descarta el audio en curso: detener el recorder y borrar
+  /// el temporal sin transcribir (el próximo mic inicia audio nuevo).
+  void Function()? onBubbleCancel;
 
   FloatingBubbleService({MethodChannel? channel})
       : _channel = channel ?? const MethodChannel(channelName) {
@@ -26,6 +29,9 @@ class FloatingBubbleService {
         break;
       case 'onBubbleClose':
         onBubbleClose?.call();
+        break;
+      case 'onBubbleCancel':
+        onBubbleCancel?.call();
         break;
       default:
         break;
@@ -103,5 +109,27 @@ class FloatingBubbleService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Escribe una transcripción en el historial unificado nativo para que la
+  /// modal de la isla la vea (misma fuente que el teclado).
+  Future<bool> pushHistoryEntry(String text) async {
+    try {
+      final res = await _channel.invokeMethod<bool>('pushHistoryEntry', {
+        'text': text,
+      });
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Nivel real del mic (0..1) para la onda reactiva de la isla en grabación.
+  Future<void> updateWaveformLevel(double level) async {
+    try {
+      await _channel.invokeMethod('updateWaveformLevel', {
+        'level': level.clamp(0.0, 1.0),
+      });
+    } catch (_) {}
   }
 }

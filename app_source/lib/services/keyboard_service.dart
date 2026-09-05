@@ -48,4 +48,15 @@ class KeyboardService {
       return false;
     }
   }
+
+  /// Intenta pegar [text] en el cursor si el teclado propio está activo.
+  /// false con otro teclado (ahí solo queda el portapapeles).
+  Future<bool> commitText(String text) async {
+    try {
+      return await _channel.invokeMethod<bool>('commitText', {'text': text}) ??
+          false;
+    } catch (_) {
+      return false;
+    }
+  }
 }

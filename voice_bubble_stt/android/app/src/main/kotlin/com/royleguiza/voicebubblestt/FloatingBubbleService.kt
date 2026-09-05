@@ -82,6 +82,16 @@ class FloatingBubbleService : Service() {
             instance?.dynamicIslandController?.reloadConfiguration()
         }
 
+        /** Nivel real del mic (0..1) hacia la isla activa para la onda reactiva. */
+        fun waveformLevel(level: Float) {
+            try {
+                accessibilityIsland?.setWaveformLevel(level)
+            } catch (_: Exception) {}
+            try {
+                instance?.dynamicIslandController?.setWaveformLevel(level)
+            } catch (_: Exception) {}
+        }
+
         /** La isla de accesibilidad ya está activa: soltar el duplicado local. */
         fun dropLocalIsland() {
             instance?.releaseLocalIslandForAccessibility()
@@ -98,6 +108,8 @@ class FloatingBubbleService : Service() {
     interface BubbleActionListener {
         fun onBubbleTap()
         fun onBubbleClose()
+        /** La ✕ de la isla descarta el audio: Dart debe detener y borrar, no transcribir. */
+        fun onBubbleCancel()
     }
 
     private var windowManager: WindowManager? = null
@@ -204,7 +216,11 @@ class FloatingBubbleService : Service() {
     }
 
     private fun setupDynamicIsland() {
-        // Si la isla de accesibilidad ya está activa, no crear duplicado local.
+        // Si la accesibilidad puede hospedar la isla exacta sobre la cámara,
+        // crearla ahí primero; si quedó activa, no duplicar la local.
+        try {
+            VoiceBubbleAccessibilityService.ensureIsland()
+        } catch (_: Exception) {}
         if (accessibilityIsland != null) return
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         dynamicIslandController = DynamicIslandController(
@@ -215,6 +231,9 @@ class FloatingBubbleService : Service() {
             },
             onCancelRecording = {
                 updateState("idle")
+                try {
+                    onBubbleActionListener?.onBubbleCancel()
+                } catch (_: Exception) {}
             },
             onStopRecording = {
                 onBubbleActionListener?.onBubbleTap()
@@ -374,8 +393,13 @@ class FloatingBubbleService : Service() {
             } catch (_: Exception) {}
             bubbleView = null
         }
-        onBubbleActionListener?.onBubbleClose()
+        // La isla pertenece a la burbuja: al detenerse se va con ella.
+        // instance=null ANTES para que el teardown no restaure el fallback local.
         instance = null
+        try {
+            VoiceBubbleAccessibilityService.removeIsland()
+        } catch (_: Exception) {}
+        onBubbleActionListener?.onBubbleClose()
     }
 
     class BubbleCanvasView(context: Context) : View(context) {

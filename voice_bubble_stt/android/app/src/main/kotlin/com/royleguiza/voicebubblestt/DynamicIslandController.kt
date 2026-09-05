@@ -59,9 +59,8 @@ import kotlin.math.min
  *    - Expansión horizontal fluida a 330dp x 48dp (r=24dp) con adaptación inteligente a los bordes de pantalla.
  *    - Punto rojo pulsante, cronómetro M:SS en vivo, visualizador de onda con 9 barras reactivas desfasadas,
  *      botón de confirmación [✓] y botón de cancelación [✕].
- * 5. En modo Procesamiento:
- *    - Indicador giratorio (spinner) de progreso y texto de estado "Procesando con Groq...".
- *    - Transición fluida de éxito y colapso automático.
+ * 5. En modo Procesamiento/Éxito: solo animación (spinner, luego check),
+ *    sin textos; colapso automático.
  *
  * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni telemetría de audios ni textos de transcripción.
  *
@@ -106,10 +105,14 @@ class DynamicIslandController(
     private var historyScrollView: ScrollView? = null
     private var historyCardsList: LinearLayout? = null
     private var spinnerView: ProgressBar? = null
+    private var statusCheckView: ImageView? = null
 
     private val waveBars = ArrayList<View>()
     private val waveAnimators = ArrayList<ValueAnimator>()
     private val waveDelays = longArrayOf(50L, 200L, 350L, 100L, 450L, 250L, 400L, 150L, 300L)
+    // Onda reactiva: multiplicadores fijos por barra (sin azar, testeable).
+    private val waveMults = floatArrayOf(1.0f, 0.7f, 0.85f, 0.6f, 0.95f, 0.75f, 0.9f, 0.65f, 0.8f)
+    private var waveReactive = false
 
     private var morphAnimator: ValueAnimator? = null
     private var currentRadiusDp = 18f
@@ -160,7 +163,7 @@ class DynamicIslandController(
     private var widthDp: Int = 184
     private var heightDp: Int = 36
     private var slotOrder: String = "trackpad_camera_mic"
-    private var islandTheme: String = "glass"
+    private var islandTheme: String = "dark"
     private var waveformEnabled: Boolean = true
 
     private val prefChangeListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -168,6 +171,30 @@ class DynamicIslandController(
             mainHandler.post {
                 reloadConfiguration()
             }
+        }
+    }
+
+    /** Borde superior táctil = barras de estado reales (con notch) + 8dp.
+     * En API 30+ se lee el inset aplicado por el sistema (incluye el cutout
+     * de la cámara); antes se usa el recurso + margen. Sin esto la píldora
+     * bajo la cámara queda en zona muda (este equipo: cámara 0..40dp). */
+    private fun statusBarFloorDp(): Int {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val insets = windowManager.currentWindowMetrics.windowInsets
+                    .getInsets(android.view.WindowInsets.Type.statusBars())
+                (insets.top / density).toInt() + 8
+            } else {
+                val resId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+                val statusDp = if (resId > 0) {
+                    (context.resources.getDimensionPixelSize(resId) / density).toInt()
+                } else {
+                    24
+                }
+                statusDp + 8
+            }
+        } catch (_: Throwable) {
+            48
         }
     }
 
@@ -187,6 +214,14 @@ class DynamicIslandController(
                 ?: (prefs.all["island_pos_x"] as? Number)?.toInt() ?: 0
             posY = (prefs.all["flutter.island_pos_y"] as? Number)?.toInt()
                 ?: (prefs.all["island_pos_y"] as? Number)?.toInt() ?: 12
+            // Piso táctil solo sin overlay de accesibilidad: el
+            // APPLICATION_OVERLAY no recibe touch dentro de la status-bar.
+            // Con accesibilidad (trial B) la isla vive sobre la cámara (Y≈0).
+            posY = if (overlayType == WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY) {
+                max(posY, -100)
+            } else {
+                max(posY, statusBarFloorDp())
+            }
             widthDp = (prefs.all["flutter.island_width"] as? Number)?.toInt()
                 ?: (prefs.all["island_width"] as? Number)?.toInt() ?: 184
             heightDp = (prefs.all["flutter.island_height"] as? Number)?.toInt()
@@ -194,7 +229,7 @@ class DynamicIslandController(
             slotOrder = prefs.getString("flutter.island_slot_order", null)
                 ?: prefs.getString("island_slot_order", "trackpad_camera_mic") ?: "trackpad_camera_mic"
             islandTheme = prefs.getString("flutter.island_theme", null)
-                ?: prefs.getString("island_theme", "glass") ?: "glass"
+                ?: prefs.getString("island_theme", "dark") ?: "dark"
             waveformEnabled = if (prefs.contains("flutter.island_waveform_enabled")) {
                 prefs.getBoolean("flutter.island_waveform_enabled", true)
             } else {
@@ -576,9 +611,22 @@ class DynamicIslandController(
             waveBars.add(waveBar)
             waveContainer.addView(waveBar)
         }
+        // Tap en ondas o fondo = confirmar (evita errarle entre ✓ y ✕ juntas).
+        waveContainer.isClickable = true
+        waveContainer.setOnClickListener {
+            try {
+                onStopRecording()
+            } catch (_: Throwable) {}
+        }
         root.addView(waveContainer)
+        root.isClickable = true
+        root.setOnClickListener {
+            try {
+                onStopRecording()
+            } catch (_: Throwable) {}
+        }
 
-        // Acciones: Botón de Finalización [✓] y Botón de Cancelación [✕]
+        // Acciones: círculos grandes separados (✓ verde = OK, ✕ roja = descartar).
         val actionsGroup = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -588,15 +636,19 @@ class DynamicIslandController(
             )
         }
 
+        val actionSize = (32 * density).toInt()
         val btnFinish = TextView(context).apply {
             text = "✓"
-            setTextColor(Color.parseColor("#30D158"))
-            textSize = 16f
+            setTextColor(Color.WHITE)
+            textSize = 17f
             typeface = android.graphics.Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            val s = (30 * density).toInt()
-            layoutParams = LinearLayout.LayoutParams(s, s).apply {
-                setMargins(0, 0, (4 * density).toInt(), 0)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#FF30D158"))
+            }
+            layoutParams = LinearLayout.LayoutParams(actionSize, actionSize).apply {
+                setMargins(0, 0, (10 * density).toInt(), 0)
             }
             contentDescription = "Detener y Transcribir"
             setOnClickListener {
@@ -609,11 +661,15 @@ class DynamicIslandController(
 
         val btnCancel = TextView(context).apply {
             text = "✕"
-            setTextColor(Color.parseColor("#FF453A"))
-            textSize = 16f
+            setTextColor(Color.WHITE)
+            textSize = 15f
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
             gravity = Gravity.CENTER
-            val s = (30 * density).toInt()
-            layoutParams = LinearLayout.LayoutParams(s, s)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#FFFF453A"))
+            }
+            layoutParams = LinearLayout.LayoutParams(actionSize, actionSize)
             contentDescription = "Cancelar Grabación"
             setOnClickListener {
                 try {
@@ -629,6 +685,7 @@ class DynamicIslandController(
 
     private fun startWaveformAnimation() {
         stopWaveformAnimation()
+        waveReactive = false
         if (!waveformEnabled) return
         for (i in 0 until waveBars.size.coerceAtMost(waveDelays.size)) {
             val bar = waveBars[i]
@@ -651,6 +708,7 @@ class DynamicIslandController(
     }
 
     private fun stopWaveformAnimation() {
+        waveReactive = false
         for (anim in waveAnimators) {
             try { anim.cancel() } catch (_: Throwable) {}
         }
@@ -658,6 +716,37 @@ class DynamicIslandController(
         for (bar in waveBars) {
             try { bar.scaleY = 0.2f } catch (_: Throwable) {}
         }
+    }
+
+    /**
+     * Nivel real del micrófono (0..1, pico del WAV en Dart). Al primer nivel
+     * apaga la animación decorativa y la onda refleja la voz: en silencio
+     * (<0.05) las barras colapsan a ticks mínimos (línea punteada).
+     */
+    fun setWaveformLevel(level: Float) {
+        try {
+            if (!isRecording) return
+            if (!waveReactive) {
+                waveReactive = true
+                for (anim in waveAnimators) {
+                    try { anim.cancel() } catch (_: Throwable) {}
+                }
+                waveAnimators.clear()
+            }
+            if (waveBars.isEmpty()) return
+            val lv = level.coerceIn(0f, 1f)
+            for (i in waveBars.indices) {
+                val m = waveMults[i % waveMults.size]
+                val target = if (lv < 0.05f) {
+                    0.12f
+                } else {
+                    0.2f + 0.8f * (lv * m).coerceIn(0f, 1f)
+                }
+                try {
+                    waveBars[i].scaleY = target
+                } catch (_: Throwable) {}
+            }
+        } catch (_: Throwable) {}
     }
 
     private fun buildStatusView(): LinearLayout {
@@ -670,12 +759,10 @@ class DynamicIslandController(
             )
             setPadding((14 * density).toInt(), 0, (14 * density).toInt(), 0)
 
-            // Indicador giratorio (spinner) de progreso
+            // Indicador giratorio de progreso (sin textos: solo animación suave)
             val spinner = ProgressBar(context, null, android.R.attr.progressBarStyleSmall).apply {
                 val s = (18 * density).toInt()
-                layoutParams = LinearLayout.LayoutParams(s, s).apply {
-                    setMargins(0, 0, (10 * density).toInt(), 0)
-                }
+                layoutParams = LinearLayout.LayoutParams(s, s)
                 isIndeterminate = true
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     indeterminateTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#58A6FF"))
@@ -684,15 +771,21 @@ class DynamicIslandController(
             spinnerView = spinner
             addView(spinner)
 
-            val isLight = islandTheme == "light"
-            val tvStatus = TextView(context).apply {
-                id = View.generateViewId()
-                text = "Procesando con Groq..."
-                setTextColor(if (isLight) Color.parseColor("#1F2430") else Color.WHITE)
-                textSize = 13f
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            // Check de éxito (se muestra 1.2 s y colapsa, sin textos)
+            val check = ImageView(context).apply {
+                try {
+                    setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_check))
+                } catch (_: Throwable) {
+                    try { setImageResource(R.drawable.ic_check) } catch (_: Throwable) {}
+                }
+                setColorFilter(Color.parseColor("#30D158"))
+                val s = (22 * density).toInt()
+                layoutParams = LinearLayout.LayoutParams(s, s)
+                contentDescription = "Listo"
+                visibility = View.GONE
             }
-            addView(tvStatus)
+            statusCheckView = check
+            addView(check)
         }
     }
 
@@ -1259,11 +1352,7 @@ class DynamicIslandController(
             statusView?.visibility = View.VISIBLE
             statusView?.alpha = 1f
             spinnerView?.visibility = View.VISIBLE
-
-            statusView?.let { root ->
-                val tv = root.getChildAt(1) as? TextView
-                tv?.text = "Procesando con Groq..."
-            }
+            statusCheckView?.visibility = View.GONE
 
             val bounds = calculateAdaptiveBounds(240, 48)
             animateBoundsAndMorph(
@@ -1288,10 +1377,7 @@ class DynamicIslandController(
             statusView?.alpha = 1f
 
             spinnerView?.visibility = View.GONE
-            statusView?.let { root ->
-                val tv = root.getChildAt(1) as? TextView
-                tv?.text = "✓ ¡Copiado y pegado!"
-            }
+            statusCheckView?.visibility = View.VISIBLE
 
             val runnable = Runnable {
                 try {
@@ -1382,6 +1468,7 @@ class DynamicIslandController(
                         camPunch?.isEnabled = true
                         camPunch?.contentDescription = "Abrir Historial de Transcripciones"
                         spinnerView?.visibility = View.VISIBLE
+                        statusCheckView?.visibility = View.GONE
                     } catch (_: Throwable) {}
                 }
             )

@@ -35,7 +35,7 @@ void main() {
       expect(StorageService.islandSlotOrders, ['trackpad_camera_mic', 'mic_camera_trackpad']);
 
       expect(StorageService.islandThemeKey, 'island_theme');
-      expect(StorageService.defaultIslandTheme, 'glass');
+      expect(StorageService.defaultIslandTheme, 'dark');
       expect(StorageService.islandThemes, ['glass', 'dark', 'light']);
 
       expect(StorageService.islandWaveformEnabledKey, 'island_waveform_enabled');
@@ -47,7 +47,7 @@ void main() {
       expect(await storage.getIslandWidth(), 184);
       expect(await storage.getIslandHeight(), 36);
       expect(await storage.getIslandSlotOrder(), 'trackpad_camera_mic');
-      expect(await storage.getIslandTheme(), 'glass');
+      expect(await storage.getIslandTheme(), 'dark');
       expect(await storage.getIslandWaveformEnabled(), true);
     });
 

@@ -34,6 +34,20 @@ class VoiceBubbleAccessibilityService : AccessibilityService() {
 
         fun isConnected(): Boolean = instance != null
 
+        /** El FGS la llama al arrancar: crea la isla si la burbuja está activa. */
+        fun ensureIsland() {
+            try {
+                instance?.setupIslandOverlayIfNeeded()
+            } catch (_: Throwable) {}
+        }
+
+        /** El FGS la llama al detenerse: la isla pertenece a la burbuja activa. */
+        fun removeIsland() {
+            try {
+                instance?.teardownIslandOverlay()
+            } catch (_: Throwable) {}
+        }
+
         /**
          * Despacha un tap rápido (clic primario / izquierdo) en la posición (x, y).
          */
@@ -205,6 +219,10 @@ class VoiceBubbleAccessibilityService : AccessibilityService() {
             if (islandController != null) return
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
             val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            // La isla pertenece a la burbuja: sin burbuja activa no aparecer sola.
+            val bubbleOn = prefs.getBoolean("flutter.floating_bubble_enabled", false) ||
+                prefs.getBoolean("floating_bubble_enabled", false)
+            if (!bubbleOn) return
             val dockingMode = prefs.getString("flutter.bubble_docking_mode", null)
                 ?: prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
             if (dockingMode == "classic_bubble") return
@@ -220,6 +238,9 @@ class VoiceBubbleAccessibilityService : AccessibilityService() {
                 onCancelRecording = {
                     try {
                         FloatingBubbleService.updateState("idle")
+                    } catch (_: Throwable) {}
+                    try {
+                        FloatingBubbleService.onBubbleActionListener?.onBubbleCancel()
                     } catch (_: Throwable) {}
                 },
                 onStopRecording = {

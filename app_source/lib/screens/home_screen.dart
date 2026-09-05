@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/transcription_service.dart';
 import '../services/storage_service.dart';
 import '../services/cloud_stt_service.dart';
 import '../services/floating_bubble_service.dart';
+import '../services/keyboard_service.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import 'settings_screen.dart';
@@ -36,12 +39,20 @@ class _HomeScreenState extends State<HomeScreen>
   late final StorageService _storageService;
   late final FloatingBubbleService _floatingBubbleService;
   final _secureStorage = const FlutterSecureStorage();
+  final _keyboardService = KeyboardService();
 
   bool _isRecording = false;
   bool _isTranscribing = false;
   bool _isStartingRecording = false;
   bool _isStoppingRecording = false;
   bool _shouldStopAfterStart = false;
+  // La ✕ nativa durante el arranque: al terminar de iniciar, descartar el
+  // audio en vez de transcribirlo (el próximo mic inicia audio nuevo).
+  bool _discardAfterStart = false;
+  // Medidor de nivel real para la onda reactiva de la isla (pico del WAV).
+  Timer? _levelTimer;
+  String? _recordingPath;
+  double _lastLevel = 0;
   String _resultText = '';
   // Timestamp REAL de la transcripción mostrada en el popup: se captura
   // junto a [_resultText] al recibirla, nunca DateTime.now() en build.
@@ -63,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen>
         widget.floatingBubbleService ?? FloatingBubbleService();
     _floatingBubbleService.onBubbleTap = _handleBubbleTap;
     _floatingBubbleService.onBubbleClose = _handleBubbleClose;
+    _floatingBubbleService.onBubbleCancel = _handleBubbleCancel;
 
     if (widget.transcriptionService != null) {
       _transcriptionService = widget.transcriptionService!;
@@ -89,6 +101,31 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _handleBubbleClose() {
     _storageService.saveFloatingBubbleEnabled(false);
+  }
+
+  /// La ✕ de la isla descarta la grabación en curso: detener el recorder,
+  /// borrar el temporal y volver a idle SIN transcribir. Sin esto, el mic
+  /// siguiente detenía el audio viejo y lo transcribía ("procesando" fantasma).
+  Future<void> _handleBubbleCancel() async {
+    _stopLevelMeter();
+    if (_isStartingRecording) {
+      _discardAfterStart = true;
+      _shouldStopAfterStart = false;
+      return;
+    }
+    if (_isStoppingRecording || _isTranscribing) return;
+    if (_isRecording) {
+      try {
+        final path = await _transcriptionService.stopRecording();
+        if (path != null) {
+          await _transcriptionService.cleanupTempFile(path);
+        }
+      } catch (_) {}
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+      if (mounted) setState(() => _isRecording = false);
+    } else {
+      await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+    }
   }
 
   Future<void> _loadApiKey() async {
@@ -163,6 +200,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
     _isStartingRecording = true;
     _shouldStopAfterStart = false;
+    _discardAfterStart = false;
     final previousPending = _pendingAudioPath;
     _pendingAudioPath = null;
     if (mounted) {
@@ -191,13 +229,30 @@ class _HomeScreenState extends State<HomeScreen>
         _isStartingRecording = false;
         _isRecording = true;
       }
-      if (_shouldStopAfterStart) {
+      if (_discardAfterStart) {
+        // Cancelado con ✕ durante el arranque: borrar sin transcribir.
+        _discardAfterStart = false;
+        try {
+          final discardPath = await _transcriptionService.stopRecording();
+          if (discardPath != null) {
+            await _transcriptionService.cleanupTempFile(discardPath);
+          }
+        } catch (_) {}
+        await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+        if (mounted) {
+          setState(() => _isRecording = false);
+        } else {
+          _isRecording = false;
+        }
+      } else if (_shouldStopAfterStart) {
         _shouldStopAfterStart = false;
         await _stopRecording();
       }
+      if (_isRecording) _startLevelMeter(path);
     } catch (e) {
       _isStartingRecording = false;
       _shouldStopAfterStart = false;
+      _discardAfterStart = false;
       await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() {});
@@ -206,6 +261,59 @@ class _HomeScreenState extends State<HomeScreen>
         );
       }
     }
+  }
+
+  /// Medidor de nivel real para la onda reactiva de la isla: pico de los
+  /// últimos ~100 ms del WAV en curso (PCM 16 bits mono 16 kHz, cabecera
+  /// RIFF de 44 bytes). IO síncrona (segura bajo fakeAsync) cada 120 ms.
+  void _startLevelMeter(String path) {
+    _stopLevelMeter();
+    _recordingPath = path;
+    _lastLevel = 0;
+    _levelTimer =
+        Timer.periodic(const Duration(milliseconds: 120), (_) => _emitLevel());
+  }
+
+  void _stopLevelMeter() {
+    _levelTimer?.cancel();
+    _levelTimer = null;
+    _recordingPath = null;
+    _lastLevel = 0;
+  }
+
+  void _emitLevel() {
+    final path = _recordingPath;
+    if (path == null || !_isRecording) return;
+    double level = 0;
+    try {
+      final file = File(path);
+      if (file.existsSync()) {
+        final len = file.lengthSync();
+        const header = 44;
+        const window = 3200;
+        if (len > header + 64) {
+          final start = (len - window).clamp(header, len);
+          final raf = file.openSync(mode: FileMode.read);
+          try {
+            raf.setPositionSync(start);
+            final bytes = raf.readSync(len - start);
+            final bd = ByteData.sublistView(bytes);
+            int peak = 0;
+            for (int i = 0; i + 1 < bd.lengthInBytes; i += 2) {
+              final s = bd.getInt16(i, Endian.little).abs();
+              if (s > peak) peak = s;
+            }
+            level = (peak / 32768).clamp(0.0, 1.0);
+          } finally {
+            raf.closeSync();
+          }
+        }
+      }
+    } catch (_) {}
+    // Ataque rápido, caída lenta para una onda estable.
+    _lastLevel =
+        level > _lastLevel ? level : _lastLevel * 0.6 + level * 0.4;
+    unawaited(_floatingBubbleService.updateWaveformLevel(_lastLevel));
   }
 
   /// Hold demasiado corto (<300 ms): descartar como toque accidental.
@@ -227,7 +335,29 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// Intenta pegar en el cursor con el teclado propio; con otro teclado
+  /// Android lo prohíbe y queda el portapapeles: avisar pegado manual.
+  Future<void> _pasteOrCopyFeedback(String text) async {
+    bool pasted = false;
+    try {
+      pasted = await _keyboardService.commitText(text);
+    } catch (_) {}
+    if (!pasted && mounted) {
+      try {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              content: Text('Copiado al portapapeles'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+      } catch (_) {}
+    }
+  }
+
   Future<void> _stopRecording() async {
+    _stopLevelMeter();
     if (_isStartingRecording) {
       _shouldStopAfterStart = true;
       return;
@@ -274,6 +404,9 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final result = await _transcriptionService.transcribe(path);
       await Clipboard.setData(ClipboardData(text: result.text));
+      // Write-through al historial unificado nativo para la modal de la isla.
+      await _floatingBubbleService.pushHistoryEntry(result.text);
+      await _pasteOrCopyFeedback(result.text);
       await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() {
@@ -319,6 +452,8 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final result = await _transcriptionService.transcribe(path);
       await Clipboard.setData(ClipboardData(text: result.text));
+      await _floatingBubbleService.pushHistoryEntry(result.text);
+      await _pasteOrCopyFeedback(result.text);
       await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
       if (mounted) {
         setState(() {
@@ -475,8 +610,10 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _stopLevelMeter();
     _floatingBubbleService.onBubbleTap = null;
     _floatingBubbleService.onBubbleClose = null;
+    _floatingBubbleService.onBubbleCancel = null;
     _popupCtrl.dispose();
     super.dispose();
   }

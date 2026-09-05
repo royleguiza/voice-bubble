@@ -210,7 +210,8 @@ class VoiceKeyboardService : InputMethodService() {
         instance = this
         clipboardStore = ClipboardStore(this)
         transcriptionRepo = TranscriptionHistoryRepository(this)
-        transcriptionRepo.purgePreviousSessionHistory()
+        // Historial persistente FIFO-20: sin purga (borraba lo dictado con
+        // la píldora/la app cada vez que el IME se recreaba).
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
         try {
             cm?.addPrimaryClipChangedListener(clipboardListener)

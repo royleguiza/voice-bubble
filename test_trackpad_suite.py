@@ -74,8 +74,8 @@ with open(manifest_path, "r", encoding="utf-8") as f:
     manifest_content = f.read()
 
 check("AndroidManifest declara SYSTEM_ALERT_WINDOW", 'android.permission.SYSTEM_ALERT_WINDOW' in manifest_content)
-check("AndroidManifest libre de BIND_ACCESSIBILITY_SERVICE (Play Protect seguro)", 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest_content)
-check("AndroidManifest no declara VoiceBubbleAccessibilityService (perfil limpio r84)", 'android:name=".VoiceBubbleAccessibilityService"' not in manifest_content)
+check("AndroidManifest declara BIND_ACCESSIBILITY_SERVICE (trial B: isla exacta)", 'android.permission.BIND_ACCESSIBILITY_SERVICE' in manifest_content)
+check("AndroidManifest declara VoiceBubbleAccessibilityService (trial B: isla exacta)", 'android:name=".VoiceBubbleAccessibilityService"' in manifest_content)
 check("AndroidManifest no declara FloatingTrackpadService (Play Protect seguro)", 'android:name=".FloatingTrackpadService"' not in manifest_content)
 
 gradle_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/build.gradle.kts")

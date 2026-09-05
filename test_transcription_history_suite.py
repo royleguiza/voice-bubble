@@ -131,8 +131,14 @@ def test_simulated_cross_platform_fifo():
 
     print("  [PASS] Simulación completada con éxito: FIFO-20 y consistencia temporal perfecta.")
 
-def test_session_scoped_history_purge():
-    print("  [TEST] Verificando purga de sesión única (Session-Scoped Ephemeral History)...")
+def test_persistent_fifo_history():
+    # Contrato vigente (2026-09-05, dueño): historial PERSISTENTE FIFO-20.
+    # La purga automática de "sesión única" se retiró porque borraba los
+    # dictados de la píldora/la app cada vez que el IME se recreaba y vaciaba
+    # la modal de historial de la isla. Las funciones de purga se conservan
+    # para un futuro borrado explícito por el usuario. Sin impacto en
+    # Play Protect (evalúa capacidades declaradas, no retención de historial).
+    print("  [TEST] Verificando historial persistente FIFO-20 (sin purga automática)...")
     kt_file = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/TranscriptionHistoryRepository.kt"
     vk_file = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt"
     dart_file = "app_source/lib/services/storage_service.dart"
@@ -147,15 +153,15 @@ def test_session_scoped_history_purge():
     with open(main_dart_file, "r", encoding="utf-8") as f:
         main_content = f.read()
 
-    assert "fun purgePreviousSessionHistory()" in kt_content, "Kotlin TranscriptionHistoryRepository debe implementar purgePreviousSessionHistory()"
-    assert "fun clearPreviousHistoryOnStartup()" in kt_content, "Kotlin TranscriptionHistoryRepository debe implementar clearPreviousHistoryOnStartup()"
+    assert "fun purgePreviousSessionHistory()" in kt_content, "Kotlin TranscriptionHistoryRepository debe conservar purgePreviousSessionHistory() (borrado explícito futuro)"
+    assert "fun clearPreviousHistoryOnStartup()" in kt_content, "Kotlin TranscriptionHistoryRepository debe conservar clearPreviousHistoryOnStartup()"
     assert 'file.writeText("[]", Charsets.UTF_8)' in kt_content, "Kotlin debe escribir [] para evitar resurrección de datos legados"
-    assert "transcriptionRepo.purgePreviousSessionHistory()" in vk_content, "VoiceKeyboardService debe purgar historial anterior en onCreate()"
+    assert "transcriptionRepo.purgePreviousSessionHistory()" not in vk_content, "VoiceKeyboardService NO debe purgar en onCreate (los dictados de la píldora deben sobrevivir)"
     assert "clearPreviousHistoryOnStartup()" in dart_content, "StorageService debe implementar clearPreviousHistoryOnStartup()"
     assert "purgePreviousSessionHistory()" in dart_content, "StorageService debe implementar purgePreviousSessionHistory()"
     assert "file.writeAsStringSync('[]')" in dart_content, "StorageService debe escribir [] al archivo de historial al purgar"
-    assert "clearPreviousHistoryOnStartup()" in main_content, "main.dart debe purgar el historial previo al arrancar la app"
-    print("  [PASS] Purga de sesión única implementada en Kotlin, Dart y arranque de aplicación.")
+    assert "clearPreviousHistoryOnStartup()" not in main_content, "main.dart NO debe purgar el historial al arrancar (persistente FIFO-20)"
+    print("  [PASS] Historial persistente FIFO-20: sin purga automática, funciones de borrado conservadas.")
 
 if __name__ == "__main__":
     print("=" * 60)
@@ -167,7 +173,7 @@ if __name__ == "__main__":
         test_flutter_prefix_handling()
         test_stale_overwrite_prevention()
         test_simulated_cross_platform_fifo()
-        test_session_scoped_history_purge()
+        test_persistent_fifo_history()
         print("=" * 60)
         print(" RESULTADOS: Todos los tests pasaron exitosamente.")
         print("=" * 60)

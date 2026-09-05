@@ -380,7 +380,7 @@ class StorageService {
   static const List<String> islandSlotOrders = ['trackpad_camera_mic', 'mic_camera_trackpad'];
 
   static const String islandThemeKey = 'island_theme';
-  static const String defaultIslandTheme = 'glass'; // 'glass', 'dark', 'light'
+  static const String defaultIslandTheme = 'dark'; // 'dark', 'glass', 'light'
   static const List<String> islandThemes = ['glass', 'dark', 'light'];
 
   static const String islandWaveformEnabledKey = 'island_waveform_enabled';
