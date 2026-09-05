@@ -3411,7 +3411,7 @@ class VoiceKeyboardService : InputMethodService() {
 
             private fun dispatchNavKey(keyCode: Int) {
                 if (isSelecting || shiftState != ShiftState.OFF) {
-                    sendKeyWithMeta(keyCode, KeyEvent.META_SHIFT_ON)
+                    sendKeyEventWithMeta(keyCode, KeyEvent.META_SHIFT_ON)
                 } else {
                     sendKeyCode(keyCode)
                 }
