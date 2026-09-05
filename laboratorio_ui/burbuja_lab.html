@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<!-- impeccable-disable clipped-overflow-container, nested-cards -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>VoiceBubble STT — Laboratorio UI: Burbuja clásica + modal de historial</title>
+  <style>
+    /* ================================================================
+       DESIGN TOKENS — Apple Liquid Glass (heredados de trackpad_lab)
+       ================================================================ */
+    :root[data-theme="dark"] {
+      --bg-app: #08090d;
+      --bg-panel: #10121a;
+      --bg-surface: #171a24;
+      --bg-surface-elevated: #1f2330;
+      --bg-surface-glass: rgba(23, 26, 36, 0.88);
+      --border-subtle: rgba(255, 255, 255, 0.10);
+      --border-medium: rgba(255, 255, 255, 0.18);
+      --border-focus: #58a6ff;
+      --text-primary: #f5f5f7;
+      --text-secondary: #a1a1aa;
+      --text-tertiary: #8e8e93;
+      --accent: #0066ee;
+      --accent-text: #58a6ff;
+      --accent-soft: rgba(88, 166, 255, 0.16);
+      --danger: #ff453a;
+      --danger-soft: rgba(255, 69, 58, 0.16);
+      --success: #30d158;
+      --success-soft: rgba(48, 209, 88, 0.16);
+      --bubble-idle-bg: rgba(28, 28, 30, 0.80);
+      --bubble-idle-border: rgba(255, 255, 255, 0.22);
+      --bubble-rec-bg: rgba(255, 59, 48, 0.90);
+      --bubble-proc-bg: rgba(0, 122, 255, 0.85);
+      --phone-chassis: #1c1d26;
+      --phone-bezel: #0b0c12;
+      --phone-screen-bg: #0e1016;
+      --term-bg: #0b0d13;
+      --term-text: #c9d1d9;
+      --term-green: #3fb950;
+      --term-blue: #58a6ff;
+      --kb-bg: rgba(28, 28, 32, 0.96);
+      --kb-key: rgba(255, 255, 255, 0.10);
+      --kb-key-alt: #3a3a3c;
+      --kb-label: #ffffff;
+      --shadow-panel: 0 16px 36px rgba(0, 0, 0, 0.5);
+      --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.65);
+      --card-bg: rgba(255, 255, 255, 0.07);
+      --card-stroke: rgba(255, 255, 255, 0.15);
+      --copy-bg: rgba(255, 255, 255, 0.12);
+      --copy-stroke: rgba(255, 255, 255, 0.15);
+      --copy-done-bg: #238636;
+      --copy-done-stroke: #3fb950;
+    }
+    :root[data-theme="light"] {
+      --bg-app: #f2f4f8;
+      --bg-panel: #ffffff;
+      --bg-surface: #eef1f6;
+      --bg-surface-elevated: #e2e6ef;
+      --bg-surface-glass: rgba(255, 255, 255, 0.90);
+      --border-subtle: rgba(0, 0, 0, 0.10);
+      --border-medium: rgba(0, 0, 0, 0.18);
+      --border-focus: #0055d4;
+      --text-primary: #1d1d1f;
+      --text-secondary: #48484a;
+      --text-tertiary: #6e6e73;
+      --accent: #0055d4;
+      --accent-text: #0055d4;
+      --accent-soft: rgba(0, 85, 212, 0.12);
+      --danger: #d70015;
+      --danger-soft: rgba(215, 0, 21, 0.12);
+      --success: #248a3d;
+      --success-soft: rgba(36, 138, 61, 0.12);
+      --bubble-idle-bg: rgba(255, 255, 255, 0.82);
+      --bubble-idle-border: rgba(0, 0, 0, 0.16);
+      --bubble-rec-bg: rgba(255, 59, 48, 0.92);
+      --bubble-proc-bg: rgba(0, 122, 255, 0.88);
+      --phone-chassis: #cfd3dc;
+      --phone-bezel: #dde1ea;
+      --phone-screen-bg: #e8ebf1;
+      --term-bg: #101318;
+      --term-text: #c9d1d9;
+      --term-green: #3fb950;
+      --term-blue: #58a6ff;
+      --kb-bg: rgba(232, 234, 240, 0.97);
+      --kb-key: #ffffff;
+      --kb-key-alt: #d6d6dc;
+      --kb-label: #1c1c1e;
+      --shadow-panel: 0 14px 34px rgba(0, 0, 0, 0.09);
+      --shadow-modal: 0 24px 60px rgba(0, 0, 0, 0.35);
+      --card-bg: rgba(0, 0, 0, 0.045);
+      --card-stroke: rgba(0, 0, 0, 0.12);
+      --copy-bg: rgba(0, 0, 0, 0.06);
+      --copy-stroke: rgba(0, 0, 0, 0.12);
+      --copy-done-bg: #238636;
+      --copy-done-stroke: #3fb950;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+    html { color-scheme: dark; }
+    html[data-theme="light"] { color-scheme: light; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      font-size: 15px; line-height: 1.5;
+      background: var(--bg-app); color: var(--text-primary);
+      min-height: 100vh;
+    }
+    ::selection { background: var(--accent-soft); }
+    :focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px; }
+    button { font: inherit; color: inherit; }
+
+    .lab-shell { max-width: 1240px; margin: 0 auto; padding: 28px 20px 72px; }
+    .lab-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+    .lab-head p { color: var(--text-secondary); max-width: 72ch; margin-top: 8px; }
+    .lab-head p strong { color: var(--text-primary); font-weight: 600; }
+
+    .lab-grid { display: grid; grid-template-columns: minmax(340px, 430px) minmax(0, 1fr); gap: 24px; margin-top: 24px; align-items: start; }
+    .panel {
+      background: var(--bg-panel); border: 1px solid var(--border-subtle);
+      border-radius: 18px; box-shadow: var(--shadow-panel);
+    }
+    .panel-pad { padding: 18px; }
+    .panel h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+    .panel .hint { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
+
+    /* ---------- Teléfono ---------- */
+    .phone-wrap { display: flex; justify-content: center; padding: 20px 12px; }
+    .phone {
+      width: 360px; max-width: 100%;
+      background: var(--phone-chassis); border-radius: 52px; padding: 12px;
+      box-shadow: var(--shadow-panel);
+    }
+    .phone-screen {
+      position: relative; height: 720px; max-height: 74vh; min-height: 560px;
+      background: var(--phone-screen-bg); border-radius: 42px; overflow: hidden;
+    }
+    .statusbar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 26px 6px; font-size: 12.5px; font-weight: 600;
+      color: #f5f5f7; position: relative; z-index: 1;
+    }
+    .term {
+      margin: 8px 12px 0; background: var(--term-bg); border-radius: 14px;
+      padding: 12px 12px 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px; line-height: 1.65; color: var(--term-text);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      position: relative; z-index: 1;
+    }
+    .term .p { color: var(--term-green); }
+    .term .c { color: var(--term-blue); }
+    .term .dim { color: #8b949e; }
+    .insert-flash { animation: insertflash 1.4s ease-out; border-radius: 6px; }
+    @keyframes insertflash {
+      0% { background: rgba(48, 209, 88, 0.45); }
+      100% { background: transparent; }
+    }
+
+    /* ---------- Teclado mock ---------- */
+    .kb {
+      position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+      background: var(--kb-bg); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+      border-top: 1px solid var(--border-subtle);
+      transform: translateY(102%); transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .kb.on { transform: translateY(0); }
+    .kb-row { display: flex; gap: 5px; margin-bottom: 6px; }
+    .kb-row:last-child { margin-bottom: 0; }
+    .kb-key {
+      flex: 1; height: 34px; display: flex; align-items: center; justify-content: center;
+      background: var(--kb-key); color: var(--kb-label); border-radius: 6px;
+      font-size: 14px; box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+    }
+    .kb-key.alt { background: var(--kb-key-alt); font-size: 11px; }
+    .kb-key.space { flex: 5; }
+    .kb-mic { color: #ff453a; display: flex; }
+    .homebar {
+      position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+      width: 120px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.35); z-index: 6;
+    }
+
+    /* ---------- Burbuja clásica ---------- */
+    .bubble {
+      position: absolute; width: 64px; height: 64px; border-radius: 50%;
+      background: var(--bubble-idle-bg);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      border: 1.5px solid var(--bubble-idle-border);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+      display: flex; align-items: center; justify-content: center;
+      cursor: grab; z-index: 20; touch-action: none; user-select: none; -webkit-user-select: none;
+      transition: background-color 180ms ease, border-color 180ms ease;
+    }
+    .bubble:active { cursor: grabbing; }
+    .bubble.pressing { transform: scale(0.94); }
+    .bubble.hidden { opacity: 0; pointer-events: none; }
+    .bubble svg { width: 30px; height: 30px; }
+    .bubble.is-idle svg { color: var(--accent-text); }
+    :root[data-theme="light"] .bubble.is-idle svg { color: #007aff; }
+    .bubble.is-recording { background: var(--bubble-rec-bg); border-color: rgba(255, 255, 255, 0.35); }
+    .bubble.is-recording svg { color: #fff; }
+    .bubble.is-transcribing { background: var(--bubble-proc-bg); border-color: rgba(255, 255, 255, 0.35); }
+    .bubble-ring {
+      position: absolute; inset: -1.5px; border-radius: 50%; pointer-events: none;
+      border: 2.5px solid rgba(255, 255, 255, 0.75); opacity: 0;
+    }
+    .bubble.is-recording .bubble-ring { animation: ringpulse 1.6s ease-out infinite; }
+    @keyframes ringpulse {
+      0% { transform: scale(1); opacity: 0.85; }
+      100% { transform: scale(1.45); opacity: 0; }
+    }
+    .bubble .spin {
+      position: absolute; inset: 8px; border-radius: 50%; pointer-events: none;
+      border: 3px solid transparent; border-top-color: #fff;
+      opacity: 0;
+    }
+    .bubble.is-transcribing .spin { opacity: 1; animation: spinrot 0.9s linear infinite; }
+    .bubble.is-transcribing svg { opacity: 0.25; }
+    @keyframes spinrot { to { transform: rotate(360deg); } }
+    .bubble .rec-timer {
+      position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+      font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+      color: #ff9d97; white-space: nowrap; display: none;
+    }
+    .bubble.is-recording .rec-timer { display: block; }
+
+    /* ---------- Modal de historial (morph desde la burbuja) ---------- */
+    .hist-modal {
+      position: absolute; z-index: 21;
+      background: var(--bubble-idle-bg);
+      backdrop-filter: blur(22px) saturate(1.4); -webkit-backdrop-filter: blur(22px) saturate(1.4);
+      border: 1.5px solid var(--bubble-idle-border);
+      border-radius: 32px; box-shadow: var(--shadow-modal);
+      display: none; overflow: hidden;
+      touch-action: none;
+    }
+    .hist-modal.open { display: flex; flex-direction: column; }
+    .hist-cards {
+      flex: 1; overflow-y: auto; padding: 14px 12px 4px;
+      display: flex; flex-direction: column; gap: 6px;
+      scrollbar-width: thin; scrollbar-color: var(--border-medium) transparent;
+    }
+    .hist-cards::-webkit-scrollbar { width: 4px; }
+    .hist-cards::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 2px; }
+    .hist-card {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--card-bg); border: 1px solid var(--card-stroke);
+      border-radius: 12px; padding: 8px 8px 8px 12px; cursor: pointer;
+      transition: background-color 150ms ease;
+    }
+    .hist-card.expanded { background: rgba(0, 122, 255, 0.18); border-color: var(--accent-text); }
+    .hist-card.selected { border-color: var(--success); background: var(--success-soft); }
+    .hist-card.flash { animation: insertflash 1.2s ease-out; }
+    .hist-check {
+      position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%;
+      background: var(--success); display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      opacity: 0; pointer-events: none;
+    }
+    .hist-card.selected .hist-check { opacity: 1; }
+    .hist-check svg { width: 13px; height: 13px; color: #fff; }
+    .hist-card { position: relative; touch-action: pan-y; }
+    .hist-card.armed { border-color: var(--success); }
+    .hist-text {
+      flex: 1; font-size: 12.5px; line-height: 1.45; color: var(--text-primary);
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .hist-card.expanded .hist-text { -webkit-line-clamp: unset; }
+    .hist-copy {
+      flex: none; width: 32px; height: 32px; border-radius: 8px;
+      background: var(--copy-bg); border: 1px solid var(--copy-stroke);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      transition: background-color 150ms ease;
+    }
+    .hist-copy svg { width: 17px; height: 17px; color: var(--text-secondary); }
+    .hist-copy.done { background: var(--copy-done-bg); border-color: var(--copy-done-stroke); }
+    .hist-copy.done svg { color: #fff; }
+    .hist-foot {
+      flex: none; display: flex; align-items: flex-end; justify-content: space-between;
+      padding: 6px 14px 8px;
+    }
+    .hist-mic {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--bubble-rec-bg); border: 1.5px solid rgba(255, 255, 255, 0.35);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+      transition: transform 120ms ease;
+    }
+    .hist-mic:active { transform: scale(0.92); }
+    .hist-mic svg { width: 24px; height: 24px; color: #fff; }
+    .hist-mic.idle { background: var(--bg-surface-elevated); border-color: var(--border-medium); }
+    .hist-mic.idle svg { color: var(--danger); }
+    .hist-handle {
+      width: 72px; height: 22px; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; border-radius: 11px; margin: 0 auto;
+    }
+    .hist-handle::before {
+      content: ""; width: 38px; height: 4.5px; border-radius: 3px;
+      background: var(--text-tertiary); opacity: 0.85;
+      transition: width 150ms ease, background-color 150ms ease;
+    }
+    .hist-handle:hover::before { width: 48px; background: var(--text-secondary); }
+    .hist-foot-spacer { width: 48px; }
+    /* Slot permanente de 48px: con visibility (no display) la rayita
+       queda centrada haya o no selección. */
+    .hist-copyall {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--bg-surface-elevated); border: 1.5px solid var(--border-medium);
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+      visibility: hidden; opacity: 0;
+      transition: transform 120ms ease, opacity 180ms ease, visibility 0s 180ms;
+    }
+    .hist-copyall.show { visibility: visible; opacity: 1; transition: transform 120ms ease, opacity 180ms ease; }
+    .hist-copyall:active { transform: scale(0.92); }
+    .hist-copyall svg { width: 21px; height: 21px; color: var(--text-primary); }
+    .hist-copyall.done { background: var(--copy-done-bg); border-color: var(--copy-done-stroke); }
+    .hist-copyall.done svg { color: #fff; }
+
+
+    /* ---------- Controles del lab ---------- */
+    .ctl-group { margin-top: 16px; }
+    .ctl-group > h3 { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+    .seg { display: inline-flex; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 3px; gap: 2px; }
+    .seg button {
+      border: 0; background: transparent; color: var(--text-secondary);
+      font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 9px; cursor: pointer;
+    }
+    .seg button[aria-pressed="true"] { background: var(--bg-surface-elevated); color: var(--text-primary); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); }
+    .preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .preset-grid button, .row-btns button {
+      border: 1px solid var(--border-subtle); background: var(--bg-surface);
+      color: var(--text-primary); font-size: 12.5px; font-weight: 600;
+      padding: 9px 6px; border-radius: 11px; cursor: pointer;
+      transition: border-color 150ms ease, background-color 150ms ease;
+    }
+    .preset-grid button:hover, .row-btns button:hover { border-color: var(--border-focus); }
+    .preset-grid button[aria-pressed="true"] { border-color: var(--border-focus); background: var(--accent-soft); }
+    .row-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .row-btns button { flex: 1; min-width: 120px; }
+    .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 2px; font-size: 13.5px; }
+    .switch-row small { display: block; color: var(--text-tertiary); font-size: 12px; }
+    .switch { position: relative; width: 46px; height: 27px; flex: none; border: 0; background: var(--bg-surface-elevated); border-radius: 14px; cursor: pointer; transition: background-color 180ms ease; }
+    .switch::after {
+      content: ""; position: absolute; top: 2.5px; left: 3px; width: 22px; height: 22px;
+      border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+      transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    .switch[aria-checked="true"] { background: var(--success); }
+    .switch[aria-checked="true"]::after { transform: translateX(18px); }
+    .eventlog {
+      margin-top: 12px; background: #000; color: #3fb950; border-radius: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 1.7;
+      padding: 10px 12px; height: 118px; overflow-y: auto; border: 1px solid var(--border-subtle);
+    }
+    :root[data-theme="light"] .eventlog { background: #0b0d13; }
+    .eventlog .t { color: #8b949e; }
+
+    /* ---------- Spec (tablas) ---------- */
+    .spec { margin-top: 24px; }
+    .spec h2 { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 4px; }
+    .spec > p { color: var(--text-secondary); font-size: 13.5px; max-width: 90ch; }
+    table.spec-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    table.spec-table th, table.spec-table td {
+      text-align: left; vertical-align: top; padding: 9px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    table.spec-table th { color: var(--text-secondary); font-weight: 700; font-size: 12px; white-space: nowrap; }
+    table.spec-table td code, p code, li code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+      background: var(--bg-surface-elevated); padding: 1.5px 6px; border-radius: 6px;
+    }
+    table.spec-table tr:last-child th, table.spec-table tr:last-child td { border-bottom: 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+
+    @media (max-width: 1023px) {
+      .lab-grid { grid-template-columns: 1fr; }
+      .phone { width: min(360px, 100%); }
+      .preset-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .bubble-ring, .bubble .spin { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    THESIS: la burbuja clásica gana una modal de historial que nace de su propio punto: el gesto sin usar (toque largo en modo toques, toque en modo mantener) la expande en la dirección con más espacio y la rayita inferior la contrae de vuelta al origen. Nada de títulos: solo micrófono y rayita.
+    OWN-WORLD: Liquid Glass heredado del lab (tokens trackpad_lab), micrófono SVG del trazo kb_ic_mic, burbuja 64px idle/roja/azul según BubbleCanvasView, cards de historial con botón copiar 32px como la píldora.
+    STORY: el visitante arrastra la burbuja a cualquier punto, dispara el gesto secundario y ve la modal crecer desde la burbuja hacia el espacio libre; toca una card para insertar, la rayita para volver.
+    FIRST VIEWPORT: mockup de teléfono a la izquierda (Termux + teclado opcional + burbuja arrastrable) y controles del lab a la derecha; debajo, spec en tablas.
+    FORM: extensión directa de superficie existente, code-led, sin torneo de conceptos: el pedido es preciso y el mundo visual está fijado.
+    FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
+  -->
+  <div class="lab-shell">
+    <header class="lab-head">
+      <h1>Burbuja clásica · modal de historial inteligente</h1>
+      <p>Prototipo interactivo del nuevo comportamiento: la burbuja sigue arrastrable a cualquier punto y conserva sus dos modos de grabación. El <strong>gesto sin usar</strong> —toque largo en modo toques, toque simple en modo mantener— expande una <strong>modal de historial que nace desde la burbuja</strong> hacia donde haya espacio. En las cards: toque = pegar de inmediato, <strong>toque largo = leer completa</strong>, <strong>deslizamiento lateral = seleccionar varias</strong> (con 2+ aparece el botón copiar-todo abajo-izq.). Sin títulos ni textos: <strong>solo micrófono y rayita inferior</strong>.</p>
+    </header>
+
+    <div class="lab-grid">
+      <section class="panel" aria-label="Mockup de teléfono">
+        <div class="phone-wrap">
+          <div class="phone">
+            <div class="phone-screen" id="phoneScreen">
+              <div class="statusbar"><span>09:41</span><span>5G · 82%</span></div>
+              <div class="term" id="termBox">
+                <div><span class="p">roy@debian</span>:<span class="c">~</span>$ voice-dictate --lang es</div>
+                <div class="dim">groq · whisper-large-v3 · 16 kHz mono</div>
+                <div id="insertLine"><span class="p">❯</span> <span id="insertTarget">_</span></div>
+              </div>
+              <div class="kb" id="kbMock" aria-hidden="true">
+                <div class="kb-row">
+                  <span class="kb-key alt">TAB</span><span class="kb-key">q</span><span class="kb-key">w</span><span class="kb-key">e</span><span class="kb-key">r</span><span class="kb-key">t</span><span class="kb-key">y</span><span class="kb-key alt">ESC</span>
+                </div>
+                <div class="kb-row">
+                  <span class="kb-key alt">CTRL</span><span class="kb-key">a</span><span class="kb-key">s</span><span class="kb-key">d</span><span class="kb-key">f</span><span class="kb-key">g</span><span class="kb-key alt">ALT</span>
+                </div>
+                <div class="kb-row">
+                  <span class="kb-key">?123</span><span class="kb-key alt">◀</span><span class="kb-key space">espacio</span><span class="kb-key alt">▶</span><span class="kb-key alt">↵</span>
+                  <span class="kb-key"><span class="kb-mic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M9 5.8 A3 3 0 0 1 15 5.8 L15 11 A3 3 0 0 1 9 11 Z"/><path d="M5.5 11.5 A6.5 6.5 0 0 0 18.5 11.5"/><path d="M12 18 L12 21.2"/></svg></span></span>
+                </div>
+              </div>
+              <div class="bubble is-idle" id="bubble" role="button" aria-label="Burbuja VoiceBubble" tabindex="0">
+                <span class="bubble-ring"></span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5.8 A3 3 0 0 1 15 5.8 L15 11 A3 3 0 0 1 9 11 Z"/><path d="M5.5 11.5 A6.5 6.5 0 0 0 18.5 11.5"/><path d="M12 18 L12 21.2"/></svg>
+                <svg class="stop-icon" viewBox="0 0 24 24" width="26" height="26" style="display:none;position:absolute" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2.5" fill="currentColor"/></svg>
+                <span class="spin"></span>
+                <span class="rec-timer" id="recTimer">0:00</span>
+              </div>
+              <div class="hist-modal" id="histModal" role="dialog" aria-label="Historial de dictados">
+                <div class="hist-cards" id="histCards"></div>
+                <div class="hist-foot">
+                  <span class="hist-copyall" id="histCopyAll" role="button" aria-label="Copiar seleccionados" tabindex="0">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+                  </span>
+                  <span class="hist-handle" id="histHandle" role="button" aria-label="Contraer" tabindex="0"></span>
+                  <span class="hist-mic idle" id="histMic" role="button" aria-label="Dictar" tabindex="0">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5.8 A3 3 0 0 1 15 5.8 L15 11 A3 3 0 0 1 9 11 Z"/><path d="M5.5 11.5 A6.5 6.5 0 0 0 18.5 11.5"/><path d="M12 18 L12 21.2"/></svg>
+                  </span>
+                </div>
+              </div>
+              <div class="homebar"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel-pad" aria-label="Controles del laboratorio">
+        <h2>Controles</h2>
+        <p class="hint">Arrastra la burbuja dentro del teléfono. El gesto secundario abre el historial.</p>
+        <div class="ctl-group">
+          <h3>Modo de grabación</h3>
+          <div class="seg" role="group" aria-label="Modo de grabación">
+            <button id="modeTap" aria-pressed="true">Toques</button>
+            <button id="modeHold" aria-pressed="false">Mantener</button>
+          </div>
+          <p class="hint" id="modeHint">Toque = grabar · otro toque = detener · <strong>toque largo = historial</strong>.</p>
+        </div>
+        <div class="ctl-group">
+          <h3>Posición de la burbuja</h3>
+          <div class="preset-grid">
+            <button data-preset="tl">Sup. izq.</button>
+            <button data-preset="tr" aria-pressed="true">Sup. der.</button>
+            <button data-preset="ml">Media izq.</button>
+            <button data-preset="mr">Media der.</button>
+            <button data-preset="bl">Inf. izq.</button>
+            <button data-preset="br">Inf. der.</button>
+          </div>
+        </div>
+        <div class="ctl-group">
+          <div class="switch-row">
+            <span>Teclado desplegado<small>Reduce el espacio inferior: la modal prefiere crecer hacia arriba.</small></span>
+            <button class="switch" id="kbToggle" role="switch" aria-checked="false" aria-label="Teclado desplegado"></button>
+          </div>
+          <div class="switch-row">
+            <span>Tema claro<small>Sigue al sistema en la app real.</small></span>
+            <button class="switch" id="themeToggle" role="switch" aria-checked="false" aria-label="Tema claro"></button>
+          </div>
+          <div class="switch-row">
+            <span>Movimiento reducido<small>Transiciones directas, sin morph.</small></span>
+            <button class="switch" id="motionToggle" role="switch" aria-checked="false" aria-label="Movimiento reducido"></button>
+          </div>
+        </div>
+        <div class="ctl-group">
+          <h3>Acciones</h3>
+          <div class="row-btns">
+            <button id="btnHistory">Abrir historial</button>
+            <button id="btnReplay">Repetir animación</button>
+          </div>
+        </div>
+        <div class="ctl-group">
+          <h3>Registro de la animación</h3>
+          <div class="eventlog" id="eventLog" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel panel-pad spec" aria-label="Especificación">
+      <h2>Tareas del hito burbuja-historial</h2>
+      <p>Cada fila es una unidad commiteable por separado; el orden respeta dependencias (primero gesto, luego morph, luego modal, luego micrófono unificado).</p>
+      <table class="spec-table">
+        <thead><tr><th>ID</th><th>Tarea</th><th>Archivos</th><th>Aceptación en dispositivo</th></tr></thead>
+        <tbody>
+          <tr><th>B1</th><td>Gesto secundario en la burbuja: toque largo abre historial en modo toques; toque simple en modo mantener.</td><td><code>FloatingBubbleService.kt</code>, <code>home_screen.dart</code></td><td>El gesto de grabación no cambia; el gesto libre siempre abre historial.</td></tr>
+          <tr><th>B2</th><td>Cálculo de cuadrante: la modal elige el diagonal con más área libre (descuenta teclado visible e insets).</td><td><code>DynamicIslandController.kt</code> (nuevo <code>calculateBubbleBounds</code>)</td><td>Burbuja sup. der. → crece izq.+abajo; media izq. + teclado → der.+arriba.</td></tr>
+          <tr><th>B3</th><td>Morph burbuja ⇄ modal (320 ms, ease-out exponencial) con reversa exacta al punto de origen.</td><td><code>DynamicIslandController.kt</code></td><td>Sin saltos ni parpadeos; Reduced Motion = aparición directa.</td></tr>
+          <tr><th>B4</th><td>Modal sin textos: cards de historial (tap inserta + cierra, largo expande, copiar 32 dp), micrófono abajo-der., rayita inferior siempre abajo que contrae.</td><td><code>DynamicIslandController.kt</code></td><td>Paridad total con la modal de la píldora.</td></tr>
+          <tr><th>B5</th><td>Micrófono unificado estilo <code>kb_ic_mic</code> en burbuja, píldora y modal; burbuja grabando muestra stop cuadrado + pulso.</td><td><code>BubbleCanvasView</code>, recursos</td><td>Mismo trazo 1.8 round en los tres.</td></tr>
+          <tr><th>B6</th><td>Ajustes: switch <code>bubble_history_enabled</code> (ON por defecto) + nota de gesto según modo de grabación.</td><td><code>settings_screen.dart</code>, <code>storage_service.dart</code>, contrato</td><td>OFF = gesto secundario deshabilitado, resto intacto.</td></tr>
+          <tr><th>B7</th><td>Multiselección por deslizamiento lateral (badge de check, umbral 48 px, retorno elástico) + botón copiar-todo icon-only abajo-izq., visible solo con 2+ seleccionadas; une las elegidas por salto de línea.</td><td><code>DynamicIslandController.kt</code></td><td>El deslizamiento no roba el scroll vertical; el toque sigue pegando de inmediato; el botón aparece solo con 2+ y limpia la selección al copiar.</td></tr>
+          <tr><th>B8</th><td>Matriz en dispositivo + auditoría de privacidad (cero logs de contenido) y entrega.</td><td>—</td><td>WhatsApp/Termux/Chrome, rotación, proceso muerto.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel panel-pad spec" aria-label="Funciones y animaciones">
+      <h2>Funciones y animaciones</h2>
+      <p>Firmas propuestas (Kotlin) y parámetros de movimiento. Un solo momento autoral: el morph direccional; el resto son estados de apoyo.</p>
+      <table class="spec-table">
+        <thead><tr><th>Función</th><th>Rol</th><th>Parámetros</th></tr></thead>
+        <tbody>
+          <tr><th class="mono">pickGrowthQuadrant(bx, by)</th><td>Elige el diagonal con más área libre descontando teclado e insets.</td><td>Modal máx 300×400 px lógicos, margen 12.</td></tr>
+          <tr><th class="mono">morphBubbleToModal() / collapseToBubble()</th><td>Anima rect + radio 32→20 px entre burbuja y modal, reversible al punto de origen vivo.</td><td>320 ms <code>cubic-bezier(0.32, 0.72, 0, 1)</code>; Reduced Motion = corte directo.</td></tr>
+          <tr><th class="mono">snapToNearestEdge()</th><td>La burbuja se adhiere al borde (existente, intacto).</td><td>240 ms decelerate.</td></tr>
+          <tr><th class="mono">showHistoryCards() / insertFromCard()</th><td>Tap en card = insertar en cursor + copiar + contraer; largo = expandir texto.</td><td>Cards 2 líneas, expandida sin límite; copiado verde 1.2 s.</td></tr>
+          <tr><th class="mono">updateBubbleVisualState()</th><td>idle / recording (stop + pulso + cronómetro) / transcribing (spinner) / success (check 1.2 s).</td><td>Pulso 1.6 s, spinner 0.9 s/vuelta.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel panel-pad spec" aria-label="Menú de configuración propuesto">
+      <h2>Menú de configuración propuesto</h2>
+      <p>Todo vive en Ajustes → pestaña General, sección Burbuja. Sin pantallas nuevas.</p>
+      <table class="spec-table">
+        <thead><tr><th>Control</th><th>Tipo</th><th>Clave</th><th>Defecto</th></tr></thead>
+        <tbody>
+          <tr><th>Modo de grabación</th><td>Segmentado Toques / Mantener (existente)</td><td><code>record_mode</code></td><td>Toques</td></tr>
+          <tr><th>Historial en la burbuja</th><td>Switch + nota dinámica del gesto libre según el modo</td><td><code>bubble_history_enabled</code></td><td>ON</td></tr>
+          <tr><th>Tamaño de modal</th><td>Segmentado Compacta / Amplia</td><td><code>bubble_modal_size</code></td><td>Compacta (300×400 máx)</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    'use strict';
+    const $ = (s) => document.querySelector(s);
+    const screen = $('#phoneScreen'), bubble = $('#bubble'), modal = $('#histModal'),
+          cardsEl = $('#histCards'), kb = $('#kbMock'), logEl = $('#eventLog'),
+          recTimerEl = $('#recTimer'), histMic = $('#histMic');
+
+    const S = {
+      mode: 'tap', state: 'idle', modalOpen: false, kbOpen: false,
+      bubble: { x: 0, y: 0 }, origin: { x: 0, y: 0 },
+      recSec: 0, recInt: null, reduced: false, theme: 'dark',
+    };
+    const BUB = 64, MARGIN = 12, MOD_W = 300, MOD_H = 400;
+    const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
+
+    const DEMO_TEXTS = [
+      'comprar yerba, café y facturas para la merienda del sábado',
+      'git add . && git commit -m "fix island" && git push origin main',
+      'recordatorio: llamar al dentista mañana a las nueve y pedir factura',
+      'la reunión pasó al jueves a las 15 h en la sala del segundo piso',
+      'hola, ¿me escuchás? prueba de dictado con ruido de fondo',
+    ];
+
+    function log(msg) {
+      const t = new Date();
+      const hh = String(t.getHours()).padStart(2, '0'), mm = String(t.getMinutes()).padStart(2, '0'), ss = String(t.getSeconds()).padStart(2, '0');
+      const div = document.createElement('div');
+      div.innerHTML = '<span class="t">' + hh + ':' + mm + ':' + ss + '</span> ' + msg;
+      logEl.prepend(div);
+      while (logEl.children.length > 30) logEl.lastChild.remove();
+    }
+
+    function phoneRect() { return screen.getBoundingClientRect(); }
+    function kbHeight() { return S.kbOpen ? kb.getBoundingClientRect().height : 0; }
+
+    function placeBubble(x, y, animate) {
+      const r = phoneRect();
+      x = Math.max(MARGIN, Math.min(r.width - BUB - MARGIN, x));
+      y = Math.max(MARGIN + 28, Math.min(r.height - kbHeight() - BUB - MARGIN, y));
+      /* Consolidar cualquier animación en vuelo: sin esto un onfinish
+         perdido deja un transform absoluto pegado y duplica el offset. */
+      try { bubble.getAnimations().forEach((a) => { try { a.finish(); } catch (_) {} }); } catch (_) {}
+      bubble.style.transform = '';
+      const fromX = bubble.offsetLeft, fromY = bubble.offsetTop;
+      S.bubble = { x, y };
+      if (animate && !S.reduced && (fromX !== x || fromY !== y)) {
+        const anim = bubble.animate(
+          [{ left: fromX + 'px', top: fromY + 'px' }, { left: x + 'px', top: y + 'px' }],
+          { duration: 260, easing: EASE, fill: 'forwards' }
+        );
+        anim.onfinish = () => { bubble.style.left = x + 'px'; bubble.style.top = y + 'px'; try { anim.cancel(); } catch (_) {} };
+      } else {
+        bubble.style.left = x + 'px'; bubble.style.top = y + 'px';
+      }
+    }
+
+    function presets(name) {
+      const r = phoneRect();
+      const P = {
+        tl: [MARGIN, MARGIN + 30], tr: [r.width - BUB - MARGIN, MARGIN + 30],
+        ml: [MARGIN, r.height / 2 - 60], mr: [r.width - BUB - MARGIN, r.height / 2 - 60],
+        bl: [MARGIN, r.height - kbHeight() - BUB - MARGIN - 30],
+        br: [r.width - BUB - MARGIN, r.height - kbHeight() - BUB - MARGIN - 30],
+      };
+      return P[name];
+    }
+
+    function setPreset(name, btn) {
+      document.querySelectorAll('[data-preset]').forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+      if ((name === 'ml' || name === 'bl') && !S.kbOpen) toggleKb(true);
+      if ((name === 'br' || name === 'tr') && name !== 'ml' && S.kbOpen && name === 'tr') toggleKb(false);
+      const [x, y] = presets(name);
+      placeBubble(x, y, true);
+      log('preset <b>' + name + '</b> → burbuja (' + Math.round(x) + ', ' + Math.round(y) + ')' + (S.kbOpen ? ' + teclado' : ''));
+    }
+
+    /* ---------- Drag ---------- */
+    let drag = null;
+    bubble.addEventListener('pointerdown', (e) => {
+      if (S.modalOpen) return;
+      bubble.setPointerCapture(e.pointerId);
+      const r = phoneRect();
+      drag = { dx: e.clientX - r.left - S.bubble.x, dy: e.clientY - r.top - S.bubble.y, moved: false, sx: e.clientX, sy: e.clientY, t: Date.now() };
+      bubble.classList.add('pressing');
+    });
+    bubble.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const r = phoneRect();
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 9) drag.moved = true;
+      if (drag.moved) placeBubble(e.clientX - r.left - drag.dx, e.clientY - r.top - drag.dy, false);
+    });
+    bubble.addEventListener('pointerup', (e) => {
+      bubble.classList.remove('pressing');
+      if (!drag) return;
+      const d = drag; drag = null;
+      const holdMs = Date.now() - d.t;
+      if (!d.moved) {
+        if (S.mode === 'tap') { holdMs >= 500 ? openHistory('toque-largo') : toggleRecord(); }
+        else { openHistory('toque'); }
+      } else {
+        snapEdge();
+      }
+    });
+    bubble.addEventListener('pointercancel', () => { bubble.classList.remove('pressing'); drag = null; });
+    bubble.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); S.mode === 'tap' ? toggleRecord() : openHistory('teclado'); }
+      if (e.key.toLowerCase() === 'h') openHistory('tecla-h');
+    });
+    /* Mantener: press & hold para grabar */
+    let holdTimer = null, holding = false;
+    bubble.addEventListener('pointerdown', (e) => {
+      if (S.mode !== 'hold' || S.modalOpen) return;
+      holdTimer = setTimeout(() => { holding = true; startRecording(); }, 220);
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => bubble.addEventListener(ev, () => {
+      clearTimeout(holdTimer);
+      if (holding) { holding = false; stopRecording(); }
+    }));
+
+    function snapEdge() {
+      const r = phoneRect();
+      const cx = S.bubble.x + BUB / 2;
+      const targetX = cx < r.width / 2 ? MARGIN : r.width - BUB - MARGIN;
+      placeBubble(targetX, S.bubble.y, true);
+      log('snap al borde → x=' + Math.round(targetX));
+    }
+
+    /* ---------- Grabación simulada ---------- */
+    function fmt(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+    function setState(st) {
+      S.state = st;
+      bubble.classList.remove('is-idle', 'is-recording', 'is-transcribing');
+      bubble.classList.add('is-' + st);
+      bubble.querySelector('svg:not(.stop-icon):not(.spin)').style.display = st === 'idle' ? '' : (st === 'recording' ? 'none' : '');
+      bubble.querySelector('.stop-icon').style.display = st === 'recording' ? 'block' : 'none';
+      bubble.querySelector('.stop-icon').style.color = '#fff';
+      histMic.classList.toggle('idle', st === 'idle');
+    }
+    function startRecording() {
+      if (S.state === 'recording') return;
+      setState('recording'); S.recSec = 0; recTimerEl.textContent = '0:00';
+      log('grabando… (WAV 16 kHz mono)');
+      S.recInt = setInterval(() => { S.recSec++; recTimerEl.textContent = fmt(S.recSec); if (S.recSec >= 4) stopRecording(); }, 1000);
+    }
+    function stopRecording() {
+      if (S.state !== 'recording') return;
+      clearInterval(S.recInt);
+      setState('transcribing');
+      log('transcribiendo con groq…');
+      setTimeout(() => {
+        prependCard(DEMO_TEXTS[Math.floor(Math.random() * DEMO_TEXTS.length)]);
+        setState('idle');
+        bubble.animate(
+          [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+          { duration: 380, easing: EASE });
+        log('listo → copiado al portapapeles');
+      }, 1300);
+    }
+    function toggleRecord() { S.state === 'recording' ? stopRecording() : startRecording(); }
+
+    /* ---------- Historial ---------- */
+    const selectedCards = new Set();
+    const copyAllBtn = document.getElementById('histCopyAll');
+    function refreshCopyAll() {
+      /* El botón copiar-todo solo existe con 2+ seleccionadas. */
+      copyAllBtn.classList.toggle('show', selectedCards.size >= 2);
+    }
+    function clearSelection() {
+      selectedCards.forEach((c) => c.classList.remove('selected'));
+      selectedCards.clear();
+      refreshCopyAll();
+    }
+    copyAllBtn.addEventListener('click', () => {
+      if (selectedCards.size < 2) return;
+      const texts = [...cardsEl.children]
+        .filter((c) => selectedCards.has(c))
+        .map((c) => c._plain);
+      try { if (navigator.clipboard) navigator.clipboard.writeText(texts.join('\n')); } catch (_) {}
+      copyAllBtn.classList.add('done');
+      copyAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5 L9.5 17.5 L19.5 6.5"/></svg>';
+      log('copiados <b>' + texts.length + ' seleccionados</b> juntos');
+      setTimeout(() => {
+        copyAllBtn.classList.remove('done');
+        copyAllBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+        clearSelection();
+      }, 1100);
+    });
+
+    function cardEl(text) {
+      const card = document.createElement('div');
+      card.className = 'hist-card'; card.tabIndex = 0;
+      card._plain = text;
+      const t = document.createElement('div');
+      t.className = 'hist-text'; t.textContent = '\u201C' + text + '\u201D';
+      const badge = document.createElement('span');
+      badge.className = 'hist-check'; badge.setAttribute('aria-hidden', 'true');
+      badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5 L9.5 17.5 L19.5 6.5"/></svg>';
+      const b = document.createElement('span');
+      b.className = 'hist-copy'; b.setAttribute('role', 'button'); b.setAttribute('aria-label', 'Copiar');
+      b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+      let lp = null, lpX = 0, lpY = 0, swipe = null, suppressClick = false, lpFiredAt = 0;
+      const cancelLp = () => { clearTimeout(lp); lp = null; };
+      /* Toque largo = expandir para leer completa. Se cancela al desplazar
+         (scroll vertical de la lista) para no expandir sin querer. */
+      card.addEventListener('pointerdown', (e) => {
+        lpX = e.clientX; lpY = e.clientY; swipe = null;
+        card.style.transition = '';
+        lp = setTimeout(() => { lp = null; lpFiredAt = Date.now(); card.classList.toggle('expanded'); log('card expandida/colapsada (toque largo)'); }, 450);
+      });
+      /* Deslizamiento lateral = seleccionar/deseleccionar para copiado
+         múltiple. Solo eje horizontal (el scroll vertical sigue nativo). */
+      card.addEventListener('pointermove', (e) => {
+        const dx = e.clientX - lpX, dy = e.clientY - lpY;
+        if (lp && Math.hypot(dx, dy) > 10) cancelLp();
+        if (!swipe && Math.abs(dx) > 14 && Math.abs(dx) > Math.abs(dy) * 1.4) swipe = { dx: 0 };
+        if (swipe) {
+          swipe.dx = Math.max(-72, Math.min(72, dx));
+          card.style.transform = 'translateX(' + swipe.dx + 'px)';
+          if (!selectedCards.has(card)) badge.style.opacity = Math.min(1, Math.abs(swipe.dx) / 48);
+          card.classList.toggle('armed', Math.abs(swipe.dx) >= 48);
+        }
+      });
+      function endSwipe() {
+        cancelLp();
+        if (!swipe) return false;
+        const dx = swipe.dx; swipe = null;
+        card.style.transition = 'transform 220ms cubic-bezier(0.32, 0.72, 0, 1)';
+        card.style.transform = '';
+        badge.style.opacity = '';
+        card.classList.remove('armed');
+        if (Math.abs(dx) >= 48) {
+          if (selectedCards.has(card)) { selectedCards.delete(card); card.classList.remove('selected'); }
+          else { selectedCards.add(card); card.classList.add('selected'); }
+          refreshCopyAll();
+          try { if (navigator.vibrate) navigator.vibrate(10); } catch (_) {}
+          log(selectedCards.has(card) ? 'card <b>seleccionada</b> por deslizamiento (' + selectedCards.size + ')' : 'card deseleccionada (' + selectedCards.size + ')');
+        }
+        return true;
+      }
+      card.addEventListener('pointerup', () => { if (endSwipe()) suppressClick = true; });
+      card.addEventListener('pointercancel', endSwipe);
+      card.addEventListener('pointerleave', () => { if (swipe) endSwipe(); });
+      /* Toque simple = pegar de inmediato en el campo + cerrar.
+         En la app real es commitText en cursor (teclado propio) o portapapeles:
+         siempre posible, nunca bloquea. Sobre card expandida, el toque la colapsa. */
+      card.addEventListener('click', () => {
+        if (suppressClick) { suppressClick = false; return; }
+        /* El clic que suelta un toque largo no hace nada (ya expandió). */
+        if (Date.now() - lpFiredAt < 600) return;
+        if (card.classList.contains('expanded')) { card.classList.remove('expanded'); return; }
+        insertAndClose(card);
+      });
+      function insertAndClose(card) {
+        card.classList.add('flash');
+        setTimeout(() => card.classList.remove('flash'), 1250);
+        const tgt = document.getElementById('insertTarget');
+        tgt.textContent = text + ' ▌';
+        document.getElementById('insertLine').classList.remove('insert-flash');
+        void document.getElementById('insertLine').offsetWidth;
+        document.getElementById('insertLine').classList.add('insert-flash');
+        log('insertado en cursor + copiado → contraer');
+        setTimeout(closeHistory, 550);
+      }
+      b.addEventListener('click', (e) => {
+        e.stopPropagation(); cancelLp();
+        b.classList.add('done');
+        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5 L9.5 17.5 L19.5 6.5"/></svg>';
+        log('copiado al portapapeles');
+        setTimeout(() => {
+          b.classList.remove('done');
+          b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+        }, 1200);
+      });
+      card.append(t, badge, b);
+      return card;
+    }
+    function prependCard(text) { cardsEl.prepend(cardEl(text)); }
+    ['dictado de prueba para verificar el morph direccional', 'comprar pan y queso antes de las ocho', 'nota: revisar el PR del teclado esta noche'].reverse().forEach(prependCard);
+
+    /* Cuadrante inteligente: el diagonal con más área libre */
+    function pickGrowth() {
+      const r = phoneRect();
+      const availH = r.height - kbHeight();
+      const w = Math.min(MOD_W, r.width - MARGIN * 2);
+      const h = Math.min(MOD_H, availH - MARGIN * 2 - 28);
+      const cx = S.bubble.x + BUB / 2, cy = S.bubble.y + BUB / 2;
+      const left = cx - MARGIN, right = r.width - cx - MARGIN;
+      const up = cy - MARGIN - 28, down = availH - cy - MARGIN;
+      const goLeft = left >= right, goUp = up >= down;
+      let x = goLeft ? cx + BUB / 2 - w : cx - BUB / 2;
+      let y = goUp ? cy + BUB / 2 - h : cy - BUB / 2;
+      x = Math.max(MARGIN, Math.min(r.width - w - MARGIN, x));
+      y = Math.max(MARGIN + 28, Math.min(availH - h - MARGIN, y));
+      return { x, y, w, h, dir: (goLeft ? 'izq' : 'der') + '+' + (goUp ? 'arriba' : 'abajo') };
+    }
+
+    function morph(open) {
+      const r = phoneRect();
+      const from = { x: S.origin.x, y: S.origin.y, w: BUB, h: BUB, rad: 32 };
+      const g = pickGrowth();
+      const to = open ? { x: g.x, y: g.y, w: g.w, h: g.h, rad: 20 } : from;
+      const start = open ? from : { x: modal.offsetLeft, y: modal.offsetTop, w: modal.offsetWidth, h: modal.offsetHeight, rad: 20 };
+      if (S.reduced || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        if (open) { Object.assign(modal.style, { left: to.x + 'px', top: to.y + 'px', width: to.w + 'px', height: to.h + 'px' }); modal.classList.add('open'); bubble.classList.add('hidden'); }
+        else { modal.classList.remove('open'); bubble.classList.remove('hidden'); }
+        return g;
+      }
+      if (open) {
+        Object.assign(modal.style, { left: from.x + 'px', top: from.y + 'px', width: from.w + 'px', height: from.h + 'px', borderRadius: '32px' });
+        modal.classList.add('open');
+        cardsEl.style.opacity = '0'; modal.querySelector('.hist-foot').style.opacity = '0';
+      }
+      const anim = modal.animate([
+        { left: start.x + 'px', top: start.y + 'px', width: start.w + 'px', height: start.h + 'px', borderRadius: (open ? 32 : 20) + 'px' },
+        { left: to.x + 'px', top: to.y + 'px', width: to.w + 'px', height: to.h + 'px', borderRadius: (open ? 20 : 32) + 'px' },
+      ], { duration: 320, easing: EASE, fill: 'forwards' });
+      anim.onfinish = () => {
+        Object.assign(modal.style, { left: to.x + 'px', top: to.y + 'px', width: to.w + 'px', height: to.h + 'px', borderRadius: '' });
+        if (open) {
+          bubble.classList.add('hidden');
+          cardsEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: 'forwards' });
+          modal.querySelector('.hist-foot').animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180, fill: 'forwards' });
+          cardsEl.style.opacity = ''; modal.querySelector('.hist-foot').style.opacity = '';
+        } else {
+          modal.classList.remove('open');
+          bubble.classList.remove('hidden');
+          placeBubble(S.origin.x, S.origin.y, false);
+        }
+        anim.cancel();
+      };
+      return g;
+    }
+
+    function openHistory(via) {
+      if (S.modalOpen || S.state === 'recording' || S.state === 'transcribing') return;
+      S.origin = { ...S.bubble };
+      S.modalOpen = true;
+      const g = morph(true);
+      log('historial vía <b>' + via + '</b> → crece <b>' + g.dir + '</b> (' + Math.round(g.w) + '×' + Math.round(g.h) + ')');
+    }
+    function closeHistory() {
+      if (!S.modalOpen) return;
+      S.modalOpen = false;
+      clearSelection();
+      const g = morph(false);
+      log('contraer → origen (' + Math.round(S.origin.x) + ', ' + Math.round(S.origin.y) + ')');
+    }
+
+    document.getElementById('histHandle').addEventListener('click', closeHistory);
+    document.getElementById('histHandle').addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeHistory(); } });
+    histMic.addEventListener('click', () => { closeHistory(); setTimeout(toggleRecord, S.reduced ? 0 : 200); });
+    modal.addEventListener('pointerdown', (e) => {
+      if (e.target === modal || e.target === cardsEl) { /* tap fuera de cards: no hace nada */ }
+    });
+
+    /* ---------- Controles ---------- */
+    function setMode(m) {
+      S.mode = m;
+      document.getElementById('modeTap').setAttribute('aria-pressed', m === 'tap' ? 'true' : 'false');
+      document.getElementById('modeHold').setAttribute('aria-pressed', m === 'hold' ? 'true' : 'false');
+      document.getElementById('modeHint').innerHTML = m === 'tap'
+        ? 'Toque = grabar · otro toque = detener · <strong>toque largo = historial</strong>.'
+        : '<strong>Toque = historial</strong> · mantener = grabar · soltar = detener.';
+      log('modo grabación → <b>' + (m === 'tap' ? 'toques' : 'mantener') + '</b>');
+    }
+    document.getElementById('modeTap').addEventListener('click', () => setMode('tap'));
+    document.getElementById('modeHold').addEventListener('click', () => setMode('hold'));
+
+    document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => setPreset(b.dataset.preset, b)));
+
+    function toggleKb(force) {
+      S.kbOpen = force !== undefined ? force : !S.kbOpen;
+      kb.classList.toggle('on', S.kbOpen);
+      document.getElementById('kbToggle').setAttribute('aria-checked', S.kbOpen ? 'true' : 'false');
+      const r = phoneRect();
+      if (S.bubble.y > r.height - kbHeight() - BUB - MARGIN) placeBubble(S.bubble.x, r.height - kbHeight() - BUB - MARGIN, true);
+      log('teclado ' + (S.kbOpen ? '<b>visible</b>' : 'oculto'));
+    }
+    document.getElementById('kbToggle').addEventListener('click', () => toggleKb());
+    document.getElementById('themeToggle').addEventListener('click', (e) => {
+      S.theme = S.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = S.theme;
+      e.currentTarget.setAttribute('aria-checked', S.theme === 'light' ? 'true' : 'false');
+    });
+    document.getElementById('motionToggle').addEventListener('click', (e) => {
+      S.reduced = !S.reduced;
+      e.currentTarget.setAttribute('aria-checked', S.reduced ? 'true' : 'false');
+      log('movimiento reducido ' + (S.reduced ? '<b>ON</b>' : 'off'));
+    });
+    document.getElementById('btnHistory').addEventListener('click', () => openHistory('botón'));
+    document.getElementById('btnReplay').addEventListener('click', () => {
+      if (!S.modalOpen) { openHistory('replay'); setTimeout(closeHistory, 1400); }
+      else { closeHistory(); setTimeout(() => openHistory('replay'), 450); }
+    });
+
+    window.addEventListener('resize', () => placeBubble(S.bubble.x, S.bubble.y, false));
+
+    /* init */
+    (function init() {
+      const r = phoneRect();
+      S.bubble = { x: r.width - BUB - MARGIN, y: MARGIN + 30 };
+      bubble.style.left = S.bubble.x + 'px'; bubble.style.top = S.bubble.y + 'px';
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        S.reduced = true;
+        document.getElementById('motionToggle').setAttribute('aria-checked', 'true');
+      }
+      log('lab listo · burbuja sup. der. · modo toques');
+    })();
+  </script>
+</body>
+</html>
