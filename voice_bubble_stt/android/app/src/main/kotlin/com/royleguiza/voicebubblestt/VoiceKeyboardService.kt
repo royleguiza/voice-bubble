@@ -3365,6 +3365,8 @@ class VoiceKeyboardService : InputMethodService() {
             onRepeat = action,
             onSwipeStep = { deleteWordBeforeCursor() },
         )
+    }
+
     /**
      * MEJ-25: Control de cursor y modo trackpad 2D en barra espaciadora.
      * - Deslizamiento horizontal (estilo Gboard): arrastre a izq/der desplaza el cursor.
