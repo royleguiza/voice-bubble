@@ -133,27 +133,19 @@ dart_settings_test = read("app_source/test/screens/settings_screen_test.dart")
 check("Tests de render y toggle del switch (hito B6)",
       "bubble-history-switch" in dart_settings_test)
 
-# --- 8. Leccion CI: todo test que monte SettingsScreen debe mockear el
-# canal trackpad (lectura en _loadInitialState; sin mock se cuelga y el
-# setState inicial no aplica) ---
-import glob
-for tf in sorted(glob.glob(os.path.join(WORKSPACE, "app_source/test/**/*.dart"), recursive=True)):
-    try:
-        with open(tf, "r", encoding="utf-8") as f:
-            content = f.read()
-    except OSError:
-        continue
-    if "SettingsScreen(" not in content:
-        continue
-    uses_helper = "registerAppChannelMocks" in content
-    mocks_trackpad = "floating_trackpad" in content or "floating-trackpad" in content
-    check(f"{os.path.relpath(tf, WORKSPACE)} mockea canal trackpad",
-          uses_helper or mocks_trackpad,
-          "lectura colgada en _loadInitialState sin mock")
-
-helper = read("app_source/test/helpers/mock_channels.dart")
-check("mock_channels.dart cubre floating_trackpad",
-      "floating_trackpad" in helper and "isAccessibilityGranted" in helper)
+# --- 8. Perfil anti-Play-Protect: SettingsScreen NO debe leer el canal
+# trackpad en su init (lectura colgada sin mock + superficie declarada sin
+# accesibilidad). Si algún día vuelve, este guard avisa y hay que mockear
+# en todos los tests que monten SettingsScreen ---
+settings_dart = read("app_source/lib/screens/settings_screen.dart")
+check("SettingsScreen sin lecturas del canal trackpad en init",
+      "FloatingTrackpadService" not in settings_dart
+      and "isAccessibilityGranted" not in settings_dart,
+      "reintroduce colgadas en tests sin mock")
+manifest_txt = read("voice_bubble_stt/android/app/src/main/AndroidManifest.xml")
+check("Manifest sin servicio de accesibilidad (perfil anti-Play-Protect)",
+      "VoiceBubbleAccessibilityService" not in manifest_txt
+      and "BIND_ACCESSIBILITY_SERVICE" not in manifest_txt)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE BURBUJA-HISTORIAL: {PASSED} pasados, {FAILED} fallidos.")

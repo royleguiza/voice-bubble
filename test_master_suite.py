@@ -51,8 +51,8 @@ def test_manifest_retention():
         content = f.read()
     assert 'android:hasFragileUserData="true"' in content, "Falta android:hasFragileUserData=\"true\""
     assert 'android:allowBackup="true"' in content, "Falta android:allowBackup=\"true\""
-    assert 'android.permission.BIND_ACCESSIBILITY_SERVICE' in content, "Trial B: AndroidManifest debe declarar BIND_ACCESSIBILITY_SERVICE (isla exacta)"
-    assert 'android:name=".VoiceBubbleAccessibilityService"' in content, "Trial B: AndroidManifest debe registrar VoiceBubbleAccessibilityService (isla exacta)"
+    assert 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in content, "Falla de seguridad: AndroidManifest no debe declarar BIND_ACCESSIBILITY_SERVICE (perfil anti-Play-Protect 2026-09-05)"
+    assert 'VoiceBubbleAccessibilityService' not in content, "AndroidManifest no debe registrar VoiceBubbleAccessibilityService (perfil anti-Play-Protect)"
     assert 'FloatingTrackpadService' not in content, "AndroidManifest no debe registrar FloatingTrackpadService (Play Protect seguro)"
     assert os.path.isfile("voice_bubble_stt/android/app/debug.keystore"), "Falta voice_bubble_stt/android/app/debug.keystore persistente"
     with open("app_source/pubspec.yaml", "r", encoding="utf-8") as f:

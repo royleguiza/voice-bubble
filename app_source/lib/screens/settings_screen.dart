@@ -6,7 +6,6 @@ import 'package:record/record.dart';
 import '../models/snippet.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
-import '../services/floating_trackpad_service.dart';
 import '../services/keyboard_service.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
@@ -17,7 +16,6 @@ class SettingsScreen extends StatefulWidget {
   final FlutterSecureStorage? secureStorage;
   final FloatingBubbleService? floatingBubbleService;
   final KeyboardService? keyboardService;
-  final FloatingTrackpadService? floatingTrackpadService;
 
   const SettingsScreen({
     super.key,
@@ -25,7 +23,6 @@ class SettingsScreen extends StatefulWidget {
     this.secureStorage,
     this.floatingBubbleService,
     this.keyboardService,
-    this.floatingTrackpadService,
   });
 
   @override
@@ -40,12 +37,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   late final StorageService _storageService;
   late final FloatingBubbleService _floatingBubbleService;
   late final KeyboardService _keyboardService;
-  late final FloatingTrackpadService _floatingTrackpadService;
 
   bool _hasApiKey = false;
   String _recordMode = StorageService.defaultRecordMode;
   bool _isBubbleEnabled = false;
-  bool _isAccessibilityGranted = false;
   bool _showBubbleHistory = true;
   bool _isKeyboardEnabled = false;
   bool _isKeyboardSelected = false;
@@ -89,8 +84,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     _floatingBubbleService =
         widget.floatingBubbleService ?? FloatingBubbleService();
     _keyboardService = widget.keyboardService ?? KeyboardService();
-    _floatingTrackpadService =
-        widget.floatingTrackpadService ?? FloatingTrackpadService();
     _loadInitialState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _ensureMicrophonePermission();
@@ -140,7 +133,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     final islandSlotOrder = await _storageService.getIslandSlotOrder();
     final islandTheme = await _storageService.getIslandTheme();
     final islandWaveformEnabled = await _storageService.getIslandWaveformEnabled();
-    final accessibilityGranted = await _readAccessibilityStatus();
     // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
     if (apiKey.isNotEmpty) {
       try {
@@ -186,35 +178,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _islandSlotOrder = islandSlotOrder;
       _islandTheme = islandTheme;
       _islandWaveformEnabled = islandWaveformEnabled;
-      _isAccessibilityGranted = accessibilityGranted;
     });
-  }
-
-  /// Estado del servicio de accesibilidad vía MethodChannel; defaults si el
-  /// canal no está disponible (tests o servicio ausente).
-  Future<bool> _readAccessibilityStatus() async {
-    try {
-      return await _floatingTrackpadService.isAccessibilityGranted();
-    } catch (_) {
-      return false;
-    }
-  }
-
-  /// Relectura del estado de accesibilidad (al volver de Ajustes del sistema).
-  Future<void> _loadAccessibilityStatus() async {
-    final granted = await _readAccessibilityStatus();
-    if (mounted) {
-      setState(() => _isAccessibilityGranted = granted);
-    }
-  }
-
-  String get _accessibilityStatusText {
-    return _isAccessibilityGranted ? 'Concedido' : 'No concedido';
-  }
-
-  Future<void> _openAccessibilitySettings() async {
-    await _floatingTrackpadService.openAccessibilitySettings();
-    await _loadAccessibilityStatus();
   }
 
   /// Modal de historial de la burbuja clásica (hito B1–B7): el toque largo
@@ -222,10 +186,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleBubbleHistory(bool enabled) async {
     await _storageService.saveBubbleHistoryEnabled(enabled);
     if (mounted) setState(() => _showBubbleHistory = enabled);
-  }
-
-  Future<void> _openAppDetailsSettings() async {
-    await _floatingTrackpadService.openAppDetailsSettings();
   }
 
   /// Lee la API key del secure storage. Frontera de canal: el keystore de
@@ -651,7 +611,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _handleAppResumed() async {
     final wasEnabled = _isKeyboardEnabled;
     await _loadKeyboardStatus();
-    await _loadAccessibilityStatus();
     // Si acaba de habilitar el teclado en ajustes del sistema, mostramos
     // el modal de inmediato para que lo active sin salir de la app.
     if (!wasEnabled && _isKeyboardEnabled && !_isKeyboardSelected) {
@@ -830,64 +789,6 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
         const SizedBox(height: 8),
         _buildDynamicIslandCard(context),
-
-        const SizedBox(height: 16),
-
-        // Acceso de accesibilidad: divulgación + estado + atajos al sistema.
-        // Trial B (isla exacta) y trackpad con clics lo requieren; sin él,
-        // burbuja y teclado siguen funcionando por sus propios caminos.
-        Text(
-          'Acceso de accesibilidad',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Permite a la isla mostrarse sobre la cámara y al trackpad hacer clics y desplazamientos. No lee ni guarda la pantalla y nunca actúa en contraseñas. Si el interruptor sale gris: Ajustes → Aplicaciones → VoiceBubble → ⋮ → Permitir ajustes restringidos.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ListTile(
-                  key: const ValueKey('a11y-status-tile'),
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    _isAccessibilityGranted
-                        ? Icons.check_circle
-                        : Icons.warning_amber,
-                    color: _isAccessibilityGranted
-                        ? Colors.green
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  title: const Text('Servicio de accesibilidad'),
-                  subtitle: Text(_accessibilityStatusText),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    FilledButton(
-                      key: const ValueKey('a11y-open-settings-btn'),
-                      onPressed: _openAccessibilitySettings,
-                      child: const Text('Abrir ajustes'),
-                    ),
-                    TextButton(
-                      key: const ValueKey('a11y-open-app-details-btn'),
-                      onPressed: _openAppDetailsSettings,
-                      child: const Text('Info de la app'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
 
         const SizedBox(height: 24),
         const Divider(),

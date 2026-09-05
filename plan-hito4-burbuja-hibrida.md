@@ -1,6 +1,6 @@
 # Hito 4 Híbrido — Burbuja con inyección por Accesibilidad + IME propio — Plan de Ejecución
 
-> **Estado**: ✅ APROBADO POR EL DUEÑO (2026-09-05, D-HB0…D-HB7 con recomendaciones — ver §6). HB0 en ejecución, HB1+ pendientes. NADA de Kotlin/Dart implementado aún.
+> **Estado**: 🛑 BLOQUEADO 2026-09-05 (decisión del dueño: perfil anti-Play-Protect). El servicio de accesibilidad se retiró del manifest; sin declaración no hay `SET_TEXT/PASTE` posible. D-HB0…D-HB7 quedan archivadas como spec válida para el día que vuelva (vía Play Store o flavor `full`). La burbuja pega vía IME propio o portapapeles.
 > **Fecha**: 5 de septiembre de 2026
 > **Origen**: pedido del dueño: usar la burbuja (normal e isla/píldora) con un teclado de terceros (ej. DigiWord, con contraseñas guardadas) y lograr pegado directo en inputs, al estilo WhisperFlow/Wispr Flow, sin perder el path actual con nuestro teclado.
 > **Precedentes internos**: `plan.md` Hito 4 (congelado 2026-08-22); `teclado-voice.md` D1–D9; `plan-clipboard.md` (excepción §8, TTL, máscara sensibles); `plan-ciclar-mayusculas.md` (lectura tolerante, degradación honesta); puente Flutter↔Kotlin K2.1.

@@ -3,7 +3,7 @@
 TEST SUITE INTEGRAL: MODO TRACKPAD Y PUNTERO VIRTUAL (MEJ-09)
 Verifica al 100% de certeza:
 1. Paridad de claves de contrato en docs/contract-keys.txt, Dart y Kotlin.
-2. Manifest y permisos: SYSTEM_ALERT_WINDOW, BIND_ACCESSIBILITY_SERVICE y config XML.
+2. Manifest y permisos: SYSTEM_ALERT_WINDOW y perfil anti-Play-Protect (SIN BIND_ACCESSIBILITY_SERVICE declarado; el servicio queda versionado pero dormido).
 3. VoiceBubbleAccessibilityService: métodos de despacho, sanitización de coordenadas, batching de scroll y canRetrieveWindowContent=false.
 4. PointerOverlayManager: TYPE_APPLICATION_OVERLAY, FLAG_NOT_TOUCHABLE, estilos, cinemática y bounds.
 5. VirtualTrackpadView: Opción 2 Split Wings, modos de scroll (right, left, disabled), auto-expansión 100%,
@@ -74,8 +74,8 @@ with open(manifest_path, "r", encoding="utf-8") as f:
     manifest_content = f.read()
 
 check("AndroidManifest declara SYSTEM_ALERT_WINDOW", 'android.permission.SYSTEM_ALERT_WINDOW' in manifest_content)
-check("AndroidManifest declara BIND_ACCESSIBILITY_SERVICE (trial B: isla exacta)", 'android.permission.BIND_ACCESSIBILITY_SERVICE' in manifest_content)
-check("AndroidManifest declara VoiceBubbleAccessibilityService (trial B: isla exacta)", 'android:name=".VoiceBubbleAccessibilityService"' in manifest_content)
+check("AndroidManifest libre de BIND_ACCESSIBILITY_SERVICE (perfil anti-Play-Protect)", 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest_content)
+check("AndroidManifest no declara VoiceBubbleAccessibilityService (perfil anti-Play-Protect)", 'android:name=".VoiceBubbleAccessibilityService"' not in manifest_content)
 check("AndroidManifest no declara FloatingTrackpadService (Play Protect seguro)", 'android:name=".FloatingTrackpadService"' not in manifest_content)
 
 gradle_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/build.gradle.kts")

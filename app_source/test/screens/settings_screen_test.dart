@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
-import 'package:voice_bubble_stt/services/floating_trackpad_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/widgets/settings_tab_bar.dart';
@@ -17,29 +16,10 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   const channel = MethodChannel(FloatingBubbleService.channelName);
   const keyboardChannel = MethodChannel(KeyboardService.channelName);
-  const trackpadChannel = MethodChannel(FloatingTrackpadService.channelName);
 
   late StorageService storageService;
   late List<MethodCall> bubbleLog;
   late List<MethodCall> keyboardLog;
-  late List<MethodCall> trackpadLog;
-
-  void mockTrackpadChannel({bool granted = false}) {
-    messenger.setMockMethodCallHandler(trackpadChannel,
-        (MethodCall call) async {
-      trackpadLog.add(call);
-      switch (call.method) {
-        case 'isAccessibilityGranted':
-          return granted;
-        case 'openAccessibilitySettings':
-          return true;
-        case 'openAppDetailsSettings':
-          return true;
-        default:
-          return null;
-      }
-    });
-  }
 
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({});
@@ -47,8 +27,6 @@ void main() {
     storageService = StorageService();
     bubbleLog = <MethodCall>[];
     keyboardLog = <MethodCall>[];
-    trackpadLog = <MethodCall>[];
-    mockTrackpadChannel();
 
     messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
       bubbleLog.add(call);
@@ -89,7 +67,6 @@ void main() {
   tearDown(() {
     messenger.setMockMethodCallHandler(channel, null);
     messenger.setMockMethodCallHandler(keyboardChannel, null);
-    messenger.setMockMethodCallHandler(trackpadChannel, null);
   });
 
   void mockKeyboardChannel({bool enabled = false, bool selected = false}) {
@@ -112,14 +89,11 @@ void main() {
     WidgetTester tester, {
     FloatingBubbleService? bubbleService,
     KeyboardService? keyboardService,
-    FloatingTrackpadService? trackpadService,
-    Size surface = const Size(1600, 4800),
   }) {
     // Superficie alta (800x2400 logicos) para que toda la pagina de Settings
     // sea visible sin scroll: la tarjeta del teclado y la seccion de snippets
-    // alargan la lista (9.1-17 / 9.1-21). La tarjeta de accesibilidad vive
-    // justo despues de la isla: los tests que la tocan piden 6400 de alto.
-    tester.view.physicalSize = surface;
+    // alargan la lista (9.1-17 / 9.1-21).
+    tester.view.physicalSize = const Size(1600, 4800);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
     return MaterialApp(
@@ -128,8 +102,6 @@ void main() {
         floatingBubbleService: bubbleService ?? FloatingBubbleService(),
         keyboardService:
             keyboardService ?? KeyboardService(channel: keyboardChannel),
-        floatingTrackpadService:
-            trackpadService ?? FloatingTrackpadService(channel: trackpadChannel),
       ),
     );
   }
@@ -786,58 +758,4 @@ void main() {
     });
   });
 
-  group('SettingsScreen - Acceso de accesibilidad', () {
-    testWidgets('muestra divulgacion, estado y botones al sistema',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester,
-          surface: const Size(1600, 6400)));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Acceso de accesibilidad'), findsOneWidget);
-      expect(find.byKey(const ValueKey('a11y-status-tile')), findsOneWidget);
-      expect(find.text('No concedido'), findsOneWidget);
-      expect(find.byKey(const ValueKey('a11y-open-settings-btn')),
-          findsOneWidget);
-      expect(find.byKey(const ValueKey('a11y-open-app-details-btn')),
-          findsOneWidget);
-    });
-
-    testWidgets('con servicio activo muestra Concedido', (tester) async {
-      mockTrackpadChannel(granted: true);
-      await tester.pumpWidget(buildTestableWidget(tester,
-          surface: const Size(1600, 6400)));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Concedido'), findsOneWidget);
-    });
-
-    testWidgets('boton Abrir ajustes invoca el canal nativo', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester,
-          surface: const Size(1600, 6400)));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('a11y-open-settings-btn')));
-      await tester.pumpAndSettle();
-
-      expect(
-        trackpadLog.any((c) => c.method == 'openAccessibilitySettings'),
-        isTrue,
-      );
-    });
-
-    testWidgets('boton Info de la app invoca el canal nativo', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester,
-          surface: const Size(1600, 6400)));
-      await tester.pumpAndSettle();
-
-      await tester
-          .tap(find.byKey(const ValueKey('a11y-open-app-details-btn')));
-      await tester.pumpAndSettle();
-
-      expect(
-        trackpadLog.any((c) => c.method == 'openAppDetailsSettings'),
-        isTrue,
-      );
-    });
-  });
 }
