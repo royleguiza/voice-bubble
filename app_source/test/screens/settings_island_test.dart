@@ -65,7 +65,10 @@ void main() {
     messenger.setMockMethodCallHandler(keyboardChannel, null);
   });
 
-  Widget createTestWidget() {
+  Widget createTestWidget(WidgetTester tester) {
+    tester.view.physicalSize = const Size(1600, 6400);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.reset);
     return MaterialApp(
       home: SettingsScreen(
         storageService: storage,
@@ -77,7 +80,7 @@ void main() {
 
   group('SettingsScreen - Sección Píldora e Isla Dinámica', () {
     testWidgets('Renderiza título de sección y tarjeta de pastilla flotante', (tester) async {
-      await tester.pumpWidget(createTestWidget());
+      await tester.pumpWidget(createTestWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.text('Píldora e Isla Dinámica'), findsOneWidget);
@@ -87,7 +90,7 @@ void main() {
     });
 
     testWidgets('Muestra opciones de hardware y calibración en modo dynamic_island', (tester) async {
-      await tester.pumpWidget(createTestWidget());
+      await tester.pumpWidget(createTestWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.text('Presets de Hardware (Cámara y Notch)'), findsOneWidget);
@@ -104,7 +107,7 @@ void main() {
     });
 
     testWidgets('Preset Perforada Izquierda actualiza coordenadas a X: -108, Y: 12', (tester) async {
-      await tester.pumpWidget(createTestWidget());
+      await tester.pumpWidget(createTestWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Perforada Izquierda'));
@@ -116,7 +119,7 @@ void main() {
     });
 
     testWidgets('Steppers de Eje X incrementan y decrementan la posición', (tester) async {
-      await tester.pumpWidget(createTestWidget());
+      await tester.pumpWidget(createTestWidget(tester));
       await tester.pumpAndSettle();
 
       // Tap +5 px stepper
@@ -131,7 +134,7 @@ void main() {
     });
 
     testWidgets('Inversión de ranuras de acceso rápido', (tester) async {
-      await tester.pumpWidget(createTestWidget());
+      await tester.pumpWidget(createTestWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.text('Izquierda: Trackpad | Centro: Cámara | Derecha: Mic'), findsOneWidget);
@@ -144,7 +147,7 @@ void main() {
     });
 
     testWidgets('Cambio de tema visual y onda reactiva', (tester) async {
-      await tester.pumpWidget(createTestWidget());
+      await tester.pumpWidget(createTestWidget(tester));
       await tester.pumpAndSettle();
 
       // Cambiar a Oscuro
