@@ -1612,7 +1612,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Posición Eje X (Horizontal)', style: TextStyle(fontWeight: FontWeight.w600)),
-                    Text('${_islandPosX} px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                    Text('$_islandPosX px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
                   ],
                 ),
                 Slider(
@@ -1643,7 +1643,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Posición Eje Y (Vertical)', style: TextStyle(fontWeight: FontWeight.w600)),
-                    Text('${_islandPosY} px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                    Text('$_islandPosY px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
                   ],
                 ),
                 Slider(
@@ -1674,7 +1674,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Ancho en Reposo', style: TextStyle(fontWeight: FontWeight.w600)),
-                    Text('${_islandWidth} px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                    Text('$_islandWidth px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
                   ],
                 ),
                 Slider(
@@ -1701,7 +1701,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text('Grosor / Alto', style: TextStyle(fontWeight: FontWeight.w600)),
-                    Text('${_islandHeight} px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
+                    Text('$_islandHeight px', style: TextStyle(fontWeight: FontWeight.bold, color: theme.colorScheme.primary)),
                   ],
                 ),
                 Slider(
@@ -1841,7 +1841,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         decoration: BoxDecoration(
           color: isActive
               ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surfaceVariant.withOpacity(0.4),
+              : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
           border: Border.all(
             color: isActive ? theme.colorScheme.primary : Colors.transparent,
             width: 1.5,
@@ -1867,7 +1867,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               style: TextStyle(
                 fontSize: 10,
                 color: isActive
-                    ? theme.colorScheme.onPrimaryContainer.withOpacity(0.8)
+                    ? theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8)
                     : theme.colorScheme.onSurfaceVariant,
               ),
             ),
@@ -1876,6 +1876,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       ),
     );
   }
+
+  Widget _buildSnippetsTab(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       children: [
