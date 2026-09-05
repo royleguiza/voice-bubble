@@ -51,8 +51,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   int _bottomElevationDp = StorageService.defaultBottomElevationDp;
   bool _invertToolbar = false;
   String _spacebarAlignment = StorageService.defaultSpacebarAlignment;
+  String _spacebarTrackpadMode = StorageService.defaultSpacebarTrackpadMode;
   bool _trackpadEnabled = StorageService.defaultTrackpadEnabled;
   bool _trackpadToolbarVisible = StorageService.defaultTrackpadToolbarVisible;
+  String _trackpadButtonLayout = StorageService.defaultTrackpadButtonLayout;
   String _trackpadScrollPosition = StorageService.defaultTrackpadScrollPosition;
   double _trackpadSensitivity = StorageService.defaultTrackpadSensitivity;
   String _trackpadAccelCurve = StorageService.defaultTrackpadAccelCurve;
@@ -100,8 +102,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     final bottomElevation = await _storageService.getBottomElevationDp();
     final invertToolbar = await _storageService.getInvertToolbar();
     final spacebarAlign = await _storageService.getSpacebarAlignment();
+    final spacebarTrackpadMode = await _storageService.getSpacebarTrackpadMode();
     final trackpadEnabled = await _storageService.getTrackpadEnabled();
     final trackpadToolbarVisible = await _storageService.getTrackpadToolbarVisible();
+    final trackpadButtonLayout = await _storageService.getTrackpadButtonLayout();
     final trackpadScrollPosition = await _storageService.getTrackpadScrollPosition();
     final trackpadSensitivity = await _storageService.getTrackpadSensitivity();
     final trackpadAccelCurve = await _storageService.getTrackpadAccelCurve();
@@ -134,8 +138,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       _bottomElevationDp = bottomElevation;
       _invertToolbar = invertToolbar;
       _spacebarAlignment = spacebarAlign;
+      _spacebarTrackpadMode = spacebarTrackpadMode;
       _trackpadEnabled = trackpadEnabled;
       _trackpadToolbarVisible = trackpadToolbarVisible;
+      _trackpadButtonLayout = trackpadButtonLayout;
       _trackpadScrollPosition = trackpadScrollPosition;
       _trackpadSensitivity = trackpadSensitivity;
       _trackpadAccelCurve = trackpadAccelCurve;
@@ -342,6 +348,11 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (mounted) setState(() => _spacebarAlignment = alignment);
   }
 
+  Future<void> _saveSpacebarTrackpadMode(String mode) async {
+    await _storageService.setSpacebarTrackpadMode(mode);
+    if (mounted) setState(() => _spacebarTrackpadMode = mode);
+  }
+
   String get _heightProfileHint {
     switch (_heightProfile) {
       case 'baja':
@@ -368,6 +379,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleTrackpadToolbarVisible(bool value) async {
     setState(() => _trackpadToolbarVisible = value);
     await _storageService.setTrackpadToolbarVisible(value);
+  }
+
+  Future<void> _saveTrackpadButtonLayout(String value) async {
+    setState(() => _trackpadButtonLayout = value);
+    await _storageService.setTrackpadButtonLayout(value);
   }
 
   Future<void> _saveTrackpadScrollPosition(String value) async {
@@ -974,6 +990,31 @@ class _SettingsScreenState extends State<SettingsScreen>
                 _buildSpacebarAlignmentCards(),
                 const SizedBox(height: 16),
                 Text(
+                  'Gesto en Barra Espaciadora (Cursor)',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  key: const ValueKey('kb-spacebar-trackpad-mode-selector'),
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 'ios_2d', label: Text('iOS 2D (Mantener)')),
+                    ButtonSegment(value: 'gboard_horizontal', label: Text('Gboard (Deslizar)')),
+                  ],
+                  selected: {_spacebarTrackpadMode},
+                  onSelectionChanged: (s) => _saveSpacebarTrackpadMode(s.first),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _spacebarTrackpadMode == 'ios_2d'
+                      ? 'Mantener presionado >300ms activa navegación 2D libre con borrado de teclas estilo iOS.'
+                      : 'Deslizar sobre la barra mueve el cursor lateralmente estilo Gboard.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                Text(
                   'Elevación Inferior (Bottom Lift)',
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
@@ -1130,6 +1171,29 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
                 value: _trackpadToolbarVisible,
                 onChanged: _toggleTrackpadToolbarVisible,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Distribución de Botones de Clic',
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<String>(
+                key: const ValueKey('kb-trackpad-button-layout-selector'),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: 'top', label: Text('Superiores 50/50')),
+                  ButtonSegment(value: 'wings', label: Text('Laterales (Alas)')),
+                ],
+                selected: {_trackpadButtonLayout},
+                onSelectionChanged: (s) => _saveTrackpadButtonLayout(s.first),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _trackpadButtonLayout == 'top'
+                    ? 'Botones L y R divididos al 50% arriba con iconos limpios sin texto.'
+                    : 'Botones ergonómicos en columnas laterales para acceso rápido con pulgares.',
+                style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
               ),
               const SizedBox(height: 12),
               Text(

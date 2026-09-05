@@ -165,7 +165,7 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 ### 2.7 [MEJ-09] Modo Trackpad y Puntero de Mouse Virtual Flotante
 * **Origen / Necesidad**: En interfaces densas (páginas web completas, Termux con interfaces CLI/TUI, editores como Acode o paneles de servidores), seleccionar texto pequeño o acertar a botones diminutos con los dedos resulta impreciso. Un modo Trackpad que transforme el teclado en una superficie de control con puntero de mouse en pantalla brinda precisión milimétrica.
 * **Comportamiento Esperado**:
-  - **Activación Rápida**: Desde el menú rápido de espacio (`MEJ-06`), acceso en barra superior (`MEJ-03`) o botón de capa.
+  - **Activación Rápida**: Desde el menú rápido de espacio (`MEJ-06`), acceso en barra superior (`MEJ-03`), botón de capa o desde la burbuja flotante / Dynamic Island.
   - **Superficie Táctil del Teclado (Trackpad View)**:
     - La vista del teclado se convierte en un panel táctil suave Glass con un cuadrado/área central de navegación.
     - Fila inferior con botones táctiles dedicados:
@@ -182,9 +182,19 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
       - **Desplazamiento / Scroll**: Deslizar con dos dedos en el trackpad emula scroll arriba/abajo.
   - **Ajustes y Sensibilidad**:
     - Ajuste de sensibilidad del puntero (Lento, Normal, Rápido) y velocidad de aceleración.
+* **Diagnóstico Técnico y Arquitectura Dual (Investigación Septiembre 2026)**:
+  - *Diagnóstico del Trackpad Integrado en Teclado (IME)*:
+    - La ventana del teclado (`InputMethodService`) está sujeta a restricciones de contexto de Android: se oculta automáticamente cuando un campo de texto pierde el foco (`window context issues`).
+    - No puede inyectar eventos táctiles o clics fuera de su propia vista sin delegar en un servicio de accesibilidad activo (`VoiceBubbleAccessibilityService`) que ejecute `dispatchGesture`.
+    - La superposición del puntero (`PointerOverlayManager.kt`) requiere permisos explícitos de `SYSTEM_ALERT_WINDOW`.
+  - *Viabilidad y Ventaja del Trackpad Flotante Autónomo (`FloatingTrackpadService.kt`)*:
+    - Opera como un overlay flotante persistente (`TYPE_APPLICATION_OVERLAY`), completamente desacoplado del ciclo de vida del IME.
+    - **Compatibilidad Universal**: Permite su uso simultáneo con cualquier teclado del sistema (Gboard, Samsung Keyboard, SwiftKey, etc.) o con el teclado cerrado, resolviendo el problema de contexto de ventana.
+    - Puede desplegarse directamente desde la burbuja flotante o la nueva Dynamic Island.
+  - *Estrategia*: Se implementa el `FloatingTrackpadService` como servicio universal flotante, permitiendo al usuario alternar entre el trackpad flotante libre y la capa táctil integrada del teclado.
 * **Impacto Técnico**:
-  - *Kotlin nativo*: En `VoiceKeyboardService.kt` se implementa `buildTrackpadLayer()`. Vinculación con el servicio de accesibilidad (`VoiceBubbleAccessibilityService`) para inyectar gestos de clic (`dispatchGesture`) y con el `WindowManager` para el puntero flotante (`PointerOverlayView`).
-  - *Flutter (Dart)*: Configuración de sensibilidad y habilitación en Ajustes > Teclado.
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt` se implementa `buildTrackpadLayer()`. Servicio autónomo `FloatingTrackpadService.kt` con ventana flotante redimensionable. Vinculación con el servicio de accesibilidad (`VoiceBubbleAccessibilityService`) para inyectar gestos de clic (`dispatchGesture`) y con el `WindowManager` para el puntero flotante (`PointerOverlayManager.kt` / `PointerOverlayView`).
+  - *Flutter (Dart)*: Configuración de sensibilidad, modo de trackpad (Integrado vs Flotante) y accesos directos en Ajustes > Teclado.
 * **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
 
 ---
@@ -524,6 +534,36 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 
 ---
 
+### 2.23 [MEJ-25] Control de Cursor y Modo Trackpad 2D en Barra Espaciadora (Estilo Gboard e iOS / Apple Trackpad)
+* **Origen / Necesidad**: Durante la redacción y edición en campos de texto, mensajes largos, editores de código móvil (Acode / Neovim) o sesiones de Termux, posicionar el cursor con precisión táctil directa sobre el texto es sumamente difícil debido al tamaño de los dedos. 
+  - **Inspiración Gboard**: Desplazamiento horizontal del cursor deslizando el dedo sobre la barra espaciadora.
+  - **Inspiración iPhone (iOS Spacebar Trackpad)**: Al realizar una pulsación larga sobre la barra espaciadora, **todas las teclas del teclado se inhabilitan, sus letras y caracteres desaparecen (blank-out)** quedando visibles únicamente los rectángulos y bordes individuales de cada tecla, transformando todo el teclado en una **superficie continua de trackpad 2D**. Esto permite no solo mover el cursor horizontalmente, sino navegar verticalmente y hacer scroll hacia arriba y abajo dentro de cuadros de texto extensos.
+* **Comportamiento Esperado**:
+  1. **Interacción Gboard (Deslizamiento Horizontal en Espacio)**:
+     - Arrastrar el dedo a izquierda o derecha sobre la barra espaciadora mueve el cursor suavemente entre caracteres de la línea actual sin levantar el dedo.
+     - Indicador visual sobre la barra con micro-flechas (`◀ ␣ ▶`) y feedback háptico por carácter recorrido.
+  2. **Interacción iOS (Pulsación Larga + Blank-Out de Teclas a Trackpad 2D)**:
+     - **Activación por Long-Press**: Al mantener presionada la barra espaciadora (~300ms):
+       - Todas las teclas se vuelven translúcidas y ocultan sus glifos (efecto "blank-out"), revelando únicamente la cuadrícula geométrica de rectángulos Glass.
+       - La superficie completa del teclado pasa a actuar como un trackpad 2D continuo.
+     - **Navegación 2D y Scroll Vertical**:
+       - Mover el dedo en cualquier dirección (arriba, abajo, izquierda, derecha) desplaza el cursor en dos dimensiones.
+       - Permite realizar scroll hacia arriba o hacia abajo en cuadros de texto multilínea muy grandes o buffers de terminal sin que el teclado se cierre ni pierda foco.
+     - **Salida Instantánea**: Al soltar el dedo (`ACTION_UP`), las teclas reaparecen de inmediato con sus letras correspondientes y confirmación háptica suave.
+  3. **Ajustes y Personalización (Ajustes > Tab Teclado)**:
+     - Switch de activación: *"Gesto de Trackpad en Barra Espaciadora"*.
+     - Modo de operación: `Deslizamiento Horizontal (Gboard)` vs `Trackpad 2D Completo con Blank-Out de Teclas (iOS)` [Default].
+     - Sensibilidad de desplazamiento del cursor (Baja, Media, Alta).
+* **Impacto Técnico**:
+  - *Kotlin nativo*: En `VoiceKeyboardService.kt`:
+    - Detección de `ACTION_DOWN` + temporizador de long-press en `spaceKeyView`.
+    - Método de animación `setTrackpadBlankOutMode(enabled: Boolean)`: itera sobre las filas de teclas, atenúa suavemente los `TextView` a opacidad 0 manteniendo visibles los fondos `GradientDrawable` rectangulares.
+    - Captura de eventos `ACTION_MOVE` diferenciales (`dx`, `dy`) para invocar `InputConnection.setSelection()` y emitir `KeyEvent.KEYCODE_DPAD_LEFT / RIGHT / UP / DOWN` para terminales o vistas web.
+  - *Flutter (Dart)*: Clave de configuración `flutter.kb_spacebar_trackpad_mode` y selectores en `SettingsScreen`.
+* **Estado**: **En Diseño (Aprobada como idea para Septiembre)**.
+
+---
+
 ## 3. Registro de Decisiones y Descartes
 
 | Fecha | ID / Idea | Decisión | Motivo |
@@ -550,5 +590,6 @@ Estos planes ya fueron analizados y aprobados previamente por el dueño:
 | 2026-08-27 | MEJ-22 (Controlador de Audios de WhatsApp/Chats) | Aprobada | Barra fija de reproducción con scrubber, -5s, +5s y volumen persistente en scroll |
 | 2026-08-27 | MEJ-23 (Lanzador Rápido de Apps Spotlight/Raycast) | Aprobada | Buscador y lanzador instantáneo de apps instaladas desde teclado o burbuja |
 | 2026-08-27 | MEJ-24 (Auto-Conmutación a Burbuja con Teclado Físico) | Aprobada | Oculta teclado virtual y activa burbuja al conectar teclado Bluetooth/USB |
+| 2026-09-04 | MEJ-25 (Control Cursor y Trackpad 2D en Espacio) | Aprobada | Desplazamiento horizontal Gboard y trackpad 2D estilo iOS con blank-out de teclas |
 | 2026-08-26 | Congelamiento CI | Aprobado | Cuota de GitHub Actions pausada hasta el 01-Sep-2026; solo docs y diseño |
 

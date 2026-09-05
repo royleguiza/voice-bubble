@@ -24,6 +24,8 @@ void main() {
       expect(await storage.getTrackpadHaptic(), 'subtle');
       expect(await storage.getTrackpadPointerStyle(), 'arrow');
       expect(await storage.getTrackpadAutoReturn(), 0);
+      expect(await storage.getTrackpadButtonLayout(), 'top');
+      expect(await storage.getSpacebarTrackpadMode(), 'ios_2d');
     });
 
     test('trackpad enabled setter persists in SharedPreferences', () async {
@@ -181,6 +183,38 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(StorageService.kbTrackpadAutoReturnKey, 999);
       expect(await storage.getTrackpadAutoReturn(), 0);
+    });
+
+    test('trackpad button layout setter persists top and wings', () async {
+      final storage = StorageService();
+
+      expect(await storage.getTrackpadButtonLayout(), 'top');
+
+      await storage.setTrackpadButtonLayout('wings');
+      expect(await storage.getTrackpadButtonLayout(), 'wings');
+
+      await storage.setTrackpadButtonLayout('invalid_layout');
+      expect(await storage.getTrackpadButtonLayout(), 'wings');
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(StorageService.kbTrackpadButtonLayoutKey, 'corrupt');
+      expect(await storage.getTrackpadButtonLayout(), 'top');
+    });
+
+    test('spacebar trackpad mode setter persists ios_2d and gboard_horizontal', () async {
+      final storage = StorageService();
+
+      expect(await storage.getSpacebarTrackpadMode(), 'ios_2d');
+
+      await storage.setSpacebarTrackpadMode('gboard_horizontal');
+      expect(await storage.getSpacebarTrackpadMode(), 'gboard_horizontal');
+
+      await storage.setSpacebarTrackpadMode('invalid_mode');
+      expect(await storage.getSpacebarTrackpadMode(), 'gboard_horizontal');
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(StorageService.kbSpacebarTrackpadModeKey, 'corrupt');
+      expect(await storage.getSpacebarTrackpadMode(), 'ios_2d');
     });
   });
 }

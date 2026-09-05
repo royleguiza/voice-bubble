@@ -2345,6 +2345,49 @@
 <p>---</p>
                 </div>
             </article>
+
+            <!-- MEJ-25 Card -->
+            <article class="mej-card" id="mej-25" data-category="teclado" data-code="MEJ-25" data-title="Control de Cursor y Modo Trackpad 2D en Barra Espaciadora (Estilo Gboard e iOS / Apple Trackpad)">
+                <div class="mej-card-header">
+                    <div class="mej-badge-cluster">
+                        <span class="mej-code-badge">MEJ-25</span>
+                        <span class="category-chip"><span class="cat-dot cat-dot-teclado"></span>Teclado</span>
+                    </div>
+                    <button class="copy-link-btn" title="Copiar enlace a esta mejora" onclick="copyCardLink('mej-25')">
+                        🔗 <span class="tooltip">Copiado</span>
+                    </button>
+                </div>
+                <h3 class="mej-title">2.23 Control de Cursor y Modo Trackpad 2D en Barra Espaciadora (Estilo Gboard e iOS / Apple Trackpad)</h3>
+                <div class="mej-content">
+<div class="bullet-section bullet-origin"><span class="bullet-icon">💡</span><div class="bullet-content"><strong>Origen / Necesidad</strong>: En la edición de textos largos, código fuente en Termux o redacción en chats, ubicar el cursor de inserción con precisión táctil directa sobre el texto es sumamente difícil. Gboard resuelve el movimiento horizontal mediante deslizamiento sobre la barra espaciadora. iOS (Apple) va un paso más allá: al realizar una pulsación larga sobre la barra espaciadora, <strong>todas las teclas inhabilitan sus letras y glifos (blank-out)</strong>, convirtiendo el 100% de la superficie del teclado en un trackpad bidimensional para mover el cursor libremente en X e Y y scrollear cuadros de texto extensos hacia arriba y abajo.</div></div>
+<div class="bullet-section bullet-expected"><span class="bullet-icon">🎯</span><div class="bullet-content"><strong>Comportamiento Esperado</strong>:</div></div>
+<p>1. <strong>Interacción Gboard (Deslizamiento Horizontal en Espacio)</strong>:</p>
+<ul class="sublist">
+<li>Arrastrar el dedo a izquierda o derecha sobre la barra espaciadora mueve el cursor suavemente entre caracteres de la línea actual sin levantar el dedo.</li>
+<li>Indicador visual sobre la barra con micro-flechas (<code class="code-pill">◀ ␣ ▶</code>) y feedback háptico por carácter recorrido.</li>
+</ul>
+<p>2. <strong>Interacción iOS (Pulsación Larga + Blank-Out de Teclas a Trackpad 2D)</strong>:</p>
+<ul class="sublist">
+<li><strong>Activación por Long-Press</strong>: Al mantener presionada la barra espaciadora (~300ms), todas las teclas se vuelven translúcidas y ocultan sus glifos (efecto "blank-out"), revelando únicamente la cuadrícula geométrica de rectángulos Glass.</li>
+<li><strong>Superficie de Trackpad 2D Unificada</strong>: Toda la superficie del teclado pasa a actuar como un trackpad 2D continuo.</li>
+<li><strong>Navegación 2D y Scroll Vertical</strong>: Desplazar el dedo en cualquier dirección (arriba, abajo, izquierda, derecha) mueve el cursor en 2D y permite scrollear cuadros de texto multilínea muy grandes o buffers de terminal.</li>
+<li><strong>Salida Instantánea</strong>: Al soltar el dedo, las teclas reaparecen de inmediato con confirmación háptica suave.</li>
+</ul>
+<p>3. <strong>Ajustes y Personalización (Ajustes > Tab Teclado)</strong>:</p>
+<ul class="sublist">
+<li>Switch de activación: <em>"Gesto de Trackpad en Barra Espaciadora"</em>.</li>
+<li>Modo de operación: <code>Deslizamiento Horizontal (Gboard)</code> vs <code>Trackpad 2D Completo con Blank-Out de Teclas (iOS)</code> [Default].</li>
+<li>Sensibilidad de desplazamiento del cursor (Baja, Media, Alta).</li>
+</ul>
+<div class="bullet-section bullet-tech"><span class="bullet-icon">🛠️</span><div class="bullet-content"><strong>Impacto Técnico</strong>:</div></div>
+<ul class="sublist">
+<li><em>Kotlin nativo</em>: En <code class="code-pill">VoiceKeyboardService.kt</code>, temporizador de long-press en <code class="code-pill">spaceKeyView</code>, método <code class="code-pill">setTrackpadBlankOutMode(true)</code> para atenuar glifos manteniendo rectángulos glass, captura de eventos diferenciales <code class="code-pill">dx, dy</code> e invocación de <code class="code-pill">setSelection()</code> y <code class="code-pill">KEYCODE_DPAD_*</code>.</li>
+<li><em>Flutter (Dart)</em>: Clave <code class="code-pill">flutter.kb_spacebar_trackpad_mode</code> y selectores en <code class="code-pill">SettingsScreen</code>.</li>
+</ul>
+<div class="bullet-section bullet-status"><span class="bullet-icon">📊</span><div class="bullet-content"><strong>Estado</strong>: <strong>En Diseño (Aprobada como idea para Septiembre)</strong>.</div></div>
+<p>---</p>
+                </div>
+            </article>
     
         </div>
 
@@ -2497,6 +2540,12 @@
 <td>Oculta teclado virtual y activa burbuja al conectar teclado Bluetooth/USB</td>
 </tr>
 <tr>
+<td>2026-09-04</td>
+<td>MEJ-25 (Control Cursor y Trackpad 2D en Espacio)</td>
+<td><span class="status-badge badge-approved">✓ Aprobada</span></td>
+<td>Desplazamiento horizontal Gboard y trackpad 2D estilo iOS con blank-out de teclas</td>
+</tr>
+<tr>
 <td>2026-08-26</td>
 <td>Congelamiento CI</td>
 <td>Aprobado</td>
@@ -2516,7 +2565,7 @@
     <div class="toc-drawer" id="toc-drawer">
         <div class="toc-drawer-handle"></div>
         <div class="toc-drawer-header">
-            <h3>📑 Índice de Mejoras (24)</h3>
+            <h3>📑 Índice de Mejoras (25)</h3>
             <button class="btn-icon" id="toc-close" style="width: 32px; height: 32px;">✕</button>
         </div>
         <div class="toc-list">
@@ -2697,6 +2746,14 @@
                 <div>
                     <span class="toc-code">MEJ-24</span>
                     <span>Auto-Conmutación Inteligente a Burbuja / Isla al Conectar Teclado Físico (Bluetooth / USB-OTG)</span>
+                </div>
+                <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
+            </a>
+    
+            <a href="#mej-25" class="toc-item" onclick="closeToc()">
+                <div>
+                    <span class="toc-code">MEJ-25</span>
+                    <span>Control de Cursor y Modo Trackpad 2D en Barra Espaciadora (Gboard / iOS)</span>
                 </div>
                 <span style="font-size: 11px; color: var(--text-tertiary); margin-left: 8px;">›</span>
             </a>

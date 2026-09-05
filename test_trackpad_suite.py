@@ -42,6 +42,7 @@ print("============================================================\n")
 TRACKPAD_KEYS = [
     "kb_trackpad_accel_curve",
     "kb_trackpad_auto_return",
+    "kb_trackpad_button_layout",
     "kb_trackpad_enabled",
     "kb_trackpad_haptic",
     "kb_trackpad_pointer_style",
@@ -58,14 +59,14 @@ with open(contract_keys_file, "r", encoding="utf-8") as f:
     contract_content = f.read().splitlines()
 
 all_in_contract = all(k in contract_content for k in TRACKPAD_KEYS)
-check("Todas las 11 claves de trackpad presentes en docs/contract-keys.txt", all_in_contract)
+check(f"Todas las {len(TRACKPAD_KEYS)} claves de trackpad presentes en docs/contract-keys.txt", all_in_contract)
 
 kt_vk = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt")
 with open(kt_vk, "r", encoding="utf-8") as f:
     vk_content = f.read()
 
 all_read_in_kotlin = all(f'flutter.{k}' in vk_content for k in TRACKPAD_KEYS)
-check("Todas las 11 claves flutter.kb_trackpad_* leídas en VoiceKeyboardService.kt", all_read_in_kotlin)
+check(f"Todas las {len(TRACKPAD_KEYS)} claves flutter.kb_trackpad_* leídas en VoiceKeyboardService.kt", all_read_in_kotlin)
 
 # --- TEST 2: Manifest y Permisos ---
 manifest_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/AndroidManifest.xml")
@@ -131,6 +132,11 @@ if os.path.isfile(ftp_kt_path):
     check("FloatingTrackpadService integra VirtualTrackpadView", "VirtualTrackpadView(" in ftp_content)
     check("FloatingTrackpadService despacha taps a VoiceBubbleAccessibilityService", "VoiceBubbleAccessibilityService.dispatchTap" in ftp_content)
     check("FloatingTrackpadService despacha scroll a VoiceBubbleAccessibilityService", "VoiceBubbleAccessibilityService.dispatchScroll" in ftp_content)
+    check("FloatingTrackpadService implementa rayita drag handle con gestos", "rayita" in ftp_content and "minimizeToBubble" in ftp_content)
+    check("FloatingTrackpadService maneja extensión a 380dp y colapso", "380" in ftp_content and "240" in ftp_content)
+    check("FloatingTrackpadService maneja arrastre minipad libre en 2D (x e y)", "expandedLayoutParams.x = (initialX + dx)" in ftp_content and "expandedLayoutParams.y = (initialY + dy)" in ftp_content)
+    check("FloatingTrackpadService actualiza cota inferior del puntero al extender altura", "pointerManager?.updateKeyboardTop" in ftp_content)
+    check("FloatingTrackpadService usa tema glass por defecto para Liquid Glass", 'theme = "glass"' in ftp_content)
 
 ftp_dart_path = os.path.join(WORKSPACE, "app_source/lib/services/floating_trackpad_service.dart")
 check("floating_trackpad_service.dart existe", os.path.isfile(ftp_dart_path))
@@ -148,7 +154,7 @@ check("MainActivity maneja TRACKPAD_CHANNEL", "TRACKPAD_CHANNEL" in main_content
 check("MainActivity maneja startTrackpadBubble", '"startTrackpadBubble"' in main_content)
 check("MainActivity maneja isAccessibilityGranted", '"isAccessibilityGranted"' in main_content)
 
-# --- TEST 5: VirtualTrackpadView (Opción 2 Split Wings) ---
+# --- TEST 5: VirtualTrackpadView (Opción 2 Split Wings & Top 50/50) ---
 vtv_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VirtualTrackpadView.kt")
 check("VirtualTrackpadView.kt existe", os.path.isfile(vtv_kt_path))
 if os.path.isfile(vtv_kt_path):
@@ -168,6 +174,9 @@ if os.path.isfile(vtv_kt_path):
     check("VirtualTrackpadView contraste accesible en clic izquierdo (acento primario)", "isPrimary" in vtv_content and "kb_key_bg_accent" in vtv_content)
     check("VirtualTrackpadView contraste accesible en clic derecho (neutro sólido)", "CLIC" in vtv_content and "DER" in vtv_content and ("3C3C43" in vtv_content or "EBEBF5" in vtv_content))
     check("VirtualTrackpadView feedback visual de contraste en scroll strip", "pressedBgColor" in vtv_content and ("26007AFF" in vtv_content or "330A84FF" in vtv_content))
+    check("VirtualTrackpadView soporta modo dual de botones (top vs wings)", 'buttonLayout == "wings"' in vtv_content and "setupTopButtonsLayout" in vtv_content)
+    check("VirtualTrackpadView usa iconos de mouse vectoriales ic_mouse_left e ic_mouse_right", "ic_mouse_left" in vtv_content and "ic_mouse_right" in vtv_content)
+    check("VirtualTrackpadView soporta scroll quitado con 100% de ancho", '"none"' in vtv_content)
 
 # --- TEST 6: VoiceKeyboardService integración ---
 check("VoiceKeyboardService declara Layer.TRACKPAD", "Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD }" in vk_content)
@@ -182,9 +191,30 @@ check("VoiceKeyboardService lee kb_trackpad_auto_return tolerante a Integer y Lo
 check("VoiceKeyboardService despacha trackpad vía InputConnection nativo", "sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)" in vk_content)
 check("VoiceKeyboardService transición suave morphing al alternar trackpad", "beginKeyboardTransition" in vk_content and "TransitionManager" in vk_content)
 check("VoiceKeyboardService altura determinista del trackpad acorde al teclado", "getTargetTrackpadHeightPx" in vk_content and "totalKeyRows" in vk_content)
+check("VoiceKeyboardService MEJ-25 gestos en barra espaciadora", "attachSpacebarGestures" in vk_content)
+check("VoiceKeyboardService MEJ-25 modo trackpad 2D con blank-out", "setTrackpadBlankOutMode" in vk_content and "spacebarTrackpadMode" in vk_content)
+check("VoiceKeyboardService MEJ-25 selección de texto vía META_SHIFT_ON", "META_SHIFT_ON" in vk_content and "isSelecting" in vk_content)
+check("VoiceKeyboardService MEJ-25 desplazamiento cinemático proporcional (stepsX/stepsY)", "stepsX" in vk_content and "stepsY" in vk_content)
+check("VoiceKeyboardService expone commitFromExternal para inyección en cursor", "fun commitFromExternal" in vk_content and "instance" in vk_content)
+
+# --- DynamicIslandController & Morphing History ---
+dic_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/DynamicIslandController.kt")
+check("DynamicIslandController.kt existe", os.path.isfile(dic_kt_path))
+if os.path.isfile(dic_kt_path):
+    with open(dic_kt_path, "r", encoding="utf-8") as f:
+        dic_content = f.read()
+    check("DynamicIslandController pastilla con slots y punch central", "buildCompactView" in dic_content and "camPunch" in dic_content)
+    check("DynamicIslandController grabación con waveform interactiva", "buildRecordingView" in dic_content and "wave" in dic_content)
+    check("DynamicIslandController modal de historial adaptable", "buildHistoryModalView" in dic_content and "populateHistoryCards" in dic_content)
+    check("DynamicIslandController modal soporta isFillViewport para estiramiento adaptativo", "isFillViewport = true" in dic_content)
+    check("DynamicIslandController adaptabilidad de tarjetas (1 item 100% alto, 2 items 50% alto)", "1, 2 ->" in dic_content and "1.0f" in dic_content)
+    check("DynamicIslandController inyección directa en cursor vía VoiceKeyboardService", "VoiceKeyboardService.commitFromExternal" in dic_content)
+    check("DynamicIslandController contraste accesible para temas claro y oscuro", "isNight" in dic_content and "tvSnippet" in dic_content)
+    check("DynamicIslandController copia con feedback de checkmark", "copyToClipboard" in dic_content and "ic_check" in dic_content and "ic_copy" in dic_content)
+    check("DynamicIslandController rayita inferior para cierre y extensión", "setHistoryExtended50" in dic_content and "closeHistoryModal" in dic_content)
 
 # --- TEST 7: Auditoría de Cero-Logs y Cero-Telemetría ---
-trackpad_files = [acc_kt_path, pom_kt_path, vtv_kt_path]
+trackpad_files = [acc_kt_path, pom_kt_path, vtv_kt_path, dic_kt_path]
 leak_found = False
 log_leak_pattern = re.compile(r'Log\.[a-z]+\(.*\b(coord|touch|event|gesture|x|y|window|key)\b', re.IGNORECASE)
 for tf in trackpad_files:
@@ -206,6 +236,8 @@ for k in TRACKPAD_KEYS:
     check(f"StorageService define clave {k}", f"'{k}'" in storage_content)
 
 check("StorageService tiene getTrackpadEnabled / setTrackpadEnabled", "getTrackpadEnabled" in storage_content and "setTrackpadEnabled" in storage_content)
+check("StorageService tiene getTrackpadButtonLayout / setTrackpadButtonLayout", "getTrackpadButtonLayout" in storage_content and "setTrackpadButtonLayout" in storage_content)
+check("StorageService tiene getSpacebarTrackpadMode / setSpacebarTrackpadMode", "getSpacebarTrackpadMode" in storage_content and "setSpacebarTrackpadMode" in storage_content)
 check("StorageService tiene getTrackpadScrollPosition / setTrackpadScrollPosition", "getTrackpadScrollPosition" in storage_content and "setTrackpadScrollPosition" in storage_content)
 check("StorageService tiene getTrackpadSensitivity / setTrackpadSensitivity", "getTrackpadSensitivity" in storage_content and "setTrackpadSensitivity" in storage_content)
 check("StorageService tiene getTrackpadAccelCurve / setTrackpadAccelCurve", "getTrackpadAccelCurve" in storage_content and "setTrackpadAccelCurve" in storage_content)
@@ -223,6 +255,8 @@ with open(dart_settings_path, "r", encoding="utf-8") as f:
     settings_content = f.read()
 
 check("SettingsScreen tiene tarjeta 'Modo Trackpad y Puntero Virtual'", "Modo Trackpad y Puntero Virtual" in settings_content)
+check("SettingsScreen tiene selector de distribución de botones de clic (top, wings)", "kb-trackpad-button-layout-selector" in settings_content)
+check("SettingsScreen tiene selector de modo trackpad en barra espaciadora", "kb-spacebar-trackpad-mode-selector" in settings_content)
 check("SettingsScreen tiene selector de posición de scroll (right, left, disabled)", "kb-trackpad-scroll-position-selector" in settings_content)
 check("SettingsScreen tiene slider de sensibilidad (0.5 a 2.5)", "kb-trackpad-sensitivity-slider" in settings_content)
 check("SettingsScreen tiene selector de curva de aceleración", "kb-trackpad-accel-curve-selector" in settings_content)
@@ -234,23 +268,27 @@ check("SettingsScreen tiene selector de auto-retorno por inactividad", "kb-track
 # --- TEST 10: Vector drawables y recursos ---
 drawable_tp = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_trackpad.xml")
 drawable_kb = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_keyboard.xml")
+drawable_ml = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_mouse_left.xml")
+drawable_mr = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_mouse_right.xml")
+drawable_copy = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_copy.xml")
+drawable_check = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_check.xml")
 strings_xml = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/values/strings.xml")
 
-check("ic_trackpad.xml existe y es parseable", os.path.isfile(drawable_tp))
-if os.path.isfile(drawable_tp):
-    try:
-        ET.parse(drawable_tp)
-        check("ic_trackpad.xml es XML válido", True)
-    except Exception as e:
-        check("ic_trackpad.xml es XML válido", False, str(e))
-
-check("ic_keyboard.xml existe y es parseable", os.path.isfile(drawable_kb))
-if os.path.isfile(drawable_kb):
-    try:
-        ET.parse(drawable_kb)
-        check("ic_keyboard.xml es XML válido", True)
-    except Exception as e:
-        check("ic_keyboard.xml es XML válido", False, str(e))
+for d_name, d_path in [
+    ("ic_trackpad.xml", drawable_tp),
+    ("ic_keyboard.xml", drawable_kb),
+    ("ic_mouse_left.xml", drawable_ml),
+    ("ic_mouse_right.xml", drawable_mr),
+    ("ic_copy.xml", drawable_copy),
+    ("ic_check.xml", drawable_check),
+]:
+    check(f"{d_name} existe", os.path.isfile(d_path))
+    if os.path.isfile(d_path):
+        try:
+            ET.parse(d_path)
+            check(f"{d_name} es XML válido", True)
+        except Exception as e:
+            check(f"{d_name} es XML válido", False, str(e))
 
 with open(strings_xml, "r", encoding="utf-8") as f:
     str_content = f.read()

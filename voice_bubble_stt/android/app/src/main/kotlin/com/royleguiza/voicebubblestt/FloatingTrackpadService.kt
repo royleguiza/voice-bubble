@@ -29,12 +29,23 @@ import androidx.core.content.ContextCompat
 import kotlin.math.abs
 
 /**
- * Servicio de superposicion para la Burbuja Flotante de Trackpad Independiente (Mouse Virtual).
+ * Servicio de superposición universal para la Burbuja Flotante de Trackpad Independiente (Mouse Virtual).
  *
- * Permite utilizar un mouse virtual en cualquier aplicacion o pantalla de Android
- * sin depender de un cuadro de texto (EditText) ni del teclado del sistema.
+ * Permite utilizar un mouse virtual sobre cualquier teclado (Gboard, Samsung, SwiftKey, etc.)
+ * o como overlay autónomo en cualquier aplicación sin depender del teclado del sistema.
  *
- * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni persistencia de coordenadas o eventos tactiles.
+ * Características avanzadas (MEJ-09 / MEJORAS-SEPTIEMBRE):
+ * - Rayita superior interactiva (drag handle):
+ *   * 1 tap cierra / minimiza directamente.
+ *   * Swipe-down cierra (o contrae si está extendido).
+ *   * Swipe-up extiende la altura de 240dp a 380dp.
+ * - Modo bimodal: Dock inferior y MiniPad flotante con snap a bordes.
+ * - Soporte de distribución bimodal (Top 50/50 y Wings).
+ * - Iconos de mouse limpios con CERO etiquetas de texto.
+ * - Despacho universal vía VoiceBubbleAccessibilityService (dispatchTap, dispatchLongPress, dispatchScroll).
+ * - Temas: Liquid Glass, Modo Oscuro, Modo Claro.
+ *
+ * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni persistencia de coordenadas o eventos táctiles.
  */
 class FloatingTrackpadService : Service() {
 
@@ -84,6 +95,7 @@ class FloatingTrackpadService : Service() {
 
     private var isExpanded = false
     private var currentMode = "dock" // "dock" o "minipad"
+    private var isExtendedHeight = false
 
     private val handler = Handler(Looper.getMainLooper())
     private val idleDimRunnable = Runnable {
@@ -271,10 +283,10 @@ class FloatingTrackpadService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        val dockH = (246 * density).toInt() // 36dp header + 210dp trackpad
+        val standardH = (240 * density).toInt()
         expandedLayoutParams = WindowManager.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            dockH,
+            standardH,
             layoutFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
@@ -286,10 +298,10 @@ class FloatingTrackpadService : Service() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val bg = GradientDrawable().apply {
-                setColor(if (isNight) Color.parseColor("#F21C1C1E") else Color.parseColor("#F2F2F2F7"))
+                setColor(if (isNight) Color.parseColor("#E6171A24") else Color.parseColor("#E6F2F4F8"))
                 cornerRadii = floatArrayOf(
-                    16f * density, 16f * density,
-                    16f * density, 16f * density,
+                    18f * density, 18f * density,
+                    18f * density, 18f * density,
                     0f, 0f, 0f, 0f
                 )
                 setStroke((1.2f * density).toInt(), if (isNight) Color.parseColor("#33FFFFFF") else Color.parseColor("#26000000"))
@@ -298,99 +310,141 @@ class FloatingTrackpadService : Service() {
             elevation = 12f * density
         }
 
-        // --- Barra Superior / Header (36dp) ---
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            val headerH = (36 * density).toInt()
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, headerH)
-            setPadding((8 * density).toInt(), 0, (8 * density).toInt(), 0)
+        // --- ZONA RAYITA INTERACTIVA SUPERIOR (DRAG HANDLE ZONE) ---
+        val handleZone = FrameLayout(this).apply {
+            val h = (28 * density).toInt()
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, h)
 
-            // Boton Minimizar [—]
-            val btnMin = TextView(context).apply {
-                text = "—"
-                textSize = 18f
-                gravity = Gravity.CENTER
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label))
-                val w = (36 * density).toInt()
-                layoutParams = LinearLayout.LayoutParams(w, w)
-                setOnClickListener {
-                    minimizeToBubble()
+            // Rayita de cápsula central (44dp x 5dp)
+            val rayita = View(context).apply {
+                val rW = (44 * density).toInt()
+                val rH = (5 * density).toInt()
+                layoutParams = FrameLayout.LayoutParams(rW, rH).apply {
+                    gravity = Gravity.CENTER
+                }
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 3f * density
+                    setColor(if (isNight) Color.parseColor("#E6FFFFFF") else Color.parseColor("#CC1D1D1F"))
                 }
             }
-            addView(btnMin)
+            addView(rayita)
 
-            // Boton Alternar Modo [⇄ Dock / Pad]
-            val btnToggleMode = TextView(context).apply {
-                text = "⇄ MiniPad"
-                textSize = 12f
-                gravity = Gravity.CENTER
-                setTextColor(ContextCompat.getColor(context, R.color.kb_key_bg_accent))
-                setPadding((6 * density).toInt(), (4 * density).toInt(), (6 * density).toInt(), (4 * density).toInt())
-                setOnClickListener {
-                    toggleMode()
-                    text = if (currentMode == "dock") "⇄ MiniPad" else "⇄ Dock"
-                }
-            }
-            addView(btnToggleMode)
-
-            // Titulo / Drag Handle Central
-            val title = TextView(context).apply {
-                text = "MOUSE VIRTUAL"
-                textSize = 11f
-                gravity = Gravity.CENTER
-                setTextColor(if (isNight) Color.parseColor("#8E8E93") else Color.parseColor("#6C6C70"))
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            }
-            addView(title)
-
-            // Drag handle para mover en modo minipad
+            // GESTOS EN LA RAYITA:
+            // 1. Toque simple (click): Cierra directamente (minimizeToBubble).
+            // 2. Deslizar abajo: Cierra (o baja a estándar si estaba extendido).
+            // 3. Deslizar arriba: Amplía a 380dp.
+            // 4. En modo minipad: Mueve la ventana libremente en 2D por la pantalla.
             setOnTouchListener(object : View.OnTouchListener {
+                private var startX = 0f
+                private var startY = 0f
                 private var initialX = 0
                 private var initialY = 0
-                private var touchX = 0f
-                private var touchY = 0f
+                private var startHeight = standardH
+                private var didDrag = false
+                private var wasExtended = false
 
                 override fun onTouch(v: View, event: MotionEvent): Boolean {
-                    if (currentMode != "minipad") return false
-                    when (event.action) {
+                    when (event.actionMasked) {
                         MotionEvent.ACTION_DOWN -> {
+                            startX = event.rawX
+                            startY = event.rawY
                             initialX = expandedLayoutParams.x
                             initialY = expandedLayoutParams.y
-                            touchX = event.rawX
-                            touchY = event.rawY
+                            startHeight = expandedLayoutParams.height
+                            didDrag = false
+                            wasExtended = isExtendedHeight || (startHeight > (280 * density).toInt())
                             return true
                         }
                         MotionEvent.ACTION_MOVE -> {
-                            expandedLayoutParams.x = initialX + (event.rawX - touchX).toInt()
-                            expandedLayoutParams.y = initialY + (event.rawY - touchY).toInt()
-                            try {
-                                wm.updateViewLayout(expandedContainer, expandedLayoutParams)
-                            } catch (_: Exception) {}
+                            val dx = (event.rawX - startX).toInt()
+                            val dy = (event.rawY - startY).toInt()
+                            if (abs(dx) > (6 * density) || abs(dy) > (6 * density)) {
+                                didDrag = true
+                            }
+
+                            if (currentMode == "minipad") {
+                                // En modo minipad permite mover la ventana flotante libremente en 2D
+                                val screenW = resources.displayMetrics.widthPixels
+                                val screenH = resources.displayMetrics.heightPixels
+                                expandedLayoutParams.x = (initialX + dx).coerceIn(0, (screenW - expandedLayoutParams.width).coerceAtLeast(0))
+                                expandedLayoutParams.y = (initialY + dy).coerceIn(0, (screenH - expandedLayoutParams.height).coerceAtLeast(0))
+                                try {
+                                    wm.updateViewLayout(expandedContainer, expandedLayoutParams)
+                                } catch (_: Exception) {}
+                                return true
+                            }
+
+                            // En modo dock:
+                            if (wasExtended) {
+                                // Arrastrar hacia abajo baja la altura
+                                if (dy > 0) {
+                                    val newH = (startHeight - dy).toInt().coerceAtLeast(standardH)
+                                    expandedLayoutParams.height = newH
+                                    try {
+                                        wm.updateViewLayout(expandedContainer, expandedLayoutParams)
+                                    } catch (_: Exception) {}
+                                    // Swipe down profundo (> 70dp de exceso) cierra el trackpad
+                                    if (dy > (startHeight - standardH + (70 * density))) {
+                                        minimizeToBubble()
+                                        return true
+                                    }
+                                }
+                            } else {
+                                // Modo estándar (240dp):
+                                if (dy > 0) {
+                                    // Arrastre hacia abajo: swipe-down cierra
+                                    if (dy > (55 * density)) {
+                                        minimizeToBubble()
+                                        return true
+                                    }
+                                } else if (dy < 0) {
+                                    // Arrastre hacia arriba: amplía la altura
+                                    val maxH = (380 * density).toInt()
+                                    val newH = (startHeight - dy).toInt().coerceAtMost(maxH)
+                                    expandedLayoutParams.height = newH
+                                    try {
+                                        wm.updateViewLayout(expandedContainer, expandedLayoutParams)
+                                    } catch (_: Exception) {}
+                                }
+                            }
+                            return true
+                        }
+                        MotionEvent.ACTION_UP -> {
+                            if (!didDrag) {
+                                // Toque simple en la rayita: cierra directamente
+                                minimizeToBubble()
+                                return true
+                            }
+                            if (currentMode == "minipad") {
+                                return true
+                            }
+                            val dy = event.rawY - startY
+                            if (wasExtended) {
+                                if (dy > (30 * density)) {
+                                    setExtendedHeight(false)
+                                } else {
+                                    setExtendedHeight(true)
+                                }
+                            } else {
+                                if (dy > (20 * density)) {
+                                    minimizeToBubble()
+                                } else if (dy < -(25 * density)) {
+                                    setExtendedHeight(true)
+                                } else {
+                                    setExtendedHeight(false)
+                                }
+                            }
                             return true
                         }
                     }
                     return false
                 }
             })
-
-            // Boton Cerrar [✕]
-            val btnClose = TextView(context).apply {
-                text = "✕"
-                textSize = 16f
-                gravity = Gravity.CENTER
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label))
-                val w = (36 * density).toInt()
-                layoutParams = LinearLayout.LayoutParams(w, w)
-                setOnClickListener {
-                    stopSelf()
-                }
-            }
-            addView(btnClose)
         }
-        container.addView(header)
+        container.addView(handleZone)
 
-        // --- Cuerpo: VirtualTrackpadView ---
+        // --- CUERPO: VirtualTrackpadView ---
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val scrollPos = prefs.getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
         val tapClick = prefs.getBoolean("flutter.kb_trackpad_tap_to_click", true)
@@ -409,6 +463,7 @@ class FloatingTrackpadService : Service() {
         val accel = prefs.getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
         val style = prefs.getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
         val hapticEnabled = prefs.getBoolean("flutter.kb_trackpad_haptic", true)
+        val buttonLayout = prefs.getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
 
         pointerManager?.apply {
             sensitivity = sens
@@ -416,7 +471,7 @@ class FloatingTrackpadService : Service() {
             pointerStyle = style
         }
 
-        val tpHeight = (210 * density).toInt()
+        val tpHeight = (208 * density).toInt()
         val tpView = VirtualTrackpadView(
             context = this,
             scrollPosition = scrollPos,
@@ -425,6 +480,8 @@ class FloatingTrackpadService : Service() {
             scrollDirection = scrollDir,
             autoReturnSeconds = autoReturn,
             trackpadHeightPx = tpHeight,
+            buttonLayout = buttonLayout,
+            theme = "glass",
             listener = object : VirtualTrackpadView.TrackpadListener {
                 override fun onPointerMove(dx: Float, dy: Float) {
                     pointerManager?.moveBy(dx, dy)
@@ -474,20 +531,38 @@ class FloatingTrackpadService : Service() {
         )
         container.addView(
             tpView,
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, tpHeight)
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f)
         )
 
         trackpadView = tpView
         expandedContainer = container
     }
 
-    private fun expandToDock() {
+    private fun setExtendedHeight(extended: Boolean) {
+        val wm = windowManager ?: return
+        val container = expandedContainer ?: return
+        val density = resources.displayMetrics.density
+        isExtendedHeight = extended
+
+        val targetH = if (extended) (380 * density).toInt() else (240 * density).toInt()
+        expandedLayoutParams.height = targetH
+
+        if (currentMode == "dock") {
+            pointerManager?.updateKeyboardTop(resources.displayMetrics.heightPixels.toFloat() - targetH)
+        }
+
+        try {
+            wm.updateViewLayout(container, expandedLayoutParams)
+        } catch (_: Exception) {}
+    }
+
+    fun expandToDock() {
         val wm = windowManager ?: return
         val container = expandedContainer ?: return
         val density = resources.displayMetrics.density
 
         currentMode = "dock"
-        val dockH = (246 * density).toInt()
+        val dockH = if (isExtendedHeight) (380 * density).toInt() else (240 * density).toInt()
 
         expandedLayoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
         expandedLayoutParams.height = dockH
@@ -509,14 +584,14 @@ class FloatingTrackpadService : Service() {
         handler.removeCallbacks(idleDimRunnable)
     }
 
-    private fun expandToMiniPad() {
+    fun expandToMiniPad() {
         val wm = windowManager ?: return
         val container = expandedContainer ?: return
         val density = resources.displayMetrics.density
 
         currentMode = "minipad"
-        val padW = (260 * density).toInt()
-        val padH = (246 * density).toInt()
+        val padW = (280 * density).toInt()
+        val padH = if (isExtendedHeight) (380 * density).toInt() else (240 * density).toInt()
 
         expandedLayoutParams.width = padW
         expandedLayoutParams.height = padH
@@ -538,7 +613,7 @@ class FloatingTrackpadService : Service() {
         handler.removeCallbacks(idleDimRunnable)
     }
 
-    private fun toggleMode() {
+    fun toggleMode() {
         if (currentMode == "dock") {
             expandToMiniPad()
         } else {
@@ -546,7 +621,7 @@ class FloatingTrackpadService : Service() {
         }
     }
 
-    private fun minimizeToBubble() {
+    fun minimizeToBubble() {
         val wm = windowManager ?: return
         val container = expandedContainer ?: return
 

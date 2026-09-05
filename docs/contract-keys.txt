@@ -6,6 +6,7 @@ kb_invert_toolbar
 kb_language_key_visible
 kb_snippets_seeded
 kb_spacebar_alignment
+kb_spacebar_trackpad_mode
 kb_stt_api_key
 kb_stt_language
 kb_stt_model
@@ -13,6 +14,7 @@ kb_stt_url
 kb_terminal_row_visible
 kb_trackpad_accel_curve
 kb_trackpad_auto_return
+kb_trackpad_button_layout
 kb_trackpad_enabled
 kb_trackpad_haptic
 kb_trackpad_pointer_style

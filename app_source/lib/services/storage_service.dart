@@ -131,6 +131,22 @@ class StorageService {
     await prefs.setString(kbSpacebarAlignmentKey, alignment);
   }
 
+  static const String kbSpacebarTrackpadModeKey = 'kb_spacebar_trackpad_mode';
+  static const String defaultSpacebarTrackpadMode = 'ios_2d'; // ios_2d, gboard_horizontal
+  static const List<String> kbSpacebarTrackpadModes = ['ios_2d', 'gboard_horizontal'];
+
+  Future<String> getSpacebarTrackpadMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(kbSpacebarTrackpadModeKey);
+    return kbSpacebarTrackpadModes.contains(val) ? val! : defaultSpacebarTrackpadMode;
+  }
+
+  Future<void> setSpacebarTrackpadMode(String mode) async {
+    if (!kbSpacebarTrackpadModes.contains(mode)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbSpacebarTrackpadModeKey, mode);
+  }
+
   /// Perfiles de altura del teclado validos, de menor a mayor.
   static const List<String> kbHeightProfiles = [
     'baja',
@@ -172,6 +188,7 @@ class StorageService {
   // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
   static const String kbTrackpadEnabledKey = 'kb_trackpad_enabled';
   static const String kbTrackpadToolbarVisibleKey = 'kb_trackpad_toolbar_visible';
+  static const String kbTrackpadButtonLayoutKey = 'kb_trackpad_button_layout';
   static const String kbTrackpadScrollPositionKey = 'kb_trackpad_scroll_position';
   static const String kbTrackpadSensitivityKey = 'kb_trackpad_sensitivity';
   static const String kbTrackpadAccelCurveKey = 'kb_trackpad_accel_curve';
@@ -184,6 +201,7 @@ class StorageService {
 
   static const bool defaultTrackpadEnabled = true;
   static const bool defaultTrackpadToolbarVisible = true;
+  static const String defaultTrackpadButtonLayout = 'top'; // top, wings
   static const String defaultTrackpadScrollPosition = 'right'; // right, left, disabled
   static const double defaultTrackpadSensitivity = 1.2; // 0.5 to 2.5
   static const String defaultTrackpadAccelCurve = 'dynamic'; // dynamic, linear, precision
@@ -194,6 +212,7 @@ class StorageService {
   static const String defaultTrackpadPointerStyle = 'arrow'; // arrow, dot, cross
   static const int defaultTrackpadAutoReturn = 0; // 0, 5, 15, 30
 
+  static const List<String> kbTrackpadButtonLayouts = ['top', 'wings'];
   static const List<String> kbTrackpadScrollPositions = ['right', 'left', 'disabled'];
   static const List<String> kbTrackpadAccelCurves = ['dynamic', 'linear', 'precision'];
   static const List<String> kbTrackpadSecondaryClicks = ['2fingers', 'button', 'hold'];
@@ -220,6 +239,18 @@ class StorageService {
   Future<void> setTrackpadToolbarVisible(bool visible) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(kbTrackpadToolbarVisibleKey, visible);
+  }
+
+  Future<String> getTrackpadButtonLayout() async {
+    final prefs = await SharedPreferences.getInstance();
+    final val = prefs.getString(kbTrackpadButtonLayoutKey);
+    return kbTrackpadButtonLayouts.contains(val) ? val! : defaultTrackpadButtonLayout;
+  }
+
+  Future<void> setTrackpadButtonLayout(String layout) async {
+    if (!kbTrackpadButtonLayouts.contains(layout)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(kbTrackpadButtonLayoutKey, layout);
   }
 
   Future<String> getTrackpadScrollPosition() async {

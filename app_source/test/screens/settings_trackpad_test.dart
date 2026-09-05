@@ -109,5 +109,51 @@ void main() {
 
       expect(prefs.getString('kb_trackpad_pointer_style'), 'cross');
     });
+
+    testWidgets('cambiar selector de distribución de botones persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      final layoutSelector = find.byKey(const ValueKey('kb-trackpad-button-layout-selector'));
+      expect(layoutSelector, findsOneWidget);
+
+      await tester.tap(find.text('Laterales (Alas)'));
+      await tester.pumpAndSettle();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_trackpad_button_layout'), 'wings');
+
+      await tester.tap(find.text('Superiores 50/50'));
+      await tester.pumpAndSettle();
+
+      expect(prefs.getString('kb_trackpad_button_layout'), 'top');
+    });
+
+    testWidgets('cambiar selector de gesto en barra espaciadora persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      final spacebarSelector = find.byKey(const ValueKey('kb-spacebar-trackpad-mode-selector'));
+      expect(spacebarSelector, findsOneWidget);
+
+      await tester.tap(find.text('Gboard (Deslizar)'));
+      await tester.pumpAndSettle();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_spacebar_trackpad_mode'), 'gboard_horizontal');
+
+      await tester.tap(find.text('iOS 2D (Mantener)'));
+      await tester.pumpAndSettle();
+
+      expect(prefs.getString('kb_spacebar_trackpad_mode'), 'ios_2d');
+    });
   });
 }

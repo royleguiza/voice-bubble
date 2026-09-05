@@ -158,6 +158,7 @@ class VoiceKeyboardService : InputMethodService() {
     private var bottomElevationDp = 24
     private var invertToolbar = false
     private var spacebarAlignment = "center"
+    private var spacebarTrackpadMode = "ios_2d" // MEJ-25: "ios_2d" o "gboard_horizontal"
 
     // AT-A8: cache de visibilidad leida junto a lo anterior; rebuild jamas
     // consulta SharedPreferences.
@@ -168,6 +169,7 @@ class VoiceKeyboardService : InputMethodService() {
     // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
     private var trackpadEnabled = true
     private var trackpadToolbarVisible = true
+    private var trackpadButtonLayout = "top"
     private var trackpadScrollPosition = "right"
     private var trackpadSensitivity = 1.2f
     private var trackpadAccelCurve = "dynamic"
@@ -205,6 +207,7 @@ class VoiceKeyboardService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         clipboardStore = ClipboardStore(this)
         transcriptionRepo = TranscriptionHistoryRepository(this)
         transcriptionRepo.purgePreviousSessionHistory()
@@ -334,6 +337,9 @@ class VoiceKeyboardService : InputMethodService() {
                 clipboardStore.shutdown()
             }
         } catch (_: Exception) {}
+        if (instance === this) {
+            instance = null
+        }
         super.onDestroy()
     }
 
@@ -704,6 +710,7 @@ class VoiceKeyboardService : InputMethodService() {
             commit(" ")
         }
         spaceKeyView = space
+        attachSpacebarGestures(space)
 
         val dot = makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
         dotKeyView = dot
@@ -846,6 +853,7 @@ class VoiceKeyboardService : InputMethodService() {
             scrollDirection = trackpadScrollDirection,
             autoReturnSeconds = trackpadAutoReturn,
             trackpadHeightPx = targetHeight,
+            buttonLayout = trackpadButtonLayout,
             listener = object : VirtualTrackpadView.TrackpadListener {
                 override fun onPointerMove(dx: Float, dy: Float) {
                     manager.moveBy(dx, dy)
@@ -3357,6 +3365,148 @@ class VoiceKeyboardService : InputMethodService() {
             onRepeat = action,
             onSwipeStep = { deleteWordBeforeCursor() },
         )
+    /**
+     * MEJ-25: Control de cursor y modo trackpad 2D en barra espaciadora.
+     * - Deslizamiento horizontal (estilo Gboard): arrastre a izq/der desplaza el cursor.
+     * - Pulsación larga (>300ms, estilo iOS): efecto blank-out atenuando glifos de teclas
+     *   y transformando el teclado completo en una superficie continua de navegación 2D.
+     * - Selección de texto: soporte multitáctil (segundo dedo) o tecla shift activa despacha
+     *   eventos DPAD con META_SHIFT_ON para selección precisa.
+     */
+     private fun setTrackpadBlankOutMode(enabled: Boolean) {
+        val targetAlpha = if (enabled) 0.0f else 1.0f
+        fun fadeGlyphs(view: View) {
+            if (view === spaceKeyView) return
+            if (view is TextView || (view is ImageView && view !== spaceKeyView)) {
+                view.animate().cancel()
+                view.animate().alpha(targetAlpha).setDuration(120L).start()
+            } else if (view is ViewGroup) {
+                for (i in 0 until view.childCount) {
+                    fadeGlyphs(view.getChildAt(i))
+                }
+            }
+        }
+        inputView?.let { fadeGlyphs(it) }
+    }
+
+    private fun attachSpacebarGestures(space: View) {
+        space.setOnTouchListener(object : View.OnTouchListener {
+            private var startX = 0f
+            private var startY = 0f
+            private var lastX = 0f
+            private var lastY = 0f
+            private var isLongPressTriggered = false
+            private var isDragNavTriggered = false
+            private var isSelecting = false
+            private val gestureHandler = Handler(Looper.getMainLooper())
+            private val longPressRunnable = Runnable {
+                if (spacebarTrackpadMode == "ios_2d") {
+                    isLongPressTriggered = true
+                    setTrackpadBlankOutMode(true)
+                    haptic(space)
+                }
+            }
+
+            private fun dispatchNavKey(keyCode: Int) {
+                if (isSelecting || shiftState != ShiftState.OFF) {
+                    sendKeyWithMeta(keyCode, KeyEvent.META_SHIFT_ON)
+                } else {
+                    sendKeyCode(keyCode)
+                }
+                haptic(space)
+            }
+
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                val density = resources.displayMetrics.density
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        v.parent?.requestDisallowInterceptTouchEvent(true)
+                        startX = event.rawX
+                        startY = event.rawY
+                        lastX = event.rawX
+                        lastY = event.rawY
+                        isLongPressTriggered = false
+                        isDragNavTriggered = false
+                        isSelecting = false
+                        v.isPressed = true
+                        gestureHandler.postDelayed(longPressRunnable, 300L)
+                        return true
+                    }
+                    MotionEvent.ACTION_POINTER_DOWN -> {
+                        // Toque con un segundo dedo mientras se navega activa selección de texto estilo iOS
+                        if (isLongPressTriggered || isDragNavTriggered) {
+                            isSelecting = true
+                            haptic(space)
+                        }
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        val threshold = 14f * density
+                        if (isLongPressTriggered) {
+                            val deltaX = event.rawX - lastX
+                            val stepsX = (abs(deltaX) / threshold).toInt()
+                            if (stepsX > 0) {
+                                val key = if (deltaX > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
+                                for (i in 0 until stepsX) {
+                                    dispatchNavKey(key)
+                                }
+                                lastX += stepsX * threshold * (if (deltaX > 0) 1 else -1)
+                            }
+
+                            val deltaY = event.rawY - lastY
+                            val stepsY = (abs(deltaY) / threshold).toInt()
+                            if (stepsY > 0) {
+                                val key = if (deltaY > 0) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_UP
+                                for (i in 0 until stepsY) {
+                                    dispatchNavKey(key)
+                                }
+                                lastY += stepsY * threshold * (if (deltaY > 0) 1 else -1)
+                            }
+                        } else {
+                            if (abs(event.rawX - startX) > (16f * density)) {
+                                gestureHandler.removeCallbacks(longPressRunnable)
+                                isDragNavTriggered = true
+                            }
+                            if (isDragNavTriggered) {
+                                val deltaX = event.rawX - lastX
+                                val stepsX = (abs(deltaX) / threshold).toInt()
+                                if (stepsX > 0) {
+                                    val key = if (deltaX > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
+                                    for (i in 0 until stepsX) {
+                                        dispatchNavKey(key)
+                                    }
+                                    lastX += stepsX * threshold * (if (deltaX > 0) 1 else -1)
+                                }
+                            }
+                        }
+                        return true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        gestureHandler.removeCallbacks(longPressRunnable)
+                        v.isPressed = false
+                        if (isLongPressTriggered) {
+                            setTrackpadBlankOutMode(false)
+                            haptic(space)
+                        } else if (!isDragNavTriggered) {
+                            if (layer == Layer.SNIPPETS && !isSnippetEditorOpen) ensureSnippetSearchMode()
+                            commit(" ")
+                        }
+                        isSelecting = false
+                        return true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        gestureHandler.removeCallbacks(longPressRunnable)
+                        v.isPressed = false
+                        if (isLongPressTriggered) {
+                            setTrackpadBlankOutMode(false)
+                        }
+                        isSelecting = false
+                        return true
+                    }
+                }
+                return false
+            }
+        })
     }
 
     private fun attachAccentLongPress(key: TextView, base: Char) {
@@ -3530,11 +3680,23 @@ class VoiceKeyboardService : InputMethodService() {
         } catch (_: Exception) {
             "center"
         }
+        spacebarTrackpadMode = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_spacebar_trackpad_mode", "ios_2d") ?: "ios_2d"
+        } catch (_: Exception) {
+            "ios_2d"
+        }
         terminalRowVisiblePref = terminalRowVisible()
         codeKeyVisiblePref = codeKeyVisible()
         languageKeyVisiblePref = languageKeyVisible()
 
         // MEJ-09: lectura de preferencias del trackpad
+        trackpadButtonLayout = try {
+            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
+        } catch (_: Exception) {
+            "top"
+        }
         trackpadEnabled = try {
             getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .getBoolean("flutter.kb_trackpad_enabled", true)
@@ -3670,5 +3832,16 @@ class VoiceKeyboardService : InputMethodService() {
         /** Exclusion mutua de microfono: visible para MainActivity/burbuja. */
         @Volatile
         var keyboardRecordingActive: Boolean = false
+
+        /** Singleton accesible para inyeccion directa en cursor desde overlays. */
+        @Volatile
+        var instance: VoiceKeyboardService? = null
+            private set
+
+        fun commitFromExternal(text: String): Boolean {
+            val s = instance ?: return false
+            val ic = s.currentInputConnection ?: return false
+            return ic.commitText(text, 1)
+        }
     }
 }

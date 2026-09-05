@@ -13,37 +13,43 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.view.animation.DecelerateInterpolator
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import kotlin.math.abs
 
 /**
- * Capa de interfaz nativa del Trackpad Split Wings (Opción 2) para VoiceKeyboardService.
+ * Capa de interfaz nativa del Trackpad Universal y Puntero Virtual (MEJ-09 / MEJORAS-SEPTIEMBRE).
  *
- * Geometría de 3 columnas:
- * - Ala Izquierda (68dp)
- * - Centro: Superficie táctil de ultra-precisión (flex: 1)
- * - Ala Derecha (68dp)
+ * Modos de distribución bimodal (buttonLayout):
+ * 1. "top": Distribución superior 50/50. Clic Izquierdo y Clic Derecho ocupan el 50% cada uno
+ *           en la fila superior, con iconos de mouse limpios y CERO etiquetas de texto visibles.
+ *           La mitad inferior aloja la superficie táctil 2D de ancho completo (100% de ancho).
+ * 2. "wings": Distribución de 3 columnas laterales (Split Wings).
+ *           Ala izquierda (68dp) con Clic Izquierdo, Pad táctil central (flex: 1),
+ *           Ala derecha (68dp) con Clic Derecho.
  *
- * Comportamiento dinámico de la barra de scroll (scrollPosition):
- * - "right": Flanco izquierdo contiene botón L (100% alto, flex 1). Flanco derecho contiene
- *            scroll strip (flex 1.4) + botón R (flex 0.8).
- * - "left":  Flanco izquierdo contiene scroll strip (flex 1.4) + botón L (flex 0.8). Flanco
- *            derecho contiene botón R (100% alto, flex 1).
- * - "disabled": Flanco izquierdo contiene botón L (100% alto, flex 1). Flanco derecho
- *               contiene botón R (100% alto, flex 1).
+ * Opciones de la barra de desplazamiento (scrollPosition):
+ * - "right": Tira de scroll en el lateral derecho (flex 1.4) + botón compartido (flex 0.8 en wings).
+ * - "left":  Tira de scroll en el lateral izquierdo (flex 1.4) + botón compartido.
+ * - "disabled" / "none": Sin barra de scroll; la superficie táctil 2D se auto-expande al 100% de ancho.
  *
- * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni persistencia de eventos táctiles.
+ * Iconos de mouse limpios sin texto:
+ * Botones con ic_mouse_left e ic_mouse_right vector drawables y cero etiquetas de texto visibles.
+ *
+ * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni persistencia de coordenadas o eventos táctiles.
  */
 class VirtualTrackpadView(
     context: Context,
-    private val scrollPosition: String = "right", // right, left, disabled
+    private val scrollPosition: String = "right", // right, left, disabled, none
     private val tapToClick: Boolean = true,
     private val secondaryClickMode: String = "2fingers", // 2fingers, button, hold
     private val scrollDirection: String = "natural", // natural, standard
     private val autoReturnSeconds: Int = 0,
     private val trackpadHeightPx: Int = 0,
+    private val buttonLayout: String = "top", // top, wings
+    private val theme: String = "glass", // glass, dark, light
     private val listener: TrackpadListener
 ) : LinearLayout(context) {
 
@@ -70,11 +76,16 @@ class VirtualTrackpadView(
     }
 
     init {
-        orientation = HORIZONTAL
         layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, effectiveHeightPx).apply {
             setMargins(gapPx, gapPx, gapPx, gapPx)
         }
-        setupWings()
+        if (buttonLayout == "wings") {
+            orientation = HORIZONTAL
+            setupWingsLayout()
+        } else {
+            orientation = VERTICAL
+            setupTopButtonsLayout()
+        }
         resetAutoReturnTimer()
     }
 
@@ -106,7 +117,91 @@ class VirtualTrackpadView(
         }
     }
 
-    private fun setupWings() {
+    /**
+     * Configura la distribución "top": Fila superior 50/50 con iconos de mouse,
+     * fila inferior con superficie táctil 2D al 100% de ancho (o tira de scroll).
+     */
+    private fun setupTopButtonsLayout() {
+        removeAllViews()
+
+        // 1. Fila Superior 50/50
+        val topButtonsRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            val h = (44 * density).toInt()
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, h).apply {
+                setMargins(0, 0, 0, gapPx)
+            }
+        }
+
+        val btnLeft = createIconButton(
+            title = "CLIC",
+            subtitle = "IZQ",
+            iconRes = R.drawable.ic_mouse_left,
+            isPrimary = true,
+            weight = 1.0f,
+            onClick = {
+                resetAutoReturnTimer()
+                listener.performHaptic(isFirm = false)
+                listener.onLeftClick()
+            }
+        )
+
+        val btnRight = createIconButton(
+            title = "CLIC",
+            subtitle = "DER",
+            iconRes = R.drawable.ic_mouse_right,
+            isPrimary = false,
+            weight = 1.0f,
+            onClick = {
+                resetAutoReturnTimer()
+                listener.performHaptic(isFirm = true)
+                listener.onRightClick()
+            }
+        )
+
+        topButtonsRow.addView(btnLeft)
+        topButtonsRow.addView(btnRight)
+        addView(topButtonsRow)
+
+        // 2. Fila Inferior: Superficie 2D + Tira de Scroll opcional
+        val surfaceRow = LinearLayout(context).apply {
+            orientation = HORIZONTAL
+            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, 1.0f)
+        }
+
+        val centerPad = createCenterPadView()
+
+        val isScrollDisabled = (scrollPosition == "disabled" || scrollPosition == "none")
+
+        if (isScrollDisabled) {
+            // Auto-expansión al 100% de ancho
+            surfaceRow.addView(centerPad)
+        } else if (scrollPosition == "left") {
+            val scrollStrip = createScrollStripView(weight = 1.4f).apply {
+                layoutParams = LayoutParams((50 * density).toInt(), LayoutParams.MATCH_PARENT).apply {
+                    setMargins(0, 0, gapPx, 0)
+                }
+            }
+            surfaceRow.addView(scrollStrip)
+            surfaceRow.addView(centerPad)
+        } else { // "right"
+            val scrollStrip = createScrollStripView(weight = 1.4f).apply {
+                layoutParams = LayoutParams((50 * density).toInt(), LayoutParams.MATCH_PARENT).apply {
+                    setMargins(gapPx, 0, 0, 0)
+                }
+            }
+            surfaceRow.addView(centerPad)
+            surfaceRow.addView(scrollStrip)
+        }
+
+        addView(surfaceRow)
+    }
+
+    /**
+     * Configura la distribución "wings": Ala Izquierda, Pad Central (flex: 1), Ala Derecha.
+     */
+    private fun setupWingsLayout() {
         removeAllViews()
 
         // 1. Ala Izquierda
@@ -118,11 +213,122 @@ class VirtualTrackpadView(
         }
 
         // 2. Pad Central
-        val centerPad = TrackpadSurfaceView(
+        val centerPad = createCenterPadView()
+
+        // 3. Ala Derecha
+        val rightWing = LinearLayout(context).apply {
+            orientation = VERTICAL
+            layoutParams = LayoutParams(wingWidthPx, LayoutParams.MATCH_PARENT).apply {
+                setMargins(gapPx / 2, 0, gapPx / 2, 0)
+            }
+        }
+
+        when (scrollPosition) {
+            "left" -> {
+                val scrollStrip = createScrollStripView(weight = 1.4f)
+                val btnLeft = createIconButton(
+                    title = "CLIC",
+                    subtitle = "IZQ",
+                    iconRes = R.drawable.ic_mouse_left,
+                    isPrimary = true,
+                    weight = 0.8f,
+                    onClick = {
+                        resetAutoReturnTimer()
+                        listener.performHaptic(isFirm = false)
+                        listener.onLeftClick()
+                    }
+                )
+                leftWing.addView(scrollStrip)
+                leftWing.addView(btnLeft)
+
+                val btnRight = createIconButton(
+                    title = "CLIC",
+                    subtitle = "DER",
+                    iconRes = R.drawable.ic_mouse_right,
+                    isPrimary = false,
+                    weight = 1.0f,
+                    onClick = {
+                        resetAutoReturnTimer()
+                        listener.performHaptic(isFirm = true)
+                        listener.onRightClick()
+                    }
+                )
+                rightWing.addView(btnRight)
+            }
+            "disabled", "none" -> {
+                val btnLeft = createIconButton(
+                    title = "CLIC",
+                    subtitle = "IZQ",
+                    iconRes = R.drawable.ic_mouse_left,
+                    isPrimary = true,
+                    weight = 1.0f,
+                    onClick = {
+                        resetAutoReturnTimer()
+                        listener.performHaptic(isFirm = false)
+                        listener.onLeftClick()
+                    }
+                )
+                leftWing.addView(btnLeft)
+
+                val btnRight = createIconButton(
+                    title = "CLIC",
+                    subtitle = "DER",
+                    iconRes = R.drawable.ic_mouse_right,
+                    isPrimary = false,
+                    weight = 1.0f,
+                    onClick = {
+                        resetAutoReturnTimer()
+                        listener.performHaptic(isFirm = true)
+                        listener.onRightClick()
+                    }
+                )
+                rightWing.addView(btnRight)
+            }
+            else -> { // "right" (default)
+                val btnLeft = createIconButton(
+                    title = "CLIC",
+                    subtitle = "IZQ",
+                    iconRes = R.drawable.ic_mouse_left,
+                    isPrimary = true,
+                    weight = 1.0f,
+                    onClick = {
+                        resetAutoReturnTimer()
+                        listener.performHaptic(isFirm = false)
+                        listener.onLeftClick()
+                    }
+                )
+                leftWing.addView(btnLeft)
+
+                val scrollStrip = createScrollStripView(weight = 1.4f)
+                val btnRight = createIconButton(
+                    title = "CLIC",
+                    subtitle = "DER",
+                    iconRes = R.drawable.ic_mouse_right,
+                    isPrimary = false,
+                    weight = 0.8f,
+                    onClick = {
+                        resetAutoReturnTimer()
+                        listener.performHaptic(isFirm = true)
+                        listener.onRightClick()
+                    }
+                )
+                rightWing.addView(scrollStrip)
+                rightWing.addView(btnRight)
+            }
+        }
+
+        addView(leftWing)
+        addView(centerPad)
+        addView(rightWing)
+    }
+
+    private fun createCenterPadView(): View {
+        return TrackpadSurfaceView(
             context = context,
             tapToClick = tapToClick,
             secondaryClickMode = secondaryClickMode,
             scrollDirection = scrollDirection,
+            theme = theme,
             onMove = { dx, dy ->
                 resetAutoReturnTimer()
                 listener.onPointerMove(dx, dy)
@@ -149,91 +355,41 @@ class VirtualTrackpadView(
                 setMargins(gapPx / 2, 0, gapPx / 2, 0)
             }
         }
-
-        // 3. Ala Derecha
-        val rightWing = LinearLayout(context).apply {
-            orientation = VERTICAL
-            layoutParams = LayoutParams(wingWidthPx, LayoutParams.MATCH_PARENT).apply {
-                setMargins(gapPx / 2, 0, gapPx / 2, 0)
-            }
-        }
-
-        when (scrollPosition) {
-            "left" -> {
-                // Scroll en ala izquierda + botón L (flex 0.8); botón R en ala derecha al 100%
-                val scrollStrip = createScrollStripView(weight = 1.4f)
-                val btnLeft = createWingButton("CLIC", "IZQ", weight = 0.8f, isPrimary = true) {
-                    resetAutoReturnTimer()
-                    listener.performHaptic(isFirm = false)
-                    listener.onLeftClick()
-                }
-                leftWing.addView(scrollStrip)
-                leftWing.addView(btnLeft)
-
-                val btnRight = createWingButton("CLIC", "DER", weight = 1.0f, isPrimary = false) {
-                    resetAutoReturnTimer()
-                    listener.performHaptic(isFirm = true)
-                    listener.onRightClick()
-                }
-                rightWing.addView(btnRight)
-            }
-            "disabled" -> {
-                // Ambos botones expandidos al 100% de la altura (flex 1.0)
-                val btnLeft = createWingButton("CLIC", "IZQ", weight = 1.0f, isPrimary = true) {
-                    resetAutoReturnTimer()
-                    listener.performHaptic(isFirm = false)
-                    listener.onLeftClick()
-                }
-                leftWing.addView(btnLeft)
-
-                val btnRight = createWingButton("CLIC", "DER", weight = 1.0f, isPrimary = false) {
-                    resetAutoReturnTimer()
-                    listener.performHaptic(isFirm = true)
-                    listener.onRightClick()
-                }
-                rightWing.addView(btnRight)
-            }
-            else -> { // "right" (default)
-                // Botón L en ala izquierda al 100%; scroll (flex 1.4) + botón R (flex 0.8) en ala derecha
-                val btnLeft = createWingButton("CLIC", "IZQ", weight = 1.0f, isPrimary = true) {
-                    resetAutoReturnTimer()
-                    listener.performHaptic(isFirm = false)
-                    listener.onLeftClick()
-                }
-                leftWing.addView(btnLeft)
-
-                val scrollStrip = createScrollStripView(weight = 1.4f)
-                val btnRight = createWingButton("CLIC", "DER", weight = 0.8f, isPrimary = false) {
-                    resetAutoReturnTimer()
-                    listener.performHaptic(isFirm = true)
-                    listener.onRightClick()
-                }
-                rightWing.addView(scrollStrip)
-                rightWing.addView(btnRight)
-            }
-        }
-
-        addView(leftWing)
-        addView(centerPad)
-        addView(rightWing)
     }
 
-    private fun createWingButton(
+    /**
+     * Botón de mouse con icono SVG vectorial y CERO texto visible.
+     * Mantiene accesible contrastes: acento primario (kb_key_bg_accent) para clic izquierdo
+     * y neutro sólido (#FFEBEBF5 / #FF3C3C43) para clic secundario.
+     */
+    private fun createIconButton(
         title: String,
         subtitle: String,
+        iconRes: Int,
+        isPrimary: Boolean,
         weight: Float,
-        isPrimary: Boolean = false,
         onClick: () -> Unit
     ): View {
         val night = isNight
-        val normalBgColor = ContextCompat.getColor(context, R.color.kb_key_bg)
-        val strokeColor = ContextCompat.getColor(context, R.color.kb_key_stroke)
-        val pressedBgColor = ContextCompat.getColor(context, R.color.kb_key_pressed)
-        val titleColor = ContextCompat.getColor(context, R.color.kb_label)
+        val isGlass = (theme == "glass")
 
-        // Contraste óptimo para subtítulos:
-        // Clic Izquierdo (isPrimary = true): Azul de acento accesible (kb_key_bg_accent: #007AFF en claro, #0A84FF en noche).
-        // Clic Derecho (isPrimary = false): Neutro sólido de alto contraste (#3C3C43 en claro, ratio > 10:1; #EBEBF5 en noche, ratio > 11:1).
+        val normalBgColor = if (isGlass) {
+            if (night) Color.parseColor("#B31C1D26") else Color.parseColor("#B3E2E6EF")
+        } else {
+            ContextCompat.getColor(context, R.color.kb_key_bg)
+        }
+
+        val strokeColor = if (isGlass) {
+            if (night) Color.parseColor("#33FFFFFF") else Color.parseColor("#26000000")
+        } else {
+            ContextCompat.getColor(context, R.color.kb_key_stroke)
+        }
+
+        val pressedBgColor = ContextCompat.getColor(context, R.color.kb_key_pressed)
+
+        // Contraste óptimo accesible:
+        // Clic Izquierdo (isPrimary = true): Azul acento accesible (kb_key_bg_accent).
+        // Clic Derecho (isPrimary = false): Neutro sólido (#FFEBEBF5 en noche, #FF3C3C43 en claro).
         val subtitleColor = if (isPrimary) {
             ContextCompat.getColor(context, R.color.kb_key_bg_accent)
         } else {
@@ -255,8 +411,14 @@ class VirtualTrackpadView(
         val button = LinearLayout(context).apply {
             orientation = VERTICAL
             gravity = Gravity.CENTER
-            layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, weight).apply {
-                setMargins(0, gapPx / 2, 0, gapPx / 2)
+            if (buttonLayout == "wings") {
+                layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, 0, weight).apply {
+                    setMargins(0, gapPx / 2, 0, gapPx / 2)
+                }
+            } else {
+                layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, weight).apply {
+                    setMargins(gapPx / 2, 0, gapPx / 2, 0)
+                }
             }
             elevation = 2f * density
 
@@ -268,23 +430,17 @@ class VirtualTrackpadView(
             }
             background = bg
 
-            val tvTitle = TextView(context).apply {
-                text = title
-                textSize = 13f
-                gravity = Gravity.CENTER
-                setTextColor(titleColor)
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            // Icono de mouse limpio con cero etiquetas de texto visibles
+            val iconView = ImageView(context).apply {
+                setImageResource(iconRes)
+                setColorFilter(subtitleColor)
+                val iconSize = (24 * density).toInt()
+                layoutParams = LayoutParams(iconSize, iconSize).apply {
+                    gravity = Gravity.CENTER
+                }
+                contentDescription = "$title $subtitle"
             }
-            val tvSub = TextView(context).apply {
-                text = subtitle
-                textSize = 10f
-                gravity = Gravity.CENTER
-                setTextColor(subtitleColor)
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
-            }
-
-            addView(tvTitle)
-            addView(tvSub)
+            addView(iconView)
 
             setOnTouchListener { v, event ->
                 when (event.actionMasked) {
@@ -361,6 +517,7 @@ class VirtualTrackpadView(
         private val tapToClick: Boolean,
         private val secondaryClickMode: String, // 2fingers, button, hold
         private val scrollDirection: String,
+        private val theme: String,
         private val onMove: (Float, Float) -> Unit,
         private val onTap: () -> Unit,
         private val onSecondaryTap: () -> Unit,
@@ -395,13 +552,28 @@ class VirtualTrackpadView(
             get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
         private val surfaceBgColor: Int
-            get() = if (isNight) Color.parseColor("#140F172A") else Color.parseColor("#0F007AFF")
+            get() = if (theme == "glass") {
+                if (isNight) Color.parseColor("#9910121A") else Color.parseColor("#B3F2F4F8")
+            } else {
+                if (isNight) Color.parseColor("#140F172A") else Color.parseColor("#0F007AFF")
+            }
+
         private val strokeNormalColor: Int
-            get() = if (isNight) Color.parseColor("#4738BDF8") else Color.parseColor("#66007AFF")
+            get() = if (theme == "glass") {
+                if (isNight) Color.parseColor("#33FFFFFF") else Color.parseColor("#26000000")
+            } else {
+                if (isNight) Color.parseColor("#4738BDF8") else Color.parseColor("#66007AFF")
+            }
+
         private val strokeActiveColor: Int
             get() = if (isNight) Color.parseColor("#8038BDF8") else Color.parseColor("#CC007AFF")
+
         private val gridColor: Int
-            get() = if (isNight) Color.parseColor("#0D38BDF8") else Color.parseColor("#26007AFF")
+            get() = if (theme == "glass") {
+                if (isNight) Color.parseColor("#1AFFFFFF") else Color.parseColor("#1A000000")
+            } else {
+                if (isNight) Color.parseColor("#0D38BDF8") else Color.parseColor("#26007AFF")
+            }
 
         private val surfaceBg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -449,98 +621,96 @@ class VirtualTrackpadView(
 
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    downTime = System.currentTimeMillis()
-                    downX = event.x
-                    downY = event.y
+                    hadMultiTouch = false
+                    isMultiTouchScroll = false
+                    isHoldTriggered = false
                     lastX = event.x
                     lastY = event.y
-                    isMultiTouchScroll = false
-                    hadMultiTouch = false
-                    isHoldTriggered = false
-
-                    if (secondaryClickMode == "hold") {
-                        surfaceHandler.removeCallbacks(holdRunnable)
-                        surfaceHandler.postDelayed(holdRunnable, ViewConfiguration.getLongPressTimeout().toLong())
-                    }
+                    downX = event.x
+                    downY = event.y
+                    downTime = System.currentTimeMillis()
 
                     surfaceBg.setStroke((1.5f * density).toInt(), strokeActiveColor)
-                    invalidate()
+
+                    if (secondaryClickMode == "hold") {
+                        surfaceHandler.postDelayed(holdRunnable, 450L)
+                    }
                     return true
                 }
+
                 MotionEvent.ACTION_POINTER_DOWN -> {
                     hadMultiTouch = true
                     surfaceHandler.removeCallbacks(holdRunnable)
-                    if (pointerCount == 2) {
-                        twoFingerStartY = (event.getY(0) + event.getY(1)) / 2f
+                    if (event.pointerCount == 2) {
                         isMultiTouchScroll = true
+                        twoFingerStartY = (event.getY(0) + event.getY(1)) / 2f
                     }
+                    return true
                 }
-                MotionEvent.ACTION_MOVE -> {
-                    val distX = abs(event.x - downX)
-                    val distY = abs(event.y - downY)
-                    if (distX > touchSlop || distY > touchSlop) {
-                        surfaceHandler.removeCallbacks(holdRunnable)
-                    }
 
-                    if (pointerCount >= 2 && isMultiTouchScroll) {
+                MotionEvent.ACTION_MOVE -> {
+                    if (isMultiTouchScroll && event.pointerCount >= 2) {
                         val currentTwoFingerY = (event.getY(0) + event.getY(1)) / 2f
                         val dy = currentTwoFingerY - twoFingerStartY
-                        twoFingerStartY = currentTwoFingerY
-
-                        val effectiveDy = if (scrollDirection == "standard") -dy else dy
-                        onTwoFingerScroll(effectiveDy * 2.2f)
-                    } else if (pointerCount == 1 && !isHoldTriggered) {
+                        if (abs(dy) > 4f * density) {
+                            val factor = if (scrollDirection == "natural") -1f else 1f
+                            onTwoFingerScroll(dy * factor)
+                            twoFingerStartY = currentTwoFingerY
+                        }
+                    } else if (event.pointerCount == 1 && !hadMultiTouch) {
                         val dx = event.x - lastX
                         val dy = event.y - lastY
-                        lastX = event.x
-                        lastY = event.y
-                        onMove(dx, dy)
-                    }
-                }
-                MotionEvent.ACTION_POINTER_UP -> {
-                    surfaceHandler.removeCallbacks(holdRunnable)
-                    if (pointerCount == 2) {
-                        if (secondaryClickMode == "2fingers") {
-                            val duration = System.currentTimeMillis() - downTime
-                            if (duration < 280) {
-                                onSecondaryTap()
-                            }
+                        if (abs(dx) > 0.5f || abs(dy) > 0.5f) {
+                            onMove(dx, dy)
+                            lastX = event.x
+                            lastY = event.y
                         }
-                        // Re-anclar las coordenadas al puntero restante para evitar saltos del cursor
-                        val upIndex = event.actionIndex
-                        val remainingIndex = if (upIndex == 0) 1 else 0
+                        val distFromDown = abs(event.x - downX) + abs(event.y - downY)
+                        if (distFromDown > touchSlop) {
+                            surfaceHandler.removeCallbacks(holdRunnable)
+                        }
+                    }
+                    return true
+                }
+
+                MotionEvent.ACTION_POINTER_UP -> {
+                    val remainingPointers = event.pointerCount - 1
+                    if (remainingPointers == 1) {
+                        val remainingIndex = if (event.actionIndex == 0) 1 else 0
                         lastX = event.getX(remainingIndex)
                         lastY = event.getY(remainingIndex)
-                        downX = lastX
-                        downY = lastY
                     }
+                    isMultiTouchScroll = false
+                    return true
                 }
+
                 MotionEvent.ACTION_UP -> {
                     surfaceHandler.removeCallbacks(holdRunnable)
                     surfaceBg.setStroke((1.2f * density).toInt(), strokeNormalColor)
-                    invalidate()
 
                     val duration = System.currentTimeMillis() - downTime
-                    val distX = abs(event.x - downX)
-                    val distY = abs(event.y - downY)
+                    val dist = abs(event.x - downX) + abs(event.y - downY)
 
-                    // Solo disparar tap-to-click si fue toque primario único y no fue hold ni multitouch
-                    if (tapToClick && !hadMultiTouch && !isHoldTriggered && duration < 220 && distX < touchSlop && distY < touchSlop) {
-                        onTap()
+                    if (!hadMultiTouch && !isHoldTriggered && dist < touchSlop && duration < 250L) {
+                        if (tapToClick) {
+                            onTap()
+                        }
                     }
+                    return true
                 }
+
                 MotionEvent.ACTION_CANCEL -> {
                     surfaceHandler.removeCallbacks(holdRunnable)
                     surfaceBg.setStroke((1.2f * density).toInt(), strokeNormalColor)
-                    invalidate()
+                    return true
                 }
             }
-            return true
+            return super.onTouchEvent(event)
         }
     }
 
     /**
-     * Barra táctil de scroll vertical con microrrelieves y flechas guía.
+     * Tira táctil de desplazamiento vertical con inercia háptica.
      */
     private class VerticalScrollStripView(
         context: Context,
@@ -551,91 +721,83 @@ class VirtualTrackpadView(
     ) : View(context) {
 
         private val density = resources.displayMetrics.density
-        private var lastY = 0f
-        private var accumulatedDistance = 0f
+        private var lastTouchY = 0f
+        private var accumulatedDelta = 0f
 
         private val isNight: Boolean
             get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
-        private val normalBgColor = ContextCompat.getColor(context, R.color.kb_key_bg_alt)
-        private val strokeColor = ContextCompat.getColor(context, R.color.kb_key_stroke)
+        private val stripBgColor: Int
+            get() = if (isNight) Color.parseColor("#1A1C1C1E") else Color.parseColor("#14000000")
         private val pressedBgColor: Int
             get() = if (isNight) Color.parseColor("#330A84FF") else Color.parseColor("#26007AFF")
-        private val strokeActiveColor: Int
-            get() = if (isNight) Color.parseColor("#800A84FF") else Color.parseColor("#CC007AFF")
-        private val iconColor = ContextCompat.getColor(context, R.color.kb_label)
+        private val strokeColor: Int
+            get() = if (isNight) Color.parseColor("#33FFFFFF") else Color.parseColor("#26000000")
+        private val handleColor: Int
+            get() = ContextCompat.getColor(context, R.color.kb_key_bg_accent)
 
-        private val bg = GradientDrawable().apply {
+        private val bgDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = 14f * density
-            setColor(normalBgColor)
+            cornerRadius = 12f * density
+            setColor(stripBgColor)
             setStroke((1.2f * density).toInt(), strokeColor)
         }
 
-        private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
-            strokeWidth = 2f * density
+            strokeWidth = 2.5f * density
             strokeCap = Paint.Cap.ROUND
-            color = iconColor
+            color = handleColor
         }
 
         init {
-            background = bg
-            elevation = 1.5f * density
+            background = bgDrawable
         }
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
-            val w = width.toFloat()
-            val h = height.toFloat()
-            val cx = w / 2f
-
-            // Flecha superior ▲
-            canvas.drawLine(cx - 6f * density, 18f * density, cx, 12f * density, iconPaint)
-            canvas.drawLine(cx, 12f * density, cx + 6f * density, 18f * density, iconPaint)
-
-            // Microrrelieves centrales
-            val cy = h / 2f
-            canvas.drawLine(cx - 8f * density, cy - 8f * density, cx + 8f * density, cy - 8f * density, iconPaint)
-            canvas.drawLine(cx - 8f * density, cy, cx + 8f * density, cy, iconPaint)
-            canvas.drawLine(cx - 8f * density, cy + 8f * density, cx + 8f * density, cy + 8f * density, iconPaint)
-
-            // Flecha inferior ▼
-            canvas.drawLine(cx - 6f * density, h - 18f * density, cx, h - 12f * density, iconPaint)
-            canvas.drawLine(cx, h - 12f * density, cx + 6f * density, h - 18f * density, iconPaint)
+            handlePaint.color = handleColor
+            val cx = width / 2f
+            val cy = height / 2f
+            val len = 12f * density
+            canvas.drawLine(cx, cy - len, cx, cy + len, handlePaint)
+            canvas.drawLine(cx - 5f * density, cy - 4f * density, cx, cy - len, handlePaint)
+            canvas.drawLine(cx + 5f * density, cy - 4f * density, cx, cy - len, handlePaint)
+            canvas.drawLine(cx - 5f * density, cy + 4f * density, cx, cy + len, handlePaint)
+            canvas.drawLine(cx + 5f * density, cy + 4f * density, cx, cy + len, handlePaint)
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
             onInteraction()
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    lastY = event.y
-                    accumulatedDistance = 0f
-                    bg.setColor(pressedBgColor)
-                    bg.setStroke((1.5f * density).toInt(), strokeActiveColor)
-                    invalidate()
+                    lastTouchY = event.y
+                    accumulatedDelta = 0f
+                    bgDrawable.setColor(pressedBgColor)
+                    bgDrawable.setStroke((1.5f * density).toInt(), handleColor)
                     return true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val dy = event.y - lastY
-                    lastY = event.y
+                    val dy = event.y - lastTouchY
+                    lastTouchY = event.y
+                    val dirFactor = if (scrollDirection == "natural") -1f else 1f
+                    val effectiveDy = dy * dirFactor
+                    onScroll(effectiveDy)
 
-                    val effectiveDy = if (scrollDirection == "standard") -dy else dy
-                    onScroll(effectiveDy * 3.5f)
-
-                    accumulatedDistance += abs(dy)
-                    if (accumulatedDistance >= 30f * density) {
+                    accumulatedDelta += abs(dy)
+                    if (accumulatedDelta > 16f * density) {
                         onHapticTick()
-                        accumulatedDistance = 0f
+                        accumulatedDelta = 0f
                     }
+                    return true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    bg.setColor(normalBgColor)
-                    bg.setStroke((1.2f * density).toInt(), strokeColor)
-                    invalidate()
+                    bgDrawable.setColor(stripBgColor)
+                    bgDrawable.setStroke((1.2f * density).toInt(), strokeColor)
+                    return true
                 }
             }
-            return true
+            return super.onTouchEvent(event)
         }
     }
 }

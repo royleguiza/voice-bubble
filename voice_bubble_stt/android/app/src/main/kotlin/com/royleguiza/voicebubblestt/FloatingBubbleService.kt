@@ -58,6 +58,7 @@ class FloatingBubbleService : Service() {
 
     private var windowManager: WindowManager? = null
     private var bubbleView: BubbleCanvasView? = null
+    private var dynamicIslandController: DynamicIslandController? = null
     private var snapAnimator: ValueAnimator? = null
     private lateinit var windowLayoutParams: WindowManager.LayoutParams
 
@@ -79,7 +80,14 @@ class FloatingBubbleService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, buildNotification())
         }
-        setupBubbleView()
+
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val dockingMode = prefs.getString("bubble_docking_mode", "dynamic_island") ?: "dynamic_island"
+        if (dockingMode == "classic_bubble") {
+            setupBubbleView()
+        } else {
+            setupDynamicIsland()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -148,6 +156,23 @@ class FloatingBubbleService : Service() {
         }
 
         return builder.build()
+    }
+
+    private fun setupDynamicIsland() {
+        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        dynamicIslandController = DynamicIslandController(
+            context = this,
+            windowManager = windowManager!!,
+            onMicTap = {
+                onBubbleActionListener?.onBubbleTap()
+            },
+            onCancelRecording = {
+                updateState("idle")
+            },
+            onStopRecording = {
+                onBubbleActionListener?.onBubbleTap()
+            }
+        )
     }
 
     private fun setupBubbleView() {
@@ -249,6 +274,11 @@ class FloatingBubbleService : Service() {
 
     fun updateBubbleVisualState(state: String) {
         bubbleView?.setState(state)
+        when (state) {
+            "recording" -> dynamicIslandController?.startRecordingUI()
+            "transcribing" -> dynamicIslandController?.showProcessingUI()
+            else -> dynamicIslandController?.showSuccessUI("")
+        }
     }
 
     override fun onDestroy() {
@@ -258,6 +288,10 @@ class FloatingBubbleService : Service() {
         snapAnimator?.cancel()
         snapAnimator = null
         isRunning = false
+
+        dynamicIslandController?.destroy()
+        dynamicIslandController = null
+
         if (bubbleView != null && windowManager != null) {
             try {
                 windowManager?.removeView(bubbleView)
