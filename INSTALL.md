@@ -22,9 +22,20 @@ La burbuja requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW
 1. Abre VoiceBubble STT y ve a la pantalla de **Ajustes**.
 2. Activa el interruptor de la **burbuja**: la app te llevará al ajuste de sistema "Mostrar sobre otras apps"; concede el permiso a VoiceBubble STT y vuelve.
 3. Con el permiso concedido, la burbuja aparece flotando sobre cualquier app:
-   - Arrastrable, con snap al borde.
-   - Tocar → graba; tocar de nuevo → detiene y transcribe → copia el texto al portapapeles.
+   - Arrastrable, con snap al borde (o isla/píldora según tu modo de acople).
+   - Tocar → graba; tocar de nuevo → detiene y transcribe → pegado híbrido en 3 caminos (prioridad fija): 1) nuestro teclado activo → directo en cursor; 2) otro teclado + accesibilidad + switch propio ON → inyectado en el campo; 3) resto → portapapeles + pegado manual. En el APK actual (pre-HB1) el paso 2 aún no inyecta: deja clipboard + aviso.
 4. Mientras el servicio está activo verás su **notificación persistente** (es obligatoria en Android para un servicio en primer plano).
+
+## 2b. Pegado con otro teclado — modo híbrido (DigiWord, Gboard…)
+
+Solo necesario si quieres dictar con la burbuja SIN cambiar a nuestro teclado (a partir de HB2; hoy deja clipboard):
+
+1. En la app VoiceBubble → Ajustes → activa **"Pegar dictados de la burbuja en el campo (otros teclados)"** (opt-in, apagado por defecto; clave `kb_bubble_a11y_inject_enabled`).
+2. Concede **Accesibilidad** a VoiceBubble cuando el sistema lo pida (Ajustes de Android → Accesibilidad → VoiceBubble → Activar). Es un interruptor del sistema, independiente de la burbuja y del teclado.
+3. Dicta con la burbuja sobre un campo normal (WhatsApp, Gmail, Chrome, Keep): el texto se inyecta solo. Si la app destino lo rechaza, se reintenta con pegado y si no, queda en portapapeles con aviso.
+4. Aviso esperado de **Play Protect / sistema**: Android advierte que un servicio de accesibilidad "puede leer la pantalla". En nuestro caso solo se consulta el campo enfocado en el instante de pegar un dictado tuyo: sin monitoreo continuo, sin logs, sin guardar pantalla. La distribución sigue siendo APK directo por GitHub (sideload), no Play Store.
+5. **Contraseñas y apps bancarias**: jamás se inyecta ahí por diseño; solo clipboard neutro. DigiWord sigue dueño de tus claves.
+6. **Termux**: el terminal no es un campo de texto estándar y la inyección por accesibilidad suele fallar ahí. Para Termux usa nuestro teclado (inserción directa en cursor), es el camino recomendado.
 
 ## 3. Activación del teclado
 
@@ -43,6 +54,7 @@ La burbuja requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW
 | `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MICROPHONE` | Automático (declarados en el manifest) | Mantener la grabación viva como servicio en primer plano, siempre visible vía notificación. |
 | `POST_NOTIFICATIONS` | Android 13+ | Mostrar la notificación del servicio mientras graba. |
 | `INTERNET` | Automático (declarado en el manifest) | Enviar el audio al motor de transcripción (Groq) únicamente cuando inicias una transcripción. |
+| `BIND_ACCESSIBILITY_SERVICE` | Opt-in doble: switch propio (Ajustes) + interruptor del sistema (Accesibilidad) | Solo para inyectar el dictado puntual de la burbuja en el campo enfocado cuando usas OTRO teclado. Sin monitoreo continuo, sin logs, nunca en contraseñas/`FLAG_SECURE`. Sin concederlo, todo sigue funcionando por clipboard. |
 
 Fuera de estos, no hay otros permisos: cero analytics, cero telemetría, y el teclado jamás registra lo tecleado.
 

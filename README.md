@@ -11,7 +11,7 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 * **Burbuja flotante** (overlay) arrastrable:
 
   * Se activa desde cualquier app.
-  * Tocar → grabar → transcribir → copiar al clipboard + (opcional) inyectar texto en el campo enfocado mediante Accessibility Service.
+  * Tocar → grabar → transcribir → pegado híbrido en 3 caminos (prioridad fija): 1) nuestro teclado activo → inserción directa en cursor (`commitText`, sin permisos extra); 2) otro teclado (DigiWord/Gboard) + accesibilidad concedida + switch propio ON → inyección puntual `ACTION_SET_TEXT` (fallback `clipboard + ACTION_PASTE`); 3) resto → clipboard + pegado manual. En contraseñas/`FLAG_SECURE` jamás se inyecta (solo clipboard). Spec: `plan-hito4-burbuja-hibrida.md`.
 * **Teclado del sistema** "VoiceBubble Keyboard": QWERTY es/en, capa código con fila terminal para Termux/Acode, dictado por voz directo en el cursor y snippets (ver "Modo Teclado").
 * Generación fácil de APK de testing (debug y release).
 
@@ -104,7 +104,7 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 <uses-permission android:name="android.permission.INTERNET" /> <!-- solo transcripciones iniciadas por el usuario -->
 ```
 
-* Declaración de `AccessibilityService` en el `AndroidManifest.xml` (el usuario debe activarlo manualmente en Ajustes). **CONGELADO**: reevaluar tras K3.
+* Declaración de `AccessibilityService` en el `AndroidManifest.xml` (el usuario debe activarlo manualmente en Ajustes). **HÍBRIDO aprobado 2026-09-05** (`plan-hito4-burbuja-hibrida.md`): la accesibilidad solo inyecta el dictado puntual de la burbuja con otro teclado (opt-in doble, sin monitoreo continuo, sin logs, nunca en contraseñas). Hoy el servicio solo hace gestos de trackpad + isla; la inyección es HB1+ pendiente.
 * El servicio de teclado (K1) se declara con `android:permission="android.permission.BIND_INPUT_METHOD"` (la firma el sistema; no requiere acción del usuario).
 
 ## Flujo de usuario ideal
@@ -113,7 +113,7 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 2. (Opcional) Configurar API key de Groq/OpenAI en Settings.
 3. En la pantalla principal: mantener pulsado o tocar “Grabar” → hablar → soltar → ver texto → tocar “Copiar”.
 4. Activar burbuja flotante desde Settings o botón dedicado.
-5. Desde cualquier otra app: tocar la burbuja → hablar → el texto se copia automáticamente (y se intenta inyectar si hay Accessibility activo).
+5. Desde cualquier otra app: tocar la burbuja → hablar → el texto se inserta según el camino disponible: con nuestro teclado, directo en cursor; con otro teclado + accesibilidad + switch ON, inyectado en el campo enfocado (`SET_TEXT`, fallback `PASTE`); si no, queda en portapapeles con aviso para pegado manual. Nota Termux: el terminal no es un `EditText` estándar y la inyección por accesibilidad suele fallar ahí; para Termux se recomienda nuestro teclado (inserción directa).
 6. Alternativa: en Ajustes de Android elegir "VoiceBubble Keyboard" como teclado actual → escribir o dictar directamente en el campo de cualquier app.
 
 ## Modo Teclado – VoiceBubble Keyboard (hitos K1–K5)
@@ -190,5 +190,5 @@ Ver **PLAN.md** para el desglose completo de hitos, tareas y criterios de acepta
 
 \---
 
-**Estado actual del proyecto**: Hitos 0–3 completados y verificados en dispositivo real (ago 2026). Hito 4 (Accessibility) congelado: el dictado desde el teclado cubre la inserción en cursor. Alcance dual según `teclado-voice.md` (T0–K5) completado y auditado. Lote v1.2 completado con CI verde (runs `32679923216` y `32682031857`, APK r64): Configuración reestructurada a 4 tabs glass inferiores C2 (`IndexedStack` persistente en memoria), tecla micrófono M4 con morphing a pastilla roja expandida, cronómetro en vivo `M:SS`, botón cancelar $\ge 44\text{dp}$, ícono vectorial nativo Liquid Glass `kb_ic_mic.xml` (reemplazo definitivo del emoji) y animación de 3 puntos en ola en estado de procesamiento (`PROCESSING`). Pipeline CI optimizado con APK split arm64 que redujo el tamaño de 168 MB a ~54 MB (-67%).
+**Estado actual del proyecto**: Hitos 0–3 completados y verificados en dispositivo real (ago 2026). Hito 4 (Accessibility) en modo HÍBRIDO aprobado 2026-09-05: el dictado del teclado sigue cubriendo la inserción con nuestro IME; la burbuja suma inyección puntual con terceros teclados (HB0 en curso, HB1+ pendientes). Alcance dual según `teclado-voice.md` (T0–K5) completado y auditado. Lote v1.2 completado con CI verde (runs `32679923216` y `32682031857`, APK r64): Configuración reestructurada a 4 tabs glass inferiores C2 (`IndexedStack` persistente en memoria), tecla micrófono M4 con morphing a pastilla roja expandida, cronómetro en vivo `M:SS`, botón cancelar $\ge 44\text{dp}$, ícono vectorial nativo Liquid Glass `kb_ic_mic.xml` (reemplazo definitivo del emoji) y animación de 3 puntos en ola en estado de procesamiento (`PROCESSING`). Pipeline CI optimizado con APK split arm64 que redujo el tamaño de 168 MB a ~54 MB (-67%).
 
