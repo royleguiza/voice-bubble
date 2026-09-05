@@ -164,15 +164,18 @@ void main() {
       await tester.pumpWidget(createTestWidget(tester));
       await tester.pumpAndSettle();
 
-      // Cambiar a Oscuro
-      await tester.tap(find.text('Oscuro'));
-      await tester.pumpAndSettle();
-      expect(await storage.getIslandTheme(), 'dark');
-
+      // Orden Claro-primero: determinista ante la carga async inicial
+      // (_islandTheme arranca en defaultIslandTheme y el mock trae 'glass';
+      // tocar el segmento ya seleccionado sería no-op en SegmentedButton).
       // Cambiar a Claro
       await tester.tap(find.text('Claro'));
       await tester.pumpAndSettle();
       expect(await storage.getIslandTheme(), 'light');
+
+      // Cambiar a Oscuro
+      await tester.tap(find.text('Oscuro'));
+      await tester.pumpAndSettle();
+      expect(await storage.getIslandTheme(), 'dark');
 
       // Alternar onda de voz
       await tester.tap(find.byKey(const ValueKey('island-waveform-switch')));
