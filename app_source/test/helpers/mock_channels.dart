@@ -102,9 +102,6 @@ void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
         call.method == 'isKeyboardRecording' ? false : true,
   );
 }
-    },
-  );
-}
 
 void unregisterAppChannelMocks() {
   try {
