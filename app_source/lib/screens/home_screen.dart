@@ -280,14 +280,12 @@ class _HomeScreenState extends State<HomeScreen>
   /// atascaba frames en eMMC lentas (jank/ANR en gama baja). El callback es
   /// unawaited con guarda anti-solape [_levelSampling]; la UX de la onda
   /// (ataque rápido / caída lenta + canal de waveform) no cambia.
-  bool _levelSampling = false;
-
   void _startLevelMeter(String path) {
     _stopLevelMeter();
     _recordingPath = path;
     _lastLevel = 0;
     _levelTimer = Timer.periodic(
-        const Duration(milliseconds: 120), (_) => unawaited(_emitLevel()));
+        const Duration(milliseconds: 120), (_) => _emitLevel());
   }
 
   void _stopLevelMeter() {
@@ -297,26 +295,22 @@ class _HomeScreenState extends State<HomeScreen>
     _lastLevel = 0;
   }
 
-  Future<void> _emitLevel() async {
+  void _emitLevel() {
     final path = _recordingPath;
-    if (path == null || !_isRecording || _levelSampling) return;
-    _levelSampling = true;
+    if (path == null || !_isRecording) return;
     double level = 0;
     try {
       final file = File(path);
-      // Async obligado: muestreo cada 120 ms en Timer de UI (el sync
-      // atascaba frames en eMMC lentas).
-      // ignore: avoid_slow_async_io
-      if (await file.exists()) {
-        final len = await file.length();
+      if (file.existsSync()) {
+        final len = file.lengthSync();
         const header = 44;
         const window = 3200;
         if (len > header + 64) {
           final start = (len - window).clamp(header, len);
-          final raf = await file.open(mode: FileMode.read);
+          final raf = file.openSync(mode: FileMode.read);
           try {
-            await raf.setPosition(start);
-            final bytes = await raf.read(len - start);
+            raf.setPositionSync(start);
+            final bytes = raf.readSync(len - start);
             final bd = ByteData.sublistView(bytes);
             int peak = 0;
             for (int i = 0; i + 1 < bd.lengthInBytes; i += 2) {
@@ -325,14 +319,11 @@ class _HomeScreenState extends State<HomeScreen>
             }
             level = (peak / 32768).clamp(0.0, 1.0);
           } finally {
-            await raf.close();
+            raf.closeSync();
           }
         }
       }
-    } catch (_) {
-    } finally {
-      _levelSampling = false;
-    }
+    } catch (_) {}
     // Ataque rápido, caída lenta para una onda estable.
     _lastLevel =
         level > _lastLevel ? level : _lastLevel * 0.6 + level * 0.4;
@@ -398,24 +389,18 @@ class _HomeScreenState extends State<HomeScreen>
   /// temporal sin transcribir y sin mostrar error.
   static const int _minAudioBytes = 1000;
 
-  /// Chequeo asíncrono a propósito: el sync atascaba frames en eMMC lentas
-  /// (jank/ANR en gama baja). Se usa `length()` en try/catch en vez de
-  /// `exists()` (sin TOCTOU y fuera de la lista de `avoid_slow_async_io`).
-  /// Estas rutas son awaited en código async real (sin fakeAsync en los
-  /// tests que las tocan: verificado por grep). Solo el level-meter usa el
-  /// path unawaited con guarda anti-solape (ver [_emitLevel]).
-  Future<bool> _hasUsableAudio(String path) async {
+  bool _hasUsableAudio(String path) {
     try {
-      return await File(path).length() >= _minAudioBytes;
+      final file = File(path);
+      return file.existsSync() && file.lengthSync() >= _minAudioBytes;
     } catch (_) {
       return false;
     }
   }
 
-  Future<bool> _audioFileExists(String path) async {
+  bool _audioFileExists(String path) {
     try {
-      await File(path).length();
-      return true;
+      return File(path).existsSync();
     } catch (_) {
       return false;
     }
@@ -516,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen>
 
       // Verificar si el archivo tiene audio suficiente (>1000 bytes).
       // Si la grabación fue instantánea o vacía, se limpia sin llamar a Groq ni arrojar error.
-      if (!await _hasUsableAudio(path)) {
+      if (!_hasUsableAudio(path)) {
         await _transcriptionService.cleanupTempFile(path);
         await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
         if (mounted) {
@@ -537,7 +522,7 @@ class _HomeScreenState extends State<HomeScreen>
         // tardío (p.ej. clipboard, ya clasificado aparte) con archivo
         // ausente no debe dejar un pendiente que reintentaría con
         // "archivo no encontrado".
-        final stillExists = await _audioFileExists(path);
+        final stillExists = _audioFileExists(path);
         if (mounted) {
           setState(() {
             _pendingAudioPath = stillExists ? path : null;
@@ -571,7 +556,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _retryPending() async {
     final path = _pendingAudioPath;
     if (path == null || _isTranscribing || _isRecording) return;
-    if (!await _hasUsableAudio(path)) {
+    if (!_hasUsableAudio(path)) {
       // El temporal se perdió o quedó vacío entre el fallo y el reintento:
       // limpiar el pendiente en vez de fallar con "archivo no encontrado".
       await _transcriptionService.cleanupTempFile(path);
@@ -608,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen>
       await _publishTranscriptionResult(result);
     } catch (e) {
       await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
-      final stillExists = await _audioFileExists(path);
+      final stillExists = _audioFileExists(path);
       if (mounted) {
         setState(() {
           _pendingAudioPath = stillExists ? path : null;

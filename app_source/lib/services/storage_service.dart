@@ -51,34 +51,8 @@ class StorageService {
   StorageService({FlutterSecureStorage? secureStorage})
       : _secureStorage = secureStorage ?? const FlutterSecureStorage();
 
-  // --- Caché en memoria de SharedPreferences: UNA sola getInstance() ---
-  // Instancia única de proceso (estática, no por StorageService): todas las
-  // instancias comparten el mismo objeto, así que los setters son
-  // write-through visibles para todos. Ante escrituras EXTERNAS al proceso
-  // Dart (teclado nativo Kotlin sobre el mismo archivo
-  // FlutterSharedPreferences) la caché queda obsoleta: por eso [_prefs()]
-  // hace `reload()` en cada acceso y las lecturas que fusionan con disco
-  // (`_readPrefsEntries`, `ensureSeeds`, historial) releen tras recargar.
-  // Solo se invalida en tests que resiembran los mocks con
-  // setMockInitialValues (ver [debugInvalidatePrefsCache]).
-  static SharedPreferences? _prefsCache;
-
   Future<SharedPreferences> _prefs() async {
-    final cached = _prefsCache;
-    if (cached != null) {
-      try {
-        await cached.reload();
-      } catch (_) {}
-      return cached;
-    }
-    final fresh = await SharedPreferences.getInstance();
-    _prefsCache = fresh;
-    return fresh;
-  }
-
-  @visibleForTesting
-  void debugInvalidatePrefsCache() {
-    _prefsCache = null;
+    return await SharedPreferences.getInstance();
   }
 
   List<Transcription> _transcriptions = [];
@@ -887,7 +861,6 @@ class StorageService {
   @Deprecated('No purgar: historial persistente FIFO-20 con retención.')
   Future<void> clearPreviousHistoryOnStartup() async {
     _transcriptions.clear();
-    debugInvalidatePrefsCache();
     try {
       final prefs = await _prefs();
       await prefs.remove(_key);
@@ -945,7 +918,9 @@ class StorageService {
   Future<List<Transcription>> _readPrefsEntries() async {
     try {
       final prefs = await _prefs();
-      await prefs.reload();
+      try {
+        await prefs.reload();
+      } catch (_) {}
       final jsonList = prefs.getStringList(_key) ?? const <String>[];
       final out = <Transcription>[];
       for (final raw in jsonList) {
