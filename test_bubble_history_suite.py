@@ -133,6 +133,28 @@ dart_settings_test = read("app_source/test/screens/settings_screen_test.dart")
 check("Tests de render y toggle del switch (hito B6)",
       "bubble-history-switch" in dart_settings_test)
 
+# --- 8. Leccion CI: todo test que monte SettingsScreen debe mockear el
+# canal trackpad (lectura en _loadInitialState; sin mock se cuelga y el
+# setState inicial no aplica) ---
+import glob
+for tf in sorted(glob.glob(os.path.join(WORKSPACE, "app_source/test/**/*.dart"), recursive=True)):
+    try:
+        with open(tf, "r", encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        continue
+    if "SettingsScreen(" not in content:
+        continue
+    uses_helper = "registerAppChannelMocks" in content
+    mocks_trackpad = "floating_trackpad" in content or "floating-trackpad" in content
+    check(f"{os.path.relpath(tf, WORKSPACE)} mockea canal trackpad",
+          uses_helper or mocks_trackpad,
+          "lectura colgada en _loadInitialState sin mock")
+
+helper = read("app_source/test/helpers/mock_channels.dart")
+check("mock_channels.dart cubre floating_trackpad",
+      "floating_trackpad" in helper and "isAccessibilityGranted" in helper)
+
 print("\n============================================================")
 print(f" RESULTADO SUITE BURBUJA-HISTORIAL: {PASSED} pasados, {FAILED} fallidos.")
 print("============================================================\n")

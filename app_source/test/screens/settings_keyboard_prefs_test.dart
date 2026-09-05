@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
+import 'package:voice_bubble_stt/services/floating_trackpad_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
@@ -14,6 +15,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   const channel = MethodChannel(FloatingBubbleService.channelName);
   const keyboardChannel = MethodChannel(KeyboardService.channelName);
+  const trackpadChannel = MethodChannel(FloatingTrackpadService.channelName);
 
   late StorageService storageService;
 
@@ -51,11 +53,19 @@ void main() {
           return null;
       }
     });
+    // Sin este mock, la lectura de accesibilidad en _loadInitialState se
+    // cuelga (sin plataforma que responda) y el setState inicial no aplica.
+    messenger.setMockMethodCallHandler(trackpadChannel,
+        (MethodCall call) async {
+      if (call.method == 'isAccessibilityGranted') return false;
+      return null;
+    });
   });
 
   tearDown(() {
     messenger.setMockMethodCallHandler(channel, null);
     messenger.setMockMethodCallHandler(keyboardChannel, null);
+    messenger.setMockMethodCallHandler(trackpadChannel, null);
   });
 
   Widget buildTestableWidget(WidgetTester tester) {

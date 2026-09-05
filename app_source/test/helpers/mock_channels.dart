@@ -30,6 +30,8 @@ const List<String> _pathProviderChannels = [
 const String _floatingBubbleChannel =
     'com.royleguiza.voicebubblestt/floating_bubble';
 const String _keyboardChannel = 'com.royleguiza.voicebubblestt/keyboard';
+const String _trackpadChannel =
+    'com.royleguiza.voicebubblestt/floating_trackpad';
 
 /// Canales que [registerAppChannelMocks] deja mockeados; los tests lo usan
 /// en tearDown para restaurar el messenger.
@@ -38,6 +40,7 @@ final List<String> appMockedChannels = [
   ..._pathProviderChannels,
   _floatingBubbleChannel,
   _keyboardChannel,
+  _trackpadChannel,
 ];
 
 void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
@@ -100,6 +103,24 @@ void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
     const MethodChannel(_keyboardChannel),
     (MethodCall call) async =>
         call.method == 'isKeyboardRecording' ? false : true,
+  );
+
+  // Estado de accesibilidad: sin mock, la lectura en _loadInitialState de
+  // SettingsScreen se cuelga (en tests no hay plataforma que responda) y el
+  // setState inicial jamás se aplica. Default: no concedido.
+  messenger.setMockMethodCallHandler(
+    const MethodChannel(_trackpadChannel),
+    (MethodCall call) async {
+      switch (call.method) {
+        case 'isAccessibilityGranted':
+          return false;
+        case 'openAccessibilitySettings':
+        case 'openAppDetailsSettings':
+          return true;
+        default:
+          return null;
+      }
+    },
   );
 }
 
