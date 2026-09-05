@@ -149,7 +149,7 @@ Spec completa e investigación: **`teclado-voice.md`**.
 ## Limitaciones conocidas de Android
 
 * Algunos fabricantes (Xiaomi, Huawei, Oppo, Samsung, etc.) matan agresivamente los servicios en segundo plano → el usuario debe desactivar la optimización de batería para la app (guía por fabricante en **`INSTALL.md`** §5).
-* `SYSTEM\_ALERT\_WINDOW` y Accessibility Service son permisos “especiales” que el usuario debe conceder manualmente.
+* `SYSTEM\_ALERT\_WINDOW` y Accessibility Service son permisos “especiales” que el usuario debe conceder manualmente (guía de avisos de Play Protect y ajustes restringidos: `INSTALL.md` §2c).
 * En Android Go o dispositivos con poca RAM el overlay puede estar restringido.
 * Android muestra la advertencia estándar sobre teclados de terceros al activar un IME; se mitiga con cero logging y código auditable.
 

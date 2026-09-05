@@ -37,6 +37,14 @@ Solo necesario si quieres dictar con la burbuja SIN cambiar a nuestro teclado (a
 5. **Contraseñas y apps bancarias**: jamás se inyecta ahí por diseño; solo clipboard neutro. DigiWord sigue dueño de tus claves.
 6. **Termux**: el terminal no es un campo de texto estándar y la inyección por accesibilidad suele fallar ahí. Para Termux usa nuestro teclado (inserción directa en cursor), es el camino recomendado.
 
+## 2c. Alerta de Play Protect y Ajustes restringidos (leer si aparece un aviso)
+
+1. Al instalar el APK, Play Protect puede mostrar "Aplicación desconocida" o advertir por los permisos sensibles (accesibilidad + overlay + micrófono). Es **esperado**: el APK es debug, firmado por el desarrollador y distribuido fuera de Play, sin verificación de identidad de desarrollador (obligatoria desde septiembre 2026). Si el aviso ofrece "Más detalles → **Instalar de todas formas**", podés continuar; es tu decisión.
+2. Si el sistema **bloquea sin opción de continuar**: es la protección mejorada contra fraude de Google (activa en 185 mercados), una decisión automática, no un error de la app. Alternativas: usar la variante sin accesibilidad (cuando exista) o la distribución por Play Store.
+3. Tras instalar, Android 13+ exige un paso extra para la Accesibilidad en apps sideload ("Ajustes restringidos"), si no el interruptor sale gris y la **isla exacta + trackpad con clics no funcionan** (la burbuja y el teclado sí):
+   - Ajustes → Aplicaciones → VoiceBubble STT → ⋮ (arriba a la derecha) → **Permitir ajustes restringidos** → volver → Accesibilidad → activar VoiceBubble.
+4. Nunca desactivar Play Protect para instalar. Si el aviso te incomoda, preferí la variante sin accesibilidad.
+
 ## 3. Activación del teclado
 
 1. Ajustes de Android → Sistema → **Métodos de entrada / Manage keyboards** (la ruta exacta varía según fabricante).
@@ -98,6 +106,9 @@ Fuera de estos, no hay otros permisos: cero analytics, cero telemetría, y el te
 | El teclado no aparece en el selector | Confirma que está activado en Ajustes → Métodos de entrada (sección 3). Si acabas de instalar, reinicia el teléfono: algunos sistemas tardan en registrar el nuevo IME. |
 | El dictado falla sin conexión | El motor es únicamente cloud (Groq): la transcripción **requiere internet** por diseño. Sin red no hay transcripción; cuando vuelva la conexión, reintenta. |
 | No pide permiso de micrófono | Probablemente se denegó antes ("no volver a preguntar"). Concede `RECORD_AUDIO` manualmente: Ajustes → Aplicaciones → VoiceBubble STT → Permisos → Micrófono. |
+| Play Protect advierte al instalar | Esperado en sideload debug con accesibilidad (§2c): continuar con "Instalar de todas formas" o evaluar la variante sin accesibilidad. |
+| El interruptor de Accesibilidad sale gris/bloqueado | Falta "Permitir ajustes restringidos" (§2c paso 3, obligatorio en Android 13+ para sideload). |
+| Instalación bloqueada sin opción de continuar | Protección mejorada contra fraude de Google en tu región (§2c paso 2); no es un error de la app. |
 | El historial está vacío | Es normal tras instalar o reinstalar: el historial empieza vacío y conserva las últimas **20** transcripciones. Los dictados hechos desde el teclado aparecen al volver a abrir la app (se relee el historial compartido al pasar a primer plano). |
 
 ## 7. Requisitos mínimos

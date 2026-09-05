@@ -278,6 +278,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 
 **Siguiente etapa (Reinicio Septiembre 2026)**: Ejecución del backlog de 24 mejoras estructurado en [`MEJORAS-SEPTIEMBRE.md`](file:///root/projects/activos/voice-bubble/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-24), comenzando por los planes aprobados [`plan-clipboard.md`](file:///root/projects/activos/voice-bubble/plan-clipboard.md), [`plan-ciclar-mayusculas.md`](file:///root/projects/activos/voice-bubble/plan-ciclar-mayusculas.md) y [`plan-hito4-burbuja-hibrida.md`](plan-hito4-burbuja-hibrida.md) (HB0 en ejecución local, sin push por pedido del dueño).
 
+**Burbuja clásica + modal historial (B1–B7, [`plan-burbuja-historial.md`](plan-burbuja-historial.md))**: implementado local 2026-09-05 (controlador nativo + switch `bubble_history_enabled` + suite `test_bubble_history_suite.py` 55/55 + master 10/10 en verde), pendiente CI tras autorización de push del dueño.
+
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
 - Mejora futura registrada: `<monochrome>` en el icono adaptive (themed icons Android 13+); contador de generación para invalidar callbacks de transcripción obsoletos tras rotación (menor UX detectado en auditoría K5-T5); limpiar PNGs huérfanos de `mipmap-*dpi` (minSdk 28 usa anydpi-v26).
