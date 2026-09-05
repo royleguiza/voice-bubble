@@ -2100,7 +2100,7 @@
           <div class="control-stepper-group">
             <button class="stepper-btn" onclick="adjustCoord('y', -5)" title="-5 px">-5</button>
             <button class="stepper-btn" onclick="adjustCoord('y', -1)" title="-1 px">-1</button>
-            <input type="range" class="slider-styled" id="sliderY" min="0" max="120" value="12" oninput="onSliderChange('y', this.value)">
+            <input type="range" class="slider-styled" id="sliderY" min="-100" max="120" value="12" oninput="onSliderChange('y', this.value)">
             <button class="stepper-btn" onclick="adjustCoord('y', 1)" title="+1 px">+1</button>
             <button class="stepper-btn" onclick="adjustCoord('y', 5)" title="+5 px">+5</button>
           </div>
@@ -2749,7 +2749,7 @@
       if (axis === 'x') {
         state.posX = Math.max(-160, Math.min(160, state.posX + delta));
       } else if (axis === 'y') {
-        state.posY = Math.max(0, Math.min(120, state.posY + delta));
+        state.posY = Math.max(-100, Math.min(120, state.posY + delta));
       } else if (axis === 'w') {
         state.width = Math.max(130, Math.min(320, state.width + delta));
       } else if (axis === 'h') {
@@ -2896,7 +2896,8 @@
       }
 
       // Safe Y position expanding downwards into screen
-      const safeTop = Math.min(Math.max(state.posY, margin), screenH - targetH - margin);
+      const minTop = Math.min(0, state.posY);
+      const safeTop = Math.min(Math.max(state.posY, minTop), screenH - targetH - margin);
       island.style.top = safeTop + 'px';
     }
 

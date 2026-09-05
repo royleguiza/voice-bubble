@@ -174,7 +174,11 @@ class FloatingTrackpadService : Service() {
             elevation = 6f * density
 
             val icon = ImageView(context).apply {
-                setImageResource(R.drawable.ic_trackpad)
+                try {
+                    setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_trackpad))
+                } catch (_: Throwable) {
+                    try { setImageResource(R.drawable.ic_trackpad) } catch (_: Throwable) {}
+                }
                 setColorFilter(ContextCompat.getColor(context, R.color.kb_label))
                 val pad = (12 * density).toInt()
                 setPadding(pad, pad, pad, pad)

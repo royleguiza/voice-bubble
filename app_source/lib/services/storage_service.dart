@@ -413,11 +413,11 @@ class StorageService {
   Future<int> getIslandPosY() async {
     final prefs = await SharedPreferences.getInstance();
     final val = prefs.getInt(islandPosYKey) ?? defaultIslandPosY;
-    return val.clamp(0, 120);
+    return val.clamp(-100, 120);
   }
 
   Future<void> setIslandPosY(int y) async {
-    final clamped = y.clamp(0, 120);
+    final clamped = y.clamp(-100, 120);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(islandPosYKey, clamped);
   }

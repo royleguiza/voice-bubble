@@ -61,11 +61,13 @@ void main() {
       await storage.setIslandPosX(-300);
       expect(await storage.getIslandPosX(), -160);
 
-      // Y a [0, 120]
+      // Y a [-100, 120]
       await storage.setIslandPosY(45);
       expect(await storage.getIslandPosY(), 45);
       await storage.setIslandPosY(-20);
-      expect(await storage.getIslandPosY(), 0);
+      expect(await storage.getIslandPosY(), -20);
+      await storage.setIslandPosY(-150);
+      expect(await storage.getIslandPosY(), -100);
       await storage.setIslandPosY(200);
       expect(await storage.getIslandPosY(), 120);
     });

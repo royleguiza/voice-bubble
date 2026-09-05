@@ -467,7 +467,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _saveIslandPosY(int value) async {
-    final clamped = value.clamp(0, 120);
+    final clamped = value.clamp(-100, 120);
     setState(() => _islandPosY = clamped);
     await _storageService.setIslandPosY(clamped);
   }
@@ -1652,10 +1652,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
                 Slider(
                   key: const ValueKey('island-slider-y'),
-                  min: 0,
+                  min: -100,
                   max: 120,
-                  divisions: 120,
-                  value: _islandPosY.toDouble(),
+                  divisions: 220,
+                  value: _islandPosY.toDouble().clamp(-100, 120),
                   onChanged: (v) => _saveIslandPosY(v.round()),
                 ),
                 Row(

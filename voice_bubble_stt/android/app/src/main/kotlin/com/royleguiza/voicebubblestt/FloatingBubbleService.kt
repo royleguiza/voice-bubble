@@ -44,8 +44,9 @@ class FloatingBubbleService : Service() {
         var onBubbleActionListener: BubbleActionListener? = null
 
         fun updateState(state: String) {
+            val prevState = lastVisualState
             lastVisualState = state
-            instance?.updateBubbleVisualState(state)
+            instance?.updateBubbleVisualState(state, prevState)
         }
 
         private var instance: FloatingBubbleService? = null
@@ -273,12 +274,20 @@ class FloatingBubbleService : Service() {
         animator.start()
     }
 
-    fun updateBubbleVisualState(state: String) {
+    fun updateBubbleVisualState(state: String, prevState: String = lastVisualState) {
         bubbleView?.setState(state)
         when (state) {
             "recording" -> dynamicIslandController?.startRecordingUI()
             "transcribing" -> dynamicIslandController?.showProcessingUI()
-            else -> dynamicIslandController?.showSuccessUI("")
+            "success" -> dynamicIslandController?.showSuccessUI("")
+            "idle" -> {
+                if (prevState == "transcribing") {
+                    dynamicIslandController?.showSuccessUI("")
+                } else {
+                    dynamicIslandController?.collapseToCompact()
+                }
+            }
+            else -> dynamicIslandController?.collapseToCompact()
         }
     }
 
