@@ -133,6 +133,10 @@ def test_trackpad_suite():
     res = subprocess.run(["python3", "test_trackpad_suite.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert res.returncode == 0, f"Fallo en trackpad suite: {res.stderr}\n{res.stdout}"
 
+def test_bubble_history_suite():
+    res = subprocess.run(["python3", "test_bubble_history_suite.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    assert res.returncode == 0, f"Fallo en bubble-history suite: {res.stderr}\n{res.stdout}"
+
 def main():
     print("=" * 70)
     print(" 🚀 INICIANDO MASTER VERIFICATION SUITE - VOICEBUBBLE STT")
@@ -147,6 +151,7 @@ def main():
         ("Historial: Repositorio JSON atómico y sincronización FIFO-20", test_transcription_history_atomic),
         ("Portapapeles: Suite Multimodal 24/24", test_clipboard_suite),
         ("Trackpad: Suite Split Wings y Puntero Virtual", test_trackpad_suite),
+        ("Burbuja: Modal de historial clasica (B1-B7)", test_bubble_history_suite),
     ]
 
     passed = 0

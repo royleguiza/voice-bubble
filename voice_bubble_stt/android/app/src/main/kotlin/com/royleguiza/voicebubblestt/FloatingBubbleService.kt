@@ -15,7 +15,9 @@ import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.RectF
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -32,6 +34,7 @@ class FloatingBubbleService : Service() {
         const val CHANNEL_ID = "voice_bubble_foreground_channel"
         const val NOTIFICATION_ID = 1001
         const val ACTION_STOP = "com.royleguiza.voicebubblestt.ACTION_STOP"
+        private const val BUBBLE_LONG_PRESS_MS = 500L
 
         var isRunning: Boolean = false
             private set
@@ -115,8 +118,12 @@ class FloatingBubbleService : Service() {
     private var windowManager: WindowManager? = null
     private var bubbleView: BubbleCanvasView? = null
     private var dynamicIslandController: DynamicIslandController? = null
+    private var bubbleHistoryController: BubbleHistoryController? = null
     private var snapAnimator: ValueAnimator? = null
     private lateinit var windowLayoutParams: WindowManager.LayoutParams
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var bubbleLongPress: Runnable? = null
+    private var bubbleLongPressFired = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -304,6 +311,21 @@ class FloatingBubbleService : Service() {
                             initialTouchX = event.rawX
                             initialTouchY = event.rawY
                             isClick = true
+                            bubbleLongPressFired = false
+                            // Toque largo en reposo = historial (el toque
+                            // simple siempre graba/detiene en la burbuja).
+                            val r = Runnable {
+                                if (isClick && !bubbleLongPressFired &&
+                                    lastVisualState == "idle" &&
+                                    bubbleHistoryController?.isOpen() != true
+                                ) {
+                                    bubbleLongPressFired = true
+                                    isClick = false
+                                    showBubbleHistory()
+                                }
+                            }
+                            bubbleLongPress = r
+                            uiHandler.postDelayed(r, BUBBLE_LONG_PRESS_MS)
                             return true
                         }
                         MotionEvent.ACTION_MOVE -> {
@@ -311,6 +333,8 @@ class FloatingBubbleService : Service() {
                             val dy = (event.rawY - initialTouchY).toInt()
                             if (abs(dx) > 10 || abs(dy) > 10) {
                                 isClick = false
+                                bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
+                                bubbleLongPress = null
                             }
                             windowLayoutParams.x = initialX + dx
                             windowLayoutParams.y = initialY + dy
@@ -318,11 +342,23 @@ class FloatingBubbleService : Service() {
                             return true
                         }
                         MotionEvent.ACTION_UP -> {
+                            bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
+                            bubbleLongPress = null
+                            if (bubbleLongPressFired) {
+                                bubbleLongPressFired = false
+                                return true
+                            }
                             if (isClick) {
                                 onBubbleActionListener?.onBubbleTap()
                             } else {
                                 snapToNearestEdge()
                             }
+                            return true
+                        }
+                        MotionEvent.ACTION_CANCEL -> {
+                            bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
+                            bubbleLongPress = null
+                            bubbleLongPressFired = false
                             return true
                         }
                     }
@@ -332,6 +368,44 @@ class FloatingBubbleService : Service() {
         }
 
         windowManager?.addView(bubbleView, windowLayoutParams)
+    }
+
+    /** Modal de historial anclada a la burbuja clásica (hito B1–B7). */
+    fun showBubbleHistory() {
+        try {
+            if (bubbleView == null || bubbleHistoryController?.isOpen() == true) return
+            if (!BubbleHistoryController.isEnabled(this)) return
+            val wm = windowManager ?: return
+            val density = resources.displayMetrics.density
+            val size = (64 * density).toInt()
+            var controller = bubbleHistoryController
+            if (controller == null) {
+                controller = BubbleHistoryController(
+                    context = this,
+                    windowManager = wm,
+                    onMicTap = {
+                        try {
+                            bubbleHistoryController?.close()
+                        } catch (_: Exception) {}
+                        try {
+                            onBubbleActionListener?.onBubbleTap()
+                        } catch (_: Exception) {}
+                    },
+                    onClosed = {
+                        try {
+                            bubbleView?.visibility = View.VISIBLE
+                        } catch (_: Exception) {}
+                    }
+                )
+                bubbleHistoryController = controller
+            }
+            bubbleView?.visibility = View.GONE
+            controller.showFrom(windowLayoutParams.x, windowLayoutParams.y, size)
+        } catch (_: Exception) {
+            try {
+                bubbleView?.visibility = View.VISIBLE
+            } catch (_: Exception) {}
+        }
     }
 
     private fun snapToNearestEdge() {
@@ -386,6 +460,11 @@ class FloatingBubbleService : Service() {
 
         dynamicIslandController?.destroy()
         dynamicIslandController = null
+
+        try {
+            bubbleHistoryController?.destroy()
+        } catch (_: Exception) {}
+        bubbleHistoryController = null
 
         if (bubbleView != null && windowManager != null) {
             try {

@@ -177,6 +177,20 @@ void main() {
       final disabled = await service.loadFloatingBubbleEnabled();
       expect(disabled, isFalse);
     });
+
+    test('bubble history defaults to true (hito B6)', () async {
+      final service = StorageService();
+      expect(await service.loadBubbleHistoryEnabled(), isTrue);
+    });
+
+    test('bubble history persists correctly (hito B6)', () async {
+      final service = StorageService();
+      await service.saveBubbleHistoryEnabled(false);
+      expect(await service.loadBubbleHistoryEnabled(), isFalse);
+
+      await service.saveBubbleHistoryEnabled(true);
+      expect(await service.loadBubbleHistoryEnabled(), isTrue);
+    });
   });
 
   group('StorageService - fila terminal del teclado', () {

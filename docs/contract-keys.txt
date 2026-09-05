@@ -1,4 +1,5 @@
 bubble_docking_mode
+bubble_history_enabled
 floating_bubble_enabled
 island_height
 island_pos_x

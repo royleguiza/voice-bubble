@@ -48,6 +48,20 @@ class StorageService {
     await prefs.setBool(_floatingBubbleKey, enabled);
   }
 
+  static const String _bubbleHistoryKey = 'bubble_history_enabled';
+
+  /// Modal de historial de la burbuja clásica (hito B1–B7, default ON).
+  /// El servicio nativo Kotlin lee esta misma clave con prefijo "flutter.".
+  Future<bool> loadBubbleHistoryEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_bubbleHistoryKey) ?? true;
+  }
+
+  Future<void> saveBubbleHistoryEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_bubbleHistoryKey, enabled);
+  }
+
   static const String _keyboardTerminalRowKey = 'kb_terminal_row_visible';
 
   /// Fila terminal del teclado (TAB, ESC, CTRL, ALT, flechas).
