@@ -99,8 +99,9 @@ void main() {
       ]) {
         expect(find.text(nombre), findsOneWidget);
       }
-      expect(find.text('Snippets del teclado'), findsOneWidget);
+      expect(find.text('Snippets'), findsOneWidget);
       expect(find.text('5 / 50'), findsOneWidget);
+      expect(find.text('+ Nuevo snippet'), findsOneWidget);
     });
 
     testWidgets('crear snippet lo muestra en la lista y persiste',

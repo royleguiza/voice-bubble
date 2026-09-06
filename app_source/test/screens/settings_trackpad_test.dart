@@ -49,14 +49,15 @@ void main() {
   }
 
   group('SettingsScreen - Trackpad y Puntero Virtual', () {
-    testWidgets('muestra la sección Modo Trackpad en la pestaña Teclado',
+    testWidgets('muestra la sección Modo Trackpad en la pestaña Trackpad (v1)',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
       await tester.pumpAndSettle();
 
+      expect(find.text('Trackpad'), findsOneWidget);
       expect(find.text('Modo Trackpad y Puntero Virtual'), findsOneWidget);
       expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
       expect(find.text('Activar modo trackpad'), findsOneWidget);
@@ -67,7 +68,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
       await tester.pumpAndSettle();
 
       final scrollSelector = find.byKey(const ValueKey('kb-trackpad-scroll-position-selector'));
@@ -92,7 +93,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
       await tester.pumpAndSettle();
 
       final pointerSelector = find.byKey(const ValueKey('kb-trackpad-pointer-style-selector'));
@@ -115,7 +116,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
       await tester.pumpAndSettle();
 
       final layoutSelector = find.byKey(const ValueKey('kb-trackpad-button-layout-selector'));
@@ -154,6 +155,23 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(prefs.getString('kb_spacebar_trackpad_mode'), 'ios_2d');
+    });
+
+    testWidgets('Teclado muestra enlace a la sección propia de Trackpad (v1)',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('teclado-go-trackpad')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('teclado-go-trackpad')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Trackpad'), findsOneWidget);
+      expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
     });
   });
 }

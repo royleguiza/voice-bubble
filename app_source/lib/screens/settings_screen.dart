@@ -44,6 +44,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   late final KeyboardService _keyboardService;
 
   bool _hasApiKey = false;
+  bool _isEditingApiKey = false;
+  String? _apiKeyError;
+  bool _showApiDetail = false;
   String _recordMode = StorageService.defaultRecordMode;
   bool _isBubbleEnabled = false;
   bool _showBubbleHistory = true;
@@ -151,6 +154,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     setState(() {
       _apiKeyController.text = apiKey;
       _hasApiKey = apiKey.isNotEmpty;
+      _isEditingApiKey = false;
+      _apiKeyError = null;
+      _showApiDetail = false;
       _recordMode = results.$1;
       _isBubbleEnabled = results.$2;
       _isKeyboardEnabled = results.$3.$1;
@@ -541,6 +547,106 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _keyboardService.showInputMethodPicker();
   }
 
+  /// Acerca de fuera del dock (prototipo v1): sheet informativo invocado
+  /// desde Inicio. Preserva textos de contrato (versión + descripción).
+  Future<void> _showAboutSheet() async {
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.mic_rounded,
+                    color: Theme.of(sheetContext).colorScheme.primary,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'VoiceBubble STT v1.0.0+87',
+                      style: Theme.of(sheetContext).textTheme.titleSmall,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: 'Cerrar',
+                    onPressed: () => Navigator.of(sheetContext).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Transcripción de voz a texto con Groq Whisper.',
+                style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(sheetContext)
+                          .colorScheme
+                          .onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Burbuja flotante + teclado del sistema con dictado. '
+                'Historial de 20 transcripciones. Sin analytics, sin telemetría. '
+                'El audio solo viaja a internet cuando tú inicias una transcripción.',
+                style: Theme.of(sheetContext).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'El teclado jamás registra ni guarda lo que escribes. '
+                'Sin dictado ni snippets en campos de contraseña.',
+                style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(sheetContext)
+                          .colorScheme
+                          .onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  child: const Text('Entendido'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Revisión manual del permiso de overlay desde la sección Burbuja.
+  /// Reutiliza el flujo de _toggleBubble: abre el ajuste del sistema y,
+  /// al volver con permiso concedido, arranca la burbuja en un solo gesto.
+  Future<void> _reviewOverlayPermission() async {
+    bool hasPermission = false;
+    try {
+      hasPermission = await _floatingBubbleService.canDrawOverlays();
+    } catch (_) {
+      hasPermission = false;
+    }
+    if (hasPermission) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permiso de superposición concedido')),
+        );
+      }
+      return;
+    }
+    try {
+      await _floatingBubbleService.requestOverlayPermission();
+    } catch (_) {}
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -647,6 +753,20 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Future<void> _saveApiKey() async {
     final key = _apiKeyController.text.trim();
+    // Validación visible (paridad con prototipo laboratorio-ui v1):
+    // vacía, incompleta (<10) o sin prefijo gsk_.
+    String? error;
+    if (key.isEmpty) {
+      error = 'Pega tu API Key para continuar.';
+    } else if (key.length < 10) {
+      error = 'Parece incompleta: revisa que la copiaste entera.';
+    } else if (!key.startsWith('gsk_')) {
+      error = 'Formato inesperado: las claves de Groq empiezan con gsk_.';
+    }
+    if (error != null) {
+      if (mounted) setState(() => _apiKeyError = error);
+      return;
+    }
     try {
       await _secureStorage.write(key: 'groq_api_key', value: key);
       if (key.isNotEmpty) {
@@ -663,10 +783,42 @@ class _SettingsScreenState extends State<SettingsScreen>
       return;
     }
     if (!mounted) return;
-    setState(() => _hasApiKey = key.isNotEmpty);
+    setState(() {
+      _hasApiKey = key.isNotEmpty;
+      _isEditingApiKey = false;
+      _apiKeyError = null;
+      _showApiDetail = false;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('API key guardada')),
     );
+  }
+
+  void _startApiEdit() {
+    if (mounted) {
+      setState(() {
+        _isEditingApiKey = true;
+        _apiKeyError = null;
+        _showApiDetail = false;
+      });
+    }
+  }
+
+  void _cancelApiEdit() {
+    if (mounted) {
+      setState(() {
+        _isEditingApiKey = false;
+        _apiKeyError = null;
+      });
+    }
+  }
+
+  /// Cola visible de la key para el botón verde (últimos 4, resto oculto).
+  /// Nunca expone la key completa en UI.
+  String get _apiKeyTail {
+    final text = _apiKeyController.text.trim();
+    if (text.length < 4) return '••••';
+    return '••••${text.substring(text.length - 4)}';
   }
 
   Future<void> _clearApiKey() async {
@@ -682,7 +834,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
     if (!mounted) return;
     _apiKeyController.clear();
-    setState(() => _hasApiKey = false);
+    setState(() {
+      _hasApiKey = false;
+      _isEditingApiKey = false;
+      _apiKeyError = null;
+      _showApiDetail = false;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('API key eliminada')),
     );
@@ -716,23 +873,28 @@ class _SettingsScreenState extends State<SettingsScreen>
       body: Stack(
         children: [
           // Construcción perezosa por tab con estado preservado: solo los
-          // tabs visitados se construyen (antes IndexedStack montaba los 4
+          // tabs visitados se construyen (antes IndexedStack montaba todo
           // con sus ~10 lecturas iniciales), y lo visitado nunca se
           // desmonta, así que inputs y scrolls sobreviven al cambio de tab.
+          // Estructura v1 laboratorio-ui: Inicio / Burbuja / Teclado /
+          // Trackpad / Snippets. Acerca vive como sheet desde Inicio.
           IndexedStack(
             index: _currentTab,
             children: [
               _builtTabs.contains(0)
-                  ? _buildGeneralTab(context)
+                  ? _buildInicioTab(context)
                   : const SizedBox.shrink(),
               _builtTabs.contains(1)
-                  ? _buildKeyboardTab(context)
+                  ? _buildBurbujaTab(context)
                   : const SizedBox.shrink(),
               _builtTabs.contains(2)
-                  ? _buildSnippetsTab(context)
+                  ? _buildKeyboardTab(context)
                   : const SizedBox.shrink(),
               _builtTabs.contains(3)
-                  ? _buildAboutTab(context)
+                  ? _buildTrackpadTab(context)
+                  : const SizedBox.shrink(),
+              _builtTabs.contains(4)
+                  ? _buildSnippetsTab(context)
                   : const SizedBox.shrink(),
             ],
           ),
@@ -750,44 +912,19 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildGeneralTab(BuildContext context) {
+  /// Inicio v1 (laboratorio-ui): API Key como botón-estado + grabación +
+  /// modelo + accesos a Burbuja/Teclado + Acerca como sheet. Sin laberinto.
+  Widget _buildInicioTab(BuildContext context) {
+    final theme = Theme.of(context);
+    final variantColor = theme.colorScheme.onSurfaceVariant;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
       children: [
-        // Floating Bubble section
-        Text(
-          'Burbuja flotante',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Activar burbuja flotante'),
-          subtitle: const Text(
-            'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
-          ),
-          value: _isBubbleEnabled,
-          onChanged: _toggleBubble,
-        ),
-        SwitchListTile(
-          key: const ValueKey('bubble-history-switch'),
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Historial en la burbuja'),
-          subtitle: const Text(
-            'El toque largo sobre la burbuja abre el historial con morph inteligente. Apagado: el toque largo no hace nada.',
-          ),
-          value: _showBubbleHistory,
-          onChanged: _toggleBubbleHistory,
-        ),
-
-        const SizedBox(height: 24),
-        const Divider(),
+        _buildApiKeyCard(context),
         const SizedBox(height: 16),
-
-        // Recording interaction mode
         Text(
           'Modo de grabación',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: theme.textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
         SegmentedButton<String>(
@@ -810,66 +947,14 @@ class _SettingsScreenState extends State<SettingsScreen>
           _recordMode == StorageService.recordModeHold
               ? 'Mantén presionado para grabar y suelta para transcribir.'
               : 'Toca para iniciar y vuelve a tocar para transcribir.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
         ),
-
         const SizedBox(height: 24),
         const Divider(),
         const SizedBox(height: 16),
-
-        // API Key section
-        Text(
-          'API Key de Groq',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Necesaria para el modo Cloud. Obtén tu clave en console.groq.com',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _apiKeyController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: 'gsk_...',
-                  border: const OutlineInputBorder(),
-                  suffixIcon: _hasApiKey
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _saveApiKey,
-              tooltip: 'Guardar',
-            ),
-            if (_hasApiKey)
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: _clearApiKey,
-                tooltip: 'Borrar',
-              ),
-          ],
-        ),
-
-        const SizedBox(height: 24),
-        const Divider(),
-        const SizedBox(height: 16),
-
-        // Transcription model section
         Text(
           'Modelo de transcripcion',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: theme.textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
         Card(
@@ -879,7 +964,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               children: [
                 Icon(
                   Icons.cloud,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -888,11 +973,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                     children: [
                       Text(
                         'Modo Cloud',
-                        style: Theme.of(context).textTheme.titleSmall,
+                        style: theme.textTheme.titleSmall,
                       ),
                       Text(
                         'Groq Whisper Large V3 (whisper-large-v3)',
-                        style: Theme.of(context).textTheme.bodyMedium,
+                        style: theme.textTheme.bodyMedium,
                       ),
                     ],
                   ),
@@ -901,9 +986,247 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ),
         ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                key: const ValueKey('inicio-go-burbuja'),
+                icon: const Icon(Icons.chat_bubble_outline_rounded),
+                label: Text(
+                  _isBubbleEnabled ? 'Burbuja activada' : 'Burbuja',
+                ),
+                onPressed: () => _selectTab(1),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                key: const ValueKey('inicio-go-teclado'),
+                icon: const Icon(Icons.keyboard_outlined),
+                label: const Text('Teclado'),
+                onPressed: () => _selectTab(2),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const ValueKey('about-open-button'),
+          icon: const Icon(Icons.info_outline_rounded),
+          label: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Acerca de VoiceBubble'),
+              Text(
+                'Versión, privacidad y qué hace la app',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              ),
+            ],
+          ),
+          onPressed: _showAboutSheet,
+        ),
       ],
     );
   }
+
+  /// Tarjeta API Key como botón-estado (paridad prototipo v1):
+  /// vacía → CTA; editando → campo con validación; guardada → botón verde
+  /// con cola enmascarada + detalle Cambiar/Borrar. Preserva espejo D7.
+  Widget _buildApiKeyCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final variantColor = theme.colorScheme.onSurfaceVariant;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.key_rounded,
+                  color: _hasApiKey
+                      ? Colors.green
+                      : theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'API Key de Groq',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                if (_hasApiKey && !_isEditingApiKey)
+                  const Icon(Icons.check_circle, color: Colors.green),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Necesaria para el modo Cloud. Obtén tu clave en console.groq.com',
+              style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+            ),
+            const SizedBox(height: 12),
+            if (!_hasApiKey && !_isEditingApiKey) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  key: const ValueKey('api-cta-button'),
+                  onPressed: _startApiEdit,
+                  child: const Text('Ingresa tu API Key'),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Tócalo para habilitar el campo, pégala y guárdala.',
+                style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+              ),
+            ],
+            if (_isEditingApiKey) ...[
+              TextField(
+                controller: _apiKeyController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: 'gsk_...',
+                  border: const OutlineInputBorder(),
+                  errorText: _apiKeyError,
+                  suffixIcon: _hasApiKey
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _cancelApiEdit,
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.save),
+                      label: const Text('Guardar'),
+                      onPressed: _saveApiKey,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (_hasApiKey && !_isEditingApiKey) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  key: const ValueKey('api-loaded-button'),
+                  icon: const Icon(Icons.check_circle, color: Colors.green),
+                  label: Text('API Key cargada $_apiKeyTail'),
+                  onPressed: () {
+                    if (mounted) {
+                      setState(() => _showApiDetail = !_showApiDetail);
+                    }
+                  },
+                ),
+              ),
+              if (_showApiDetail) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Oculta por seguridad. Solo se muestran los últimos 4 caracteres.',
+                  style:
+                      theme.textTheme.bodySmall?.copyWith(color: variantColor),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _startApiEdit,
+                        child: const Text('Cambiar'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Borrar'),
+                        onPressed: _clearApiKey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Burbuja v1: sección independiente (antes mezclada en General).
+  /// Preserva switches + diálogo de permiso de _toggleBubble.
+  Widget _buildBurbujaTab(BuildContext context) {
+    final theme = Theme.of(context);
+    final variantColor = theme.colorScheme.onSurfaceVariant;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      children: [
+        Text(
+          'Burbuja flotante',
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Sección independiente. Flota sobre otras apps para dictar.',
+          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+        ),
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Activar burbuja flotante'),
+          subtitle: const Text(
+            'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
+          ),
+          value: _isBubbleEnabled,
+          onChanged: _toggleBubble,
+        ),
+        SwitchListTile(
+          key: const ValueKey('bubble-history-switch'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Historial en la burbuja'),
+          subtitle: const Text(
+            'El toque largo sobre la burbuja abre el historial con morph inteligente. Apagado: el toque largo no hace nada.',
+          ),
+          value: _showBubbleHistory,
+          onChanged: _toggleBubbleHistory,
+        ),
+        const SizedBox(height: 16),
+        const Divider(),
+        const SizedBox(height: 8),
+        Text(
+          'Permiso de superposición',
+          style: theme.textTheme.titleSmall,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Android exige permitir “mostrar sobre otras apps”. Sin esto la burbuja no puede flotar.',
+          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton(
+          onPressed: _reviewOverlayPermission,
+          child: const Text('Revisar'),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Guía rápida: arrastra la burbuja para moverla · tócala para grabar y vuelve a tocarla para transcribir.',
+          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+        ),
+      ],
+    );
+  }
+
 
   Widget _buildSpacebarAlignmentCards() {
     return Row(
@@ -1240,9 +1563,60 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         ),
         const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '¿Buscas el trackpad?',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Ahora tiene su propia sección con puntero virtual y sensibilidad.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  key: const ValueKey('teclado-go-trackpad'),
+                  onPressed: () => _selectTab(3),
+                  child: const Text('Abrirlo en su propia sección →'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Trackpad v1: sección propia separada del teclado (prototipo v1).
+  /// Preserva TODA la funcionalidad real (slider 0.5-2.5x, curvas,
+  /// layouts, scroll, háptico, auto-return). El prototipo simplificado
+  /// (Lento/Normal/Rápido) no recorta opciones reales.
+  Widget _buildTrackpadTab(BuildContext context) {
+    final theme = Theme.of(context);
+    final variantColor = theme.colorScheme.onSurfaceVariant;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      children: [
+        Text(
+          'Trackpad',
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Sección propia y separada del teclado.',
+          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+        ),
+        const SizedBox(height: 8),
         Text(
           'Modo Trackpad y Puntero Virtual',
-          style: Theme.of(context).textTheme.titleMedium,
+          style: theme.textTheme.titleSmall,
         ),
         const SizedBox(height: 8),
         _buildTrackpadCard(context),
@@ -1506,8 +1880,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           children: [
             Expanded(
               child: Text(
-                'Snippets del teclado',
-                style: Theme.of(context).textTheme.titleSmall,
+                'Snippets',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
             Text(
@@ -1516,14 +1890,26 @@ class _SettingsScreenState extends State<SettingsScreen>
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
-            IconButton(
-              key: const ValueKey('snippets-add-button'),
-              icon: const Icon(Icons.add),
-              tooltip: 'Agregar snippet',
-              onPressed: () => _openSnippetSheet(),
-            ),
           ],
         ),
+        const SizedBox(height: 4),
+        Text(
+          'Fragmentos que se insertan con un toque desde el teclado.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            key: const ValueKey('snippets-add-button'),
+            icon: const Icon(Icons.add),
+            label: const Text('+ Nuevo snippet'),
+            onPressed: () => _openSnippetSheet(),
+          ),
+        ),
+        const SizedBox(height: 12),
         if (_snippets.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -1541,61 +1927,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _buildAboutTab(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-      children: [
-        Text(
-          'Acerca de',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.mic_rounded,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'VoiceBubble STT v1.0.0+87',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Transcripción de voz a texto con Groq Whisper.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  // Acerca v1: ya no es tab (prototipo laboratorio-ui). Vive como sheet
+  // desde Inicio vía _showAboutSheet. Se conserva el contrato de textos
+  // (versión + descripción) para tests y usuario.
 }
 
 class _SnippetFormSheet extends StatefulWidget {

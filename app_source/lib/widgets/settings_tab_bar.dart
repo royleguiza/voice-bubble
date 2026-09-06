@@ -16,9 +16,14 @@ class SettingsTabBar extends StatelessWidget {
 
   static const _tabs = [
     _TabItemData(
-      key: ValueKey('tab-general'),
-      icon: Icons.tune_rounded,
-      label: 'General',
+      key: ValueKey('tab-inicio'),
+      icon: Icons.home_rounded,
+      label: 'Inicio',
+    ),
+    _TabItemData(
+      key: ValueKey('tab-burbuja'),
+      icon: Icons.chat_bubble_outline_rounded,
+      label: 'Burbuja',
     ),
     _TabItemData(
       key: ValueKey('tab-teclado'),
@@ -26,14 +31,14 @@ class SettingsTabBar extends StatelessWidget {
       label: 'Teclado',
     ),
     _TabItemData(
+      key: ValueKey('tab-trackpad'),
+      icon: Icons.touch_app_outlined,
+      label: 'Trackpad',
+    ),
+    _TabItemData(
       key: ValueKey('tab-snippets'),
       icon: Icons.segment_rounded,
       label: 'Snippets',
-    ),
-    _TabItemData(
-      key: ValueKey('tab-acerca'),
-      icon: Icons.info_outline_rounded,
-      label: 'Acerca',
     ),
   ];
 

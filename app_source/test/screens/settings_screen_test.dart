@@ -133,25 +133,53 @@ void main() {
       );
     });
 
-    testWidgets('shows TextField for API key input', (tester) async {
+    testWidgets('shows TextField for API key input after CTA (v1)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('api-cta-button')), findsOneWidget);
+      expect(find.text('Ingresa tu API Key'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
       await tester.pumpAndSettle();
 
       expect(find.byType(TextField), findsOneWidget);
       expect(find.text('gsk_...'), findsOneWidget);
     });
 
-    testWidgets('shows save button with Icons.save', (tester) async {
+    testWidgets('shows save button with Icons.save in edit mode (v1)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.save), findsOneWidget);
     });
 
-    testWidgets('shows delete button when API key exists', (tester) async {
-      FlutterSecureStorage.setMockInitialValues(
-          {'groq_api_key': 'existing_key'});
+    testWidgets('shows validation error for non-gsk key (v1)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'bad_key');
+      await tester.tap(find.byIcon(Icons.save));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('gsk_'), findsWidgets);
+    });
+
+    testWidgets('shows delete button when API key exists (v1 detail)', (tester) async {
+      FlutterSecureStorage.setMockInitialValues(
+          {'groq_api_key': 'gsk_existing_1234'});
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('api-loaded-button')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('api-loaded-button')));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
@@ -165,31 +193,33 @@ void main() {
       expect(find.byIcon(Icons.delete_outline), findsNothing);
     });
 
-    testWidgets('shows "Acerca de" section', (tester) async {
+    testWidgets('shows "Acerca de" button in Inicio opening sheet (v1)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-acerca')));
-      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('about-open-button')), findsOneWidget);
 
-      expect(find.text('Acerca de'), findsOneWidget);
-    });
-
-    testWidgets('shows version "VoiceBubble STT v1.0.0+87"', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-acerca')));
+      await tester.tap(find.byKey(const ValueKey('about-open-button')));
       await tester.pumpAndSettle();
 
       expect(find.text('VoiceBubble STT v1.0.0+87'), findsOneWidget);
     });
 
-    testWidgets('shows app description text', (tester) async {
+    testWidgets('shows version "VoiceBubble STT v1.0.0+87" in sheet (v1)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-acerca')));
+      await tester.tap(find.byKey(const ValueKey('about-open-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('VoiceBubble STT v1.0.0+87'), findsOneWidget);
+    });
+
+    testWidgets('shows app description text in sheet (v1)', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('about-open-button')));
       await tester.pumpAndSettle();
 
       expect(
@@ -198,35 +228,44 @@ void main() {
       );
     });
 
-    testWidgets('TextField accepts text input', (tester) async {
+    testWidgets('TextField accepts text input in edit mode (v1)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      final textField = find.byType(TextField);
-      await tester.enterText(textField, 'test_api_key_123');
+      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('test_api_key_123'), findsOneWidget);
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'gsk_test_input_123');
+      await tester.pumpAndSettle();
+
+      expect(find.text('gsk_test_input_123'), findsOneWidget);
     });
 
-    testWidgets('save button stores the API key in FlutterSecureStorage',
+    testWidgets('save button stores the API key in FlutterSecureStorage (v1)',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byType(TextField), 'my_secret_key');
+      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'gsk_my_secret_123');
       await tester.tap(find.byIcon(Icons.save));
       await tester.pumpAndSettle();
 
       const storage = FlutterSecureStorage();
-      expect(await storage.read(key: 'groq_api_key'), 'my_secret_key');
+      expect(await storage.read(key: 'groq_api_key'), 'gsk_my_secret_123');
     });
 
-    testWidgets('delete button clears the API key from FlutterSecureStorage',
+    testWidgets('delete button clears the API key from FlutterSecureStorage (v1)',
         (tester) async {
       FlutterSecureStorage.setMockInitialValues(
-          {'groq_api_key': 'key_to_delete'});
+          {'groq_api_key': 'gsk_key_to_delete'});
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('api-loaded-button')));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
@@ -248,8 +287,11 @@ void main() {
           matching: find.byType(Switch),
         );
 
-    testWidgets('shows Floating Bubble switch tile', (tester) async {
+    testWidgets('shows Floating Bubble switch tile (v1 burbuja tab)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
       await tester.pumpAndSettle();
 
       expect(find.text('Burbuja flotante'), findsOneWidget);
@@ -260,6 +302,9 @@ void main() {
     testWidgets('shows bubble history switch ON by default (hito B6)',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
       await tester.pumpAndSettle();
 
       final historySwitch = find.byKey(const ValueKey('bubble-history-switch'));
@@ -281,6 +326,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.pumpAndSettle();
+
       final historySwitch = find.descendant(
         of: find.byKey(const ValueKey('bubble-history-switch')),
         matching: find.byType(Switch),
@@ -295,6 +343,9 @@ void main() {
     testWidgets('toggling switch ON starts bubble when permission granted',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
       await tester.pumpAndSettle();
 
       final switchFinder = bubbleSwitch();
@@ -320,10 +371,13 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.pumpAndSettle();
+
       await tester.tap(bubbleSwitch());
       await tester.pumpAndSettle();
 
-      expect(find.text('Permiso de superposición'), findsOneWidget);
+      expect(find.text('Permiso de superposición'), findsWidgets);
       expect(find.text('Configurar'), findsOneWidget);
 
       await tester.tap(find.text('Configurar'));
@@ -346,6 +400,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.pumpAndSettle();
+
       final switchFinder = bubbleSwitch();
       expect(tester.widget<Switch>(switchFinder).value, isTrue);
 
@@ -355,6 +412,17 @@ void main() {
       expect(tester.widget<Switch>(switchFinder).value, isFalse);
       expect(bubbleLog.map((c) => c.method), contains('stopBubble'));
       expect(await storageService.loadFloatingBubbleEnabled(), isFalse);
+    });
+
+    testWidgets('burbuja tab muestra boton Revisar permiso (v1)', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Permiso de superposición'), findsOneWidget);
+      expect(find.text('Revisar'), findsOneWidget);
     });
   });
 
@@ -628,6 +696,9 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
+      await tester.pumpAndSettle();
+
       await tester.enterText(find.byType(TextField), 'gsk_espejo_123');
       await tester.tap(find.byIcon(Icons.save));
       await tester.pumpAndSettle();
@@ -642,13 +713,16 @@ void main() {
     });
 
     testWidgets('borrar la API key limpia el espejo', (tester) async {
-      FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'a_borrar'});
+      FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'gsk_a_borrar'});
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await storageService.saveSttMirror(apiKey: 'a_borrar');
+      await storageService.saveSttMirror(apiKey: 'gsk_a_borrar');
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
+
+      await tester.tap(find.byKey(const ValueKey('api-loaded-button')));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.delete_outline));
       await tester.pumpAndSettle();
@@ -671,20 +745,21 @@ void main() {
     });
   });
 
-  group('SettingsScreen - Tabs C2 Navigation & State', () {
-    testWidgets('arranca en el tab General por defecto y muestra los 4 tabs',
+  group('SettingsScreen - Tabs v1 Navigation & State', () {
+    testWidgets('arranca en Inicio por defecto y muestra los 5 tabs',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.byType(SettingsTabBar), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-general')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-inicio')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-burbuja')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-teclado')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-trackpad')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-snippets')), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-acerca')), findsOneWidget);
 
-      expect(find.text('Burbuja flotante'), findsOneWidget);
       expect(find.text('API Key de Groq'), findsOneWidget);
+      expect(find.text('Modo de grabación'), findsOneWidget);
     });
 
     testWidgets('navega a todos los tabs y actualiza el contenido visible',
@@ -692,33 +767,69 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
+      // Navegar a Burbuja
+      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.pumpAndSettle();
+      expect(find.text('Burbuja flotante'), findsOneWidget);
+      expect(find.text('Activar burbuja flotante'), findsOneWidget);
+
       // Navegar a Teclado
       await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
       expect(find.text('Teclado VoiceBubble'), findsOneWidget);
       expect(find.text('Altura del teclado'), findsOneWidget);
 
+      // Navegar a Trackpad
+      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
+      await tester.pumpAndSettle();
+      expect(find.text('Trackpad'), findsOneWidget);
+      expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
+
       // Navegar a Snippets
       await tester.tap(find.byKey(const ValueKey('tab-snippets')));
       await tester.pumpAndSettle();
-      expect(find.text('Snippets del teclado'), findsOneWidget);
+      expect(find.text('Snippets'), findsOneWidget);
       expect(find.byKey(const ValueKey('snippets-add-button')), findsOneWidget);
 
-      // Navegar a Acerca
-      await tester.tap(find.byKey(const ValueKey('tab-acerca')));
+      // Acerca vive como sheet desde Inicio
+      await tester.tap(find.byKey(const ValueKey('tab-inicio')));
       await tester.pumpAndSettle();
-      expect(find.text('Acerca de'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('about-open-button')));
+      await tester.pumpAndSettle();
       expect(find.text('VoiceBubble STT v1.0.0+87'), findsOneWidget);
 
-      // Regresar a General
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
+      await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
-      expect(find.text('Burbuja flotante'), findsOneWidget);
+
+      // Regresar a Inicio
+      expect(find.text('API Key de Groq'), findsOneWidget);
+    });
+
+    testWidgets('Inicio tiene accesos directos a Burbuja y Teclado (v1)',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('inicio-go-burbuja')), findsOneWidget);
+      expect(find.byKey(const ValueKey('inicio-go-teclado')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('inicio-go-teclado')));
+      await tester.pumpAndSettle();
+      expect(find.text('Teclado VoiceBubble'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('tab-inicio')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('inicio-go-burbuja')));
+      await tester.pumpAndSettle();
+      expect(find.text('Activar burbuja flotante'), findsOneWidget);
     });
 
     testWidgets('persiste el estado de los inputs al cambiar de pestaña y volver',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), 'gsk_temporal_test');
@@ -731,8 +842,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-snippets')));
       await tester.pumpAndSettle();
 
-      // Volver a General
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
+      // Volver a Inicio
+      await tester.tap(find.byKey(const ValueKey('tab-inicio')));
       await tester.pumpAndSettle();
 
       expect(find.text('gsk_temporal_test'), findsOneWidget);

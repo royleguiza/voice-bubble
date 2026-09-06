@@ -61,8 +61,13 @@ void main() {
         await tester.pumpWidget(buildTestApp(home: const SettingsScreen()));
         await tester.pumpAndSettle();
 
-        expect(find.byType(TextField), findsOneWidget);
         expect(find.text('API Key de Groq'), findsOneWidget);
+        expect(find.byKey(const ValueKey('api-cta-button')), findsOneWidget);
+
+        await tester.tap(find.byKey(const ValueKey('api-cta-button')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(TextField), findsOneWidget);
         expect(find.text('gsk_...'), findsOneWidget);
       },
     );
@@ -74,6 +79,9 @@ void main() {
         tester.view.devicePixelRatio = 2.0;
         addTearDown(tester.view.reset);
         await tester.pumpWidget(buildTestApp(home: const SettingsScreen()));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const ValueKey('api-cta-button')));
         await tester.pumpAndSettle();
 
         await tester.enterText(find.byType(TextField), 'gsk_test_key_123');
@@ -140,6 +148,9 @@ void main() {
         await tester.tap(find.byIcon(Icons.settings));
         await tester.pumpAndSettle();
         expect(find.byType(SettingsScreen), findsOneWidget);
+
+        await tester.tap(find.byKey(const ValueKey('api-cta-button')));
+        await tester.pumpAndSettle();
 
         await tester.enterText(find.byType(TextField), 'gsk_round_trip');
         await tester.pumpAndSettle();
