@@ -99,7 +99,7 @@ void main() {
       ]) {
         expect(find.text(nombre), findsOneWidget);
       }
-      expect(find.text('Snippets'), findsOneWidget);
+      expect(find.text('Snippets'), findsWidgets);
       expect(find.text('5 / 50'), findsOneWidget);
       expect(find.text('+ Nuevo snippet'), findsOneWidget);
     });

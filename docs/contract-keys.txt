@@ -1,5 +1,4 @@
 bubble_history_enabled
-floating_bubble_enabled
 kb_bottom_elevation_dp
 kb_code_key_visible
 kb_haptics_enabled

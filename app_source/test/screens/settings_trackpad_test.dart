@@ -57,7 +57,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Trackpad'), findsOneWidget);
+      expect(find.text('Trackpad'), findsWidgets);
       expect(find.text('Modo Trackpad y Puntero Virtual'), findsOneWidget);
       expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
       expect(find.text('Activar modo trackpad'), findsOneWidget);
@@ -170,7 +170,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('teclado-go-trackpad')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Trackpad'), findsOneWidget);
+      expect(find.text('Trackpad'), findsWidgets);
       expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
     });
   });

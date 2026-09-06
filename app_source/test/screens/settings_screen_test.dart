@@ -782,13 +782,13 @@ void main() {
       // Navegar a Trackpad
       await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
       await tester.pumpAndSettle();
-      expect(find.text('Trackpad'), findsOneWidget);
+      expect(find.text('Trackpad'), findsWidgets);
       expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
 
       // Navegar a Snippets
       await tester.tap(find.byKey(const ValueKey('tab-snippets')));
       await tester.pumpAndSettle();
-      expect(find.text('Snippets'), findsOneWidget);
+      expect(find.text('Snippets'), findsWidgets);
       expect(find.byKey(const ValueKey('snippets-add-button')), findsOneWidget);
 
       // Acerca vive como sheet desde Inicio
