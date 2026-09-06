@@ -11,6 +11,7 @@ import java.io.InputStreamReader
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import kotlin.math.abs
 
 /**
  * Repositorio unificado, profesional y thread-safe para el historial de transcripciones (FIFO-20).
@@ -30,6 +31,11 @@ class TranscriptionHistoryRepository(private val context: Context) {
         const val FILE_NAME = "transcription_history.json"
         const val MAX_ITEMS = 20
         private const val SHARED_HISTORY_KEY = "flutter.transcriptions"
+        /**
+         * Ventana anti-doble-escritura: el MISMO texto reingresado dentro de
+         * este margen se considera eco del mismo dictado, no uno nuevo.
+         */
+        private const val DEDUP_TEXT_WINDOW_MS = 30_000L
         private val lock = Any()
     }
 
@@ -101,11 +107,30 @@ class TranscriptionHistoryRepository(private val context: Context) {
 
     /**
      * Agrega una nueva transcripción al tope del historial de forma atómica y thread-safe.
+     *
+     * Guarda anti-eco: la app escribe cada dictado DOS veces al MISMO
+     * archivo (Dart `StorageService.add` + write-through nativo
+     * `pushHistoryEntry`), con distinto timestamp cada vez, así que el
+     * dedup por timestamp de [dedupAndSort] no los caza y la modal muestra
+     * duplicados. Si el mismo texto ya existe con timestamp dentro de
+     * [DEDUP_TEXT_WINDOW_MS], se ignora el add (es el eco, no un dictado
+     * nuevo). Dictados idénticos genuinamente separados en el tiempo
+     * siguen guardándose como entradas propias.
      */
     fun addTranscription(text: String) {
         if (text.isBlank()) return
         synchronized(lock) {
             val current = loadHistory().toMutableList()
+            val nowMs = Instant.now().toEpochMilli()
+            val isEcho = current.any { obj ->
+                try {
+                    obj.optString("text", "") == text &&
+                        abs(parseInstant(obj).toEpochMilli() - nowMs) <= DEDUP_TEXT_WINDOW_MS
+                } catch (_: Exception) {
+                    false
+                }
+            }
+            if (isEcho) return
             val newEntry = JSONObject()
                 .put("text", text)
                 .put("timestamp", Instant.now().toString())

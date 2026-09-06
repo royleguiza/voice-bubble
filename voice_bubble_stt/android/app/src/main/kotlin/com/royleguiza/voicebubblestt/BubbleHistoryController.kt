@@ -62,6 +62,10 @@ class BubbleHistoryController(
         private const val LONG_PRESS_MS = 450L
         private const val SWIPE_ARM_DP = 48
         private const val SWIPE_MAX_DP = 72
+        /** Subir el dedo este umbral desde la rayita contrae en vivo. */
+        private const val HANDLE_SWIPE_UP_DP = 24
+        /** La rayita visual mide 4.5 dp: el contenedor expande el target. */
+        private const val HANDLE_MIN_H_DP = 48
 
         /** Switch propio (Ajustes → General → Burbuja). Default ON. */
         fun isEnabled(context: Context): Boolean {
@@ -163,7 +167,14 @@ class BubbleHistoryController(
             }
             params = WindowManager.LayoutParams(
                 bubblePx, bubblePx, flag,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                // NOT_FOCUSABLE: el teclado/app de abajo siguen recibiendo
+                // input. NOT_TOUCH_MODAL + WATCH_OUTSIDE_TOUCH: los toques
+                // fuera de la modal llegan a la app de abajo Y nos avisan
+                // con ACTION_OUTSIDE para compactar (sin esto el toque
+                // exterior caía al vacío y la modal no se enteraba).
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
@@ -307,6 +318,16 @@ class BubbleHistoryController(
         val dark = isDarkUi()
         val root = FrameLayout(context).apply {
             background = modalBackground()
+            // Compactar al tocar fuera (requiere WATCH_OUTSIDE_TOUCH en la
+            // ventana). Solo ACTION_OUTSIDE: los toques internos ni se tocan.
+            setOnTouchListener { _, event ->
+                if (event.action == MotionEvent.ACTION_OUTSIDE) {
+                    close()
+                    true
+                } else {
+                    false
+                }
+            }
         }
         val column = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
@@ -375,10 +396,49 @@ class BubbleHistoryController(
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            // Target táctil >= 48 dp (regla innegociable): la rayita visual
+            // mide 4.5 dp y sin esto el toque casi nunca cae dentro.
+            minimumHeight = (HANDLE_MIN_H_DP * density).toInt()
             isClickable = true
             isFocusable = true
             contentDescription = "Contraer"
-            setOnClickListener { close() }
+        }
+        // Toque = contraer; deslizamiento hacia arriba = contraer en vivo.
+        // (Antes solo había OnClickListener sobre ~18 dp efectivos: el tap
+        // fallaba y el swipe no hacía nada porque nadie lo escuchaba.)
+        var handleClosed = false
+        var handleDownY = 0f
+        handleWrap.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    handleClosed = false
+                    handleDownY = event.rawY
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dy = event.rawY - handleDownY
+                    if (!handleClosed && dy < -HANDLE_SWIPE_UP_DP * density) {
+                        handleClosed = true
+                        try {
+                            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                        } catch (_: Throwable) {}
+                        close()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    try {
+                        v.performClick()
+                    } catch (_: Throwable) {}
+                    if (!handleClosed) {
+                        handleClosed = true
+                        close()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> true
+                else -> false
+            }
         }
         val handleBar = View(context).apply {
             layoutParams = LinearLayout.LayoutParams((38 * density).toInt(), (4.5f * density).toInt())
