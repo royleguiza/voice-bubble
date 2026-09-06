@@ -645,6 +645,22 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
+  /// Abre Configuración y, al volver, recarga clave y modo (la app los
+  /// cachea para grabar/transcribir sin releer el keystore en cada uso).
+  Future<void> _openSettings() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(
+          storageService: _storageService,
+          floatingBubbleService: _floatingBubbleService,
+        ),
+      ),
+    );
+    await _loadApiKey();
+    await _loadRecordMode();
+  }
+
   @override
   Widget build(BuildContext context) {
     final insets = MediaQuery.paddingOf(context);
@@ -657,21 +673,32 @@ class _HomeScreenState extends State<HomeScreen>
         title: const Text('VoiceBubble STT'),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SettingsScreen(
-                    storageService: _storageService,
-                    floatingBubbleService: _floatingBubbleService,
+          // Acceso a Configuración en Liquid Glass (design.md §7): círculo
+          // de vidrio de 44 dp con el mismo engrane de siempre. El destino
+          // y la recarga posterior no cambian (ver _openSettings).
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Center(
+              child: GlassContainer(
+                borderRadius: kBorderRadiusCapsule,
+                small: true,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _openSettings,
+                    child: const Tooltip(
+                      message: 'Configuración',
+                      child: SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Icon(Icons.settings, size: 22),
+                      ),
+                    ),
                   ),
                 ),
-              );
-              await _loadApiKey();
-              await _loadRecordMode();
-            },
+              ),
+            ),
           ),
         ],
       ),

@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.provider.Settings
@@ -66,6 +67,12 @@ class BubbleHistoryController(
         private const val HANDLE_SWIPE_UP_DP = 24
         /** La rayita visual mide 4.5 dp: el contenedor expande el target. */
         private const val HANDLE_MIN_H_DP = 48
+        /** Secciones de la modal: la presión larga siempre abre en historial;
+         * el swipe lateral sobre la rayita alterna a snippets y viceversa. */
+        private const val SECTION_HISTORY = 0
+        private const val SECTION_SNIPPETS = 1
+        /** Umbral lateral sobre la rayita para cambiar de sección. */
+        private const val SECTION_SWIPE_DP = 48
 
         /** Switch propio (Ajustes → General → Burbuja). Default ON. */
         fun isEnabled(context: Context): Boolean {
@@ -86,6 +93,7 @@ class BubbleHistoryController(
     private var bgDrawable: GradientDrawable? = null
     private var cardsList: LinearLayout? = null
     private var copyAllBtn: ImageView? = null
+    private var handleLabel: TextView? = null
     private var morphAnimator: ValueAnimator? = null
     private var originX = 0
     private var originY = 0
@@ -97,6 +105,8 @@ class BubbleHistoryController(
     // Clave -> texto visible de las tarjetas vigentes (se reconstruye con ellas).
     private val keyToText = LinkedHashMap<String, String>()
     private var isShowing = false
+    /** Sección vigente (SECTION_HISTORY por defecto en cada apertura). */
+    private var section = SECTION_HISTORY
 
     /**
      * Clave estable de selección. El repositorio no da ids, así que se
@@ -156,8 +166,15 @@ class BubbleHistoryController(
             originY = bubbleY
             originSize = bubblePx
 
+            // La presión larga siempre abre en Historial (los snippets se
+            // alcanzan con swipe lateral sobre la rayita).
+            section = SECTION_HISTORY
             buildOverlay(modalW, modalH)
-            populateCards()
+            try {
+                handleLabel?.text = "Historial"
+                handleLabel?.alpha = 1f
+            } catch (_: Throwable) {}
+            populateCurrent()
 
             val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -197,6 +214,15 @@ class BubbleHistoryController(
     fun close() {
         try {
             if (!isShowing) return
+            // Congelar el contenido antes de encoger: los TextView con
+            // maxLines+elipsis recalculan el corte en cada frame del morph
+            // (la ventana cambia de tamaño) y eso produce los saltos. La
+            // cromo (rayita/mic) sí se anima; el texto, no.
+            try {
+                cardsList?.animate()?.cancel()
+                cardsList?.alpha = 0f
+                cardsList?.visibility = View.GONE
+            } catch (_: Throwable) {}
             morphTo(originX, originY, originSize, originSize, opening = false)
         } catch (_: Throwable) {
             destroy()
@@ -304,10 +330,12 @@ class BubbleHistoryController(
         val bg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = BUBBLE_DP * density / 2f
-            setColor(ContextCompat.getColor(context, R.color.bubble_idle_bg))
+            // Glass adaptativo por tema (values-night en oscuro): en claro
+            // las tarjetas claras necesitan fondo claro para tener contraste.
+            setColor(ContextCompat.getColor(context, R.color.bubble_modal_bg))
             setStroke(
                 (1.5f * density).toInt(),
-                ContextCompat.getColor(context, R.color.bubble_idle_border)
+                ContextCompat.getColor(context, R.color.bubble_modal_border)
             )
         }
         bgDrawable = bg
@@ -403,21 +431,33 @@ class BubbleHistoryController(
             isFocusable = true
             contentDescription = "Contraer"
         }
-        // Toque = contraer; deslizamiento hacia arriba = contraer en vivo.
+        // Toque = contraer; deslizamiento hacia arriba = contraer en vivo;
+        // deslizamiento lateral = alternar Historial/Snippets.
         // (Antes solo había OnClickListener sobre ~18 dp efectivos: el tap
         // fallaba y el swipe no hacía nada porque nadie lo escuchaba.)
         var handleClosed = false
+        var handleDownX = 0f
         var handleDownY = 0f
         handleWrap.setOnTouchListener { v, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     handleClosed = false
+                    handleDownX = event.rawX
                     handleDownY = event.rawY
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - handleDownX
                     val dy = event.rawY - handleDownY
-                    if (!handleClosed && dy < -HANDLE_SWIPE_UP_DP * density) {
+                    if (!handleClosed && abs(dx) > SECTION_SWIPE_DP * density &&
+                        abs(dx) > abs(dy) * 1.4f
+                    ) {
+                        handleClosed = true
+                        try {
+                            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                        } catch (_: Throwable) {}
+                        switchSection()
+                    } else if (!handleClosed && dy < -HANDLE_SWIPE_UP_DP * density) {
                         handleClosed = true
                         try {
                             v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
@@ -449,6 +489,27 @@ class BubbleHistoryController(
             }
         }
         handleWrap.addView(handleBar)
+        // Etiqueta de sección bajo la rayita: siempre dice dónde se está.
+        val darkNow = dark
+        val sectionLabel = TextView(context).apply {
+            text = "Historial"
+            setTextColor(if (darkNow) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            typeface = Typeface.DEFAULT_BOLD
+            isAllCaps = true
+            try {
+                letterSpacing = 0.06f
+            } catch (_: Throwable) {}
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (5 * density).toInt()
+            }
+        }
+        handleLabel = sectionLabel
+        handleWrap.addView(sectionLabel)
 
         val mic = ImageView(context).apply {
             layoutParams = LinearLayout.LayoutParams(slotSize, slotSize)
@@ -507,6 +568,329 @@ class BubbleHistoryController(
             },
             onResult = { items -> renderCards(items ?: emptyList()) }
         )
+    }
+
+    /**
+     * Punto único de pintado por sección: repone visibilidad/alfa (el cierre
+     * los apaga para no animar texto) y delega a historial o snippets.
+     */
+    private fun populateCurrent() {
+        try {
+            cardsList?.visibility = View.VISIBLE
+        } catch (_: Throwable) {}
+        if (section == SECTION_SNIPPETS) {
+            populateSnippets()
+        } else {
+            populateCards()
+        }
+    }
+
+    /** Alterna Historial/Snippets con deslizamiento + etiqueta fundida. */
+    private fun switchSection() {
+        section = if (section == SECTION_HISTORY) SECTION_SNIPPETS else SECTION_HISTORY
+        paintSectionLabel()
+        // Dirección del slide: al ir a snippets la lista sale a la izquierda.
+        renderSection(if (section == SECTION_SNIPPETS) -1 else 1)
+    }
+
+    private fun paintSectionLabel() {
+        val lbl = handleLabel ?: return
+        val text = if (section == SECTION_HISTORY) "Historial" else "Snippets"
+        if (reducedMotion()) {
+            try {
+                lbl.text = text
+            } catch (_: Throwable) {}
+            return
+        }
+        try {
+            lbl.animate().cancel()
+            lbl.animate().alpha(0f).setDuration(120).withEndAction {
+                try {
+                    lbl.text = text
+                    lbl.animate().alpha(1f).setDuration(140).start()
+                } catch (_: Throwable) {}
+            }.start()
+        } catch (_: Throwable) {
+            try {
+                lbl.text = text
+            } catch (_: Throwable) {}
+        }
+    }
+
+    /**
+     * Recambio animado de sección: la lista sale hacia el lado del swipe,
+     * se repuebla y entra desde el lado opuesto. Con Reduced Motion es
+     * directo (la expansión de la modal ya se encargó del movimiento).
+     */
+    private fun renderSection(slideDir: Int) {
+        val list = cardsList
+        if (list == null || reducedMotion()) {
+            populateCurrent()
+            return
+        }
+        val dx = slideDir * 40f * density
+        try {
+            list.animate().cancel()
+            list.animate().translationX(dx).alpha(0f).setDuration(150).withEndAction {
+                try {
+                    list.translationX = -dx
+                    populateCurrent()
+                    list.alpha = 0f
+                    list.animate().translationX(0f).alpha(1f).setDuration(200).start()
+                } catch (_: Throwable) {
+                    try {
+                        list.translationX = 0f
+                        list.alpha = 1f
+                        populateCurrent()
+                    } catch (_: Throwable) {}
+                }
+            }.start()
+        } catch (_: Throwable) {
+            populateCurrent()
+        }
+    }
+
+    /**
+     * Snippets con el MISMO guardado que el historial (SnippetStore sobre
+     * FlutterSharedPreferences: mismas claves, sin claves nuevas). Siembra
+     * idempotente primero: respeta lo que ya haya y nunca pisa datos.
+     */
+    private fun populateSnippets() {
+        val list = cardsList ?: return
+        try {
+            list.removeAllViews()
+        } catch (_: Throwable) {}
+        selected.clear()
+        keyToText.clear()
+        refreshCopyAll()
+        BackgroundWork.executeWithResult(
+            block = {
+                try {
+                    val store = SnippetStore(context)
+                    store.seedIfFirstOpen()
+                    store.load()
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            },
+            onResult = { items -> renderSnippets(items ?: emptyList()) }
+        )
+    }
+
+    private fun renderSnippets(items: List<VbSnippet>) {
+        if (!isShowing) return
+        val list = cardsList ?: return
+        if (items.isEmpty()) {
+            val dark = isDarkUi()
+            val empty = TextView(context).apply {
+                text = "Sin snippets todavía. Crealos en la app."
+                setTextColor(if (dark) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                gravity = Gravity.CENTER
+                val pad = (16 * density).toInt()
+                setPadding(pad, pad, pad, pad)
+            }
+            list.addView(empty)
+            return
+        }
+        for (s in items) {
+            if (s.contenido.isBlank()) continue
+            list.addView(buildSnippetCard(s))
+        }
+    }
+
+    /**
+     * Tarjeta snippet estilo campo outlined con título flotante
+     * (fieldset/legend): el nombre recorta el borde superior con el fondo
+     * sólido de la modal; cuerpo mono multilínea; editar abajo-izquierda
+     * y copiar abajo-derecha. Estructura gemela a buildCard (frame[box con
+     * tag, badge]) para reutilizar selección, copiar-todo y gestos.
+     */
+    private fun buildSnippetCard(s: VbSnippet): View {
+        val dark = isDarkUi()
+        val key = "snip|${s.id}"
+        keyToText[key] = s.contenido
+        val frame = FrameLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                val mV = (3 * density).toInt()
+                setMargins(0, mV, 0, mV)
+            }
+        }
+        val box = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = snippetBoxBackground(dark)
+            val padH = (12 * density).toInt()
+            // Arriba hay aire para que la leyenda muerda el borde a la mitad.
+            setPadding(padH, (14 * density).toInt(), padH, (10 * density).toInt())
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                // La mitad de la leyenda (~8 dp) solapa el borde superior.
+                topMargin = (8 * density).toInt()
+            }
+            tag = key
+        }
+        val tx = TextView(context).apply {
+            text = s.contenido
+            typeface = Typeface.MONOSPACE
+            setTextColor(if (dark) Color.WHITE else Color.parseColor("#1C1C1E"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        box.addView(tx)
+        val ops = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (8 * density).toInt()
+            }
+        }
+        val edit = ImageView(context).apply {
+            try {
+                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_edit))
+            } catch (_: Throwable) {
+                try {
+                    setImageResource(R.drawable.ic_edit)
+                } catch (_: Throwable) {}
+            }
+            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
+            background = copyBackgroundFor(dark)
+            val pad = (7 * density).toInt()
+            setPadding(pad, pad, pad, pad)
+            val sz = (36 * density).toInt()
+            layoutParams = LinearLayout.LayoutParams(sz, sz)
+            contentDescription = "Editar snippet"
+            setOnClickListener { openAppForEdit() }
+        }
+        val spacer = View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
+        }
+        val copy = ImageView(context).apply {
+            try {
+                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_copy))
+            } catch (_: Throwable) {
+                try {
+                    setImageResource(R.drawable.ic_copy)
+                } catch (_: Throwable) {}
+            }
+            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
+            background = copyBackgroundFor(dark)
+            val pad = (7 * density).toInt()
+            setPadding(pad, pad, pad, pad)
+            val sz = (36 * density).toInt()
+            layoutParams = LinearLayout.LayoutParams(sz, sz)
+            contentDescription = "Copiar snippet"
+            setOnClickListener {
+                try {
+                    copyToClipboard(s.contenido)
+                    showCopied(it as ImageView, dark)
+                } catch (_: Throwable) {}
+            }
+        }
+        ops.addView(edit)
+        ops.addView(spacer)
+        ops.addView(copy)
+        box.addView(ops)
+        val legend = TextView(context).apply {
+            text = s.nombre.ifBlank { "Snippet" }
+            setTextColor(if (dark) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 4f * density
+                setColor(ContextCompat.getColor(context, R.color.bubble_legend_bg))
+            }
+            val padH = (6 * density).toInt()
+            setPadding(padH, 0, padH, 0)
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                leftMargin = (10 * density).toInt()
+            }
+        }
+        val badge = ImageView(context).apply {
+            try {
+                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_check))
+            } catch (_: Throwable) {
+                try {
+                    setImageResource(R.drawable.ic_check)
+                } catch (_: Throwable) {}
+            }
+            setColorFilter(Color.WHITE)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#FF30D158"))
+            }
+            val sz = (22 * density).toInt()
+            layoutParams = FrameLayout.LayoutParams(sz, sz).apply {
+                gravity = Gravity.TOP or Gravity.END
+            }
+            visibility = View.GONE
+        }
+        frame.addView(box)
+        // Orden gemelo al de historial (box=0, badge=1): resetCardSelections
+        // y copySelected caminan hijos por índice. La leyenda va última
+        // (arriba de todo; no solapa al badge: extremos opuestos).
+        frame.addView(badge)
+        frame.addView(legend)
+        // Mismos gestos que historial: tap inserta+copia+cierra, largo
+        // expande, lateral selecciona (handleCardTap es agnóstico al origen).
+        // El pintado respeta el outlined: verde solo en borde+relleno tenue.
+        attachCardGestures(
+            row = box, tv = tx, badge = badge, text = s.contenido, key = key, dark = dark,
+            paintBackground = { sel -> box.background = snippetBoxBackground(dark, sel) }
+        )
+        return frame
+    }
+
+    private fun snippetBoxBackground(dark: Boolean, selected: Boolean = false): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 12f * density
+            if (selected) {
+                setColor(Color.parseColor("#FF238636"))
+                setStroke((1.5f * density).toInt(), Color.parseColor("#FF3FB950"))
+            } else {
+                // Caja transparente: solo el borde sutil (el fondo lo pone la modal).
+                setColor(Color.TRANSPARENT)
+                if (dark) {
+                    setStroke((1f * density).toInt(), Color.parseColor("#26FFFFFF"))
+                } else {
+                    setStroke((1f * density).toInt(), Color.parseColor("#1F000000"))
+                }
+            }
+        }
+    }
+
+    /** Editar vive en la app: se la abre y se compacta la modal. */
+    private fun openAppForEdit() {
+        try {
+            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            intent?.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (intent != null) {
+                context.startActivity(intent)
+            }
+        } catch (_: Throwable) {}
+        try {
+            close()
+        } catch (_: Throwable) {}
     }
 
     private fun renderCards(items: List<JSONObject>) {
@@ -663,7 +1047,10 @@ class BubbleHistoryController(
         badge: ImageView,
         text: String,
         key: String,
-        dark: Boolean
+        dark: Boolean,
+        // Pintado de selección inyectable: las tarjetas de historial usan el
+        // relleno cardBackground; las de snippet repintan su outlined.
+        paintBackground: ((selected: Boolean) -> Unit)? = null
     ) {
         val armPx = SWIPE_ARM_DP * density
         val maxPx = SWIPE_MAX_DP * density
@@ -673,6 +1060,8 @@ class BubbleHistoryController(
         var downY = 0f
         var swiping = false
         var suppressTap = false
+        val paint: (Boolean) -> Unit =
+            paintBackground ?: { sel -> row.background = cardBackground(selected = sel, dark = dark) }
 
         row.isClickable = true
         row.isFocusable = true
@@ -734,11 +1123,11 @@ class BubbleHistoryController(
                             if (selected.contains(key)) {
                                 selected.remove(key)
                                 badge.visibility = View.GONE
-                                row.background = cardBackground(selected = false, dark = dark)
+                                paint(false)
                             } else {
                                 selected.add(key)
                                 badge.visibility = View.VISIBLE
-                                row.background = cardBackground(selected = true, dark = dark)
+                                paint(true)
                             }
                             refreshCopyAll()
                             try {
@@ -860,7 +1249,14 @@ class BubbleHistoryController(
                 val row = frame.getChildAt(0) as? LinearLayout ?: continue
                 val badge = frame.getChildAt(1) as? ImageView ?: continue
                 badge.visibility = View.GONE
-                row.background = cardBackground(selected = false, dark = dark)
+                // Las cajas de snippet conservan su outlined (no el relleno
+                // de historial): se distinguen por el prefijo de su clave.
+                val tag = row.tag as? String
+                row.background = if (tag != null && tag.startsWith("snip|")) {
+                    snippetBoxBackground(dark)
+                } else {
+                    cardBackground(selected = false, dark = dark)
+                }
             }
         } catch (_: Throwable) {}
     }

@@ -22,6 +22,11 @@
     <color name="bubble_recording_bg">#E6FF453A</color>
     <color name="bubble_transcribing_bg">#D90A84FF</color>
 
+    <!-- Modal de historial: glass oscuro (igual que la burbuja). -->
+    <color name="bubble_modal_bg">#CC1C1C1E</color>
+    <color name="bubble_modal_border">#4DFFFFFF</color>
+    <color name="bubble_legend_bg">#FF1C1C1E</color>
+
     <!-- Icono adaptive / splash (H5-T3): azul iOS variante oscura (design.md) -->
     <color name="ic_launcher_background">#FF0A84FF</color>
 </resources>

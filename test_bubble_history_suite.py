@@ -166,6 +166,62 @@ check("AnimationController del popup se libera en dispose",
       "_popupCtrl.dispose();" in home_screen,
       "Falta _popupCtrl.dispose()")
 
+# --- 10. Sección Snippets en la modal (swipe lateral en la rayita) ---
+check("Secciones Historial/Snippets con constantes y umbral 48 dp",
+      "SECTION_HISTORY" in kt and "SECTION_SNIPPETS" in kt and "SECTION_SWIPE_DP = 48" in kt,
+      "Faltan constantes de sección")
+check("Presión larga abre siempre en Historial",
+      'section = SECTION_HISTORY' in kt,
+      "showFrom debe resetear a Historial")
+check("Etiqueta bajo la rayita dice la sección (Historial/Snippets)",
+      "handleLabel" in kt and '"Historial"' in kt and '"Snippets"' in kt,
+      "Falta el TextView de sección bajo la rayita")
+check("Swipe lateral en la rayita alterna sección (switchSection)",
+      "fun switchSection()" in kt and "switchSection()" in kt,
+      "El gesto lateral debe alternar sección")
+check("Recambio animado de sección con slide (renderSection)",
+      "fun renderSection(" in kt and "translationX(" in kt,
+      "Falta la animación de deslizamiento al cambiar")
+check("Snippets leídos del mismo store (load + seed idempotente)",
+      "fun populateSnippets()" in kt and "SnippetStore(context)" in kt
+      and "seedIfFirstOpen()" in kt and ".load()" in kt,
+      "Debe usar SnippetStore sin claves nuevas")
+check("Sin claves de puente nuevas (mismas del contrato)",
+      "flutter.voice_snippets_v1" not in kt and "flutter.kb_snippets_seeded" not in kt,
+      "BubbleHistoryController no debe hardcodear claves (viven en SnippetStore)")
+check("Tarjeta snippet outlined con título flotante (legend)",
+      "fun buildSnippetCard(" in kt and "bubble_legend_bg" in kt and "MONOSPACE" in kt,
+      "Falta la tarjeta fieldset/legend")
+check("Editar abajo-izquierda y copiar abajo-derecha (ops con spacer)",
+      'contentDescription = "Editar snippet"' in kt and 'contentDescription = "Copiar snippet"' in kt,
+      "Faltan acciones editar/copiar en la tarjeta")
+check("Tap en snippet inserta+copia+cierra (gestos reutilizados)",
+      "attachCardGestures(" in kt and "paintBackground" in kt,
+      "Los gestos por tarjeta deben reutilizarse con pintado propio")
+check("Outlined preservado tras seleccionar/deseleccionar",
+      'startsWith("snip|")' in kt and "snippetBoxBackground(" in kt,
+      "resetCardSelections debe respetar el outlined")
+check("Editar abre la app (intent de paquete + compacta)",
+      "fun openAppForEdit()" in kt and "getLaunchIntentForPackage" in kt,
+      "Editar debe abrir la app")
+check("Cierre congela el texto antes de encoger (sin saltos)",
+      "cardsList?.visibility = View.GONE" in kt and "cardsList?.alpha = 0f" in kt,
+      "close() debe ocultar la lista antes del morph")
+check("Modal adapta a tema claro (fondo/borde por recursos)",
+      "R.color.bubble_modal_bg" in kt and "R.color.bubble_modal_border" in kt,
+      "El fondo fijo oscuro rompía el contraste en claro")
+for _res, _name in [("voice_bubble_stt/android/app/src/main/res/values/colors.xml", "claro"),
+                    ("voice_bubble_stt/android/app/src/main/res/values-night/colors.xml", "oscuro")]:
+    _c = read(_res)
+    for _k in ["bubble_modal_bg", "bubble_modal_border", "bubble_legend_bg"]:
+        check(f"Color {_k} en {_name}", f'name="{_k}"' in _c, f"Falta {_k} en {_name}")
+import re as _re
+for _res in ["voice_bubble_stt/android/app/src/main/res/values/colors.xml",
+             "voice_bubble_stt/android/app/src/main/res/values-night/colors.xml"]:
+    _hexes = _re.findall(r"#[0-9A-Fa-f]+", read(_res))
+    _bad = [h for h in _hexes if len(h) not in (4, 5, 7, 9)]
+    check(f"Hex válidos en {_res.split('/')[-2]}", not _bad, f"Hex inválidos: {_bad}")
+
 print("\n============================================================")
 print(f" RESULTADO SUITE BURBUJA-HISTORIAL: {suite.passed} pasados, {suite.failed} fallidos.")
 print("============================================================\n")

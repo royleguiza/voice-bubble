@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>VoiceBubble — Home v2 · Laboratorio UI</title>
+<style>
+/* ================= TOKENS (design.md) ================= */
+:root{
+  --bg-base:#F2F2F7; --bg-elevated:#FFFFFF; --bg-sunken:rgba(120,120,128,.12);
+  --label-primary:#1C1C1E; --label-secondary:rgba(60,60,67,.72); --label-tertiary:rgba(60,60,67,.45);
+  --separator:rgba(60,60,67,.16);
+  --accent:#007AFF; --accent-ink:#FFFFFF; --accent-soft:rgba(0,122,255,.10);
+  --record:#FF3B30; --record-deep:#C81E1E;
+  --ok:#12805C; --ok-soft:rgba(18,128,92,.12);
+  --glass-fill:rgba(255,255,255,.62); --glass-border:rgba(255,255,255,.6);
+  --glass-shadow:0 10px 28px rgba(20,30,60,.12); --glass-shadow-sm:0 3px 10px rgba(20,30,60,.10);
+  --r-cap:100px; --r-lg:22px; --r-md:16px; --r-sm:12px;
+  --sat:180%; --ease:cubic-bezier(.22,1,.36,1);
+  --orb1:#c9defc; --orb2:#e2d4fd; --orb3:#ffdfd2;
+}
+html[data-theme="dark"]{
+  --bg-base:#000000; --bg-elevated:#1C1C1E; --bg-sunken:rgba(255,255,255,.08);
+  --label-primary:#F5F5F7; --label-secondary:rgba(235,235,245,.72); --label-tertiary:rgba(235,235,245,.45);
+  --separator:rgba(255,255,255,.14);
+  --accent:#0A84FF; --accent-ink:#FFFFFF; --accent-soft:rgba(10,132,255,.16);
+  --record:#FF453A; --record-deep:#C81E1E;
+  --ok:#3BD68F; --ok-soft:rgba(59,214,143,.14);
+  --glass-fill:rgba(30,30,32,.58); --glass-border:rgba(255,255,255,.14);
+  --glass-shadow:0 10px 28px rgba(0,0,0,.5); --glass-shadow-sm:0 3px 10px rgba(0,0,0,.4);
+  --orb1:#0a2a5e; --orb2:#2b1a5e; --orb3:#4a1f1a;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Roboto","Segoe UI",system-ui,sans-serif;
+  background:var(--bg-base);color:var(--label-primary);min-height:100dvh;-webkit-font-smoothing:antialiased;letter-spacing:-.011em}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:10px}
+svg.ic{width:22px;height:22px;flex:none}
+.scene{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.scene i{position:absolute;border-radius:50%;filter:blur(80px);opacity:.7}
+.scene i:nth-child(1){width:440px;height:440px;left:-130px;top:-130px;background:var(--orb1)}
+.scene i:nth-child(2){width:400px;height:400px;right:-130px;top:24%;background:var(--orb2)}
+.scene i:nth-child(3){width:380px;height:380px;left:6%;bottom:-150px;background:var(--orb3)}
+.app{position:relative;z-index:1;max-width:520px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;
+  padding:0 16px calc(30px + env(safe-area-inset-bottom))}
+/* ============ LAB CHROME ============ */
+.lab{position:sticky;top:0;z-index:5;padding:16px 0 10px;background:linear-gradient(var(--bg-base) 80%,transparent)}
+.lab h1{margin:0;font-size:23px;font-weight:800;letter-spacing:-.022em}
+.lab .sub{margin:3px 0 12px;font-size:13.5px;color:var(--label-secondary)}
+.labrow{display:flex;gap:8px;align-items:stretch}
+.seg{flex:1;display:flex;padding:4px;gap:2px;border-radius:var(--r-cap);background:var(--glass-fill);
+  border:1px solid var(--glass-border);box-shadow:var(--glass-shadow-sm);overflow-x:auto;scrollbar-width:none;
+  -webkit-backdrop-filter:blur(24px) saturate(var(--sat));backdrop-filter:blur(24px) saturate(var(--sat))}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;min-height:44px;padding:0 10px;white-space:nowrap;border-radius:var(--r-cap);font-weight:700;font-size:12.5px;color:var(--label-secondary)}
+.seg button[aria-pressed="true"]{background:var(--bg-elevated);color:var(--label-primary);box-shadow:var(--glass-shadow-sm)}
+.themebtn{flex:none;width:52px;border-radius:var(--r-cap);display:grid;place-items:center;border:1px solid var(--glass-border);
+  background:var(--glass-fill);box-shadow:var(--glass-shadow-sm);color:var(--label-secondary);
+  -webkit-backdrop-filter:blur(24px) saturate(var(--sat));backdrop-filter:blur(24px) saturate(var(--sat))}
+.badge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:12px;font-weight:600;color:var(--label-secondary)}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+/* ============ PHONE ============ */
+.phone{margin-top:12px;border-radius:44px;padding:11px;background:#101014;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.screen{position:relative;border-radius:34px;overflow:hidden;background:var(--bg-base);min-height:680px;display:flex;flex-direction:column}
+.island{position:absolute;top:11px;left:50%;translate:-50% 0;width:112px;height:27px;background:#000;border-radius:100px;z-index:4}
+.statusbar{display:flex;align-items:center;justify-content:space-between;padding:14px 26px 2px;font-size:13.5px;font-weight:600}
+.statusbar .sic{display:flex;align-items:center;gap:6px;color:var(--label-primary)}
+.mockhead{display:flex;align-items:center;gap:12px;padding:10px 18px 4px}
+.brandmark{flex:none;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(145deg,var(--accent),#004fc4);box-shadow:0 6px 16px rgba(0,122,255,.35)}
+.brandmark svg.ic{width:25px;height:25px}
+.headtitles{flex:1;min-width:0}
+.headtitles h2{margin:0;font-size:24px;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+.headtitles p{margin:1px 0 0;font-size:12.5px;color:var(--label-secondary)}
+.gearbtn{flex:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:var(--label-secondary);
+  background:var(--glass-fill);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow-sm);
+  -webkit-backdrop-filter:blur(24px) saturate(var(--sat));backdrop-filter:blur(24px) saturate(var(--sat))}
+.mockbody{flex:1;padding:12px 16px 18px;display:flex;flex-direction:column;gap:12px}
+/* ============ PRIMITIVES ============ */
+.glass{background:var(--glass-fill);border:1px solid var(--glass-border);border-radius:var(--r-md);
+  -webkit-backdrop-filter:blur(24px) saturate(var(--sat));backdrop-filter:blur(24px) saturate(var(--sat));box-shadow:var(--glass-shadow)}
+.card{padding:15px 16px}
+.eyebrow{margin:0 0 5px;font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--label-tertiary)}
+.card h3{margin:0;font-size:16.5px;font-weight:700;letter-spacing:-.015em}
+.card .sub{margin:3px 0 0;font-size:13.5px;line-height:1.5;color:var(--label-secondary)}
+.dotrow{display:flex;align-items:center;gap:8px}
+.livedot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 4px var(--ok-soft)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:6px 11px;border-radius:var(--r-cap)}
+.chip.solid-ok{background:var(--ok-soft);color:var(--ok)}
+.chip.solid-ac{background:var(--accent-soft);color:var(--accent)}
+.chip .cdot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.chip svg.ic{width:14px;height:14px}
+/* record cluster */
+.recwrap{display:flex;flex-direction:column;align-items:center;padding:6px 0 2px}
+.recstatus{margin:0 0 12px;font-size:14.5px;font-weight:600;color:var(--label-secondary)}
+.recstatus.rec{color:var(--record)}
+.recbtn{position:relative;width:96px;height:96px;border-radius:50%;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(150deg,#2f8bff 0%,var(--accent) 55%,#004fc4 100%);
+  box-shadow:0 14px 32px rgba(0,122,255,.38),inset 0 1px 1px rgba(255,255,255,.4)}
+.recbtn svg.ic{width:40px;height:40px}
+.recbtn .halo{position:absolute;inset:-9px;border-radius:50%;border:3px solid var(--accent);opacity:0;pointer-events:none}
+.recbtn.live{background:linear-gradient(150deg,#ff6a5e 0%,var(--record) 55%,var(--record-deep) 100%);
+  box-shadow:0 14px 32px rgba(255,59,48,.42),inset 0 1px 1px rgba(255,255,255,.35)}
+.recbtn.live .halo{border-color:var(--record);animation:halo 1.7s var(--ease) infinite}
+@keyframes halo{0%{transform:scale(.88);opacity:.85}70%{transform:scale(1.07);opacity:0}100%{transform:scale(1.07);opacity:0}}
+.rechint{margin:11px 0 0;font-size:12.5px;color:var(--label-tertiary)}
+/* result card */
+.result{border-left:3px solid var(--accent)}
+.result .q{margin:6px 0 0;font-size:14.5px;line-height:1.55}
+.result .meta{display:flex;align-items:center;gap:8px;margin-top:10px}
+.result .meta small{flex:1;font-size:12px;color:var(--label-secondary)}
+.iconbtn{flex:none;min-width:44px;min-height:44px;border-radius:12px;display:inline-grid;place-items:center;
+  color:var(--label-secondary);background:var(--bg-sunken)}
+.iconbtn:hover{color:var(--label-primary)}
+/* tiles */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{display:flex;gap:11px;align-items:center;text-align:left;padding:13px 14px;border-radius:var(--r-md);cursor:pointer;
+  background:var(--glass-fill);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow-sm);
+  -webkit-backdrop-filter:blur(24px) saturate(var(--sat));backdrop-filter:blur(24px) saturate(var(--sat))}
+.tile .tic{flex:none;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:var(--accent);background:var(--accent-soft)}
+.tile .tic.green{color:var(--ok);background:var(--ok-soft)}
+.tile strong{display:block;font-size:14px;letter-spacing:-.01em}
+.tile small{display:block;margin-top:1px;font-size:11.5px;color:var(--label-secondary);line-height:1.35}
+.tile .chev{margin-left:auto;color:var(--label-tertiary)}
+/* history rows */
+.hlist{display:flex;flex-direction:column}
+.hrow{display:flex;gap:12px;align-items:center;padding:12px 2px}
+.hrow + .hrow{border-top:1px solid var(--separator)}
+.hrow .src{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--bg-sunken);color:var(--label-secondary)}
+.hrow .src svg.ic{width:19px;height:19px}
+.hrow .tx{flex:1;min-width:0}
+.hrow .tx strong{display:block;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.hrow .tx small{font-size:12px;color:var(--label-secondary)}
+.linkrow{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;font-size:14px;font-weight:700;color:var(--accent)}
+.linkrow svg.ic{width:17px;height:17px}
+/* stats */
+.stats{display:flex;border-radius:var(--r-md);overflow:hidden;background:var(--glass-fill);border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow-sm);-webkit-backdrop-filter:blur(24px) saturate(var(--sat));backdrop-filter:blur(24px) saturate(var(--sat))}
+.stats div{flex:1;padding:12px 4px;text-align:center}
+.stats div + div{border-left:1px solid var(--separator)}
+.stats b{display:block;font-size:19px;letter-spacing:-.02em}
+.stats small{font-size:11px;color:var(--label-secondary)}
+/* status tiles (variant C) */
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stile{padding:13px 14px;border-radius:var(--r-md);background:var(--glass-fill);border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow-sm);-webkit-backdrop-filter:blur(24px) saturate(var(--sat));backdrop-filter:blur(24px) saturate(var(--sat))}
+.stile .top{display:flex;align-items:center;gap:7px;color:var(--label-secondary);font-size:12px;font-weight:700}
+.stile .top svg.ic{width:16px;height:16px}
+.stile b{display:block;margin-top:7px;font-size:15px;letter-spacing:-.01em}
+.stile small{display:block;margin-top:1px;font-size:11.5px;color:var(--label-secondary)}
+.stile b.good{color:var(--ok)}
+.tip{display:flex;gap:11px;padding:13px 14px;border-radius:var(--r-md);background:var(--accent-soft)}
+.tip svg.ic{color:var(--accent);margin-top:1px}
+.tip p{margin:0;font-size:13px;line-height:1.55;color:var(--label-secondary)}
+.tip p strong{color:var(--label-primary)}
+.histpill{display:flex;align-items:center;gap:10px;justify-content:center;min-height:52px;border-radius:var(--r-cap);
+  background:var(--glass-fill);border:1px solid var(--glass-border);box-shadow:var(--glass-shadow-sm);font-size:14px;font-weight:700;
+  -webkit-backdrop-filter:blur(24px) saturate(var(--sat));backdrop-filter:blur(24px) saturate(var(--sat));color:var(--label-secondary)}
+.caption{margin:0;text-align:center;font-size:12px;color:var(--label-tertiary)}
+.view{display:none}
+.view.active{display:block;animation:rise .32s var(--ease)}
+.view.active .mockbody-anim > *{animation:rise .38s var(--ease) backwards}
+.view.active .mockbody-anim > *:nth-child(2){animation-delay:.05s}
+.view.active .mockbody-anim > *:nth-child(3){animation-delay:.1s}
+.view.active .mockbody-anim > *:nth-child(4){animation-delay:.15s}
+.view.active .mockbody-anim > *:nth-child(5){animation-delay:.2s}
+@keyframes rise{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
+.notes{margin:14px 2px 0;font-size:13px;color:var(--label-secondary);line-height:1.7}
+.notes h4{margin:12px 0 2px;font-size:13.5px;color:var(--label-primary)}
+.notes p{margin:0 0 4px}
+.toast{position:fixed;left:50%;bottom:30px;translate:-50% 12px;z-index:30;display:flex;align-items:center;gap:8px;
+  background:var(--label-primary);color:var(--bg-base);font-size:14px;font-weight:600;padding:12px 18px;border-radius:var(--r-cap);
+  opacity:0;pointer-events:none;transition:opacity .25s var(--ease),translate .25s var(--ease);max-width:92vw}
+.toast.show{opacity:1;translate:-50% 0}
+.toast svg.ic{width:17px;height:17px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="scene" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="app">
+  <div class="lab">
+    <h1>Home · propuesta v2</h1>
+    <p class="sub">Sistema de iconos SVG real, sin emojis. Elegí una variante: A, B, C o D.</p>
+    <div class="labrow">
+      <div class="seg" role="group" aria-label="Variante de diseño">
+        <button data-v="a" aria-pressed="true">A · Hoy</button>
+        <button data-v="b" aria-pressed="false">B · Lista</button>
+        <button data-v="c" aria-pressed="false">C · Panel</button>
+        <button data-v="d" aria-pressed="false">D · Base</button>
+      </div>
+      <button class="themebtn" id="themeBtn" aria-label="Cambiar tema">
+        <svg class="ic" id="icoSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+        <svg class="ic" id="icoMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M20 13.2A8 8 0 1 1 10.8 4 6.6 6.6 0 0 0 20 13.2z"/></svg>
+      </button>
+    </div>
+    <span class="badge"><span class="dot"></span>Laboratorio UI · v2 · mock visual, nada toca la app real</span>
+  </div>
+
+  <div class="phone"><div class="screen">
+    <div class="island"></div>
+    <div class="statusbar">
+      <span>9:41</span>
+      <span class="sic">
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="currentColor" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="4.5" width="3" height="7.5" rx="1"/><rect x="9" y="2" width="3" height="10" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1" opacity=".35"/></svg>
+        <svg width="23" height="12" viewBox="0 0 25 13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1" y="1.5" width="19" height="10" rx="3"/><rect x="3" y="3.5" width="13" height="6" rx="1.5" fill="currentColor" stroke="none"/><path d="M22.5 4.5v4" stroke-linecap="round"/></svg>
+      </span>
+    </div>
+    <div class="mockhead">
+      <span class="brandmark" aria-hidden="true">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+      </span>
+      <div class="headtitles">
+        <h2>VoiceBubble</h2>
+        <p>Transcripción por voz · Groq Whisper</p>
+      </div>
+      <button class="gearbtn" id="gearDemo" aria-label="Abrir configuración">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <div class="mockbody">
+    <!-- ================= A · HOY ================= -->
+    <section class="view active" id="v-a" aria-label="Variante A Hoy"><div class="mockbody-anim" style="display:contents">
+      <div class="glass card">
+        <div class="dotrow"><span class="livedot"></span><h3>Listo para transcribir</h3></div>
+        <p class="sub">Whisper Large v3 · español · un toque y hablá</p>
+        <div class="chips">
+          <span class="chip solid-ok"><span class="cdot"></span>API Key</span>
+          <span class="chip solid-ok"><span class="cdot"></span>Burbuja</span>
+          <span class="chip solid-ac"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9.5 14h5"/></svg>Teclado</span>
+        </div>
+      </div>
+      <div class="recwrap">
+        <p class="recstatus" data-status>Tocá el micrófono para dictar</p>
+        <button class="recbtn" data-rec aria-label="Grabar o detener">
+          <span class="halo"></span>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+        </button>
+        <p class="rechint">El audio solo viaja a internet mientras grabás</p>
+      </div>
+      <div class="glass card result">
+        <p class="eyebrow">Última · hace 12 min</p>
+        <p class="q">“Anotá leche, pan y café para mañana antes de las nueve…”</p>
+        <div class="meta">
+          <small>Nube · Groq Whisper</small>
+          <button class="iconbtn" data-copy aria-label="Copiar última transcripción">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="tiles">
+        <button class="tile"><span class="tic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg></span><span><strong>Burbuja</strong><small>Dicta sobre otras apps</small></span></button>
+        <button class="tile"><span class="tic"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span><span><strong>Historial</strong><small>20 recientes</small></span></button>
+      </div>
+      <div class="stats">
+        <div><b>7</b><small>hoy</small></div>
+        <div><b>4</b><small>racha · días</small></div>
+        <div><b>32</b><small>semana</small></div>
+      </div>
+    </div></section>
+
+    <!-- ================= B · RECIENTES ================= -->
+    <section class="view" id="v-b" aria-label="Variante B Recientes"><div class="mockbody-anim" style="display:contents">
+      <div class="recwrap">
+        <p class="recstatus" data-status>Tocá el micrófono para dictar</p>
+        <button class="recbtn" data-rec aria-label="Grabar o detener">
+          <span class="halo"></span>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+        </button>
+      </div>
+      <div class="glass card">
+        <div class="dotrow" style="justify-content:space-between"><h3>Recientes</h3>
+          <button class="linkrow" style="min-height:0;font-size:13px">Ver todo
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <div class="hlist">
+          <div class="hrow">
+            <span class="src"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg></span>
+            <div class="tx"><strong>Reunión jueves 10 hs con diseño</strong><small>hace 12 min · nube</small></div>
+            <button class="iconbtn" data-copy aria-label="Copiar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+          <div class="hrow">
+            <span class="src"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9.5 14h5"/></svg></span>
+            <div class="tx"><strong>git push origin main</strong><small>hace 1 h · teclado</small></div>
+            <button class="iconbtn" data-copy aria-label="Copiar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+          <div class="hrow">
+            <span class="src"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg></span>
+            <div class="tx"><strong>Anotá leche, pan y café</strong><small>ayer · burbuja</small></div>
+            <button class="iconbtn" data-copy aria-label="Copiar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2 2v1"/></svg></button>
+          </div>
+        </div>
+      </div>
+      <button class="histpill">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+        Historial completo · 20
+      </button>
+    </div></section>
+
+    <!-- ================= C · PANEL ================= -->
+    <section class="view" id="v-c" aria-label="Variante C Panel"><div class="mockbody-anim" style="display:contents">
+      <div class="statgrid">
+        <div class="stile">
+          <div class="top"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg>API Key</div>
+          <b class="good">Cargada</b><small>termina en 0000</small>
+        </div>
+        <div class="stile">
+          <div class="top"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>Modelo</div>
+          <b>Whisper</b><small>Large V3 · nube</small>
+        </div>
+        <div class="stile">
+          <div class="top"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg>Burbuja</div>
+          <b class="good">Activada</b><small>flota sobre apps</small>
+        </div>
+        <div class="stile">
+          <div class="top"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9.5 14h5"/></svg>Teclado</div>
+          <b class="good">Activo</b><small>sistema · ES/EN</small>
+        </div>
+      </div>
+      <div class="recwrap">
+        <p class="recstatus" data-status>Tocá el micrófono para dictar</p>
+        <button class="recbtn" data-rec aria-label="Grabar o detener">
+          <span class="halo"></span>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+        </button>
+      </div>
+      <div class="tip">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21.5h4"/><path d="M12 2.5a6 6 0 0 0-3.6 10.8c.8.7 1.6 1.5 1.6 2.2h4c0-.7.8-1.5 1.6-2.2A6 6 0 0 0 12 2.5z"/></svg>
+        <p><strong>Presión larga en la burbuja</strong> abre el historial sin salir de la app que estés usando.</p>
+      </div>
+      <button class="linkrow">Abrir configuración
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div></section>
+
+    <!-- ================= D · ESENCIAL ================= -->
+    <section class="view" id="v-d" aria-label="Variante D Esencial"><div class="mockbody-anim" style="display:contents">
+      <div class="recwrap">
+        <p class="recstatus" data-status>Tocá el micrófono para dictar</p>
+        <button class="recbtn" data-rec aria-label="Grabar o detener">
+          <span class="halo"></span>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+        </button>
+        <p class="rechint">Ayer · 5 dictados · mejor hora 9–10</p>
+      </div>
+      <div class="glass card result">
+        <p class="eyebrow">Última · hace 12 min</p>
+        <p class="q">“Reunión jueves 10 hs con diseño…”</p>
+        <div class="meta">
+          <small>Nube · Groq Whisper</small>
+          <button class="iconbtn" data-copy aria-label="Copiar última transcripción">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="histpill">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+        Abrir historial
+      </button>
+      <p class="caption">Burbuja y teclado se gestionan desde Configuración</p>
+    </div></section>
+    </div>
+  </div></div>
+
+  <div class="notes">
+    <h4>A · Hoy</h4><p>Estado + última + accesos + stats. La más completa sin perder el un-toque.</p>
+    <h4>B · Lista</h4><p>El historial sube a la home con copiar directo. Ideal si vivís del historial.</p>
+    <h4>C · Panel</h4><p>Todo el estado visible de un vistazo. Ideal si usás burbuja + teclado a diario.</p>
+    <h4>D · Base</h4><p>Casi igual que hoy, pulida: tip contextual y resumen. El cambio mínimo.</p>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function(){
+  "use strict";
+  var root=document.documentElement;
+  try{if(matchMedia("(prefers-color-scheme: dark)").matches){root.setAttribute("data-theme","dark");syncThemeIcon();}}catch(e){}
+  function toast(msg,ok){
+    var t=document.getElementById("toast");
+    t.innerHTML="";
+    var s=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    s.setAttribute("viewBox","0 0 24 24");s.setAttribute("class","ic");s.setAttribute("fill","none");
+    s.setAttribute("stroke","currentColor");s.setAttribute("stroke-width","2");
+    s.setAttribute("stroke-linecap","round");s.setAttribute("stroke-linejoin","round");
+    var p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d",ok?"M4.5 12.5l5 5 10-11":"M12 7.5V12l3 2");
+    s.appendChild(p);t.appendChild(s);
+    t.appendChild(document.createTextNode(msg));
+    t.classList.add("show");clearTimeout(t._h);
+    t._h=setTimeout(function(){t.classList.remove("show");},1800);
+  }
+  function syncThemeIcon(){
+    var dark=root.getAttribute("data-theme")==="dark";
+    document.getElementById("icoSun").style.display=dark?"none":"";
+    document.getElementById("icoMoon").style.display=dark?"":"none";
+  }
+  document.getElementById("themeBtn").addEventListener("click",function(){
+    root.setAttribute("data-theme",root.getAttribute("data-theme")==="light"?"dark":"light");
+    syncThemeIcon();
+  });
+  var tabs=Array.prototype.slice.call(document.querySelectorAll(".seg button"));
+  function go(v){
+    tabs.forEach(function(b){b.setAttribute("aria-pressed",b.dataset.v===v?"true":"false");});
+    ["a","b","c","d"].forEach(function(k){
+      document.getElementById("v-"+k).classList.toggle("active",k===v);
+    });
+  }
+  tabs.forEach(function(b){b.addEventListener("click",function(){go(b.dataset.v);});});
+  Array.prototype.forEach.call(document.querySelectorAll("[data-rec]"),function(r){
+    r.addEventListener("click",function(){
+      var live=r.classList.toggle("live");
+      var scope=r.closest("section");
+      var st=scope?scope.querySelector("[data-status]"):null;
+      if(st){st.textContent=live?"Grabando… tocá para detener":"Tocá el micrófono para dictar";st.classList.toggle("rec",live);}
+      if(live){toast("Demo visual: grabando",false);}
+    });
+  });
+  document.getElementById("gearDemo").addEventListener("click",function(){toast("Demo visual: abriría Configuración",false);});
+  Array.prototype.forEach.call(document.querySelectorAll("[data-copy]"),function(b){
+    b.addEventListener("click",function(){toast("Copiado (demo visual)",true);});
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".tile,.histpill,.linkrow"),function(b){
+    if(!b.hasAttribute("data-copy")){b.addEventListener("click",function(){toast("Demo visual",false);});}
+  });
+  syncThemeIcon();
+})();
+</script>
+</body>
+</html>

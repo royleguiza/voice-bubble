@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Bubble Modal + Snippets · Laboratorio UI v1</title>
+<style>
+/* ============ FIEL A BubbleHistoryController.kt ============ */
+:root{
+  --modal-bg:rgba(28,28,30,.8); --modal-border:rgba(255,255,255,.3);
+  --card-bg:rgba(255,255,255,.07); --card-border:rgba(255,255,255,.15);
+  --copy-bg:rgba(255,255,255,.12); --copy-border:rgba(255,255,255,.15);
+  --txt:#FFFFFF; --txt-dim:#AEAEB2;
+  --slot:#3A3A3C; --slot-ink:#FFFFFF;
+  --handle:#8E8E93; --mic:#FF3B30;
+  --sel-bg:#238636; --sel-border:#3FB950;
+  --page:#000000; --lab-ink:#F5F5F7; --lab-dim:rgba(235,235,245,.7);
+  --accent:#0A84FF; --ease:cubic-bezier(.22,1,.36,1);
+}
+html[data-theme="light"]{
+  /* La modal real hardcodea bubble_idle_bg oscuro en ambos temas y sus
+     tarjetas claras quedan sin contraste: aquí la modal sí adapta a
+     glass claro (así debe implementarse en Kotlin). */
+  --modal-bg:rgba(255,255,255,.86); --modal-border:rgba(60,60,67,.2);
+  --card-bg:rgba(0,0,0,.05); --card-border:rgba(0,0,0,.12);
+  --copy-bg:rgba(0,0,0,.06); --copy-border:rgba(0,0,0,.12);
+  --txt:#1C1C1E; --txt-dim:#6E6E73;
+  --slot:#E4E4E8; --slot-ink:#1C1C1E;
+  --handle:#AEAEB2;
+  --page:#F2F2F7; --lab-ink:#1C1C1E; --lab-dim:rgba(60,60,67,.7);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Roboto",system-ui,sans-serif;
+  background:var(--page);color:var(--lab-ink);min-height:100dvh;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+svg.ic{width:22px;height:22px;flex:none}
+.app{max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:0 16px 30px}
+.lab{padding:16px 0 10px}
+.lab h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.lab p{margin:4px 0 12px;font-size:13.5px;color:var(--lab-dim);line-height:1.55}
+.labrow{display:flex;gap:8px}
+.pillbtn{flex:1;min-height:48px;border-radius:100px;font-weight:700;font-size:14px;border:1px solid var(--card-border);background:var(--card-bg)}
+.pillbtn.primary{background:var(--accent);border-color:transparent;color:#fff}
+.pillbtn.on{border-color:var(--accent);color:var(--accent)}
+.themebtn{flex:none;width:52px;border-radius:100px;display:grid;place-items:center;border:1px solid var(--card-border);background:var(--card-bg)}
+/* ============ ESCENARIO: "otra app" + burbuja 64dp ============ */
+.stage{position:relative;border-radius:24px;overflow:hidden;min-height:600px;
+  background:linear-gradient(160deg,#3a3a3c,#111 60%,#1c2a4a);
+  border:1px solid var(--card-border)}
+html[data-theme="light"] .stage{background:linear-gradient(160deg,#dfe5ee,#f5f6f8 60%,#cdd9ec)}
+.stage .fakeapp{position:absolute;inset:0;padding:18px;color:rgba(255,255,255,.85);font-size:13px;line-height:2}
+html[data-theme="light"] .stage .fakeapp{color:rgba(30,30,40,.6)}
+.bubble{position:absolute;left:36px;top:120px;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(28,28,30,.8);border:1.5px solid rgba(255,255,255,.3);color:#fff;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);touch-action:none;user-select:none;-webkit-user-select:none}
+.bubble svg.ic{width:28px;height:28px}
+.bubble.holding{transform:scale(1.12)}
+.bubblehint{position:absolute;left:0;right:0;bottom:14px;text-align:center;font-size:12.5px;color:rgba(255,255,255,.75)}
+html[data-theme="light"] .bubblehint{color:rgba(30,30,40,.6)}
+/* ============ MODAL 300x400 (dp del controlador) ============ */
+.scrim{position:absolute;inset:0;display:none}
+.scrim.show{display:block}
+.modal{position:absolute;width:300px;max-width:calc(100% - 24px);height:400px;max-height:calc(100% - 24px);
+  background:var(--modal-bg);border:1.5px solid var(--modal-border);border-radius:20px;
+  -webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+  box-shadow:0 12px 40px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden;
+  transform-origin:bottom left;touch-action:none}
+.modal.show{display:flex}
+.modal.opening{animation:morphIn .32s var(--ease)}
+@keyframes morphIn{from{transform:scale(.18);opacity:0}to{transform:scale(1);opacity:1}}
+.modal.closing{animation:morphOut .25s var(--ease)}
+@keyframes morphOut{to{transform:scale(.18);opacity:0}}
+.mlist{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:14px 12px 4px;scrollbar-width:none}
+.mlist::-webkit-scrollbar{display:none}
+.mlist.swap-out{animation:swapOut .18s var(--ease)}
+.mlist.swap-in{animation:swapIn .22s var(--ease)}
+@keyframes swapOut{to{transform:translateX(var(--sx,-40px));opacity:0}}
+@keyframes swapIn{from{transform:translateX(var(--sx,40px));opacity:0}to{transform:none;opacity:1}}
+/* tarjeta historial: idéntica a buildCard() */
+.hcard{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;
+  display:flex;align-items:center;gap:8px;padding:8px 8px 8px 12px;margin:3px 0;touch-action:pan-y}
+.hcard.sel{background:var(--sel-bg);border-color:var(--sel-border)}
+.hcard .tx{flex:1;min-width:0;font-size:12px;line-height:1.45;color:var(--txt);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hcard .tx.open{ -webkit-line-clamp:unset}
+.hcard .cp{flex:none;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;
+  background:var(--copy-bg);border:1px solid var(--copy-border);color:var(--txt)}
+.hcard .cp svg.ic{width:17px;height:17px}
+.hcard .bdg{position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;display:none;
+  place-items:center;background:#30D158;color:#fff}
+.hcard.sel .bdg{display:grid}
+.hcard .bdg svg.ic{width:13px;height:13px}
+/* tarjeta snippet: outlined + floating label (fieldset/legend) */
+.scard{position:relative;border:1px solid var(--card-border);border-radius:12px;margin:12px 0 9px;padding:10px 12px;
+  background:transparent;touch-action:pan-y}
+.scard legend,.scard .lg{position:absolute;top:-9px;left:10px;padding:0 6px;font-size:11px;font-weight:700;
+  /* Recorta el borde con el fondo de la modal (claro u oscuro según tema). */
+  color:var(--txt-dim);background:var(--modal-bg);border-radius:4px;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scard.sel{border-color:var(--sel-border);background:rgba(35,134,54,.25)}
+.scard .tx{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;
+  color:var(--txt);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.scard .tx.open{-webkit-line-clamp:unset}
+.scard .ops{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.scard .cp{flex:none;width:36px;height:36px;border-radius:9px;display:grid;place-items:center;
+  background:var(--copy-bg);border:1px solid var(--copy-border);color:var(--txt)}
+.scard .cp svg.ic{width:17px;height:17px}
+/* pie: slot copiar-todo + rayita + mic (idéntico a buildOverlay) */
+.foot{display:flex;align-items:center;padding:6px 14px 8px}
+.slot{flex:none;width:48px;height:48px;display:grid;place-items:center}
+.slot .cbtn{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--slot);color:var(--slot-ink);visibility:hidden}
+.slot .cbtn.show{visibility:visible}
+.slot .cbtn svg.ic{width:22px;height:22px}
+.handle{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  min-height:48px;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+.handle .bar{width:38px;height:4.5px;border-radius:10px;background:var(--handle)}
+.handle .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--txt-dim);
+  transition:opacity .18s}
+.handle .lbl.fade{opacity:0}
+.micbtn{flex:none;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--slot);color:var(--mic)}
+.micbtn svg.ic{width:24px;height:24px}
+.empty{padding:26px 10px;text-align:center;font-size:12px;color:var(--txt-dim)}
+.toast{position:fixed;left:50%;bottom:28px;translate:-50% 12px;z-index:50;display:flex;align-items:center;gap:8px;
+  background:#fff;color:#111;font-size:14px;font-weight:600;padding:12px 18px;border-radius:100px;
+  opacity:0;pointer-events:none;transition:opacity .25s,translate .25s;max-width:92vw}
+html[data-theme="dark"] .toast{background:#fff;color:#111}
+.toast.show{opacity:1;translate:-50% 0}
+.notes{margin:14px 2px 0;font-size:13px;color:var(--lab-dim);line-height:1.7}
+.notes b{color:var(--lab-ink)}
+code{background:var(--card-bg);border:1px solid var(--card-border);padding:1px 7px;border-radius:7px;font-size:12px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="lab">
+    <h1>Modal burbuja · Historial + Snippets</h1>
+    <p>Diseño actual de la modal, fiel al controlador: mantené presionada la burbuja para abrirla.
+    <b>Deslizá lateralmente sobre la rayita</b> para cambiar Historial / Snippets. Toque en la rayita o fuera = contraer.</p>
+    <div class="labrow">
+      <button class="pillbtn primary" id="simOpen">Simular presión larga</button>
+      <button class="pillbtn" id="themeBtn" aria-label="Cambiar tema">Claro / oscuro</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="fakeapp">WhatsApp<br><br>María: ¿llegás a las 10?<br>Vos: sí, llevo lo de ayer…<br><br><br>— la burbuja flota sobre esta app —</div>
+    <div class="scrim" id="scrim"></div>
+    <div class="bubble" id="bubble" aria-label="Burbuja VoiceBubble, mantener para historial">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+    </div>
+    <div class="bubblehint" id="bubblehint">Mantené presionada la burbuja 0,5 s</div>
+
+    <div class="modal" id="modal" role="dialog" aria-label="Historial de la burbuja">
+      <div class="mlist" id="mlist"></div>
+      <div class="foot">
+        <div class="slot"><button class="cbtn" id="copyAll" aria-label="Copiar seleccionados">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button></div>
+        <div class="handle" id="handle" aria-label="Contraer o cambiar de sección">
+          <span class="bar"></span>
+          <span class="lbl" id="handleLbl">Historial</span>
+        </div>
+        <button class="micbtn" id="micBtn" aria-label="Dictar">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="2.5" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <b>Cómo funciona (igual que el código):</b><br>
+    · Presión larga (500 ms) en burbuja → abre siempre en <code>Historial</code>.<br>
+    · Swipe lateral sobre la rayita (más de ~48 px) → cambia a <code>Snippets</code> y viceversa, con animación de deslizamiento + la etiqueta cambia.<br>
+    · Toque en la rayita, swipe hacia arriba o toque fuera → contrae.<br>
+    · Snippets con el mismo guardado que el historial; tarjeta estilo campo outlined con título flotante, copiar y editar.<br>
+    · Toque en tarjeta = insertar + copiar + contraer · toque largo = expandir · swipe lateral = seleccionar.
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id);};
+var stage=$("stage"),bubble=$("bubble"),modal=$("modal"),mlist=$("mlist"),
+    scrim=$("scrim"),handle=$("handle"),handleLbl=$("handleLbl"),
+    copyAll=$("copyAll"),hint=$("bubblehint");
+/* ---- datos demo: historial + 5 seeds (igual que StorageService) ---- */
+var HISTORY=[
+  {t:"Reunión jueves 10 hs con diseño, llevar bocetos",ts:"12:04"},
+  {t:"git add . && git commit -m \"fix burbuja\"",ts:"11:31"},
+  {t:"Anotá leche, pan y café para mañana",ts:"ayer"},
+  {t:"supabase db push",ts:"ayer"},
+  {t:"Recordá llamar al dentista el lunes",ts:"lun"}
+];
+var SNIPPETS=[
+  {n:"Codex",c:'codex "'},
+  {n:"Gemini",c:'gemini -p "'},
+  {n:"Git commit",c:'git add . && git commit -m "'},
+  {n:"Git push",c:"git push origin main"},
+  {n:"Supabase push",c:"supabase db push"}
+];
+var section="history",selected=new Set(),open=false;
+function toast(m){var t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove("show");},1900);}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+function paintLabel(){
+  handleLbl.classList.add("fade");
+  setTimeout(function(){handleLbl.textContent=section==="history"?"Historial":"Snippets";handleLbl.classList.remove("fade");},140);
+}
+function render(dir){
+  mlist.innerHTML="";selected.clear();copyAll.classList.remove("show");
+  var items=section==="history"?HISTORY:SNIPPETS;
+  if(!items.length){mlist.innerHTML='<div class="empty">Sin transcripciones todavía.</div>';return;}
+  items.forEach(function(it,i){
+    var d=document.createElement("div");
+    if(section==="history"){
+      d.className="hcard";d.dataset.i=i;
+      d.innerHTML='<div class="tx"></div><button class="cp" aria-label="Copiar"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><span class="bdg"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"/></svg></span>';
+      d.querySelector(".tx").textContent="\u201C"+it.t+"\u201D";
+      d.querySelector(".cp").addEventListener("click",function(e){e.stopPropagation();toast("Copiado al portapapeles");});
+    }else{
+      d.className="scard";d.dataset.i=i;
+      d.innerHTML='<span class="lg"></span><div class="tx"></div><div class="ops"><button class="cp" data-a="e" aria-label="Editar snippet"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button><button class="cp" data-a="c" aria-label="Copiar snippet"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div>';
+      d.querySelector(".lg").textContent=it.n;
+      d.querySelector(".tx").textContent=it.c;
+      d.querySelector('[data-a="c"]').addEventListener("click",function(e){e.stopPropagation();toast("Snippet copiado");});
+      d.querySelector('[data-a="e"]').addEventListener("click",function(e){e.stopPropagation();toast("Editar snippet (abre la app)");});
+    }
+    attachCard(d,it);
+    mlist.appendChild(d);
+  });
+  if(dir){
+    mlist.style.setProperty("--sx",(dir>0?"-46px":"46px"));
+    mlist.classList.remove("swap-in");mlist.classList.add("swap-out");
+    setTimeout(function(){mlist.classList.remove("swap-out");mlist.classList.add("swap-in");},170);
+  }
+}
+/* gestos por tarjeta: iguales al controlador (tap / long 450 / swipe 48) */
+function attachCard(el,it){
+  var tx=el.querySelector(".tx"),t0=0,x0=0,y0=0,sw=false,fired=false,timer=null;
+  el.addEventListener("pointerdown",function(e){t0=Date.now();x0=e.clientX;y0=e.clientY;sw=false;fired=false;
+    timer=setTimeout(function(){fired=true;tx.classList.toggle("open");},450);});
+  el.addEventListener("pointermove",function(e){
+    if(Math.hypot(e.clientX-x0,e.clientY-y0)>24&&timer){clearTimeout(timer);timer=null;}
+    var dx=e.clientX-x0;
+    if(!sw&&Math.abs(dx)>30&&Math.abs(dx)>Math.abs(e.clientY-y0)*1.4){sw=true;}
+    if(sw){el.style.transform="translateX("+Math.max(-72,Math.min(72,dx))+"px)";}
+  });
+  function end(e){
+    if(timer){clearTimeout(timer);timer=null;}
+    el.style.transform="";
+    if(sw){toggleSel(el);return;}
+    if(!fired){
+      var txt=section==="history"?it.t:it.c;
+      toast((section==="history"?"Insertado + copiado: ":"Insertado snippet: ")+txt.slice(0,34));
+      closeModal();
+    }
+  }
+  el.addEventListener("pointerup",end);
+  el.addEventListener("pointercancel",function(){if(timer){clearTimeout(timer);timer=null;}el.style.transform="";});
+}
+function toggleSel(el){
+  var i=el.dataset.i;
+  if(selected.has(i)){selected.delete(i);el.classList.remove("sel");}
+  else{selected.add(i);el.classList.add("sel");}
+  copyAll.classList.toggle("show",selected.size>=2);
+}
+copyAll.addEventListener("click",function(){toast(selected.size+" seleccionados copiados");selected.clear();
+  Array.prototype.forEach.call(mlist.children,function(c){c.classList.remove("sel");});
+  copyAll.classList.remove("show");});
+/* ---- abrir / cerrar ---- */
+function placeModal(){
+  var r=stage.getBoundingClientRect();
+  modal.style.left=Math.max(12,Math.min(r.width-312,60))+"px";
+  modal.style.top=Math.max(12,r.height-424)+"px";
+}
+function openModal(){
+  if(open)return;open=true;section="history";paintLabel();render(0);
+  placeModal();bubble.style.display="none";hint.style.display="none";
+  scrim.classList.add("show");modal.classList.remove("closing");modal.classList.add("show","opening");
+  setTimeout(function(){modal.classList.remove("opening");},340);
+}
+function closeModal(){
+  if(!open)return;open=false;
+  modal.classList.add("closing");
+  setTimeout(function(){modal.classList.remove("show","closing");scrim.classList.remove("show");
+    bubble.style.display="";hint.style.display="";},230);
+}
+scrim.addEventListener("click",closeModal);
+$("micBtn").addEventListener("click",function(){toast("Dictar (cierra y graba)");closeModal();});
+/* presión larga 500 ms en la burbuja demo */
+var hTimer=null;
+bubble.addEventListener("pointerdown",function(){bubble.classList.add("holding");
+  hTimer=setTimeout(function(){bubble.classList.remove("holding");openModal();},500);});
+["pointerup","pointercancel","pointerleave"].forEach(function(ev){
+  bubble.addEventListener(ev,function(){bubble.classList.remove("holding");if(hTimer){clearTimeout(hTimer);hTimer=null;}});});
+$("simOpen").addEventListener("click",openModal);
+/* rayita: tap/swipe-up = contraer · swipe lateral = Historial/Snippets */
+var hx=0,hy=0,hClosed=false;
+handle.addEventListener("pointerdown",function(e){hx=e.clientX;hy=e.clientY;hClosed=false;
+  try{handle.setPointerCapture(e.pointerId);}catch(_){}});
+handle.addEventListener("pointermove",function(e){
+  if(hClosed)return;
+  var dx=e.clientX-hx,dy=e.clientY-hy;
+  if(dy<-24){hClosed=true;closeModal();toast("Contraído");return;}
+  if(Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.4){
+    hClosed=true;
+    section=section==="history"?"snippets":"history";
+    paintLabel();render(dx>0?1:-1);
+    toast(section==="history"?"Historial":"Snippets");
+  }
+});
+handle.addEventListener("pointerup",function(e){
+  if(hClosed)return;hClosed=true;closeModal();toast("Contraído");
+});
+handle.addEventListener("pointercancel",function(){hClosed=true;});
+/* tema */
+var root=document.documentElement;
+try{if(matchMedia("(prefers-color-scheme: dark)").matches){root.setAttribute("data-theme","dark");}}catch(e){}
+$("themeBtn").addEventListener("click",function(){
+  root.setAttribute("data-theme",root.getAttribute("data-theme")==="light"?"dark":"light");});
+})();
+</script>
+</body>
+</html>
