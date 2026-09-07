@@ -64,7 +64,7 @@ voice-bubble/                  ← raíz del repo git
 
 ### Modo loop (estilo de trabajo del dueño)
 
-Cuando el dueño pida "trabajar en modo loop", rige `MODO-LOOP.md`: coordinador + escritores paralelos por archivos disjuntos (serie para archivos compartidos) → auditor ultracrítico SIEMPRE con contexto limpio que califica 0–10 → todo lo < 9.0 vuelve a escritores nuevos limpios hasta aprobar → batería final → push con CI monitoreado → APK al dueño. Cero deuda técnica, cero parches, menos es más. Los planes archivados (ej. `docs/archive/AUDITORIA-TOTAL-V1.md`, `docs/archive/PLAN-PULIDO-TECLADO.md`) llevan su sección "Registro del loop".
+Cuando el dueño pida "trabajar en modo loop", rige `MODO-LOOP.md`: coordinador + escritores paralelos por archivos disjuntos (serie para archivos compartidos) → auditor ultracrítico SIEMPRE con contexto limpio que califica 0–10 → todo lo < 9.0 vuelve a escritores nuevos limpios hasta aprobar → batería final → push con CI monitoreado → APK al dueño. Cero deuda técnica, cero parches, menos es más. Los planes archivados (ej. `docs/archive/PLAN-PULIDO-TECLADO.md`) llevan su sección "Registro del loop".
 
 ### Estado actual
 
@@ -237,7 +237,7 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 ## Estado del proyecto
 
 > **Actualizar esta sección al final de cada hito completado.**
-> Última actualización: 2026-08-23 (AUDITORÍA TOTAL v1 ejecutada en MODO-LOOP: 59 hallazgos corregidos en 11 tarjetas F1–F11 auditadas >9.0; CI verde run `32666610965`, APK r62, suite depurada a 280 tests reales). Ver `docs/archive/AUDITORIA-TOTAL-V1.md`.
+> Última actualización: 2026-08-23 (AUDITORÍA TOTAL v1 ejecutada en MODO-LOOP: 59 hallazgos corregidos en 11 tarjetas F1–F11 auditadas >9.0; CI verde run `32666610965`, APK r62, suite depurada a 280 tests reales).
 
 - [x] Planificación (README + plan + design + agents)
 - [x] Hito 0 – Setup
