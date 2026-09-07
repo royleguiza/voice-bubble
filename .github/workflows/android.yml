@@ -22,6 +22,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Guard secretos versionados SPK-01
+        run: |
+          if git grep -nE 'github_pat_[A-Za-z0-9_]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}' -- .; then
+            echo '::error::posible secreto versionado SPK-01. Revoca el PAT y purga la historia.'
+            exit 1
+          fi
+          if git ls-files | grep -xE '\.github_token|\.agents/secrets\.env'; then
+            echo '::error::archivo de secretos trackeado SPK-01'
+            exit 1
+          fi
+
       - name: Contrato de claves del puente
         run: |
           KT=voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt
