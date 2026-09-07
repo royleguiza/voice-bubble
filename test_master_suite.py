@@ -21,6 +21,7 @@ SUITES = [
     ("Portapapeles: suite multimodal FIFO-25", "test_clipboard_suite.py"),
     ("Trackpad: suite split wings y puntero virtual", "test_trackpad_suite.py"),
     ("Burbuja: modal de historial clásica (B1-B7)", "test_bubble_history_suite.py"),
+    ("Claves: sección credenciales + llave y relleno en teclado", "test_credentials_suite.py"),
 ]
 
 def run_test(name, func):

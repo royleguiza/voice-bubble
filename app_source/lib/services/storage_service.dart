@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/credential.dart';
 import '../models/snippet.dart';
 import '../models/transcription.dart';
 import 'cloud_stt_service.dart';
@@ -18,6 +19,10 @@ class StorageService {
   static const int maxItems = 20;
   static const int maxSnippets = 50;
   static const int maxSnippetLength = 2000;
+  static const int maxCredentials = 50;
+  static const int maxCredentialNameLength = 80;
+  static const int maxCredentialUserLength = 120;
+  static const int maxCredentialPassLength = 256;
   static const String recordModeHold = 'hold';
 
   // --- Rangos centralizados (única fuente; la UI no re-clampea) ---
@@ -893,6 +898,138 @@ class StorageService {
   Future<void> _persist() async {
     await _save();
     await _saveHistoryFile();
+  }
+
+  // --- Credenciales para relleno desde el teclado ---
+  // Contrato compartido con el teclado nativo Kotlin, mismo puente que
+  // snippets (SharedPreferences "FlutterSharedPreferences", prefijo
+  // "flutter." del lado Kotlin):
+  // - [credentialsKey]: STRING con JSON array [{id, nombre, usuario}]
+  //   (solo identificadores: la contraseña JAMAS va en el índice).
+  // - [credPassKey]: STRING con JSON objeto {id: password}.
+  // - [credShowUserKey]: BOOL (default false: solo nombre en la lista).
+  // Fuente única de verdad (sin duplicado en secure_storage: el espejo
+  // plano es el mismo patrón aceptado del contrato K3 para kb_stt_api_key;
+  // la UI nunca relee passwords: sin ojo, sin edición).
+  static const String credentialsKey = 'vb_credentials_v1';
+  static const String credPassKey = 'vb_cred_pass_v1';
+  static const String credShowUserKey = 'vb_cred_show_user';
+
+  int _credentialIdCounter = 0;
+
+  String _nextCredentialId() {
+    _credentialIdCounter += 1;
+    return '${DateTime.now().microsecondsSinceEpoch}-$_credentialIdCounter';
+  }
+
+  Future<List<VbCredential>> loadCredentials() async =>
+      await _readCredentials() ?? const [];
+
+  Future<List<VbCredential>?> _readCredentials() async {
+    try {
+      final prefs = await _prefs();
+      await prefs.reload();
+      final raw = prefs.getString(credentialsKey);
+      if (raw == null || raw.isEmpty) return const [];
+      final decoded = jsonDecode(raw);
+      if (decoded is! List<dynamic>) return null;
+      final loaded = <VbCredential>[];
+      final seenIds = <String>{};
+      for (final item in decoded) {
+        if (item is Map<dynamic, dynamic>) {
+          var cred =
+              VbCredential.fromJson(Map<String, dynamic>.from(item));
+          if (cred.id.isEmpty || seenIds.contains(cred.id)) {
+            cred = cred.copyWith(id: _nextCredentialId());
+          }
+          seenIds.add(cred.id);
+          loaded.add(cred);
+        }
+      }
+      return loaded;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, String>> _readPassMap() async {
+    try {
+      final prefs = await _prefs();
+      await prefs.reload();
+      final raw = prefs.getString(credPassKey);
+      if (raw == null || raw.isEmpty) return {};
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<dynamic, dynamic>) return {};
+      return {
+        for (final e in decoded.entries)
+          if (e.key is String && e.value is String) e.key as String: e.value as String,
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Guarda nombre+usuario+contraseña. La contraseña solo se escribe:
+  /// no existe lectura de vuelta en la UI. Devuelve false si viola
+  /// límites o la lectura está ilegible (no pisa datos).
+  Future<bool> addCredential({
+    required String nombre,
+    required String usuario,
+    required String password,
+  }) async {
+    if (nombre.trim().isEmpty || usuario.trim().isEmpty || password.isEmpty) {
+      return false;
+    }
+    if (nombre.length > maxCredentialNameLength ||
+        usuario.length > maxCredentialUserLength ||
+        password.length > maxCredentialPassLength) {
+      return false;
+    }
+    final current = await _readCredentials();
+    if (current == null) return false;
+    if (current.length >= maxCredentials) return false;
+    final id = _nextCredentialId();
+    final prefs = await _prefs();
+    await prefs.setString(
+      credentialsKey,
+      jsonEncode([
+        ...current.map((c) => c.toJson()),
+        VbCredential(id: id, nombre: nombre, usuario: usuario).toJson(),
+      ]),
+    );
+    final passes = await _readPassMap();
+    passes[id] = password;
+    await prefs.setString(credPassKey, jsonEncode(passes));
+    return true;
+  }
+
+  /// Borra por id el índice Y su contraseña. Sin edición: ante un error
+  /// se borra y se crea de nuevo.
+  Future<bool> deleteCredential(String id) async {
+    final current = await _readCredentials();
+    if (current == null) return false;
+    final remaining =
+        current.where((c) => c.id != id).toList(growable: false);
+    if (remaining.length == current.length) return false;
+    final prefs = await _prefs();
+    await prefs.setString(
+      credentialsKey,
+      jsonEncode(remaining.map((c) => c.toJson()).toList()),
+    );
+    final passes = await _readPassMap();
+    passes.remove(id);
+    await prefs.setString(credPassKey, jsonEncode(passes));
+    return true;
+  }
+
+  Future<bool> loadCredShowUser() async {
+    final prefs = await _prefs();
+    return prefs.getBool(credShowUserKey) ?? false;
+  }
+
+  Future<void> saveCredShowUser(bool value) async {
+    final prefs = await _prefs();
+    await prefs.setBool(credShowUserKey, value);
   }
 
   Future<void> _save() async {

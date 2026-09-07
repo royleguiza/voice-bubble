@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
 import '../models/snippet.dart';
+import 'credentials_screen.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/floating_trackpad_service.dart';
@@ -877,7 +878,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           // con sus ~10 lecturas iniciales), y lo visitado nunca se
           // desmonta, así que inputs y scrolls sobreviven al cambio de tab.
           // Estructura v1 laboratorio-ui: Inicio / Burbuja / Teclado /
-          // Trackpad / Snippets. Acerca vive como sheet desde Inicio.
+          // Trackpad / Snippets / Claves. Acerca vive como sheet desde Inicio.
           IndexedStack(
             index: _currentTab,
             children: [
@@ -895,6 +896,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                   : const SizedBox.shrink(),
               _builtTabs.contains(4)
                   ? _buildSnippetsTab(context)
+                  : const SizedBox.shrink(),
+              _builtTabs.contains(5)
+                  ? CredentialsScreen(storageService: _storageService)
                   : const SizedBox.shrink(),
             ],
           ),

@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/settings_tab_bar.dart';
 
 void main() {
-  testWidgets('SettingsTabBar renderiza 5 pestañas v1 con sus keys correspondientes',
+  testWidgets('SettingsTabBar renderiza 6 pestañas v1 con sus keys correspondientes',
       (tester) async {
     int selected = 0;
     await tester.pumpWidget(
@@ -23,12 +23,14 @@ void main() {
     expect(find.byKey(const ValueKey('tab-teclado')), findsOneWidget);
     expect(find.byKey(const ValueKey('tab-trackpad')), findsOneWidget);
     expect(find.byKey(const ValueKey('tab-snippets')), findsOneWidget);
+    expect(find.byKey(const ValueKey('tab-credenciales')), findsOneWidget);
 
     expect(find.text('Inicio'), findsOneWidget);
     expect(find.text('Burbuja'), findsOneWidget);
     expect(find.text('Teclado'), findsOneWidget);
     expect(find.text('Trackpad'), findsOneWidget);
     expect(find.text('Snippets'), findsOneWidget);
+    expect(find.text('Claves'), findsOneWidget);
   });
 
   testWidgets('SettingsTabBar dispara onTabSelected al tocar cada pestaña',
@@ -62,9 +64,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(tapped, [1, 2, 3, 4]);
 
+    await tester.tap(find.byKey(const ValueKey('tab-credenciales')));
+    await tester.pumpAndSettle();
+    expect(tapped, [1, 2, 3, 4, 5]);
+
     await tester.tap(find.byKey(const ValueKey('tab-inicio')));
     await tester.pumpAndSettle();
-    expect(tapped, [1, 2, 3, 4, 0]);
+    expect(tapped, [1, 2, 3, 4, 5, 0]);
   });
 
   testWidgets('SettingsTabBar respeta Reduced Motion', (tester) async {

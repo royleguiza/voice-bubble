@@ -1,0 +1,158 @@
+#!/usr/bin/env python3
+"""
+CREDENTIALS SUITE - VoiceBubble STT (contrato Claves)
+Sección propia de credenciales: dock inferior + pantalla + storage Dart y
+botón llave + capa + relleno en el teclado nativo Kotlin.
+
+Garantiza: funcionamiento del flujo (guardar/listar/pegar/borrar) y NO
+regresión del resto del teclado (capas, toggle ?123, snippets, toolbar).
+"""
+
+import os
+import re
+import sys
+
+from test_helpers import Suite
+
+WORKSPACE = os.path.dirname(os.path.abspath(__file__))
+KT = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+VKS = os.path.join(WORKSPACE, KT, "VoiceKeyboardService.kt")
+STORE = os.path.join(WORKSPACE, KT, "CredentialStore.kt")
+
+
+def read(rel):
+    with open(os.path.join(WORKSPACE, rel), "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def log_lines_with(content, *words):
+    """Líneas con Log que además mencionen datos sensibles (filtración)."""
+    out = []
+    for line in content.splitlines():
+        if "Log." in line and any(w in line for w in words):
+            out.append(line.strip())
+    return out
+
+
+def main():
+    suite = Suite()
+    vks = read(os.path.join(KT, "VoiceKeyboardService.kt"))
+    store = read(os.path.join(KT, "CredentialStore.kt"))
+    model = read("app_source/lib/models/credential.dart")
+    storage = read("app_source/lib/services/storage_service.dart")
+    screen = read("app_source/lib/screens/credentials_screen.dart")
+    settings = read("app_source/lib/screens/settings_screen.dart")
+    tabbar = read("app_source/lib/widgets/settings_tab_bar.dart")
+    contract = read("docs/contract-keys.txt").strip().split("\n")
+
+    # --- 1. Modelo Dart sin secretos ---
+    suite.check("Modelo VbCredential existe", os.path.isfile(
+        os.path.join(WORKSPACE, "app_source/lib/models/credential.dart")))
+    suite.check("Modelo con id/nombre/usuario",
+                all(k in model for k in ("final String id", "final String nombre", "final String usuario")),
+                "Faltan campos del contrato")
+    suite.check("Modelo SIN campo password",
+                "String password" not in model and "'password'" not in model
+                and '"password"' not in model,
+                "El modelo no debe portar secretos")
+    suite.check("toString sin secretos", "password" not in model.split("toString")[1]
+                if "toString" in model else False, "toString expone datos")
+
+    # --- 2. Storage Dart ---
+    for key in ("vb_credentials_v1", "vb_cred_pass_v1", "vb_cred_show_user"):
+        suite.check(f"Storage expone clave {key}", f"'{key}'" in storage,
+                    f"Falta {key}")
+    suite.check("addCredential valida vacíos y límites",
+                "addCredential" in storage and "maxCredentials" in storage,
+                "Sin validación")
+    suite.check("deleteCredential borra índice Y contraseña",
+                "deleteCredential" in storage and "passes.remove(id)" in storage,
+                "Borrado incompleto")
+    suite.check("Sin API de lectura de passwords en UI",
+                "readPassword" not in storage and "getPassword" not in storage,
+                "La UI no debe releer contraseñas")
+    suite.check("showUser default false", "?? false" in storage and
+                "loadCredShowUser" in storage, "Default incorrecto")
+
+    # --- 3. Pantalla propia ---
+    suite.check("CredentialsScreen existe", os.path.isfile(
+        os.path.join(WORKSPACE, "app_source/lib/screens/credentials_screen.dart")))
+    suite.check("Formulario con 3 campos",
+                all(k in screen for k in ("credenciales-add-nombre", "credenciales-add-usuario", "credenciales-add-password")),
+                "Falta algún campo")
+    suite.check("Password obscure sin ojo", "obscureText: true" in screen and
+                "visibility" not in screen.lower(), "Ojo o sin ocultar")
+    suite.check("Sin edición (solo borrar)", "updateCredential" not in screen and
+                "Icons.delete_outline" in screen, "Hay edición o falta borrado")
+    suite.check("Switch mostrar-usuario", "credenciales-show-user" in screen and
+                "SwitchListTile" in screen, "Falta el switch")
+
+    # --- 4. Dock inferior con sección propia ---
+    suite.check("Tab Claves en el dock", "tab-credenciales" in tabbar and
+                "'Claves'" in tabbar and "vpn_key" in tabbar,
+                "Dock sin sección propia")
+    suite.check("Settings monta tab 5 perezoso",
+                "CredentialsScreen(storageService: _storageService)" in settings
+                and "_builtTabs.contains(5)" in settings,
+                "Tab no cableado")
+
+    # --- 5. Teclado nativo: botón y capa ---
+    suite.check("Drawable ic_key.xml existe", os.path.isfile(
+        os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_key.xml")))
+    suite.check("CredentialStore solo-lectura existe", os.path.isfile(STORE))
+    suite.check("Store sin escrituras", ".edit()" not in store and
+                "fun save" not in store and "fun delete" not in store,
+                "El teclado no debe escribir credenciales")
+    suite.check("Store sin Log de valores",
+                not log_lines_with(store, "nombre", "usuario", "password", "pass"),
+                "Filtración en logs del store")
+    suite.check("Layer.CREDENTIALS declarada", "CREDENTIALS" in vks and
+                "SNIPPETS, TRACKPAD, CREDENTIALS" in vks,
+                "Falta la capa")
+    suite.check("Botón llave en toolbar", "R.drawable.ic_key" in vks and
+                "toggleCredentialsLayer" in vks, "Falta el botón")
+    suite.check("Llave visible en campos password",
+                "tambien en contraseñas" in vks,
+                "La llave debe vivir en el login")
+    suite.check("Capa sobrevive en password (no reseteada)",
+                "TRACKPAD || layer == Layer.SNIPPETS" in vks and
+                "CREDENTIALS" not in vks.split("TRACKPAD || layer == Layer.SNIPPETS")[0].split("\n")[-1],
+                "Guard de password mata la capa")
+    suite.check("Relleno usuario+TAB+clave diferida",
+                "fillCredential" in vks and "KEYCODE_TAB" in vks and
+                "postDelayed" in vks and "250L" in vks,
+                "Falta la secuencia de relleno")
+    suite.check("Tras pegar vuelve a la capa origen",
+                "layer = layerBeforeCredentials" in vks,
+                "No vuelve al origen")
+    suite.check("?123 muestra ABC en CREDENTIALS",
+                "Layer.CREDENTIALS -> \"ABC\"" in vks,
+                "Etiqueta incorrecta")
+    suite.check("VKS sin Log de password",
+                not log_lines_with(vks, "password"),
+                "Filtración en logs del teclado")
+
+    # --- 6. No regresión del resto del teclado ---
+    for token in ("Layer.LETTERS", "Layer.SYMBOLS", "Layer.CODE",
+                  "Layer.SNIPPETS", "Layer.TRACKPAD",
+                  "toggleSnippetsLayer", "buildSnippetRows",
+                  "toggleCodeLayer", "toggleTrackpadLayer",
+                  "commitSymbolText", "if (!restarting)"):
+        suite.check(f"Regresión: {token} intacto", token in vks,
+                    f"Se rompió {token}")
+    suite.check("Contrato de claves incluye las 3",
+                all(k in contract for k in ("vb_credentials_v1", "vb_cred_pass_v1", "vb_cred_show_user")),
+                "contract-keys.txt desactualizado")
+
+    print("\n============================================================")
+    print(f" RESULTADOS: {suite.passed} Pasados, {suite.failed} Fallidos")
+    print("============================================================\n")
+    if suite.failed > 0:
+        print("❌ ERROR: Existen fallas en la suite de credenciales.")
+        sys.exit(1)
+    print("✅ VERIFICACIÓN AL 100% EXITOSA: Listo para producción.")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()

@@ -26,4 +26,7 @@ kb_trackpad_sensitivity
 kb_trackpad_tap_to_click
 kb_trackpad_toolbar_visible
 transcriptions
+vb_cred_pass_v1
+vb_cred_show_user
+vb_credentials_v1
 voice_snippets_v1

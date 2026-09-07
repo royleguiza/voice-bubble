@@ -67,7 +67,7 @@ import kotlin.math.abs
  */
 class VoiceKeyboardService : InputMethodService() {
 
-    private enum class Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD }
+    private enum class Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD, CREDENTIALS }
 
     private enum class MicState { IDLE, RECORDING, PROCESSING, BUSY }
 
@@ -143,6 +143,9 @@ class VoiceKeyboardService : InputMethodService() {
     private var etSnippetNameField: EditText? = null
     private var etSnippetContentField: EditText? = null
     private lateinit var snippetStore: SnippetStore
+    // Claves: solo lectura desde Ajustes; el teclado jamas escribe ni borra.
+    private lateinit var credentialStore: CredentialStore
+    private var layerBeforeCredentials = Layer.LETTERS
     private var layerBeforeSnippets = Layer.LETTERS
     private var snippetsSeedAttempted = false
     private var snippetQuery = ""
@@ -238,6 +241,7 @@ class VoiceKeyboardService : InputMethodService() {
         cancelDictationIfActive()
         sttClient = SpeechToTextClient(this) { spanishMode }
         snippetStore = SnippetStore(this)
+        credentialStore = CredentialStore(this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -287,21 +291,26 @@ class VoiceKeyboardService : InputMethodService() {
         cancelDictationIfActive()
         loadKeyboardPrefs()
         currentIsPasswordField = isPasswordInput(info)
-        if (currentIsPasswordField && layer == Layer.TRACKPAD) {
+        if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS)) {
             layer = Layer.LETTERS
         }
         pointerOverlayManager?.hide()
         // AT-A4: BUSY es espejo del estado de la burbuja; si ella ya solto
         // el microfono, el teclado arranca este campo en IDLE.
         if (micState == MicState.BUSY && !bubbleBusy()) micIdle()
-        layer = Layer.LETTERS
-        lastLettersLayer = Layer.LETTERS
-        deactivateShift()
-        ctrlActive = false
-        altActive = false
-        // Sincronizar clips copiados mientras el teclado estaba cerrado y contraer cinta
+        // FIX ?123 persistente: los restart de la app destino (restarting=true,
+        // ej. navegadores/WebView tras cada commit) no deben tumbar la capa
+        // SYMBOLS/CODE. Solo un campo nuevo resetea a LETTERS.
+        if (!restarting) {
+            layer = Layer.LETTERS
+            lastLettersLayer = Layer.LETTERS
+            deactivateShift()
+            ctrlActive = false
+            altActive = false
+            isFilmstripExpanded = false
+        }
+        // Sincronizar clips copiados mientras el teclado estaba cerrado.
         handlePrimaryClipChanged()
-        isFilmstripExpanded = false
         rebuild()
         root.requestApplyInsets()
     }
@@ -433,6 +442,7 @@ class VoiceKeyboardService : InputMethodService() {
                 Layer.SYMBOLS -> buildSymbolRows()
                 Layer.CODE -> buildCodeRows()
                 Layer.SNIPPETS -> buildSnippetRows()
+                Layer.CREDENTIALS -> buildCredentialRows()
                 Layer.TRACKPAD -> {}
             }
             addRow(buildBottomBar())
@@ -470,6 +480,19 @@ class VoiceKeyboardService : InputMethodService() {
             }
             items.add(btnSnippets)
         }
+
+        // Llave de credenciales: SIEMPRE visible, tambien en contraseñas
+        // (ahi es donde se necesita: relleno explicito usuario+clave).
+        val btnCredentials = makeIconKey(
+            R.drawable.ic_key,
+            if (layer == Layer.CREDENTIALS) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
+            1.0f,
+            if (spanishMode) "credenciales" else "credentials",
+            tintColorRes = if (layer == Layer.CREDENTIALS) R.color.kb_label_on_accent else R.color.kb_label,
+        ) {
+            toggleCredentialsLayer()
+        }
+        items.add(btnCredentials)
 
         // Elementos centrales:
         val btnSettings = makeIconKey(R.drawable.ic_settings, R.drawable.kb_key_alt, 1.0f, "ajustes") {
@@ -773,7 +796,7 @@ class VoiceKeyboardService : InputMethodService() {
 
     private fun symbolsToggleLabel(): String = when {
         layer == Layer.SNIPPETS && (snippetSubLayer == Layer.SYMBOLS || snippetSubLayer == Layer.CODE) -> "ABC"
-        layer == Layer.SYMBOLS || layer == Layer.CODE -> "ABC"
+        layer == Layer.SYMBOLS || layer == Layer.CODE || layer == Layer.CREDENTIALS -> "ABC"
         else -> "?123"
     }
 
@@ -2431,6 +2454,166 @@ class VoiceKeyboardService : InputMethodService() {
         snippetQuery = ""
         snippetSubLayer = Layer.LETTERS
         layer = Layer.SNIPPETS
+        rebuild()
+    }
+
+    /**
+     * Apertura/cierre de la capa de credenciales (contrato Claves). Al abrir
+     * recuerda la capa de origen para volver; al cerrar o tras pegar vuelve
+     * a ella. Sin busqueda ni cierre manual extra: la lista scrollea con el
+     * dedo y cada fila pega directo. La password JAMAS se muestra ni se
+     * registra en Log: solo nombre (+usuario si el usuario lo activo).
+     */
+    private fun toggleCredentialsLayer() {
+        if (layer == Layer.CREDENTIALS) {
+            layer = layerBeforeCredentials
+            rebuild()
+            return
+        }
+        layerBeforeCredentials = layer
+        layer = Layer.CREDENTIALS
+        rebuild()
+    }
+
+    /** Lista compacta de credenciales: avatar + nombre (+usuario) + pegar. */
+    private fun buildCredentialRows() {
+        val entries = credentialStore.loadIndex()
+        val showUser = credentialStore.getShowUser()
+        if (entries.isEmpty()) {
+            val empty = TextView(this).apply {
+                text = if (spanishMode) "Sin claves. Guárdalas en Ajustes → Claves." else "No credentials. Save them in Settings → Claves."
+                gravity = Gravity.CENTER
+                setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
+                setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13f)
+            }
+            val lp = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                scaleV(dimen(R.dimen.kb_snippets_grid_height)),
+            )
+            lp.topMargin = rowGapPx()
+            root.addView(empty, lp)
+            return
+        }
+        val scroll = ScrollView(this).apply {
+            isVerticalScrollBarEnabled = true
+        }
+        val list = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        for (entry in entries) {
+            list.addView(buildCredentialRow(entry, showUser))
+        }
+        scroll.addView(list)
+        val lp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            scaleV(dimen(R.dimen.kb_snippets_grid_height)),
+        )
+        lp.topMargin = rowGapPx()
+        root.addView(scroll, lp)
+        // Teclado compacto debajo (letras) para no dejar la capa vacia.
+        addRow(letterRow("qwertyuiop"))
+    }
+
+    private fun buildCredentialRow(entry: VbCredentialEntry, showUser: Boolean): View {
+        val pad = dimen(R.dimen.kb_popup_padding)
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundResource(R.drawable.kb_menu_item)
+            setPadding(pad, pad / 2, pad, pad / 2)
+            isClickable = true
+            isFocusable = true
+        }
+        val avatar = TextView(this).apply {
+            text = entry.nombre.firstOrNull()?.uppercaseChar()?.toString() ?: "•"
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+            setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f)
+            setTypeface(null, Typeface.BOLD)
+        }
+        val avatarSize = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 34f, resources.displayMetrics,
+        ).toInt()
+        row.addView(avatar, LinearLayout.LayoutParams(avatarSize, avatarSize))
+
+        val meta = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val name = TextView(this).apply {
+            text = entry.nombre
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
+            setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
+            setTypeface(null, Typeface.BOLD)
+        }
+        meta.addView(name)
+        if (showUser) {
+            val user = TextView(this).apply {
+                text = entry.usuario
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END
+                setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
+                setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+            }
+            meta.addView(user)
+        }
+        val metaLp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        val metaMargin = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 10f, resources.displayMetrics,
+        ).toInt()
+        metaLp.marginStart = metaMargin
+        row.addView(meta, metaLp)
+
+        val paste = ImageView(this).apply {
+            setImageResource(R.drawable.ic_paste)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            isClickable = true
+            isFocusable = true
+            setBackgroundResource(R.drawable.kb_key_accent)
+            setColorFilter(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_on_accent))
+            contentDescription = if (spanishMode) "pegar ${entry.nombre}" else "paste ${entry.nombre}"
+        }
+        val touchMin = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 44f, resources.displayMetrics,
+        ).toInt()
+        row.addView(paste, LinearLayout.LayoutParams(touchMin, touchMin))
+        val fill = { fillCredential(entry) }
+        attachFastKeyTouch(paste, fill)
+        row.setOnClickListener { fill() }
+        val rowLp = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+        rowLp.topMargin = dimen(R.dimen.kb_key_gap) / 2
+        row.layoutParams = rowLp
+        return row
+    }
+
+    /**
+     * Relleno usuario+contraseña ante el toque explicito (unico uso de la
+     * password en memoria: nunca se muestra, nunca se loguea).
+     * - Foco en campo de contraseña: solo la clave.
+     * - Otro foco (usuario): usuario, TAB al siguiente campo y clave
+     *   diferida 250 ms (patron de navegadores y apps de login).
+     */
+    private fun fillCredential(entry: VbCredentialEntry) {
+        haptic(root)
+        val password = credentialStore.getPassword(entry.id)
+        if (password.isNullOrEmpty()) return
+        if (currentIsPasswordField) {
+            currentInputConnection?.commitText(password, 1)
+        } else {
+            currentInputConnection?.commitText(entry.usuario, 1)
+            sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB)
+            handler.postDelayed({
+                if (instance === this) {
+                    currentInputConnection?.commitText(password, 1)
+                }
+            }, 250L)
+        }
+        layer = layerBeforeCredentials
         rebuild()
     }
 

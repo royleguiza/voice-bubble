@@ -40,6 +40,11 @@ class SettingsTabBar extends StatelessWidget {
       icon: Icons.segment_rounded,
       label: 'Snippets',
     ),
+    _TabItemData(
+      key: ValueKey('tab-credenciales'),
+      icon: Icons.vpn_key_rounded,
+      label: 'Claves',
+    ),
   ];
 
   @override
