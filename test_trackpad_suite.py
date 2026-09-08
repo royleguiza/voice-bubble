@@ -267,17 +267,22 @@ with open(dart_settings_path, "r", encoding="utf-8") as f:
 teclado_tab_path = os.path.join(WORKSPACE, "app_source/lib/screens/settings/teclado_tab.dart")
 with open(teclado_tab_path, "r", encoding="utf-8") as f:
     teclado_content = f.read()
+# SPK-06 mod5: tarjeta trackpad vive en settings/trackpad_tab.dart
+trackpad_tab_path = os.path.join(WORKSPACE, "app_source/lib/screens/settings/trackpad_tab.dart")
+with open(trackpad_tab_path, "r", encoding="utf-8") as f:
+    trackpad_content = f.read()
+trackpad_combined = settings_content + trackpad_content
 
-check("SettingsScreen tiene tarjeta 'Modo Trackpad y Puntero Virtual'", "Modo Trackpad y Puntero Virtual" in settings_content)
-check("SettingsScreen tiene selector de distribución de botones de clic (top, wings)", "kb-trackpad-button-layout-selector" in settings_content)
+check("SettingsScreen tiene tarjeta 'Modo Trackpad y Puntero Virtual'", "Modo Trackpad y Puntero Virtual" in trackpad_combined)
+check("SettingsScreen tiene selector de distribución de botones de clic (top, wings)", "kb-trackpad-button-layout-selector" in trackpad_combined)
 check("SettingsScreen tiene selector de modo trackpad en barra espaciadora", "kb-spacebar-trackpad-mode-selector" in settings_content or "kb-spacebar-trackpad-mode-selector" in teclado_content)
-check("SettingsScreen tiene selector de posición de scroll (right, left, disabled)", "kb-trackpad-scroll-position-selector" in settings_content)
-check("SettingsScreen tiene slider de sensibilidad (0.5 a 2.5)", "kb-trackpad-sensitivity-slider" in settings_content)
-check("SettingsScreen tiene selector de curva de aceleración", "kb-trackpad-accel-curve-selector" in settings_content)
-check("SettingsScreen tiene selector de clic secundario", "kb-trackpad-secondary-click-selector" in settings_content)
-check("SettingsScreen tiene selector de dirección de scroll", "kb-trackpad-scroll-direction-selector" in settings_content)
-check("SettingsScreen tiene selector de estilo de puntero", "kb-trackpad-pointer-style-selector" in settings_content)
-check("SettingsScreen tiene selector de auto-retorno por inactividad", "kb-trackpad-auto-return-selector" in settings_content)
+check("SettingsScreen tiene selector de posición de scroll (right, left, disabled)", "kb-trackpad-scroll-position-selector" in trackpad_combined)
+check("SettingsScreen tiene slider de sensibilidad (0.5 a 2.5)", "kb-trackpad-sensitivity-slider" in trackpad_combined)
+check("SettingsScreen tiene selector de curva de aceleración", "kb-trackpad-accel-curve-selector" in trackpad_combined)
+check("SettingsScreen tiene selector de clic secundario", "kb-trackpad-secondary-click-selector" in trackpad_combined)
+check("SettingsScreen tiene selector de dirección de scroll", "kb-trackpad-scroll-direction-selector" in trackpad_combined)
+check("SettingsScreen tiene selector de estilo de puntero", "kb-trackpad-pointer-style-selector" in trackpad_combined)
+check("SettingsScreen tiene selector de auto-retorno por inactividad", "kb-trackpad-auto-return-selector" in trackpad_combined)
 
 # --- TEST 10: Vector drawables y recursos ---
 drawable_tp = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_trackpad.xml")
@@ -405,14 +410,14 @@ check("FloatingTrackpadService lee kb_trackpad_haptic como String (sin getBoolea
 # promete inyección/clics en otras apps (el despacho nativo exige el
 # servicio conectado y degrada por fallback local).
 check("UI del trackpad describe capa dentro del teclado",
-      "Habilita la capa de trackpad con puntero de mouse en el teclado." in settings_content
-      and "Controla un puntero virtual en pantalla con aceleración cinemática" in settings_content,
+      "Habilita la capa de trackpad con puntero de mouse en el teclado." in trackpad_combined
+      and "Controla un puntero virtual en pantalla con aceleración cinemática" in trackpad_combined,
       "Faltan los textos honestos de la tarjeta de trackpad")
 check("UI del trackpad sin promesas de clics en otra app",
-      "inyecta" not in settings_content
-      and "clic en otra" not in settings_content
-      and "clics en otra" not in settings_content
-      and "controla otras" not in settings_content,
+      "inyecta" not in trackpad_combined
+      and "clic en otra" not in trackpad_combined
+      and "clics en otra" not in trackpad_combined
+      and "controla otras" not in trackpad_combined,
       "La UI promete interacción fuera de la app")
 check("VoiceKeyboardService degrada sin accesibilidad (gate isConnected)",
       "if (VoiceBubbleAccessibilityService.isConnected())" in vk_content,
