@@ -741,7 +741,7 @@ class _HomeScreenState extends State<HomeScreen>
                           borderRadius: kBorderRadiusCapsule,
                           small: true,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                              horizontal: 16, vertical: 14),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
