@@ -1,6 +1,5 @@
 package com.royleguiza.voicebubblestt
 
-import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -37,12 +36,7 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
-import android.content.ClipDescription
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
-import androidx.core.view.inputmethod.EditorInfoCompat
-import androidx.core.view.inputmethod.InputConnectionCompat
-import androidx.core.view.inputmethod.InputContentInfoCompat
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.abs
@@ -56,7 +50,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -137,30 +131,21 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private val handler = Handler(Looper.getMainLooper())
 
     // --- Portapapeles Multimodal (Opción 2: Cinta Horizontal Deslizable) ---
-    private lateinit var clipboardStore: ClipboardStore
+    private lateinit var clipboard: ClipboardLayer
     private lateinit var kbPrefs: KeyboardPrefs
     private lateinit var transcriptionRepo: TranscriptionHistoryRepository
-    private var clipboardFilmstripView: ClipboardFilmstripLayout? = null
-    private var isFilmstripExpanded = false
-
-    private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
-        handlePrimaryClipChanged()
-    }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
-        clipboardStore = ClipboardStore(this)
         kbPrefs = KeyboardPrefs(this)
+        clipboard = ClipboardLayer(this, handler, this)
+        clipboard.onCreate()
         trackpad = TrackpadBridge(this, kbPrefs, this)
         transcriptionRepo = TranscriptionHistoryRepository(this)
         dictation = DictationController(this, handler, this)
         // Historial persistente FIFO-20: sin purga (borraba lo dictado con
         // la píldora/la app cada vez que el IME se recreaba).
-        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        try {
-            cm?.addPrimaryClipChangedListener(clipboardListener)
-        } catch (_: Exception) {}
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
@@ -237,10 +222,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             deactivateShift()
             ctrlActive = false
             altActive = false
-            isFilmstripExpanded = false
         }
         // Sincronizar clips copiados mientras el teclado estaba cerrado.
-        handlePrimaryClipChanged()
+        if (::clipboard.isInitialized) clipboard.onStartInputView(restarting)
         rebuild()
         root.requestApplyInsets()
     }
@@ -270,21 +254,12 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
 
     override fun onDestroy() {
-        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        try {
-            cm?.removePrimaryClipChangedListener(clipboardListener)
-        } catch (_: Exception) {}
+        if (::clipboard.isInitialized) clipboard.onDestroy()
         dictation.onDestroy()
         cancelPendingKeyGestures()
         handler.removeCallbacksAndMessages(null)
         dismissPopup()
         if (::trackpad.isInitialized) trackpad.destroy()
-        // K5-T5: destruccion del servicio con dictado vivo = grabacion fantasma.
-        try {
-            if (::clipboardStore.isInitialized) {
-                clipboardStore.shutdown()
-            }
-        } catch (_: Exception) {}
         if (instance === this) {
             instance = null
         }
@@ -335,14 +310,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (toolbar != null) {
             addRow(toolbar)
         }
-        val filmstrip = buildClipboardFilmstrip()
-        clipboardFilmstripView = filmstrip
-        if (isFilmstripExpanded) {
-            filmstrip.visibility = View.VISIBLE
-            loadFilmstripAsync(filmstrip)
-        } else {
-            filmstrip.visibility = View.GONE
-        }
+        val filmstrip = clipboard.buildFilmstrip()
         addRow(filmstrip)
 
         if (layer == Layer.TRACKPAD) {
@@ -434,20 +402,15 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             1.0f,
             if (spanishMode) "portapapeles" else "clipboard",
         ) {
-            toggleClipboardFilmstrip()
+            clipboard.toggle()
         }
         attachLongPress(
             btnPaste,
             onLongPress = {
-                val latest = clipboardStore.getLatestClip()
-                if (latest != null) {
-                    pasteClip(latest, autoClose = false)
-                } else {
-                    toggleClipboardFilmstrip()
-                }
+                clipboard.pasteLatestOrToggle()
             },
             onTapUp = {
-                toggleClipboardFilmstrip()
+                clipboard.toggle()
             }
         )
         items.add(btnPaste)
@@ -750,8 +713,12 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
     }
 
-    // --- TrackpadBridge.UiHost (SPK-05 módulo 6): currentLayer/isPasswordField
-    // ya existen arriba y sirven a las tres interfaces (misma firma).
+    // --- TrackpadBridge.UiHost (módulo 6) + ClipboardLayer.UiHost (módulo 7):
+    // currentLayer/isPasswordField/isSpanish/rootView/haptic ya existen
+    // arriba y sirven a las cuatro interfaces (misma firma, una sola impl).
+    override fun commitText(text: String) {
+        commit(text)
+    }
     override fun setLayer(next: Layer) {
         layer = next
     }
@@ -2318,192 +2285,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         )
     }
 
-    /** Copia al portapapeles del sistema; accion iniciada por el usuario. */
-    // ------------------------------------------------------------------
-    // Gestor de Portapapeles Multimodal (Opción 2: Filmstrip Reel)
-    // ------------------------------------------------------------------
-
-    private fun handlePrimaryClipChanged() {
-        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
-        if (!cm.hasPrimaryClip()) return
-
-        val clipData = try {
-            cm.primaryClip
-        } catch (_: Exception) {
-            null
-        } ?: return
-
-        if (clipData.itemCount == 0) return
-
-        val item = clipData.getItemAt(0)
-        val description = clipData.description
-
-        // Privacidad: ignorar clips marcados como confidenciales (passwords, OTPs, etc.)
-        if (description != null) {
-            val isSensitive = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                description.extras?.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE, false) ?: false
-            } else {
-                description.extras?.getBoolean("android.content.extra.IS_SENSITIVE", false) ?: false
-            }
-            if (isSensitive) return
-        }
-
-        if (description != null && description.hasMimeType("image/*") && item.uri != null) {
-            val mime = description.getMimeType(0) ?: "image/png"
-            clipboardStore.addImageClip(item.uri, mime) {
-                handler.post { refreshFilmstripIfVisible() }
-            }
-        } else {
-            val text = item.text?.toString() ?: item.coerceToText(this)?.toString()
-            if (!text.isNullOrEmpty()) {
-                clipboardStore.addTextClip(text) {
-                    handler.post { refreshFilmstripIfVisible() }
-                }
-            }
-        }
-    }
-
-    private fun buildClipboardFilmstrip(): ClipboardFilmstripLayout {
-        return ClipboardFilmstripLayout(
-            context = this,
-            store = clipboardStore,
-            onClipClicked = { clip ->
-                pasteClip(clip, autoClose = true)
-            },
-            onClipLongClicked = { clip, _ ->
-                clipboardStore.togglePin(clip.id)
-                refreshFilmstripIfVisible()
-            },
-            onClearClicked = {
-                clipboardStore.clearAllUnpinned()
-                refreshFilmstripIfVisible()
-            }
-        )
-    }
-
-    private fun toggleClipboardFilmstrip() {
-        isFilmstripExpanded = !isFilmstripExpanded
-        val container = clipboardFilmstripView ?: return
-        val parentGroup = container.parent as? ViewGroup
-
-        if (!reducedMotion() && parentGroup != null) {
-            try {
-                val transition = TransitionSet().apply {
-                    ordering = TransitionSet.ORDERING_TOGETHER
-                    addTransition(ChangeBounds().apply {
-                        duration = 200L
-                        interpolator = DecelerateInterpolator()
-                    })
-                    addTransition(Fade().apply { duration = 150L })
-                }
-                TransitionManager.beginDelayedTransition(parentGroup, transition)
-            } catch (_: Exception) {}
-        }
-
-        if (isFilmstripExpanded) {
-            container.visibility = View.VISIBLE
-            loadFilmstripAsync(container)
-        } else {
-            container.visibility = View.GONE
-        }
-    }
-
-    /**
-     * Carga de clips fuera del main (I/O de disco vía BackgroundWork) con
-     * render en el main solo si la vista sigue vigente y expandida: un
-     * rebuild en el medio no debe pintar sobre el filmstrip descartado.
-     */
-    private fun loadFilmstripAsync(target: ClipboardFilmstripLayout) {
-        BackgroundWork.executeWithResult(
-            block = {
-                try {
-                    clipboardStore.loadItems()
-                } catch (_: Exception) {
-                    emptyList()
-                }
-            },
-            onResult = { clips ->
-                if (isFilmstripExpanded && clipboardFilmstripView === target) {
-                    try {
-                        target.renderClips(clips ?: emptyList())
-                    } catch (_: Exception) {}
-                }
-            }
-        )
-    }
-
-    private fun refreshFilmstripIfVisible() {
-        if (isFilmstripExpanded) {
-            clipboardFilmstripView?.let { loadFilmstripAsync(it) }
-        }
-    }
-
-    private fun pasteClip(clip: ClipboardItem, autoClose: Boolean = true) {
-        haptic(root)
-        when (clip.type) {
-            ClipType.TEXT, ClipType.CODE, ClipType.MATH, ClipType.URL -> {
-                clip.text?.let { commit(it) }
-                if (autoClose && isFilmstripExpanded) {
-                    toggleClipboardFilmstrip()
-                }
-            }
-            ClipType.IMAGE -> {
-                commitImageClip(clip, autoClose)
-            }
-        }
-    }
-
-    private fun commitImageClip(clip: ClipboardItem, autoClose: Boolean) {
-        val file = clipboardStore.getMediaFile(clip)
-        if (file == null) {
-            showClipboardNotice(if (spanishMode) "Imagen no disponible" else "Image unavailable")
-            return
-        }
-
-        val editorInfo = currentInputEditorInfo
-        val inputConnection = currentInputConnection
-        if (editorInfo == null || inputConnection == null) return
-
-        val supportedMimes = try {
-            EditorInfoCompat.getContentMimeTypes(editorInfo)
-        } catch (_: Exception) {
-            emptyArray<String>()
-        }
-
-        val isSupported = supportedMimes.any { mime ->
-            ClipDescription.compareMimeTypes(clip.mimeType, mime)
-        }
-
-        if (isSupported) {
-            try {
-                val contentUri = FileProvider.getUriForFile(
-                    this,
-                    "${packageName}.clipboardfileprovider",
-                    file
-                )
-                val description = ClipDescription("Clipboard Image", arrayOf(clip.mimeType))
-                val inputContentInfo = InputContentInfoCompat(contentUri, description, null)
-                val flags = InputConnectionCompat.INPUT_CONTENT_GRANT_READ_URI_PERMISSION
-
-                val success = InputConnectionCompat.commitContent(
-                    inputConnection,
-                    editorInfo,
-                    inputContentInfo,
-                    flags,
-                    null
-                )
-                if (!success) {
-                    showClipboardNotice(if (spanishMode) "La app no aceptó la imagen" else "App rejected image")
-                } else if (autoClose && isFilmstripExpanded) {
-                    toggleClipboardFilmstrip()
-                }
-            } catch (_: Exception) {
-                showClipboardNotice(if (spanishMode) "Error al insertar imagen" else "Error inserting image")
-            }
-        } else {
-            showClipboardNotice(if (spanishMode) "Este campo no acepta imágenes" else "Field does not support images")
-        }
-    }
+    /** Shell SPK-05: el portapapeles vive en ClipboardLayer; aquí solo commit(). */
 
     // ------------------------------------------------------------------
     // Acentos por toque largo y pares auto-cerrados
