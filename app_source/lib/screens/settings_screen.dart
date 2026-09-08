@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
 import 'credentials_screen.dart';
 import 'settings/burbuja_tab.dart';
+import 'settings/inicio_tab.dart';
 import 'settings/snippets_tab.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
@@ -758,252 +759,27 @@ class _SettingsScreenState extends State<SettingsScreen>
   /// Inicio v1 (laboratorio-ui): API Key como botón-estado + grabación +
   /// modelo + accesos a Burbuja/Teclado + Acerca como sheet. Sin laberinto.
   Widget _buildInicioTab(BuildContext context) {
-    final theme = Theme.of(context);
-    final variantColor = theme.colorScheme.onSurfaceVariant;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-      children: [
-        _buildApiKeyCard(context),
-        const SizedBox(height: 16),
-        Text(
-          'Modo de grabación',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        SegmentedButton<String>(
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(
-              value: StorageService.defaultRecordMode,
-              label: Text('Toque'),
-            ),
-            ButtonSegment(
-              value: StorageService.recordModeHold,
-              label: Text('Mantener'),
-            ),
-          ],
-          selected: {_recordMode},
-          onSelectionChanged: (modes) => _saveRecordMode(modes.first),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _recordMode == StorageService.recordModeHold
-              ? 'Mantén presionado para grabar y suelta para transcribir.'
-              : 'Toca para iniciar y vuelve a tocar para transcribir.',
-          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
-        ),
-        const SizedBox(height: 24),
-        const Divider(),
-        const SizedBox(height: 16),
-        Text(
-          'Modelo de transcripcion',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.cloud,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Modo Cloud',
-                        style: theme.textTheme.titleSmall,
-                      ),
-                      Text(
-                        'Groq Whisper Large V3 (whisper-large-v3)',
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                key: const ValueKey('inicio-go-burbuja'),
-                icon: const Icon(Icons.chat_bubble_outline_rounded),
-                label: Text(
-                  _isBubbleEnabled ? 'Burbuja activada' : 'Burbuja',
-                ),
-                onPressed: () => _selectTab(1),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                key: const ValueKey('inicio-go-teclado'),
-                icon: const Icon(Icons.keyboard_outlined),
-                label: const Text('Teclado'),
-                onPressed: () => _selectTab(2),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          key: const ValueKey('about-open-button'),
-          icon: const Icon(Icons.info_outline_rounded),
-          label: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Acerca de VoiceBubble'),
-              Text(
-                'Versión, privacidad y qué hace la app',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
-              ),
-            ],
-          ),
-          onPressed: _showAboutSheet,
-        ),
-      ],
-    );
-  }
-
-  /// Tarjeta API Key como botón-estado (paridad prototipo v1):
-  /// vacía → CTA; editando → campo con validación; guardada → botón verde
-  /// con cola enmascarada + detalle Cambiar/Borrar. Preserva espejo D7.
-  Widget _buildApiKeyCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final variantColor = theme.colorScheme.onSurfaceVariant;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.key_rounded,
-                  color: _hasApiKey
-                      ? Colors.green
-                      : theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'API Key de Groq',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                if (_hasApiKey && !_isEditingApiKey)
-                  const Icon(Icons.check_circle, color: Colors.green),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Necesaria para el modo Cloud. Obtén tu clave en console.groq.com',
-              style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
-            ),
-            const SizedBox(height: 12),
-            if (!_hasApiKey && !_isEditingApiKey) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  key: const ValueKey('api-cta-button'),
-                  onPressed: _startApiEdit,
-                  child: const Text('Ingresa tu API Key'),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Tócalo para habilitar el campo, pégala y guárdala.',
-                style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
-              ),
-            ],
-            if (_isEditingApiKey) ...[
-              TextField(
-                controller: _apiKeyController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: 'gsk_...',
-                  border: const OutlineInputBorder(),
-                  errorText: _apiKeyError,
-                  suffixIcon: _hasApiKey
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _cancelApiEdit,
-                      child: const Text('Cancelar'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.save),
-                      label: const Text('Guardar'),
-                      onPressed: _saveApiKey,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            if (_hasApiKey && !_isEditingApiKey) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.tonalIcon(
-                  key: const ValueKey('api-loaded-button'),
-                  icon: const Icon(Icons.check_circle, color: Colors.green),
-                  label: Text('API Key cargada $_apiKeyTail'),
-                  onPressed: () {
-                    if (mounted) {
-                      setState(() => _showApiDetail = !_showApiDetail);
-                    }
-                  },
-                ),
-              ),
-              if (_showApiDetail) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'Oculta por seguridad. Solo se muestran los últimos 4 caracteres.',
-                  style:
-                      theme.textTheme.bodySmall?.copyWith(color: variantColor),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _startApiEdit,
-                        child: const Text('Cambiar'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Borrar'),
-                        onPressed: _clearApiKey,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ],
-          ],
-        ),
-      ),
+    return InicioTab(
+      hasApiKey: _hasApiKey,
+      isEditingApiKey: _isEditingApiKey,
+      apiKeyController: _apiKeyController,
+      apiKeyError: _apiKeyError,
+      showApiDetail: _showApiDetail,
+      apiKeyTail: _apiKeyTail,
+      onStartApiEdit: _startApiEdit,
+      onCancelApiEdit: _cancelApiEdit,
+      onSaveApiKey: _saveApiKey,
+      onClearApiKey: _clearApiKey,
+      onToggleApiDetail: () {
+        if (mounted) {
+          setState(() => _showApiDetail = !_showApiDetail);
+        }
+      },
+      recordMode: _recordMode,
+      onSaveRecordMode: _saveRecordMode,
+      isBubbleEnabled: _isBubbleEnabled,
+      onSelectTab: _selectTab,
+      onShowAboutSheet: _showAboutSheet,
     );
   }
 
