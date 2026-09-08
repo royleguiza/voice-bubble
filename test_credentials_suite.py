@@ -37,8 +37,10 @@ def log_lines_with(content, *words):
 def main():
     suite = Suite()
     vks = read(os.path.join(KT, "VoiceKeyboardService.kt"))
-    # SPK-05: los enums viven en KeyboardTypes.kt (mismo paquete).
+    # SPK-05: los enums viven en KeyboardTypes.kt y la capa en
+    # CredentialsLayer.kt (mismo paquete).
     types = read(os.path.join(KT, "KeyboardTypes.kt"))
+    creds = read(os.path.join(KT, "CredentialsLayer.kt"))
     store = read(os.path.join(KT, "CredentialStore.kt"))
     model = read("app_source/lib/models/credential.dart")
     storage = read("app_source/lib/services/storage_service.dart")
@@ -129,7 +131,7 @@ def main():
                 and "SNIPPETS, TRACKPAD, CREDENTIALS" in vks + types,
                 "Falta la capa")
     suite.check("Botón llave en toolbar", "R.drawable.ic_key" in vks and
-                "toggleCredentialsLayer" in vks, "Falta el botón")
+                "credentials.toggle()" in vks, "Falta el botón")
     suite.check("Llave visible en campos password",
                 "tambien en contraseñas" in vks,
                 "La llave debe vivir en el login")
@@ -138,11 +140,11 @@ def main():
                 "CREDENTIALS" not in vks.split("TRACKPAD || layer == Layer.SNIPPETS")[0].split("\n")[-1],
                 "Guard de password mata la capa")
     suite.check("Relleno usuario+TAB+clave diferida",
-                "fillCredential" in vks and "KEYCODE_TAB" in vks and
-                "postDelayed" in vks and "250L" in vks,
+                "private fun fill(" in creds and "KEYCODE_TAB" in creds and
+                "postDelayed" in creds and "250L" in creds,
                 "Falta la secuencia de relleno")
     suite.check("Tras pegar vuelve a la capa origen",
-                "layer = layerBeforeCredentials" in vks,
+                "host.showLayer(origin)" in creds,
                 "No vuelve al origen")
     suite.check("?123 muestra ABC en CREDENTIALS",
                 "Layer.CREDENTIALS -> \"ABC\"" in vks,

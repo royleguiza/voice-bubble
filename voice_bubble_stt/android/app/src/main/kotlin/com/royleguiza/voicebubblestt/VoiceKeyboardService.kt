@@ -63,7 +63,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService() {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -135,7 +135,7 @@ class VoiceKeyboardService : InputMethodService() {
     private lateinit var snippetStore: SnippetStore
     // Claves: solo lectura desde Ajustes; el teclado jamas escribe ni borra.
     private lateinit var credentialStore: CredentialStore
-    private var layerBeforeCredentials = Layer.LETTERS
+    private lateinit var credentials: CredentialsLayer
     private var layerBeforeSnippets = Layer.LETTERS
     private var snippetsSeedAttempted = false
     private var snippetQuery = ""
@@ -232,6 +232,7 @@ class VoiceKeyboardService : InputMethodService() {
         sttClient = SpeechToTextClient(this) { spanishMode }
         snippetStore = SnippetStore(this)
         credentialStore = CredentialStore(this)
+        credentials = CredentialsLayer(this, credentialStore, handler, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -480,7 +481,7 @@ class VoiceKeyboardService : InputMethodService() {
             if (spanishMode) "credenciales" else "credentials",
             tintColorRes = if (layer == Layer.CREDENTIALS) R.color.kb_label_on_accent else R.color.kb_label,
         ) {
-            toggleCredentialsLayer()
+            credentials.toggle()
         }
         items.add(btnCredentials)
 
@@ -2427,158 +2428,26 @@ class VoiceKeyboardService : InputMethodService() {
      * dedo y cada fila pega directo. La password JAMAS se muestra ni se
      * registra en Log: solo nombre (+usuario si el usuario lo activo).
      */
-    private fun toggleCredentialsLayer() {
-        if (layer == Layer.CREDENTIALS) {
-            layer = layerBeforeCredentials
-            rebuild()
-            return
-        }
-        layerBeforeCredentials = layer
-        layer = Layer.CREDENTIALS
-        rebuild()
-    }
-
-    /** Lista compacta de credenciales: avatar + nombre (+usuario) + pegar. */
+    /** Shell SPK-05: la capa vive en CredentialsLayer; aquí solo el compacto. */
     private fun buildCredentialRows() {
-        val entries = credentialStore.loadIndex()
-        val showUser = credentialStore.getShowUser()
-        if (entries.isEmpty()) {
-            val empty = TextView(this).apply {
-                text = if (spanishMode) "Sin claves. Guárdalas en Ajustes → Claves." else "No credentials. Save them in Settings → Claves."
-                gravity = Gravity.CENTER
-                setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
-                setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13f)
-            }
-            val lp = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                scaleV(dimen(R.dimen.kb_snippets_grid_height)),
-            )
-            lp.topMargin = rowGapPx()
-            root.addView(empty, lp)
-            return
-        }
-        val scroll = ScrollView(this).apply {
-            isVerticalScrollBarEnabled = true
-        }
-        val list = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        for (entry in entries) {
-            list.addView(buildCredentialRow(entry, showUser))
-        }
-        scroll.addView(list)
-        val lp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            scaleV(dimen(R.dimen.kb_snippets_grid_height)),
-        )
-        lp.topMargin = rowGapPx()
-        root.addView(scroll, lp)
+        credentials.buildRows(root)
         // Teclado compacto debajo (letras) para no dejar la capa vacia.
         addRow(letterRow("qwertyuiop"))
     }
 
-    private fun buildCredentialRow(entry: VbCredentialEntry, showUser: Boolean): View {
-        val pad = dimen(R.dimen.kb_popup_padding)
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setBackgroundResource(R.drawable.kb_menu_item)
-            setPadding(pad, pad / 2, pad, pad / 2)
-            isClickable = true
-            isFocusable = true
-        }
-        val avatar = TextView(this).apply {
-            text = entry.nombre.firstOrNull()?.uppercaseChar()?.toString() ?: "•"
-            gravity = Gravity.CENTER
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-            setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f)
-            setTypeface(null, Typeface.BOLD)
-        }
-        val avatarSize = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 34f, resources.displayMetrics,
-        ).toInt()
-        row.addView(avatar, LinearLayout.LayoutParams(avatarSize, avatarSize))
-
-        val meta = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        val name = TextView(this).apply {
-            text = entry.nombre
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.END
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-            setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
-            setTypeface(null, Typeface.BOLD)
-        }
-        meta.addView(name)
-        if (showUser) {
-            val user = TextView(this).apply {
-                text = entry.usuario
-                maxLines = 1
-                ellipsize = TextUtils.TruncateAt.END
-                setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
-                setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
-            }
-            meta.addView(user)
-        }
-        val metaLp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        val metaMargin = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 10f, resources.displayMetrics,
-        ).toInt()
-        metaLp.marginStart = metaMargin
-        row.addView(meta, metaLp)
-
-        val paste = ImageView(this).apply {
-            setImageResource(R.drawable.ic_paste)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            isClickable = true
-            isFocusable = true
-            setBackgroundResource(R.drawable.kb_key_accent)
-            setColorFilter(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_on_accent))
-            contentDescription = if (spanishMode) "pegar ${entry.nombre}" else "paste ${entry.nombre}"
-        }
-        val touchMin = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 44f, resources.displayMetrics,
-        ).toInt()
-        row.addView(paste, LinearLayout.LayoutParams(touchMin, touchMin))
-        val fill = { fillCredential(entry) }
-        attachFastKeyTouch(paste, fill)
-        row.setOnClickListener { fill() }
-        val rowLp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        )
-        rowLp.topMargin = dimen(R.dimen.kb_key_gap) / 2
-        row.layoutParams = rowLp
-        return row
-    }
-
-    /**
-     * Relleno usuario+contraseña ante el toque explicito (unico uso de la
-     * password en memoria: nunca se muestra, nunca se loguea).
-     * - Foco en campo de contraseña: solo la clave.
-     * - Otro foco (usuario): usuario, TAB al siguiente campo y clave
-     *   diferida 250 ms (patron de navegadores y apps de login).
-     */
-    private fun fillCredential(entry: VbCredentialEntry) {
-        haptic(root)
-        val password = credentialStore.getPassword(entry.id)
-        if (password.isNullOrEmpty()) return
-        if (currentIsPasswordField) {
-            currentInputConnection?.commitText(password, 1)
-        } else {
-            currentInputConnection?.commitText(entry.usuario, 1)
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB)
-            handler.postDelayed({
-                if (instance === this) {
-                    currentInputConnection?.commitText(password, 1)
-                }
-            }, 250L)
-        }
-        layer = layerBeforeCredentials
+    // --- CredentialsLayer.UiHost (SPK-05 módulo 3): 9 delegaciones de una línea. ---
+    override fun currentLayer(): Layer = layer
+    override fun showLayer(next: Layer) {
+        layer = next
         rebuild()
     }
+    override fun tapFeedback() = haptic(root)
+    override fun isSpanish(): Boolean = spanishMode
+    override fun isPasswordField(): Boolean = currentIsPasswordField
+    override fun isServiceAlive(): Boolean = instance === this
+    override fun attachTap(view: View, onTap: () -> Unit) = attachFastKeyTouch(view, onTap)
+    override fun scaledDimen(resId: Int): Int = scaleV(dimen(resId))
+    override fun rowGap(): Int = rowGapPx()
 
     private fun openSnippetEditor(snippet: VbSnippet?) {
         dismissPopup()
