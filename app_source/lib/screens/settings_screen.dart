@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
 import 'credentials_screen.dart';
+import 'settings/burbuja_tab.dart';
 import 'settings/snippets_tab.dart';
 import '../services/storage_service.dart';
 import '../services/floating_bubble_service.dart';
@@ -1008,64 +1009,14 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   /// Burbuja v1: sección independiente (antes mezclada en General).
   /// Preserva switches + diálogo de permiso de _toggleBubble.
+  /// SPK-06 módulo 2: delega a BurbujaTab sin cambiar conducta.
   Widget _buildBurbujaTab(BuildContext context) {
-    final theme = Theme.of(context);
-    final variantColor = theme.colorScheme.onSurfaceVariant;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-      children: [
-        Text(
-          'Burbuja flotante',
-          style: theme.textTheme.titleMedium,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Sección independiente. Flota sobre otras apps para dictar.',
-          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
-        ),
-        const SizedBox(height: 8),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Activar burbuja flotante'),
-          subtitle: const Text(
-            'Flota sobre otras aplicaciones para transcribir y copiar texto al instante.',
-          ),
-          value: _isBubbleEnabled,
-          onChanged: _toggleBubble,
-        ),
-        SwitchListTile(
-          key: const ValueKey('bubble-history-switch'),
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Historial en la burbuja'),
-          subtitle: const Text(
-            'El toque largo sobre la burbuja abre el historial con morph inteligente. Apagado: el toque largo no hace nada.',
-          ),
-          value: _showBubbleHistory,
-          onChanged: _toggleBubbleHistory,
-        ),
-        const SizedBox(height: 16),
-        const Divider(),
-        const SizedBox(height: 8),
-        Text(
-          'Permiso de superposición',
-          style: theme.textTheme.titleSmall,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Android exige permitir “mostrar sobre otras apps”. Sin esto la burbuja no puede flotar.',
-          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: _reviewOverlayPermission,
-          child: const Text('Revisar'),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Guía rápida: arrastra la burbuja para moverla · tócala para grabar y vuelve a tocarla para transcribir.',
-          style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
-        ),
-      ],
+    return BurbujaTab(
+      isBubbleEnabled: _isBubbleEnabled,
+      onToggleBubble: _toggleBubble,
+      showBubbleHistory: _showBubbleHistory,
+      onToggleBubbleHistory: _toggleBubbleHistory,
+      onReviewOverlayPermission: _reviewOverlayPermission,
     );
   }
 
