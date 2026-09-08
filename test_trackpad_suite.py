@@ -263,10 +263,14 @@ check("StorageService acota get/setTrackpadSensitivity a [0.5, 2.5] centralizado
 dart_settings_path = os.path.join(WORKSPACE, "app_source/lib/screens/settings_screen.dart")
 with open(dart_settings_path, "r", encoding="utf-8") as f:
     settings_content = f.read()
+# SPK-06 mod4: selector spacebar vive en settings/teclado_tab.dart
+teclado_tab_path = os.path.join(WORKSPACE, "app_source/lib/screens/settings/teclado_tab.dart")
+with open(teclado_tab_path, "r", encoding="utf-8") as f:
+    teclado_content = f.read()
 
 check("SettingsScreen tiene tarjeta 'Modo Trackpad y Puntero Virtual'", "Modo Trackpad y Puntero Virtual" in settings_content)
 check("SettingsScreen tiene selector de distribución de botones de clic (top, wings)", "kb-trackpad-button-layout-selector" in settings_content)
-check("SettingsScreen tiene selector de modo trackpad en barra espaciadora", "kb-spacebar-trackpad-mode-selector" in settings_content)
+check("SettingsScreen tiene selector de modo trackpad en barra espaciadora", "kb-spacebar-trackpad-mode-selector" in settings_content or "kb-spacebar-trackpad-mode-selector" in teclado_content)
 check("SettingsScreen tiene selector de posición de scroll (right, left, disabled)", "kb-trackpad-scroll-position-selector" in settings_content)
 check("SettingsScreen tiene slider de sensibilidad (0.5 a 2.5)", "kb-trackpad-sensitivity-slider" in settings_content)
 check("SettingsScreen tiene selector de curva de aceleración", "kb-trackpad-accel-curve-selector" in settings_content)

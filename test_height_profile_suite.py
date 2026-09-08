@@ -28,11 +28,15 @@ def test_settings_screen():
     screen_file = "app_source/lib/screens/settings_screen.dart"
     with open(screen_file, "r", encoding="utf-8") as f:
         screen_content = f.read()
+    # SPK-06 mod4: SegmentedButton vive en settings/teclado_tab.dart
+    with open("app_source/lib/screens/settings/teclado_tab.dart", "r", encoding="utf-8") as f:
+        teclado_content = f.read()
+    combined = screen_content + teclado_content
 
-    assert "ButtonSegment(value: 'baja', label: Text('Baja'))" in screen_content
-    assert "ButtonSegment(value: 'media', label: Text('Media'))" in screen_content
-    assert "ButtonSegment(value: 'alta', label: Text('Alta'))" in screen_content
-    assert "ButtonSegment(value: 'muy_alta', label: Text('Muy alta'))" in screen_content
+    assert "ButtonSegment(value: 'baja', label: Text('Baja'))" in combined
+    assert "ButtonSegment(value: 'media', label: Text('Media'))" in combined
+    assert "ButtonSegment(value: 'alta', label: Text('Alta'))" in combined
+    assert "ButtonSegment(value: 'muy_alta', label: Text('Muy alta'))" in combined
     assert "case 'muy_alta':" in screen_content
     print("  [PASS] SegmentedButton y hint text configurados para 4 niveles de altura.")
 

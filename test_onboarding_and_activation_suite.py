@@ -38,13 +38,16 @@ def test_settings_screen_lifecycle_and_mic():
     path = "app_source/lib/screens/settings_screen.dart"
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
+    # SPK-06 mod4: UI Teclado vive en settings/teclado_tab.dart
+    with open("app_source/lib/screens/settings/teclado_tab.dart", "r", encoding="utf-8") as f:
+        teclado = f.read()
 
     assert "with WidgetsBindingObserver" in content, "SettingsScreen no implementa WidgetsBindingObserver"
     assert "didChangeAppLifecycleState" in content, "SettingsScreen no implementa didChangeAppLifecycleState"
     assert "_handleAppResumed" in content, "SettingsScreen no implementa _handleAppResumed"
     assert "_showInputMethodPicker" in content, "SettingsScreen no implementa _showInputMethodPicker"
     assert "_ensureMicrophonePermission" in content, "SettingsScreen no solicita permiso de micrófono"
-    assert "Seleccionar VoiceBubble como teclado" in content, "Falta botón directo de selección modal"
+    assert "Seleccionar VoiceBubble como teclado" in content or "Seleccionar VoiceBubble como teclado" in teclado, "Falta botón directo de selección modal"
     print("  [PASS] SettingsScreen.dart cuenta con ciclo de vida, modal nativo y petición de micrófono.")
 
 def test_home_screen_mic_request():
