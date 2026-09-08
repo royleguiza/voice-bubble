@@ -48,6 +48,58 @@ class StorageService {
     return await SharedPreferences.getInstance();
   }
 
+  // --- Puente tipado SPK-07: 4 primitivas + validadas (única vía de
+  // acceso a prefs planas; cada clave nueva usa estas y entra en
+  // [bridgeKeys], que el master verifica contra contract-keys.txt) ---
+  Future<bool> _getBool(String key, bool def) async =>
+      (await _prefs()).getBool(key) ?? def;
+  Future<void> _setBool(String key, bool value) async {
+    await (await _prefs()).setBool(key, value);
+  }
+
+  Future<String> _getString(String key, String def) async =>
+      (await _prefs()).getString(key) ?? def;
+  Future<void> _setString(String key, String value) async {
+    await (await _prefs()).setString(key, value);
+  }
+
+  Future<int> _getInt(String key, int def) async =>
+      (await _prefs()).getInt(key) ?? def;
+  Future<void> _setInt(String key, int value) async {
+    await (await _prefs()).setInt(key, value);
+  }
+
+  Future<double> _getDouble(String key, double def) async =>
+      (await _prefs()).getDouble(key) ?? def;
+  Future<void> _setDouble(String key, double value) async {
+    await (await _prefs()).setDouble(key, value);
+  }
+
+  /// Lectura validada contra dominio: valor ausente o inválido cae al
+  /// default (nunca null, nunca basura en el IME).
+  Future<String> _getValidatedString(
+          String key, List<String> valid, String def) async {
+    final val = (await _prefs()).getString(key);
+    return valid.contains(val) ? val! : def;
+  }
+
+  Future<void> _setValidatedString(
+      String key, List<String> valid, String value) async {
+    if (!valid.contains(value)) return;
+    await (await _prefs()).setString(key, value);
+  }
+
+  Future<int> _getValidatedInt(String key, List<int> valid, int def) async {
+    final val = (await _prefs()).getInt(key);
+    return valid.contains(val) ? val! : def;
+  }
+
+  Future<void> _setValidatedInt(
+      String key, List<int> valid, int value) async {
+    if (!valid.contains(value)) return;
+    await (await _prefs()).setInt(key, value);
+  }
+
   List<Transcription> _transcriptions = [];
 
   List<Transcription> get transcriptions =>
@@ -55,84 +107,60 @@ class StorageService {
 
   /// Modo de interaccion del boton: [defaultRecordMode] (toque inicia/detiene)
   /// o [recordModeHold] (mantener presionado graba, soltar transcribe).
-  Future<String> loadRecordMode() async {
-    final prefs = await _prefs();
-    return prefs.getString(_recordModeKey) ?? defaultRecordMode;
-  }
+  Future<String> loadRecordMode() =>
+      _getString(_recordModeKey, defaultRecordMode);
 
-  Future<void> saveRecordMode(String mode) async {
-    final prefs = await _prefs();
-    await prefs.setString(_recordModeKey, mode);
-  }
+  Future<void> saveRecordMode(String mode) =>
+      _setString(_recordModeKey, mode);
 
   static const String _floatingBubbleKey = 'floating_bubble_enabled';
 
-  Future<bool> loadFloatingBubbleEnabled() async {
-    final prefs = await _prefs();
-    return prefs.getBool(_floatingBubbleKey) ?? false;
-  }
+  Future<bool> loadFloatingBubbleEnabled() =>
+      _getBool(_floatingBubbleKey, false);
 
-  Future<void> saveFloatingBubbleEnabled(bool enabled) async {
-    final prefs = await _prefs();
-    await prefs.setBool(_floatingBubbleKey, enabled);
-  }
+  Future<void> saveFloatingBubbleEnabled(bool enabled) =>
+      _setBool(_floatingBubbleKey, enabled);
 
   static const String _bubbleHistoryKey = 'bubble_history_enabled';
 
   /// Modal de historial de la burbuja clásica (hito B1–B7, default ON).
   /// El servicio nativo Kotlin lee esta misma clave con prefijo "flutter.".
-  Future<bool> loadBubbleHistoryEnabled() async {
-    final prefs = await _prefs();
-    return prefs.getBool(_bubbleHistoryKey) ?? true;
-  }
+  Future<bool> loadBubbleHistoryEnabled() =>
+      _getBool(_bubbleHistoryKey, true);
 
-  Future<void> saveBubbleHistoryEnabled(bool enabled) async {
-    final prefs = await _prefs();
-    await prefs.setBool(_bubbleHistoryKey, enabled);
-  }
+  Future<void> saveBubbleHistoryEnabled(bool enabled) =>
+      _setBool(_bubbleHistoryKey, enabled);
 
   static const String _keyboardTerminalRowKey = 'kb_terminal_row_visible';
 
   /// Fila terminal del teclado (TAB, ESC, CTRL, ALT, flechas).
   /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
-  Future<bool> loadKeyboardTerminalRowVisible() async {
-    final prefs = await _prefs();
-    return prefs.getBool(_keyboardTerminalRowKey) ?? true;
-  }
+  Future<bool> loadKeyboardTerminalRowVisible() =>
+      _getBool(_keyboardTerminalRowKey, true);
 
-  Future<void> saveKeyboardTerminalRowVisible(bool visible) async {
-    final prefs = await _prefs();
-    await prefs.setBool(_keyboardTerminalRowKey, visible);
-  }
+  Future<void> saveKeyboardTerminalRowVisible(bool visible) =>
+      _setBool(_keyboardTerminalRowKey, visible);
 
   static const String _keyboardCodeKeyVisibleKey = 'kb_code_key_visible';
 
   /// Tecla </> que abre la capa de simbolos de programacion.
   /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
-  Future<bool> loadKeyboardCodeKeyVisible() async {
-    final prefs = await _prefs();
-    return prefs.getBool(_keyboardCodeKeyVisibleKey) ?? true;
-  }
+  Future<bool> loadKeyboardCodeKeyVisible() =>
+      _getBool(_keyboardCodeKeyVisibleKey, true);
 
-  Future<void> saveKeyboardCodeKeyVisible(bool visible) async {
-    final prefs = await _prefs();
-    await prefs.setBool(_keyboardCodeKeyVisibleKey, visible);
-  }
+  Future<void> saveKeyboardCodeKeyVisible(bool visible) =>
+      _setBool(_keyboardCodeKeyVisibleKey, visible);
 
   static const String _keyboardLanguageKeyVisibleKey =
       'kb_language_key_visible';
 
   /// Tecla ES/EN junto a la barra espaciadora para cambiar el idioma.
   /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
-  Future<bool> loadKeyboardLanguageKeyVisible() async {
-    final prefs = await _prefs();
-    return prefs.getBool(_keyboardLanguageKeyVisibleKey) ?? true;
-  }
+  Future<bool> loadKeyboardLanguageKeyVisible() =>
+      _getBool(_keyboardLanguageKeyVisibleKey, true);
 
-  Future<void> saveKeyboardLanguageKeyVisible(bool visible) async {
-    final prefs = await _prefs();
-    await prefs.setBool(_keyboardLanguageKeyVisibleKey, visible);
-  }
+  Future<void> saveKeyboardLanguageKeyVisible(bool visible) =>
+      _setBool(_keyboardLanguageKeyVisibleKey, visible);
 
   static const String kbHeightProfileKey = 'kb_height_profile';
   static const String kbHapticsEnabledKey = 'kb_haptics_enabled';
@@ -141,54 +169,37 @@ class StorageService {
 
   static const int defaultBottomElevationDp = 24;
 
-  Future<int> getBottomElevationDp() async {
-    final prefs = await _prefs();
-    return prefs.getInt(kbBottomElevationDpKey) ?? defaultBottomElevationDp;
-  }
+  Future<int> getBottomElevationDp() =>
+      _getInt(kbBottomElevationDpKey, defaultBottomElevationDp);
 
-  Future<void> setBottomElevationDp(int dp) async {
-    final prefs = await _prefs();
-    await prefs.setInt(kbBottomElevationDpKey, dp);
-  }
+  Future<void> setBottomElevationDp(int dp) =>
+      _setInt(kbBottomElevationDpKey, dp);
 
-  Future<bool> getInvertToolbar() async {
-    final prefs = await _prefs();
-    return prefs.getBool(kbInvertToolbarKey) ?? false;
-  }
+  Future<bool> getInvertToolbar() => _getBool(kbInvertToolbarKey, false);
 
-  Future<void> setInvertToolbar(bool invert) async {
-    final prefs = await _prefs();
-    await prefs.setBool(kbInvertToolbarKey, invert);
-  }
+  Future<void> setInvertToolbar(bool invert) =>
+      _setBool(kbInvertToolbarKey, invert);
 
   static const String kbSpacebarAlignmentKey = 'kb_spacebar_alignment';
   static const String defaultSpacebarAlignment = 'center'; // left, center, right
 
-  Future<String> getSpacebarAlignment() async {
-    final prefs = await _prefs();
-    return prefs.getString(kbSpacebarAlignmentKey) ?? defaultSpacebarAlignment;
-  }
+  Future<String> getSpacebarAlignment() =>
+      _getString(kbSpacebarAlignmentKey, defaultSpacebarAlignment);
 
-  Future<void> setSpacebarAlignment(String alignment) async {
-    final prefs = await _prefs();
-    await prefs.setString(kbSpacebarAlignmentKey, alignment);
-  }
+  Future<void> setSpacebarAlignment(String alignment) =>
+      _setString(kbSpacebarAlignmentKey, alignment);
 
   static const String kbSpacebarTrackpadModeKey = 'kb_spacebar_trackpad_mode';
   static const String defaultSpacebarTrackpadMode = 'ios_2d'; // ios_2d, gboard_horizontal
   static const List<String> kbSpacebarTrackpadModes = ['ios_2d', 'gboard_horizontal'];
 
-  Future<String> getSpacebarTrackpadMode() async {
-    final prefs = await _prefs();
-    final val = prefs.getString(kbSpacebarTrackpadModeKey);
-    return kbSpacebarTrackpadModes.contains(val) ? val! : defaultSpacebarTrackpadMode;
-  }
+  Future<String> getSpacebarTrackpadMode() => _getValidatedString(
+      kbSpacebarTrackpadModeKey,
+      kbSpacebarTrackpadModes, defaultSpacebarTrackpadMode);
 
-  Future<void> setSpacebarTrackpadMode(String mode) async {
-    if (!kbSpacebarTrackpadModes.contains(mode)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbSpacebarTrackpadModeKey, mode);
-  }
+  Future<void> setSpacebarTrackpadMode(String mode) =>
+      _setValidatedString(
+          kbSpacebarTrackpadModeKey, kbSpacebarTrackpadModes, mode);
 
   /// Perfiles de altura del teclado validos, de menor a mayor.
   static const List<String> kbHeightProfiles = [
@@ -202,31 +213,18 @@ class StorageService {
   /// Altura global del teclado: 'baja', 'media', 'alta' o 'muy_alta'.
   /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
   /// Un valor ausente o invalido cae al perfil por defecto.
-  Future<String> getHeightProfile() async {
-    final prefs = await _prefs();
-    final profile = prefs.getString(kbHeightProfileKey);
-    return kbHeightProfiles.contains(profile)
-        ? profile!
-        : defaultHeightProfile;
-  }
+  Future<String> getHeightProfile() => _getValidatedString(
+      kbHeightProfileKey, kbHeightProfiles, defaultHeightProfile);
 
-  Future<void> setHeightProfile(String profile) async {
-    if (!kbHeightProfiles.contains(profile)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbHeightProfileKey, profile);
-  }
+  Future<void> setHeightProfile(String profile) => _setValidatedString(
+      kbHeightProfileKey, kbHeightProfiles, profile);
 
   /// Vibracion hapatica al pulsar teclas. El teclado nativo Kotlin lee esta
   /// misma clave con prefijo "flutter.".
-  Future<bool> getHapticsEnabled() async {
-    final prefs = await _prefs();
-    return prefs.getBool(kbHapticsEnabledKey) ?? true;
-  }
+  Future<bool> getHapticsEnabled() => _getBool(kbHapticsEnabledKey, true);
 
-  Future<void> setHapticsEnabled(bool enabled) async {
-    final prefs = await _prefs();
-    await prefs.setBool(kbHapticsEnabledKey, enabled);
-  }
+  Future<void> setHapticsEnabled(bool enabled) =>
+      _setBool(kbHapticsEnabledKey, enabled);
 
   // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
   static const String kbTrackpadEnabledKey = 'kb_trackpad_enabled';
@@ -264,144 +262,132 @@ class StorageService {
   static const List<String> kbTrackpadPointerStyles = ['arrow', 'dot', 'cross'];
   static const List<int> kbTrackpadAutoReturns = [0, 5, 15, 30];
 
-  Future<bool> getTrackpadEnabled() async {
-    final prefs = await _prefs();
-    return prefs.getBool(kbTrackpadEnabledKey) ?? defaultTrackpadEnabled;
-  }
+  Future<bool> getTrackpadEnabled() =>
+      _getBool(kbTrackpadEnabledKey, defaultTrackpadEnabled);
 
-  Future<void> setTrackpadEnabled(bool enabled) async {
-    final prefs = await _prefs();
-    await prefs.setBool(kbTrackpadEnabledKey, enabled);
-  }
+  Future<void> setTrackpadEnabled(bool enabled) =>
+      _setBool(kbTrackpadEnabledKey, enabled);
 
-  Future<bool> getTrackpadToolbarVisible() async {
-    final prefs = await _prefs();
-    return prefs.getBool(kbTrackpadToolbarVisibleKey) ?? defaultTrackpadToolbarVisible;
-  }
+  Future<bool> getTrackpadToolbarVisible() =>
+      _getBool(kbTrackpadToolbarVisibleKey, defaultTrackpadToolbarVisible);
 
-  Future<void> setTrackpadToolbarVisible(bool visible) async {
-    final prefs = await _prefs();
-    await prefs.setBool(kbTrackpadToolbarVisibleKey, visible);
-  }
+  Future<void> setTrackpadToolbarVisible(bool visible) =>
+      _setBool(kbTrackpadToolbarVisibleKey, visible);
 
-  Future<String> getTrackpadButtonLayout() async {
-    final prefs = await _prefs();
-    final val = prefs.getString(kbTrackpadButtonLayoutKey);
-    return kbTrackpadButtonLayouts.contains(val) ? val! : defaultTrackpadButtonLayout;
-  }
+  Future<String> getTrackpadButtonLayout() => _getValidatedString(
+      kbTrackpadButtonLayoutKey,
+      kbTrackpadButtonLayouts, defaultTrackpadButtonLayout);
 
-  Future<void> setTrackpadButtonLayout(String layout) async {
-    if (!kbTrackpadButtonLayouts.contains(layout)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbTrackpadButtonLayoutKey, layout);
-  }
+  Future<void> setTrackpadButtonLayout(String layout) =>
+      _setValidatedString(
+          kbTrackpadButtonLayoutKey, kbTrackpadButtonLayouts, layout);
 
-  Future<String> getTrackpadScrollPosition() async {
-    final prefs = await _prefs();
-    final val = prefs.getString(kbTrackpadScrollPositionKey);
-    return kbTrackpadScrollPositions.contains(val) ? val! : defaultTrackpadScrollPosition;
-  }
+  Future<String> getTrackpadScrollPosition() => _getValidatedString(
+      kbTrackpadScrollPositionKey,
+      kbTrackpadScrollPositions, defaultTrackpadScrollPosition);
 
-  Future<void> setTrackpadScrollPosition(String position) async {
-    if (!kbTrackpadScrollPositions.contains(position)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbTrackpadScrollPositionKey, position);
-  }
+  Future<void> setTrackpadScrollPosition(String position) =>
+      _setValidatedString(
+          kbTrackpadScrollPositionKey, kbTrackpadScrollPositions, position);
 
   Future<double> getTrackpadSensitivity() async {
-    final prefs = await _prefs();
-    final raw =
-        prefs.getDouble(kbTrackpadSensitivityKey) ?? defaultTrackpadSensitivity;
+    final raw = await _getDouble(
+        kbTrackpadSensitivityKey, defaultTrackpadSensitivity);
     return clampTrackpadSensitivity(raw);
   }
 
-  Future<void> setTrackpadSensitivity(double sensitivity) async {
-    final clamped = clampTrackpadSensitivity(sensitivity);
-    final prefs = await _prefs();
-    await prefs.setDouble(kbTrackpadSensitivityKey, clamped);
-  }
+  Future<void> setTrackpadSensitivity(double sensitivity) =>
+      _setDouble(kbTrackpadSensitivityKey,
+          clampTrackpadSensitivity(sensitivity));
 
-  Future<String> getTrackpadAccelCurve() async {
-    final prefs = await _prefs();
-    final val = prefs.getString(kbTrackpadAccelCurveKey);
-    return kbTrackpadAccelCurves.contains(val) ? val! : defaultTrackpadAccelCurve;
-  }
+  Future<String> getTrackpadAccelCurve() => _getValidatedString(
+      kbTrackpadAccelCurveKey,
+      kbTrackpadAccelCurves, defaultTrackpadAccelCurve);
 
-  Future<void> setTrackpadAccelCurve(String curve) async {
-    if (!kbTrackpadAccelCurves.contains(curve)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbTrackpadAccelCurveKey, curve);
-  }
+  Future<void> setTrackpadAccelCurve(String curve) => _setValidatedString(
+      kbTrackpadAccelCurveKey, kbTrackpadAccelCurves, curve);
 
-  Future<bool> getTrackpadTapToClick() async {
-    final prefs = await _prefs();
-    return prefs.getBool(kbTrackpadTapToClickKey) ?? defaultTrackpadTapToClick;
-  }
+  Future<bool> getTrackpadTapToClick() =>
+      _getBool(kbTrackpadTapToClickKey, defaultTrackpadTapToClick);
 
-  Future<void> setTrackpadTapToClick(bool enabled) async {
-    final prefs = await _prefs();
-    await prefs.setBool(kbTrackpadTapToClickKey, enabled);
-  }
+  Future<void> setTrackpadTapToClick(bool enabled) =>
+      _setBool(kbTrackpadTapToClickKey, enabled);
 
-  Future<String> getTrackpadSecondaryClick() async {
-    final prefs = await _prefs();
-    final val = prefs.getString(kbTrackpadSecondaryClickKey);
-    return kbTrackpadSecondaryClicks.contains(val) ? val! : defaultTrackpadSecondaryClick;
-  }
+  Future<String> getTrackpadSecondaryClick() => _getValidatedString(
+      kbTrackpadSecondaryClickKey,
+      kbTrackpadSecondaryClicks, defaultTrackpadSecondaryClick);
 
-  Future<void> setTrackpadSecondaryClick(String mode) async {
-    if (!kbTrackpadSecondaryClicks.contains(mode)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbTrackpadSecondaryClickKey, mode);
-  }
+  Future<void> setTrackpadSecondaryClick(String mode) =>
+      _setValidatedString(
+          kbTrackpadSecondaryClickKey, kbTrackpadSecondaryClicks, mode);
 
-  Future<String> getTrackpadScrollDirection() async {
-    final prefs = await _prefs();
-    final val = prefs.getString(kbTrackpadScrollDirectionKey);
-    return kbTrackpadScrollDirections.contains(val) ? val! : defaultTrackpadScrollDirection;
-  }
+  Future<String> getTrackpadScrollDirection() => _getValidatedString(
+      kbTrackpadScrollDirectionKey,
+      kbTrackpadScrollDirections, defaultTrackpadScrollDirection);
 
-  Future<void> setTrackpadScrollDirection(String direction) async {
-    if (!kbTrackpadScrollDirections.contains(direction)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbTrackpadScrollDirectionKey, direction);
-  }
+  Future<void> setTrackpadScrollDirection(String direction) =>
+      _setValidatedString(
+          kbTrackpadScrollDirectionKey, kbTrackpadScrollDirections, direction);
 
-  Future<String> getTrackpadHaptic() async {
-    final prefs = await _prefs();
-    final val = prefs.getString(kbTrackpadHapticKey);
-    return kbTrackpadHaptics.contains(val) ? val! : defaultTrackpadHaptic;
-  }
+  Future<String> getTrackpadHaptic() => _getValidatedString(
+      kbTrackpadHapticKey, kbTrackpadHaptics, defaultTrackpadHaptic);
 
-  Future<void> setTrackpadHaptic(String haptic) async {
-    if (!kbTrackpadHaptics.contains(haptic)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbTrackpadHapticKey, haptic);
-  }
+  Future<void> setTrackpadHaptic(String haptic) => _setValidatedString(
+      kbTrackpadHapticKey, kbTrackpadHaptics, haptic);
 
-  Future<String> getTrackpadPointerStyle() async {
-    final prefs = await _prefs();
-    final val = prefs.getString(kbTrackpadPointerStyleKey);
-    return kbTrackpadPointerStyles.contains(val) ? val! : defaultTrackpadPointerStyle;
-  }
+  Future<String> getTrackpadPointerStyle() => _getValidatedString(
+      kbTrackpadPointerStyleKey,
+      kbTrackpadPointerStyles, defaultTrackpadPointerStyle);
 
-  Future<void> setTrackpadPointerStyle(String style) async {
-    if (!kbTrackpadPointerStyles.contains(style)) return;
-    final prefs = await _prefs();
-    await prefs.setString(kbTrackpadPointerStyleKey, style);
-  }
+  Future<void> setTrackpadPointerStyle(String style) => _setValidatedString(
+      kbTrackpadPointerStyleKey, kbTrackpadPointerStyles, style);
 
-  Future<int> getTrackpadAutoReturn() async {
-    final prefs = await _prefs();
-    final val = prefs.getInt(kbTrackpadAutoReturnKey);
-    return kbTrackpadAutoReturns.contains(val) ? val! : defaultTrackpadAutoReturn;
-  }
+  Future<int> getTrackpadAutoReturn() => _getValidatedInt(
+      kbTrackpadAutoReturnKey,
+      kbTrackpadAutoReturns, defaultTrackpadAutoReturn);
 
-  Future<void> setTrackpadAutoReturn(int seconds) async {
-    if (!kbTrackpadAutoReturns.contains(seconds)) return;
-    final prefs = await _prefs();
-    await prefs.setInt(kbTrackpadAutoReturnKey, seconds);
-  }
+  Future<void> setTrackpadAutoReturn(int seconds) => _setValidatedInt(
+      kbTrackpadAutoReturnKey, kbTrackpadAutoReturns, seconds);
+
+  /// Tabla del contrato puente SPK-07: EXACTAMENTE las claves de
+  /// docs/contract-keys.txt (lo que Kotlin lee con prefijo "flutter.").
+  /// Fuente única del lado Dart (referencia los const de arriba, sin
+  /// literales duplicados); el master la verifica contra el contrato y
+  /// el CI contra Kotlin. Clave nueva = entrar aquí + contrato + Kotlin.
+  static const List<String> bridgeKeys = [
+    _bubbleHistoryKey,
+    kbBottomElevationDpKey,
+    _keyboardCodeKeyVisibleKey,
+    kbHapticsEnabledKey,
+    kbHeightProfileKey,
+    kbInvertToolbarKey,
+    _keyboardLanguageKeyVisibleKey,
+    snippetsSeededKey,
+    kbSpacebarAlignmentKey,
+    kbSpacebarTrackpadModeKey,
+    sttApiKeyMirrorKey,
+    _sttLanguageKey,
+    _sttModelKey,
+    _sttUrlKey,
+    _keyboardTerminalRowKey,
+    kbTrackpadAccelCurveKey,
+    kbTrackpadAutoReturnKey,
+    kbTrackpadButtonLayoutKey,
+    kbTrackpadEnabledKey,
+    kbTrackpadHapticKey,
+    kbTrackpadPointerStyleKey,
+    kbTrackpadScrollDirectionKey,
+    kbTrackpadScrollPositionKey,
+    kbTrackpadSecondaryClickKey,
+    kbTrackpadSensitivityKey,
+    kbTrackpadTapToClickKey,
+    kbTrackpadToolbarVisibleKey,
+    _key,
+    credPassKey,
+    credShowUserKey,
+    credentialsKey,
+    snippetsKey,
+  ];
 
   // --- Config STT para el teclado nativo (K3) + bóveda (SPK-02) ---
   // El teclado Kotlin (IME, sin FlutterEngine) lee la key de la MISMA
@@ -720,34 +706,6 @@ class StorageService {
       return null;
     }
   }
-
-  /// MÉTODOS DORMIDOS — NO LLAMAR AL ARRANCAR.
-  /// Historial persistente FIFO-20 con retención (hasFragileUserData):
-  /// sin purga al arrancar (ver main.dart). Se conservan solo por
-  /// compatibilidad con copias viejas; otro agente decide su retirada.
-  @Deprecated('No purgar: historial persistente FIFO-20 con retención.')
-  Future<void> clearPreviousHistoryOnStartup() async {
-    _transcriptions.clear();
-    try {
-      final prefs = await _prefs();
-      await prefs.remove(_key);
-    } catch (_) {}
-    try {
-      final file = await _getHistoryFile();
-      if (file != null) {
-        final tmp = File('${file.path}$_historyTmpSuffix');
-        if (tmp.existsSync()) {
-          tmp.deleteSync();
-        }
-        file.writeAsStringSync('[]', flush: true);
-      }
-    } catch (_) {}
-  }
-
-  /// Alias dormido (ver [clearPreviousHistoryOnStartup]): no usar.
-  @Deprecated('No purgar: historial persistente FIFO-20 con retención.')
-  Future<void> purgePreviousSessionHistory() =>
-      clearPreviousHistoryOnStartup();
 
   /// Lee el archivo compartido sin lanzar. Entradas con `timestamp`
   /// presente-pero-ilegible se omiten para no contaminar con `now`

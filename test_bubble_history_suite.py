@@ -109,7 +109,9 @@ dart_storage = read("app_source/lib/services/storage_service.dart")
 check("StorageService load/save bubble_history_enabled",
       "loadBubbleHistoryEnabled" in dart_storage and "saveBubbleHistoryEnabled" in dart_storage)
 check("Default ON del historial de burbuja",
-      "loadBubbleHistoryEnabled" in dart_storage and "?? true" in dart_storage)
+      "loadBubbleHistoryEnabled" in dart_storage
+      and ("?? true" in dart_storage
+           or "_getBool(_bubbleHistoryKey, true)" in dart_storage))
 dart_settings = read("app_source/lib/screens/settings_screen.dart")
 check("Settings con switch bubble-history-switch",
       "bubble-history-switch" in dart_settings and "Historial en la burbuja" in dart_settings)

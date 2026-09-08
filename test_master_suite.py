@@ -59,6 +59,20 @@ def test_contract_keys():
     assert "\n".join(sorted(got)) == expected, (
         f"Discrepancia en claves de contrato:\nEsperado:\n{expected}\nObtenido:\n" + "\n".join(sorted(got))
     )
+    # SPK-07: la tabla Dart (StorageService.bridgeKeys) debe cubrir el
+    # contrato exacto: cierra el triángulo Kotlin==contrato==Dart.
+    with open("app_source/lib/services/storage_service.dart", "r", encoding="utf-8") as f:
+        dart = f.read()
+    const_vals = dict(re.findall(r"static const String (\w+)\s*=\s*'([a-z_0-9]+)';", dart))
+    m = re.search(r"static const List<String> bridgeKeys = \[(.*?)\];", dart, re.DOTALL)
+    assert m, "Falta StorageService.bridgeKeys (SPK-07)"
+    table = []
+    for ident in re.findall(r"[A-Za-z_]\w*", m.group(1)):
+        assert ident in const_vals, f"bridgeKeys referencia const inexistente: {ident}"
+        table.append(const_vals[ident])
+    assert "\n".join(sorted(table)) == expected, (
+        "Discrepancia tabla Dart vs contrato:\nEsperado:\n" + expected + "\nObtenido:\n" + "\n".join(sorted(table))
+    )
 
 def test_clean_logs():
     kt_dir = "voice_bubble_stt/android/app/src/main/kotlin"
