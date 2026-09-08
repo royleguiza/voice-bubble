@@ -92,11 +92,14 @@ jobs:
 
       - name: Analyze estricto (infos y warnings fatales)
         working-directory: voice_bubble_stt
-        run: flutter analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
 
       - name: Test
         working-directory: voice_bubble_stt
         run: flutter test
+
+      - name: Suites Python del repo (SPK-08)
+        run: python3 test_master_suite.py
 
       - name: Guard archivos de teclado presentes
         run: |

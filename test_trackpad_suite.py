@@ -208,22 +208,15 @@ check("VoiceKeyboardService MEJ-25 selección de texto vía META_SHIFT_ON", "MET
 check("VoiceKeyboardService MEJ-25 desplazamiento cinemático proporcional (stepsX/stepsY)", "stepsX" in vk_content and "stepsY" in vk_content)
 check("VoiceKeyboardService expone commitFromExternal para inyección en cursor", "fun commitFromExternal" in vk_content and "instance" in vk_content)
 
-# --- DynamicIslandController & Morphing History ---
+# --- DynamicIslandController: RETIRADO (decisión del dueño) ---
+# La isla/píldora dinámica se quitó del repo (solo burbuja clásica);
+# estos chequeos documentan la ausencia para que una reintroducción
+# accidental falle con mensaje claro en vez de pasar en silencio.
 dic_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/DynamicIslandController.kt")
-dic_content = ""
-check("DynamicIslandController.kt existe", os.path.isfile(dic_kt_path))
-if os.path.isfile(dic_kt_path):
-    with open(dic_kt_path, "r", encoding="utf-8") as f:
-        dic_content = f.read()
-    check("DynamicIslandController pastilla con slots y punch central", "buildCompactView" in dic_content and "camPunch" in dic_content)
-    check("DynamicIslandController grabación con waveform interactiva", "buildRecordingView" in dic_content and "wave" in dic_content)
-    check("DynamicIslandController modal de historial adaptable", "buildHistoryModalView" in dic_content and "populateHistoryCards" in dic_content)
-    check("DynamicIslandController modal soporta isFillViewport para estiramiento adaptativo", "isFillViewport = true" in dic_content)
-    check("DynamicIslandController adaptabilidad de tarjetas (1 item 100% alto, 2 items 50% alto)", "1, 2 ->" in dic_content and "1.0f" in dic_content)
-    check("DynamicIslandController inyección directa en cursor vía VoiceKeyboardService", "VoiceKeyboardService.commitFromExternal" in dic_content)
-    check("DynamicIslandController contraste accesible para temas claro y oscuro", "isNight" in dic_content and "tvSnippet" in dic_content)
-    check("DynamicIslandController copia con feedback de checkmark", "copyToClipboard" in dic_content and "ic_check" in dic_content and "ic_copy" in dic_content)
-    check("DynamicIslandController rayita inferior para cierre y extensión", "setHistoryExtended50" in dic_content and "closeHistoryModal" in dic_content)
+check("Isla dinámica retirada (sin DynamicIslandController.kt)", not os.path.isfile(dic_kt_path),
+      "Reapareció DynamicIslandController.kt: rever decisión de retirada")
+# (La ausencia de claves island_* en app_source se verifica en TEST 12,
+# donde storage_content ya está cargado.)
 
 # --- TEST 7: Auditoría de Cero-Logs y Cero-Telemetría ---
 trackpad_files = [acc_kt_path, pom_kt_path, vtv_kt_path, dic_kt_path]
@@ -361,41 +354,20 @@ if os.path.isfile(dart_settings_test):
         stt_content = f.read()
     check("settings_trackpad_test.dart prueba renderizado y persistencia de widgets", "kb-trackpad-scroll-position-selector" in stt_content and "kb-trackpad-pointer-style-selector" in stt_content)
 
-# --- TEST 12: Batería Píldora e Isla Dinámica (MEJ-18 / Hardware Tuning) ---
-check("StorageService define clave bubble_docking_mode", "bubble_docking_mode" in storage_content)
-check("StorageService define clave island_pos_x", "island_pos_x" in storage_content)
-check("StorageService define clave island_pos_y", "island_pos_y" in storage_content)
-check("StorageService define clave island_width", "island_width" in storage_content)
-check("StorageService define clave island_height", "island_height" in storage_content)
-check("StorageService define clave island_slot_order", "island_slot_order" in storage_content)
-check("StorageService define clave island_theme", "island_theme" in storage_content)
-check("StorageService define clave island_waveform_enabled", "island_waveform_enabled" in storage_content)
-
-check("SettingsScreen tiene sección independiente 'Píldora e Isla Dinámica'", "Píldora e Isla Dinámica" in settings_content)
-check("SettingsScreen tiene tarjeta 'Pastilla Flotante Inteligente'", "Pastilla Flotante Inteligente" in settings_content)
-check("SettingsScreen tiene selector de modo de contenedor", "island-docking-mode-selector" in settings_content)
-check("SettingsScreen tiene presets de hardware de cámara", "Cámara Central" in settings_content and "Perforada Izquierda" in settings_content and "Notch Superior" in settings_content)
-check("SettingsScreen tiene sliders de calibración fina X, Y, W, H", "island-slider-x" in settings_content and "island-slider-y" in settings_content and "island-slider-w" in settings_content and "island-slider-h" in settings_content)
-check("SettingsScreen tiene steppers finos de ajuste milimétrico", "-5 px" in settings_content and "+5 px" in settings_content and "-1 px" in settings_content and "+1 px" in settings_content)
-check("SettingsScreen tiene botón de inversión de ranuras", "island-swap-slots-btn" in settings_content)
-check("SettingsScreen tiene selector de tema de la pastilla", "island-theme-selector" in settings_content)
-check("SettingsScreen tiene switch de onda de voz reactiva", "island-waveform-switch" in settings_content)
-
-# La isla lee vía literales flutter.* o vía helpers intPref(prefs, "clave")
-# con "flutter.$key" interpolado (misma paridad, tolerante a tipos).
-check("DynamicIslandController carga preferencias nativas de posición y tamaño",
-      all((f'flutter.{k}' in dic_content or f'intPref(prefs, "{k}"' in dic_content)
-          for k in ["island_pos_x", "island_pos_y", "island_width", "island_height"]),
-      "La isla no lee su geometría de FlutterSharedPreferences")
-check("DynamicIslandController implementa reloadConfiguration", "fun reloadConfiguration()" in dic_content)
-check("DynamicIslandController implementa orden dinámico de ranuras", "slotOrder" in dic_content and "mic_camera_trackpad" in dic_content)
-check("DynamicIslandController implementa temas visuales glass, dark y light", "islandTheme" in dic_content and "light" in dic_content and "dark" in dic_content)
-
-dart_island_storage_test = os.path.join(WORKSPACE, "app_source/test/services/island_storage_test.dart")
-dart_island_settings_test = os.path.join(WORKSPACE, "app_source/test/screens/settings_island_test.dart")
-
-check("island_storage_test.dart existe", os.path.isfile(dart_island_storage_test))
-check("settings_island_test.dart existe", os.path.isfile(dart_island_settings_test))
+# --- TEST 12: Píldora e Isla Dinámica RETIRADAS (decisión del dueño) ---
+# La batería MEJ-18 se archivó con la retirada: solo burbuja clásica.
+# Se documenta la ausencia (código + claves + UI + tests Dart) para que
+# una reintroducción parcial falle con mensaje claro.
+check("Isla retirada del Storage (sin bubble_docking_mode)", "bubble_docking_mode" not in storage_content,
+      "Reapareció bubble_docking_mode: rever decisión de retirada")
+check("Isla retirada del Storage (sin island_pos_x)", "island_pos_x" not in storage_content,
+      "Reaparecieron claves island_*: rever decisión de retirada")
+check("Isla retirada de la UI (sin sección Píldora e Isla)", "Píldora e Isla Dinámica" not in settings_content,
+      "Reapareció la sección de isla en Ajustes: rever decisión de retirada")
+check("Isla retirada de los tests Dart",
+      not os.path.isfile(os.path.join(WORKSPACE, "app_source/test/services/island_storage_test.dart"))
+      and not os.path.isfile(os.path.join(WORKSPACE, "app_source/test/screens/settings_island_test.dart")),
+      "Reaparecieron tests de isla: rever decisión de retirada")
 
 # --- TEST 13: FloatingTrackpadService declarado como servicio NORMAL ---
 # Es un Service corriente (no accesibilidad): declararlo es Play-Protect
