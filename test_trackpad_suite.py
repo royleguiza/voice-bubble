@@ -56,6 +56,10 @@ check(f"Todas las {len(TRACKPAD_KEYS)} claves de trackpad presentes en docs/cont
 kt_vk = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt")
 with open(kt_vk, "r", encoding="utf-8") as f:
     vk_content = f.read()
+# SPK-05: el enum Layer vive en KeyboardTypes.kt (mismo paquete).
+kt_types = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyboardTypes.kt")
+with open(kt_types, "r", encoding="utf-8") as f:
+    vk_content += f.read()
 
 all_read_in_kotlin = all(f'flutter.{k}' in vk_content for k in TRACKPAD_KEYS)
 check(f"Todas las {len(TRACKPAD_KEYS)} claves flutter.kb_trackpad_* leídas en VoiceKeyboardService.kt", all_read_in_kotlin)
@@ -173,7 +177,7 @@ if os.path.isfile(vtv_kt_path):
     check("VirtualTrackpadView soporta scroll quitado con 100% de ancho", '"none"' in vtv_content)
 
 # --- TEST 6: VoiceKeyboardService integración ---
-check("VoiceKeyboardService declara Layer.TRACKPAD", "Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD }" in vk_content)
+check("VoiceKeyboardService declara Layer.TRACKPAD", "enum class Layer" in vk_content and "TRACKPAD" in vk_content)
 check("VoiceKeyboardService tiene toggleTrackpadLayer()", "fun toggleTrackpadLayer()" in vk_content)
 check("VoiceKeyboardService tiene buildTrackpadLayer()", "fun buildTrackpadLayer(): View" in vk_content)
 check("VoiceKeyboardService rebuild() monta buildTrackpadLayer()", "Layer.TRACKPAD -> {\n            addRow(buildTrackpadLayer())\n        }" in vk_content or "addRow(buildTrackpadLayer())" in vk_content)

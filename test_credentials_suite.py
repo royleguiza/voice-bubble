@@ -37,6 +37,8 @@ def log_lines_with(content, *words):
 def main():
     suite = Suite()
     vks = read(os.path.join(KT, "VoiceKeyboardService.kt"))
+    # SPK-05: los enums viven en KeyboardTypes.kt (mismo paquete).
+    types = read(os.path.join(KT, "KeyboardTypes.kt"))
     store = read(os.path.join(KT, "CredentialStore.kt"))
     model = read("app_source/lib/models/credential.dart")
     storage = read("app_source/lib/services/storage_service.dart")
@@ -122,8 +124,9 @@ def main():
     suite.check("Store sin Log de valores",
                 not log_lines_with(store, "nombre", "usuario", "password", "pass"),
                 "Filtración en logs del store")
-    suite.check("Layer.CREDENTIALS declarada", "CREDENTIALS" in vks and
-                "SNIPPETS, TRACKPAD, CREDENTIALS" in vks,
+    suite.check("Layer.CREDENTIALS declarada",
+                "CREDENTIALS" in vks + types
+                and "SNIPPETS, TRACKPAD, CREDENTIALS" in vks + types,
                 "Falta la capa")
     suite.check("Botón llave en toolbar", "R.drawable.ic_key" in vks and
                 "toggleCredentialsLayer" in vks, "Falta el botón")

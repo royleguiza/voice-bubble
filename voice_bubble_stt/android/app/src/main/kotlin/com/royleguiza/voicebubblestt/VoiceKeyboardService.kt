@@ -65,13 +65,6 @@ import kotlin.math.abs
  */
 class VoiceKeyboardService : InputMethodService() {
 
-    private enum class Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD, CREDENTIALS }
-
-    private enum class MicState { IDLE, RECORDING, PROCESSING, BUSY }
-
-    /** Shift en tres estados: momentaneo tras un tap, persistente tras doble pulso. */
-    private enum class ShiftState { OFF, MOMENTARY, CAPS_LOCK }
-
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
     // @Volatile: el cliente STT lo consulta desde su hilo de fondo para
@@ -131,7 +124,6 @@ class VoiceKeyboardService : InputMethodService() {
     private val longPressCancellations = mutableListOf<() -> Unit>()
 
     // --- Snippets (K4) ---
-    private enum class SnippetMode { NORMAL, EDIT, DELETE }
     private var snippetMode = SnippetMode.NORMAL
     private var btnSnippetEditView: View? = null
     private var btnSnippetDeleteView: View? = null
