@@ -152,39 +152,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
     private var snippetSearchField: EditText? = null
 
     // --- Preferencias de aspecto (K5-T2/T3, puente Flutter) ---
-    // AT-A13: se leen UNA VEZ por ciclo del campo (loadKeyboardPrefs en
-    // onStartInputView, que siempre corre tras onCreateInputView) y quedan
-    // cacheadas aca para no golpear SharedPreferences en cada tecla.
-    // Caducidad honesta: un cambio hecho en Ajustes se aplica al abrirse el
-    // proximo campo, no en vivo. heightFactor escala solo alturas propias
-    // del teclado, jamas el padding inferior por insets.
-    private var heightFactor = HEIGHT_FACTOR_MEDIA
-    private var hapticsEnabled = true
-    private var bottomElevationDp = 24
-    private var invertToolbar = false
-    private var spacebarAlignment = "center"
-    private var spacebarTrackpadMode = "ios_2d" // MEJ-25: "ios_2d" o "gboard_horizontal"
-
-    // AT-A8: cache de visibilidad leida junto a lo anterior; rebuild jamas
-    // consulta SharedPreferences.
-    private var terminalRowVisiblePref = true
-    private var codeKeyVisiblePref = true
-    private var languageKeyVisiblePref = true
-
-    // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
-    private var trackpadEnabled = true
-    private var trackpadToolbarVisible = true
-    private var trackpadButtonLayout = "top"
-    private var trackpadScrollPosition = "right"
-    private var trackpadSensitivity = 1.2f
-    private var trackpadAccelCurve = "dynamic"
-    private var trackpadTapToClick = true
-    private var trackpadSecondaryClick = "2fingers"
-    private var trackpadScrollDirection = "natural"
-    private var trackpadHaptic = "subtle"
-    private var trackpadPointerStyle = "arrow"
-    private var trackpadAutoReturn = 0
-
     private var pointerOverlayManager: PointerOverlayManager? = null
 
     private lateinit var root: LinearLayout
@@ -202,6 +169,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
 
     // --- Portapapeles Multimodal (Opción 2: Cinta Horizontal Deslizable) ---
     private lateinit var clipboardStore: ClipboardStore
+    private lateinit var kbPrefs: KeyboardPrefs
     private lateinit var transcriptionRepo: TranscriptionHistoryRepository
     private var clipboardFilmstripView: ClipboardFilmstripLayout? = null
     private var isFilmstripExpanded = false
@@ -214,6 +182,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
         super.onCreate()
         instance = this
         clipboardStore = ClipboardStore(this)
+        kbPrefs = KeyboardPrefs(this)
         transcriptionRepo = TranscriptionHistoryRepository(this)
         // Historial persistente FIFO-20: sin purga (borraba lo dictado con
         // la píldora/la app cada vez que el IME se recreaba).
@@ -263,7 +232,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
             }
             val elevationPx = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
-                bottomElevationDp.toFloat(),
+                kbPrefs.bottomElevationDp.toFloat(),
                 resources.displayMetrics
             ).toInt()
             view.setPadding(padH, padV, padH, padV + bottom + elevationPx)
@@ -280,7 +249,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
         super.onStartInputView(info, restarting)
         // K5-T5: defensa extra; nunca arrancar un campo con dictado vivo.
         cancelDictationIfActive()
-        loadKeyboardPrefs()
+        kbPrefs.load()
         currentIsPasswordField = isPasswordInput(info)
         if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS)) {
             layer = Layer.LETTERS
@@ -425,7 +394,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
             addRow(buildTrackpadLayer())
         } else {
             pointerOverlayManager?.hide()
-            if (terminalRowVisiblePref) {
+            if (kbPrefs.terminalRowVisiblePref) {
                 addRow(buildTerminalRow())
             }
             when (layer) {
@@ -491,14 +460,14 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
         }
         items.add(btnSettings)
 
-        if (terminalRowVisiblePref) {
+        if (kbPrefs.terminalRowVisiblePref) {
             val btnTerminal = makeIconKey(
                 R.drawable.ic_terminal,
                 R.drawable.kb_key_alt,
                 1.0f,
                 if (spanishMode) "fila terminal" else "terminal row",
             ) {
-                terminalRowVisiblePref = !terminalRowVisiblePref
+                kbPrefs.terminalRowVisiblePref = !kbPrefs.terminalRowVisiblePref
                 rebuild()
             }
             items.add(btnTerminal)
@@ -528,7 +497,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
         )
         items.add(btnPaste)
 
-        if (codeKeyVisiblePref) {
+        if (kbPrefs.codeKeyVisiblePref) {
             val btnCode = makeIconKey(
                 R.drawable.ic_code,
                 R.drawable.kb_key_alt,
@@ -540,7 +509,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
             items.add(btnCode)
         }
 
-        if (!currentIsPasswordField && trackpadEnabled && trackpadToolbarVisible) {
+        if (!currentIsPasswordField && kbPrefs.trackpadEnabled && kbPrefs.trackpadToolbarVisible) {
             val isTp = (layer == Layer.TRACKPAD)
             val btnTrackpad = makeIconKey(
                 if (isTp) R.drawable.ic_keyboard else R.drawable.ic_trackpad,
@@ -578,7 +547,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
             micPillCancel = null
         }
 
-        if (invertToolbar) {
+        if (kbPrefs.invertToolbar) {
             items.reverse()
         }
         
@@ -725,7 +694,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
             }
         }
 
-        val btnLang = if (languageKeyVisiblePref) {
+        val btnLang = if (kbPrefs.languageKeyVisiblePref) {
             makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language", isBold = true) {
                 spanishMode = !spanishMode
                 rebuild()
@@ -763,7 +732,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
             row.addView(btnLang)
         }
 
-        when (spacebarAlignment) {
+        when (kbPrefs.spacebarAlignment) {
             "left" -> {
                 row.addView(space)
                 row.addView(comma)
@@ -810,7 +779,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
     }
 
     private fun getTargetTrackpadHeightPx(): Int {
-        val totalKeyRows = if (terminalRowVisiblePref) 5 else 4
+        val totalKeyRows = if (kbPrefs.terminalRowVisiblePref) 5 else 4
         return totalKeyRows * keyHeightPx() + (totalKeyRows - 1) * rowGapPx()
     }
 
@@ -867,9 +836,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
         val manager = pointerOverlayManager ?: PointerOverlayManager(this).also {
             pointerOverlayManager = it
         }
-        manager.sensitivity = trackpadSensitivity
-        manager.accelCurve = trackpadAccelCurve
-        manager.pointerStyle = trackpadPointerStyle
+        manager.sensitivity = kbPrefs.trackpadSensitivity
+        manager.accelCurve = kbPrefs.trackpadAccelCurve
+        manager.pointerStyle = kbPrefs.trackpadPointerStyle
         return manager
     }
 
@@ -878,13 +847,13 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
         val targetHeight = getTargetTrackpadHeightPx()
         return VirtualTrackpadView(
             context = this,
-            scrollPosition = trackpadScrollPosition,
-            tapToClick = trackpadTapToClick,
-            secondaryClickMode = trackpadSecondaryClick,
-            scrollDirection = trackpadScrollDirection,
-            autoReturnSeconds = trackpadAutoReturn,
+            scrollPosition = kbPrefs.trackpadScrollPosition,
+            tapToClick = kbPrefs.trackpadTapToClick,
+            secondaryClickMode = kbPrefs.trackpadSecondaryClick,
+            scrollDirection = kbPrefs.trackpadScrollDirection,
+            autoReturnSeconds = kbPrefs.trackpadAutoReturn,
             trackpadHeightPx = targetHeight,
-            buttonLayout = trackpadButtonLayout,
+            buttonLayout = kbPrefs.trackpadButtonLayout,
             listener = object : VirtualTrackpadView.TrackpadListener {
                 override fun onPointerMove(dx: Float, dy: Float) {
                     manager.moveBy(dx, dy)
@@ -914,11 +883,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
                 }
 
                 override fun performHaptic(isFirm: Boolean) {
-                    when (trackpadHaptic) {
+                    when (kbPrefs.trackpadHaptic) {
                         "none" -> {}
                         "firm" -> haptic(root)
                         else -> { // "subtle"
-                            if (hapticsEnabled) {
+                            if (kbPrefs.hapticsEnabled) {
                                 root.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                             }
                         }
@@ -1549,7 +1518,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
      * retorna sin vibrar. Default ON cuando la clave no existe.
      */
     private fun haptic(view: View) {
-        if (!hapticsEnabled) return
+        if (!kbPrefs.hapticsEnabled) return
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
@@ -3493,7 +3462,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
             private var isDragNavTriggered = false
             private var isSelecting = false
             private val longPressRunnable = Runnable {
-                if (spacebarTrackpadMode == "ios_2d") {
+                if (kbPrefs.spacebarTrackpadMode == "ios_2d") {
                     isLongPressTriggered = true
                     setTrackpadBlankOutMode(true)
                     haptic(space)
@@ -3694,185 +3663,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
         activePopup = null
     }
 
-    /**
-     * Preferencia escrita por los Ajustes de la app (Flutter shared_preferences
-     * guarda con prefijo "flutter." en el archivo FlutterSharedPreferences).
-     * Parseo tolerante: ante cualquier error se muestra la fila (default true).
-     */
-    private fun terminalRowVisible(): Boolean = try {
-        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getBoolean("flutter.kb_terminal_row_visible", true)
-    } catch (_: Exception) {
-        true
-    }
-
-    /**
-     * Preferencia escrita por los Ajustes de la app (mismo puente K2.1):
-     * tecla "</>" de capa codigo ocultable; ante cualquier error se muestra
-     * la tecla (default true).
-     */
-    private fun codeKeyVisible(): Boolean = try {
-        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getBoolean("flutter.kb_code_key_visible", true)
-    } catch (_: Exception) {
-        true
-    }
-
-    /**
-     * Preferencia escrita por los Ajustes de la app (mismo puente K2.1):
-     * tecla ES/EN de idioma ocultable; ante cualquier error se muestra
-     * la tecla (default true).
-     */
-    private fun languageKeyVisible(): Boolean = try {
-        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getBoolean("flutter.kb_language_key_visible", true)
-    } catch (_: Exception) {
-        true
-    }
-
-    /**
-     * K5-T2/T3 + AT-A8: lectura UNICA por ciclo del campo (onStartInputView)
-     * de las preferencias de aspecto escritas por Ajustes (archivo
-     * FlutterSharedPreferences, claves con prefijo "flutter."). Parseo
-     * tolerante: valor desconocido o error cae al default. Todo queda cacheado
-     * en campos (heightFactor, hapticsEnabled y las tres visibilidades) y ni
-     * rebuild ni ninguna tecla vuelven a tocar SharedPreferences; los cambios
-     * hechos en Ajustes se aplican al abrirse el proximo campo.
-     */
-    private fun loadKeyboardPrefs() {
-        heightFactor = try {
-            when (
-                getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                    .getString("flutter.kb_height_profile", HEIGHT_PROFILE_MEDIA)
-            ) {
-                HEIGHT_PROFILE_BAJA -> HEIGHT_FACTOR_BAJA
-                HEIGHT_PROFILE_ALTA -> HEIGHT_FACTOR_ALTA
-                HEIGHT_PROFILE_MUY_ALTA -> HEIGHT_FACTOR_MUY_ALTA
-                else -> HEIGHT_FACTOR_MEDIA
-            }
-        } catch (_: Exception) {
-            HEIGHT_FACTOR_MEDIA
-        }
-        hapticsEnabled = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_haptics_enabled", true)
-        } catch (_: Exception) {
-            true
-        }
-        bottomElevationDp = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getLong("flutter.kb_bottom_elevation_dp", 24L).toInt()
-        } catch (_: Exception) {
-            24
-        }
-        invertToolbar = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_invert_toolbar", false)
-        } catch (_: Exception) {
-            false
-        }
-        spacebarAlignment = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_spacebar_alignment", "center") ?: "center"
-        } catch (_: Exception) {
-            "center"
-        }
-        spacebarTrackpadMode = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_spacebar_trackpad_mode", "ios_2d") ?: "ios_2d"
-        } catch (_: Exception) {
-            "ios_2d"
-        }
-        terminalRowVisiblePref = terminalRowVisible()
-        codeKeyVisiblePref = codeKeyVisible()
-        languageKeyVisiblePref = languageKeyVisible()
-
-        // MEJ-09: lectura de preferencias del trackpad
-        trackpadButtonLayout = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
-        } catch (_: Exception) {
-            "top"
-        }
-        trackpadEnabled = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_trackpad_enabled", true)
-        } catch (_: Exception) {
-            true
-        }
-        trackpadToolbarVisible = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_trackpad_toolbar_visible", true)
-        } catch (_: Exception) {
-            true
-        }
-        trackpadScrollPosition = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
-        } catch (_: Exception) {
-            "right"
-        }
-        trackpadSensitivity = try {
-            val p = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val raw = p.all["flutter.kb_trackpad_sensitivity"]
-            when (raw) {
-                is Float -> raw
-                is Double -> raw.toFloat()
-                is Number -> raw.toFloat()
-                is String -> raw.toFloatOrNull() ?: 1.2f
-                else -> 1.2f
-            }
-        } catch (_: Exception) {
-            1.2f
-        }
-        trackpadAccelCurve = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
-        } catch (_: Exception) {
-            "dynamic"
-        }
-        trackpadTapToClick = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_trackpad_tap_to_click", true)
-        } catch (_: Exception) {
-            true
-        }
-        trackpadSecondaryClick = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_secondary_click", "2fingers") ?: "2fingers"
-        } catch (_: Exception) {
-            "2fingers"
-        }
-        trackpadScrollDirection = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_scroll_direction", "natural") ?: "natural"
-        } catch (_: Exception) {
-            "natural"
-        }
-        trackpadHaptic = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_haptic", "subtle") ?: "subtle"
-        } catch (_: Exception) {
-            "subtle"
-        }
-        trackpadPointerStyle = try {
-            getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
-        } catch (_: Exception) {
-            "arrow"
-        }
-        trackpadAutoReturn = try {
-            val p = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val raw = p.all["flutter.kb_trackpad_auto_return"]
-            when (raw) {
-                is Number -> raw.toInt()
-                is String -> raw.toIntOrNull() ?: 0
-                else -> 0
-            }
-        } catch (_: Exception) {
-            0
-        }
-    }
 
     /** Altura de tecla estandar escalada por el perfil activo. */
     private fun keyHeightPx(): Int = scaleV(dimen(R.dimen.kb_key_height))
@@ -3885,7 +3675,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost {
      * factor del perfil. NUNCA aplicar sobre insets ni paddings derivados de
      * WindowInsets (leccion 9.1-20).
      */
-    private fun scaleV(px: Int): Int = (px * heightFactor).toInt()
+    private fun scaleV(px: Int): Int = (px * kbPrefs.heightFactor).toInt()
 
     companion object {
         /** Exclusion mutua de microfono: visible para MainActivity/burbuja. */

@@ -56,9 +56,13 @@ check(f"Todas las {len(TRACKPAD_KEYS)} claves de trackpad presentes en docs/cont
 kt_vk = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt")
 with open(kt_vk, "r", encoding="utf-8") as f:
     vk_content = f.read()
-# SPK-05: el enum Layer vive en KeyboardTypes.kt (mismo paquete).
+# SPK-05: el enum Layer vive en KeyboardTypes.kt y las prefs en
+# KeyboardPrefs.kt (mismo paquete).
 kt_types = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyboardTypes.kt")
 with open(kt_types, "r", encoding="utf-8") as f:
+    vk_content += f.read()
+kt_prefs = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyboardPrefs.kt")
+with open(kt_prefs, "r", encoding="utf-8") as f:
     vk_content += f.read()
 
 all_read_in_kotlin = all(f'flutter.{k}' in vk_content for k in TRACKPAD_KEYS)

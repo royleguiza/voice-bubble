@@ -40,8 +40,10 @@ def test_kotlin_keyboard_service():
     print("  [TEST] Verificando constantes y factores en Kotlin (VKS + KeyboardSupport)...")
     kt_files = [
         "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt",
-        # SPK-05: las constantes viven en el módulo de soporte (mismo paquete).
+        # SPK-05: las constantes viven en el módulo de soporte y la
+        # lectura en el de prefs (mismo paquete).
         "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyboardSupport.kt",
+        "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyboardPrefs.kt",
     ]
     kt_content = ""
     for kt_file in kt_files:
