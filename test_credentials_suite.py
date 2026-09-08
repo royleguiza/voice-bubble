@@ -37,6 +37,12 @@ def log_lines_with(content, *words):
 def main():
     suite = Suite()
     vks = read(os.path.join(KT, "VoiceKeyboardService.kt"))
+    # SPK-05 módulo 6: la capa trackpad vive en TrackpadBridge.kt; VKS
+    # delega (trackpad.toggle). Se suma al contenido para regresión.
+    try:
+        vks += read(os.path.join(KT, "TrackpadBridge.kt"))
+    except FileNotFoundError:
+        pass
     # SPK-05: los enums viven en KeyboardTypes.kt y la capa en
     # CredentialsLayer.kt (mismo paquete).
     types = read(os.path.join(KT, "KeyboardTypes.kt"))
@@ -157,10 +163,14 @@ def main():
     for token in ("Layer.LETTERS", "Layer.SYMBOLS", "Layer.CODE",
                   "Layer.SNIPPETS", "Layer.TRACKPAD",
                   "toggleSnippetsLayer", "buildSnippetRows",
-                  "toggleCodeLayer", "toggleTrackpadLayer",
+                  "toggleCodeLayer",
                   "commitSymbolText", "if (!restarting)"):
         suite.check(f"Regresión: {token} intacto", token in vks,
                     f"Se rompió {token}")
+    # SPK-05 módulo 6: el toggle del trackpad vive en el puente.
+    suite.check("Regresión: toggleTrackpadLayer intacto",
+                "toggleTrackpadLayer" in vks or ("TrackpadBridge" in vks and "fun toggle()" in vks),
+                "Se rompió toggleTrackpadLayer")
     suite.check("Contrato de claves incluye las 3",
                 all(k in contract for k in ("vb_credentials_v1", "vb_cred_pass_v1", "vb_cred_show_user")),
                 "contract-keys.txt desactualizado")

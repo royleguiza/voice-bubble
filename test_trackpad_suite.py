@@ -64,6 +64,14 @@ with open(kt_types, "r", encoding="utf-8") as f:
 kt_prefs = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyboardPrefs.kt")
 with open(kt_prefs, "r", encoding="utf-8") as f:
     vk_content += f.read()
+# SPK-05 módulo 6: la capa TRACKPAD vive en TrackpadBridge.kt (mismo
+# paquete); VKS queda como shell que delega (trackpad.toggle/build/hide).
+kt_bridge_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/TrackpadBridge.kt")
+bridge_content = ""
+if os.path.isfile(kt_bridge_path):
+    with open(kt_bridge_path, "r", encoding="utf-8") as f:
+        bridge_content = f.read()
+    vk_content += bridge_content
 
 all_read_in_kotlin = all(f'flutter.{k}' in vk_content for k in TRACKPAD_KEYS)
 check(f"Todas las {len(TRACKPAD_KEYS)} claves flutter.kb_trackpad_* leídas en VoiceKeyboardService.kt", all_read_in_kotlin)
@@ -182,13 +190,14 @@ if os.path.isfile(vtv_kt_path):
 
 # --- TEST 6: VoiceKeyboardService integración ---
 check("VoiceKeyboardService declara Layer.TRACKPAD", "enum class Layer" in vk_content and "TRACKPAD" in vk_content)
-check("VoiceKeyboardService tiene toggleTrackpadLayer()", "fun toggleTrackpadLayer()" in vk_content)
-check("VoiceKeyboardService tiene buildTrackpadLayer()", "fun buildTrackpadLayer(): View" in vk_content)
-check("VoiceKeyboardService rebuild() monta buildTrackpadLayer()", "Layer.TRACKPAD -> {\n            addRow(buildTrackpadLayer())\n        }" in vk_content or "addRow(buildTrackpadLayer())" in vk_content)
+# SPK-05 módulo 6: toggle/build viven en TrackpadBridge; VKS delega.
+check("Trackpad tiene toggle (VKS o TrackpadBridge)", "fun toggleTrackpadLayer()" in vk_content or ("class TrackpadBridge" in vk_content and "fun toggle()" in vk_content and "trackpad.toggle()" in vk_content))
+check("Trackpad tiene build de capa (VKS o TrackpadBridge)", "fun buildTrackpadLayer(): View" in vk_content or ("fun buildLayer(): View" in vk_content and "addRow(trackpad.buildLayer())" in vk_content))
+check("Rebuild monta la capa de trackpad", "addRow(buildTrackpadLayer())" in vk_content or "addRow(trackpad.buildLayer())" in vk_content)
 check("VoiceKeyboardService suprime trackpad en contraseñas", "isPasswordInput" in vk_content and "currentIsPasswordField" in vk_content)
 check("VoiceKeyboardService toolbar incluye botón de trackpad", "btnTrackpad" in vk_content)
-check("VoiceKeyboardService oculta overlay en onFinishInputView y onWindowHidden", "pointerOverlayManager?.hide()" in vk_content)
-check("VoiceKeyboardService previene loop en lastLettersLayer", "layer != Layer.TRACKPAD" in vk_content)
+check("Overlay del trackpad se oculta en onFinish/onHidden", "pointerOverlayManager?.hide()" in vk_content or "trackpad.hide()" in vk_content)
+check("Trackpad previene loop en lastLetters", "layer != Layer.TRACKPAD" in vk_content or "cur != Layer.TRACKPAD" in vk_content or "Layer.TRACKPAD" in bridge_content)
 check("VoiceKeyboardService lee kb_trackpad_auto_return tolerante a Integer y Long", "is Number -> raw.toInt()" in vk_content)
 check("VoiceKeyboardService despacha trackpad vía InputConnection nativo", "sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)" in vk_content)
 check("VoiceKeyboardService transición suave morphing al alternar trackpad", "beginKeyboardTransition" in vk_content and "TransitionManager" in vk_content)
@@ -201,6 +210,7 @@ check("VoiceKeyboardService expone commitFromExternal para inyección en cursor"
 
 # --- DynamicIslandController & Morphing History ---
 dic_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/DynamicIslandController.kt")
+dic_content = ""
 check("DynamicIslandController.kt existe", os.path.isfile(dic_kt_path))
 if os.path.isfile(dic_kt_path):
     with open(dic_kt_path, "r", encoding="utf-8") as f:
@@ -404,9 +414,9 @@ check("Dart getTrackpadHaptic es String con dominio subtle/none/firm",
       and "kbTrackpadHaptics = ['subtle', 'none', 'firm']" in storage_content,
       "El contrato Dart de kb_trackpad_haptic no es String")
 check("VoiceKeyboardService lee kb_trackpad_haptic como String",
-      'private var trackpadHaptic = "subtle"' in vk_content
+      ('private var trackpadHaptic = "subtle"' in vk_content or 'var trackpadHaptic = "subtle"' in vk_content)
       and '.getString("flutter.kb_trackpad_haptic", "subtle")' in vk_content
-      and "when (trackpadHaptic)" in vk_content,
+      and ("when (trackpadHaptic)" in vk_content or "when (kbPrefs.trackpadHaptic)" in vk_content),
       "VoiceKeyboardService no lee el haptic como String")
 with open(ftp_kt_path, "r", encoding="utf-8") as f:
     ftp_content_recheck = f.read()

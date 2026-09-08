@@ -12,7 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.RemoteException
 import android.os.SystemClock
-import android.provider.Settings
 import android.text.Editable
 import android.text.InputType
 import android.text.TextUtils
@@ -38,7 +37,6 @@ import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import android.content.ClipDescription
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -58,7 +56,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -123,7 +121,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private var snippetSearchField: EditText? = null
 
     // --- Preferencias de aspecto (K5-T2/T3, puente Flutter) ---
-    private var pointerOverlayManager: PointerOverlayManager? = null
+    private lateinit var trackpad: TrackpadBridge
 
     private lateinit var root: LinearLayout
 
@@ -154,6 +152,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         instance = this
         clipboardStore = ClipboardStore(this)
         kbPrefs = KeyboardPrefs(this)
+        trackpad = TrackpadBridge(this, kbPrefs, this)
         transcriptionRepo = TranscriptionHistoryRepository(this)
         dictation = DictationController(this, handler, this)
         // Historial persistente FIFO-20: sin purga (borraba lo dictado con
@@ -225,7 +224,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS)) {
             layer = Layer.LETTERS
         }
-        pointerOverlayManager?.hide()
+        trackpad.hide()
         // AT-A4: BUSY es espejo del estado de la burbuja; si ella ya solto
         // el microfono, el teclado arranca este campo en IDLE.
         dictation.syncBubbleState()
@@ -260,14 +259,14 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun onFinishInputView(finishingInput: Boolean) {
         dictation.cancelDictationIfActive()
         dismissPopup()
-        pointerOverlayManager?.hide()
+        trackpad.hide()
         super.onFinishInputView(finishingInput)
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
         dismissPopup()
-        pointerOverlayManager?.hide()
+        trackpad.hide()
     }
 
     override fun onDestroy() {
@@ -279,8 +278,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         cancelPendingKeyGestures()
         handler.removeCallbacksAndMessages(null)
         dismissPopup()
-        pointerOverlayManager?.destroy()
-        pointerOverlayManager = null
+        if (::trackpad.isInitialized) trackpad.destroy()
         // K5-T5: destruccion del servicio con dictado vivo = grabacion fantasma.
         try {
             if (::clipboardStore.isInitialized) {
@@ -297,7 +295,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // Construccion de la vista
     // ------------------------------------------------------------------
 
-    private fun rebuild() {
+    override fun rebuild() {
         dismissPopup()
         removeStatusRow()
         dictation.onViewsDiscarded()
@@ -348,9 +346,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         addRow(filmstrip)
 
         if (layer == Layer.TRACKPAD) {
-            addRow(buildTrackpadLayer())
+            addRow(trackpad.buildLayer())
         } else {
-            pointerOverlayManager?.hide()
+            trackpad.hide()
             if (kbPrefs.terminalRowVisiblePref) {
                 addRow(buildTerminalRow())
             }
@@ -475,7 +473,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 if (isTp) (if (spanishMode) "teclado" else "keyboard") else "trackpad",
                 tintColorRes = if (isTp) R.color.kb_label_on_accent else R.color.kb_label,
             ) {
-                toggleTrackpadLayer()
+                trackpad.toggle()
             }
             items.add(btnTrackpad)
         }
@@ -727,10 +725,12 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         rebuild()
     }
 
-    private fun getTargetTrackpadHeightPx(): Int {
-        val totalKeyRows = if (kbPrefs.terminalRowVisiblePref) 5 else 4
-        return totalKeyRows * keyHeightPx() + (totalKeyRows - 1) * rowGapPx()
-    }
+    /** Shell SPK-05: la altura vive en TrackpadBridge; aquí solo el delegado para addRow. */
+    private fun getTargetTrackpadHeightPx(): Int =
+        if (::trackpad.isInitialized) trackpad.targetHeightPx() else {
+            val totalKeyRows = if (kbPrefs.terminalRowVisiblePref) 5 else 4
+            totalKeyRows * keyHeightPx() + (totalKeyRows - 1) * rowGapPx()
+        }
 
     private fun beginKeyboardTransition() {
         if (!reducedMotion()) {
@@ -750,132 +750,17 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
     }
 
-    private fun toggleTrackpadLayer() {
-        if (currentIsPasswordField) return
-        beginKeyboardTransition()
-        if (layer == Layer.TRACKPAD) {
-            layer = lastLettersLayer
-            pointerOverlayManager?.hide()
-            rebuild()
-        } else {
-            lastLettersLayer = if (layer != Layer.SNIPPETS && layer != Layer.TRACKPAD) layer else Layer.LETTERS
-            layer = Layer.TRACKPAD
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-                Toast.makeText(this, "Concede el permiso de superposición para ver el cursor", Toast.LENGTH_SHORT).show()
-            }
-            val manager = getOrCreatePointerOverlay()
-            val location = IntArray(2)
-            root.getLocationOnScreen(location)
-            if (location[1] > 0) {
-                manager.updateKeyboardTop(location[1].toFloat())
-            }
-            manager.show()
-            rebuild()
-            root.post {
-                val loc = IntArray(2)
-                root.getLocationOnScreen(loc)
-                if (loc[1] > 0) {
-                    manager.updateKeyboardTop(loc[1].toFloat())
-                }
-            }
-        }
+    // --- TrackpadBridge.UiHost (SPK-05 módulo 6): currentLayer/isPasswordField
+    // ya existen arriba y sirven a las tres interfaces (misma firma).
+    override fun setLayer(next: Layer) {
+        layer = next
     }
-
-    private fun getOrCreatePointerOverlay(): PointerOverlayManager {
-        val manager = pointerOverlayManager ?: PointerOverlayManager(this).also {
-            pointerOverlayManager = it
-        }
-        manager.sensitivity = kbPrefs.trackpadSensitivity
-        manager.accelCurve = kbPrefs.trackpadAccelCurve
-        manager.pointerStyle = kbPrefs.trackpadPointerStyle
-        return manager
+    override fun lastLetters(): Layer = lastLettersLayer
+    override fun setLastLetters(l: Layer) {
+        lastLettersLayer = l
     }
-
-    private fun buildTrackpadLayer(): View {
-        val manager = getOrCreatePointerOverlay()
-        val targetHeight = getTargetTrackpadHeightPx()
-        return VirtualTrackpadView(
-            context = this,
-            scrollPosition = kbPrefs.trackpadScrollPosition,
-            tapToClick = kbPrefs.trackpadTapToClick,
-            secondaryClickMode = kbPrefs.trackpadSecondaryClick,
-            scrollDirection = kbPrefs.trackpadScrollDirection,
-            autoReturnSeconds = kbPrefs.trackpadAutoReturn,
-            trackpadHeightPx = targetHeight,
-            buttonLayout = kbPrefs.trackpadButtonLayout,
-            listener = object : VirtualTrackpadView.TrackpadListener {
-                override fun onPointerMove(dx: Float, dy: Float) {
-                    manager.moveBy(dx, dy)
-                }
-
-                override fun onLeftClick() {
-                    val (px, py) = manager.getPosition()
-                    manager.triggerClickFeedback()
-                    dispatchTrackpadTap(px, py)
-                }
-
-                override fun onRightClick() {
-                    val (px, py) = manager.getPosition()
-                    manager.triggerClickFeedback()
-                    dispatchTrackpadLongPress(px, py)
-                }
-
-                override fun onScroll(deltaY: Float) {
-                    val (px, py) = manager.getPosition()
-                    dispatchTrackpadScroll(px, py, deltaY)
-                }
-
-                override fun onAutoReturn() {
-                    if (layer == Layer.TRACKPAD) {
-                        toggleTrackpadLayer()
-                    }
-                }
-
-                override fun performHaptic(isFirm: Boolean) {
-                    when (kbPrefs.trackpadHaptic) {
-                        "none" -> {}
-                        "firm" -> haptic(root)
-                        else -> { // "subtle"
-                            if (kbPrefs.hapticsEnabled) {
-                                root.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                            }
-                        }
-                    }
-                }
-            }
-        )
-    }
-
-    private fun dispatchTrackpadTap(x: Float, y: Float) {
-        if (VoiceBubbleAccessibilityService.isConnected()) {
-            VoiceBubbleAccessibilityService.dispatchTap(x, y)
-            return
-        }
-        val ic = currentInputConnection ?: return
-        sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)
-    }
-
-    private fun dispatchTrackpadLongPress(x: Float, y: Float) {
-        if (VoiceBubbleAccessibilityService.isConnected()) {
-            VoiceBubbleAccessibilityService.dispatchLongPress(x, y)
-            return
-        }
-        val ic = currentInputConnection ?: return
-        sendDownUpKeyEvents(KeyEvent.KEYCODE_MENU)
-    }
-
-    private fun dispatchTrackpadScroll(x: Float, y: Float, deltaY: Float) {
-        if (VoiceBubbleAccessibilityService.isConnected()) {
-            VoiceBubbleAccessibilityService.dispatchScroll(x, y, deltaY)
-            return
-        }
-        val ic = currentInputConnection ?: return
-        if (deltaY > 0) {
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
-        } else if (deltaY < 0) {
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
-        }
-    }
+    override fun rootView(): LinearLayout = root
+    override fun beginTransition() = beginKeyboardTransition()
 
     private fun attachFastKeyTouch(key: View, onClick: () -> Unit) {
         key.setOnTouchListener { v, ev ->
@@ -1466,7 +1351,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
      * todo el feedback hapico del teclado. Si el usuario lo apago en Ajustes,
      * retorna sin vibrar. Default ON cuando la clave no existe.
      */
-    private fun haptic(view: View) {
+    override fun haptic(view: View) {
         if (!kbPrefs.hapticsEnabled) return
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
@@ -3025,10 +2910,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
 
     /** Altura de tecla estandar escalada por el perfil activo. */
-    private fun keyHeightPx(): Int = scaleV(dimen(R.dimen.kb_key_height))
+    override fun keyHeightPx(): Int = scaleV(dimen(R.dimen.kb_key_height))
 
     /** Margen vertical entre filas, escalado ergonómico estilo Gboard. */
-    private fun rowGapPx(): Int = scaleV(dimen(R.dimen.kb_key_gap_v))
+    override fun rowGapPx(): Int = scaleV(dimen(R.dimen.kb_key_gap_v))
 
     /**
      * Escala una dimension vertical propia del contenido del teclado con el
