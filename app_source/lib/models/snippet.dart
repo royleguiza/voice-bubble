@@ -66,6 +66,5 @@ class Snippet {
   int get hashCode => Object.hash(id, nombre, contenido, orden);
 
   @override
-  String toString() =>
-      'Snippet(id: $id, nombre: $nombre, contenido: $contenido, orden: $orden)';
+  String toString() => 'Snippet(id: $id, nombre: $nombre, orden: $orden)';
 }

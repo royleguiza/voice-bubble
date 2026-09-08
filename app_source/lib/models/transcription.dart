@@ -22,11 +22,29 @@ class Transcription {
   });
 
   factory Transcription.fromJson(Map<String, dynamic> json) {
+    final parsed = tryFromJson(json);
+    if (parsed != null) return parsed;
+    // Compat: null/ausente cae a now solo cuando no hay timestamp
+    // presente-pero-ilegible (ese caso ya lo filtra tryFromJson -> null).
+    final rawText = json['text'];
+    return Transcription(
+      text: rawText is String ? rawText : '',
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// SPK-18: no inventa tiempo para basura. Devuelve null si hay
+  /// `timestamp` presente-pero-ilegible; el llamador descarta.
+  static Transcription? tryFromJson(Map<String, dynamic> json) {
+    final raw = json['timestamp'];
+    if (raw is String && raw.isNotEmpty && DateTime.tryParse(raw) == null) {
+      return null;
+    }
     final rawText = json['text'];
     final text = rawText is String ? rawText : '';
     return Transcription(
       text: text,
-      timestamp: _parseTimestamp(json['timestamp']),
+      timestamp: _parseTimestamp(raw),
     );
   }
 
