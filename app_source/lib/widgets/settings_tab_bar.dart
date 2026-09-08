@@ -125,26 +125,16 @@ class SettingsTabBar extends StatelessWidget {
                       data.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w500,
-                        color: color,
-                        letterSpacing: -0.1,
-                      ),
+                      style: (isSelected ? kTextSelected : kTextUnselected)
+                          .copyWith(color: color),
                     )
                   else
                     AnimatedDefaultTextStyle(
                       duration: duration,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.w500,
-                        color: color,
-                        letterSpacing: -0.1,
-                      ),
+                      style: (isSelected ? kTextSelected : kTextUnselected)
+                          .copyWith(color: color),
                       child: Text(data.label),
                     ),
                 ],

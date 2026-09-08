@@ -162,6 +162,25 @@ const TextStyle kTextCaption = TextStyle(
   letterSpacing: 0.0,
 );
 
+// SPK-14: 3 roles con nombre para énfasis (prohíbe TextStyle suelto).
+// Tab bar: 12sp mínimo (antes 11sp fuera de escala).
+const TextStyle kTextSelected = TextStyle(
+  fontSize: 12,
+  fontWeight: FontWeight.w600,
+  letterSpacing: -0.1,
+);
+
+const TextStyle kTextUnselected = TextStyle(
+  fontSize: 12,
+  fontWeight: FontWeight.w500,
+  letterSpacing: -0.1,
+);
+
+const TextStyle kTextMeta = TextStyle(
+  fontSize: 12,
+  fontWeight: FontWeight.w400,
+);
+
 // ---------------------------------------------------------------------------
 // Theme Data – Light
 // ---------------------------------------------------------------------------

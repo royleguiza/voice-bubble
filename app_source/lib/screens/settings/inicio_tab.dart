@@ -164,7 +164,7 @@ class InicioTab extends StatelessWidget {
               Text('Acerca de VoiceBubble'),
               Text(
                 'Versión, privacidad y qué hace la app',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                style: kTextMeta,
               ),
             ],
           ),
