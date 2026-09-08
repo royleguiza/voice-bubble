@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../ui/design_tokens.dart';
+
 /// Tab Teclado de Ajustes (SPK-06, módulo 4 de N): estado IME + fila
 /// terminal + altura + toolbar + spacebar + elevación + háptico,
 /// extraído de SettingsScreen sin cambiar conducta.
@@ -300,7 +302,7 @@ class TecladoTab extends StatelessWidget {
                   ),
                 ] else ...[
                   FilledButton.tonalIcon(
-                    icon: const Icon(Icons.check_circle, color: Colors.green),
+                    icon: Icon(Icons.check_circle, color: (Theme.of(context).brightness == Brightness.dark ? kSuccessDark : kSuccessLight)),
                     label: const Text('Teclado activo (toca para cambiar)'),
                     onPressed: onShowInputMethodPicker,
                   ),

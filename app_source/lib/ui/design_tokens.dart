@@ -16,6 +16,10 @@ const Color kRecording = Color(0xFFFF3B30);
 /// Recording state color – Dark mode.
 const Color kRecordingDark = Color(0xFFFF453A);
 
+/// Success state color – Light/Dark (SPK-13: reemplaza Colors.green suelto).
+const Color kSuccessLight = Color(0xFF248A3D);
+const Color kSuccessDark = Color(0xFF30D158);
+
 // ---------------------------------------------------------------------------
 // Background Colors
 // ---------------------------------------------------------------------------

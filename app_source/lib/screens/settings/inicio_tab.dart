@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/storage_service.dart';
+import '../../ui/design_tokens.dart';
 
 /// Tab Inicio de Ajustes (SPK-06, módulo 3 de N): tarjeta API Key +
 /// modo grabación + modelo + accesos, extraído de SettingsScreen
@@ -219,7 +220,7 @@ class _ApiKeyCard extends StatelessWidget {
                 Icon(
                   Icons.key_rounded,
                   color: hasApiKey
-                      ? Colors.green
+                      ? (Theme.of(context).brightness == Brightness.dark ? kSuccessDark : kSuccessLight)
                       : theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
@@ -230,7 +231,7 @@ class _ApiKeyCard extends StatelessWidget {
                   ),
                 ),
                 if (hasApiKey && !isEditingApiKey)
-                  const Icon(Icons.check_circle, color: Colors.green),
+                  Icon(Icons.check_circle, color: (Theme.of(context).brightness == Brightness.dark ? kSuccessDark : kSuccessLight)),
               ],
             ),
             const SizedBox(height: 4),
@@ -263,7 +264,7 @@ class _ApiKeyCard extends StatelessWidget {
                   border: const OutlineInputBorder(),
                   errorText: apiKeyError,
                   suffixIcon: hasApiKey
-                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      ? Icon(Icons.check_circle, color: (Theme.of(context).brightness == Brightness.dark ? kSuccessDark : kSuccessLight))
                       : null,
                 ),
               ),
@@ -292,7 +293,7 @@ class _ApiKeyCard extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton.tonalIcon(
                   key: const ValueKey('api-loaded-button'),
-                  icon: const Icon(Icons.check_circle, color: Colors.green),
+                  icon: Icon(Icons.check_circle, color: (Theme.of(context).brightness == Brightness.dark ? kSuccessDark : kSuccessLight)),
                   label: Text('API Key cargada $apiKeyTail'),
                   onPressed: onToggleApiDetail,
                 ),
