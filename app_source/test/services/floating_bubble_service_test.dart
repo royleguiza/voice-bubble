@@ -199,5 +199,17 @@ void main() {
       expect(log.last.method, 'pushHistoryEntry');
       expect(log.last.arguments, {'text': 'hola mundo'});
     });
+
+    test('pushHistoryEntry forwards the persisted timestamp (SPK-04)', () async {
+      final ts = DateTime.utc(2026, 9, 8, 12, 30);
+      final res =
+          await service.pushHistoryEntry('eco exacto', timestamp: ts);
+      expect(res, isTrue);
+      expect(log.last.method, 'pushHistoryEntry');
+      expect(log.last.arguments, {
+        'text': 'eco exacto',
+        'timestamp': '2026-09-08T12:30:00.000Z',
+      });
+    });
   });
 }

@@ -313,7 +313,10 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _publishTranscriptionResult(Transcription result) async {
     final copy = await copyTranscriptionText(result.text);
     // Write-through al historial unificado nativo para la modal de la isla.
-    await _floatingBubbleService.pushHistoryEntry(result.text);
+    // SPK-04: con el timestamp ya persistido por Dart para identidad exacta
+    // (sin eco por doble timestamp, sin dictados tragados por ventanas).
+    await _floatingBubbleService.pushHistoryEntry(result.text,
+        timestamp: result.timestamp);
     if (copy == ClipboardCopyResult.failed) {
       _showClipboardFailure();
       // Pegado silencioso: no pisa el aviso de clipboard con un "copiado".

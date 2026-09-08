@@ -73,6 +73,13 @@ class FloatingBubbleService {
 
   /// Escribe una transcripción en el historial unificado nativo para que la
   /// modal de historial de la burbuja la vea (misma fuente que el teclado).
-  Future<bool> pushHistoryEntry(String text) =>
-      _invokeBool(_mPushHistoryEntry, {'text': text});
+  /// SPK-04: viaja con el [timestamp] YA persistido por Dart (UTC ISO-8601)
+  /// para que ambas escrituras tengan identidad exacta y el dedup nativo no
+  /// necesite ventanas temporales (que tragaban dictados idénticos).
+  Future<bool> pushHistoryEntry(String text, {DateTime? timestamp}) =>
+      _invokeBool(_mPushHistoryEntry, {
+        'text': text,
+        if (timestamp != null)
+          'timestamp': timestamp.toUtc().toIso8601String(),
+      });
 }

@@ -11,7 +11,6 @@ import java.io.InputStreamReader
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
-import kotlin.math.abs
 
 /**
  * Repositorio unificado, profesional y thread-safe para el historial de transcripciones (FIFO-20).
@@ -31,11 +30,6 @@ class TranscriptionHistoryRepository(private val context: Context) {
         const val FILE_NAME = "transcription_history.json"
         const val MAX_ITEMS = 20
         private const val SHARED_HISTORY_KEY = "flutter.transcriptions"
-        /**
-         * Ventana anti-doble-escritura: el MISMO texto reingresado dentro de
-         * este margen se considera eco del mismo dictado, no uno nuevo.
-         */
-        private const val DEDUP_TEXT_WINDOW_MS = 30_000L
         private val lock = Any()
     }
 
@@ -108,39 +102,31 @@ class TranscriptionHistoryRepository(private val context: Context) {
     /**
      * Agrega una nueva transcripción al tope del historial de forma atómica y thread-safe.
      *
-     * Guarda anti-eco: la app escribe cada dictado DOS veces al MISMO
-     * archivo (Dart `StorageService.add` + write-through nativo
-     * `pushHistoryEntry`), con distinto timestamp cada vez, así que el
-     * dedup por timestamp de [dedupAndSort] no los caza y la modal muestra
-     * duplicados. Si el mismo texto ya existe con timestamp dentro de
-     * [DEDUP_TEXT_WINDOW_MS], se ignora el add (es el eco, no un dictado
-     * nuevo). Dictados idénticos genuinamente separados en el tiempo
-     * siguen guardándose como entradas propias.
+     * Identidad única (SPK-04): cada dictado se escribe UNA vez por origen
+     * con SU timestamp, y la app reenvía por el canal el MISMO timestamp que
+     * ya persistió en Dart ([timestampIso] UTC ISO-8601). Así la escritura
+     * Dart y la nativa del mismo dictado tienen identidad exacta y el dedup
+     * por timestamp de [dedupAndSort] las unifica sin ventanas temporales
+     * (la ventana de 30 s tragaba dictados idénticos legítimos y mentía en
+     * el orden). Sin timestamp (teclado, llamadores viejos) se estampa ahora.
+     * La exclusión mutua de micrófono burbuja↔teclado garantiza que no hay
+     * escrituras concurrentes de dos orígenes.
      */
-    fun addTranscription(text: String) {
+    fun addTranscription(text: String, timestampIso: String? = null) {
         if (text.isBlank()) return
         synchronized(lock) {
             val current = loadHistory().toMutableList()
-            val nowMs = Instant.now().toEpochMilli()
-            val isEcho = current.any { obj ->
-                try {
-                    obj.optString("text", "") == text &&
-                        abs(parseInstant(obj).toEpochMilli() - nowMs) <= DEDUP_TEXT_WINDOW_MS
-                } catch (_: Exception) {
-                    false
-                }
+            val instant = try {
+                if (!timestampIso.isNullOrBlank()) Instant.parse(timestampIso) else Instant.now()
+            } catch (_: Exception) {
+                Instant.now()
             }
-            if (isEcho) return
             val newEntry = JSONObject()
                 .put("text", text)
-                .put("timestamp", Instant.now().toString())
+                .put("timestamp", instant.toString())
             current.add(0, newEntry)
 
-            val deduped = dedupAndSort(current)
-            saveAtomic(deduped)
-
-            // Reflejo secundario defensivo a SharedPreferences para compatibilidad externa
-            mirrorToSharedPreferences(deduped)
+            saveAtomic(dedupAndSort(current))
         }
     }
 
@@ -174,22 +160,12 @@ class TranscriptionHistoryRepository(private val context: Context) {
         } catch (_: Exception) {}
     }
 
-    private fun mirrorToSharedPreferences(items: List<JSONObject>) {
-        try {
-            val set = LinkedHashSet<String>()
-            for (obj in items) {
-                set.add(obj.toString())
-            }
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .edit()
-                .putStringSet(SHARED_HISTORY_KEY, set)
-                .apply()
-        } catch (_: Exception) {}
-    }
-
     /**
      * Migración defensiva desde FlutterSharedPreferences.xml tolerante tanto a <set> como
-     * a <string> con prefijos Base64 de Flutter.
+     * a <string> con prefijos Base64 de Flutter. Solo lectura de legado;
+     * SPK-04 retiró el escritor del espejo lateral (envenenaba la clave con
+     * un tipo competidor): esta rama solo puede leer basura previa, que por
+     * construcción es subconjunto del archivo.
      */
     private fun migrateFromLegacySources(): List<JSONObject> {
         val results = ArrayList<JSONObject>()

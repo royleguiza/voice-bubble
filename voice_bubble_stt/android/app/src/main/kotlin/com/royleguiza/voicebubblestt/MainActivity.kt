@@ -93,14 +93,17 @@ class MainActivity : FlutterActivity() {
                     "pushHistoryEntry" -> {
                         // Write-through Dart->nativo: la modal lee el archivo
                         // unificado, así ve lo dictado con la píldora/la app.
-                        // I/O fuera del main (disco + prefs): la respuesta
-                        // vuelve al main porque MethodChannel lo exige.
+                        // SPK-04: Dart envía su timestamp ya persistido para
+                        // identidad exacta entre ambas escrituras.
+                        // I/O fuera del main (disco): la respuesta vuelve al
+                        // main porque MethodChannel lo exige.
                         val text = call.argument<String>("text") ?: ""
+                        val timestamp = call.argument<String>("timestamp")
                         BackgroundWork.executeWithResult(
                             block = {
                                 try {
                                     TranscriptionHistoryRepository(this@MainActivity)
-                                        .addTranscription(text)
+                                        .addTranscription(text, timestamp)
                                     true
                                 } catch (_: Exception) {
                                     false

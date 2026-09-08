@@ -275,6 +275,42 @@ def test_disk_full_resilience():
           "_saveHistoryFile debe tragar el fallo de disco")
 
 
+def test_single_identity_no_window():
+    print("  [TEST] SPK-04: identidad única, sin ventana temporal ni espejo lateral...")
+    with open(os.path.join(WORKSPACE, KT_REPO), "r", encoding="utf-8") as f:
+        kt_content = f.read()
+    with open(os.path.join(WORKSPACE, "app_source/lib/services/floating_bubble_service.dart"),
+              "r", encoding="utf-8") as f:
+        bubble = f.read()
+    with open(os.path.join(WORKSPACE, "app_source/lib/screens/home_screen.dart"),
+              "r", encoding="utf-8") as f:
+        home = f.read()
+    with open(os.path.join(WORKSPACE,
+              "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/MainActivity.kt"),
+              "r", encoding="utf-8") as f:
+        main = f.read()
+
+    check("Sin ventana anti-eco temporal", "DEDUP_TEXT_WINDOW_MS" not in kt_content,
+          "La ventana de 30 s tragaba dictados legítimos")
+    check("Sin guarda isEcho", "isEcho" not in kt_content,
+          "La curita del doble timestamp debe desaparecer")
+    check("Sin espejo lateral a prefs", "mirrorToSharedPreferences" not in kt_content,
+          "El espejo StringSet envenenaba la clave con otro tipo")
+    check("addTranscription acepta timestamp canónico",
+          "timestampIso" in kt_content and "Instant.parse(timestampIso)" in kt_content,
+          "Sin timestamp la identidad exacta es imposible")
+    check("Dart envía el timestamp ya persistido",
+          "'timestamp'" in bubble and "toUtc().toIso8601String()" in bubble,
+          "pushHistoryEntry debe llevar el timestamp UTC")
+    check("Home publica con su timestamp",
+          "pushHistoryEntry(result.text," in home and "timestamp: result.timestamp" in home,
+          "La app debe reenviar su propio timestamp")
+    check("El canal reenvía el timestamp al repo",
+          'call.argument<String>("timestamp")' in main
+          and ".addTranscription(text, timestamp)" in main,
+          "MainActivity debe pasar el timestamp")
+
+
 if __name__ == "__main__":
     print("=" * 60)
     print(" INICIANDO TEST SUITE: REPOSITORIO DE HISTORIAL PROFESIONAL")
@@ -287,6 +323,7 @@ if __name__ == "__main__":
         test_cross_platform_fifo_real()
         test_no_automatic_purge()
         test_disk_full_resilience()
+        test_single_identity_no_window()
         print("=" * 60)
         if suite.failed > 0:
             print(f" RESULTADOS: {suite.passed} pasados, {suite.failed} fallidos.")
