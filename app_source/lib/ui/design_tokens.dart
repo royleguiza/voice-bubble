@@ -291,6 +291,12 @@ const double kHistoryPillBottomGap = 72.0;
 /// Duración de expansión de la tarjeta emergente.
 const Duration kAnimPopupExpand = Duration(milliseconds: 320);
 
+/// SPK-24: una curva por trabajo. Enter-scale con overshoot suave;
+/// decoración/fades sin overshoot; exit instantáneo (ver botón).
+const Curve kCurveEnter = Curves.easeOutBack;
+const Curve kCurveFade = Curves.easeOutCubic;
+const Curve kCurveExit = Curves.easeOut;
+
 /// Morph entre estados del botón de grabar.
 const Duration kAnimMorph = Duration(milliseconds: 350);
 

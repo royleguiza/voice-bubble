@@ -34,17 +34,17 @@ class TranscriptionPopup extends StatelessWidget {
 
     final scale = motionSafe
         ? Tween(begin: 0.85, end: 1.0).animate(
-            CurvedAnimation(parent: controller, curve: Curves.easeOutBack))
+            CurvedAnimation(parent: controller, curve: kCurveEnter))
         : const AlwaysStoppedAnimation(1.0);
     final shellFade = CurvedAnimation(
         parent: controller,
         curve:
-            motionSafe ? const Interval(0.0, 0.65, curve: Curves.easeOutCubic) : Curves.easeOut);
+            motionSafe ? const Interval(0.0, 0.65, curve: kCurveFade) : kCurveExit);
     final textFade = CurvedAnimation(
         parent: controller,
         curve: motionSafe
-            ? const Interval(0.18, 0.95, curve: Curves.easeOutCubic)
-            : Curves.easeOut);
+            ? const Interval(0.18, 0.95, curve: kCurveFade)
+            : kCurveExit);
 
     return ScaleTransition(
       scale: scale,

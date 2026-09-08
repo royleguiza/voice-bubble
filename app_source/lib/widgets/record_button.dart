@@ -146,10 +146,10 @@ class _RecordButtonState extends State<RecordButton>
                       ? () => widget.onHoldEnd!()
                       : null,
               child: AnimatedContainer(
-                // easeOut (sin overshoot): easeOutBack extrapola los
+                // kCurveExit (sin overshoot): easeOutBack extrapola los
                 // colores/sombras más allá del objetivo (t > 1).
                 duration: morphDuration,
-                curve: Curves.easeOut,
+                curve: kCurveExit,
                 width: kRecordButtonSize,
                 height: kRecordButtonSize,
                 decoration: BoxDecoration(
