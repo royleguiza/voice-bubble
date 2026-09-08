@@ -37,10 +37,16 @@ def test_settings_screen():
     print("  [PASS] SegmentedButton y hint text configurados para 4 niveles de altura.")
 
 def test_kotlin_keyboard_service():
-    print("  [TEST] Verificando constantes y factores en VoiceKeyboardService.kt...")
-    kt_file = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt"
-    with open(kt_file, "r", encoding="utf-8") as f:
-        kt_content = f.read()
+    print("  [TEST] Verificando constantes y factores en Kotlin (VKS + KeyboardSupport)...")
+    kt_files = [
+        "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt",
+        # SPK-05: las constantes viven en el módulo de soporte (mismo paquete).
+        "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyboardSupport.kt",
+    ]
+    kt_content = ""
+    for kt_file in kt_files:
+        with open(kt_file, "r", encoding="utf-8") as f:
+            kt_content += f.read()
 
     assert 'HEIGHT_PROFILE_BAJA = "baja"' in kt_content
     assert 'HEIGHT_PROFILE_MEDIA = "media"' in kt_content

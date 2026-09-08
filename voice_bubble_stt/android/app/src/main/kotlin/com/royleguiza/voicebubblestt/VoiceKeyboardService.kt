@@ -1,10 +1,8 @@
 package com.royleguiza.voicebubblestt
 
 import android.animation.ObjectAnimator
-import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
@@ -1562,13 +1560,6 @@ class VoiceKeyboardService : InputMethodService() {
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
-    /** Codigo de tecla fisica para combinaciones modificadoras (a-z y corchetes). */
-    private fun keyCodeFor(c: Char): Int? = when {
-        c in 'a'..'z' -> KeyEvent.KEYCODE_A + (c - 'a')
-        c == '[' -> KeyEvent.KEYCODE_LEFT_BRACKET
-        else -> null
-    }
-
     // ------------------------------------------------------------------
     // Dictado por voz (K3 + M4 Morph-to-Pill)
     // ------------------------------------------------------------------
@@ -1965,10 +1956,6 @@ class VoiceKeyboardService : InputMethodService() {
         recordingTimerRunnable = null
     }
 
-    private fun runOnMain(block: () -> Unit) {
-        sharedMainHandler.post(block)
-    }
-
     private fun refreshMicVisual() {
         // AT-A4: sin cambio de campo no hay otro punto que reevalue la
         // burbuja; si ella dejo de grabar, BUSY zombi vuelve a IDLE.
@@ -2128,13 +2115,6 @@ class VoiceKeyboardService : InputMethodService() {
             }
         }
     }
-
-    private fun reducedMotion(): Boolean =
-        Settings.Global.getFloat(
-            contentResolver,
-            Settings.Global.ANIMATOR_DURATION_SCALE,
-            1f,
-        ) == 0f
 
     private fun gainAudioFocus() {
         try {
@@ -2415,15 +2395,6 @@ class VoiceKeyboardService : InputMethodService() {
             (it.parent as? ViewGroup)?.removeView(it)
         }
         statusRowView = null
-    }
-
-    /** Abre la UI principal de la app (Ajustes) desde el teclado. */
-    private fun openAppUi() {
-        try {
-            val intent = Intent(this, MainActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
-        } catch (_: Exception) {}
     }
 
     // ------------------------------------------------------------------
@@ -3273,13 +3244,6 @@ class VoiceKeyboardService : InputMethodService() {
     }
 
     /** Copia al portapapeles del sistema; accion iniciada por el usuario. */
-    private fun copySnippetToClipboard(text: String) {
-        try {
-            val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            cm.setPrimaryClip(ClipData.newPlainText("VoiceBubble", text))
-        } catch (_: Exception) {}
-    }
-
     // ------------------------------------------------------------------
     // Gestor de Portapapeles Multimodal (Opción 2: Filmstrip Reel)
     // ------------------------------------------------------------------
@@ -3466,38 +3430,9 @@ class VoiceKeyboardService : InputMethodService() {
         }
     }
 
-    private fun showClipboardNotice(message: String) {
-        try {
-            android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
-        } catch (_: Exception) {}
-    }
-
     // ------------------------------------------------------------------
     // Acentos por toque largo y pares auto-cerrados
     // ------------------------------------------------------------------
-
-    private fun accentsFor(c: Char): List<String> = when (c) {
-        'a' -> listOf("á", "à", "ä", "â", "ã")
-        'e' -> listOf("é", "è", "ë", "ê")
-        'i' -> listOf("í", "ì", "ï", "î")
-        'o' -> listOf("ó", "ò", "ö", "ô", "õ")
-        'u' -> listOf("ú", "ù", "ü", "û")
-        'n' -> listOf("ñ")
-        'c' -> listOf("ç")
-        else -> emptyList()
-    }
-
-    /** Par auto-cerrado para la capa codigo; null si no aplica. */
-    private fun pairCloseFor(open: Char): Char? = when (open) {
-        '{' -> '}'
-        '[' -> ']'
-        '(' -> ')'
-        '<' -> '>'
-        '"' -> '"'
-        '\'' -> '\''
-        '`' -> '`'
-        else -> null
-    }
 
     /**
      * Cancela los gestos pendientes de las teclas vigentes: long-press y
@@ -3898,8 +3833,6 @@ class VoiceKeyboardService : InputMethodService() {
         activePopup = null
     }
 
-    private fun dimen(resId: Int): Int = resources.getDimensionPixelSize(resId)
-
     /**
      * Preferencia escrita por los Ajustes de la app (Flutter shared_preferences
      * guarda con prefijo "flutter." en el archivo FlutterSharedPreferences).
@@ -4094,44 +4027,6 @@ class VoiceKeyboardService : InputMethodService() {
     private fun scaleV(px: Int): Int = (px * heightFactor).toInt()
 
     companion object {
-        /** Handler principal compartido: runOnMain no aloja uno por llamada. */
-        private val sharedMainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
-
-        private const val LONG_PRESS_MILLIS = 350L
-
-        /** Autorrepeticion de ⌫ (P6): primer ciclo y aceleracion geometrica
-         *  hasta el piso (250 -> 212 -> 180 ... -> 50 ms). */
-        private const val REPEAT_INITIAL_DELAY_MS = 250L
-        private const val REPEAT_MIN_INTERVAL_MS = 50L
-        private const val REPEAT_ACCEL = 0.85f
-
-        /** Gesto ⌫ (P6): recorrido izquierdo que borra una palabra completa. */
-        private const val SWIPE_DELETE_STEP_DP = 48f
-
-        /** Ventana previa examinada para hallar el limite de palabra. */
-        private const val SWIPE_WORD_LOOKBACK_CHARS = 64
-
-        /** Umbral de doble pulso sobre shift para activar caps lock (P3). */
-        private const val SHIFT_DOUBLE_TAP_MILLIS = 300L
-
-        /** Tope del query de busqueda de snippets. */
-        private const val SNIPPET_QUERY_MAX_CHARS = 50
-
-        /** Columnas del grid de chips de snippets. */
-        private const val SNIPPET_GRID_COLUMNS = 3
-
-        /** Valores del perfil de altura escritos por Ajustes (K5-T2). */
-        private const val HEIGHT_PROFILE_BAJA = "baja"
-        private const val HEIGHT_PROFILE_MEDIA = "media"
-        private const val HEIGHT_PROFILE_ALTA = "alta"
-        private const val HEIGHT_PROFILE_MUY_ALTA = "muy_alta"
-
-        /** Factores aplicados a alturas verticales propias del teclado. */
-        private const val HEIGHT_FACTOR_BAJA = 0.85f
-        private const val HEIGHT_FACTOR_MEDIA = 1f
-        private const val HEIGHT_FACTOR_ALTA = 1.15f
-        private const val HEIGHT_FACTOR_MUY_ALTA = 1.30f
-
         /** Exclusion mutua de microfono: visible para MainActivity/burbuja. */
         @Volatile
         var keyboardRecordingActive: Boolean = false
