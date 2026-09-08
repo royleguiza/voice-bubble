@@ -43,6 +43,12 @@ def main():
         vks += read(os.path.join(KT, "TrackpadBridge.kt"))
     except FileNotFoundError:
         pass
+    # SPK-05 módulo 8: la capa snippets vive en SnippetsLayer.kt; VKS
+    # delega (snippets.toggle). Se suma al contenido para regresión.
+    try:
+        vks += read(os.path.join(KT, "SnippetsLayer.kt"))
+    except FileNotFoundError:
+        pass
     # SPK-05: los enums viven en KeyboardTypes.kt y la capa en
     # CredentialsLayer.kt (mismo paquete).
     types = read(os.path.join(KT, "KeyboardTypes.kt"))
@@ -162,7 +168,7 @@ def main():
     # --- 6. No regresión del resto del teclado ---
     for token in ("Layer.LETTERS", "Layer.SYMBOLS", "Layer.CODE",
                   "Layer.SNIPPETS", "Layer.TRACKPAD",
-                  "toggleSnippetsLayer", "buildSnippetRows",
+                  "buildSnippetRows",
                   "toggleCodeLayer",
                   "commitSymbolText", "if (!restarting)"):
         suite.check(f"Regresión: {token} intacto", token in vks,
@@ -171,6 +177,10 @@ def main():
     suite.check("Regresión: toggleTrackpadLayer intacto",
                 "toggleTrackpadLayer" in vks or ("TrackpadBridge" in vks and "fun toggle()" in vks),
                 "Se rompió toggleTrackpadLayer")
+    # SPK-05 módulo 8: el toggle de snippets vive en la capa.
+    suite.check("Regresión: toggleSnippetsLayer intacto",
+                "toggleSnippetsLayer" in vks or ("SnippetsLayer" in vks and "fun toggle()" in vks),
+                "Se rompió toggleSnippetsLayer")
     suite.check("Contrato de claves incluye las 3",
                 all(k in contract for k in ("vb_credentials_v1", "vb_cred_pass_v1", "vb_cred_show_user")),
                 "contract-keys.txt desactualizado")

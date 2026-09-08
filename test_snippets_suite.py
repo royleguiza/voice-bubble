@@ -26,26 +26,38 @@ def test_keyboard_service_snippet_sublayer():
     kt_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceKeyboardService.kt"
     with open(kt_path, "r", encoding="utf-8") as f:
         content = f.read()
+    # SPK-05 módulo 8: el estado vive en SnippetsLayer.kt (mismo paquete);
+    # VKS queda como shell que delega.
+    layer_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SnippetsLayer.kt"
+    with open(layer_path, "r", encoding="utf-8") as f:
+        layer = f.read()
 
-    # Variables de estado
-    assert "private var snippetSubLayer = Layer.LETTERS" in content
-    assert "private var snippetDraftName = \"\"" in content
-    assert "private var snippetDraftContent = \"\"" in content
-    assert "private var snippetDraftActiveFieldIsContent = false" in content
-    assert "private var snippetDraftCursor = 0" in content
+    # Variables de estado (VKS o capa)
+    assert ("private var snippetSubLayer = Layer.LETTERS" in content
+            or "var subLayer = Layer.LETTERS" in layer)
+    assert ("private var snippetDraftName = \"\"" in content
+            or 'private var draftName = ""' in layer)
+    assert ("private var snippetDraftContent = \"\"" in content
+            or 'private var draftContent = ""' in layer)
+    assert ("private var snippetDraftActiveFieldIsContent = false" in content
+            or "private var draftActiveIsContent = false" in layer)
+    assert ("private var snippetDraftCursor = 0" in content
+            or "private var draftCursor = 0" in layer)
 
     # Métodos de ciclo de vida
-    assert "saveSnippetDraftState()" in content
-    assert "snippetDraftName" in content
-    assert "snippetDraftContent" in content
+    assert "saveSnippetDraftState()" in content or "saveDraftState()" in layer
+    assert "snippetDraftName" in content or "draftName" in layer
+    assert "snippetDraftContent" in content or "draftContent" in layer
 
     # Toggle de símbolos y código dentro de snippets
-    assert "if (layer == Layer.SNIPPETS)" in content
-    assert "snippetSubLayer = if (snippetSubLayer == Layer.LETTERS) Layer.SYMBOLS else Layer.LETTERS" in content
-    assert "snippetSubLayer = if (snippetSubLayer == Layer.CODE) Layer.LETTERS else Layer.CODE" in content
+    assert "if (layer == Layer.SNIPPETS)" in content or "host.currentLayer() == Layer.SNIPPETS" in layer
+    assert ("snippetSubLayer = if (snippetSubLayer == Layer.LETTERS) Layer.SYMBOLS else Layer.LETTERS" in content
+            or "subLayer = if (subLayer == Layer.LETTERS) Layer.SYMBOLS else Layer.LETTERS" in layer)
+    assert ("snippetSubLayer = if (snippetSubLayer == Layer.CODE) Layer.LETTERS else Layer.CODE" in content
+            or "subLayer = if (subLayer == Layer.CODE) Layer.LETTERS else Layer.CODE" in layer)
 
     # Comprobación de que buildSnippetRows soporta las 3 subcapas
-    assert "when (snippetSubLayer)" in content
+    assert "when (snippetSubLayer)" in content or "when (snippets.subLayer)" in content
     assert "Layer.SYMBOLS -> buildSymbolRows()" in content
     assert "Layer.CODE -> buildCodeRows()" in content
     assert "addSnippetLetterRows()" in content

@@ -11,10 +11,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.RemoteException
 import android.os.SystemClock
-import android.text.Editable
 import android.text.InputType
 import android.text.TextUtils
-import android.text.TextWatcher
 import android.transition.ChangeBounds
 import android.transition.Fade
 import android.transition.TransitionManager
@@ -30,7 +28,6 @@ import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
-import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
@@ -50,7 +47,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -86,33 +83,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // zombis sobre teclas descartadas.
     private val longPressCancellations = mutableListOf<() -> Unit>()
 
-    // --- Snippets (K4) ---
-    private var snippetMode = SnippetMode.NORMAL
-    private var btnSnippetEditView: View? = null
-    private var btnSnippetDeleteView: View? = null
-    private var isSnippetEditorOpen: Boolean = false
-    private var editingSnippet: VbSnippet? = null
-    private var activeSnippetEditorField: EditText? = null
-    private var etSnippetNameField: EditText? = null
-    private var etSnippetContentField: EditText? = null
-    private lateinit var snippetStore: SnippetStore
+    // --- Snippets (K4: vive en SnippetsLayer; aquí solo el shell) ---
+    private lateinit var snippets: SnippetsLayer
     // Claves: solo lectura desde Ajustes; el teclado jamas escribe ni borra.
     private lateinit var credentialStore: CredentialStore
     private lateinit var credentials: CredentialsLayer
-    private var layerBeforeSnippets = Layer.LETTERS
-    private var snippetsSeedAttempted = false
-    private var snippetQuery = ""
-    private var snippetGridContainer: LinearLayout? = null
-    private var snippetSubLayer = Layer.LETTERS
-    private var snippetDraftName = ""
-    private var snippetDraftContent = ""
-    private var snippetDraftActiveFieldIsContent = false
-    private var snippetDraftCursor = 0
-
-    // K4-T3: con el campo de busqueda enfocado, los commits del propio
-    // teclado se redirigen al query en vez del documento destino.
-    private var snippetSearchActive = false
-    private var snippetSearchField: EditText? = null
 
     // --- Preferencias de aspecto (K5-T2/T3, puente Flutter) ---
     private lateinit var trackpad: TrackpadBridge
@@ -154,7 +129,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // K5-T5: recreacion de vista (ej. rotacion) nunca debe dejar una
         // grabacion fantasma del cliente anterior colgada.
         dictation.onCreateInputView()
-        snippetStore = SnippetStore(this)
+        snippets = SnippetsLayer(this, this)
+        snippets.onCreateInputView()
         credentialStore = CredentialStore(this)
         credentials = CredentialsLayer(this, credentialStore, handler, this)
         root = LinearLayout(this)
@@ -283,24 +259,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         spaceKeyView = null
         commaKeyView = null
         dotKeyView = null
-        if (layer != Layer.SNIPPETS) {
-            snippetQuery = ""
-            snippetGridContainer = null
-            snippetSearchActive = false
-            snippetSearchField = null
-            snippetMode = SnippetMode.NORMAL
-            btnSnippetEditView = null
-            btnSnippetDeleteView = null
-            isSnippetEditorOpen = false
-            editingSnippet = null
-            activeSnippetEditorField = null
-            etSnippetNameField = null
-            etSnippetContentField = null
-            snippetDraftName = ""
-            snippetDraftContent = ""
-            snippetDraftActiveFieldIsContent = false
-            snippetDraftCursor = 0
-            snippetSubLayer = Layer.LETTERS
+        if (layer != Layer.SNIPPETS && ::snippets.isInitialized) {
+            snippets.resetState()
         }
         root.removeAllViews()
 
@@ -359,7 +319,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 1.0f,
                 if (spanishMode) "fragmentos" else "snippets",
             ) {
-                toggleSnippetsLayer()
+                snippets.toggle()
             }
             items.add(btnSnippets)
         }
@@ -595,9 +555,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
         val btnSym = makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols", isBold = true) {
             if (layer == Layer.SNIPPETS) {
-                saveSnippetDraftState()
-                snippetSubLayer = if (snippetSubLayer == Layer.LETTERS) Layer.SYMBOLS else Layer.LETTERS
-                rebuild()
+                snippets.cycleSubLayerForSymbols()
             } else {
                 layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
                 rebuild()
@@ -616,7 +574,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
         val space = makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, if (spanishMode) "espacio" else "space") {
             // En snippets el espacio alimenta el query solo si no esta abierto el editor.
-            if (layer == Layer.SNIPPETS && !isSnippetEditorOpen) ensureSnippetSearchMode()
+            if (layer == Layer.SNIPPETS && !snippets.isEditorOpen) snippets.ensureSearchMode()
             commit(" ")
         }
         spaceKeyView = space
@@ -665,7 +623,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
 
     private fun symbolsToggleLabel(): String = when {
-        layer == Layer.SNIPPETS && (snippetSubLayer == Layer.SYMBOLS || snippetSubLayer == Layer.CODE) -> "ABC"
+        layer == Layer.SNIPPETS && (snippets.subLayer == Layer.SYMBOLS || snippets.subLayer == Layer.CODE) -> "ABC"
         layer == Layer.SYMBOLS || layer == Layer.CODE || layer == Layer.CREDENTIALS -> "ABC"
         else -> "?123"
     }
@@ -673,9 +631,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     /** Cambiador de capas con memoria de la ultima capa no-codigo. */
     private fun toggleCodeLayer() {
         if (layer == Layer.SNIPPETS) {
-            saveSnippetDraftState()
-            snippetSubLayer = if (snippetSubLayer == Layer.CODE) Layer.LETTERS else Layer.CODE
-            rebuild()
+            snippets.cycleSubLayerForCode()
             return
         }
         if (layer == Layer.CODE) {
@@ -718,6 +674,43 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // arriba y sirven a las cuatro interfaces (misma firma, una sola impl).
     override fun commitText(text: String) {
         commit(text)
+    }
+
+    // --- SnippetsLayer.UiHost (SPK-05 módulo 8). commitText no sirve aquí:
+    // insertar un snippet debe saltear el ruteo al query (bucle), por eso
+    // la capa comitea directo vía el InputConnection del servicio.
+    override fun dimenPx(resId: Int): Int = dimen(resId)
+    override fun addContentRow(view: View) = addRow(view)
+    override fun showCenteredBox(box: LinearLayout, widthPx: Int) {
+        val popup = PopupWindow(box, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            animationStyle = R.style.VoiceHistoryPopupAnimation
+        }
+        activePopup = popup
+        popup.showAtLocation(root, Gravity.CENTER, 0, 0)
+    }
+    override fun showAnchoredBox(box: LinearLayout, anchor: View) {
+        val popup = PopupWindow(
+            box,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true,
+        )
+        popup.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        popup.isOutsideTouchable = true
+        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val loc = IntArray(2)
+        anchor.getLocationInWindow(loc)
+        val gap = dimen(R.dimen.kb_key_gap)
+        activePopup = popup
+        popup.showAtLocation(
+            root,
+            Gravity.NO_GRAVITY,
+            loc[0],
+            // AT-A12: jamas Y negativo; si no cabe arriba se solapa con el ancla.
+            maxOf(gap, loc[1] - box.measuredHeight - gap),
+        )
     }
     override fun setLayer(next: Layer) {
         layer = next
@@ -798,7 +791,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         return key
     }
 
-    private fun horizontalRow(): LinearLayout {
+    override fun horizontalRow(): LinearLayout {
         val row = LinearLayout(this)
         row.orientation = LinearLayout.HORIZONTAL
         return row
@@ -902,7 +895,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         return key
     }
 
-    private fun makeIconKey(
+    override fun makeIconKey(
         iconRes: Int,
         bgRes: Int,
         weight: Float,
@@ -1037,39 +1030,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
     }
 
-    private fun insertTextToActiveEditor(text: String): Boolean {
-        if (!isSnippetEditorOpen) return false
-        val et = activeSnippetEditorField ?: etSnippetNameField ?: return false
-        val start = et.selectionStart.coerceAtLeast(0)
-        val end = et.selectionEnd.coerceAtLeast(0)
-        val min = minOf(start, end)
-        val max = maxOf(start, end)
-        et.text.replace(min, max, text)
-        et.setSelection(min + text.length)
-        return true
-    }
+    private fun insertTextToActiveEditor(text: String): Boolean =
+        if (::snippets.isInitialized) snippets.insertToEditor(text) else false
 
-    private fun backspaceActiveEditor(): Boolean {
-        if (!isSnippetEditorOpen) return false
-        val et = activeSnippetEditorField ?: etSnippetNameField ?: return false
-        val start = et.selectionStart.coerceAtLeast(0)
-        val end = et.selectionEnd.coerceAtLeast(0)
-        if (start != end) {
-            val min = minOf(start, end)
-            val max = maxOf(start, end)
-            et.text.delete(min, max)
-            et.setSelection(min)
-            return true
-        }
-        if (start > 0) {
-            val text = et.text
-            val count = if (start >= 2 && Character.isSurrogatePair(text[start - 2], text[start - 1])) 2 else 1
-            text.delete(start - count, start)
-            et.setSelection(start - count)
-            return true
-        }
-        return true
-    }
+    private fun backspaceActiveEditor(): Boolean =
+        if (::snippets.isInitialized) snippets.backspaceEditor() else false
 
     private fun commitLetter(base: Char) {
         haptic(root)
@@ -1131,23 +1096,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
      * propio teclado y los puebla en el query para filtrar, sin escribir
      * nunca en la app destino (patron estilo Gboard). Devuelve true si el
      * texto fue consumido por el modo busqueda.
+     * Shell SPK-05: la lógica vive en SnippetsLayer.
      */
-    private fun routeToSnippetQuery(text: String): Boolean {
-        if (layer != Layer.SNIPPETS || !snippetSearchActive) return false
-        val et = snippetSearchField ?: return false
-        val editable = et.text
-        if (editable.length >= SNIPPET_QUERY_MAX_CHARS) return true
-        val remaining = SNIPPET_QUERY_MAX_CHARS - editable.length
-        var chunk = if (text.length > remaining) text.substring(0, remaining) else text
-        // AT-A5: el recorte nunca deja un high surrogate suelto al final.
-        if (chunk.isNotEmpty() && Character.isHighSurrogate(chunk.last())) {
-            chunk = chunk.dropLast(1)
-        }
-        editable.append(chunk)
-        et.setSelection(editable.length)
-        refreshSnippetGrid()
-        return true
-    }
+    private fun routeToSnippetQuery(text: String): Boolean =
+        if (::snippets.isInitialized) snippets.routeToQuery(text) else false
 
     /** Envio del caracter con META_CTRL/META_ALT via KeyEvent (patron Hacker's
      *  Keyboard). Sin codigo fisico (ej. ñ) la combinacion es imposible:
@@ -1179,7 +1131,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         sendDownUpKeyEvents(keyCode)
     }
 
-    private fun consumeModifiers() {
+    override fun consumeModifiers() {
         ctrlActive = false
         altActive = false
         refreshModifierVisuals()
@@ -1188,25 +1140,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private fun handleBackspace() {
         haptic(root)
         if (backspaceActiveEditor()) return
-        if (layer == Layer.SNIPPETS && snippetSearchActive) {
-            val et = snippetSearchField ?: return
-            val text = et.text
-            if (!text.isNullOrEmpty()) {
-                // AT-A5: un par surrogate (emoji) se borra entero, no de a medio.
-                val count = if (
-                    text.length >= 2 &&
-                    Character.isSurrogatePair(text[text.length - 2], text[text.length - 1])
-                ) {
-                    2
-                } else {
-                    1
-                }
-                text.delete(text.length - count, text.length)
-                et.setSelection(text.length)
-                refreshSnippetGrid()
-            }
-            return
-        }
+        if (::snippets.isInitialized && snippets.backspaceQuery()) return
         val ic = currentInputConnection ?: return
         val selected = try {
             ic.getSelectedText(0)
@@ -1253,15 +1187,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             return start
         }
         if (layer == Layer.SNIPPETS) {
-            ensureSnippetSearchMode()
-            val et = snippetSearchField ?: return
-            val text = et.text ?: return
-            val start = wordStart(text, text.length)
-            if (start < text.length) {
-                text.delete(start, text.length)
-                et.setSelection(start)
-                refreshSnippetGrid()
-            }
+            if (::snippets.isInitialized) snippets.deleteQueryWord()
             return
         }
         val ic = currentInputConnection ?: return
@@ -1280,37 +1206,23 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
     private fun handleEnter() {
         haptic(root)
-        if (isSnippetEditorOpen) {
-            if (activeSnippetEditorField == etSnippetNameField) {
-                etSnippetContentField?.requestFocus()
-                etSnippetContentField?.setSelection(etSnippetContentField?.text?.length ?: 0)
-                activeSnippetEditorField = etSnippetContentField
-            } else if (activeSnippetEditorField == etSnippetContentField) {
-                insertTextToActiveEditor("\n")
-            }
-            return
-        }
-        if (layer == Layer.SNIPPETS && snippetSearchActive) {
-            exitSnippetSearchMode()
+        if (::snippets.isInitialized && snippets.handleEnterInEditor()) return
+        if (layer == Layer.SNIPPETS && ::snippets.isInitialized && snippets.isSearchActive) {
+            snippets.exitSearchMode()
             return
         }
         if (currentInputConnection == null) return
         sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
     }
 
-    /** Apaga el modo busqueda y restaura el fondo inactivo del campo. */
+    /** Apaga el modo busqueda y restaura el fondo inactivo del campo. Shell SPK-05. */
     private fun exitSnippetSearchMode() {
-        snippetSearchActive = false
-        snippetSearchField?.clearFocus()
-        applySnippetSearchVisual()
+        if (::snippets.isInitialized) snippets.exitSearchMode()
     }
 
-    /** Enciende el modo busqueda bajo demanda (teclado de la propia capa). */
+    /** Enciende el modo busqueda bajo demanda (teclado de la propia capa). Shell SPK-05. */
     private fun ensureSnippetSearchMode() {
-        if (!snippetSearchActive) {
-            snippetSearchActive = true
-            applySnippetSearchVisual()
-        }
+        if (::snippets.isInitialized) snippets.ensureSearchMode()
     }
 
     /**
@@ -1558,35 +1470,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
 
     // ------------------------------------------------------------------
-    // Capa snippets (K4)
+    // Capa snippets (K4: vive en SnippetsLayer; aquí solo filas QWERTY +
+    // ganchos finos de commit/backspace/enter + shell de subcapa)
     // ------------------------------------------------------------------
-
-    /**
-     * Apertura/cierre de la capa snippets. Al abrir: siembra los seeds solo en
-     * la primera apertura (idempotencia interna del store), recarga siempre
-     * desde prefs (recarga viva: los cambios hechos en la app aparecen al
-     * reabrir sin reiniciar nada) y recuerda la capa de origen para volver.
-     */
-    private fun toggleSnippetsLayer() {
-        if (layer == Layer.SNIPPETS) {
-            layer = layerBeforeSnippets
-            snippetSearchActive = false
-            snippetSearchField = null
-            closeSnippetEditor()
-            rebuild()
-            return
-        }
-        layerBeforeSnippets = layer
-        if (!snippetsSeedAttempted) {
-            snippetsSeedAttempted = true
-            snippetStore.seedIfFirstOpen()
-        }
-        snippetStore.load()
-        snippetQuery = ""
-        snippetSubLayer = Layer.LETTERS
-        layer = Layer.SNIPPETS
-        rebuild()
-    }
 
     /**
      * Apertura/cierre de la capa de credenciales (contrato Claves). Al abrir
@@ -1630,206 +1516,18 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
     override fun isRecordingActive(): Boolean = keyboardRecordingActive
 
-    private fun openSnippetEditor(snippet: VbSnippet?) {
-        dismissPopup()
-        isSnippetEditorOpen = true
-        editingSnippet = snippet
-        snippetDraftName = snippet?.nombre.orEmpty()
-        snippetDraftContent = snippet?.contenido.orEmpty()
-        snippetDraftActiveFieldIsContent = false
-        snippetDraftCursor = snippetDraftName.length
-        snippetSubLayer = Layer.LETTERS
-        snippetSearchActive = false
-        rebuild()
-    }
-
-    private fun closeSnippetEditor() {
-        isSnippetEditorOpen = false
-        editingSnippet = null
-        activeSnippetEditorField = null
-        etSnippetNameField = null
-        etSnippetContentField = null
-        snippetDraftName = ""
-        snippetDraftContent = ""
-        snippetDraftActiveFieldIsContent = false
-        snippetDraftCursor = 0
-        snippetSubLayer = Layer.LETTERS
-        snippetMode = SnippetMode.NORMAL
-        rebuild()
-    }
-
     private fun saveSnippetDraftState() {
-        etSnippetNameField?.let { snippetDraftName = it.text.toString() }
-        etSnippetContentField?.let { snippetDraftContent = it.text.toString() }
-        snippetDraftActiveFieldIsContent = (activeSnippetEditorField === etSnippetContentField)
-        val activeEt = activeSnippetEditorField ?: etSnippetNameField
-        activeEt?.let { snippetDraftCursor = it.selectionStart.coerceAtLeast(0) }
+        if (::snippets.isInitialized) snippets.saveDraftState()
     }
 
-    /** Fila de busqueda/editor inline + grid scrolleable de chips + teclado (letras/simbolos/codigo). */
+    /** Shell SPK-05: el contenido vive en SnippetsLayer; aquí solo las filas de subcapa. */
     private fun buildSnippetRows() {
-        if (isSnippetEditorOpen) {
-            addRow(buildSnippetEditorInline())
-        } else {
-            addRow(buildSnippetSearchRow())
-            val scroll = ScrollView(this).apply {
-                isVerticalScrollBarEnabled = false
-            }
-            val grid = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-            }
-            snippetGridContainer = grid
-            scroll.addView(grid)
-            refreshSnippetGrid()
-            val lp = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                scaleV(dimen(R.dimen.kb_snippets_grid_height)),
-            )
-            lp.topMargin = rowGapPx()
-            root.addView(scroll, lp)
-        }
-        when (snippetSubLayer) {
+        snippets.buildContent()
+        when (snippets.subLayer) {
             Layer.SYMBOLS -> buildSymbolRows()
             Layer.CODE -> buildCodeRows()
             else -> addSnippetLetterRows()
         }
-    }
-
-    private fun buildSnippetEditorInline(): LinearLayout {
-        val pad = dimen(R.dimen.kb_popup_padding)
-        val m = dimen(R.dimen.kb_key_gap) / 2
-        val isEdit = editingSnippet != null
-
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundResource(R.drawable.kb_popup_bg)
-            setPadding(pad, pad, pad, pad)
-        }
-
-        val headerRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        val title = TextView(this).apply {
-            text = if (isEdit) (if (spanishMode) "Editar snippet" else "Edit snippet")
-            else (if (spanishMode) "Nuevo snippet" else "New snippet")
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setTypeface(null, Typeface.BOLD)
-        }
-        val lpTitle = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        headerRow.addView(title, lpTitle)
-
-        val btnCancel = TextView(this).apply {
-            text = if (spanishMode) "Cancelar" else "Cancel"
-            gravity = Gravity.CENTER
-            setPadding(pad * 2, pad, pad * 2, pad)
-            setBackgroundResource(R.drawable.kb_key_bg)
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setOnClickListener {
-                haptic(this)
-                closeSnippetEditor()
-            }
-        }
-        val lpCancel = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, scaleV(dimen(R.dimen.kb_snippet_chip_height)))
-        lpCancel.rightMargin = pad
-        headerRow.addView(btnCancel, lpCancel)
-
-        val btnSave = TextView(this).apply {
-            text = if (spanishMode) "Guardar" else "Save"
-            gravity = Gravity.CENTER
-            setPadding(pad * 2, pad, pad * 2, pad)
-            setBackgroundResource(R.drawable.kb_key_accent)
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_on_accent))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setTypeface(null, Typeface.BOLD)
-            setOnClickListener {
-                haptic(this)
-                val name = etSnippetNameField?.text?.toString()?.trim().orEmpty()
-                val content = etSnippetContentField?.text?.toString()?.trim().orEmpty()
-                if (name.isNotEmpty()) {
-                    val toSave = if (isEdit && editingSnippet != null) {
-                        editingSnippet!!.copy(nombre = name, contenido = content)
-                    } else {
-                        VbSnippet(id = "", nombre = name, contenido = content, orden = 0)
-                    }
-                    snippetStore.saveSnippet(toSave)
-                    closeSnippetEditor()
-                }
-            }
-        }
-        val lpSave = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, scaleV(dimen(R.dimen.kb_snippet_chip_height)))
-        headerRow.addView(btnSave, lpSave)
-        container.addView(headerRow)
-
-        val etName = EditText(this).apply {
-            hint = if (spanishMode) "Nombre (ej. Git commit)" else "Name"
-            setSingleLine(true)
-            maxLines = 1
-            inputType = InputType.TYPE_CLASS_TEXT
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-            setHintTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
-            setBackgroundResource(R.drawable.kb_key_bg)
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setPadding(pad, pad, pad, pad)
-            setText(snippetDraftName)
-            onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
-                if (hasFocus) activeSnippetEditorField = this
-            }
-            setOnClickListener {
-                activeSnippetEditorField = this
-            }
-        }
-        etSnippetNameField = etName
-        val lpName = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, scaleV(dimen(R.dimen.kb_snippet_search_height)))
-        lpName.topMargin = pad
-        container.addView(etName, lpName)
-
-        val etContent = EditText(this).apply {
-            hint = if (spanishMode) "Contenido o comando..." else "Content or command..."
-            setSingleLine(false)
-            maxLines = 2
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-            setHintTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
-            setBackgroundResource(R.drawable.kb_key_bg)
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setPadding(pad, pad, pad, pad)
-            setText(snippetDraftContent)
-            onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
-                if (hasFocus) activeSnippetEditorField = this
-            }
-            setOnClickListener {
-                activeSnippetEditorField = this
-            }
-        }
-        etSnippetContentField = etContent
-        val lpContent = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, scaleV(dimen(R.dimen.kb_snippet_search_height)))
-        lpContent.topMargin = pad
-        container.addView(etContent, lpContent)
-
-        if (snippetDraftActiveFieldIsContent) {
-            activeSnippetEditorField = etContent
-            etContent.post {
-                etContent.requestFocus()
-                val pos = snippetDraftCursor.coerceIn(0, etContent.text.length)
-                etContent.setSelection(pos)
-            }
-        } else {
-            activeSnippetEditorField = etName
-            etName.post {
-                etName.requestFocus()
-                val pos = snippetDraftCursor.coerceIn(0, etName.text.length)
-                etName.setSelection(pos)
-            }
-        }
-
-        val lpContainer = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpContainer.setMargins(m, 0, m, 0)
-        container.layoutParams = lpContainer
-        return container
     }
 
     /**
@@ -1917,373 +1615,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         commitLetter(base)
     }
 
-    private fun buildSnippetSearchRow(): LinearLayout {
-        val row = horizontalRow()
-        val pad = dimen(R.dimen.kb_popup_padding)
-        val et = EditText(this)
-        et.hint = if (spanishMode) "Buscar snippets..." else "Search snippets..."
-        et.setSingleLine(true)
-        et.maxLines = 1
-        et.inputType = InputType.TYPE_CLASS_TEXT
-        et.imeOptions = EditorInfo.IME_ACTION_SEARCH
-        et.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-        et.setHintTextColor(ContextCompat.getColor(this, R.color.kb_label_secondary))
-        et.setBackgroundResource(R.drawable.kb_key_bg)
-        et.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-        et.setPadding(pad, pad, pad, pad)
-        et.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) {
-                snippetQuery = s?.toString() ?: ""
-                refreshSnippetGrid()
-            }
-        })
-        if (snippetQuery.isNotEmpty()) {
-            et.setText(snippetQuery)
-        }
-        snippetSearchActive = false
-        snippetSearchField = et
-        et.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
-            snippetSearchActive = hasFocus
-            applySnippetSearchVisual()
-        }
-        et.setOnClickListener { v ->
-            if (!v.hasFocus()) v.requestFocus()
-            snippetSearchActive = true
-            applySnippetSearchVisual()
-        }
-        val lp = LinearLayout.LayoutParams(0, scaleV(dimen(R.dimen.kb_snippet_search_height)), 1f)
-        val m = dimen(R.dimen.kb_key_gap) / 2
-        lp.setMargins(m, 0, m, 0)
-        row.addView(et, lp)
-
-        val btnH = scaleV(dimen(R.dimen.kb_snippet_search_height))
-        val btnW = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
-
-        // Boton [+] Nuevo
-        val btnPlus = makeIconKey(R.drawable.ic_add, R.drawable.kb_key_bg, 0f, if (spanishMode) "nuevo snippet" else "new snippet") {
-            openSnippetEditor(null)
-        }
-        val lpPlus = LinearLayout.LayoutParams(btnW, btnH)
-        lpPlus.setMargins(m, 0, m, 0)
-        btnPlus.layoutParams = lpPlus
-        row.addView(btnPlus)
-
-        // Boton [✏️] Editar
-        val btnEdit = makeIconKey(
-            R.drawable.ic_edit,
-            if (snippetMode == SnippetMode.EDIT) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
-            0f,
-            if (spanishMode) "editar snippet" else "edit snippet",
-        ) {
-            snippetMode = if (snippetMode == SnippetMode.EDIT) SnippetMode.NORMAL else SnippetMode.EDIT
-            updateSnippetModeVisuals()
-            refreshSnippetGrid()
-        }
-        btnSnippetEditView = btnEdit
-        val lpEdit = LinearLayout.LayoutParams(btnW, btnH)
-        lpEdit.setMargins(m, 0, m, 0)
-        btnEdit.layoutParams = lpEdit
-        row.addView(btnEdit)
-
-        // Boton [🗑️] Eliminar
-        val btnDelete = makeIconKey(
-            R.drawable.ic_delete,
-            if (snippetMode == SnippetMode.DELETE) R.drawable.kb_key_danger else R.drawable.kb_key_bg,
-            0f,
-            if (spanishMode) "eliminar snippet" else "delete snippet",
-        ) {
-            snippetMode = if (snippetMode == SnippetMode.DELETE) SnippetMode.NORMAL else SnippetMode.DELETE
-            updateSnippetModeVisuals()
-            refreshSnippetGrid()
-        }
-        btnSnippetDeleteView = btnDelete
-        val lpDelete = LinearLayout.LayoutParams(btnW, btnH)
-        lpDelete.setMargins(m, 0, m, 0)
-        btnDelete.layoutParams = lpDelete
-        row.addView(btnDelete)
-
-        return row
-    }
-
-    private fun updateSnippetModeVisuals() {
-        btnSnippetEditView?.setBackgroundResource(
-            if (snippetMode == SnippetMode.EDIT) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
-        )
-        (btnSnippetEditView as? ImageView)?.setColorFilter(
-            if (snippetMode == SnippetMode.EDIT) ContextCompat.getColor(this, R.color.kb_label_on_accent)
-            else ContextCompat.getColor(this, R.color.kb_label),
-        )
-        btnSnippetDeleteView?.setBackgroundResource(
-            if (snippetMode == SnippetMode.DELETE) R.drawable.kb_key_danger else R.drawable.kb_key_bg,
-        )
-        (btnSnippetDeleteView as? ImageView)?.setColorFilter(
-            if (snippetMode == SnippetMode.DELETE) ContextCompat.getColor(this, R.color.kb_label_on_accent)
-            else ContextCompat.getColor(this, R.color.kb_label),
-        )
-    }
-
-    /** Feedback visual del modo busqueda: fondo acentuado cuando esta activo. */
-    private fun applySnippetSearchVisual() {
-        val et = snippetSearchField ?: return
-        et.setBackgroundResource(
-            if (snippetSearchActive) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
-        )
-    }
-
-    /** Repuebla el grid con el filtro actual sobre el cache fresco del store. */
-    private fun refreshSnippetGrid() {
-        val container = snippetGridContainer ?: return
-        container.removeAllViews()
-        val query = snippetQuery.trim()
-        val all = snippetStore.get()
-        val filtered = if (query.isEmpty()) {
-            all
-        } else {
-            all.filter { it.nombre.contains(query, ignoreCase = true) }
-        }
-        if (filtered.isEmpty()) {
-            container.addView(emptySnippetsView())
-            return
-        }
-        var i = 0
-        while (i < filtered.size) {
-            val inRow = minOf(SNIPPET_GRID_COLUMNS, filtered.size - i)
-            val row = horizontalRow()
-            for (j in 0 until inRow) {
-                val chip = makeSnippetChip(filtered[i + j])
-                val lp = chip.layoutParams as LinearLayout.LayoutParams
-                lp.weight = SNIPPET_GRID_COLUMNS.toFloat() / inRow
-                row.addView(chip)
-            }
-            val lp = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                scaleV(dimen(R.dimen.kb_snippet_chip_height)),
-            )
-            if (container.childCount > 0) {
-                lp.topMargin = rowGapPx()
-            }
-            container.addView(row, lp)
-            i += inRow
-        }
-    }
-
-    /** Chip con el nombre del snippet: tap inserta, o activa accion segun modo. */
-    private fun makeSnippetChip(snippet: VbSnippet): TextView {
-        val chip = TextView(this)
-        chip.text = snippet.nombre
-        chip.gravity = Gravity.CENTER
-        chip.isClickable = true
-        chip.isFocusable = true
-        chip.includeFontPadding = false
-        chip.maxLines = 1
-        chip.ellipsize = TextUtils.TruncateAt.END
-        chip.setPadding(
-            dimen(R.dimen.kb_popup_padding), 0,
-            dimen(R.dimen.kb_popup_padding), 0,
-        )
-
-        when (snippetMode) {
-            SnippetMode.EDIT -> {
-                chip.setBackgroundResource(R.drawable.kb_key_accent)
-                chip.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
-                chip.setOnClickListener {
-                    haptic(chip)
-                    openSnippetEditor(snippet)
-                }
-            }
-            SnippetMode.DELETE -> {
-                chip.setBackgroundResource(R.drawable.kb_key_danger)
-                chip.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
-                chip.setOnClickListener {
-                    haptic(chip)
-                    showSnippetDeleteConfirmation(snippet)
-                }
-            }
-            SnippetMode.NORMAL -> {
-                chip.setBackgroundResource(R.drawable.kb_key_bg)
-                chip.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-                attachLongPress(
-                    chip,
-                    onLongPress = {
-                        haptic(chip)
-                        showSnippetMenu(chip, snippet)
-                    },
-                    onTapUp = { insertSnippet(snippet) },
-                )
-            }
-        }
-
-        chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-        chip.contentDescription = snippet.nombre
-
-        val lp = LinearLayout.LayoutParams(0, scaleV(dimen(R.dimen.kb_snippet_chip_height)), 1f)
-        val m = dimen(R.dimen.kb_key_gap) / 2
-        lp.setMargins(m, 0, m, 0)
-        chip.layoutParams = lp
-        return chip
-    }
-
-    private fun showSnippetDeleteConfirmation(snippet: VbSnippet) {
-        dismissPopup()
-        val pad = dimen(R.dimen.kb_popup_padding)
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundResource(R.drawable.kb_popup_bg)
-            setPadding(pad * 2, pad * 2, pad * 2, pad * 2)
-        }
-
-        val title = TextView(this).apply {
-            text = if (spanishMode) "¿Eliminar snippet?" else "Delete snippet?"
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size).toFloat())
-            setTypeface(null, Typeface.BOLD)
-        }
-        box.addView(title)
-
-        val desc = TextView(this).apply {
-            text = snippet.nombre
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_recording))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setPadding(0, pad / 2, 0, pad * 2)
-        }
-        box.addView(desc)
-
-        val actionsRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.END
-        }
-
-        val btnCancel = TextView(this).apply {
-            text = if (spanishMode) "Cancelar" else "Cancel"
-            gravity = Gravity.CENTER
-            setPadding(pad * 2, pad, pad * 2, pad)
-            setBackgroundResource(R.drawable.kb_key_bg)
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_secondary))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setOnClickListener {
-                haptic(this)
-                dismissPopup()
-            }
-        }
-        val lpCancel = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, scaleV(dimen(R.dimen.kb_snippet_chip_height)))
-        lpCancel.rightMargin = pad
-        actionsRow.addView(btnCancel, lpCancel)
-
-        val btnDelete = TextView(this).apply {
-            text = if (spanishMode) "Eliminar" else "Delete"
-            gravity = Gravity.CENTER
-            setPadding(pad * 2, pad, pad * 2, pad)
-            setBackgroundResource(R.drawable.kb_key_danger)
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label_on_accent))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setTypeface(null, Typeface.BOLD)
-            setOnClickListener {
-                haptic(this)
-                snippetStore.deleteSnippet(snippet.id)
-                snippetMode = SnippetMode.NORMAL
-                updateSnippetModeVisuals()
-                dismissPopup()
-                refreshSnippetGrid()
-            }
-        }
-        val lpDelete = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, scaleV(dimen(R.dimen.kb_snippet_chip_height)))
-        actionsRow.addView(btnDelete, lpDelete)
-
-        box.addView(actionsRow)
-
-        val dm = resources.displayMetrics
-        val popupWidth = minOf(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 300f, dm).toInt(), dm.widthPixels - pad * 4)
-        val popup = PopupWindow(box, popupWidth, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            isOutsideTouchable = true
-            animationStyle = R.style.VoiceHistoryPopupAnimation
-        }
-        activePopup = popup
-        popup.showAtLocation(root, Gravity.CENTER, 0, 0)
-    }
-
-    private fun emptySnippetsView(): TextView {
-        val pad = dimen(R.dimen.kb_popup_padding)
-        val tv = TextView(this)
-        tv.text = if (spanishMode) "Sin snippets todavía." else "No snippets yet."
-        tv.gravity = Gravity.CENTER
-        tv.setPadding(pad, pad * 2, pad, pad * 2)
-        tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label_secondary))
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-        return tv
-    }
-
-    /**
-     * Insercion del contenido completo en el cursor via commitText (soporta
-     * multilinea con \n) y regreso a la capa de origen.
-     * PRIVACIDAD: ni contenido ni nombre ni id se registran en Log.
-     */
-    private fun insertSnippet(snippet: VbSnippet) {
-        haptic(root)
-        consumeModifiers()
-        currentInputConnection?.commitText(snippet.contenido, 1)
-        snippetSearchActive = false
-        snippetSearchField = null
-        layer = layerBeforeSnippets
-        rebuild()
-    }
-
-    /** Menu contextual del chip: insertar, copiar o abrir la app para editar. */
-    private fun showSnippetMenu(anchor: View, snippet: VbSnippet) {
-        dismissPopup()
-        val pad = dimen(R.dimen.kb_popup_padding)
-        val box = LinearLayout(this)
-        box.orientation = LinearLayout.VERTICAL
-        box.setBackgroundResource(R.drawable.kb_popup_bg)
-        box.setPadding(pad, pad, pad, pad)
-
-        fun addOption(label: String, action: () -> Unit) {
-            val tv = TextView(this)
-            tv.text = label
-            tv.isClickable = true
-            tv.isFocusable = true
-            tv.setPadding(pad * 2, pad * 2, pad * 2, pad * 2)
-            tv.setBackgroundResource(R.drawable.kb_menu_item)
-            tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            tv.setOnClickListener {
-                haptic(it)
-                dismissPopup()
-                action()
-            }
-            box.addView(tv)
-        }
-        addOption(if (spanishMode) "Insertar" else "Insert") { insertSnippet(snippet) }
-        addOption(if (spanishMode) "Copiar al portapapeles" else "Copy to clipboard") {
-            copySnippetToClipboard(snippet.contenido)
-        }
-        addOption(if (spanishMode) "Abrir app para editar" else "Open app to edit") {
-            openAppUi()
-        }
-
-        val popup = PopupWindow(
-            box,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            true,
-        )
-        popup.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        popup.isOutsideTouchable = true
-        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-        val loc = IntArray(2)
-        anchor.getLocationInWindow(loc)
-        val gap = dimen(R.dimen.kb_key_gap)
-        activePopup = popup
-        popup.showAtLocation(
-            root,
-            Gravity.NO_GRAVITY,
-            loc[0],
-            // AT-A12: jamas Y negativo; si no cabe arriba se solapa con el ancla.
-            maxOf(gap, loc[1] - box.measuredHeight - gap),
-        )
-    }
 
     /** Shell SPK-05: el portapapeles vive en ClipboardLayer; aquí solo commit(). */
 
@@ -2583,7 +1914,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                             setTrackpadBlankOutMode(false)
                             haptic(space)
                         } else if (!isDragNavTriggered) {
-                            if (layer == Layer.SNIPPETS && !isSnippetEditorOpen) ensureSnippetSearchMode()
+                            if (layer == Layer.SNIPPETS && !snippets.isEditorOpen) snippets.ensureSearchMode()
                             commit(" ")
                         }
                         isSelecting = false
@@ -2681,7 +2012,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         )
     }
 
-    private fun dismissPopup() {
+    override fun dismissPopup() {
         activePopup?.let { popup ->
             if (popup.isShowing) {
                 popup.dismiss()
