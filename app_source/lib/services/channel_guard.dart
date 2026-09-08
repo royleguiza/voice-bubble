@@ -23,21 +23,54 @@ Future<bool> invokeChannelBool(
   String method, [
   Map<String, Object?>? args,
 ]) async {
+  return (await invokeChannelResult(channel, tag, method, args)).ok;
+}
+
+/// SPK-20: resultado clasificado para no tragar errores en release.
+/// `debugPrint` no sale en release; el llamador distingue permiso-denegado
+/// (esperable) de binder-roto (bug) sin contenido sensible.
+enum ChannelFailKind { ok, permissionDenied, missingPlugin, platformError, unexpected }
+
+class ChannelResult {
+  final bool ok;
+  final ChannelFailKind kind;
+  final String? code;
+  const ChannelResult(this.ok, this.kind, [this.code]);
+}
+
+int _channelErrorCount = 0;
+
+/// Contador release-safe de fallos no-permiso (sin contenido).
+int get channelErrorCount => _channelErrorCount;
+
+Future<ChannelResult> invokeChannelResult(
+  MethodChannel channel,
+  String tag,
+  String method, [
+  Map<String, Object?>? args,
+]) async {
   try {
     final res = await channel.invokeMethod<bool>(method, args);
-    return res ?? false;
+    return ChannelResult(res ?? false, ChannelFailKind.ok);
   } on PlatformException catch (e) {
     if (isPermissionDeniedCode(e.code)) {
       debugPrint('$tag.$method: permiso denegado (${e.code})');
+      return ChannelResult(false, ChannelFailKind.permissionDenied, e.code);
     } else {
       debugPrint('$tag.$method: PlatformException (${e.code}): ${e.message}');
+      assert(false, '$tag.$method PlatformException ${e.code}');
+      _channelErrorCount++;
+      return ChannelResult(false, ChannelFailKind.platformError, e.code);
     }
-    return false;
   } on MissingPluginException catch (e) {
     debugPrint('$tag.$method: canal no disponible: $e');
-    return false;
+    assert(false, '$tag.$method MissingPlugin');
+    _channelErrorCount++;
+    return const ChannelResult(false, ChannelFailKind.missingPlugin);
   } catch (e) {
     debugPrint('$tag.$method: error inesperado: $e');
-    return false;
+    assert(false, '$tag.$method unexpected');
+    _channelErrorCount++;
+    return const ChannelResult(false, ChannelFailKind.unexpected);
   }
 }
