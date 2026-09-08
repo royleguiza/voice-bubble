@@ -55,8 +55,12 @@ android {
         // exportar KEYSTORE_FILE (ruta al upload keystore), KEYSTORE_PASSWORD,
         // KEY_ALIAS y KEY_PASSWORD (p. ej. desde secrets del CI) y compilar
         // con `flutter build apk/appbundle --release`.
-        // Fallback SOLO para builds locales (`flutter run --release` sin
-        // keystore configurado): reutiliza el debug.keystore persistente.
+        // SPK-03: release SOLO con keystore real. Sin KEYSTORE_FILE válido
+        // la config queda SIN storeFile y Gradle falla al ensamblar release
+        // ("missing required property 'storeFile'"); jamás firma con el
+        // debug.keystore versionado. OJO: un error() aquí rompería la fase
+        // de configuración de TODOS los builds (este bloque se evalúa
+        // siempre, incluidos los debug de CI): por eso se falla tarde.
         create("release") {
             val envStoreFile = System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { file(it) }
             if (envStoreFile != null && envStoreFile.exists()) {
@@ -64,14 +68,6 @@ android {
                 storePassword = System.getenv("KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
-            } else {
-                val fallbackDebug = file("debug.keystore")
-                if (fallbackDebug.exists()) {
-                    storeFile = fallbackDebug
-                    storePassword = "android"
-                    keyAlias = "androiddebugkey"
-                    keyPassword = "android"
-                }
             }
         }
     }

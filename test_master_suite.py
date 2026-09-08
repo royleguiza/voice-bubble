@@ -121,6 +121,11 @@ def test_manifest_retention():
     with open("voice_bubble_stt/android/app/build.gradle.kts", "r", encoding="utf-8") as f:
         gradle_kts = f.read()
     assert 'debug.keystore' in gradle_kts, "build.gradle.kts debe configurar debug.keystore persistente"
+    # SPK-03: release jamás firmado con debug (el bloque release no debe
+    # nombrar el keystore de desarrollo ni su password pública).
+    release_block = gradle_kts.split('create("release")')[1]
+    assert "debug.keystore" not in release_block, "El bloque release no debe usar debug.keystore"
+    assert '"android"' not in release_block, "Password pública en release prohibida"
 
 def _delegate(script):
     def run():
