@@ -40,7 +40,7 @@ La burbuja requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW
 2. Activa **VoiceBubble Keyboard**. Android mostrará la advertencia estándar sobre teclados de terceros (confirma si quieres continuar).
 3. Selecciónalo como teclado actual: con el campo de texto enfocado, usa el botón selector de teclado de la barra de navegación, o la tarjeta **Teclado VoiceBubble** en los Ajustes de la app (muestra el estado y lleva directo al ajuste del sistema).
 
-**API key (espejo)**: configura tu API key de Groq en la pantalla de **Ajustes de la app**. El teclado la reutiliza automáticamente mediante una copia espejo en las preferencias privadas de la app: no hay que configurarla dos veces. Sin key configurada, la app y el dictado del teclado no pueden transcribir.
+**API key (bóveda cifrada)**: configura tu API key de Groq en la pantalla de **Ajustes de la app**. El teclado la reutiliza automáticamente desde el almacén cifrado del sistema: no hay que configurarla dos veces. Sin key configurada, la app y el dictado del teclado no pueden transcribir.
 
 ## 4. Permisos y justificación
 

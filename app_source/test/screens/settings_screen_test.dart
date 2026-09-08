@@ -690,8 +690,8 @@ void main() {
     });
   });
 
-  group('SettingsScreen - Espejo D7 de credenciales para el teclado', () {
-    testWidgets('guardar la API key escribe el espejo con valores canonicos',
+  group('SettingsScreen - bóveda STT para el teclado (SPK-02)', () {
+    testWidgets('guardar la API key escribe bóveda sin espejo plano',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
@@ -704,15 +704,18 @@ void main() {
       await tester.pumpAndSettle();
 
       final prefs = await SharedPreferences.getInstance();
-      // Contrato K3: la key va al keystore (fuente de verdad) Y al espejo
-      // privado que lee el IME nativo.
-      expect(prefs.getString('kb_stt_api_key'), 'gsk_espejo_123');
+      // Contrato K3/SPK-02: la key va a la bóveda (la lee el IME vía
+      // SecureStore); jamás a prefs planas.
+      const secure =
+          FlutterSecureStorage(aOptions: StorageService.espOptions);
+      expect(await secure.read(key: 'groq_api_key'), 'gsk_espejo_123');
+      expect(prefs.getString('kb_stt_api_key'), isNull);
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
       expect(prefs.getString('kb_stt_model'), CloudSttService.model);
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
     });
 
-    testWidgets('borrar la API key limpia el espejo', (tester) async {
+    testWidgets('borrar la API key limpia bóveda y presencia', (tester) async {
       FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'gsk_a_borrar'});
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
@@ -731,7 +734,7 @@ void main() {
       expect(prefs.getBool('kb_stt_key_configured'), isFalse);
     });
 
-    testWidgets('al abrir Ajustes con key existente se re-espeja (backfill)',
+    testWidgets('al abrir Ajustes con key existente se republica (backfill)',
         (tester) async {
       FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'previa'});
       SharedPreferences.setMockInitialValues({});
@@ -739,8 +742,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final prefs = await SharedPreferences.getInstance();
-      // Backfill: presencia + espejo privado + no sensibles.
-      expect(prefs.getString('kb_stt_api_key'), 'previa');
+      // Backfill: presencia + no sensibles, sin espejo plano.
+      expect(prefs.getString('kb_stt_api_key'), isNull);
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
     });
   });

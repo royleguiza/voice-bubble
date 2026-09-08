@@ -15,7 +15,6 @@ import 'settings_screen.dart';
 import '../widgets/record_button.dart';
 import '../widgets/history_list.dart';
 import '../widgets/transcription_popup.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -39,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen>
   late final TranscriptionService _transcriptionService;
   late final StorageService _storageService;
   late final FloatingBubbleService _floatingBubbleService;
-  final _secureStorage = const FlutterSecureStorage();
+  final _secureStorage = StorageService.espSecureStorage;
   final _keyboardService = KeyboardService();
 
   bool _isRecording = false;
@@ -107,10 +106,10 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final key = await _secureStorage.read(key: 'groq_api_key') ?? '';
       _transcriptionService.updateApiKey(key);
-      // Auto-cura del espejo nativo (teclado/burbuja híbrida): si secure
-      // tiene key pero el espejo privado se perdió (instalaciones que
-      // pasaron por el modo bool-only), restaurarlo sin pedir reingreso.
-      // Best-effort: un fallo aquí nunca rompe la grabación de la app.
+      // Auto-cura de la config nativa (teclado/burbuja híbrida): si la
+      // bóveda tiene key pero presencia/config se perdieron, republicarlos
+      // sin pedir reingreso. Best-effort: un fallo aquí nunca rompe la
+      // grabación de la app.
       if (key.trim().isNotEmpty) {
         try {
           await _storageService.repairSttMirror();

@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Reglas de backup (API <31, android:fullBackupContent): excluye historial de
-     dictados, historial de portapapeles e imágenes copiadas; el resto de la app
-     (ajustes, snippets) sigue respaldándose con normalidad. -->
+      dictados, historial de portapapeles e imágenes copiadas; el resto de la app
+      (ajustes, snippets) sigue respaldándose con normalidad.
+      SPK-02: los secretos JAMÁS suben a Drive: se excluye todo sharedpref que
+      pueda portarlos (FlutterSharedPreferences + bóveda cifrada
+      FlutterSecureStorage, cuyas claves Keystore ni siquiera sobrevivirían a
+      una restauración en otro dispositivo). -->
 <full-backup-content>
     <exclude domain="file" path="transcription_history.json" />
     <exclude domain="file" path="transcription_history.json.tmp" />
     <exclude domain="file" path="clipboard_history.json" />
     <exclude domain="file" path="clipboard_history.json.tmp" />
     <exclude domain="file" path="clipboard_media" />
+    <exclude domain="sharedpref" path="FlutterSharedPreferences.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
 </full-backup-content>

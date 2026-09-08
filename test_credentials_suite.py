@@ -71,6 +71,14 @@ def main():
     suite.check("Sin API de lectura de passwords en UI",
                 "readPassword" not in storage and "getPassword" not in storage,
                 "La UI no debe releer contraseñas")
+    suite.check("Dart jamás escribe secretos en prefs planas (SPK-02)",
+                "prefs.setString(sttApiKeyMirrorKey" not in storage
+                and "prefs.setString(credPassKey" not in storage,
+                "Escritura plana de secretos prohibida")
+    suite.check("Migración Dart del mapa plano a la bóveda",
+                "_migratePlainPassMap" in storage
+                and "prefs.remove(credPassKey)" in storage,
+                "Falta la migración del legado")
     suite.check("showUser default false", "?? false" in storage and
                 "loadCredShowUser" in storage, "Default incorrecto")
 
@@ -100,9 +108,17 @@ def main():
     suite.check("Drawable ic_key.xml existe", os.path.isfile(
         os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_key.xml")))
     suite.check("CredentialStore solo-lectura existe", os.path.isfile(STORE))
-    suite.check("Store sin escrituras", ".edit()" not in store and
+    suite.check("Store sin API pública de escritura",
                 "fun save" not in store and "fun delete" not in store,
-                "El teclado no debe escribir credenciales")
+                "El teclado no debe exponer escritura de credenciales")
+    suite.check("Única escritura: migración del legado a la bóveda",
+                store.count(".edit()") == 1 and "migrateLegacyPasses" in store
+                and "SecureStore.write" in store,
+                "Toda escritura fuera de la migración está prohibida")
+    suite.check("Passwords solo en bóveda cifrada",
+                "SecureStore.read" in store and "SecureStore.CRED_PASS_MAP" in store
+                and "remove(KEY_PASS)" in store,
+                "El mapa plano debe migrarse a la bóveda y borrarse")
     suite.check("Store sin Log de valores",
                 not log_lines_with(store, "nombre", "usuario", "password", "pass"),
                 "Filtración en logs del store")

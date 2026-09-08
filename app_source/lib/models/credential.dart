@@ -2,8 +2,8 @@
 ///
 /// Solo identificadores no sensibles: la contraseña NUNCA viaja en este
 /// modelo. Vive aparte en el mapa de [StorageService.credPassKey] indexado
-/// por [id], y la UI jamás la lee de vuelta (sin ojo, sin edición: ante un
-/// error se borra y se crea de nuevo).
+/// por [id] dentro de la bóveda cifrada, y la UI jamás la lee de vuelta
+/// (sin ojo, sin edición: ante un error se borra y se crea de nuevo).
 ///
 /// Las claves de [toJson]/[fromJson] forman parte del contrato compartido
 /// con el teclado nativo Kotlin (índice persistido en SharedPreferences con

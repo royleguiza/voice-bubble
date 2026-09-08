@@ -34,8 +34,15 @@ class StorageService {
 
   final FlutterSecureStorage _secureStorage;
 
+  /// Bóveda única (SPK-02): flutter_secure_storage con ESP activado. El IME
+  /// nativo lee el MISMO archivo vía SecureStore.kt (APIs públicas AndroidX);
+  /// por eso TODOS los call sites usan esta instancia y jamás el default.
+  /// La activación auto-migra el formato viejo al abrirla (lo hace upstream).
+  static const espOptions = AndroidOptions(encryptedSharedPreferences: true);
+  static const espSecureStorage = FlutterSecureStorage(aOptions: espOptions);
+
   StorageService({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? const FlutterSecureStorage();
+      : _secureStorage = secureStorage ?? espSecureStorage;
 
   Future<SharedPreferences> _prefs() async {
     return await SharedPreferences.getInstance();
@@ -396,28 +403,20 @@ class StorageService {
     await prefs.setInt(kbTrackpadAutoReturnKey, seconds);
   }
 
-  // --- Espejo D7: config STT para el teclado nativo (K3) ---
-  // El teclado Kotlin (IME, sin FlutterEngine) lee url/model/language/key
-  // con prefijo "flutter." en FlutterSharedPreferences. La fuente de verdad
-  // de la key sigue siendo secure_storage bajo [secureSttApiKey]; el espejo
-  // en prefs PRIVADAS del paquete (MODE_PRIVATE, inaccesibles para otras
-  // apps) existe porque el IME nativo no puede leer el keystore de
-  // flutter_secure_storage sin duplicar su construcción cripto (frágil
-  // ante migraciones de algoritmo). Es el comportamiento K3 original
-  // verificado en dispositivo (r53/r57): la regresión bool-only (solo
-  // presencia, sin key real) dejaba al teclado y a la burbuja híbrida
-  // nativa con "Falta la API key" aunque la app transcribía bien.
+  // --- Config STT para el teclado nativo (K3) + bóveda (SPK-02) ---
+  // El teclado Kotlin (IME, sin FlutterEngine) lee la key de la MISMA
+  // bóveda que Dart (flutter_secure_storage con ESP, ver [espSecureStorage]
+  // y SecureStore.kt): interop por APIs públicas de AndroidX, sin duplicar
+  // cripto y sin espejo plano. url/model/language/presencia siguen en
+  // prefs planas (no sensibles) con prefijo "flutter." del lado Kotlin.
   // Reglas: jamás se loguea la key (guard CI "Sin contenido en Logs"),
-  // jamás va al repo, se borra con [clearSttMirror].
+  // jamás va al repo ni al backup (backup_rules.xml), se borra con
+  // [clearSttMirror]. La regresión bool-only (solo presencia, sin key
+  // real) dejaba "Falta la API key" permanente: NO reintroducir.
   //
-  // CONTRATO K3: flutter_secure_storage v9 (default,
-  // `const FlutterSecureStorage()` sin aOptions) guarda en el archivo
-  // "FlutterSecureStorage" bajo la clave "<prefijo-base64>_groq_api_key"
-  // con valor AES-GCM cuya clave va envuelta en RSA dentro del Android
-  // Keystore. El IME no la lee; Dart publica ADEMÁS el espejo real en
-  // prefs privadas + el indicador de presencia [sttKeyConfiguredKey]
-  // (bool, para fail-fast "sin key" vs 401 "key inválida").
-  // El lado Kotlin documenta el contrato en SpeechToTextClient.loadConfig.
+  // CONTRATO K3: la key vive en la bóveda bajo [secureSttApiKey]; el IME
+  // la lee con SecureStore. El lado Kotlin documenta el contrato en
+  // SpeechToTextClient.loadConfig + SecureStore.
   static const String secureSttApiKey = 'groq_api_key';
 
   /// Indicador de presencia de API key (bool en prefs, jamás la key).
@@ -428,78 +427,57 @@ class StorageService {
   static const String _sttModelKey = 'kb_stt_model';
   static const String _sttLanguageKey = 'kb_stt_language';
 
-  /// Espejo real de la key para el IME nativo (prefs privadas).
-  /// El lado Kotlin lo lee como "flutter.kb_stt_api_key".
+  /// Legado pre-SPK-02: espejo plano de la key en prefs. Solo se LEE para
+  /// limpieza (el IME también lo migra por su cuenta); PROHIBIDO escribir.
   static const String sttApiKeyMirrorKey = 'kb_stt_api_key';
 
-  /// Compat: antes el espejo se migraba a secure y se borraba. Hoy el
-  /// espejo es necesario para el IME, así que esta llamada es no-op que
-  /// repara el espejo desde secure si falta (auto-cura instalaciones que
-  /// quedaron en modo bool-only). Devuelve true si dejó espejo no vacío.
+  /// Compat: repara presencia/config desde la bóveda y limpia el legado.
+  /// Devuelve true si al salir hay key no vacía en la bóveda.
   Future<bool> migrateLegacySttMirror() => repairSttMirror();
 
-  /// Repara el espejo nativo desde secure_storage sin pedir al usuario que
-  /// reingrese la key. Idempotente: sincroniza el espejo con secure
-  /// (cubre espejo ausente Y rotación de key), más presencia +
-  /// url/model/language. Nunca pisa secure con el espejo (secure es la
-  /// fuente de verdad). Devuelve true si al salir hay espejo no vacío.
+  /// Publica presencia + url/model/language desde la bóveda (fuente de
+  /// verdad) y borra el espejo plano legado si sobrevive. Idempotente.
+  /// Nunca pisa la bóveda (solo la lee). Devuelve true si hay key.
   Future<bool> repairSttMirror() async {
     try {
       final secure = await _secureStorage.read(key: secureSttApiKey);
-      final trimmedSecure = (secure ?? '').trim();
+      final hasKey = secure != null && secure.trim().isNotEmpty;
       final prefs = await _prefs();
-      if (trimmedSecure.isEmpty) {
-        // Sin key en secure no hay nada que espejar; publicar ausencia
-        // para fail-fast honesto en el teclado (aviso a Ajustes, no 401).
-        try {
-          await prefs.setBool(sttKeyConfiguredKey, false);
-        } catch (_) {}
-        return false;
-      }
       try {
-        final mirror = prefs.getString(sttApiKeyMirrorKey);
-        if (mirror == null || mirror.trim() != trimmedSecure) {
-          await prefs.setString(sttApiKeyMirrorKey, trimmedSecure);
-        }
-      } catch (_) {
-        return false;
-      }
-      try {
-        await prefs.setBool(sttKeyConfiguredKey, true);
+        await prefs.setBool(sttKeyConfiguredKey, hasKey);
         await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
         await prefs.setString(_sttModelKey, CloudSttService.model);
         await prefs.setString(_sttLanguageKey, CloudSttService.language);
+        await prefs.remove(sttApiKeyMirrorKey);
       } catch (_) {}
-      return true;
+      return hasKey;
     } catch (_) {
       return false;
     }
   }
 
-  /// Guarda la key en secure_storage (fuente de verdad) Y en el espejo
-  /// privado para el IME nativo, más la config no sensible y el indicador
-  /// de presencia. Si la key viene vacía, solo limpia el espejo público
-  /// (no borra secure a ciegas: el borrado explícito va en [clearSttMirror]).
+  /// Guarda la key en la bóveda (fuente única para app e IME), más la
+  /// config no sensible y la presencia. Si viene vacía, solo limpia el
+  /// legado plano (el borrado explícito va en [clearSttMirror]).
   Future<void> saveSttMirror({required String apiKey}) async {
     final trimmed = apiKey.trim();
     if (trimmed.isNotEmpty) {
       try {
         await _secureStorage.write(key: secureSttApiKey, value: trimmed);
       } catch (_) {
-        // Frontera de canal del keystore: no crashear Ajustes; el espejo
-        // igual queda sincronizado abajo con el valor ingresado.
+        // Frontera del keystore: no crashear Ajustes; presencia dirá la
+        // verdad abajo (fail-fast honesto en el teclado).
         debugPrint('StorageService.saveSttMirror: secure write fallido');
       }
-      final prefs = await _prefs();
-      try {
-        await prefs.setString(sttApiKeyMirrorKey, trimmed);
-      } catch (_) {}
     }
     final prefs = await _prefs();
     await prefs.setBool(sttKeyConfiguredKey, await _hasSecureSttKey());
     await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
     await prefs.setString(_sttModelKey, CloudSttService.model);
     await prefs.setString(_sttLanguageKey, CloudSttService.language);
+    try {
+      await prefs.remove(sttApiKeyMirrorKey);
+    } catch (_) {}
   }
 
   /// true si hay una key no vacía legible en secure_storage. Nunca lanza:
@@ -901,16 +879,14 @@ class StorageService {
   }
 
   // --- Credenciales para relleno desde el teclado ---
-  // Contrato compartido con el teclado nativo Kotlin, mismo puente que
-  // snippets (SharedPreferences "FlutterSharedPreferences", prefijo
-  // "flutter." del lado Kotlin):
-  // - [credentialsKey]: STRING con JSON array [{id, nombre, usuario}]
-  //   (solo identificadores: la contraseña JAMAS va en el índice).
-  // - [credPassKey]: STRING con JSON objeto {id: password}.
-  // - [credShowUserKey]: BOOL (default false: solo nombre en la lista).
-  // Fuente única de verdad (sin duplicado en secure_storage: el espejo
-  // plano es el mismo patrón aceptado del contrato K3 para kb_stt_api_key;
-  // la UI nunca relee passwords: sin ojo, sin edición).
+  // Contrato compartido con el teclado nativo Kotlin:
+  // - [credentialsKey]: STRING en prefs planas con JSON array
+  //   [{id, nombre, usuario}] (solo identificadores: la contraseña JAMAS
+  //   va en el índice; nombre/usuario ya se muestran en la UI).
+  // - [credPassKey]: STRING con JSON objeto {id: password}, SOLO en la
+  //   bóveda ([espSecureStorage], SPK-02). El IME la lee vía SecureStore.kt.
+  // - [credShowUserKey]: BOOL en prefs planas (default false).
+  // La UI nunca relee passwords: sin ojo, sin edición.
   static const String credentialsKey = 'vb_credentials_v1';
   static const String credPassKey = 'vb_cred_pass_v1';
   static const String credShowUserKey = 'vb_cred_show_user';
@@ -954,9 +930,10 @@ class StorageService {
 
   Future<Map<String, String>> _readPassMap() async {
     try {
-      final prefs = await _prefs();
-      await prefs.reload();
-      final raw = prefs.getString(credPassKey);
+      var raw = await _secureStorage.read(key: credPassKey);
+      if (raw == null || raw.isEmpty) {
+        raw = await _migratePlainPassMap();
+      }
       if (raw == null || raw.isEmpty) return {};
       final decoded = jsonDecode(raw);
       if (decoded is! Map<dynamic, dynamic>) return {};
@@ -966,6 +943,21 @@ class StorageService {
       };
     } catch (_) {
       return {};
+    }
+  }
+
+  /// Migración única pre-SPK-02: mapa plano → bóveda. Idempotente: si no
+  /// hay legado devuelve null y el llamador opera sobre la bóveda vacía.
+  Future<String?> _migratePlainPassMap() async {
+    try {
+      final prefs = await _prefs();
+      final raw = prefs.getString(credPassKey);
+      if (raw == null || raw.isEmpty) return null;
+      await _secureStorage.write(key: credPassKey, value: raw);
+      await prefs.remove(credPassKey);
+      return raw;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -999,7 +991,7 @@ class StorageService {
     );
     final passes = await _readPassMap();
     passes[id] = password;
-    await prefs.setString(credPassKey, jsonEncode(passes));
+    await _secureStorage.write(key: credPassKey, value: jsonEncode(passes));
     return true;
   }
 
@@ -1018,7 +1010,7 @@ class StorageService {
     );
     final passes = await _readPassMap();
     passes.remove(id);
-    await prefs.setString(credPassKey, jsonEncode(passes));
+    await _secureStorage.write(key: credPassKey, value: jsonEncode(passes));
     return true;
   }
 

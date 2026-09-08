@@ -88,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _secureStorage = widget.secureStorage ?? const FlutterSecureStorage();
+    _secureStorage = widget.secureStorage ?? StorageService.espSecureStorage;
     _storageService = widget.storageService ?? StorageService();
     _floatingBubbleService =
         widget.floatingBubbleService ?? FloatingBubbleService();

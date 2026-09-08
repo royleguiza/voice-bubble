@@ -293,43 +293,52 @@ void main() {
     });
   });
 
-  group('StorageService - espejo D7 de credenciales STT (K3)', () {
-    test('saveSttMirror escribe key y valores canonicos del motor', () async {
+  group('StorageService - bóveda STT sin espejo plano (SPK-02)', () {
+    test('saveSttMirror guarda en bóveda y publica presencia/config', () async {
       FlutterSecureStorage.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({});
       final service = StorageService();
       await service.saveSttMirror(apiKey: 'gsk_prueba_123');
 
-      final prefs = await SharedPreferences.getInstance();
-      // El IME nativo (sin FlutterEngine) lee la key del espejo privado;
+      // La key vive en la bóveda (misma que lee el IME vía SecureStore);
       // secure sigue siendo la fuente de verdad para la app.
-      expect(prefs.getString('kb_stt_api_key'), 'gsk_prueba_123');
+      const secure =
+          FlutterSecureStorage(aOptions: StorageService.espOptions);
+      expect(await secure.read(key: 'groq_api_key'), 'gsk_prueba_123');
+      final prefs = await SharedPreferences.getInstance();
+      // SPK-02: jamás espejo plano.
+      expect(prefs.getString('kb_stt_api_key'), isNull);
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
       expect(prefs.getString('kb_stt_model'), CloudSttService.model);
       expect(prefs.getString('kb_stt_language'), CloudSttService.language);
     });
 
-    test('repairSttMirror restaura el espejo sin reingreso', () async {
+    test('repairSttMirror republica presencia y limpia el legado', () async {
       FlutterSecureStorage.setMockInitialValues({});
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues(
+          {'kb_stt_api_key': 'gsk_legada'});
       final service = StorageService();
-      // Simula instalación que pasó por el modo bool-only: secure con key
-      // pero espejo privado vacío.
-      const storage = FlutterSecureStorage();
-      await storage.write(key: 'groq_api_key', value: 'gsk_reparada');
+      // Simula instalación pre-SPK-02: bóveda con key y espejo plano vivo.
+      const secure =
+          FlutterSecureStorage(aOptions: StorageService.espOptions);
+      await secure.write(key: 'groq_api_key', value: 'gsk_reparada');
       final repaired = await service.repairSttMirror();
       expect(repaired, isTrue);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_stt_api_key'), 'gsk_reparada');
+      expect(prefs.getString('kb_stt_api_key'), isNull);
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
     });
 
-    test('clearSttMirror elimina todas las claves del espejo', () async {
+    test('clearSttMirror elimina bóveda y config', () async {
       FlutterSecureStorage.setMockInitialValues({});
       final service = StorageService();
       await service.saveSttMirror(apiKey: 'gsk_temporal');
       await service.clearSttMirror();
 
+      const secure =
+          FlutterSecureStorage(aOptions: StorageService.espOptions);
+      expect(await secure.read(key: 'groq_api_key'), isNull);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('kb_stt_api_key'), isNull);
       expect(prefs.getBool('kb_stt_key_configured'), isFalse);

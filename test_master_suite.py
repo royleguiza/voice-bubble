@@ -66,6 +66,37 @@ def test_clean_logs():
     out = subprocess.check_output(cmd, shell=True, text=True).strip()
     assert not out, f"Filtración de contenido detectada en Logs:\n{out}"
 
+def test_secrets_vault():
+    """SPK-02: secretos solo en bóveda cifrada, jamás en prefs planas ni backup."""
+    kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    with open(f"{kt}/SecureStore.kt", "r", encoding="utf-8") as f:
+        vault = f.read()
+    assert "EncryptedSharedPreferences" in vault, "Sin ESP en la bóveda"
+    assert "MasterKey.DEFAULT_MASTER_KEY_ALIAS" in vault, "Sin master key por defecto"
+    with open(f"{kt}/SpeechToTextClient.kt", "r", encoding="utf-8") as f:
+        stt = f.read()
+    assert "SecureStore.read" in stt, "El dictado debe leer la key de la bóveda"
+    pre = stt.split("migrateLegacyMirror")[0]
+    assert "flutter.kb_stt_api_key" not in pre, "Lectura plana fuera de la migración prohibida"
+    assert 'remove("flutter.kb_stt_api_key")' in stt, "La migración debe borrar el legado"
+    with open(f"{kt}/CredentialStore.kt", "r", encoding="utf-8") as f:
+        store = f.read()
+    assert "SecureStore.read" in store, "Claves debe leer de la bóveda"
+    with open("app_source/lib/services/storage_service.dart", "r", encoding="utf-8") as f:
+        storage = f.read()
+    assert "prefs.setString(sttApiKeyMirrorKey" not in storage, "Espejo plano de key prohibido"
+    assert "prefs.setString(credPassKey" not in storage, "Mapa plano de passwords prohibido"
+    assert "encryptedSharedPreferences: true" in storage, "La bóveda Dart debe usar ESP"
+    with open("voice_bubble_stt/android/app/build.gradle.kts", "r", encoding="utf-8") as f:
+        gradle = f.read()
+    assert "androidx.security:security-crypto" in gradle, "Falta el pin de security-crypto"
+    for xml in ("voice_bubble_stt/android/app/src/main/res/xml/backup_rules.xml",
+                "voice_bubble_stt/android/app/src/main/res/xml/data_extraction_rules.xml"):
+        with open(xml, "r", encoding="utf-8") as f:
+            rules = f.read()
+        assert '<exclude domain="sharedpref" path="FlutterSharedPreferences.xml" />' in rules, f"Sin excluir prefs en {xml}"
+        assert '<exclude domain="sharedpref" path="FlutterSecureStorage.xml" />' in rules, f"Sin excluir bóveda en {xml}"
+
 def _pubspec_version(path):
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
@@ -104,6 +135,7 @@ def main():
     tests = [
         ("CI Guard: Paridad de Claves de Contrato", test_contract_keys),
         ("CI Guard: Ausencia de Filtraciones en Logs", test_clean_logs),
+        ("Seguridad: Bóveda cifrada de secretos (SPK-02)", test_secrets_vault),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

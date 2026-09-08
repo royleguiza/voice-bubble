@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/credential.dart';
@@ -10,6 +11,7 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    FlutterSecureStorage.setMockInitialValues({});
   });
 
   group('StorageService - contrato de claves de credenciales', () {
@@ -39,7 +41,7 @@ void main() {
           ['id', 'nombre', 'usuario']);
     });
 
-    test('la contraseña JAMAS va en el indice', () async {
+    test('la contraseña JAMAS va en prefs planas (solo bóveda)', () async {
       final service = StorageService();
       await service.addCredential(
         nombre: 'Banco',
@@ -50,8 +52,13 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString('vb_credentials_v1')!;
       expect(raw.contains('s3creta-invisible'), isFalse);
-      final passes = prefs.getString('vb_cred_pass_v1')!;
-      expect(passes.contains('s3creta-invisible'), isTrue);
+      // SPK-02: el mapa vive en la bóveda, jamás en prefs planas.
+      expect(prefs.getString('vb_cred_pass_v1'), isNull);
+      const secure =
+          FlutterSecureStorage(aOptions: StorageService.espOptions);
+      final passes = await secure.read(key: 'vb_cred_pass_v1');
+      expect(passes, isNotNull);
+      expect(passes!.contains('s3creta-invisible'), isTrue);
     });
 
     test('rechaza vacios, excesos y tope de 50', () async {
@@ -90,9 +97,31 @@ void main() {
 
       expect(await service.deleteCredential(creds.single.id), isTrue);
       expect(await service.loadCredentials(), isEmpty);
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('vb_cred_pass_v1'), '{}');
+      const secure =
+          FlutterSecureStorage(aOptions: StorageService.espOptions);
+      expect(await secure.read(key: 'vb_cred_pass_v1'), '{}');
       expect(await service.deleteCredential('inexistente'), isFalse);
+    });
+
+    test('migra el mapa plano legado a la bóveda una sola vez', () async {
+      SharedPreferences.setMockInitialValues({
+        'vb_cred_pass_v1': '{"abc":"legada123"}',
+      });
+      final service = StorageService();
+      expect(
+        await service.addCredential(
+            nombre: 'n', usuario: 'u', password: 'nueva'),
+        isTrue,
+      );
+
+      const secure =
+          FlutterSecureStorage(aOptions: StorageService.espOptions);
+      final blob = await secure.read(key: 'vb_cred_pass_v1');
+      expect(blob, isNotNull);
+      expect(blob!.contains('legada123'), isTrue);
+      expect(blob.contains('nueva'), isTrue);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('vb_cred_pass_v1'), isNull);
     });
 
     test('showUser persiste con default false', () async {

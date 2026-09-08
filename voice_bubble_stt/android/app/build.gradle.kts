@@ -92,3 +92,10 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // SPK-02: bóveda del IME (SecureStore.kt). Misma versión que trae
+    // transitivamente flutter_secure_storage v9: sin cambio de conducta,
+    // solo pin explícito para que el import compile aunque cambie el árbol.
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+}

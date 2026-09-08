@@ -18,14 +18,18 @@ data class VbCredentialEntry(
 )
 
 /**
- * Store de credenciales del teclado: SOLO LECTURA desde la app Flutter via
- * SharedPreferences (puente "flutter." sobre el archivo
- * FlutterSharedPreferences, mismo patron de SnippetStore). El teclado jamas
- * escribe ni borra credenciales: eso vive solo en Ajustes → Claves.
+ * Store de credenciales del teclado: el ÍNDICE (identificadores) se lee
+ * de SharedPreferences (puente "flutter." sobre el archivo
+ * FlutterSharedPreferences, mismo patrón de SnippetStore); las CONTRASEÑAS
+ * viven SOLO en la bóveda cifrada [SecureStore] (SPK-02, mismo archivo que
+ * flutter_secure_storage con ESP). El teclado jamás escribe credenciales
+ * salvo la migración única del mapa plano pre-SPK-02 (leer plano →
+ * escribir bóveda → borrar plano, idempotente). Altas/bajas solo en
+ * Ajustes → Claves.
  *
  * Claves (contrato compartido, ver StorageService Dart):
  * - flutter.vb_credentials_v1: JSON array [{id, nombre, usuario}]
- * - flutter.vb_cred_pass_v1: JSON objeto {id: password}
+ * - bóveda vb_cred_pass_v1: JSON objeto {id: password} (cifrado)
  * - flutter.vb_cred_show_user: boolean (default false: solo nombre)
  *
  * PRIVACIDAD: ningun valor (nombre, usuario, password) se registra en Log;
@@ -81,15 +85,27 @@ class CredentialStore(private val context: Context) {
     }
 
     private fun loadPasses(): Map<String, String> {
-        val raw = try {
-            prefs().getString(KEY_PASS, null)
-        } catch (_: Exception) {
-            Log.w(TAG, "tipo incorrecto en prefs")
-            null
-        }
+        val raw = SecureStore.read(context, SecureStore.CRED_PASS_MAP)
+            ?: migrateLegacyPasses()
         val parsed = parsePasses(raw)
         synchronized(cacheLock) { passCache = parsed }
         return parsed
+    }
+
+    /** Traslada el mapa plano pre-SPK-02 a la bóveda y lo borra. Solo legado. */
+    private fun migrateLegacyPasses(): String? {
+        val raw = try {
+            prefs().getString(KEY_PASS, null)?.takeIf { it.isNotBlank() }
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        if (SecureStore.write(context, SecureStore.CRED_PASS_MAP, raw)) {
+            try {
+                prefs().edit().remove(KEY_PASS).apply()
+            } catch (_: Exception) {
+            }
+        }
+        return raw
     }
 
     private fun prefs() =

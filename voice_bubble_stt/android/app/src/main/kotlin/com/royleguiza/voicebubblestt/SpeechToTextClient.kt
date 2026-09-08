@@ -39,27 +39,20 @@ import java.io.IOException
  *   el hilo de captura "VbKeyboardRec" (bucle `AudioRecord.read`, exigido
  *   por la API de audio; vive solo durante la grabación).
  *
- * CONTRATO K3 DE LA API KEY (espejo restaurado, verificado r53/r57):
- * - Dart guarda la key en flutter_secure_storage (`groq_api_key`, fuente
- *   de verdad para la app) Y en el espejo privado de prefs que lee este
- *   cliente (misma clave de siempre, con el prefijo habitual). El IME
- *   nativo no tiene FlutterEngine y no puede leer el keystore de
- *   flutter_secure_storage sin duplicar su construcción cripto (frágil
- *   ante migraciones de algoritmo); por eso el espejo es necesario.
- * - El espejo vive en prefs PRIVADAS del paquete (MODE_PRIVATE,
- *   inaccesibles para otras apps), jamás se loguea, jamás va al repo y
- *   se borra con clearSttMirror. La regresión bool-only (solo presencia,
- *   sin key real) dejaba "Falta la API key" permanente aunque la app
- *   transcribía bien: NO reintroducir.
- * - Lo que viaja por prefs (contrato docs/contract-keys.txt):
- *   `kb_stt_url`, `kb_stt_model`, `kb_stt_language` (con el prefijo
- *   habitual) más la key espejo y el indicador de presencia
- *   `kb_stt_key_configured` (bool para fail-fast "sin key" vs 401
- *   "key inválida"; lo escribe `StorageService.saveSttMirror`). NOTA:
- *   se nombran sin prefijo a propósito para no alterar el guard de
- *   paridad de claves.
- * - Clave ausente o vacía = fail-fast en el llamador (aviso "Falta la API
- *   key" hacia Ajustes), nunca un 401 por red.
+  * CONTRATO K3 DE LA API KEY (bóveda cifrada, SPK-02; el espejo plano
+  * en prefs quedó retirado):
+  * - Dart guarda la key en flutter_secure_storage con ESP activado
+  *   (`groq_api_key`, fuente de verdad para la app y el IME) y este
+  *   cliente la lee de la MISMA bóveda vía [SecureStore] (mismo archivo,
+  *   misma master key, APIs públicas de AndroidX; sin duplicar cripto).
+  * - Lo que viaja por prefs planas (contrato docs/contract-keys.txt):
+  *   `kb_stt_url`, `kb_stt_model`, `kb_stt_language` (con el prefijo
+  *   habitual) más el indicador de presencia `kb_stt_key_configured`
+  *   (bool para fail-fast "sin key" vs 401 "key inválida"; lo escribe
+  *   `StorageService.saveSttMirror`). NOTA: se nombran sin prefijo a
+  *   propósito para no alterar el guard de paridad de claves.
+  * - Clave ausente o vacía = fail-fast en el llamador (aviso "Falta la API
+  *   key" hacia Ajustes), nunca un 401 por red.
  */
 class SpeechToTextClient(
     private val context: Context,
@@ -82,9 +75,10 @@ class SpeechToTextClient(
         val language: String,
     )
 
-    /** Contrato D7: los Ajustes (Flutter) escriben estas claves espejo.
-     * La key llega por el espejo privado (misma clave de siempre);
-     * ver KDoc del contrato K3 arriba. */
+    /** Contrato D7: los Ajustes (Flutter) escriben la key en la bóveda
+     * cifrada; url/model/language/presencia siguen en prefs planas.
+     * Migración única del espejo plano pre-SPK-02 (idempotente; converge
+     * aunque la app aún no se haya abierto tras actualizar). */
     fun loadConfig(): Config {
         val prefs = context.getSharedPreferences(
             "FlutterSharedPreferences", Context.MODE_PRIVATE,
@@ -94,11 +88,29 @@ class SpeechToTextClient(
                 "flutter.kb_stt_url",
                 "https://api.groq.com/openai/v1/audio/transcriptions",
             ) ?: "https://api.groq.com/openai/v1/audio/transcriptions",
-            apiKey = prefs.getString("flutter.kb_stt_api_key", "") ?: "",
+            apiKey = SecureStore.read(context, SecureStore.STT_API_KEY)
+                ?: migrateLegacyMirror(prefs).orEmpty(),
             model = prefs.getString("flutter.kb_stt_model", "whisper-large-v3")
                 ?: "whisper-large-v3",
             language = prefs.getString("flutter.kb_stt_language", "es") ?: "es",
         )
+    }
+
+    /** Traslada el espejo plano a la bóveda y lo borra. Solo legado. */
+    private fun migrateLegacyMirror(prefs: android.content.SharedPreferences): String? {
+        val legacy = try {
+            prefs.getString("flutter.kb_stt_api_key", null)
+                ?.trim()?.takeIf { it.isNotEmpty() }
+        } catch (_: Exception) {
+            null
+        } ?: return null
+        if (SecureStore.write(context, SecureStore.STT_API_KEY, legacy)) {
+            try {
+                prefs.edit().remove("flutter.kb_stt_api_key").apply()
+            } catch (_: Exception) {
+            }
+        }
+        return legacy
     }
 
     private val pcmBuffer = ByteArrayOutputStream()
