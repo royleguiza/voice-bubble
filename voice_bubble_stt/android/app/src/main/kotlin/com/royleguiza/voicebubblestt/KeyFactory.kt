@@ -2,25 +2,31 @@ package com.royleguiza.voicebubblestt
 
 import android.graphics.Typeface
 import android.inputmethodservice.InputMethodService
+import android.os.Handler
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import kotlin.math.abs
 
 /**
- * Fábrica de teclas (SPK-05, módulo 14 de N): constructores de teclas de
- * texto, icono y filas QWERTY/símbolos/código, extraídos de
- * VoiceKeyboardService sin cambiar conducta. Todo lo que necesita del
- * teclado entra por [service] (contexto/sistema) y [host]; los commits
- * concretos entran por el host (cada capa comite distinto) y el registro
- * visual (mayúsculas, shift) vuelve al servicio. PRIVACIDAD: nada se
- * registra en Log.
+ * Fábrica de teclas (SPK-05, módulos 14–15 de N): constructores de teclas
+ * de texto, icono y filas QWERTY/símbolos/código + primitivas de gesto
+ * (tap rápido, toque largo con repetición y borrado por deslizamiento),
+ * extraídos de VoiceKeyboardService sin cambiar conducta. Todo lo que
+ * necesita del teclado entra por [service] (contexto/sistema), [handler]
+ * y [host]; los commits concretos entran por el host (cada capa comite
+ * distinto) y el registro visual (mayúsculas, shift) vuelve al servicio.
+ * PRIVACIDAD: nada se registra en Log.
  */
 class KeyFactory(
     private val service: InputMethodService,
+    private val handler: Handler,
     private val host: UiHost,
 ) {
 
@@ -46,15 +52,193 @@ class KeyFactory(
         fun commitText(text: String)
         fun sendCode(code: Int)
         fun deleteBackward()
+        fun deleteWord()
         fun trackLetterKey(key: TextView, base: Char)
         fun trackShiftKey(key: ImageView)
         fun toggleShiftKey()
     }
 
+    /** Canceladores de long-press pendientes: rebuild() los invoca antes de
+     *  soltar las vistas para no dejar disparos zombis sobre teclas
+     *  descartadas. */
+    private val cancellations = mutableListOf<() -> Unit>()
+
     fun horizontalRow(): LinearLayout {
         val row = LinearLayout(service)
         row.orientation = LinearLayout.HORIZONTAL
         return row
+    }
+
+    fun fastTap(key: View, onClick: () -> Unit) {
+        key.setOnTouchListener { v, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    host.haptic(v)
+                    v.isPressed = true
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    if (v.isPressed) {
+                        onClick()
+                    }
+                    v.isPressed = false
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    v.isPressed = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /**
+     * Logica comun de toque largo: programa accion diferida y decide en UP.
+     * Modo autorrepeticion (onRepeat != null, usado por ⌫ / P6): al disparar
+     * el long press se ejecuta onLongPress UNA vez y arrancan repeticiones
+     * de onRepeat; la primera a REPEAT_INITIAL_DELAY_MS y en cada ciclo el
+     * intervalo se multiplica por REPEAT_ACCEL hasta el piso
+     * REPEAT_MIN_INTERVAL_MS. El haptic pertenece SOLO al long press
+     * inicial (lo pone el llamador); repeticiones y gesto son silenciosos.
+     * Politica de gesto deslizante (onSwipeStep != null, ⌫): si el dedo se
+     * mueve mas que touchSlop, la pulsacion pasa a modo gesto — cancela el
+     * long press pendiente y TODA repeticion para esa pulsacion, y cada
+     * SWIPE_DELETE_STEP_DP recorridos hacia la IZQUIERDA desde el ultimo
+     * umbral borra una palabra (arrastres largos = varias palabras). Un
+     * recorrido derecho/arriba solo anula tap y long press. En UP nunca hay
+     * onTapUp si hubo long press o gesto; un toque corto sin movimiento
+     * sigue siendo tap normal.
+     * AT-A16: PROHIBIDO setOnLongClickListener sobre teclas cableadas aqui —
+     * este touch listener consume el UP y dejaria zombi el chequeo de long
+     * press del framework.
+     */
+    fun longPress(
+        key: View,
+        onLongPress: () -> Unit,
+        onTapUp: () -> Unit,
+        onRepeat: (() -> Unit)? = null,
+        onSwipeStep: (() -> Unit)? = null,
+    ) {
+        var pending: Runnable? = null
+        var repeating: Runnable? = null
+        var repeatIntervalMs = 0L
+        var longPressFired = false
+        var swipeMode = false
+        var swipeAnchorX = 0f
+        val touchSlopPx = ViewConfiguration.get(key.context).scaledTouchSlop
+        val swipeStepPx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, SWIPE_DELETE_STEP_DP, service.resources.displayMetrics,
+        )
+
+        fun cancelPending() {
+            pending?.let { handler.removeCallbacks(it) }
+            pending = null
+        }
+
+        fun cancelRepeating() {
+            repeating?.let { handler.removeCallbacks(it) }
+            repeating = null
+        }
+
+        // Registrar el cancelador para que rebuild() lo invoque antes de
+        // soltar las vistas (sin esto el long-press disparaba en zombi).
+        cancellations.add { cancelPending(); cancelRepeating() }
+
+        key.setOnTouchListener { v, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    longPressFired = false
+                    swipeMode = false
+                    swipeAnchorX = ev.rawX
+                    host.haptic(v)
+                    v.isPressed = true
+                    val r = Runnable {
+                        longPressFired = true
+                        onLongPress()
+                        if (onRepeat != null && !swipeMode) {
+                            repeatIntervalMs = REPEAT_INITIAL_DELAY_MS
+                            val rr = object : Runnable {
+                                override fun run() {
+                                    // Doble guarda: el gesto puede entrar entre ciclos.
+                                    if (!longPressFired || swipeMode || repeating !== this) return
+                                    onRepeat?.invoke()
+                                    repeatIntervalMs = maxOf(
+                                        REPEAT_MIN_INTERVAL_MS,
+                                        (repeatIntervalMs * REPEAT_ACCEL).toLong(),
+                                    )
+                                    handler.postDelayed(this, repeatIntervalMs)
+                                }
+                            }
+                            repeating = rr
+                            handler.postDelayed(rr, repeatIntervalMs)
+                        }
+                    }
+                    pending = r
+                    handler.postDelayed(r, LONG_PRESS_MILLIS)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (onSwipeStep != null) {
+                        if (!swipeMode && abs(ev.rawX - swipeAnchorX) > touchSlopPx) {
+                            // Deslizamiento confirmado: ya no es ni tap ni
+                            // repetición; queda solo el borrado por umbral.
+                            cancelPending()
+                            cancelRepeating()
+                            swipeMode = true
+                        }
+                        if (swipeMode) {
+                            while (ev.rawX <= swipeAnchorX - swipeStepPx) {
+                                swipeAnchorX -= swipeStepPx
+                                onSwipeStep?.invoke()
+                            }
+                        }
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    cancelPending()
+                    cancelRepeating()
+                    if (!longPressFired && !swipeMode) {
+                        onTapUp()
+                    }
+                    v.isPressed = false
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    cancelPending()
+                    cancelRepeating()
+                    v.isPressed = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /** Cablea una tecla ⌫ (P6): tap = 1 carácter, mantener = borrado
+     *  continuo acelerado con haptic único, deslizar a la izquierda =
+     *  borrar palabra por umbral de distancia. */
+    fun backspaceGestures(key: View, action: () -> Unit) {
+        longPress(
+            key,
+            onLongPress = {
+                host.haptic(key)
+                action()
+            },
+            onTapUp = action,
+            onRepeat = action,
+            onSwipeStep = { host.deleteWord() },
+        )
+    }
+
+    fun cancelPendingGestures() {
+        for (cancel in cancellations) {
+            try {
+                cancel()
+            } catch (_: Exception) {}
+        }
+        cancellations.clear()
     }
 
     fun letterRow(chars: String): LinearLayout {
