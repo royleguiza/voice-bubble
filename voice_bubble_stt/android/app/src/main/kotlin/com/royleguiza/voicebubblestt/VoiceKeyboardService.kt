@@ -1,6 +1,5 @@
 package com.royleguiza.voicebubblestt
 
-import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
@@ -43,7 +42,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -64,9 +63,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private var spaceKeyView: View? = null
     private var commaKeyView: View? = null
     private var dotKeyView: View? = null
-    private var statusRowView: TextView? = null
-    private var statusMessage: String? = null
-    private var dismissStatusRunnable: Runnable? = null
 
     // Handler/runnable vigentes de la barra espaciadora: attachSpacebarGestures
     // los publica acá para poder cancelarlos en rebuild/onDestroy (sin esto
@@ -107,6 +103,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private lateinit var transcriptionRepo: TranscriptionHistoryRepository
     // --- Historial (SPK-05 módulo 9: vive en HistoryLayer; aquí solo el shell) ---
     private lateinit var history: HistoryLayer
+    // --- Aviso inline (SPK-05 módulo 10: vive en StatusLayer; aquí solo el shell) ---
+    private lateinit var status: StatusLayer
 
     override fun onCreate() {
         super.onCreate()
@@ -132,6 +130,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         credentialStore = CredentialStore(this)
         credentials = CredentialsLayer(this, credentialStore, handler, this)
         history = HistoryLayer(this, this)
+        status = StatusLayer(this, handler, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -247,7 +246,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
     override fun rebuild() {
         dismissPopup()
-        removeStatusRow()
+        if (::status.isInitialized) status.hide()
         dictation.onViewsDiscarded()
         // Los pendings referencian las vistas viejas: cancelarlos ANTES de
         // soltarlas o sus long-press disparan sobre teclas descartadas.
@@ -1261,51 +1260,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun currentPopup(): PopupWindow? = activePopup
     override fun dismissPopups() = dismissPopup()
 
-    /** Aviso inline no bloqueante; auto-descarta a los 3.5 s. */
-    private fun showStatus(message: String, openSettingsOnClick: Boolean = false) {
-        val view = root
-        view.post {
-            // AT-A9: identidad contra la vista vigente; una vista vieja ya
-            // reemplazada nunca crea ni borra avisos.
-            if (view !== inputView) return@post
-            // AT-A9: un aviso identico aun vivo conserva su timer original.
-            if (message == statusMessage && statusRowView != null) return@post
-            removeStatusRow()
-            val tv = TextView(this)
-            tv.text = message
-            tv.gravity = Gravity.CENTER
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            tv.setPadding(dimen(R.dimen.kb_popup_padding), dimen(R.dimen.kb_popup_padding), dimen(R.dimen.kb_popup_padding), dimen(R.dimen.kb_popup_padding))
-            tv.setBackgroundResource(R.drawable.kb_popup_bg)
-            tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-            if (openSettingsOnClick) {
-                tv.isClickable = true
-                tv.setOnClickListener { openAppUi() }
-            }
-            statusMessage = message
-            statusRowView = tv
-            val lp = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-            lp.bottomMargin = dimen(R.dimen.kb_key_gap)
-            root.addView(tv, 0, lp)
-            val dismiss = Runnable { removeStatusRow() }
-            dismissStatusRunnable = dismiss
-            handler.postDelayed(dismiss, 3500L)
-        }
-    }
-
-    private fun removeStatusRow() {
-        dismissStatusRunnable?.let { handler.removeCallbacks(it) }
-        dismissStatusRunnable = null
-        statusMessage = null
-        statusRowView?.let {
-            (it.parent as? ViewGroup)?.removeView(it)
-        }
-        statusRowView = null
-    }
-
     // ------------------------------------------------------------------
     // Capa snippets (K4: vive en SnippetsLayer; aquí solo filas QWERTY +
     // ganchos finos de commit/backspace/enter + shell de subcapa)
@@ -1346,8 +1300,13 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun attachPress(key: View, onLongPress: () -> Unit, onTapUp: () -> Unit) =
         attachLongPress(key, onLongPress = onLongPress, onTapUp = onTapUp)
     override fun standardKeyHeightPx(): Int = keyHeightPx()
-    override fun showNotice(message: String, openSettingsOnClick: Boolean) =
-        showStatus(message, openSettingsOnClick)
+    override fun showNotice(message: String, openSettingsOnClick: Boolean) {
+        if (::status.isInitialized) status.show(message, openSettingsOnClick)
+    }
+    // --- StatusLayer.UiHost (SPK-05 módulo 10). rootView y dimenPx ya
+    // existen arriba y sirven a esta interfaz (misma firma, una sola
+    // implementación).
+    override fun currentInputView(): View? = inputView
     override fun setRecordingActive(active: Boolean) {
         keyboardRecordingActive = active
     }
