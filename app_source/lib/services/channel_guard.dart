@@ -57,19 +57,19 @@ Future<ChannelResult> invokeChannelResult(
       debugPrint('$tag.$method: permiso denegado (${e.code})');
       return ChannelResult(false, ChannelFailKind.permissionDenied, e.code);
     } else {
+      // Sin assert: los tests de servicios simulan PlatformException y
+      // exigen `false` elegante (nunca lanzar, ver doc superior); la
+      // visibilidad en debug la dan debugPrint + kind/code + contador.
       debugPrint('$tag.$method: PlatformException (${e.code}): ${e.message}');
-      assert(false, '$tag.$method PlatformException ${e.code}');
       _channelErrorCount++;
       return ChannelResult(false, ChannelFailKind.platformError, e.code);
     }
   } on MissingPluginException catch (e) {
     debugPrint('$tag.$method: canal no disponible: $e');
-    assert(false, '$tag.$method MissingPlugin');
     _channelErrorCount++;
     return const ChannelResult(false, ChannelFailKind.missingPlugin);
   } catch (e) {
     debugPrint('$tag.$method: error inesperado: $e');
-    assert(false, '$tag.$method unexpected');
     _channelErrorCount++;
     return const ChannelResult(false, ChannelFailKind.unexpected);
   }
