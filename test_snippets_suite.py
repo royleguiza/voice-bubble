@@ -60,7 +60,9 @@ def test_keyboard_service_snippet_sublayer():
     assert "when (snippetSubLayer)" in content or "when (snippets.subLayer)" in content
     assert "Layer.SYMBOLS -> buildSymbolRows()" in content
     assert "Layer.CODE -> buildCodeRows()" in content
-    assert "addSnippetLetterRows()" in content
+    # SPK-05 módulo 13: las filas QWERTY viven en SnippetsLayer
+    # (buildLetterRows); VKS queda como shell que despacha.
+    assert "addSnippetLetterRows()" in content or "buildLetterRows()" in layer
 
     # Comprobación de que el shift está en addSnippetLetterRows
     assert "toggleShift()" in content

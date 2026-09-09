@@ -22,9 +22,9 @@ import androidx.core.content.ContextCompat
  * Capa Snippets (SPK-05, módulo 8 de N): chips + búsqueda + editor inline,
  * extraída de VoiceKeyboardService sin cambiar conducta. Todo lo que
  * necesita del teclado entra por [service] (contexto/sistema), [store] y
- * [host]; el estado (query, borradores, modo, subcapa, origen) es suyo.
- * Las filas QWERTY de la subcapa se quedan en VKS (reusan su sistema de
- * teclas); el ruteo de commits/backspace/enter entra por los métodos
+ * [host]; el estado (query, borradores, modo, subcapa, origen) es suyo,
+ * incluidas las filas QWERTY de la subcapa letras (SPK-05 módulo 13);
+ * el ruteo de commits/backspace/enter entra por los métodos
  * [routeToQuery], [insertToEditor], [backspaceEditor], [backspaceQuery],
  * [deleteQueryWord] y [handleEnterInEditor].
  * PRIVACIDAD: ni contenido ni nombre ni id se registran en Log.
@@ -60,6 +60,24 @@ class SnippetsLayer(
         fun consumeModifiers()
         fun showCenteredBox(box: LinearLayout, widthPx: Int)
         fun showAnchoredBox(box: LinearLayout, anchor: View)
+        // Filas QWERTY de la subcapa (SPK-05 módulo 13): construcción base,
+        // commit alfabético, registro visual y gestos del teclado anfitrión.
+        fun makeTextKey(
+            label: String,
+            weight: Float,
+            bgRes: Int,
+            colorRes: Int,
+            textSizePx: Int,
+        ): TextView
+        fun displayLetter(base: Char): String
+        fun attachTap(view: View, onTap: () -> Unit)
+        fun commitLetterKey(base: Char)
+        fun trackLetterKey(key: TextView, base: Char)
+        fun trackShiftKey(key: ImageView)
+        fun toggleShiftKey()
+        fun showAccentsPopup(anchor: View, base: Char)
+        fun deleteBackward()
+        fun attachBackspaceKey(key: View, action: () -> Unit)
     }
 
     private lateinit var store: SnippetStore
@@ -211,6 +229,92 @@ class SnippetsLayer(
         )
         lp.topMargin = host.rowGap()
         root.addView(scroll, lp)
+    }
+
+    /**
+     * Filas QWERTY de la subcapa letras (SPK-05 módulo 13): conservan la
+     * altura configurada por el usuario sin achicarse artificialmente.
+     * Misma conducta que la capa letras del teclado.
+     */
+    fun buildLetterRows() {
+        host.addContentRow(letterRow("qwertyuiop"))
+        host.addContentRow(letterRow(if (host.isSpanish()) "asdfghjklñ" else "asdfghjkl;"))
+        val row3 = host.horizontalRow()
+        val shiftKey = host.makeIconKey(
+            R.drawable.ic_shift_off,
+            R.drawable.kb_key_alt,
+            1.3f,
+            if (host.isSpanish()) "mayúsculas" else "shift",
+            tintColorRes = R.color.kb_label,
+        ) {
+            host.toggleShiftKey()
+        }
+        host.trackShiftKey(shiftKey)
+        row3.addView(shiftKey)
+        for (c in "zxcvbnm") {
+            row3.addView(makeLetterKey(c))
+        }
+        row3.addView(makeBackspaceKey())
+        host.addContentRow(row3)
+    }
+
+    private fun letterRow(chars: String): LinearLayout {
+        val row = host.horizontalRow()
+        for (c in chars) {
+            row.addView(makeLetterKey(c))
+        }
+        return row
+    }
+
+    /** Tecla alfabética; mismo estilo y tamaño estándar que la capa letras. */
+    private fun makeLetterKey(base: Char): TextView {
+        val key = host.makeTextKey(
+            host.displayLetter(base),
+            1f,
+            R.drawable.kb_key_bg,
+            R.color.kb_label,
+            host.dimenPx(R.dimen.kb_key_text_size),
+        )
+        if (accentsFor(base).isEmpty()) {
+            host.attachTap(key) { commitLetter(base) }
+        } else {
+            host.attachPress(
+                key,
+                onLongPress = {
+                    host.haptic(key)
+                    ensureSearchMode()
+                    host.showAccentsPopup(key, base)
+                },
+                onTapUp = { commitLetter(base) },
+            )
+        }
+        host.trackLetterKey(key, base)
+        return key
+    }
+
+    /** Backspace: borra del query, del editor activo o del documento. */
+    private fun makeBackspaceKey(): ImageView {
+        val key = host.makeIconKey(
+            R.drawable.ic_backspace,
+            R.drawable.kb_key_alt,
+            1.3f,
+            if (host.isSpanish()) "borrar" else "delete",
+            tintColorRes = R.color.kb_label,
+        ) {
+            ensureSearchMode()
+            host.deleteBackward()
+        }
+        host.attachBackspaceKey(key) {
+            ensureSearchMode()
+            host.deleteBackward()
+        }
+        return key
+    }
+
+    /** Commit alfabético con activación garantizada del modo búsqueda. */
+    private fun commitLetter(base: Char) {
+        ensureSearchMode()
+        host.commitLetterKey(base)
     }
 
     private fun buildEditorInline(): LinearLayout {

@@ -1190,99 +1190,48 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (::snippets.isInitialized) snippets.saveDraftState()
     }
 
-    /** Shell SPK-05: el contenido vive en SnippetsLayer; aquí solo las filas de subcapa. */
+    /** Shell SPK-05: el contenido vive en SnippetsLayer (módulo 13: hasta
+     *  las filas QWERTY); aquí solo el despacho de subcapa. */
     private fun buildSnippetRows() {
         snippets.buildContent()
         when (snippets.subLayer) {
             Layer.SYMBOLS -> buildSymbolRows()
             Layer.CODE -> buildCodeRows()
-            else -> addSnippetLetterRows()
+            else -> snippets.buildLetterRows()
         }
     }
 
-    /**
-     * Filas QWERTY dentro de la capa snippets: conservan la altura keyHeightPx()
-     * configurada por el usuario sin achicarse artificialmente.
-     */
-    private fun addSnippetLetterRows() {
-        addRow(snippetLetterRow("qwertyuiop"))
-        addRow(snippetLetterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
-        val row3 = horizontalRow()
-        val shiftKey = makeActionIconKey(
-            R.drawable.ic_shift_off,
-            R.drawable.kb_key_alt,
-            1.3f,
-            if (spanishMode) "mayúsculas" else "shift",
-            tintColorRes = R.color.kb_label,
-        ) {
-            toggleShift()
-        }
-        shiftKeyViews.add(shiftKey)
-        row3.addView(shiftKey)
-        for (c in "zxcvbnm") {
-            row3.addView(makeSnippetLetterKey(c))
-        }
-        row3.addView(makeSnippetBackspaceKey())
-        addRow(row3)
-    }
-
-    private fun snippetLetterRow(chars: String): LinearLayout {
-        val row = horizontalRow()
-        for (c in chars) {
-            row.addView(makeSnippetLetterKey(c))
-        }
-        return row
-    }
-
-    /** Tecla alfabetica; mismo estilo y tamano estándar que la capa letras. */
-    private fun makeSnippetLetterKey(base: Char): TextView {
-        val key = makeKey(
-            displayFor(base),
-            1f,
-            R.drawable.kb_key_bg,
-            R.color.kb_label,
-            dimen(R.dimen.kb_key_text_size),
-        )
-        if (accentsFor(base).isEmpty()) {
-            attachFastKeyTouch(key) { commitSnippetLetter(base) }
-        } else {
-            attachLongPress(
-                key,
-                onLongPress = {
-                    haptic(key)
-                    ensureSnippetSearchMode()
-                    if (::accents.isInitialized) accents.showPopup(key, base)
-                },
-                onTapUp = { commitSnippetLetter(base) },
-            )
-        }
-        letterKeys.add(Pair(key, base))
-        return key
-    }
-
-    /** Backspace: borra del query, del editor activo o del documento. */
-    private fun makeSnippetBackspaceKey(): ImageView {
-        val key = makeActionIconKey(
-            R.drawable.ic_backspace,
-            R.drawable.kb_key_alt,
-            1.3f,
-            if (spanishMode) "borrar" else "delete",
-            tintColorRes = R.color.kb_label,
-        ) {
-            ensureSnippetSearchMode()
-            handleBackspace()
-        }
-        attachBackspaceGestures(key) {
-            ensureSnippetSearchMode()
-            handleBackspace()
-        }
-        return key
-    }
-
-    /** Commit alfabetico con activacion garantizada del modo busqueda. */
-    private fun commitSnippetLetter(base: Char) {
-        ensureSnippetSearchMode()
+    // --- SnippetsLayer.UiHost: filas QWERTY (SPK-05 módulo 13). makeIconKey,
+    // horizontalRow, addContentRow, dimenPx, isSpanish, haptic, attachPress y
+    // attachTap ya existen arriba y sirven a esta interfaz (misma firma).
+    override fun makeTextKey(
+        label: String,
+        weight: Float,
+        bgRes: Int,
+        colorRes: Int,
+        textSizePx: Int,
+    ): TextView = makeKey(label, weight, bgRes, colorRes, textSizePx)
+    override fun displayLetter(base: Char): String = displayFor(base)
+    override fun commitLetterKey(base: Char) {
         commitLetter(base)
+    }
+    override fun trackLetterKey(key: TextView, base: Char) {
+        letterKeys.add(Pair(key, base))
+    }
+    override fun trackShiftKey(key: ImageView) {
+        shiftKeyViews.add(key)
+    }
+    override fun toggleShiftKey() {
+        toggleShift()
+    }
+    override fun showAccentsPopup(anchor: View, base: Char) {
+        if (::accents.isInitialized) accents.showPopup(anchor, base)
+    }
+    override fun deleteBackward() {
+        handleBackspace()
+    }
+    override fun attachBackspaceKey(key: View, action: () -> Unit) {
+        attachBackspaceGestures(key, action)
     }
 
 
