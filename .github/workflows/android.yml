@@ -40,7 +40,7 @@ jobs:
           grep -rvhE '^[[:space:]]*import ' "$KT" \
             | grep -ohE 'flutter\.[a-z_0-9]+' \
             | sed 's/^flutter\.//' \
-            | sort -u > /tmp/claves-kotlin.txt
+            | LC_ALL=C sort -u > /tmp/claves-kotlin.txt
           diff -u docs/contract-keys.txt /tmp/claves-kotlin.txt \
             || { echo '::error::paridad de claves Kotlin-Dart rota (fuente de verdad docs/contract-keys.txt)'; exit 1; }
 
