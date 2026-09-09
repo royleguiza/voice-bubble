@@ -49,6 +49,12 @@ def main():
         vks += read(os.path.join(KT, "SnippetsLayer.kt"))
     except FileNotFoundError:
         pass
+    # SPK-05 módulo 12: la toolbar (con el botón llave) vive en
+    # ToolbarLayer.kt; VKS delega (credentialsToggle). Se suma igual.
+    try:
+        vks += read(os.path.join(KT, "ToolbarLayer.kt"))
+    except FileNotFoundError:
+        pass
     # SPK-05: los enums viven en KeyboardTypes.kt y la capa en
     # CredentialsLayer.kt (mismo paquete).
     types = read(os.path.join(KT, "KeyboardTypes.kt"))
@@ -143,7 +149,7 @@ def main():
                 and "SNIPPETS, TRACKPAD, CREDENTIALS" in vks + types,
                 "Falta la capa")
     suite.check("Botón llave en toolbar", "R.drawable.ic_key" in vks and
-                "credentials.toggle()" in vks, "Falta el botón")
+                ("credentials.toggle()" in vks or "credentialsToggle()" in vks), "Falta el botón")
     suite.check("Llave visible en campos password",
                 "tambien en contraseñas" in vks,
                 "La llave debe vivir en el login")

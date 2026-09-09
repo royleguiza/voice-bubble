@@ -72,6 +72,12 @@ if os.path.isfile(kt_bridge_path):
     with open(kt_bridge_path, "r", encoding="utf-8") as f:
         bridge_content = f.read()
     vk_content += bridge_content
+# SPK-05 módulo 12: la toolbar (con el botón de trackpad) vive en
+# ToolbarLayer.kt (mismo paquete); VKS delega (toolbar.buildToolbar()).
+kt_toolbar_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/ToolbarLayer.kt")
+if os.path.isfile(kt_toolbar_path):
+    with open(kt_toolbar_path, "r", encoding="utf-8") as f:
+        vk_content += f.read()
 
 all_read_in_kotlin = all(f'flutter.{k}' in vk_content for k in TRACKPAD_KEYS)
 check(f"Todas las {len(TRACKPAD_KEYS)} claves flutter.kb_trackpad_* leídas en VoiceKeyboardService.kt", all_read_in_kotlin)

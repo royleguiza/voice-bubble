@@ -42,7 +42,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -107,6 +107,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private lateinit var status: StatusLayer
     // --- Acentos y pares (SPK-05 módulo 11: vive en AccentLayer; aquí solo el shell) ---
     private lateinit var accents: AccentLayer
+    // --- Toolbar y fila terminal (SPK-05 módulo 12: vive en ToolbarLayer) ---
+    private lateinit var toolbar: ToolbarLayer
 
     override fun onCreate() {
         super.onCreate()
@@ -134,6 +136,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         history = HistoryLayer(this, this)
         status = StatusLayer(this, handler, this)
         accents = AccentLayer(this, this)
+        toolbar = ToolbarLayer(this, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -267,10 +270,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
         // K2.1: fila terminal ocultable desde Ajustes de la app (default visible).
         // Y ahora Toolbar Interactiva Superior con Mic, Portapapeles, etc.
-        val toolbar = buildInteractiveToolbar()
-        if (toolbar != null) {
-            addRow(toolbar)
-        }
+        // (SPK-05 módulo 12: vive en ToolbarLayer).
+        addRow(toolbar.buildToolbar())
         val filmstrip = clipboard.buildFilmstrip()
         addRow(filmstrip)
 
@@ -279,7 +280,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         } else {
             trackpad.hide()
             if (kbPrefs.terminalRowVisiblePref) {
-                addRow(buildTerminalRow())
+                addRow(toolbar.buildTerminalRow())
             }
             when (layer) {
                 Layer.LETTERS -> buildLetterRows()
@@ -297,198 +298,60 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         refreshModifierVisuals()
         applyMicVisual()
     }
-    private fun buildInteractiveToolbar(): LinearLayout? {
-        val row = LinearLayout(this)
-        row.orientation = LinearLayout.HORIZONTAL
-        
-        val lp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-        )
-        val m = dimen(R.dimen.kb_key_gap)
-        lp.setMargins(m, m, m, m)
-        row.layoutParams = lp
-        row.setPadding(0, 0, 0, 0)
-        
-        val items = mutableListOf<View>()
-        
-        // Elementos borde (Snippets):
-        if (!currentIsPasswordField) {
-            val btnSnippets = makeIconKey(
-                R.drawable.ic_snippets,
-                R.drawable.kb_key_alt,
-                1.0f,
-                if (spanishMode) "fragmentos" else "snippets",
-            ) {
-                snippets.toggle()
-            }
-            items.add(btnSnippets)
-        }
-
-        // Llave de credenciales: SIEMPRE visible, tambien en contraseñas
-        // (ahi es donde se necesita: relleno explicito usuario+clave).
-        val btnCredentials = makeIconKey(
-            R.drawable.ic_key,
-            if (layer == Layer.CREDENTIALS) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
-            1.0f,
-            if (spanishMode) "credenciales" else "credentials",
-            tintColorRes = if (layer == Layer.CREDENTIALS) R.color.kb_label_on_accent else R.color.kb_label,
-        ) {
-            credentials.toggle()
-        }
-        items.add(btnCredentials)
-
-        // Elementos centrales:
-        val btnSettings = makeIconKey(R.drawable.ic_settings, R.drawable.kb_key_alt, 1.0f, "ajustes") {
-            openAppUi()
-        }
-        items.add(btnSettings)
-
-        if (kbPrefs.terminalRowVisiblePref) {
-            val btnTerminal = makeIconKey(
-                R.drawable.ic_terminal,
-                R.drawable.kb_key_alt,
-                1.0f,
-                if (spanishMode) "fila terminal" else "terminal row",
-            ) {
-                kbPrefs.terminalRowVisiblePref = !kbPrefs.terminalRowVisiblePref
-                rebuild()
-            }
-            items.add(btnTerminal)
-        }
-
-        val btnPaste = makeIconKey(
-            R.drawable.ic_paste,
-            R.drawable.kb_key_alt,
-            1.0f,
-            if (spanishMode) "portapapeles" else "clipboard",
-        ) {
-            clipboard.toggle()
-        }
-        attachLongPress(
-            btnPaste,
-            onLongPress = {
-                clipboard.pasteLatestOrToggle()
-            },
-            onTapUp = {
-                clipboard.toggle()
-            }
-        )
-        items.add(btnPaste)
-
-        if (kbPrefs.codeKeyVisiblePref) {
-            val btnCode = makeIconKey(
-                R.drawable.ic_code,
-                R.drawable.kb_key_alt,
-                1.0f,
-                if (spanishMode) "capa código" else "code layer",
-            ) {
-                toggleCodeLayer()
-            }
-            items.add(btnCode)
-        }
-
-        if (!currentIsPasswordField && kbPrefs.trackpadEnabled && kbPrefs.trackpadToolbarVisible) {
-            val isTp = (layer == Layer.TRACKPAD)
-            val btnTrackpad = makeIconKey(
-                if (isTp) R.drawable.ic_keyboard else R.drawable.ic_trackpad,
-                if (isTp) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
-                1.0f,
-                if (isTp) (if (spanishMode) "teclado" else "keyboard") else "trackpad",
-                tintColorRes = if (isTp) R.color.kb_label_on_accent else R.color.kb_label,
-            ) {
-                trackpad.toggle()
-            }
-            items.add(btnTrackpad)
-        }
-
-        // Elementos borde (Micrófono):
-        if (!currentIsPasswordField) {
-            val mic = dictation.makeMicKey()
-            
-            // Adjust mic layout params to use weight 1.0f
-            val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
-            val micLp = LinearLayout.LayoutParams(0, hPx, 1.0f)
-            val micM = dimen(R.dimen.kb_key_gap) / 2
-            micLp.setMargins(micM, micM, micM, micM)
-            mic.layoutParams = micLp
-            
-            items.add(mic)
-        } else {
-            dictation.clearViews()
-        }
-
-        if (kbPrefs.invertToolbar) {
-            items.reverse()
-        }
-        
-        items.forEach { row.addView(it) }
-
-        return row
+    // --- ToolbarLayer.UiHost (SPK-05 módulo 12). isSpanish,
+    // isPasswordField, currentLayer, dimenPx, horizontalRow, makeIconKey y
+    // attachPress ya existen arriba y sirven a esta interfaz (misma firma,
+    // una sola implementación).
+    override fun makeSpecial(
+        label: String,
+        bgRes: Int,
+        weight: Float,
+        description: String?,
+        textSizePx: Int,
+        isBold: Boolean,
+        onClick: () -> Unit,
+    ): TextView = makeSpecialKey(label, bgRes, weight, description, textSizePx, isBold, onClick)
+    override fun rebuildKeyboard() = rebuild()
+    override fun snippetsToggle() {
+        snippets.toggle()
     }
-
-    /** Fila terminal permanente en todas las capas (K2). */
-    private fun buildTerminalRow(): LinearLayout {
-        val row = horizontalRow()
-        row.addView(makeSpecialKey("TAB", R.drawable.kb_key_alt, 1.5f, "tab", isBold = true) {
-            sendKeyCode(KeyEvent.KEYCODE_TAB)
-        })
-        row.addView(makeSpecialKey("ESC", R.drawable.kb_key_alt, 1f, "escape", isBold = true) {
-            sendKeyCode(KeyEvent.KEYCODE_ESCAPE)
-        })
-        row.addView(makeModifierKey("CTRL", true, 1.25f))
-        row.addView(makeModifierKey("ALT", false, 1.25f))
-        row.addView(
-            makeArrowKey(
-                "←", KeyEvent.KEYCODE_DPAD_LEFT,
-                if (spanishMode) "flecha izquierda" else "left arrow",
-            )
-        )
-        row.addView(
-            makeArrowKey(
-                "↑", KeyEvent.KEYCODE_DPAD_UP,
-                if (spanishMode) "flecha arriba" else "up arrow",
-            )
-        )
-        row.addView(
-            makeArrowKey(
-                "↓", KeyEvent.KEYCODE_DPAD_DOWN,
-                if (spanishMode) "flecha abajo" else "down arrow",
-            )
-        )
-        row.addView(
-            makeArrowKey(
-                "→", KeyEvent.KEYCODE_DPAD_RIGHT,
-                if (spanishMode) "flecha derecha" else "right arrow",
-            )
-        )
-        return row
+    override fun credentialsToggle() {
+        credentials.toggle()
     }
-
-    private fun makeArrowKey(glyph: String, code: Int, description: String?): TextView =
-        makeSpecialKey(glyph, R.drawable.kb_key_bg, 1f, description, isBold = true) {
-            sendKeyCode(code)
-        }
-
-    /** CTRL/ALT sticky: tap activa/desactiva; la proxima tecla los consume. */
-    private fun makeModifierKey(label: String, isCtrl: Boolean, weight: Float): TextView {
-        val key = makeSpecialKey(
-            label,
-            R.drawable.kb_key_alt,
-            weight,
-            if (isCtrl) {
-                if (spanishMode) "tecla control" else "control key"
-            } else {
-                if (spanishMode) "tecla alt" else "alt key"
-            },
-            isBold = true,
-        ) {
-            if (isCtrl) ctrlActive = !ctrlActive else altActive = !altActive
-            refreshModifierVisuals()
-        }
+    override fun clipboardToggle() {
+        clipboard.toggle()
+    }
+    override fun clipboardPasteLatest() {
+        clipboard.pasteLatestOrToggle()
+    }
+    override fun trackpadToggle() {
+        trackpad.toggle()
+    }
+    override fun codeToggle() {
+        toggleCodeLayer()
+    }
+    override fun sendCode(code: Int) {
+        sendKeyCode(code)
+    }
+    override fun micKeyView(): View = dictation.makeMicKey()
+    override fun micClearViews() {
+        dictation.clearViews()
+    }
+    override fun isTerminalRowPref(): Boolean = kbPrefs.terminalRowVisiblePref
+    override fun toggleTerminalRowPref() {
+        kbPrefs.terminalRowVisiblePref = !kbPrefs.terminalRowVisiblePref
+    }
+    override fun isCodeKeyPref(): Boolean = kbPrefs.codeKeyVisiblePref
+    override fun isTrackpadToolbarAllowed(): Boolean = kbPrefs.trackpadEnabled && kbPrefs.trackpadToolbarVisible
+    override fun isToolbarInverted(): Boolean = kbPrefs.invertToolbar
+    override fun registerModifier(key: TextView, isCtrl: Boolean) {
         modifierKeyViews.add(Pair(key, isCtrl))
-        return key
     }
+    override fun isModifierActive(isCtrl: Boolean): Boolean = if (isCtrl) ctrlActive else altActive
+    override fun toggleModifier(isCtrl: Boolean) {
+        if (isCtrl) ctrlActive = !ctrlActive else altActive = !altActive
+    }
+    override fun refreshModifiers() = refreshModifierVisuals()
 
     private fun refreshModifierVisuals() {
         for ((key, isCtrl) in modifierKeyViews) {
