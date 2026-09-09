@@ -55,6 +55,12 @@ def main():
         vks += read(os.path.join(KT, "ToolbarLayer.kt"))
     except FileNotFoundError:
         pass
+    # SPK-05 módulo 18: el motor de edición vive en EditEngine.kt;
+    # VKS delega (commitSymbolText). Se suma igual.
+    try:
+        vks += read(os.path.join(KT, "EditEngine.kt"))
+    except FileNotFoundError:
+        pass
     # SPK-05: los enums viven en KeyboardTypes.kt y la capa en
     # CredentialsLayer.kt (mismo paquete).
     types = read(os.path.join(KT, "KeyboardTypes.kt"))

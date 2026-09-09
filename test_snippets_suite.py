@@ -36,6 +36,11 @@ def test_keyboard_service_snippet_sublayer():
     layout_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/LayoutLayer.kt"
     with open(layout_path, "r", encoding="utf-8") as f:
         layout_content = f.read()
+    # SPK-05 módulo 18: el motor de edición vive en EditEngine.kt;
+    # VKS delega (toggleShiftKey -> editor.toggleShift()).
+    engine_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/EditEngine.kt"
+    with open(engine_path, "r", encoding="utf-8") as f:
+        engine = f.read()
 
     # Variables de estado (VKS o capa)
     assert ("private var snippetSubLayer = Layer.LETTERS" in content
@@ -69,8 +74,8 @@ def test_keyboard_service_snippet_sublayer():
     # (buildLetterRows); VKS queda como shell que despacha.
     assert "addSnippetLetterRows()" in content or "buildLetterRows()" in layer
 
-    # Comprobación de que el shift está en addSnippetLetterRows
-    assert "toggleShift()" in content
+    # Comprobación de que el shift sigue cableado (VKS delega al motor)
+    assert "toggleShift()" in content or "fun toggleShift()" in engine
     print("  [PASS] Arquitectura de subcapas de snippets, símbolos y borrador reactivo 100% verificada.")
 
 if __name__ == "__main__":

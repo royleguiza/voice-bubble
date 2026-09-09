@@ -8,7 +8,6 @@ import android.os.DeadObjectException
 import android.os.Handler
 import android.os.Looper
 import android.os.RemoteException
-import android.os.SystemClock
 import android.text.InputType
 import android.transition.ChangeBounds
 import android.transition.Fade
@@ -18,8 +17,6 @@ import android.view.animation.DecelerateInterpolator
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
-import android.view.KeyEvent
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
@@ -39,7 +36,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost, LayoutLayer.UiHost, SpacebarLayer.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost, LayoutLayer.UiHost, SpacebarLayer.UiHost, EditEngine.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -47,12 +44,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // localizar los avisos de error (K5-T4).
     @Volatile
     private var spanishMode = true
-    private var shiftState = ShiftState.OFF
-
-    /** Uptime del ultimo tap en shift; detecta el doble pulso (caps lock). */
-    private var lastShiftTapUptime = 0L
-    private var ctrlActive = false
-    private var altActive = false
 
     // --- Dictado (K3 + M4 Morph-to-Pill; máquina en DictationController) ---
     private lateinit var dictation: DictationController
@@ -79,8 +70,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // avisos la comparan por identidad antes de tocar root, porque
     // ::root.isInitialized no detecta que root ya fue reemplazado.
     private var inputView: View? = null
-    private val letterKeys = mutableListOf<Pair<TextView, Char>>()
-    private val shiftKeyViews = mutableListOf<ImageView>()
     private val modifierKeyViews = mutableListOf<Pair<TextView, Boolean>>()
 
     private var activePopup: PopupWindow? = null
@@ -102,6 +91,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private lateinit var keys: KeyFactory
     // --- Filas y barra inferior (SPK-05 módulo 16: vive en LayoutLayer) ---
     private lateinit var layout: LayoutLayer
+    // --- Motor de edición (SPK-05 módulo 18: vive en EditEngine) ---
+    private lateinit var editor: EditEngine
 
     override fun onCreate() {
         super.onCreate()
@@ -133,6 +124,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         keys = KeyFactory(this, handler, this)
         layout = LayoutLayer(keys, this)
         spacebar = SpacebarLayer(this, this)
+        editor = EditEngine(this, { if (::snippets.isInitialized) snippets else null }, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -195,9 +187,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (!restarting) {
             layer = Layer.LETTERS
             lastLettersLayer = Layer.LETTERS
-            deactivateShift()
-            ctrlActive = false
-            altActive = false
+            if (::editor.isInitialized) editor.resetForNewField()
         }
         // Sincronizar clips copiados mientras el teclado estaba cerrado.
         if (::clipboard.isInitialized) clipboard.onStartInputView(restarting)
@@ -253,8 +243,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // Los pendings referencian las vistas viejas: cancelarlos ANTES de
         // soltarlas o sus long-press disparan sobre teclas descartadas.
         cancelPendingKeyGestures()
-        letterKeys.clear()
-        shiftKeyViews.clear()
+        if (::editor.isInitialized) editor.clearKeyRegistry()
         modifierKeyViews.clear()
         spaceKeyView = null
         commaKeyView = null
@@ -293,7 +282,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
 
         // Sincronizar estados visuales persistentes tras reconstruir la vista.
-        applyCase()
+        if (::editor.isInitialized) editor.applyCase()
         refreshModifierVisuals()
         applyMicVisual()
     }
@@ -342,7 +331,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         rebuild()
     }
     override fun sendCode(code: Int) {
-        sendKeyCode(code)
+        editor.sendKeyCode(code)
     }
     override fun micKeyView(): View = dictation.makeMicKey()
     override fun micClearViews() {
@@ -358,15 +347,15 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun registerModifier(key: TextView, isCtrl: Boolean) {
         modifierKeyViews.add(Pair(key, isCtrl))
     }
-    override fun isModifierActive(isCtrl: Boolean): Boolean = if (isCtrl) ctrlActive else altActive
+    override fun isModifierActive(isCtrl: Boolean): Boolean = editor.isModifierActive(isCtrl)
     override fun toggleModifier(isCtrl: Boolean) {
-        if (isCtrl) ctrlActive = !ctrlActive else altActive = !altActive
+        editor.toggleModifier(isCtrl)
     }
     override fun refreshModifiers() = refreshModifierVisuals()
 
     private fun refreshModifierVisuals() {
         for ((key, isCtrl) in modifierKeyViews) {
-            val active = if (isCtrl) ctrlActive else altActive
+            val active = editor.isModifierActive(isCtrl)
             if (active) {
                 key.setBackgroundResource(R.drawable.kb_key_accent)
                 key.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
@@ -410,7 +399,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // currentLayer/isPasswordField/isSpanish/rootView/haptic ya existen
     // arriba y sirven a las cuatro interfaces (misma firma, una sola impl).
     override fun commitText(text: String) {
-        commit(text)
+        editor.commit(text)
     }
 
     // --- SnippetsLayer.UiHost (SPK-05 módulo 8). commitText no sirve aquí:
@@ -466,7 +455,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // existen arriba y sirven a esta interfaz (misma firma, una sola
     // implementación).
     override fun commitSymbolKey(text: String) {
-        commitSymbolText(text)
+        editor.commitSymbolText(text)
     }
     override fun attachAccentKey(key: TextView, base: Char, onTapUp: () -> Unit) {
         accents.attachAccent(key, base, onTapUp)
@@ -492,258 +481,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     ): ImageView = keys.makeIconKey(iconRes, bgRes, weight, description, tintColorRes, onClick)
 
     private fun addRow(row: View) = layout.addRow(row)
-
-    // ------------------------------------------------------------------
-    // Comportamiento de teclas
-    // ------------------------------------------------------------------
-
-    private fun displayFor(base: Char): String =
-        if (shiftState == ShiftState.OFF) base.toString() else base.uppercaseChar().toString()
-
-    /**
-     * Maquina de estados shift (P3): OFF -> MOMENTARY con un tap; doble pulso
-     * rapido (<= 300 ms entre taps) escala a CAPS_LOCK desde OFF o MOMENTARY.
-     * En CAPS_LOCK un solo tap vuelve directo a OFF. El emparejamiento es por
-     * intervalo entre taps consecutivos (patron estandar de teclados), y el
-     * timestamp se invalida al apagarse shift por via no-tactil para que un
-     * tap posterior nunca herede un par fantasma.
-     */
-    private fun toggleShift() {
-        val now = SystemClock.uptimeMillis()
-        val quickPair = now - lastShiftTapUptime <= SHIFT_DOUBLE_TAP_MILLIS
-        lastShiftTapUptime = now
-        shiftState = when {
-            shiftState == ShiftState.CAPS_LOCK -> ShiftState.OFF
-            quickPair -> ShiftState.CAPS_LOCK
-            shiftState == ShiftState.OFF -> ShiftState.MOMENTARY
-            else -> ShiftState.OFF
-        }
-        applyCase()
-    }
-
-    private fun applyCase() {
-        val upper = shiftState != ShiftState.OFF
-        for ((key, base) in letterKeys) {
-            key.text = displayFor(base)
-        }
-        for (key in shiftKeyViews) {
-            when (shiftState) {
-                ShiftState.CAPS_LOCK -> {
-                    key.setImageResource(R.drawable.ic_shift_caps)
-                    key.contentDescription = if (spanishMode) "bloqueo mayúsculas" else "caps lock"
-                    key.setBackgroundResource(R.drawable.kb_key_accent)
-                    key.setColorFilter(ContextCompat.getColor(this, R.color.kb_label_on_accent))
-                }
-                ShiftState.MOMENTARY -> {
-                    key.setImageResource(R.drawable.ic_shift_on)
-                    key.contentDescription = if (spanishMode) "mayúsculas" else "shift"
-                    key.setBackgroundResource(R.drawable.kb_key_accent)
-                    key.setColorFilter(ContextCompat.getColor(this, R.color.kb_label_on_accent))
-                }
-                ShiftState.OFF -> {
-                    key.setImageResource(R.drawable.ic_shift_off)
-                    key.contentDescription = if (spanishMode) "mayúsculas" else "shift"
-                    key.setBackgroundResource(R.drawable.kb_key_alt)
-                    key.setColorFilter(ContextCompat.getColor(this, R.color.kb_label))
-                }
-            }
-        }
-    }
-
-    private fun insertTextToActiveEditor(text: String): Boolean =
-        if (::snippets.isInitialized) snippets.insertToEditor(text) else false
-
-    private fun backspaceActiveEditor(): Boolean =
-        if (::snippets.isInitialized) snippets.backspaceEditor() else false
-
-    private fun commitLetter(base: Char) {
-        haptic(root)
-        if (insertTextToActiveEditor(displayFor(base))) {
-            releaseMomentaryShift()
-            return
-        }
-        if (routeToSnippetQuery(displayFor(base))) {
-            releaseMomentaryShift()
-            return
-        }
-        if (ctrlActive || altActive) {
-            sendModifiedChar(base.lowercaseChar())
-            return
-        }
-        currentInputConnection?.commitText(displayFor(base), 1)
-        releaseMomentaryShift()
-    }
-
-    /** El shift momentaneo muere tras cada commit; caps lock persiste. */
-    private fun releaseMomentaryShift() {
-        if (shiftState == ShiftState.MOMENTARY) {
-            deactivateShift()
-            applyCase()
-        }
-    }
-
-    /** Apagado por via no-tactil: invalida tambien el par del doble pulso. */
-    private fun deactivateShift() {
-        shiftState = ShiftState.OFF
-        lastShiftTapUptime = 0L
-    }
-
-    private fun commitSymbolText(text: String) {
-        haptic(root)
-        if (insertTextToActiveEditor(text)) return
-        // Simbolos de la barra inferior (, .) en snippets: al query siempre.
-        if (layer == Layer.SNIPPETS) ensureSnippetSearchMode()
-        if (routeToSnippetQuery(text)) return
-        if ((ctrlActive || altActive) && text.length == 1) {
-            val c = text[0]
-            if (keyCodeFor(c) != null) {
-                sendModifiedChar(c)
-                return
-            }
-        }
-        currentInputConnection?.commitText(text, 1)
-        consumeModifiers()
-    }
-
-    private fun commit(text: String) {
-        if (insertTextToActiveEditor(text)) return
-        if (routeToSnippetQuery(text)) return
-        currentInputConnection?.commitText(text, 1)
-    }
-
-    /**
-     * Modo busqueda activo en la capa snippets: captura los commits del
-     * propio teclado y los puebla en el query para filtrar, sin escribir
-     * nunca en la app destino (patron estilo Gboard). Devuelve true si el
-     * texto fue consumido por el modo busqueda.
-     * Shell SPK-05: la lógica vive en SnippetsLayer.
-     */
-    private fun routeToSnippetQuery(text: String): Boolean =
-        if (::snippets.isInitialized) snippets.routeToQuery(text) else false
-
-    /** Envio del caracter con META_CTRL/META_ALT via KeyEvent (patron Hacker's
-     *  Keyboard). Sin codigo fisico (ej. ñ) la combinacion es imposible:
-     *  AT-A15 comite el caracter tal cual para no comerse la pulsacion. */
-    private fun sendModifiedChar(c: Char) {
-        val code = keyCodeFor(c)
-        if (code == null) {
-            currentInputConnection?.commitText(c.toString(), 1)
-            consumeModifiers()
-            return
-        }
-        var meta = 0
-        if (ctrlActive) meta = meta or KeyEvent.META_CTRL_ON
-        if (altActive) meta = meta or KeyEvent.META_ALT_ON
-        sendKeyEventWithMeta(code, meta)
-        consumeModifiers()
-    }
-
-    private fun sendKeyEventWithMeta(keyCode: Int, meta: Int) {
-        val ic = currentInputConnection ?: return
-        val now = SystemClock.uptimeMillis()
-        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
-        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
-    }
-
-    private fun sendKeyCode(keyCode: Int) {
-        haptic(root)
-        if (currentInputConnection == null) return
-        sendDownUpKeyEvents(keyCode)
-    }
-
-    override fun consumeModifiers() {
-        ctrlActive = false
-        altActive = false
-        refreshModifierVisuals()
-    }
-
-    private fun handleBackspace() {
-        haptic(root)
-        if (backspaceActiveEditor()) return
-        if (::snippets.isInitialized && snippets.backspaceQuery()) return
-        val ic = currentInputConnection ?: return
-        val selected = try {
-            ic.getSelectedText(0)
-        } catch (_: Exception) {
-            null
-        }
-        if (!selected.isNullOrEmpty()) {
-            ic.commitText("", 1)
-            return
-        }
-        // AT-A5: mismo criterio sobre el documento via InputConnection.
-        val before = try {
-            ic.getTextBeforeCursor(2, 0)
-        } catch (_: Exception) {
-            null
-        }
-        val count = if (
-            before != null && before.length == 2 &&
-            Character.isSurrogatePair(before[0], before[1])
-        ) {
-            2
-        } else {
-            1
-        }
-        if (!ic.deleteSurroundingText(count, 0)) {
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
-        }
-    }
-
-    /**
-     * Borrado por palabra para el gesto deslizante de ⌫ (P6). En la capa
-     * snippets opera SIEMPRE sobre el query (nunca toca el documento); en el
-     * resto usa deleteSurroundingText con el limite de palabra calculado
-     * sobre una ventana previa. Si el cursor esta pegado a separadores,
-     * consume primero ese tramo; palabras mas largas que la ventana se
-     * recortan parciales (limite v1.1: no borra frases completas de golpe).
-     */
-    private fun deleteWordBeforeCursor() {
-        fun wordStart(text: CharSequence, from: Int): Int {
-            var start = from
-            if (start == 0) return start
-            val eatingWord = text[start - 1].isLetterOrDigit()
-            while (start > 0 && text[start - 1].isLetterOrDigit() == eatingWord) start--
-            return start
-        }
-        if (layer == Layer.SNIPPETS) {
-            if (::snippets.isInitialized) snippets.deleteQueryWord()
-            return
-        }
-        val ic = currentInputConnection ?: return
-        val before = try {
-            ic.getTextBeforeCursor(SWIPE_WORD_LOOKBACK_CHARS, 0)
-        } catch (_: Exception) {
-            null
-        }
-        if (before.isNullOrEmpty()) return
-        val start = wordStart(before, before.length)
-        val count = before.length - start
-        if (count > 0) {
-            ic.deleteSurroundingText(count, 0)
-        }
-    }
-
-    private fun handleEnter() {
-        haptic(root)
-        if (::snippets.isInitialized && snippets.handleEnterInEditor()) return
-        if (layer == Layer.SNIPPETS && ::snippets.isInitialized && snippets.isSearchActive) {
-            snippets.exitSearchMode()
-            return
-        }
-        if (currentInputConnection == null) return
-        sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
-    }
-
-    /** Apaga el modo busqueda y restaura el fondo inactivo del campo. Shell SPK-05. */
-    private fun exitSnippetSearchMode() {
-        if (::snippets.isInitialized) snippets.exitSearchMode()
-    }
-
-    /** Enciende el modo busqueda bajo demanda (teclado de la propia capa). Shell SPK-05. */
-    private fun ensureSnippetSearchMode() {
-        if (::snippets.isInitialized) snippets.ensureSearchMode()
-    }
 
     /**
      * Gate central de vibracion (K5-T3): un unico punto por donde pasa
@@ -823,7 +560,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         commit(" ")
     }
     override fun pressEnter() {
-        handleEnter()
+        editor.handleEnter()
     }
     override fun attachSpacebar(view: View) {
         spacebar.attachSpacebarGestures(view)
@@ -831,9 +568,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // --- SpacebarLayer.UiHost (SPK-05 módulo 17). haptic, pressSpace,
     // currentInputView y sendCode ya existen arriba y sirven a esta
     // interfaz (misma firma, una sola implementación).
-    override fun isShiftActive(): Boolean = shiftState != ShiftState.OFF
+    override fun isShiftActive(): Boolean = editor.isShiftOn()
     override fun sendCodeWithMeta(code: Int, meta: Int) {
-        sendKeyEventWithMeta(code, meta)
+        editor.sendKeyEventWithMeta(code, meta)
     }
     override fun spacebarTrackpadMode(): String = kbPrefs.spacebarTrackpadMode
     override fun symbolsLabel(): String = when {
@@ -902,27 +639,27 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         colorRes: Int,
         textSizePx: Int,
     ): TextView = keys.makeKey(label, weight, bgRes, colorRes, textSizePx)
-    override fun displayLetter(base: Char): String = displayFor(base)
+    override fun displayLetter(base: Char): String = editor.displayFor(base)
     override fun commitLetterKey(base: Char) {
-        commitLetter(base)
+        editor.commitLetter(base)
     }
     override fun trackLetterKey(key: TextView, base: Char) {
-        letterKeys.add(Pair(key, base))
+        editor.trackLetter(key, base)
     }
     override fun trackShiftKey(key: ImageView) {
-        shiftKeyViews.add(key)
+        editor.trackShift(key)
     }
     override fun toggleShiftKey() {
-        toggleShift()
+        editor.toggleShift()
     }
     override fun showAccentsPopup(anchor: View, base: Char) {
         if (::accents.isInitialized) accents.showPopup(anchor, base)
     }
     override fun deleteBackward() {
-        handleBackspace()
+        editor.handleBackspace()
     }
     override fun deleteWord() {
-        deleteWordBeforeCursor()
+        editor.deleteWordBeforeCursor()
     }
     override fun attachBackspaceKey(key: View, action: () -> Unit) {
         keys.backspaceGestures(key, action)
