@@ -42,7 +42,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -105,6 +105,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private lateinit var history: HistoryLayer
     // --- Aviso inline (SPK-05 módulo 10: vive en StatusLayer; aquí solo el shell) ---
     private lateinit var status: StatusLayer
+    // --- Acentos y pares (SPK-05 módulo 11: vive en AccentLayer; aquí solo el shell) ---
+    private lateinit var accents: AccentLayer
 
     override fun onCreate() {
         super.onCreate()
@@ -131,6 +133,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         credentials = CredentialsLayer(this, credentialStore, handler, this)
         history = HistoryLayer(this, this)
         status = StatusLayer(this, handler, this)
+        accents = AccentLayer(this, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -830,7 +833,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (accentsFor(base).isEmpty()) {
             attachFastKeyTouch(key) { commitLetter(base) }
         } else {
-            attachAccentLongPress(key, base)
+            accents.attachAccent(key, base) { commitLetter(base) }
         }
         letterKeys.add(Pair(key, base))
         return key
@@ -865,7 +868,15 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             dimen(R.dimen.kb_key_text_size_small),
         )
         key.contentDescription = ch.toString()
-        attachPairLongPress(key, ch)
+        accents.attachPair(
+            key,
+            ch,
+            onCommit = { commitSymbolText(it) },
+            onAutoPair = { open, close ->
+                commit("$open$close")
+                sendKeyCode(KeyEvent.KEYCODE_DPAD_LEFT)
+            },
+        )
         return key
     }
 
@@ -1377,7 +1388,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 onLongPress = {
                     haptic(key)
                     ensureSnippetSearchMode()
-                    showAccentPopup(key, base)
+                    if (::accents.isInitialized) accents.showPopup(key, base)
                 },
                 onTapUp = { commitSnippetLetter(base) },
             )
@@ -1415,7 +1426,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     /** Shell SPK-05: el portapapeles vive en ClipboardLayer; aquí solo commit(). */
 
     // ------------------------------------------------------------------
-    // Acentos por toque largo y pares auto-cerrados
+    // Gestos de teclas (los acentos/pares viven en AccentLayer)
     // ------------------------------------------------------------------
 
     /**
@@ -1729,83 +1740,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 return false
             }
         })
-    }
-
-    private fun attachAccentLongPress(key: TextView, base: Char) {
-        attachLongPress(
-            key,
-            onLongPress = {
-                haptic(key)
-                showAccentPopup(key, base)
-            },
-            onTapUp = { commitLetter(base) },
-        )
-    }
-
-    /** AT-A11: sin pareja que insertar en toque largo, la tecla lleva un click
-     *  plano (mismo commit que el tap) sin maquinaria de long-press. */
-    private fun attachPairLongPress(key: TextView, ch: Char) {
-        val close = pairCloseFor(ch)
-        if (close == null) {
-            key.setOnClickListener { commitSymbolText(ch.toString()) }
-            return
-        }
-        attachLongPress(
-            key,
-            onLongPress = {
-                commit("$ch$close")
-                sendKeyCode(KeyEvent.KEYCODE_DPAD_LEFT)
-            },
-            onTapUp = { commitSymbolText(ch.toString()) },
-        )
-    }
-
-    private fun showAccentPopup(anchor: View, base: Char) {
-        dismissPopup()
-        val options = accentsFor(base)
-        if (options.isEmpty()) return
-        val box = LinearLayout(this)
-        box.orientation = LinearLayout.HORIZONTAL
-        box.setBackgroundResource(R.drawable.kb_popup_bg)
-        val pad = dimen(R.dimen.kb_popup_padding)
-        box.setPadding(pad, pad, pad, pad)
-        for (opt in options) {
-            val tv = TextView(this)
-            tv.text = opt
-            tv.gravity = Gravity.CENTER
-            tv.isClickable = true
-            tv.isFocusable = true
-            tv.setPadding(pad * 2, pad, pad * 2, pad)
-            tv.setBackgroundResource(R.drawable.kb_menu_item)
-            tv.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size).toFloat())
-            tv.setOnClickListener {
-                haptic(it)
-                commit(opt)
-                dismissPopup()
-            }
-            box.addView(tv)
-        }
-        val popup = PopupWindow(
-            box,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            true,
-        )
-        popup.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        popup.isOutsideTouchable = true
-        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-        val loc = IntArray(2)
-        anchor.getLocationInWindow(loc)
-        val gap = dimen(R.dimen.kb_key_gap)
-        activePopup = popup
-        popup.showAtLocation(
-            root,
-            Gravity.NO_GRAVITY,
-            loc[0],
-            // AT-A12: jamas Y negativo; si no cabe arriba se solapa con el ancla.
-            maxOf(gap, loc[1] - box.measuredHeight - gap),
-        )
     }
 
     override fun dismissPopup() {
