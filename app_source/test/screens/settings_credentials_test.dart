@@ -100,6 +100,11 @@ void main() {
         find.byKey(const ValueKey('credenciales-add-button')),
         findsOneWidget,
       );
+      // Banner experimental por key (no por texto: el copy puede cambiar).
+      expect(
+        find.byKey(const ValueKey('experimental-banner-claves')),
+        findsOneWidget,
+      );
     });
 
     testWidgets('el campo password es obscure y no hay ojo', (tester) async {

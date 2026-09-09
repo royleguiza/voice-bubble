@@ -65,7 +65,7 @@ except Exception as e:
 
 # --- TEST 3: Ausencia de Log Leaks ---
 kt_dir = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin")
-leak_pattern = re.compile(r'Log\.[a-z]+\(.*\b(texto|contenido|api_?key|token)\b', re.IGNORECASE)
+leak_pattern = re.compile(r'Log\.[a-z]+\(.*\b(texto|contenido|api_?key|token|password|contraseña|passwd|otp|tecleado|coordenada)\b', re.IGNORECASE)
 found_leaks = []
 for root_dir, _, files in os.walk(kt_dir):
     for f in files:
@@ -255,6 +255,13 @@ check(
     and 'f.name.startsWith("clip_")' in store
     and "purgeOrphanMedia(" in store,
     "Sin barrido de huérfanos",
+)
+check(
+    "purgeOrphanMedia respeta referenciados y corre en primera carga",
+    "mapNotNull { it.mediaFileName }.toHashSet()" in store
+    and "f.name !in referenced" in store
+    and "purgeOrphanMedia(snapshot)" in store,
+    "La purga no distingue referenciados o no corre en loadItems",
 )
 
 # --- RESUMEN FINAL ---

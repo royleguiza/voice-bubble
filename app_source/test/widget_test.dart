@@ -18,6 +18,9 @@ void main() {
   tearDown(unregisterAppChannelMocks);
 
   group('VoiceBubbleApp Widget Tests', () {
+    // Smoke único de lanzamiento + grabación. La navegación Home→Settings
+    // vive solo en integration/full_flow_test.dart y settings_screen_test.dart
+    // (sin duplicarla aquí).
     testWidgets('La app abre y alterna estado de grabación', (tester) async {
       await tester.pumpWidget(const VoiceBubbleApp());
       await tester.pumpAndSettle();
@@ -45,31 +48,6 @@ void main() {
       // Verificación: grabación detenida, vuelve al estado inicial
       expect(find.text('Grabando...'), findsNothing);
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
-    });
-
-    testWidgets('La app navega a Configuración y permite volver a la pantalla principal', (tester) async {
-      // Superficie alta: la pagina de Settings es mas larga que el viewport
-      // por defecto y el ListView lazy no construye lo que queda fuera
-      // (9.1-17); la seccion de snippets la alargo aun mas (9.1-21).
-      tester.view.physicalSize = const Size(1600, 4800);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.reset);
-      await tester.pumpWidget(const VoiceBubbleApp());
-      await tester.pumpAndSettle();
-
-      // Navegar a Configuración
-      await tester.tap(find.byIcon(Icons.settings));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Configuración'), findsOneWidget);
-      expect(find.text('API Key de Groq'), findsOneWidget);
-
-      // Volver a Home
-      await tester.tap(find.byIcon(Icons.arrow_back));
-      await tester.pumpAndSettle();
-
-      expect(find.text('VoiceBubble STT'), findsOneWidget);
-      expect(find.text('Listo para transcribir'), findsOneWidget);
     });
   });
 }

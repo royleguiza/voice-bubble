@@ -189,6 +189,7 @@ Ver `INSTALL.md` §4 para la lista vigente y su justificación (única fuente de
 8. Nunca usar `: ` dentro de nombres o valores plain en YAML (rompe el parseo). Validar SIEMPRE el workflow localmente antes de pushear: `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/android.yml'))"` (paquete `python3-yaml` ya instalado).
 9. Un push = un run esperado: verificar Actions antes de avanzar de hito (ver 9.4).
 10. dart:io asíncrono (`await File.exists/delete`) se cuelga bajo fakeAsync (widget tests): usar variantes síncronas (`existsSync/deleteSync`) en rutas de limpieza que puedan ejecutarse en tests.
+12. Tests widget nuevos: localizar por `Key` (`find.byKey`), jamás por copy de usuario (`find.text('...')` rompe con renombres legítimos); `findsWidgets` solo con comentario que justifique el duplicado; todo tab nuevo entra con su key en `settings_tab_bar_test` (conteo exacto) y en el test de navegación de `settings_screen_test`.
 11. **REGLA DEL DUEÑO (2026-08-22): ningún push sin la suite de testing completa al 100% en verde.** Como no existe runner local de Flutter en Termux, esto se materializa así: (a) diff re-leído completo antes del push (regla 7), (b) baseline anterior verde confirmada, (c) monitoreo CI obligatorio post-push (§9.4) y corrección inmediata si el run falla, antes de cualquier otra tarea.
 
 ### 9.3 Best practices aplicadas al workflow
@@ -263,7 +264,9 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 
 **Burbuja clásica + modal historial (B1–B7, [`plan-burbuja-historial.md`](plan-burbuja-historial.md))**: implementado local 2026-09-05 (controlador nativo + switch `bubble_history_enabled` + suite `test_bubble_history_suite.py` 55/55 + master 10/10 en verde), pendiente CI tras autorización de push del dueño.
 
-**Cierre SPARK pendientes (2026-09-09, local sin push)**: SPK-09/10/11/15/17/21/23/26/27/28 en `auditoria-spark.md` §Cierre (contratos `docs/contrato-{stt,trackpad,claves,iconos}.md` + `docs/congelamiento-features.md`, flag `kb_clipboard_images_enabled` OFF, `HistoryCardView`+`SnippetsCardView`, iconos 18/22/28, I/O async, versión `1.0.0`); master local 12/12 verde; CI (analyze/test/compilación) debe verificar antes de cualquier push.
+**Cierre SPARK pendientes (2026-09-09, local sin push)**: SPK-09/10/11/15/17/21/23/26/27/28 en `auditoria-spark.md` §Cierre (contratos `docs/contrato-{stt,trackpad,claves,iconos}.md` + `docs/congelamiento-features.md`, flag `kb_clipboard_images_enabled` OFF, `HistoryCardView`+`SnippetsCardView`, iconos 18/22/28, versión `1.0.0`); CI (analyze/test/compilación) debe verificar antes de cualquier push. (SPK-17 Dart quedó en sync por regla §9.2-10: async cuelga testWidgets; el fix real es el lock Kotlin.)
+
+**Cierre librería de tests (2026-09-10, local sin push)**: test 5→6 tabs + conteo exacto en tab bar; cobertura flag `kb_clipboard_images_enabled` (default OFF, toggle, round-trip) + snapshot `bridgeKeys`==33 + `floating_bubble_enabled` solo-Dart; smoke único en `widget_test`; handler record unificado en `mock_channels.dart`; guard de dictado (MAX_SECONDS/timeouts) en master (13/13); CI subido a nivel master (triángulo Dart, bóveda, manifest, regex amplio); regla §9.2-12 (keys, no copy). Deuda que queda: unificar `buildTestableWidget` de los 4 settings-tests y recortar plantillas triplicadas (solo test, sin riesgo funcional).
 
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.

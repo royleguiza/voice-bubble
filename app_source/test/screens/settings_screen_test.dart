@@ -749,7 +749,7 @@ void main() {
   });
 
   group('SettingsScreen - Tabs v1 Navigation & State', () {
-    testWidgets('arranca en Inicio por defecto y muestra los 5 tabs',
+    testWidgets('arranca en Inicio por defecto y muestra los 6 tabs',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
@@ -760,6 +760,7 @@ void main() {
       expect(find.byKey(const ValueKey('tab-teclado')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-trackpad')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-snippets')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-credenciales')), findsOneWidget);
 
       expect(find.text('API Key de Groq'), findsOneWidget);
       expect(find.text('Modo de grabación'), findsOneWidget);
@@ -793,6 +794,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Snippets'), findsWidgets);
       expect(find.byKey(const ValueKey('snippets-add-button')), findsOneWidget);
+
+      // Navegar a Claves
+      await tester.tap(find.byKey(const ValueKey('tab-credenciales')));
+      await tester.pumpAndSettle();
+      expect(find.text('Claves'), findsWidgets);
+      expect(
+          find.byKey(const ValueKey('credenciales-add-nombre')), findsOneWidget);
 
       // Acerca vive como sheet desde Inicio
       await tester.tap(find.byKey(const ValueKey('tab-inicio')));

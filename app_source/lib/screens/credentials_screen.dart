@@ -117,6 +117,7 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
         const SizedBox(height: 4),
         Text(
           'Experimental: superficie congelada (SPK-09), sin cambios fuera de fixes.',
+          key: const ValueKey('experimental-banner-claves'),
           style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

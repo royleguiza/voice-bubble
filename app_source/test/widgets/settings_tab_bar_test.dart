@@ -31,6 +31,13 @@ void main() {
     expect(find.text('Trackpad'), findsOneWidget);
     expect(find.text('Snippets'), findsOneWidget);
     expect(find.text('Claves'), findsOneWidget);
+
+    // Conteo exacto: agregar/quitar un tab debe romper aquí a propósito.
+    final tabKeys = find.byWidgetPredicate((w) =>
+        w.key is ValueKey &&
+        (w.key as ValueKey).value is String &&
+        ((w.key as ValueKey).value as String).startsWith('tab-'));
+    expect(tabKeys, findsNWidgets(6));
   });
 
   testWidgets('SettingsTabBar dispara onTabSelected al tocar cada pestaña',

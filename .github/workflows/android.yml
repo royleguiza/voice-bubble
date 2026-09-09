@@ -44,6 +44,52 @@ jobs:
           diff -u docs/contract-keys.txt /tmp/claves-kotlin.txt \
             || { echo '::error::paridad de claves Kotlin-Dart rota (fuente de verdad docs/contract-keys.txt)'; exit 1; }
 
+      - name: Triángulo Dart del puente (SPK-07)
+        run: |
+          python3 - <<'EOF'
+          import re
+          dart = open('app_source/lib/services/storage_service.dart', encoding='utf-8').read()
+          const_vals = dict(re.findall(r"static const String (\w+)\s*=\s*'([a-z_0-9]+)';", dart))
+          m = re.search(r"static const List<String> bridgeKeys = \[(.*?)\];", dart, re.DOTALL)
+          assert m, 'Falta StorageService.bridgeKeys'
+          table = []
+          for ident in re.findall(r'[A-Za-z_]\w*', m.group(1)):
+              assert ident in const_vals, f'bridgeKeys referencia const inexistente: {ident}'
+              table.append(const_vals[ident])
+          expected = open('docs/contract-keys.txt', encoding='utf-8').read().strip()
+          assert '\n'.join(sorted(table)) == expected, 'Discrepancia tabla Dart vs contrato'
+          print('Triángulo Dart OK')
+          EOF
+
+      - name: Bóveda cifrada (SPK-02)
+        run: |
+          KT=voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt
+          grep -q 'EncryptedSharedPreferences' "$KT/SecureStore.kt" || { echo '::error::sin ESP en la bóveda'; exit 1; }
+          grep -q 'SecureStore.read' "$KT/SpeechToTextClient.kt" || { echo '::error::dictado sin bóveda'; exit 1; }
+          grep -q 'SecureStore.read' "$KT/CredentialStore.kt" || { echo '::error::claves sin bóveda'; exit 1; }
+          if grep -rn 'setString(sttApiKeyMirrorKey\|setString(credPassKey' app_source/lib --include='*.dart'; then
+            echo '::error::espejo plano de secretos prohibido (SPK-02)'
+            exit 1
+          fi
+          grep -q 'androidx.security:security-crypto' voice_bubble_stt/android/app/build.gradle.kts || { echo '::error::sin security-crypto'; exit 1; }
+          for xml in voice_bubble_stt/android/app/src/main/res/xml/backup_rules.xml voice_bubble_stt/android/app/src/main/res/xml/data_extraction_rules.xml; do
+            grep -q '<exclude domain="sharedpref" path="FlutterSharedPreferences.xml" />' "$xml" || { echo "::error::sin excluir prefs en $xml"; exit 1; }
+            grep -q '<exclude domain="sharedpref" path="FlutterSecureStorage.xml" />' "$xml" || { echo "::error::sin excluir bóveda en $xml"; exit 1; }
+          done
+
+      - name: Manifest anti-Play-Protect
+        run: |
+          python3 - <<'EOF'
+          import re
+          raw = open('voice_bubble_stt/android/app/src/main/AndroidManifest.xml', encoding='utf-8').read()
+          decls = re.sub(r'<!--.*?-->', '', raw, flags=re.DOTALL)
+          assert 'BIND_ACCESSIBILITY_SERVICE' not in decls, 'BIND_ACCESSIBILITY_SERVICE prohibido'
+          assert 'VoiceBubbleAccessibilityService' not in decls, 'servicio dormido declarado'
+          assert 'android:hasFragileUserData="true"' in decls, 'falta hasFragileUserData'
+          assert 'android:allowBackup="true"' in decls, 'falta allowBackup'
+          print('Manifest OK')
+          EOF
+
       - name: Hex de colores valido
         run: |
           # || true semantico: filtro vacio (todo valido) termina con estado 1
@@ -58,7 +104,7 @@ jobs:
 
       - name: Sin contenido en Logs
         run: |
-          if grep -rniE 'Log\.[a-z]+\(.*\b(texto|contenido|api_?key|token)\b' voice_bubble_stt/android/app/src/main/kotlin; then
+          if grep -rniE 'Log\.[a-z]+\(.*\b(texto|contenido|api_?key|token|password|contraseña|passwd|otp|tecleado|coordenada)\b' voice_bubble_stt/android/app/src/main/kotlin; then
             echo '::error::posible filtracion de contenido en Log'
             exit 1
           fi

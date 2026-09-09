@@ -12,6 +12,8 @@
 - Clave nueva = entrar en los 3 lados el mismo día (Kotlin + contrato + `bridgeKeys`).
   Ejemplo canónico: `kb_clipboard_images_enabled` (SPK-10).
 - Claves Dart-only (sin puente) no entran al contrato: `_recordModeKey`,
-  `groq_api_key` (bóveda, jamás en prefs), `_sttUrlKey` interno va sí porque
-  el IME lo lee (ver `docs/contrato-stt.md`).
+  `groq_api_key` (bóveda, jamás en prefs), `floating_bubble_enabled` (la
+  burbuja se gobierna por MethodChannel; Kotlin jamás la lee — ver test
+  "solo-Dart" en `storage_service_test.dart`). En cambio `kb_stt_url/model/
+  language` SÍ entran porque el IME los lee (ver `docs/contrato-stt.md`).
 - Prefijos históricos: `kb_` teclado/trackpad, `vb_` credenciales, `voice_`/`transcriptions` legado Flutter, `bubble_` burbuja. No unificar.

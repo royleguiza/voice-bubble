@@ -147,6 +147,10 @@ def main():
                 "SecureStore.read" in store and "SecureStore.CRED_PASS_MAP" in store
                 and "remove(KEY_PASS)" in store,
                 "El mapa plano debe migrarse a la bóveda y borrarse")
+    suite.check("Migración borra el plano tras trasladarlo (sin restos)",
+                'prefs().edit().remove(KEY_PASS).apply()' in store
+                and "SecureStore.write" in store,
+                "La migración debe trasladar y borrar en el mismo camino")
     suite.check("Store sin Log de valores",
                 not log_lines_with(store, "nombre", "usuario", "password", "pass"),
                 "Filtración en logs del store")

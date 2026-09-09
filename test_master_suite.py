@@ -76,7 +76,7 @@ def test_contract_keys():
 
 def test_clean_logs():
     kt_dir = "voice_bubble_stt/android/app/src/main/kotlin"
-    cmd = f"grep -rniE 'Log\\.[a-z]+\\(.*\\b(texto|contenido|api_?key|token)\\b' '{kt_dir}' || true"
+    cmd = f"grep -rniE 'Log\\.[a-z]+\\(.*\\b(texto|contenido|api_?key|token|password|contraseña|passwd|otp|tecleado|coordenada)\\b' '{kt_dir}' || true"
     out = subprocess.check_output(cmd, shell=True, text=True).strip()
     assert not out, f"Filtración de contenido detectada en Logs:\n{out}"
 
@@ -110,6 +110,24 @@ def test_secrets_vault():
             rules = f.read()
         assert '<exclude domain="sharedpref" path="FlutterSharedPreferences.xml" />' in rules, f"Sin excluir prefs en {xml}"
         assert '<exclude domain="sharedpref" path="FlutterSecureStorage.xml" />' in rules, f"Sin excluir bóveda en {xml}"
+
+def test_dictation_contract():
+    """Tope de dictado 5min con fuente única + timeouts HTTP (ciego total)."""
+    kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    with open(f"{kt}/SpeechToTextClient.kt", "r", encoding="utf-8") as f:
+        stt = f.read()
+    assert "const val MAX_SECONDS = 300" in stt, "Tope único 5min ausente"
+    assert "MAX_SECONDS * 1000L" in stt, "Deadline sin fuente única"
+    assert "readTimeout = 240000" in stt, "readTimeout 240s ausente"
+    assert "connectTimeout = 15000" in stt, "connectTimeout 15s ausente"
+    with open(f"{kt}/DictationController.kt", "r", encoding="utf-8") as f:
+        dic = f.read()
+    assert "SpeechToTextClient.MAX_SECONDS * 1000L" in dic, (
+        "El teclado debe armar su timeout desde la fuente única, sin literal"
+    )
+    assert "300000" not in dic and "300_000" not in dic, (
+        "Literal duplicado del tope en el controlador"
+    )
 
 def _pubspec_version(path):
     with open(path, "r", encoding="utf-8") as f:
@@ -155,6 +173,7 @@ def main():
         ("CI Guard: Paridad de Claves de Contrato", test_contract_keys),
         ("CI Guard: Ausencia de Filtraciones en Logs", test_clean_logs),
         ("Seguridad: Bóveda cifrada de secretos (SPK-02)", test_secrets_vault),
+        ("Dictado: tope 5min + timeouts (fuente única)", test_dictation_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

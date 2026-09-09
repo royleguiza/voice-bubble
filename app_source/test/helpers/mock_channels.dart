@@ -31,6 +31,36 @@ const String _floatingBubbleChannel =
     'com.royleguiza.voicebubblestt/floating_bubble';
 const String _keyboardChannel = 'com.royleguiza.voicebubblestt/keyboard';
 
+/// Handler canónico único del plugin record 7.x (una sola fuente: antes
+/// vivía duplicado en [registerAppChannelMocks] y
+/// [registerRecordChannelMocks]).
+Future<Object?> _recordHandler(String temporaryDirectory, MethodCall call) async {
+  if (call.method.toLowerCase().contains('permission')) return true;
+  switch (call.method) {
+    case 'start':
+    case 'create':
+    case 'dispose':
+    case 'pause':
+    case 'resume':
+    case 'cancel':
+      return null;
+    case 'stop':
+      return '$temporaryDirectory/recording.wav';
+    case 'isRecording':
+    case 'is_recording':
+      return true;
+    case 'isPaused':
+    case 'is_paused':
+      return false;
+    case 'getAmplitude':
+      return {'current': -160.0, 'max': -160.0};
+    case 'listInputDevices':
+      return <Map<String, dynamic>>[];
+    default:
+      return true;
+  }
+}
+
 /// Canales que [registerAppChannelMocks] deja mockeados; los tests lo usan
 /// en tearDown para restaurar el messenger.
 final List<String> appMockedChannels = [
@@ -56,32 +86,7 @@ void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
   for (final channel in _recordChannels) {
     messenger.setMockMethodCallHandler(
       MethodChannel(channel),
-      (MethodCall call) async {
-        if (call.method.toLowerCase().contains('permission')) return true;
-        switch (call.method) {
-          case 'start':
-          case 'create':
-          case 'dispose':
-          case 'pause':
-          case 'resume':
-          case 'cancel':
-            return null;
-          case 'stop':
-            return '$temporaryDirectory/recording.wav';
-          case 'isRecording':
-          case 'is_recording':
-            return true;
-          case 'isPaused':
-          case 'is_paused':
-            return false;
-          case 'getAmplitude':
-            return {'current': -160.0, 'max': -160.0};
-          case 'listInputDevices':
-            return <Map<String, dynamic>>[];
-          default:
-            return true;
-        }
-      },
+      (MethodCall call) => _recordHandler(temporaryDirectory, call),
     );
   }
 
@@ -135,32 +140,7 @@ void registerRecordChannelMocks({String temporaryDirectory = '/tmp'}) {
   for (final channel in _recordChannels) {
     messenger.setMockMethodCallHandler(
       MethodChannel(channel),
-      (MethodCall call) async {
-        if (call.method.toLowerCase().contains('permission')) return true;
-        switch (call.method) {
-          case 'start':
-          case 'create':
-          case 'dispose':
-          case 'pause':
-          case 'resume':
-          case 'cancel':
-            return null;
-          case 'stop':
-            return '$temporaryDirectory/recording.wav';
-          case 'isRecording':
-          case 'is_recording':
-            return true;
-          case 'isPaused':
-          case 'is_paused':
-            return false;
-          case 'getAmplitude':
-            return {'current': -160.0, 'max': -160.0};
-          case 'listInputDevices':
-            return <Map<String, dynamic>>[];
-          default:
-            return true;
-        }
-      },
+      (MethodCall call) => _recordHandler(temporaryDirectory, call),
     );
   }
 }

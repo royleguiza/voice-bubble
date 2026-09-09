@@ -195,4 +195,42 @@ void main() {
       expect(tester.widget<Switch>(hapticsSwitch()).value, isFalse);
     });
   });
+
+  Finder clipboardImagesSwitch() => find.descendant(
+        of: find.ancestor(
+          of: find.text('Imágenes en portapapeles'),
+          matching: find.byType(SwitchListTile),
+        ),
+        matching: find.byType(Switch),
+      );
+
+  group('SettingsScreen - imágenes del portapapeles opt-in (SPK-10)', () {
+    testWidgets('toggle visible y apagado por defecto', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Imágenes en portapapeles'), findsOneWidget);
+      expect(clipboardImagesSwitch(), findsOneWidget);
+      expect(tester.widget<Switch>(clipboardImagesSwitch()).value, isFalse);
+    });
+
+    testWidgets('encender persiste en SharedPreferences', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(clipboardImagesSwitch());
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(clipboardImagesSwitch()).value, isTrue);
+      expect(await StorageService().getClipboardImagesEnabled(), isTrue);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_clipboard_images_enabled'), isTrue);
+    });
+  });
 }

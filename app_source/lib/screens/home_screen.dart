@@ -287,21 +287,24 @@ class _HomeScreenState extends State<HomeScreen>
   /// temporal sin transcribir y sin mostrar error.
   static const int _minAudioBytes = 1000;
 
-  /// SPK-17: chequeo async (exists/length no bloqueantes) para no hacer
-  /// I/O sync en el hilo UI. Llamadores ya async: usar con await.
-  Future<bool> _hasUsableAudio(String path) async {
+  /// SPK-17 (Dart): se mantiene I/O SYNC a propósito. `await File.exists()`
+  /// se cuelga bajo FakeAsync de testWidgets (regla AGENTS §9.2-10,
+  /// commit 6a0e9c5) y estos chequeos corren en _stopRecording/_retryPending,
+  /// rutas que los widget tests SÍ ejercitan con paths falsos. Es un único
+  /// stat() de microsegundos; el ANR real (JSON bajo lock) se corrigió en
+  /// TranscriptionHistoryRepository.kt.
+  bool _hasUsableAudio(String path) {
     try {
       final file = File(path);
-      return await file.exists() &&
-          await file.length() >= _minAudioBytes;
+      return file.existsSync() && file.lengthSync() >= _minAudioBytes;
     } catch (_) {
       return false;
     }
   }
 
-  Future<bool> _audioFileExists(String path) async {
+  bool _audioFileExists(String path) {
     try {
-      return await File(path).exists();
+      return File(path).existsSync();
     } catch (_) {
       return false;
     }
@@ -405,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen>
 
       // Verificar si el archivo tiene audio suficiente (>1000 bytes).
       // Si la grabación fue instantánea o vacía, se limpia sin llamar a Groq ni arrojar error.
-      if (!await _hasUsableAudio(path)) {
+      if (!_hasUsableAudio(path)) {
         await _transcriptionService.cleanupTempFile(path);
         await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
         if (mounted) {
@@ -432,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen>
         // tardío (p.ej. clipboard, ya clasificado aparte) con archivo
         // ausente no debe dejar un pendiente que reintentaría con
         // "archivo no encontrado".
-        final stillExists = await _audioFileExists(path);
+        final stillExists = _audioFileExists(path);
         if (mounted) {
           setState(() {
             _pendingAudioPath = stillExists ? path : null;
@@ -466,7 +469,7 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _retryPending() async {
     final path = _pendingAudioPath;
     if (path == null || _isTranscribing || _isRecording) return;
-    if (!await _hasUsableAudio(path)) {
+    if (!_hasUsableAudio(path)) {
       // El temporal se perdió o quedó vacío entre el fallo y el reintento:
       // limpiar el pendiente en vez de fallar con "archivo no encontrado".
       await _transcriptionService.cleanupTempFile(path);
@@ -505,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen>
       await _publishTranscriptionResult(result);
     } catch (e) {
       await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
-      final stillExists = await _audioFileExists(path);
+      final stillExists = _audioFileExists(path);
       if (mounted) {
         setState(() {
           _pendingAudioPath = stillExists ? path : null;

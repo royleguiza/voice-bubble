@@ -434,6 +434,20 @@ check("UI del trackpad sin promesas de clics en otra app",
 check("VoiceKeyboardService degrada sin accesibilidad (gate isConnected)",
       "if (VoiceBubbleAccessibilityService.isConnected())" in vk_content,
       "El despacho del trackpad no verifica conexión antes de inyectar")
+check("TrackpadBridge degrada a teclas locales (DPAD_CENTER/MENU)",
+      "KEYCODE_DPAD_CENTER" in bridge_content
+      and "KEYCODE_MENU" in bridge_content,
+      "Sin fallback local cuando el servicio está dormido")
+check("FloatingTrackpadService no despacha sin conexión (guards SPK-23)",
+      ftp_content.count("if (!VoiceBubbleAccessibilityService.isConnected()) return") >= 3,
+      "Faltan guards isConnected en onLeftClick/onRightClick/onScroll")
+check("Contrato dormido documentado (docs/contrato-trackpad.md)",
+      os.path.isfile(os.path.join(WORKSPACE, "docs/contrato-trackpad.md"))
+      and "puntero local" in open(os.path.join(WORKSPACE, "docs/contrato-trackpad.md"), encoding="utf-8").read().lower(),
+      "Falta la fuente única del estado dormido")
+check("Aviso honesto en la UI de Ajustes (puntero local)",
+      "Puntero local" in trackpad_combined,
+      "La UI no avisa que no hace clic fuera")
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TRACKPAD & ISLA: {suite.passed} pasados, {suite.failed} fallidos.")

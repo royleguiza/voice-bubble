@@ -293,6 +293,36 @@ void main() {
     });
   });
 
+  group('StorageService - imágenes del portapapeles opt-in (SPK-10)', () {
+    test('default OFF cuando no hay clave guardada (texto primero)',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.getClipboardImagesEnabled(), isFalse);
+    });
+
+    test('persiste activado y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setClipboardImagesEnabled(true);
+      expect(await service.getClipboardImagesEnabled(), isTrue);
+    });
+
+    test('usa la clave compartida con el teclado nativo', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setClipboardImagesEnabled(true);
+      // El lado Kotlin lee "flutter.kb_clipboard_images_enabled".
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_clipboard_images_enabled'), isTrue);
+    });
+
+    test('la clave pertenece al puente verificado por el CI', () {
+      expect(StorageService.bridgeKeys,
+          contains(StorageService.kbClipboardImagesEnabledKey));
+    });
+  });
+
   group('StorageService - bóveda STT sin espejo plano (SPK-02)', () {
     test('saveSttMirror guarda en bóveda y publica presencia/config', () async {
       FlutterSecureStorage.setMockInitialValues({});
@@ -403,6 +433,63 @@ void main() {
         service.transcriptions.map((t) => t.text).toList(),
         ['recien dictada', 'vieja'],
       );
+    });
+  });
+
+  group('StorageService - puente verificado por el CI (contrato)', () {
+    // Snapshot del triángulo Kotlin==contrato==Dart: agregar una clave al
+    // puente exige actualizar aquí + docs/contract-keys.txt + Kotlin el
+    // mismo día (docs/contrato-claves.md).
+    const expectedBridgeKeys = {
+      'bubble_history_enabled',
+      'kb_bottom_elevation_dp',
+      'kb_clipboard_images_enabled',
+      'kb_code_key_visible',
+      'kb_haptics_enabled',
+      'kb_height_profile',
+      'kb_invert_toolbar',
+      'kb_language_key_visible',
+      'kb_snippets_seeded',
+      'kb_spacebar_alignment',
+      'kb_spacebar_trackpad_mode',
+      'kb_stt_api_key',
+      'kb_stt_language',
+      'kb_stt_model',
+      'kb_stt_url',
+      'kb_terminal_row_visible',
+      'kb_trackpad_accel_curve',
+      'kb_trackpad_auto_return',
+      'kb_trackpad_button_layout',
+      'kb_trackpad_enabled',
+      'kb_trackpad_haptic',
+      'kb_trackpad_pointer_style',
+      'kb_trackpad_scroll_direction',
+      'kb_trackpad_scroll_position',
+      'kb_trackpad_secondary_click',
+      'kb_trackpad_sensitivity',
+      'kb_trackpad_tap_to_click',
+      'kb_trackpad_toolbar_visible',
+      'transcriptions',
+      'vb_cred_pass_v1',
+      'vb_cred_show_user',
+      'vb_credentials_v1',
+      'voice_snippets_v1',
+    };
+
+    test('bridgeKeys cubre exactamente el contrato (33 claves)', () {
+      expect(StorageService.bridgeKeys.length, 33);
+      expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
+    });
+
+    test('floating_bubble_enabled es solo-Dart (burbuja va por canal)',
+        () async {
+      // Aclaración de divergencia: la burbuja se gobierna por MethodChannel,
+      // Kotlin jamás lee esta pref; por eso NO entra al puente.
+      expect(StorageService.bridgeKeys, isNot(contains('floating_bubble_enabled')));
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveFloatingBubbleEnabled(true);
+      expect(await service.loadFloatingBubbleEnabled(), isTrue);
     });
   });
 }
