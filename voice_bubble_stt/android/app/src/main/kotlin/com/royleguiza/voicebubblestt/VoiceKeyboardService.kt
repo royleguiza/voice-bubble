@@ -1,7 +1,6 @@
 package com.royleguiza.voicebubblestt
 
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -42,7 +41,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -109,6 +108,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private lateinit var accents: AccentLayer
     // --- Toolbar y fila terminal (SPK-05 módulo 12: vive en ToolbarLayer) ---
     private lateinit var toolbar: ToolbarLayer
+    // --- Fábrica de teclas (SPK-05 módulo 14: vive en KeyFactory) ---
+    private lateinit var keys: KeyFactory
 
     override fun onCreate() {
         super.onCreate()
@@ -137,6 +138,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         status = StatusLayer(this, handler, this)
         accents = AccentLayer(this, this)
         toolbar = ToolbarLayer(this, this)
+        keys = KeyFactory(this, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -310,7 +312,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         textSizePx: Int,
         isBold: Boolean,
         onClick: () -> Unit,
-    ): TextView = makeSpecialKey(label, bgRes, weight, description, textSizePx, isBold, onClick)
+    ): TextView = keys.makeSpecialKey(label, bgRes, weight, description, textSizePx, isBold, onClick)
     override fun rebuildKeyboard() = rebuild()
     override fun snippetsToggle() {
         snippets.toggle()
@@ -367,11 +369,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
 
     private fun buildLetterRows() {
-        addRow(letterRow("qwertyuiop"))
-        addRow(letterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
+        addRow(keys.letterRow("qwertyuiop"))
+        addRow(keys.letterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
 
-        val row3 = horizontalRow()
-        val shiftKey = makeActionIconKey(
+        val row3 = keys.horizontalRow()
+        val shiftKey = keys.makeActionIconKey(
             R.drawable.ic_shift_off,
             R.drawable.kb_key_alt,
             1.3f,
@@ -383,41 +385,41 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         shiftKeyViews.add(shiftKey)
         row3.addView(shiftKey)
         for (c in "zxcvbnm") {
-            row3.addView(makeLetterKey(c))
+            row3.addView(keys.makeLetterKey(c))
         }
-        row3.addView(makeBackspaceKey())
+        row3.addView(keys.makeBackspaceKey())
         addRow(row3)
     }
 
     private fun buildSymbolRows() {
-        addRow(symbolRow("1234567890"))
-        addRow(symbolRow("@#$%&-+()/"))
+        addRow(keys.symbolRow("1234567890"))
+        addRow(keys.symbolRow("@#$%&-+()/"))
 
-        val row3 = horizontalRow()
+        val row3 = keys.horizontalRow()
         for (c in "=*\"':;!?") {
-            row3.addView(makeSymbolKey(c.toString()))
+            row3.addView(keys.makeSymbolKey(c.toString()))
         }
-        row3.addView(makeBackspaceKey())
+        row3.addView(keys.makeBackspaceKey())
         addRow(row3)
     }
 
     /** Capa codigo (K2): simbolos por frecuencia + pares auto-cerrados. */
     private fun buildCodeRows() {
-        addRow(codeRow("{}[]()<>;:"))
-        addRow(codeRow("'\"`\\|/!?=+"))
+        addRow(keys.codeRow("{}[]()<>;:"))
+        addRow(keys.codeRow("'\"`\\|/!?=+"))
 
-        val row3 = horizontalRow()
+        val row3 = keys.horizontalRow()
         for (c in "*&%$#@^~_") {
-            row3.addView(makeCodeKey(c))
+            row3.addView(keys.makeCodeKey(c))
         }
-        row3.addView(makeBackspaceKey())
+        row3.addView(keys.makeBackspaceKey())
         addRow(row3)
     }
 
     private fun buildBottomBar(): LinearLayout {
-        val row = horizontalRow()
+        val row = keys.horizontalRow()
 
-        val btnSym = makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols", isBold = true) {
+        val btnSym = keys.makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols", isBold = true) {
             if (layer == Layer.SNIPPETS) {
                 snippets.cycleSubLayerForSymbols()
             } else {
@@ -427,16 +429,16 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
 
         val btnLang = if (kbPrefs.languageKeyVisiblePref) {
-            makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language", isBold = true) {
+            keys.makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language", isBold = true) {
                 spanishMode = !spanishMode
                 rebuild()
             }
         } else null
 
-        val comma = makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
+        val comma = keys.makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
         commaKeyView = comma
 
-        val space = makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, if (spanishMode) "espacio" else "space") {
+        val space = keys.makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, if (spanishMode) "espacio" else "space") {
             // En snippets el espacio alimenta el query solo si no esta abierto el editor.
             if (layer == Layer.SNIPPETS && !snippets.isEditorOpen) snippets.ensureSearchMode()
             commit(" ")
@@ -444,10 +446,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         spaceKeyView = space
         attachSpacebarGestures(space)
 
-        val dot = makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
+        val dot = keys.makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
         dotKeyView = dot
 
-        val enter = makeActionIconKey(
+        val enter = keys.makeActionIconKey(
             R.drawable.ic_enter,
             R.drawable.kb_key_accent,
             1.8f,
@@ -610,162 +612,28 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
     }
 
-    private fun makeActionIconKey(
-        iconRes: Int,
-        bgRes: Int,
-        weight: Float,
-        description: String?,
-        tintColorRes: Int = R.color.kb_label,
-        onClick: () -> Unit,
-    ): ImageView {
-        val key = ImageView(this)
-        key.setImageResource(iconRes)
-        key.scaleType = ImageView.ScaleType.CENTER_INSIDE
-        key.isClickable = true
-        key.isFocusable = true
-        key.minimumWidth = 0
-        key.minimumHeight = 0
-        key.setPadding(0, 0, 0, 0)
-        key.setBackgroundResource(bgRes)
-        key.setColorFilter(ContextCompat.getColor(this, tintColorRes))
-        if (description != null) {
-            key.contentDescription = description
-        }
-        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), weight)
-        val m = dimen(R.dimen.kb_key_gap_h) / 2
-        lp.setMargins(m, 0, m, 0)
-        key.layoutParams = lp
-        attachFastKeyTouch(key, onClick)
-        return key
+    // --- KeyFactory.UiHost (SPK-05 módulo 14). isSpanish, dimenPx,
+    // keyHeightPx, displayLetter, haptic, attachTap, attachPress,
+    // attachBackspaceKey, commitLetterKey, commitText, sendCode,
+    // deleteBackward, trackLetterKey, trackShiftKey y toggleShiftKey ya
+    // existen arriba y sirven a esta interfaz (misma firma, una sola
+    // implementación).
+    override fun commitSymbolKey(text: String) {
+        commitSymbolText(text)
+    }
+    override fun attachAccentKey(key: TextView, base: Char, onTapUp: () -> Unit) {
+        accents.attachAccent(key, base, onTapUp)
+    }
+    override fun attachPairKey(
+        key: TextView,
+        ch: Char,
+        onCommit: (String) -> Unit,
+        onAutoPair: (Char, Char) -> Unit,
+    ) {
+        accents.attachPair(key, ch, onCommit, onAutoPair)
     }
 
-    private fun makeBackspaceKey(): ImageView {
-        val key = makeActionIconKey(
-            R.drawable.ic_backspace,
-            R.drawable.kb_key_alt,
-            1.3f,
-            if (spanishMode) "borrar" else "delete",
-            tintColorRes = R.color.kb_label,
-        ) {
-            handleBackspace()
-        }
-        attachBackspaceGestures(key) {
-            handleBackspace()
-        }
-        return key
-    }
-
-    override fun horizontalRow(): LinearLayout {
-        val row = LinearLayout(this)
-        row.orientation = LinearLayout.HORIZONTAL
-        return row
-    }
-
-    private fun letterRow(chars: String): LinearLayout {
-        val row = horizontalRow()
-        for (c in chars) {
-            row.addView(makeLetterKey(c))
-        }
-        return row
-    }
-
-    private fun symbolRow(chars: String): LinearLayout {
-        val row = horizontalRow()
-        for (c in chars) {
-            row.addView(makeSymbolKey(c.toString()))
-        }
-        return row
-    }
-
-    private fun codeRow(chars: String): LinearLayout {
-        val row = horizontalRow()
-        for (c in chars) {
-            row.addView(makeCodeKey(c))
-        }
-        return row
-    }
-
-    private fun makeLetterKey(base: Char): TextView {
-        val key = makeKey(
-            displayFor(base),
-            1f,
-            R.drawable.kb_key_bg,
-            R.color.kb_label,
-            dimen(R.dimen.kb_key_text_size),
-        )
-        if (accentsFor(base).isEmpty()) {
-            attachFastKeyTouch(key) { commitLetter(base) }
-        } else {
-            accents.attachAccent(key, base) { commitLetter(base) }
-        }
-        letterKeys.add(Pair(key, base))
-        return key
-    }
-
-    private fun makeSymbolKey(
-        label: String,
-        textSizePx: Int = dimen(R.dimen.kb_key_text_size_small),
-        isBold: Boolean = false,
-    ): TextView {
-        val key = makeKey(
-            label,
-            1f,
-            R.drawable.kb_key_bg,
-            R.color.kb_label,
-            textSizePx,
-            isBold = isBold,
-        )
-        key.contentDescription = label
-        attachFastKeyTouch(key) { commitSymbolText(label) }
-        return key
-    }
-
-    /** Tecla de capa codigo: toque corto el simbolo, toque largo el par cerrado
-     *  (solo si existe pareja; si no, tap plano). */
-    private fun makeCodeKey(ch: Char): TextView {
-        val key = makeKey(
-            ch.toString(),
-            1f,
-            R.drawable.kb_key_bg,
-            R.color.kb_label,
-            dimen(R.dimen.kb_key_text_size_small),
-        )
-        key.contentDescription = ch.toString()
-        accents.attachPair(
-            key,
-            ch,
-            onCommit = { commitSymbolText(it) },
-            onAutoPair = { open, close ->
-                commit("$open$close")
-                sendKeyCode(KeyEvent.KEYCODE_DPAD_LEFT)
-            },
-        )
-        return key
-    }
-
-    private fun makeSpecialKey(
-        label: String,
-        bgRes: Int,
-        weight: Float,
-        description: String?,
-        textSizePx: Int = dimen(R.dimen.kb_key_text_size_small),
-        isBold: Boolean = true,
-        onClick: () -> Unit,
-    ): TextView {
-        val key = makeKey(
-            label,
-            weight,
-            bgRes,
-            R.color.kb_label,
-            textSizePx,
-            isBold = isBold,
-        )
-        if (description != null) {
-            key.contentDescription = description
-        }
-        attachFastKeyTouch(key, onClick)
-        return key
-    }
+    override fun horizontalRow(): LinearLayout = keys.horizontalRow()
 
     override fun makeIconKey(
         iconRes: Int,
@@ -774,58 +642,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         description: String?,
         tintColorRes: Int = R.color.kb_label,
         onClick: () -> Unit,
-    ): ImageView {
-        val key = ImageView(this)
-        key.setImageResource(iconRes)
-        key.scaleType = ImageView.ScaleType.CENTER_INSIDE
-        key.isClickable = true
-        key.isFocusable = true
-        key.setBackgroundResource(bgRes)
-        key.setColorFilter(ContextCompat.getColor(this, tintColorRes))
-        if (description != null) {
-            key.contentDescription = description
-        }
-        key.setPadding(0, 0, 0, 0)
-        
-        val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, resources.displayMetrics).toInt()
-        val lp = LinearLayout.LayoutParams(0, hPx, weight)
-        val m = dimen(R.dimen.kb_key_gap_h) / 2
-        lp.setMargins(m, m, m, m)
-        key.layoutParams = lp
-        
-        attachFastKeyTouch(key, onClick)
-        return key
-    }
-
-    private fun makeKey(
-        label: String,
-        weight: Float,
-        bgRes: Int,
-        colorRes: Int,
-        textSizePx: Int,
-        isBold: Boolean = false,
-    ): TextView {
-        val key = TextView(this)
-        key.text = label
-        key.gravity = Gravity.CENTER
-        key.isClickable = true
-        key.isFocusable = true
-        key.includeFontPadding = false
-        key.minimumWidth = 0
-        key.minimumHeight = 0
-        key.setPadding(0, 0, 0, 0)
-        key.setBackgroundResource(bgRes)
-        key.setTextColor(ContextCompat.getColor(this, colorRes))
-        key.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSizePx.toFloat())
-        if (isBold) {
-            key.setTypeface(null, Typeface.BOLD)
-        }
-        val lp = LinearLayout.LayoutParams(0, keyHeightPx(), weight)
-        val m = dimen(R.dimen.kb_key_gap_h) / 2
-        lp.setMargins(m, 0, m, 0)
-        key.layoutParams = lp
-        return key
-    }
+    ): ImageView = keys.makeIconKey(iconRes, bgRes, weight, description, tintColorRes, onClick)
 
     private fun addRow(row: View) {
         val lp = if (row is VirtualTrackpadView) {
@@ -1107,7 +924,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
     }
 
-
     /**
      * Ventana con las ultimas transcripciones del historial compartido para
      * insertar una en el cursor (toque largo en el microfono en reposo u
@@ -1150,7 +966,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private fun buildCredentialRows() {
         credentials.buildRows(root)
         // Teclado compacto debajo (letras) para no dejar la capa vacia.
-        addRow(letterRow("qwertyuiop"))
+        addRow(keys.letterRow("qwertyuiop"))
     }
 
     // --- CredentialsLayer.UiHost (SPK-05 módulo 3): 9 delegaciones de una línea. ---
@@ -1210,7 +1026,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         bgRes: Int,
         colorRes: Int,
         textSizePx: Int,
-    ): TextView = makeKey(label, weight, bgRes, colorRes, textSizePx)
+    ): TextView = keys.makeKey(label, weight, bgRes, colorRes, textSizePx)
     override fun displayLetter(base: Char): String = displayFor(base)
     override fun commitLetterKey(base: Char) {
         commitLetter(base)
@@ -1233,7 +1049,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun attachBackspaceKey(key: View, action: () -> Unit) {
         attachBackspaceGestures(key, action)
     }
-
 
     /** Shell SPK-05: el portapapeles vive en ClipboardLayer; aquí solo commit(). */
 
@@ -1562,7 +1377,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
         activePopup = null
     }
-
 
     /** Altura de tecla estandar escalada por el perfil activo. */
     override fun keyHeightPx(): Int = scaleV(dimen(R.dimen.kb_key_height))
