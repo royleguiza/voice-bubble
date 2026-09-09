@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 /// Tabla única de iconos (SPK-15): una familia (rounded), 3 tamaños.
 ///
 /// - `kIconSmall` (18): acciones en línea (copiar, nube en listas).
