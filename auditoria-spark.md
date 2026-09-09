@@ -225,3 +225,35 @@ No lee como app Android nativa. Lee como app iOS (Liquid Glass, HIG type scale, 
 10. Final: re-correr esta auditoría y exigir ≥14/20 antes del próximo feature.
 
 > Podés pedirme estos uno por uno, todos juntos o en el orden que prefieras. Re-correr la auditoría tras los fixes para ver el score subir.
+
+---
+
+## Cierre 2026-09-09 — pendientes SPK-09/10/11/15/17/21/23/26/27/28 (local, sin push)
+
+Master local **12/12 verde** (`test_master_suite.py`; clipboard 30/30, burbuja-historial 83/83 tras actualizar anclas SPK-11). Flutter analyze/test NO corren en esta máquina (sin SDK ARM64): el CI debe verificar compilación antes de cualquier push.
+
+| SPK | Fix | Evidencia |
+|---|---|---|
+| 09 | Congelamiento + experimental | `docs/congelamiento-features.md`; flag imágenes OFF en Ajustes→Teclado; banner "Experimental" en `credentials_screen.dart`; 6 tabs se mantienen con justificación medible (~50dp ≥ 48dp) |
+| 10 | Texto primero + purga | `ClipboardStore.imagesEnabled()` gate en `addImageClip` + `purgeOrphanMedia()` en primera carga; `kb_clipboard_images_enabled` en triángulo Kotlin==contrato==Dart; toggle en `teclado_tab.dart`; TEST 10 en `test_clipboard_suite.py` |
+| 11 | Partición | `HistoryCardView.kt` (153) + `SnippetsCardView.kt` (188) nuevos; `BubbleHistoryController.kt` 1292→1027 (delegados `buildCard`/`buildSnippetCard`/fondos/vacíos); anclas actualizadas en `test_bubble_history_suite.py` |
+| 15 | Tabla iconos | `app_icons.dart` (18/22/28) + `docs/contrato-iconos.md`; `size: 16/20` → tabla; guard de tamaños en `android.yml` (job Tokens UI) |
+| 17 | I/O fuera de main | `home_screen.dart`: `_hasUsableAudio`/`_audioFileExists` async + 4 call sites con await; `TranscriptionHistoryRepository`: `loadHistory` sin lock (archivo atómico), lock solo en write de `addTranscription` |
+| 21 | Contrato único | `docs/contrato-stt.md` (fuente única K3/D7 + hilos); KDocs de `storage_service.dart` y `SpeechToTextClient.kt` a 3 líneas + link |
+| 23 | Dormida explícita | Guards `isConnected()` en `FloatingTrackpadService` (3 dispatch); KDoc dormido; `docs/contrato-trackpad.md`; aviso "Puntero local" en `trackpad_tab.dart` |
+| 26 | Claves congeladas | `docs/contrato-claves.md` (convención congelada + regla de entrada triple) |
+| 27 | Podar novelas | KDocs >10 líneas → ≤3 + link en `SpeechToTextClient`, `BubbleHistoryController`, `ClipboardStore`, `TranscriptionHistoryRepository`, `FloatingTrackpadService`, `VoiceBubbleAccessibilityService`, `storage_service.dart` |
+| 28 | Versión | `version: 1.0.0` (sin `+87`) en ambos pubspec; artefacto `rN` única fuente de build; About + 3 asserts actualizados |
+
+### Score estimado tras cierre (a confirmar con re-auditoría + CI verde)
+
+| # | Dimensión | Antes | Ahora | Por qué |
+|---|---|---|---|---|
+| 1 | Accessibility | 2 | 3 | 48dp + aviso trackpad; quedan 6 tabs densos |
+| 2 | Performance | 2 | 3 | I/O fuera de main/lock; VKS 570, Settings 870, Bubble 1027+vistas |
+| 3 | Appearance | 2 | 3 | success/text/iconos con guards; sin Dynamic Color |
+| 4 | Conformance | 1 | 2 | Glass + tab-bar custom siguen; targets y tokens ya M3 |
+| 5 | Adaptivity | 2 | 2 | Sin cambios (landscape/multi-window sin probar) |
+| **Total** | | **9/20** | **~13/20** | Falta ≥14: Dynamic Color, rail/drawer en expanded, probar landscape |
+
+Resto para ≥14 (no entraron, requieren decisión): Dynamic Color, NavigationBar/rail según ventana, `monochrome`, contador de generación tras rotación, PNGs huérfanos.

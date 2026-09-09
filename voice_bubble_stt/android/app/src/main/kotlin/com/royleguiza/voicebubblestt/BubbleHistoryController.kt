@@ -11,7 +11,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.provider.Settings
-import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -31,21 +30,8 @@ import kotlin.math.min
 import org.json.JSONObject
 
 /**
- * Modal de historial para la BURBUJA CLÁSICA (hito B1–B7): nace por morph
- * desde el punto de la burbuja hacia el
- * diagonal con más espacio, sin títulos ni textos — solo micrófono (estilo
- * `kb_ic_mic`, abajo-derecha) y rayita inferior (siempre abajo) que contrae
- * de vuelta al origen.
- *
- * Gestos por card (sin conflictos entre sí):
- * - toque = insertar en cursor (`commitFromExternal`) + copiar + contraer;
- * - toque largo (450 ms, se cancela al scrollear) = expandir para leer;
- * - deslizamiento lateral (umbral 48 dp, retorno elástico) = seleccionar.
- * Con 2+ seleccionadas aparece el botón copiar-todo abajo-izquierda
- * (icon-only, slot permanente para no descentrar la rayita).
- *
- * REGLA SAGRADA DE PRIVACIDAD: CERO logs de textos; el contenido jamás toca
- * disco extra (solo el historial unificado existente) ni red.
+ * Modal de historial de la burbuja clásica (B1–B7): morph + cards + snippets.
+ * Privacidad: cero logs de contenido; detalle en docs/congelamiento-features.md.
  */
 class BubbleHistoryController(
     private val context: Context,
@@ -681,16 +667,7 @@ class BubbleHistoryController(
         if (!isShowing) return
         val list = cardsList ?: return
         if (items.isEmpty()) {
-            val dark = isDarkUi()
-            val empty = TextView(context).apply {
-                text = "Sin snippets todavía. Crealos en la app."
-                setTextColor(if (dark) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                gravity = Gravity.CENTER
-                val pad = (16 * density).toInt()
-                setPadding(pad, pad, pad, pad)
-            }
-            list.addView(empty)
+            list.addView(SnippetsCardView.emptyView(context, density, isDarkUi()))
             return
         }
         for (s in items) {
@@ -699,185 +676,31 @@ class BubbleHistoryController(
         }
     }
 
-    /**
-     * Tarjeta snippet estilo campo outlined con título flotante
-     * (fieldset/legend): el nombre recorta el borde superior con el fondo
-     * sólido de la modal; cuerpo mono multilínea; editar abajo-izquierda
-     * y copiar abajo-derecha. Estructura gemela a buildCard (frame[box con
-     * tag, badge]) para reutilizar selección, copiar-todo y gestos.
-     */
+    /** Tarjeta snippet fieldset/legend (gemela a historial); vista en SnippetsCardView. */
     private fun buildSnippetCard(s: VbSnippet): View {
         val dark = isDarkUi()
         val key = "snip|${s.id}"
         keyToText[key] = s.contenido
-        val frame = FrameLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                val mV = (3 * density).toInt()
-                setMargins(0, mV, 0, mV)
-            }
-        }
-        val box = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            background = snippetBoxBackground(dark)
-            val padH = (12 * density).toInt()
-            // Arriba hay aire para que la leyenda muerda el borde a la mitad.
-            setPadding(padH, (14 * density).toInt(), padH, (10 * density).toInt())
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                // La mitad de la leyenda (~8 dp) solapa el borde superior.
-                topMargin = (8 * density).toInt()
-            }
-            tag = key
-        }
-        val tx = TextView(context).apply {
-            text = s.contenido
-            typeface = Typeface.MONOSPACE
-            setTextColor(if (dark) Color.WHITE else Color.parseColor("#1C1C1E"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            maxLines = 2
-            ellipsize = TextUtils.TruncateAt.END
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-        box.addView(tx)
-        val ops = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = (8 * density).toInt()
-            }
-        }
-        val edit = ImageView(context).apply {
-            try {
-                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_edit))
-            } catch (_: Throwable) {
-                try {
-                    setImageResource(R.drawable.ic_edit)
-                } catch (_: Throwable) {}
-            }
-            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
-            background = copyBackgroundFor(dark)
-            val pad = (7 * density).toInt()
-            setPadding(pad, pad, pad, pad)
-            val sz = (36 * density).toInt()
-            layoutParams = LinearLayout.LayoutParams(sz, sz)
-            contentDescription = "Editar snippet"
-            setOnClickListener { openAppForEdit() }
-        }
-        val spacer = View(context).apply {
-            layoutParams = LinearLayout.LayoutParams(0, 1, 1f)
-        }
-        val copy = ImageView(context).apply {
-            try {
-                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_copy))
-            } catch (_: Throwable) {
-                try {
-                    setImageResource(R.drawable.ic_copy)
-                } catch (_: Throwable) {}
-            }
-            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
-            background = copyBackgroundFor(dark)
-            val pad = (7 * density).toInt()
-            setPadding(pad, pad, pad, pad)
-            val sz = (36 * density).toInt()
-            layoutParams = LinearLayout.LayoutParams(sz, sz)
-            contentDescription = "Copiar snippet"
-            setOnClickListener {
+        return SnippetsCardView.buildSnippetCard(
+            context, density, dark, s, key,
+            onCopy = { iv ->
                 try {
                     copyToClipboard(s.contenido)
-                    showCopied(it as ImageView, dark)
+                    showCopied(iv, dark)
                 } catch (_: Throwable) {}
-            }
-        }
-        ops.addView(edit)
-        ops.addView(spacer)
-        ops.addView(copy)
-        box.addView(ops)
-        val legend = TextView(context).apply {
-            text = s.nombre.ifBlank { "Snippet" }
-            setTextColor(if (dark) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            typeface = Typeface.DEFAULT_BOLD
-            maxLines = 1
-            ellipsize = TextUtils.TruncateAt.END
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 4f * density
-                setColor(ContextCompat.getColor(context, R.color.bubble_legend_bg))
-            }
-            val padH = (6 * density).toInt()
-            setPadding(padH, 0, padH, 0)
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                gravity = Gravity.TOP or Gravity.START
-                leftMargin = (10 * density).toInt()
-            }
-        }
-        val badge = ImageView(context).apply {
-            try {
-                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_check))
-            } catch (_: Throwable) {
-                try {
-                    setImageResource(R.drawable.ic_check)
-                } catch (_: Throwable) {}
-            }
-            setColorFilter(Color.WHITE)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#FF30D158"))
-            }
-            val sz = (22 * density).toInt()
-            layoutParams = FrameLayout.LayoutParams(sz, sz).apply {
-                gravity = Gravity.TOP or Gravity.END
-            }
-            visibility = View.GONE
-        }
-        frame.addView(box)
-        // Orden gemelo al de historial (box=0, badge=1): resetCardSelections
-        // y copySelected caminan hijos por índice. La leyenda va última
-        // (arriba de todo; no solapa al badge: extremos opuestos).
-        frame.addView(badge)
-        frame.addView(legend)
-        // Mismos gestos que historial: tap inserta+copia+cierra, largo
-        // expande, lateral selecciona (handleCardTap es agnóstico al origen).
-        // El pintado respeta el outlined: verde solo en borde+relleno tenue.
-        attachCardGestures(
-            row = box, tv = tx, badge = badge, text = s.contenido, key = key, dark = dark,
-            paintBackground = { sel -> box.background = snippetBoxBackground(dark, sel) }
+            },
+            onEdit = { openAppForEdit() },
+            onAttach = { box, tx, badge ->
+                attachCardGestures(
+                    row = box, tv = tx, badge = badge, text = s.contenido, key = key, dark = dark,
+                    paintBackground = { sel -> box.background = snippetBoxBackground(dark, sel) }
+                )
+            },
         )
-        return frame
     }
 
-    private fun snippetBoxBackground(dark: Boolean, selected: Boolean = false): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 12f * density
-            if (selected) {
-                setColor(Color.parseColor("#FF238636"))
-                setStroke((1.5f * density).toInt(), Color.parseColor("#FF3FB950"))
-            } else {
-                // Caja transparente: solo el borde sutil (el fondo lo pone la modal).
-                setColor(Color.TRANSPARENT)
-                if (dark) {
-                    setStroke((1f * density).toInt(), Color.parseColor("#26FFFFFF"))
-                } else {
-                    setStroke((1f * density).toInt(), Color.parseColor("#1F000000"))
-                }
-            }
-        }
-    }
+    private fun snippetBoxBackground(dark: Boolean, selected: Boolean = false): GradientDrawable =
+        SnippetsCardView.snippetBoxBackground(density, dark, selected)
 
     /** Editar vive en la app: se la abre y se compacta la modal. */
     private fun openAppForEdit() {
@@ -897,16 +720,7 @@ class BubbleHistoryController(
         if (!isShowing) return
         val list = cardsList ?: return
         if (items.isEmpty()) {
-            val dark = isDarkUi()
-            val empty = TextView(context).apply {
-                text = "Sin transcripciones todavía."
-                setTextColor(if (dark) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-                gravity = Gravity.CENTER
-                val pad = (16 * density).toInt()
-                setPadding(pad, pad, pad, pad)
-            }
-            list.addView(empty)
+            list.addView(HistoryCardView.emptyView(context, density, isDarkUi()))
             return
         }
         for (obj in items) {
@@ -925,120 +739,28 @@ class BubbleHistoryController(
         }
     }
 
-    private fun cardBackground(selected: Boolean, dark: Boolean): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 12f * density
-            if (selected) {
-                setColor(Color.parseColor("#FF238636"))
-                setStroke((1.5f * density).toInt(), Color.parseColor("#FF3FB950"))
-            } else if (dark) {
-                setColor(Color.parseColor("#12FFFFFF"))
-                setStroke((1f * density).toInt(), Color.parseColor("#26FFFFFF"))
-            } else {
-                setColor(Color.parseColor("#0F000000"))
-                setStroke((1f * density).toInt(), Color.parseColor("#1F000000"))
-            }
-        }
-    }
+    private fun cardBackground(selected: Boolean, dark: Boolean): GradientDrawable =
+        HistoryCardView.cardBackground(density, selected, dark)
 
-    private fun copyBackgroundFor(dark: Boolean): GradientDrawable {
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 8f * density
-            if (dark) {
-                setColor(Color.parseColor("#1FFFFFFF"))
-                setStroke((1f * density).toInt(), Color.parseColor("#26FFFFFF"))
-            } else {
-                setColor(Color.parseColor("#0F000000"))
-                setStroke((1f * density).toInt(), Color.parseColor("#1F000000"))
-            }
-        }
-    }
+    private fun copyBackgroundFor(dark: Boolean): GradientDrawable =
+        HistoryCardView.copyBackground(density, dark)
 
     private fun buildCard(text: String, timestamp: String): View {
         val dark = isDarkUi()
         val key = selectionKey(timestamp, text)
         keyToText[key] = text
-        val frame = FrameLayout(context).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                val mV = (3 * density).toInt()
-                setMargins(0, mV, 0, mV)
-            }
-        }
-        val row = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = cardBackground(selected = false, dark = dark)
-            val padH = (12 * density).toInt()
-            setPadding(padH, (8 * density).toInt(), (8 * density).toInt(), (8 * density).toInt())
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-            tag = key
-        }
-        val tv = TextView(context).apply {
-            this.text = "\"$text\""
-            setTextColor(if (dark) Color.WHITE else Color.parseColor("#1C1C1E"))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            maxLines = 2
-            ellipsize = TextUtils.TruncateAt.END
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        row.addView(tv)
-        val copy = ImageView(context).apply {
-            try {
-                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_copy))
-            } catch (_: Throwable) {
-                try {
-                    setImageResource(R.drawable.ic_copy)
-                } catch (_: Throwable) {}
-            }
-            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
-            background = copyBackgroundFor(dark)
-            val pad = (7 * density).toInt()
-            setPadding(pad, pad, pad, pad)
-            val s = (32 * density).toInt()
-            layoutParams = LinearLayout.LayoutParams(s, s).apply {
-                setMargins((10 * density).toInt(), 0, 0, 0)
-            }
-            contentDescription = "Copiar al portapapeles"
-            setOnClickListener {
+        return HistoryCardView.buildCard(
+            context, density, dark, text, key,
+            onCopy = { iv ->
                 try {
                     copyToClipboard(text)
-                    showCopied(it as ImageView, dark)
+                    showCopied(iv, dark)
                 } catch (_: Throwable) {}
-            }
-        }
-        row.addView(copy)
-
-        val badge = ImageView(context).apply {
-            try {
-                setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_check))
-            } catch (_: Throwable) {
-                try {
-                    setImageResource(R.drawable.ic_check)
-                } catch (_: Throwable) {}
-            }
-            setColorFilter(Color.WHITE)
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#FF30D158"))
-            }
-            val s = (22 * density).toInt()
-            layoutParams = FrameLayout.LayoutParams(s, s).apply {
-                gravity = Gravity.TOP or Gravity.END
-            }
-            visibility = View.GONE
-        }
-        frame.addView(row)
-        frame.addView(badge)
-        attachCardGestures(row = row, tv = tv, badge = badge, text = text, key = key, dark = dark)
-        return frame
+            },
+            onAttach = { row, tv, badge ->
+                attachCardGestures(row = row, tv = tv, badge = badge, text = text, key = key, dark = dark)
+            },
+        )
     }
 
     private fun attachCardGestures(

@@ -68,15 +68,8 @@ data class ClipboardItem(
 }
 
 /**
- * Gestor y almacén persistente del portapapeles del sistema para VoiceBubble IME.
- *
- * Características de producción:
- * 1. Persistencia atómica en JSON (renombrado atómico de archivo .tmp).
- * 2. Copiado local seguro de imágenes a sandbox privado (inmunidad ante URIs content:// expirados).
- * 3. Límite FIFO estricto de 25 clips no fijados con limpieza automática de archivos huérfanos.
- * 4. Los clips fijados (isPinned = true) se conservan permanentemente.
- * 5. LruCache en memoria (4MB) con downsampling eficiente (RGB_565) para 0 jank y 0 OOM.
- * 6. Deduplicación inteligente: copias repetidas se actualizan en el tope sin duplicar entradas.
+ * Portapapeles del IME: JSON atómico + FIFO-25 + imágenes opt-in.
+ * Detalle: docs/congelamiento-features.md (SPK-09/10).
  */
 class ClipboardStore(
     private val context: Context,
@@ -116,12 +109,42 @@ class ClipboardStore(
     fun loadItems(): List<ClipboardItem> {
         itemsCache?.let { return ArrayList(it) }
         val fromDisk = readFromDisk()
+        val snapshot: List<ClipboardItem>
         synchronized(lock) {
             itemsCache?.let { return ArrayList(it) }
             val list = fromDisk
             sortAndNormalize(list)
             itemsCache = list
-            return ArrayList(list)
+            snapshot = ArrayList(list)
+        }
+        // SPK-10: barrido de huérfanos solo en primera carga (fuera del
+        // lock; best-effort, jamás bloquea al llamador).
+        try { purgeOrphanMedia(snapshot) } catch (_: Exception) {}
+        return ArrayList(snapshot)
+    }
+
+    /** SPK-10: flag opt-in de imágenes (texto primero). Default OFF. */
+    fun imagesEnabled(): Boolean = try {
+        context.getSharedPreferences("FlutterSharedPreferences", android.content.Context.MODE_PRIVATE)
+            .getBoolean("flutter.kb_clipboard_images_enabled", false)
+    } catch (_: Exception) {
+        false
+    }
+
+    /**
+     * SPK-10: borra de clipboard_media/ todo archivo no referenciado por
+     * ningún clip vigente (huérfanos de evicciones viejas, crashes o
+     * borrados manuales del JSON). Solo archivos clip_*.png propios.
+     */
+    fun purgeOrphanMedia(current: List<ClipboardItem>) {
+        val referenced = current.mapNotNull { it.mediaFileName }.toHashSet()
+        val files = try { mediaDir.listFiles() } catch (_: Exception) { null } ?: return
+        for (f in files) {
+            try {
+                if (f.isFile && f.name.startsWith("clip_") && f.name !in referenced) {
+                    f.delete()
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -175,8 +198,13 @@ class ClipboardStore(
 
     /**
      * Copia de forma segura los bytes de una imagen URI al sandbox privado local y agrega el clip.
+     * SPK-10: opt-in tras flag (texto primero). Default OFF.
      */
     fun addImageClip(uri: Uri, mimeType: String, onComplete: ((List<ClipboardItem>) -> Unit)? = null) {
+        if (!imagesEnabled()) {
+            onComplete?.invoke(loadItems())
+            return
+        }
         executor.execute {
             try {
                 val fileName = "clip_${UUID.randomUUID()}.png"

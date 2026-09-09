@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
+import 'app_icons.dart';
 
 /// Tarjeta emergente glass que flota sobre el botón de grabar mostrando la
 /// última transcripción. Animación: expand (scale 0.85→1, easeOutBack) +
@@ -85,7 +86,7 @@ class TranscriptionPopup extends StatelessWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.cloud, size: 16, color: labelSecondary),
+                        Icon(Icons.cloud, size: AppIcons.small, color: labelSecondary),
                         const SizedBox(width: 6),
                         Text(
                           formatTranscriptionTimestamp(timestamp),

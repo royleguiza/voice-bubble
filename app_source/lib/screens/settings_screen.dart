@@ -58,6 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _showTerminalRow = true;
   bool _showCodeKey = true;
   bool _showLanguageKey = true;
+  bool _clipboardImagesEnabled = false;
   String _heightProfile = StorageService.defaultHeightProfile;
   bool _hapticsEnabled = true;
   int _bottomElevationDp = StorageService.defaultBottomElevationDp;
@@ -145,6 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final trackpadPointerStyle = await _storageService.getTrackpadPointerStyle();
     final trackpadAutoReturn = await _storageService.getTrackpadAutoReturn();
     final bubbleHistory = await _storageService.loadBubbleHistoryEnabled();
+    final clipboardImages = await _storageService.getClipboardImagesEnabled();
     // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
     if (apiKey.isNotEmpty) {
       try {
@@ -184,6 +186,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _trackpadPointerStyle = trackpadPointerStyle;
       _trackpadAutoReturn = trackpadAutoReturn;
       _showBubbleHistory = bubbleHistory;
+      _clipboardImagesEnabled = clipboardImages;
     });
   }
 
@@ -221,6 +224,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleKeyboardLanguageKey(bool visible) async {
     await _storageService.saveKeyboardLanguageKeyVisible(visible);
     if (mounted) setState(() => _showLanguageKey = visible);
+  }
+
+  Future<void> _toggleClipboardImages(bool enabled) async {
+    await _storageService.setClipboardImagesEnabled(enabled);
+    if (mounted) setState(() => _clipboardImagesEnabled = enabled);
   }
 
   Future<void> _saveHeightProfile(String profile) async {
@@ -415,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'VoiceBubble STT v1.0.0+87',
+                      'VoiceBubble STT v1.0.0',
                       style: Theme.of(sheetContext).textTheme.titleSmall,
                     ),
                   ),
@@ -809,6 +817,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       onToggleCodeKey: _toggleKeyboardCodeKey,
       showLanguageKey: _showLanguageKey,
       onToggleLanguageKey: _toggleKeyboardLanguageKey,
+      clipboardImagesEnabled: _clipboardImagesEnabled,
+      onToggleClipboardImages: _toggleClipboardImages,
       heightProfile: _heightProfile,
       onSaveHeightProfile: _saveHeightProfile,
       heightProfileHint: _heightProfileHint,

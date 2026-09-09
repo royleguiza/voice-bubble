@@ -13,16 +13,8 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * Repositorio unificado, profesional y thread-safe para el historial de transcripciones (FIFO-20).
- *
- * Utiliza un archivo JSON atómico ('transcription_history.json') en el almacenamiento privado
- * ('context.filesDir'), compartido directamente entre el teclado nativo Kotlin y Flutter.
- *
- * Beneficios arquitectónicos:
- * 1. Escritura atómica (archivo .tmp + rename) que previene condiciones de carrera o lecturas parciales.
- * 2. Cero dependencia del formato interno / prefijos Base64 de FlutterSharedPreferences.
- * 3. Cero excepciones de incompatibilidad de tipos (String vs Set<String>).
- * 4. Migración transparente desde SharedPreferences legados si el archivo aún no existe.
+ * Historial FIFO-20 en JSON atómico, compartido Flutter↔Kotlin.
+ * Identidad por timestamp exacto (SPK-04); I/O fuera del lock (SPK-17).
  */
 class TranscriptionHistoryRepository(private val context: Context) {
 
@@ -41,31 +33,31 @@ class TranscriptionHistoryRepository(private val context: Context) {
      * con deduplicación segura por timestamp y tope estricto de MAX_ITEMS (20).
      */
     fun loadHistory(): List<JSONObject> {
-        synchronized(lock) {
-            val file = targetFile
-            if (!file.exists()) {
-                val migrated = migrateFromLegacySources()
-                if (migrated.isNotEmpty()) {
-                    saveAtomic(migrated)
-                }
-                return migrated
+        // SPK-17: I/O fuera del lock (el archivo se escribe atómico
+        // tmp+rename, así que leer sin lock ve un snapshot completo).
+        val file = targetFile
+        if (!file.exists()) {
+            val migrated = migrateFromLegacySources()
+            if (migrated.isNotEmpty()) {
+                synchronized(lock) { saveAtomic(migrated) }
             }
+            return migrated
+        }
 
-            return try {
-                val text = file.readText(Charsets.UTF_8).trim()
-                if (text.isEmpty()) return emptyList()
-                val array = JSONArray(text)
-                val list = ArrayList<JSONObject>(array.length())
-                for (i in 0 until array.length()) {
-                    val obj = array.optJSONObject(i)
-                    if (obj != null && obj.has("text")) {
-                        list.add(obj)
-                    }
+        return try {
+            val text = file.readText(Charsets.UTF_8).trim()
+            if (text.isEmpty()) return emptyList()
+            val array = JSONArray(text)
+            val list = ArrayList<JSONObject>(array.length())
+            for (i in 0 until array.length()) {
+                val obj = array.optJSONObject(i)
+                if (obj != null && obj.has("text")) {
+                    list.add(obj)
                 }
-                dedupAndSort(list)
-            } catch (_: Exception) {
-                migrateFromLegacySources()
             }
+            dedupAndSort(list)
+        } catch (_: Exception) {
+            migrateFromLegacySources()
         }
     }
 
@@ -73,35 +65,23 @@ class TranscriptionHistoryRepository(private val context: Context) {
     // con retención; cero llamadores). Si la retención importa, un test
     // afirma que `load` no purga.
 
-    /**
-     * Agrega una nueva transcripción al tope del historial de forma atómica y thread-safe.
-     *
-     * Identidad única (SPK-04): cada dictado se escribe UNA vez por origen
-     * con SU timestamp, y la app reenvía por el canal el MISMO timestamp que
-     * ya persistió en Dart ([timestampIso] UTC ISO-8601). Así la escritura
-     * Dart y la nativa del mismo dictado tienen identidad exacta y el dedup
-     * por timestamp de [dedupAndSort] las unifica sin ventanas temporales
-     * (la ventana de 30 s tragaba dictados idénticos legítimos y mentía en
-     * el orden). Sin timestamp (teclado, llamadores viejos) se estampa ahora.
-     * La exclusión mutua de micrófono burbuja↔teclado garantiza que no hay
-     * escrituras concurrentes de dos orígenes.
-     */
+    /** Agrega un dictado con su timestamp (SPK-04); ver docs/contrato-stt.md. */
     fun addTranscription(text: String, timestampIso: String? = null) {
         if (text.isBlank()) return
-        synchronized(lock) {
-            val current = loadHistory().toMutableList()
-            val instant = try {
-                if (!timestampIso.isNullOrBlank()) Instant.parse(timestampIso) else Instant.now()
-            } catch (_: Exception) {
-                Instant.now()
-            }
-            val newEntry = JSONObject()
-                .put("text", text)
-                .put("timestamp", instant.toString())
-            current.add(0, newEntry)
-
-            saveAtomic(dedupAndSort(current))
+        // SPK-17: construir fuera del lock; el lock solo cubre el write
+        // atómico (exclusión mutua burbuja↔teclado: sin escritores concurrentes).
+        val instant = try {
+            if (!timestampIso.isNullOrBlank()) Instant.parse(timestampIso) else Instant.now()
+        } catch (_: Exception) {
+            Instant.now()
         }
+        val newEntry = JSONObject()
+            .put("text", text)
+            .put("timestamp", instant.toString())
+        val current = loadHistory().toMutableList()
+        current.add(0, newEntry)
+        val out = dedupAndSort(current)
+        synchronized(lock) { saveAtomic(out) }
     }
 
     private fun dedupAndSort(items: List<JSONObject>): List<JSONObject> {
@@ -134,13 +114,7 @@ class TranscriptionHistoryRepository(private val context: Context) {
         } catch (_: Exception) {}
     }
 
-    /**
-     * Migración defensiva desde FlutterSharedPreferences.xml tolerante tanto a <set> como
-     * a <string> con prefijos Base64 de Flutter. Solo lectura de legado;
-     * SPK-04 retiró el escritor del espejo lateral (envenenaba la clave con
-     * un tipo competidor): esta rama solo puede leer basura previa, que por
-     * construcción es subconjunto del archivo.
-     */
+    /** Migración solo-lectura del legado prefs→archivo (SPK-04). */
     private fun migrateFromLegacySources(): List<JSONObject> {
         val results = ArrayList<JSONObject>()
 

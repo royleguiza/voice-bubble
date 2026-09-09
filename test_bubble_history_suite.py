@@ -37,6 +37,11 @@ FBS = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblest
 check("BubbleHistoryController.kt existe", os.path.isfile(os.path.join(WORKSPACE, KT)))
 kt = read(KT)
 fbs = read(FBS)
+# SPK-11: vistas extraídas a HistoryCardView/SnippetsCardView (el controlador
+# delega; los checks de tarjetas miran los tres archivos).
+history = read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/HistoryCardView.kt")
+snip = read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SnippetsCardView.kt")
+cards = kt + history + snip
 
 # --- 1. API del controlador ---
 for fn in ["fun showFrom(", "fun close()", "fun destroy()", "fun isOpen()",
@@ -72,7 +77,7 @@ check("Copiar-todo visible solo con 2+ (slot INVISIBLE permanente)",
 check("Mic estilo kb_ic_mic abajo-derecha + rayita Contraer",
       "kb_ic_mic" in kt and '"Contraer"' in kt)
 check("Haptico al seleccionar (VIRTUAL_KEY tolerante)", "VIRTUAL_KEY" in kt)
-check("Vacio elegante Sin transcripciones", "Sin transcripciones todav" in kt)
+check("Vacio elegante Sin transcripciones", "Sin transcripciones todav" in cards)
 
 # --- 4. Wiring en FloatingBubbleService ---
 check("Toque largo 500 ms en la burbuja clasica", "BUBBLE_LONG_PRESS_MS = 500L" in fbs)
@@ -193,10 +198,10 @@ check("Sin claves de puente nuevas (mismas del contrato)",
       "flutter.voice_snippets_v1" not in kt and "flutter.kb_snippets_seeded" not in kt,
       "BubbleHistoryController no debe hardcodear claves (viven en SnippetStore)")
 check("Tarjeta snippet outlined con título flotante (legend)",
-      "fun buildSnippetCard(" in kt and "bubble_legend_bg" in kt and "MONOSPACE" in kt,
+      "fun buildSnippetCard(" in cards and "bubble_legend_bg" in cards and "MONOSPACE" in cards,
       "Falta la tarjeta fieldset/legend")
 check("Editar abajo-izquierda y copiar abajo-derecha (ops con spacer)",
-      'contentDescription = "Editar snippet"' in kt and 'contentDescription = "Copiar snippet"' in kt,
+      'contentDescription = "Editar snippet"' in cards and 'contentDescription = "Copiar snippet"' in cards,
       "Faltan acciones editar/copiar en la tarjeta")
 check("Tap en snippet inserta+copia+cierra (gestos reutilizados)",
       "attachCardGestures(" in kt and "paintBackground" in kt,

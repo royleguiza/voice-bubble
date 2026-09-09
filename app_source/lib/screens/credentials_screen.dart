@@ -114,6 +114,13 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
         ),
+        const SizedBox(height: 4),
+        Text(
+          'Experimental: superficie congelada (SPK-09), sin cambios fuera de fixes.',
+          style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+        ),
         const SizedBox(height: 12),
         TextField(
           key: const ValueKey('credenciales-add-nombre'),

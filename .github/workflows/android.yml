@@ -73,6 +73,10 @@ jobs:
             echo '::error::TextStyle fuera de tokens (usar kTextSelected/kTextUnselected/kTextMeta)'
             exit 1
           fi
+          if grep -rhoE 'size: [0-9]+' app_source/lib --include='*.dart' | grep -vE 'size: (18|22|28)$'; then
+            echo '::error::Icon size fuera de tabla SPK-15 (usar AppIcons 18/22/28)'
+            exit 1
+          fi
 
       - name: Java 17 (con cache de Gradle)
         uses: actions/setup-java@v4

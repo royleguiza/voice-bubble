@@ -162,6 +162,17 @@ class StorageService {
   Future<void> saveKeyboardLanguageKeyVisible(bool visible) =>
       _setBool(_keyboardLanguageKeyVisibleKey, visible);
 
+  static const String kbClipboardImagesEnabledKey =
+      'kb_clipboard_images_enabled';
+
+  /// SPK-10: imágenes del portapapeles opt-in (texto primero). Default OFF.
+  /// El IME lo lee con prefijo "flutter." (ver KeyboardPrefs).
+  Future<bool> getClipboardImagesEnabled() =>
+      _getBool(kbClipboardImagesEnabledKey, false);
+
+  Future<void> setClipboardImagesEnabled(bool enabled) =>
+      _setBool(kbClipboardImagesEnabledKey, enabled);
+
   static const String kbHeightProfileKey = 'kb_height_profile';
   static const String kbHapticsEnabledKey = 'kb_haptics_enabled';
   static const String kbBottomElevationDpKey = 'kb_bottom_elevation_dp';
@@ -357,6 +368,7 @@ class StorageService {
   static const List<String> bridgeKeys = [
     _bubbleHistoryKey,
     kbBottomElevationDpKey,
+    kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,
     kbHapticsEnabledKey,
     kbHeightProfileKey,
@@ -390,19 +402,8 @@ class StorageService {
   ];
 
   // --- Config STT para el teclado nativo (K3) + bóveda (SPK-02) ---
-  // El teclado Kotlin (IME, sin FlutterEngine) lee la key de la MISMA
-  // bóveda que Dart (flutter_secure_storage con ESP, ver [espSecureStorage]
-  // y SecureStore.kt): interop por APIs públicas de AndroidX, sin duplicar
-  // cripto y sin espejo plano. url/model/language/presencia siguen en
-  // prefs planas (no sensibles) con prefijo "flutter." del lado Kotlin.
-  // Reglas: jamás se loguea la key (guard CI "Sin contenido en Logs"),
-  // jamás va al repo ni al backup (backup_rules.xml), se borra con
-  // [clearSttMirror]. La regresión bool-only (solo presencia, sin key
-  // real) dejaba "Falta la API key" permanente: NO reintroducir.
-  //
-  // CONTRATO K3: la key vive en la bóveda bajo [secureSttApiKey]; el IME
-  // la lee con SecureStore. El lado Kotlin documenta el contrato en
-  // SpeechToTextClient.loadConfig + SecureStore.
+  // Contrato único: docs/contrato-stt.md (bóveda groq_api_key + prefs
+  // planas url/model/language/presencia; legado kb_stt_api_key prohibido).
   static const String secureSttApiKey = 'groq_api_key';
 
   /// Indicador de presencia de API key (bool en prefs, jamás la key).

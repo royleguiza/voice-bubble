@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/transcription.dart';
 import '../ui/transcription_feedback.dart';
+import 'app_icons.dart';
 
 class HistoryList extends StatelessWidget {
   final List<Transcription> transcriptions;
@@ -52,7 +53,7 @@ class HistoryList extends StatelessWidget {
           // Motor Cloud único: sin motor Local no hay rama de ícono.
           leading: Icon(
             Icons.cloud,
-            size: 20,
+            size: AppIcons.medium,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           title: Text(

@@ -105,6 +105,11 @@ class TrackpadTab extends StatelessWidget {
                   'Controla un puntero virtual en pantalla con aceleración cinemática y botones dedicados para pulgares.',
                   style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  'Puntero local: no hace clic fuera de su ventana sin accesibilidad (dormida).',
+                  style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+                ),
                 const SizedBox(height: 8),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,

@@ -15,44 +15,8 @@ import java.io.DataOutputStream
 import java.io.IOException
 
 /**
- * Cliente STT del teclado (K3): graba WAV PCM16 mono 16kHz y consulta el
- * motor cloud (Groq/OpenAI) con multipart via HttpURLConnection.
- * Sin dependencias nuevas. JAMAS guarda el audio ni el resultado mas alla
- * del ciclo de dictado; solo escribe en el historial compartido el texto
- * final (via VoiceKeyboardService).
- * K5-T4: los mensajes de error se localizan es/en consultando el idioma
- * activo del teclado via [spanishModeProvider] en el momento del fallo,
- * sin estado propio que pueda quedar desincronizado a mitad de sesion.
- *
- * CONTRATO DE HILOS (causa raíz de ANR):
- * - [startRecording], [stopRecording] y [cancelRecording] bloquean (setup
- *   nativo de AudioRecord + join del hilo de captura con tope 2.5 s):
- *   JAMÁS invocarlos desde el hilo principal. Los llamadores en el main
- *   usan `BackgroundWork.execute` (pool canónico único) y publican a UI
- *   con `BackgroundWork.postMain` / `runOnMain`.
- * - [transcribe] jamás bloquea al llamante: deriva a [BackgroundWork] y
- *   sus callbacks [onDone]/[onError] llegan en hilo de fondo.
- * - Los tres métodos de captura están serializados con [audioLock]: un
- *   stop/cancel concurrente con un start a medio camino no deja una
- *   captura viva (el start tardío queda cubierto por el abort del llamador).
- * - Hilos propios legítimos (los únicos fuera de [BackgroundWork]):
- *   el hilo de captura "VbKeyboardRec" (bucle `AudioRecord.read`, exigido
- *   por la API de audio; vive solo durante la grabación).
- *
-  * CONTRATO K3 DE LA API KEY (bóveda cifrada, SPK-02; el espejo plano
-  * en prefs quedó retirado):
-  * - Dart guarda la key en flutter_secure_storage con ESP activado
-  *   (`groq_api_key`, fuente de verdad para la app y el IME) y este
-  *   cliente la lee de la MISMA bóveda vía [SecureStore] (mismo archivo,
-  *   misma master key, APIs públicas de AndroidX; sin duplicar cripto).
-  * - Lo que viaja por prefs planas (contrato docs/contract-keys.txt):
-  *   `kb_stt_url`, `kb_stt_model`, `kb_stt_language` (con el prefijo
-  *   habitual) más el indicador de presencia `kb_stt_key_configured`
-  *   (bool para fail-fast "sin key" vs 401 "key inválida"; lo escribe
-  *   `StorageService.saveSttMirror`). NOTA: se nombran sin prefijo a
-  *   propósito para no alterar el guard de paridad de claves.
-  * - Clave ausente o vacía = fail-fast en el llamador (aviso "Falta la API
-  *   key" hacia Ajustes), nunca un 401 por red.
+ * Cliente STT del teclado (K3): WAV PCM16 16kHz + cloud Groq/OpenAI.
+ * Contrato único: docs/contrato-stt.md (bóveda + hilos BackgroundWork).
  */
 class SpeechToTextClient(
     private val context: Context,
@@ -75,10 +39,7 @@ class SpeechToTextClient(
         val language: String,
     )
 
-    /** Contrato D7: los Ajustes (Flutter) escriben la key en la bóveda
-     * cifrada; url/model/language/presencia siguen en prefs planas.
-     * Migración única del espejo plano pre-SPK-02 (idempotente; converge
-     * aunque la app aún no se haya abierto tras actualizar). */
+    /** Config D7: ver docs/contrato-stt.md (bóveda + prefs planas). */
     fun loadConfig(): Config {
         val prefs = context.getSharedPreferences(
             "FlutterSharedPreferences", Context.MODE_PRIVATE,

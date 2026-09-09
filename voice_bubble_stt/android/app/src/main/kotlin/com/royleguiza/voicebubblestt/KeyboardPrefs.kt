@@ -27,6 +27,9 @@ class KeyboardPrefs(private val context: Context) {
     var codeKeyVisiblePref = true
     var languageKeyVisiblePref = true
 
+    // SPK-10: imágenes del portapapeles opt-in (texto primero). Default OFF.
+    var clipboardImagesEnabled = false
+
     // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
     var trackpadEnabled = true
     var trackpadToolbarVisible = true
@@ -130,6 +133,12 @@ class KeyboardPrefs(private val context: Context) {
         terminalRowVisiblePref = terminalRowVisible()
         codeKeyVisiblePref = codeKeyVisible()
         languageKeyVisiblePref = languageKeyVisible()
+        clipboardImagesEnabled = try {
+            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getBoolean("flutter.kb_clipboard_images_enabled", false)
+        } catch (_: Exception) {
+            false
+        }
 
         // MEJ-09: lectura de preferencias del trackpad
         trackpadButtonLayout = try {

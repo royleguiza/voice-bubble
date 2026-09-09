@@ -1,7 +1,7 @@
 name: voice_bubble_stt
 description: "VoiceBubble STT – Transcripción de voz a texto con burbuja flotante"
 publish_to: 'none'
-version: 1.0.0+87
+version: 1.0.0
 
 environment:
   sdk: '>=3.5.0 <4.0.0'

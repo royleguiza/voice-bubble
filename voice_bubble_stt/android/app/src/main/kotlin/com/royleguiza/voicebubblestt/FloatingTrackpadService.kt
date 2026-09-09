@@ -28,31 +28,8 @@ import androidx.core.content.ContextCompat
 import kotlin.math.abs
 
 /**
- * Servicio de superposición local para la Burbuja Flotante de Trackpad Independiente (Mouse Virtual).
- *
- * Servicio NORMAL bajo demanda (START_NOT_STICKY, sin foreground, sin accesibilidad):
- * lo arranca quien lo necesita (MainActivity) y el sistema no lo
- * resucita solo si el proceso muere.
- *
- * Realidad del movimiento (perfil anti-Play-Protect, sin AccessibilityService
- * declarado): el puntero se mueve SOLO dentro de nuestro propio overlay
- * (PointerOverlayManager sobre TYPE_APPLICATION_OVERLAY) y los clics/scrolls
- * hacia otra app están dormidos — VoiceBubbleAccessibilityService.isConnected()
- * es siempre falso sin declaración en el manifest, así que dispatchTap/
- * dispatchLongPress/dispatchScroll son no-ops. Movimiento local sí, dispatch
- * en otra app no sin accesibilidad.
- *
- * Características (MEJ-09 / MEJORAS-SEPTIEMBRE):
- * - Rayita superior interactiva (drag handle):
- *   * 1 tap cierra / minimiza directamente.
- *   * Swipe-down cierra (o contrae si está extendido).
- *   * Swipe-up extiende la altura de 240dp a 380dp.
- * - Modo bimodal: Dock inferior y MiniPad flotante con snap a bordes.
- * - Soporte de distribución bimodal (Top 50/50 y Wings).
- * - Iconos de mouse limpios con CERO etiquetas de texto.
- * - Temas: Liquid Glass, Modo Oscuro, Modo Claro.
- *
- * REGLA SAGRADA DE PRIVACIDAD: CERO logs ni persistencia de coordenadas o eventos táctiles.
+ * Trackpad virtual en overlay propio (servicio normal, sin accesibilidad).
+ * Puntero local sí; clics en otra app dormidos (ver docs/contrato-trackpad.md).
  */
 class FloatingTrackpadService : Service() {
 
@@ -511,17 +488,22 @@ class FloatingTrackpadService : Service() {
 
                 override fun onLeftClick() {
                     pointerManager?.triggerClickFeedback()
+                    // SPK-23: sin accesibilidad declarada esto es no-op;
+                    // el trackpad se vende como puntero local (ver aviso en UI).
+                    if (!VoiceBubbleAccessibilityService.isConnected()) return
                     val pos = pointerManager?.getPosition() ?: return
                     VoiceBubbleAccessibilityService.dispatchTap(pos.first, pos.second)
                 }
 
                 override fun onRightClick() {
                     pointerManager?.triggerClickFeedback()
+                    if (!VoiceBubbleAccessibilityService.isConnected()) return
                     val pos = pointerManager?.getPosition() ?: return
                     VoiceBubbleAccessibilityService.dispatchLongPress(pos.first, pos.second)
                 }
 
                 override fun onScroll(deltaY: Float) {
+                    if (!VoiceBubbleAccessibilityService.isConnected()) return
                     val pos = pointerManager?.getPosition() ?: return
                     VoiceBubbleAccessibilityService.dispatchScroll(pos.first, pos.second, deltaY)
                 }

@@ -8,13 +8,8 @@ import android.view.accessibility.AccessibilityEvent
 import kotlin.math.abs
 
 /**
- * Servicio de accesibilidad para la inyección de gestos del Trackpad Virtual (MEJ-09).
- *
- * REGLA INMUTABLE DE PRIVACIDAD:
- * CERO monitoreo de texto o contenido de ventanas (canRetrieveWindowContent="false").
- * CERO registro, buffers o telemetría de eventos (onAccessibilityEvent vacío y sin logs).
- * Se utiliza de forma exclusiva para despachar toques (tap), pulsaciones largas y scroll
- * sobre la pantalla mediante dispatchGesture.
+ * DORMIDO (perfil anti-Play-Protect, sin declarar en manifest).
+ * Puntero local sí; dispatch en otra app no. Ver docs/contrato-trackpad.md.
  */
 class VoiceBubbleAccessibilityService : AccessibilityService() {
 

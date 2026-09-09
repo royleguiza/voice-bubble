@@ -14,6 +14,8 @@ class TecladoTab extends StatelessWidget {
   final ValueChanged<bool> onToggleCodeKey;
   final bool showLanguageKey;
   final ValueChanged<bool> onToggleLanguageKey;
+  final bool clipboardImagesEnabled;
+  final ValueChanged<bool> onToggleClipboardImages;
   final String heightProfile;
   final ValueChanged<String> onSaveHeightProfile;
   final String heightProfileHint;
@@ -43,6 +45,8 @@ class TecladoTab extends StatelessWidget {
     required this.onToggleCodeKey,
     required this.showLanguageKey,
     required this.onToggleLanguageKey,
+    required this.clipboardImagesEnabled,
+    required this.onToggleClipboardImages,
     required this.heightProfile,
     required this.onSaveHeightProfile,
     required this.heightProfileHint,
@@ -147,6 +151,20 @@ class TecladoTab extends StatelessWidget {
                   ),
                   value: showLanguageKey,
                   onChanged: onToggleLanguageKey,
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Imágenes en portapapeles'),
+                  subtitle: Text(
+                    'Experimental (texto primero): guarda imágenes del portapapeles. '
+                    'Apagado por defecto para cuidar RAM y disco.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  value: clipboardImagesEnabled,
+                  onChanged: onToggleClipboardImages,
                 ),
                 const SizedBox(height: 4),
                 Text(

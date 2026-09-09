@@ -235,6 +235,28 @@ check(
     "saveToDisk no usa reemplazo atómico bajo try/catch",
 )
 
+# --- TEST 10: SPK-10 modo texto primero + purga de huérfanos ---
+check(
+    "ClipboardStore gatea imágenes tras flag opt-in (default OFF)",
+    "fun imagesEnabled()" in store
+    and 'getBoolean("flutter.kb_clipboard_images_enabled", false)' in store
+    and "if (!imagesEnabled())" in store,
+    "addImageClip sin gate de flag",
+)
+check(
+    "Flag kb_clipboard_images_enabled en contrato + puente",
+    "kb_clipboard_images_enabled" in open(contract_keys_file, encoding="utf-8").read()
+    and "kbClipboardImagesEnabledKey" in open(os.path.join(WORKSPACE, "app_source/lib/services/storage_service.dart"), encoding="utf-8").read(),
+    "Flag fuera del triángulo Kotlin==contrato==Dart",
+)
+check(
+    "ClipboardStore purga huérfanos de clipboard_media/",
+    "fun purgeOrphanMedia(" in store
+    and 'f.name.startsWith("clip_")' in store
+    and "purgeOrphanMedia(" in store,
+    "Sin barrido de huérfanos",
+)
+
 # --- RESUMEN FINAL ---
 print("\n============================================================")
 print(f" RESULTADOS: {suite.passed} Pasados, {suite.failed} Fallidos")

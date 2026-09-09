@@ -263,6 +263,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 
 **Burbuja clásica + modal historial (B1–B7, [`plan-burbuja-historial.md`](plan-burbuja-historial.md))**: implementado local 2026-09-05 (controlador nativo + switch `bubble_history_enabled` + suite `test_bubble_history_suite.py` 55/55 + master 10/10 en verde), pendiente CI tras autorización de push del dueño.
 
+**Cierre SPARK pendientes (2026-09-09, local sin push)**: SPK-09/10/11/15/17/21/23/26/27/28 en `auditoria-spark.md` §Cierre (contratos `docs/contrato-{stt,trackpad,claves,iconos}.md` + `docs/congelamiento-features.md`, flag `kb_clipboard_images_enabled` OFF, `HistoryCardView`+`SnippetsCardView`, iconos 18/22/28, I/O async, versión `1.0.0`); master local 12/12 verde; CI (analyze/test/compilación) debe verificar antes de cualquier push.
+
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
 - Mejora futura registrada: `<monochrome>` en el icono adaptive (themed icons Android 13+); contador de generación para invalidar callbacks de transcripción obsoletos tras rotación (menor UX detectado en auditoría K5-T5); limpiar PNGs huérfanos de `mipmap-*dpi` (minSdk 28 usa anydpi-v26).

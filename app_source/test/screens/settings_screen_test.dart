@@ -202,17 +202,17 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('about-open-button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('VoiceBubble STT v1.0.0+87'), findsOneWidget);
+      expect(find.text('VoiceBubble STT v1.0.0'), findsOneWidget);
     });
 
-    testWidgets('shows version "VoiceBubble STT v1.0.0+87" in sheet (v1)', (tester) async {
+    testWidgets('shows version "VoiceBubble STT v1.0.0" in sheet (v1)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('about-open-button')));
       await tester.pumpAndSettle();
 
-      expect(find.text('VoiceBubble STT v1.0.0+87'), findsOneWidget);
+      expect(find.text('VoiceBubble STT v1.0.0'), findsOneWidget);
     });
 
     testWidgets('shows app description text in sheet (v1)', (tester) async {
@@ -799,7 +799,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('about-open-button')));
       await tester.pumpAndSettle();
-      expect(find.text('VoiceBubble STT v1.0.0+87'), findsOneWidget);
+      expect(find.text('VoiceBubble STT v1.0.0'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
