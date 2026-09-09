@@ -175,10 +175,14 @@ def main():
     for token in ("Layer.LETTERS", "Layer.SYMBOLS", "Layer.CODE",
                   "Layer.SNIPPETS", "Layer.TRACKPAD",
                   "buildSnippetRows",
-                  "toggleCodeLayer",
                   "commitSymbolText", "if (!restarting)"):
         suite.check(f"Regresión: {token} intacto", token in vks,
                     f"Se rompió {token}")
+    # SPK-05 módulo 16: el cambiador de capa código vive en codeToggle()
+    # (antes toggleCodeLayer); la memoria lastLettersLayer sigue intacta.
+    suite.check("Regresión: toggleCodeLayer intacto",
+                "toggleCodeLayer" in vks or ("fun codeToggle()" in vks and "lastLettersLayer" in vks),
+                "Se rompió toggleCodeLayer")
     # SPK-05 módulo 6: el toggle del trackpad vive en el puente.
     suite.check("Regresión: toggleTrackpadLayer intacto",
                 "toggleTrackpadLayer" in vks or ("TrackpadBridge" in vks and "fun toggle()" in vks),

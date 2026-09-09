@@ -31,6 +31,11 @@ def test_keyboard_service_snippet_sublayer():
     layer_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SnippetsLayer.kt"
     with open(layer_path, "r", encoding="utf-8") as f:
         layer = f.read()
+    # SPK-05 módulo 16: las filas viven en LayoutLayer.kt (mismo paquete);
+    # VKS despacha (layout.build*Rows()).
+    layout_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/LayoutLayer.kt"
+    with open(layout_path, "r", encoding="utf-8") as f:
+        layout_content = f.read()
 
     # Variables de estado (VKS o capa)
     assert ("private var snippetSubLayer = Layer.LETTERS" in content
@@ -58,8 +63,8 @@ def test_keyboard_service_snippet_sublayer():
 
     # Comprobación de que buildSnippetRows soporta las 3 subcapas
     assert "when (snippetSubLayer)" in content or "when (snippets.subLayer)" in content
-    assert "Layer.SYMBOLS -> buildSymbolRows()" in content
-    assert "Layer.CODE -> buildCodeRows()" in content
+    assert "Layer.SYMBOLS -> buildSymbolRows()" in content or "fun buildSymbolRows()" in layout_content
+    assert "Layer.CODE -> buildCodeRows()" in content or "fun buildCodeRows()" in layout_content
     # SPK-05 módulo 13: las filas QWERTY viven en SnippetsLayer
     # (buildLetterRows); VKS queda como shell que despacha.
     assert "addSnippetLetterRows()" in content or "buildLetterRows()" in layer

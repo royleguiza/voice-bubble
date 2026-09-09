@@ -39,7 +39,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost, LayoutLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -103,6 +103,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private lateinit var toolbar: ToolbarLayer
     // --- Fábrica de teclas (SPK-05 módulo 14: vive en KeyFactory) ---
     private lateinit var keys: KeyFactory
+    // --- Filas y barra inferior (SPK-05 módulo 16: vive en LayoutLayer) ---
+    private lateinit var layout: LayoutLayer
 
     override fun onCreate() {
         super.onCreate()
@@ -132,6 +134,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         accents = AccentLayer(this, this)
         toolbar = ToolbarLayer(this, this)
         keys = KeyFactory(this, handler, this)
+        layout = LayoutLayer(keys, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -278,14 +281,17 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 addRow(toolbar.buildTerminalRow())
             }
             when (layer) {
-                Layer.LETTERS -> buildLetterRows()
-                Layer.SYMBOLS -> buildSymbolRows()
-                Layer.CODE -> buildCodeRows()
+                Layer.LETTERS -> layout.buildLetterRows()
+                Layer.SYMBOLS -> layout.buildSymbolRows()
+                Layer.CODE -> layout.buildCodeRows()
                 Layer.SNIPPETS -> buildSnippetRows()
                 Layer.CREDENTIALS -> buildCredentialRows()
                 Layer.TRACKPAD -> {}
             }
-            addRow(buildBottomBar())
+            addRow(layout.buildBottomBar())
+            spaceKeyView = layout.spaceView
+            commaKeyView = layout.commaView
+            dotKeyView = layout.dotView
         }
 
         // Sincronizar estados visuales persistentes tras reconstruir la vista.
@@ -322,8 +328,20 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun trackpadToggle() {
         trackpad.toggle()
     }
+    /** Cambiador de capas con memoria de la ultima capa no-codigo. */
     override fun codeToggle() {
-        toggleCodeLayer()
+        if (layer == Layer.SNIPPETS) {
+            snippets.cycleSubLayerForCode()
+            return
+        }
+        if (layer == Layer.CODE) {
+            layer = lastLettersLayer
+        } else {
+            // Desde snippets no se pisa la memoria: volver conserva el origen.
+            lastLettersLayer = if (layer == Layer.SYMBOLS) Layer.LETTERS else layer
+            layer = Layer.CODE
+        }
+        rebuild()
     }
     override fun sendCode(code: Int) {
         sendKeyCode(code)
@@ -361,147 +379,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
     }
 
-    private fun buildLetterRows() {
-        addRow(keys.letterRow("qwertyuiop"))
-        addRow(keys.letterRow(if (spanishMode) "asdfghjklñ" else "asdfghjkl;"))
-
-        val row3 = keys.horizontalRow()
-        val shiftKey = keys.makeActionIconKey(
-            R.drawable.ic_shift_off,
-            R.drawable.kb_key_alt,
-            1.3f,
-            if (spanishMode) "mayúsculas" else "shift",
-            tintColorRes = R.color.kb_label,
-        ) {
-            toggleShift()
-        }
-        shiftKeyViews.add(shiftKey)
-        row3.addView(shiftKey)
-        for (c in "zxcvbnm") {
-            row3.addView(keys.makeLetterKey(c))
-        }
-        row3.addView(keys.makeBackspaceKey())
-        addRow(row3)
-    }
-
-    private fun buildSymbolRows() {
-        addRow(keys.symbolRow("1234567890"))
-        addRow(keys.symbolRow("@#$%&-+()/"))
-
-        val row3 = keys.horizontalRow()
-        for (c in "=*\"':;!?") {
-            row3.addView(keys.makeSymbolKey(c.toString()))
-        }
-        row3.addView(keys.makeBackspaceKey())
-        addRow(row3)
-    }
-
     /** Capa codigo (K2): simbolos por frecuencia + pares auto-cerrados. */
-    private fun buildCodeRows() {
-        addRow(keys.codeRow("{}[]()<>;:"))
-        addRow(keys.codeRow("'\"`\\|/!?=+"))
-
-        val row3 = keys.horizontalRow()
-        for (c in "*&%$#@^~_") {
-            row3.addView(keys.makeCodeKey(c))
-        }
-        row3.addView(keys.makeBackspaceKey())
-        addRow(row3)
-    }
-
-    private fun buildBottomBar(): LinearLayout {
-        val row = keys.horizontalRow()
-
-        val btnSym = keys.makeSpecialKey(symbolsToggleLabel(), R.drawable.kb_key_alt, 1.5f, if (spanishMode) "símbolos" else "symbols", isBold = true) {
-            if (layer == Layer.SNIPPETS) {
-                snippets.cycleSubLayerForSymbols()
-            } else {
-                layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
-                rebuild()
-            }
-        }
-
-        val btnLang = if (kbPrefs.languageKeyVisiblePref) {
-            keys.makeSpecialKey(if (spanishMode) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (spanishMode) "cambiar idioma" else "switch language", isBold = true) {
-                spanishMode = !spanishMode
-                rebuild()
-            }
-        } else null
-
-        val comma = keys.makeSymbolKey(",", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
-        commaKeyView = comma
-
-        val space = keys.makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, if (spanishMode) "espacio" else "space") {
-            // En snippets el espacio alimenta el query solo si no esta abierto el editor.
-            if (layer == Layer.SNIPPETS && !snippets.isEditorOpen) snippets.ensureSearchMode()
-            commit(" ")
-        }
-        spaceKeyView = space
-        attachSpacebarGestures(space)
-
-        val dot = keys.makeSymbolKey(".", dimen(R.dimen.kb_key_glyph_punct), isBold = true)
-        dotKeyView = dot
-
-        val enter = keys.makeActionIconKey(
-            R.drawable.ic_enter,
-            R.drawable.kb_key_accent,
-            1.8f,
-            if (spanishMode) "intro" else "enter",
-            tintColorRes = R.color.kb_label_on_accent,
-        ) {
-            handleEnter()
-        }
-
-        // Orden de la fila inferior segun la preferencia de alineacion.
-        // Siempre arranca con Sym/Lang, luego el bloque configurable, y termina con Enter.
-        row.addView(btnSym)
-        if (btnLang != null) {
-            row.addView(btnLang)
-        }
-
-        when (kbPrefs.spacebarAlignment) {
-            "left" -> {
-                row.addView(space)
-                row.addView(comma)
-                row.addView(dot)
-            }
-            "right" -> {
-                row.addView(comma)
-                row.addView(dot)
-                row.addView(space)
-            }
-            else -> { // "center" default
-                row.addView(comma)
-                row.addView(space)
-                row.addView(dot)
-            }
-        }
-        
-        row.addView(enter)
-        return row
-    }
-
-    private fun symbolsToggleLabel(): String = when {
-        layer == Layer.SNIPPETS && (snippets.subLayer == Layer.SYMBOLS || snippets.subLayer == Layer.CODE) -> "ABC"
-        layer == Layer.SYMBOLS || layer == Layer.CODE || layer == Layer.CREDENTIALS -> "ABC"
-        else -> "?123"
-    }
 
     /** Cambiador de capas con memoria de la ultima capa no-codigo. */
-    private fun toggleCodeLayer() {
-        if (layer == Layer.SNIPPETS) {
-            snippets.cycleSubLayerForCode()
-            return
-        }
-        if (layer == Layer.CODE) {
-            layer = lastLettersLayer
-        } else {
-            // Desde snippets no se pisa la memoria: volver conserva el origen.
-            lastLettersLayer = if (layer == Layer.SYMBOLS) Layer.LETTERS else layer
-            layer = Layer.CODE
-        }
-        rebuild()
-    }
 
     /** Shell SPK-05: la altura vive en TrackpadBridge; aquí solo el delegado para addRow. */
     private fun getTargetTrackpadHeightPx(): Int =
@@ -613,23 +493,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         onClick: () -> Unit,
     ): ImageView = keys.makeIconKey(iconRes, bgRes, weight, description, tintColorRes, onClick)
 
-    private fun addRow(row: View) {
-        val lp = if (row is VirtualTrackpadView) {
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                getTargetTrackpadHeightPx(),
-            )
-        } else {
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-        }
-        if (root.childCount > 0) {
-            lp.topMargin = rowGapPx()
-        }
-        root.addView(row, lp)
-    }
+    private fun addRow(row: View) = layout.addRow(row)
 
     // ------------------------------------------------------------------
     // Comportamiento de teclas
@@ -937,6 +801,42 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // Teclado compacto debajo (letras) para no dejar la capa vacia.
         addRow(keys.letterRow("qwertyuiop"))
     }
+
+    // --- LayoutLayer.UiHost (SPK-05 módulo 16). isSpanish, dimenPx,
+    // rowGap, rootView, toggleShiftKey, trackShiftKey, codeToggle y
+    // addContentRow ya existen arriba y sirven a esta interfaz (misma
+    // firma, una sola implementación).
+    override fun trackpadHeightPx(): Int = getTargetTrackpadHeightPx()
+    override fun pressSymbolsKey() {
+        if (layer == Layer.SNIPPETS) {
+            snippets.cycleSubLayerForSymbols()
+        } else {
+            layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
+            rebuild()
+        }
+    }
+    override fun toggleLanguage() {
+        spanishMode = !spanishMode
+        rebuild()
+    }
+    override fun pressSpace() {
+        // En snippets el espacio alimenta el query solo si no esta abierto el editor.
+        if (layer == Layer.SNIPPETS && !snippets.isEditorOpen) snippets.ensureSearchMode()
+        commit(" ")
+    }
+    override fun pressEnter() {
+        handleEnter()
+    }
+    override fun attachSpacebar(view: View) {
+        attachSpacebarGestures(view)
+    }
+    override fun symbolsLabel(): String = when {
+        layer == Layer.SNIPPETS && (snippets.subLayer == Layer.SYMBOLS || snippets.subLayer == Layer.CODE) -> "ABC"
+        layer == Layer.SYMBOLS || layer == Layer.CODE || layer == Layer.CREDENTIALS -> "ABC"
+        else -> "?123"
+    }
+    override fun isLanguageKeyVisible(): Boolean = kbPrefs.languageKeyVisiblePref
+    override fun spacebarAlignment(): String = kbPrefs.spacebarAlignment
 
     // --- CredentialsLayer.UiHost (SPK-05 módulo 3): 9 delegaciones de una línea. ---
     override fun currentLayer(): Layer = layer
