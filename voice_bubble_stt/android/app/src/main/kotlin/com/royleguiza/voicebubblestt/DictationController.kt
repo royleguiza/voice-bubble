@@ -29,9 +29,9 @@ import androidx.core.content.ContextCompat
  * píldora M4, timers, audio focus e historial compartido, extraído de
  * VoiceKeyboardService sin cambiar conducta. Todo lo que necesita del
  * teclado entra por [service], [handler] y [host]; el estado (vistas,
- * cliente STT, generación, foco) es suyo. La ventana de historial y los
- * avisos inline viven donde estaban: la ventana en VKS (comparte popup
- * con acentos) y los avisos vía [UiHost.showNotice].
+ * cliente STT, generación, foco) es suyo. La ventana de historial vive en
+ * HistoryLayer (SPK-05 módulo 9, comparte popup con acentos vía takePopup)
+ * y los avisos vía [UiHost.showNotice].
  */
 class DictationController(
     private val service: InputMethodService,

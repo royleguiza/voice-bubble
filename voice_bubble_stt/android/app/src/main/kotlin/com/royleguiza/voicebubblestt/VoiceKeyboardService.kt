@@ -12,7 +12,6 @@ import android.os.Looper
 import android.os.RemoteException
 import android.os.SystemClock
 import android.text.InputType
-import android.text.TextUtils
 import android.transition.ChangeBounds
 import android.transition.Fade
 import android.transition.TransitionManager
@@ -31,11 +30,8 @@ import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
-import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
-import org.json.JSONArray
-import org.json.JSONObject
 import kotlin.math.abs
 
 /**
@@ -47,7 +43,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -109,6 +105,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private lateinit var clipboard: ClipboardLayer
     private lateinit var kbPrefs: KeyboardPrefs
     private lateinit var transcriptionRepo: TranscriptionHistoryRepository
+    // --- Historial (SPK-05 módulo 9: vive en HistoryLayer; aquí solo el shell) ---
+    private lateinit var history: HistoryLayer
 
     override fun onCreate() {
         super.onCreate()
@@ -133,6 +131,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         snippets.onCreateInputView()
         credentialStore = CredentialStore(this)
         credentials = CredentialsLayer(this, credentialStore, handler, this)
+        history = HistoryLayer(this, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -1247,182 +1246,20 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
      */
     override fun showHistoryPopup(anchor: View) {
         dismissPopup()
-        // I/O fuera del main (disco + XML + prefs vía sharedHistoryEntries);
-        // la construcción vuelve al main con la vista vigente.
-        BackgroundWork.executeWithResult(
-            block = { sharedHistoryEntries() },
-            onResult = { entries -> buildHistoryPopup(anchor, entries ?: emptyList()) }
-        )
+        if (!::history.isInitialized) return
+        val repo = if (::transcriptionRepo.isInitialized) transcriptionRepo else null
+        history.show(anchor, repo)
     }
 
-    /**
-     * Construye la ventana del historial en el main con entradas ya cargadas.
-     * Si el servicio murió o la vista cambió en el medio, no pinta nada.
-     */
-    private fun buildHistoryPopup(anchor: View, entries: List<JSONObject>) {
-        if (instance !== this) return
-        val pad = dimen(R.dimen.kb_popup_padding)
-
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundResource(R.drawable.kb_popup_bg)
-            setPadding(pad, pad, pad, pad)
-        }
-
-        // Encabezado de la ventana
-        val header = TextView(this).apply {
-            text = if (spanishMode) "Historial de transcripciones" else "Transcription history"
-            setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-            setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            setTypeface(null, Typeface.BOLD)
-            alpha = 0.75f
-            setPadding(pad * 2, pad, pad * 2, pad)
-        }
-        box.addView(header)
-
-        val headerSep = View(this).apply {
-            setBackgroundColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_key_stroke))
-        }
-        box.addView(
-            headerSep,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics).toInt(),
-            ),
-        )
-
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        var count = 0
-        for (obj in entries) {
-            val text = obj.optString("text")
-            if (text.isBlank()) continue
-            if (count > 0) {
-                val sep = View(this).apply {
-                    setBackgroundColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_key_stroke))
-                }
-                content.addView(
-                    sep,
-                    LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1f, resources.displayMetrics).toInt(),
-                    ),
-                )
-            }
-            count++
-            val tv = TextView(this).apply {
-                this.text = text
-                maxLines = 2
-                ellipsize = TextUtils.TruncateAt.END
-                isClickable = true
-                isFocusable = true
-                setPadding(pad * 2, pad * 2, pad * 2, pad * 2)
-                setBackgroundResource(R.drawable.kb_menu_item)
-                setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-                setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-                setOnClickListener {
-                    haptic(this)
-                    commit(text)
-                    dismissPopup()
-                }
-            }
-            content.addView(tv)
-        }
-
-        if (count == 0) {
-            val empty = TextView(this).apply {
-                this.text = if (spanishMode) "Sin transcripciones todavía." else "No transcriptions yet."
-                gravity = Gravity.CENTER
-                setPadding(pad * 2, pad * 4, pad * 2, pad * 4)
-                setTextColor(ContextCompat.getColor(this@VoiceKeyboardService, R.color.kb_label))
-                setTextSize(TypedValue.COMPLEX_UNIT_PX, dimen(R.dimen.kb_key_text_size_small).toFloat())
-            }
-            content.addView(empty)
-        }
-
-        val scroll = ScrollView(this).apply {
-            isFillViewport = true
-            isVerticalScrollBarEnabled = true
-            scrollBarStyle = View.SCROLLBARS_INSIDE_OVERLAY
-            addView(content)
-        }
-        val scrollLp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-        box.addView(scroll, scrollLp)
-
-        val dm = resources.displayMetrics
-        val minHeightPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 220f, dm).toInt()
-        val maxHeightPx = (dm.heightPixels * 0.45f).toInt().coerceAtLeast(minHeightPx)
-
-        box.measure(
-            View.MeasureSpec.makeMeasureSpec((dm.widthPixels * 0.85f).toInt(), View.MeasureSpec.AT_MOST),
-            View.MeasureSpec.UNSPECIFIED,
-        )
-
-        val popupHeight = box.measuredHeight.coerceIn(minHeightPx, maxHeightPx)
-        val desiredWidthPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 320f, dm).toInt()
-        val gap = dimen(R.dimen.kb_key_gap)
-        val maxAllowedWidth = dm.widthPixels - (gap * 2)
-        val popupWidth = minOf(desiredWidthPx, maxAllowedWidth)
-
-        val popup = PopupWindow(box, popupWidth, popupHeight, true).apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            isOutsideTouchable = true
-            animationStyle = R.style.VoiceHistoryPopupAnimation
-        }
-
-        val loc = IntArray(2)
-        anchor.getLocationInWindow(loc)
-        val anchorCenterX = loc[0] + anchor.width / 2
-        val rawX = if (anchorCenterX > dm.widthPixels / 2) {
-            loc[0] + anchor.width - popupWidth
-        } else {
-            loc[0]
-        }
-        val posX = rawX.coerceIn(gap, dm.widthPixels - popupWidth - gap)
-        val posY = maxOf(gap, loc[1] - popupHeight - gap)
-
-        val isRightAligned = (posX + popupWidth / 2) > (dm.widthPixels / 2)
-        box.pivotX = if (isRightAligned) popupWidth.toFloat() else 0f
-        box.pivotY = popupHeight.toFloat()
-        box.alpha = 0f
-        box.scaleX = 0.8f
-        box.scaleY = 0.8f
-
+    // --- HistoryLayer.UiHost (SPK-05 módulo 9). isSpanish, haptic,
+    // commitText, rootView y dimenPx ya existen arriba y sirven a esta
+    // interfaz (misma firma, una sola implementación).
+    override fun isAlive(): Boolean = instance === this
+    override fun takePopup(popup: PopupWindow?) {
         activePopup = popup
-        // El ancla puede haberse desmontado mientras cargaba el historial
-        // en fondo (rebuild en el medio): sin ventana no hay popup.
-        try {
-            popup.showAtLocation(root, Gravity.NO_GRAVITY, posX, posY)
-        } catch (_: Exception) {
-            activePopup = null
-            return
-        }
-
-        box.animate()
-            .alpha(1f)
-            .scaleX(1f)
-            .scaleY(1f)
-            .setDuration(200)
-            .setInterpolator(android.view.animation.DecelerateInterpolator(1.8f))
-            .start()
     }
-
-    /**
-     * Historial compartido para la ventana: proveído por TranscriptionHistoryRepository.
-     */
-    private fun sharedHistoryEntries(): List<JSONObject> {
-        return try {
-            if (::transcriptionRepo.isInitialized) {
-                transcriptionRepo.loadHistory()
-            } else {
-                emptyList()
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
+    override fun currentPopup(): PopupWindow? = activePopup
+    override fun dismissPopups() = dismissPopup()
 
     /** Aviso inline no bloqueante; auto-descarta a los 3.5 s. */
     private fun showStatus(message: String, openSettingsOnClick: Boolean = false) {
