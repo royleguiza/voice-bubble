@@ -212,7 +212,7 @@ check("Overlay del trackpad se oculta en onFinish/onHidden", "pointerOverlayMana
 check("Trackpad previene loop en lastLetters", "layer != Layer.TRACKPAD" in vk_content or "cur != Layer.TRACKPAD" in vk_content or "Layer.TRACKPAD" in bridge_content)
 check("VoiceKeyboardService lee kb_trackpad_auto_return tolerante a Integer y Long", "is Number -> raw.toInt()" in vk_content)
 check("VoiceKeyboardService despacha trackpad vía InputConnection nativo", "sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)" in vk_content)
-check("VoiceKeyboardService transición suave morphing al alternar trackpad", "beginKeyboardTransition" in vk_content and "TransitionManager" in vk_content)
+check("VoiceKeyboardService transición suave morphing al alternar trackpad", ("beginKeyboardTransition" in vk_content or "playTransition" in vk_content) and "TransitionManager" in vk_content)
 check("VoiceKeyboardService altura determinista del trackpad acorde al teclado", "getTargetTrackpadHeightPx" in vk_content and "totalKeyRows" in vk_content)
 check("VoiceKeyboardService MEJ-25 gestos en barra espaciadora", "attachSpacebarGestures" in vk_content)
 check("VoiceKeyboardService MEJ-25 modo trackpad 2D con blank-out", "setTrackpadBlankOutMode" in vk_content and "spacebarTrackpadMode" in vk_content)

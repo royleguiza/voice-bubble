@@ -1,31 +1,17 @@
 package com.royleguiza.voicebubblestt
 
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
-import android.os.Build
 import android.os.DeadObjectException
 import android.os.Handler
 import android.os.Looper
 import android.os.RemoteException
-import android.text.InputType
-import android.transition.ChangeBounds
-import android.transition.Fade
-import android.transition.TransitionManager
-import android.transition.TransitionSet
-import android.view.animation.DecelerateInterpolator
-import android.util.TypedValue
-import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.View
-import android.view.WindowInsets
 import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
-import androidx.core.content.ContextCompat
-import kotlin.math.abs
 
 /**
  * Teclado del sistema VoiceBubble.
@@ -70,7 +56,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // avisos la comparan por identidad antes de tocar root, porque
     // ::root.isInitialized no detecta que root ya fue reemplazado.
     private var inputView: View? = null
-    private val modifierKeyViews = mutableListOf<Pair<TextView, Boolean>>()
 
     private var activePopup: PopupWindow? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -128,7 +113,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
-        applyBottomInsets()
+        layout.applyBottomInsets()
         rebuild()
         inputView = root
         return root
@@ -140,33 +125,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
      * navegacion como padding inferior para que la fila inferior quede
      * siempre por encima.
      */
-    private fun applyBottomInsets() {
-        val padH = dimen(R.dimen.kb_row_padding_h)
-        val padV = dimen(R.dimen.kb_row_padding_v)
-        root.setOnApplyWindowInsetsListener { view, insets ->
-            val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                insets.getInsets(
-                    WindowInsets.Type.navigationBars()
-                        or WindowInsets.Type.displayCutout()
-                ).bottom
-            } else {
-                @Suppress("DEPRECATION")
-                insets.systemWindowInsetBottom
-            }
-            val elevationPx = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                kbPrefs.bottomElevationDp.toFloat(),
-                resources.displayMetrics
-            ).toInt()
-            view.setPadding(padH, padV, padH, padV + bottom + elevationPx)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                WindowInsets.CONSUMED
-            } else {
-                @Suppress("DEPRECATION")
-                insets.consumeSystemWindowInsets()
-            }
-        }
-    }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
@@ -193,16 +151,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (::clipboard.isInitialized) clipboard.onStartInputView(restarting)
         rebuild()
         root.requestApplyInsets()
-    }
-
-    /** Campos de contraseña: sin micrófono, snippets, trackpad ni sugerencias (K3, MEJ-09). */
-    private fun isPasswordInput(info: EditorInfo?): Boolean {
-        if (info == null) return false
-        val variation = info.inputType and InputType.TYPE_MASK_VARIATION
-        return variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
-            variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
-            variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
     }
 
     /** K5-T5: al cerrarse el campo actual, corta dictado y popups vivos. */
@@ -244,7 +192,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // soltarlas o sus long-press disparan sobre teclas descartadas.
         cancelPendingKeyGestures()
         if (::editor.isInitialized) editor.clearKeyRegistry()
-        modifierKeyViews.clear()
+        if (::toolbar.isInitialized) toolbar.clearModifiers()
         spaceKeyView = null
         commaKeyView = null
         dotKeyView = null
@@ -283,7 +231,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
         // Sincronizar estados visuales persistentes tras reconstruir la vista.
         if (::editor.isInitialized) editor.applyCase()
-        refreshModifierVisuals()
+        refreshModifiers()
         applyMicVisual()
     }
     // --- ToolbarLayer.UiHost (SPK-05 módulo 12). isSpanish,
@@ -300,21 +248,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         onClick: () -> Unit,
     ): TextView = keys.makeSpecialKey(label, bgRes, weight, description, textSizePx, isBold, onClick)
     override fun rebuildKeyboard() = rebuild()
-    override fun snippetsToggle() {
-        snippets.toggle()
-    }
-    override fun credentialsToggle() {
-        credentials.toggle()
-    }
-    override fun clipboardToggle() {
-        clipboard.toggle()
-    }
-    override fun clipboardPasteLatest() {
-        clipboard.pasteLatestOrToggle()
-    }
-    override fun trackpadToggle() {
-        trackpad.toggle()
-    }
+    override fun snippetsToggle() = snippets.toggle()
+    override fun credentialsToggle() = credentials.toggle()
+    override fun clipboardToggle() = clipboard.toggle()
+    override fun clipboardPasteLatest() = clipboard.pasteLatestOrToggle()
+    override fun trackpadToggle() = trackpad.toggle()
     /** Cambiador de capas con memoria de la ultima capa no-codigo. */
     override fun codeToggle() {
         if (layer == Layer.SNIPPETS) {
@@ -330,45 +268,18 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
         rebuild()
     }
-    override fun sendCode(code: Int) {
-        editor.sendKeyCode(code)
-    }
+    override fun sendCode(code: Int) = editor.sendKeyCode(code)
     override fun micKeyView(): View = dictation.makeMicKey()
-    override fun micClearViews() {
-        dictation.clearViews()
-    }
+    override fun micClearViews() = dictation.clearViews()
     override fun isTerminalRowPref(): Boolean = kbPrefs.terminalRowVisiblePref
-    override fun toggleTerminalRowPref() {
-        kbPrefs.terminalRowVisiblePref = !kbPrefs.terminalRowVisiblePref
-    }
+    override fun toggleTerminalRowPref() = kbPrefs.terminalRowVisiblePref = !kbPrefs.terminalRowVisiblePref
     override fun isCodeKeyPref(): Boolean = kbPrefs.codeKeyVisiblePref
     override fun isTrackpadToolbarAllowed(): Boolean = kbPrefs.trackpadEnabled && kbPrefs.trackpadToolbarVisible
     override fun isToolbarInverted(): Boolean = kbPrefs.invertToolbar
-    override fun registerModifier(key: TextView, isCtrl: Boolean) {
-        modifierKeyViews.add(Pair(key, isCtrl))
-    }
+    override fun registerModifier(key: TextView, isCtrl: Boolean) = toolbar.registerModifier(key, isCtrl)
     override fun isModifierActive(isCtrl: Boolean): Boolean = editor.isModifierActive(isCtrl)
-    override fun toggleModifier(isCtrl: Boolean) {
-        editor.toggleModifier(isCtrl)
-    }
-    override fun refreshModifiers() = refreshModifierVisuals()
-
-    private fun refreshModifierVisuals() {
-        for ((key, isCtrl) in modifierKeyViews) {
-            val active = editor.isModifierActive(isCtrl)
-            if (active) {
-                key.setBackgroundResource(R.drawable.kb_key_accent)
-                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label_on_accent))
-            } else {
-                key.setBackgroundResource(R.drawable.kb_key_alt)
-                key.setTextColor(ContextCompat.getColor(this, R.color.kb_label))
-            }
-        }
-    }
-
-    /** Capa codigo (K2): simbolos por frecuencia + pares auto-cerrados. */
-
-    /** Cambiador de capas con memoria de la ultima capa no-codigo. */
+    override fun toggleModifier(isCtrl: Boolean) = editor.toggleModifier(isCtrl)
+    override fun refreshModifiers() = toolbar.refreshModifiers()
 
     /** Shell SPK-05: la altura vive en TrackpadBridge; aquí solo el delegado para addRow. */
     private fun getTargetTrackpadHeightPx(): Int =
@@ -377,30 +288,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             totalKeyRows * keyHeightPx() + (totalKeyRows - 1) * rowGapPx()
         }
 
-    private fun beginKeyboardTransition() {
-        if (!reducedMotion()) {
-            try {
-                val transition = TransitionSet().apply {
-                    ordering = TransitionSet.ORDERING_TOGETHER
-                    addTransition(ChangeBounds().apply {
-                        duration = 180L
-                        interpolator = DecelerateInterpolator()
-                    })
-                    addTransition(Fade().apply {
-                        duration = 140L
-                    })
-                }
-                TransitionManager.beginDelayedTransition(root, transition)
-            } catch (_: Exception) {}
-        }
-    }
-
     // --- TrackpadBridge.UiHost (módulo 6) + ClipboardLayer.UiHost (módulo 7):
     // currentLayer/isPasswordField/isSpanish/rootView/haptic ya existen
     // arriba y sirven a las cuatro interfaces (misma firma, una sola impl).
-    override fun commitText(text: String) {
-        editor.commit(text)
-    }
+    override fun commitText(text: String) = editor.commit(text)
 
     // --- SnippetsLayer.UiHost (SPK-05 módulo 8). commitText no sirve aquí:
     // insertar un snippet debe saltear el ruteo al query (bucle), por eso
@@ -408,45 +299,16 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun dimenPx(resId: Int): Int = dimen(resId)
     override fun addContentRow(view: View) = addRow(view)
     override fun showCenteredBox(box: LinearLayout, widthPx: Int) {
-        val popup = PopupWindow(box, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            isOutsideTouchable = true
-            animationStyle = R.style.VoiceHistoryPopupAnimation
-        }
-        activePopup = popup
-        popup.showAtLocation(root, Gravity.CENTER, 0, 0)
+        if (::snippets.isInitialized) snippets.showCenteredBox(box, widthPx)
     }
     override fun showAnchoredBox(box: LinearLayout, anchor: View) {
-        val popup = PopupWindow(
-            box,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            true,
-        )
-        popup.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-        popup.isOutsideTouchable = true
-        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-        val loc = IntArray(2)
-        anchor.getLocationInWindow(loc)
-        val gap = dimen(R.dimen.kb_key_gap)
-        activePopup = popup
-        popup.showAtLocation(
-            root,
-            Gravity.NO_GRAVITY,
-            loc[0],
-            // AT-A12: jamas Y negativo; si no cabe arriba se solapa con el ancla.
-            maxOf(gap, loc[1] - box.measuredHeight - gap),
-        )
+        if (::snippets.isInitialized) snippets.showAnchoredBox(box, anchor)
     }
-    override fun setLayer(next: Layer) {
-        layer = next
-    }
+    override fun setLayer(next: Layer) = layer = next
     override fun lastLetters(): Layer = lastLettersLayer
-    override fun setLastLetters(l: Layer) {
-        lastLettersLayer = l
-    }
+    override fun setLastLetters(l: Layer) = lastLettersLayer = l
     override fun rootView(): LinearLayout = root
-    override fun beginTransition() = beginKeyboardTransition()
+    override fun beginTransition() = trackpad.playTransition()
 
     // --- KeyFactory.UiHost (SPK-05 módulo 14). isSpanish, dimenPx,
     // keyHeightPx, displayLetter, haptic, attachTap, attachPress,
@@ -454,12 +316,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // deleteBackward, trackLetterKey, trackShiftKey y toggleShiftKey ya
     // existen arriba y sirven a esta interfaz (misma firma, una sola
     // implementación).
-    override fun commitSymbolKey(text: String) {
-        editor.commitSymbolText(text)
-    }
-    override fun attachAccentKey(key: TextView, base: Char, onTapUp: () -> Unit) {
-        accents.attachAccent(key, base, onTapUp)
-    }
+    override fun commitSymbolKey(text: String) = editor.commitSymbolText(text)
+    override fun attachAccentKey(key: TextView, base: Char, onTapUp: () -> Unit) = accents.attachAccent(key, base, onTapUp)
     override fun attachPairKey(
         key: TextView,
         ch: Char,
@@ -512,9 +370,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // commitText, rootView y dimenPx ya existen arriba y sirven a esta
     // interfaz (misma firma, una sola implementación).
     override fun isAlive(): Boolean = instance === this
-    override fun takePopup(popup: PopupWindow?) {
-        activePopup = popup
-    }
+    override fun takePopup(popup: PopupWindow?) = activePopup = popup
     override fun currentPopup(): PopupWindow? = activePopup
     override fun dismissPopups() = dismissPopup()
 
@@ -559,19 +415,13 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (layer == Layer.SNIPPETS && !snippets.isEditorOpen) snippets.ensureSearchMode()
         commit(" ")
     }
-    override fun pressEnter() {
-        editor.handleEnter()
-    }
-    override fun attachSpacebar(view: View) {
-        spacebar.attachSpacebarGestures(view)
-    }
+    override fun pressEnter() = editor.handleEnter()
+    override fun attachSpacebar(view: View) = spacebar.attachSpacebarGestures(view)
     // --- SpacebarLayer.UiHost (SPK-05 módulo 17). haptic, pressSpace,
     // currentInputView y sendCode ya existen arriba y sirven a esta
     // interfaz (misma firma, una sola implementación).
     override fun isShiftActive(): Boolean = editor.isShiftOn()
-    override fun sendCodeWithMeta(code: Int, meta: Int) {
-        editor.sendKeyEventWithMeta(code, meta)
-    }
+    override fun sendCodeWithMeta(code: Int, meta: Int) = editor.sendKeyEventWithMeta(code, meta)
     override fun spacebarTrackpadMode(): String = kbPrefs.spacebarTrackpadMode
     override fun symbolsLabel(): String = when {
         layer == Layer.SNIPPETS && (snippets.subLayer == Layer.SYMBOLS || snippets.subLayer == Layer.CODE) -> "ABC"
@@ -580,6 +430,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
     override fun isLanguageKeyVisible(): Boolean = kbPrefs.languageKeyVisiblePref
     override fun spacebarAlignment(): String = kbPrefs.spacebarAlignment
+    override fun bottomElevationDp(): Int = kbPrefs.bottomElevationDp
 
     // --- CredentialsLayer.UiHost (SPK-05 módulo 3): 9 delegaciones de una línea. ---
     override fun currentLayer(): Layer = layer
@@ -609,14 +460,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // existen arriba y sirven a esta interfaz (misma firma, una sola
     // implementación).
     override fun currentInputView(): View? = inputView
-    override fun setRecordingActive(active: Boolean) {
-        keyboardRecordingActive = active
-    }
+    override fun setRecordingActive(active: Boolean) = keyboardRecordingActive = active
     override fun isRecordingActive(): Boolean = keyboardRecordingActive
-
-    private fun saveSnippetDraftState() {
-        if (::snippets.isInitialized) snippets.saveDraftState()
-    }
 
     /** Shell SPK-05: el contenido vive en SnippetsLayer (módulo 13: hasta
      *  las filas QWERTY); aquí solo el despacho de subcapa. */
@@ -640,30 +485,16 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         textSizePx: Int,
     ): TextView = keys.makeKey(label, weight, bgRes, colorRes, textSizePx)
     override fun displayLetter(base: Char): String = editor.displayFor(base)
-    override fun commitLetterKey(base: Char) {
-        editor.commitLetter(base)
-    }
-    override fun trackLetterKey(key: TextView, base: Char) {
-        editor.trackLetter(key, base)
-    }
-    override fun trackShiftKey(key: ImageView) {
-        editor.trackShift(key)
-    }
-    override fun toggleShiftKey() {
-        editor.toggleShift()
-    }
+    override fun commitLetterKey(base: Char) = editor.commitLetter(base)
+    override fun trackLetterKey(key: TextView, base: Char) = editor.trackLetter(key, base)
+    override fun trackShiftKey(key: ImageView) = editor.trackShift(key)
+    override fun toggleShiftKey() = editor.toggleShift()
     override fun showAccentsPopup(anchor: View, base: Char) {
         if (::accents.isInitialized) accents.showPopup(anchor, base)
     }
-    override fun deleteBackward() {
-        editor.handleBackspace()
-    }
-    override fun deleteWord() {
-        editor.deleteWordBeforeCursor()
-    }
-    override fun attachBackspaceKey(key: View, action: () -> Unit) {
-        keys.backspaceGestures(key, action)
-    }
+    override fun deleteBackward() = editor.handleBackspace()
+    override fun deleteWord() = editor.deleteWordBeforeCursor()
+    override fun attachBackspaceKey(key: View, action: () -> Unit) = keys.backspaceGestures(key, action)
 
     /** Shell SPK-05: el portapapeles vive en ClipboardLayer; aquí solo commit(). */
 

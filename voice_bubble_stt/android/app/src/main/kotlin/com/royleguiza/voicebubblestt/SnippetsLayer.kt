@@ -1,6 +1,7 @@
 package com.royleguiza.voicebubblestt
 
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.text.Editable
 import android.text.InputType
@@ -14,6 +15,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -57,6 +59,7 @@ class SnippetsLayer(
         ): ImageView
         fun horizontalRow(): LinearLayout
         fun dismissPopup()
+        fun takePopup(popup: PopupWindow?)
         fun consumeModifiers()
         fun showCenteredBox(box: LinearLayout, widthPx: Int)
         fun showAnchoredBox(box: LinearLayout, anchor: View)
@@ -731,7 +734,40 @@ class SnippetsLayer(
 
         val dm = service.resources.displayMetrics
         val popupWidth = minOf(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 300f, dm).toInt(), dm.widthPixels - pad * 4)
-        host.showCenteredBox(box, popupWidth)
+        showCenteredBox(box, popupWidth)
+    }
+
+    fun showCenteredBox(box: LinearLayout, widthPx: Int) {
+        val popup = PopupWindow(box, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            animationStyle = R.style.VoiceHistoryPopupAnimation
+        }
+        host.takePopup(popup)
+        popup.showAtLocation(host.rootView(), Gravity.CENTER, 0, 0)
+    }
+
+    fun showAnchoredBox(box: LinearLayout, anchor: View) {
+        val popup = PopupWindow(
+            box,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            true,
+        )
+        popup.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        popup.isOutsideTouchable = true
+        box.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+        val loc = IntArray(2)
+        anchor.getLocationInWindow(loc)
+        val gap = host.dimenPx(R.dimen.kb_key_gap)
+        host.takePopup(popup)
+        popup.showAtLocation(
+            host.rootView(),
+            Gravity.NO_GRAVITY,
+            loc[0],
+            // AT-A12: jamas Y negativo; si no cabe arriba se solapa con el ancla.
+            maxOf(gap, loc[1] - box.measuredHeight - gap),
+        )
     }
 
     private fun emptyView(): TextView {
@@ -792,7 +828,7 @@ class SnippetsLayer(
             service.openAppUi()
         }
 
-        host.showAnchoredBox(box, anchor)
+        showAnchoredBox(box, anchor)
     }
 
     // ------------------------------------------------------------------

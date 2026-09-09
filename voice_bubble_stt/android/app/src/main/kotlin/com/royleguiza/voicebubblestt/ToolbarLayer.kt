@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 
 /**
  * Capa Toolbar (SPK-05, módulo 12 de N): barra interactiva superior con
@@ -21,6 +22,8 @@ class ToolbarLayer(
     private val service: InputMethodService,
     private val host: UiHost,
 ) {
+
+    private val modifierViews = mutableListOf<Pair<TextView, Boolean>>()
 
     /** Lo mínimo que la barra exige al teclado. */
     interface UiHost {
@@ -66,6 +69,27 @@ class ToolbarLayer(
         fun isModifierActive(isCtrl: Boolean): Boolean
         fun toggleModifier(isCtrl: Boolean)
         fun refreshModifiers()
+    }
+
+    fun registerModifier(key: TextView, isCtrl: Boolean) {
+        modifierViews.add(Pair(key, isCtrl))
+    }
+
+    fun refreshModifiers() {
+        for ((key, isCtrl) in modifierViews) {
+            val active = host.isModifierActive(isCtrl)
+            if (active) {
+                key.setBackgroundResource(R.drawable.kb_key_accent)
+                key.setTextColor(ContextCompat.getColor(service, R.color.kb_label_on_accent))
+            } else {
+                key.setBackgroundResource(R.drawable.kb_key_alt)
+                key.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
+            }
+        }
+    }
+
+    fun clearModifiers() {
+        modifierViews.clear()
     }
 
     fun buildToolbar(): LinearLayout {
@@ -258,7 +282,7 @@ class ToolbarLayer(
             host.toggleModifier(isCtrl)
             host.refreshModifiers()
         }
-        host.registerModifier(key, isCtrl)
+        registerModifier(key, isCtrl)
         return key
     }
 }

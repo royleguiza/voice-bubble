@@ -7,7 +7,9 @@ import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.text.InputType
 import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
 
 /**
  * Soporte del teclado (SPK-05, módulo 1 de N): tablas puras, constantes y
@@ -96,6 +98,16 @@ internal fun Context.showClipboardNotice(message: String) {
 }
 
 // --- Tablas puras (sin estado) ---
+
+/** Campos de contraseña: sin micrófono, snippets, trackpad ni sugerencias (K3, MEJ-09). */
+internal fun isPasswordInput(info: EditorInfo?): Boolean {
+    if (info == null) return false
+    val variation = info.inputType and InputType.TYPE_MASK_VARIATION
+    return variation == InputType.TYPE_TEXT_VARIATION_PASSWORD ||
+        variation == InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD ||
+        variation == InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD ||
+        variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
+}
 
 /** Codigo de tecla fisica para combinaciones modificadoras (a-z y corchetes). */
 internal fun keyCodeFor(c: Char): Int? = when {

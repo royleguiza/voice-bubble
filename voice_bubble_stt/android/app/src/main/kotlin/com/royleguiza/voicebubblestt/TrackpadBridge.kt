@@ -3,9 +3,14 @@ package com.royleguiza.voicebubblestt
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.provider.Settings
+import android.transition.ChangeBounds
+import android.transition.Fade
+import android.transition.TransitionManager
+import android.transition.TransitionSet
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.View
+import android.view.animation.DecelerateInterpolator
 import android.widget.LinearLayout
 import android.widget.Toast
 
@@ -39,6 +44,24 @@ class TrackpadBridge(
     }
 
     private var manager: PointerOverlayManager? = null
+
+    fun playTransition() {
+        if (!service.reducedMotion()) {
+            try {
+                val transition = TransitionSet().apply {
+                    ordering = TransitionSet.ORDERING_TOGETHER
+                    addTransition(ChangeBounds().apply {
+                        duration = 180L
+                        interpolator = DecelerateInterpolator()
+                    })
+                    addTransition(Fade().apply {
+                        duration = 140L
+                    })
+                }
+                TransitionManager.beginDelayedTransition(host.rootView(), transition)
+            } catch (_: Exception) {}
+        }
+    }
 
     fun targetHeightPx(): Int {
         val totalKeyRows = if (kbPrefs.terminalRowVisiblePref) 5 else 4

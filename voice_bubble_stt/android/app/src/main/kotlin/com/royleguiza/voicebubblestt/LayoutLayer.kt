@@ -1,7 +1,10 @@
 package com.royleguiza.voicebubblestt
 
+import android.os.Build
+import android.util.TypedValue
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.widget.ImageView
 import android.widget.LinearLayout
 
@@ -37,6 +40,7 @@ class LayoutLayer(
         fun symbolsLabel(): String
         fun isLanguageKeyVisible(): Boolean
         fun spacebarAlignment(): String
+        fun bottomElevationDp(): Int
     }
 
     var spaceView: View? = null
@@ -176,5 +180,39 @@ class LayoutLayer(
             lp.topMargin = host.rowGap()
         }
         host.rootView().addView(row, lp)
+    }
+
+    /**
+     * Con targetSdk edge-to-edge la ventana del teclado se extiende bajo la
+     * barra de gestos y los botones del sistema. Se aplica el inset de
+     * navegacion como padding inferior para que la fila inferior quede
+     * siempre por encima.
+     */
+    fun applyBottomInsets() {
+        val padH = host.dimenPx(R.dimen.kb_row_padding_h)
+        val padV = host.dimenPx(R.dimen.kb_row_padding_v)
+        host.rootView().setOnApplyWindowInsetsListener { view, insets ->
+            val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                insets.getInsets(
+                    WindowInsets.Type.navigationBars()
+                        or WindowInsets.Type.displayCutout(),
+                ).bottom
+            } else {
+                @Suppress("DEPRECATION")
+                insets.systemWindowInsetBottom
+            }
+            val elevationPx = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                host.bottomElevationDp().toFloat(),
+                host.rootView().resources.displayMetrics,
+            ).toInt()
+            view.setPadding(padH, padV, padH, padV + bottom + elevationPx)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowInsets.CONSUMED
+            } else {
+                @Suppress("DEPRECATION")
+                insets.consumeSystemWindowInsets()
+            }
+        }
     }
 }
