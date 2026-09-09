@@ -39,7 +39,7 @@ import kotlin.math.abs
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost, LayoutLayer.UiHost {
+class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost, LayoutLayer.UiHost, SpacebarLayer.UiHost {
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
@@ -61,11 +61,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private var commaKeyView: View? = null
     private var dotKeyView: View? = null
 
-    // Handler/runnable vigentes de la barra espaciadora: attachSpacebarGestures
-    // los publica acá para poder cancelarlos en rebuild/onDestroy (sin esto
-    // el blank-out disparaba sobre vistas ya removidas).
-    private var spacebarGestureHandler: Handler? = null
-    private var spacebarLongPressRunnable: Runnable? = null
+    // --- Espaciadora MEJ-25 (SPK-05 módulo 17: vive en SpacebarLayer) ---
+    private lateinit var spacebar: SpacebarLayer
 
     // --- Snippets (K4: vive en SnippetsLayer; aquí solo el shell) ---
     private lateinit var snippets: SnippetsLayer
@@ -135,6 +132,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         toolbar = ToolbarLayer(this, this)
         keys = KeyFactory(this, handler, this)
         layout = LayoutLayer(keys, this)
+        spacebar = SpacebarLayer(this, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
         root.setBackgroundResource(R.drawable.kb_surface_bg)
@@ -828,8 +826,16 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         handleEnter()
     }
     override fun attachSpacebar(view: View) {
-        attachSpacebarGestures(view)
+        spacebar.attachSpacebarGestures(view)
     }
+    // --- SpacebarLayer.UiHost (SPK-05 módulo 17). haptic, pressSpace,
+    // currentInputView y sendCode ya existen arriba y sirven a esta
+    // interfaz (misma firma, una sola implementación).
+    override fun isShiftActive(): Boolean = shiftState != ShiftState.OFF
+    override fun sendCodeWithMeta(code: Int, meta: Int) {
+        sendKeyEventWithMeta(code, meta)
+    }
+    override fun spacebarTrackpadMode(): String = kbPrefs.spacebarTrackpadMode
     override fun symbolsLabel(): String = when {
         layer == Layer.SNIPPETS && (snippets.subLayer == Layer.SYMBOLS || snippets.subLayer == Layer.CODE) -> "ABC"
         layer == Layer.SYMBOLS || layer == Layer.CODE || layer == Layer.CREDENTIALS -> "ABC"
@@ -935,166 +941,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
      */
     private fun cancelPendingKeyGestures() {
         if (::keys.isInitialized) keys.cancelPendingGestures()
-        try {
-            spacebarLongPressRunnable?.let { spacebarGestureHandler?.removeCallbacks(it) }
-        } catch (_: Exception) {}
-        spacebarLongPressRunnable = null
-    }
-
-    /**
-     * MEJ-25: Control de cursor y modo trackpad 2D en barra espaciadora.
-     * - Deslizamiento horizontal (estilo Gboard): arrastre a izq/der desplaza el cursor.
-     * - Pulsación larga (>300ms, estilo iOS): efecto blank-out atenuando glifos de teclas
-     *   y transformando el teclado completo en una superficie continua de navegación 2D.
-     * - Selección de texto: soporte multitáctil (segundo dedo) o tecla shift activa despacha
-     *   eventos DPAD con META_SHIFT_ON para selección precisa.
-     */
-     private fun setTrackpadBlankOutMode(enabled: Boolean) {
-        val targetAlpha = if (enabled) 0.0f else 1.0f
-        fun fadeGlyphs(view: View) {
-            if (view === spaceKeyView) return
-            if (view is TextView || (view is ImageView && view !== spaceKeyView)) {
-                view.animate().cancel()
-                view.animate().alpha(targetAlpha).setDuration(120L).start()
-            } else if (view is ViewGroup) {
-                for (i in 0 until view.childCount) {
-                    fadeGlyphs(view.getChildAt(i))
-                }
-            }
-        }
-        inputView?.let { fadeGlyphs(it) }
-    }
-
-    private fun attachSpacebarGestures(space: View) {
-        // El listener anterior muere con su vista en rebuild: cancelar su
-        // long-press pendiente acá mismo además del barrido de rebuild().
-        try {
-            spacebarLongPressRunnable?.let { spacebarGestureHandler?.removeCallbacks(it) }
-        } catch (_: Exception) {}
-        val gestureHandler = Handler(Looper.getMainLooper())
-        spacebarGestureHandler = gestureHandler
-        space.setOnTouchListener(object : View.OnTouchListener {
-            private var startX = 0f
-            private var startY = 0f
-            private var lastX = 0f
-            private var lastY = 0f
-            private var isLongPressTriggered = false
-            private var isDragNavTriggered = false
-            private var isSelecting = false
-            private val longPressRunnable = Runnable {
-                if (kbPrefs.spacebarTrackpadMode == "ios_2d") {
-                    isLongPressTriggered = true
-                    setTrackpadBlankOutMode(true)
-                    haptic(space)
-                }
-            }
-
-            init {
-                // Publicar el runnable vigente para cancelarlo en
-                // rebuild/onDestroy aunque su vista ya no exista.
-                spacebarLongPressRunnable = longPressRunnable
-            }
-
-            private fun dispatchNavKey(keyCode: Int) {
-                if (isSelecting || shiftState != ShiftState.OFF) {
-                    sendKeyEventWithMeta(keyCode, KeyEvent.META_SHIFT_ON)
-                } else {
-                    sendKeyCode(keyCode)
-                }
-                haptic(space)
-            }
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                val density = resources.displayMetrics.density
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        v.parent?.requestDisallowInterceptTouchEvent(true)
-                        startX = event.rawX
-                        startY = event.rawY
-                        lastX = event.rawX
-                        lastY = event.rawY
-                        isLongPressTriggered = false
-                        isDragNavTriggered = false
-                        isSelecting = false
-                        v.isPressed = true
-                        gestureHandler.postDelayed(longPressRunnable, 300L)
-                        return true
-                    }
-                    MotionEvent.ACTION_POINTER_DOWN -> {
-                        // Toque con un segundo dedo mientras se navega activa selección de texto estilo iOS
-                        if (isLongPressTriggered || isDragNavTriggered) {
-                            isSelecting = true
-                            haptic(space)
-                        }
-                        return true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val threshold = 14f * density
-                        if (isLongPressTriggered) {
-                            val deltaX = event.rawX - lastX
-                            val stepsX = (abs(deltaX) / threshold).toInt()
-                            if (stepsX > 0) {
-                                val key = if (deltaX > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
-                                for (i in 0 until stepsX) {
-                                    dispatchNavKey(key)
-                                }
-                                lastX += stepsX * threshold * (if (deltaX > 0) 1 else -1)
-                            }
-
-                            val deltaY = event.rawY - lastY
-                            val stepsY = (abs(deltaY) / threshold).toInt()
-                            if (stepsY > 0) {
-                                val key = if (deltaY > 0) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_UP
-                                for (i in 0 until stepsY) {
-                                    dispatchNavKey(key)
-                                }
-                                lastY += stepsY * threshold * (if (deltaY > 0) 1 else -1)
-                            }
-                        } else {
-                            if (abs(event.rawX - startX) > (16f * density)) {
-                                gestureHandler.removeCallbacks(longPressRunnable)
-                                isDragNavTriggered = true
-                            }
-                            if (isDragNavTriggered) {
-                                val deltaX = event.rawX - lastX
-                                val stepsX = (abs(deltaX) / threshold).toInt()
-                                if (stepsX > 0) {
-                                    val key = if (deltaX > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
-                                    for (i in 0 until stepsX) {
-                                        dispatchNavKey(key)
-                                    }
-                                    lastX += stepsX * threshold * (if (deltaX > 0) 1 else -1)
-                                }
-                            }
-                        }
-                        return true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        gestureHandler.removeCallbacks(longPressRunnable)
-                        v.isPressed = false
-                        if (isLongPressTriggered) {
-                            setTrackpadBlankOutMode(false)
-                            haptic(space)
-                        } else if (!isDragNavTriggered) {
-                            if (layer == Layer.SNIPPETS && !snippets.isEditorOpen) snippets.ensureSearchMode()
-                            commit(" ")
-                        }
-                        isSelecting = false
-                        return true
-                    }
-                    MotionEvent.ACTION_CANCEL -> {
-                        gestureHandler.removeCallbacks(longPressRunnable)
-                        v.isPressed = false
-                        if (isLongPressTriggered) {
-                            setTrackpadBlankOutMode(false)
-                        }
-                        isSelecting = false
-                        return true
-                    }
-                }
-                return false
-            }
-        })
+        if (::spacebar.isInitialized) spacebar.cancelPending()
     }
 
     override fun dismissPopup() {

@@ -78,6 +78,12 @@ kt_toolbar_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main
 if os.path.isfile(kt_toolbar_path):
     with open(kt_toolbar_path, "r", encoding="utf-8") as f:
         vk_content += f.read()
+# SPK-05 módulo 17: los gestos MEJ-25 de la espaciadora viven en
+# SpacebarLayer.kt (mismo paquete); VKS delega (spacebar.*).
+kt_spacebar_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SpacebarLayer.kt")
+if os.path.isfile(kt_spacebar_path):
+    with open(kt_spacebar_path, "r", encoding="utf-8") as f:
+        vk_content += f.read()
 
 all_read_in_kotlin = all(f'flutter.{k}' in vk_content for k in TRACKPAD_KEYS)
 check(f"Todas las {len(TRACKPAD_KEYS)} claves flutter.kb_trackpad_* leídas en VoiceKeyboardService.kt", all_read_in_kotlin)
