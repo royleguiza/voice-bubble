@@ -79,14 +79,17 @@ class GlassContainer extends StatelessWidget {
           padding: padding,
           foregroundDecoration: crystal
               ? BoxDecoration(
+                  // Highlight superior simétrico (no diagonal): la misma
+                  // luz en todo el ancho para que el dock se vea parejo
+                  // de izquierda a derecha en claro y oscuro.
                   gradient: LinearGradient(
-                    begin: Alignment.topLeft,
+                    begin: Alignment.topCenter,
                     end: Alignment.center,
                     colors: [
                       isDark ? kGlassHighlightDark : kGlassHighlightLight,
                       Colors.transparent,
                     ],
-                    stops: const [0.0, 0.45],
+                    stops: const [0.0, 0.35],
                   ),
                   borderRadius: BorderRadius.circular(borderRadius),
                 )
