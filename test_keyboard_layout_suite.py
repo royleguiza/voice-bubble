@@ -80,7 +80,7 @@ check("Búsqueda 70% + botones 10%",
 check("Lupa placeholder (oculta al tipear)",
       "fun updateSearchIcon()" in snip)
 check("Editor slim", "kb_snippet_bar_height" in snip)
-check("Chips a altura Enter", "host.keyHeightPx()" in snip)
+check("Chips a altura Enter", "host.scaledDimen(R.dimen.kb_key_height)" in snip)
 check("Grid dinámico 4->2x2 resto ≤3",
       "if (filtered.size == 4) 2 else minOf(SNIPPET_GRID_COLUMNS" in snip)
 check("Gap uniforme en contorno",

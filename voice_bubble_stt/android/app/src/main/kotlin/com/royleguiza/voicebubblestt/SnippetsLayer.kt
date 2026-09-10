@@ -664,7 +664,7 @@ class SnippetsLayer(
             }
             val lp = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                host.keyHeightPx(),
+                host.scaledDimen(R.dimen.kb_key_height),
             )
             if (container.childCount > 0) {
                 lp.topMargin = gap / 2
@@ -725,7 +725,7 @@ class SnippetsLayer(
         chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
         chip.contentDescription = snippet.nombre
         // Altura de tecla Enter + mismo gap del contorno en los laterales.
-        val lp = LinearLayout.LayoutParams(0, host.keyHeightPx(), 1f)
+        val lp = LinearLayout.LayoutParams(0, host.scaledDimen(R.dimen.kb_key_height), 1f)
         val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, 0, m, 0)
         chip.layoutParams = lp
