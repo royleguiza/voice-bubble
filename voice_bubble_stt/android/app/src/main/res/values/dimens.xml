@@ -22,6 +22,9 @@
     <dimen name="kb_snippets_grid_height">100dp</dimen>
     <!-- Altura del campo de busqueda de snippets (minimo tactil 48dp, SPK-16). -->
     <dimen name="kb_snippet_search_height">48dp</dimen>
+    <!-- Barra slim de snippets (lab compacta): ~mitad de la search clásica.
+         Excepción del dueño a SPK-16 solo en esta superficie. -->
+    <dimen name="kb_snippet_bar_height">28dp</dimen>
     <!-- Altura de chips de snippets (minimo tactil 48dp, SPK-16). -->
     <dimen name="kb_snippet_chip_height">48dp</dimen>
 </resources>

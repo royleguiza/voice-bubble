@@ -69,10 +69,22 @@ import re
 for name, src in [("KeyFactory", kf), ("SnippetsLayer", snip), ("ToolbarLayer", toolbar)]:
     check(f"Sin Log en {name}", not re.search(r"\bLog\.[dvwie]", src))
 
-# --- 5. Snippets compacta (lab): 4 cuartos + lupa + punteados ---
+# --- 5. Snippets barra slim + grid dinámico (pedido del dueño) ---
 check("Lupa ic_search existe",
       os.path.isfile(os.path.join(
           WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_search.xml")))
+check("Barra slim 28dp",
+      "kb_snippet_bar_height" in read("voice_bubble_stt/android/app/src/main/res/values/dimens.xml"))
+check("Búsqueda 70% + botones 10%",
+      "0, h, 7f" in snip and "LinearLayout.LayoutParams(0, heightPx, 1f)" in snip)
+check("Lupa placeholder (oculta al tipear)",
+      "fun updateSearchIcon()" in snip)
+check("Editor slim", "kb_snippet_bar_height" in snip)
+check("Chips a altura Enter", "host.keyHeightPx()" in snip)
+check("Grid dinámico 4->2x2 resto ≤3",
+      "if (filtered.size == 4) 2 else minOf(SNIPPET_GRID_COLUMNS" in snip)
+check("Gap uniforme en contorno",
+      "row.setPadding(gap / 2, 0, gap / 2, 0)" in snip)
 check("Dibujable kb_chip_edit existe",
       os.path.isfile(os.path.join(
           WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/kb_chip_edit.xml")))
@@ -83,15 +95,22 @@ for dw, color in [("kb_chip_edit.xml", "kb_key_bg_accent"), ("kb_chip_delete.xml
     raw = read(f"voice_bubble_stt/android/app/src/main/res/drawable/{dw}")
     check(f"{dw} punteado", "dashWidth" in raw and "dashGap" in raw, f"sin dash en {dw}")
     check(f"{dw} trazo {color}", color in raw)
-check("Fila arranca colapsada (searchOpen=false)",
-      "private var searchOpen = false" in snip)
-check("Lupa alterna con morph", "fun toggleSearch()" in snip and "ChangeBounds" in snip)
-check("Tipeo abre la lupa", "fun ensureSearchMode()" in snip and "searchOpen = true" in snip)
-check("Salir colapsa", "fun exitSearchMode()" in snip and "searchOpen = false" in snip)
 check("Chips con punteado en modos",
       "R.drawable.kb_chip_edit" in snip and "R.drawable.kb_chip_delete" in snip)
 check("Contenido intacto en modos",
       snip.count("R.color.kb_label)") >= 2)
+
+# --- 6. Clipboard en overlay (una sección, sin empujar teclas) ---
+clip = read(f"{KT}/ClipboardLayer.kt")
+check("Clipboard pide popup al host",
+      "fun takePopup(" in clip and "fun dismissPopups()" in clip)
+check("Toggle abre popup centrado",
+      "PopupWindow(" in clip and "Gravity.CENTER" in clip)
+check("Sin filmstrip in-flow", "fun buildFilmstrip" not in clip)
+vks = read(f"{KT}/VoiceKeyboardService.kt")
+check("VKS ya expone takePopup/dismissPopups",
+      "override fun takePopup(" in vks and "override fun dismissPopups()" in vks)
+check("Rebuild sin filmstrip en flujo", "buildFilmstrip" not in vks)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TECLADO-LAYOUT: {suite.passed} pasados, {suite.failed} fallidos.")

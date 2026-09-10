@@ -3,16 +3,18 @@ package com.royleguiza.voicebubblestt
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
-import android.transition.ChangeBounds
-import android.transition.Fade
-import android.transition.TransitionManager
-import android.transition.TransitionSet
+import android.util.TypedValue
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.DecelerateInterpolator
 import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.inputmethod.EditorInfoCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
@@ -38,10 +40,13 @@ class ClipboardLayer(
         fun rootView(): LinearLayout
         fun haptic(view: View)
         fun commitText(text: String)
+        fun takePopup(popup: PopupWindow?)
+        fun dismissPopups()
     }
 
     private lateinit var store: ClipboardStore
-    private var filmstripView: ClipboardFilmstripLayout? = null
+    private var trayPopup: PopupWindow? = null
+    private var trayFilmstrip: ClipboardFilmstripLayout? = null
     private var isExpanded = false
 
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
@@ -72,10 +77,54 @@ class ClipboardLayer(
         if (!restarting) {
             isExpanded = false
         }
+        dismissTray()
         handlePrimaryClipChanged()
     }
 
-    fun buildFilmstrip(): ClipboardFilmstripLayout {
+    /**
+     * Bandeja en overlay centrado (no empuja las teclas ni cambia el alto
+     * del teclado): una sola sección visible a la vez; rebuilds y cambios
+     * de capa la descartan vía dismissPopup del servicio.
+     */
+    fun toggle() {
+        if (isExpanded) {
+            dismissTray()
+            return
+        }
+        isExpanded = true
+        host.dismissPopups()
+        val pad = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 12f, service.resources.displayMetrics).toInt()
+        val box = LinearLayout(service).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.kb_popup_bg)
+            setPadding(pad, pad, pad, pad)
+        }
+        val titleRow = LinearLayout(service).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val title = TextView(service).apply {
+            text = if (host.isSpanish()) "Portapapeles" else "Clipboard"
+            setTextColor(ContextCompat.getColor(service, R.color.kb_label))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        titleRow.addView(title)
+        val close = TextView(service).apply {
+            text = "✕"
+            gravity = Gravity.CENTER
+            setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            minimumWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 44f, service.resources.displayMetrics).toInt()
+            setPadding(pad, pad / 2, pad, pad / 2)
+            setOnClickListener {
+                host.haptic(this)
+                dismissTray()
+            }
+        }
+        titleRow.addView(close)
+        box.addView(titleRow)
         val filmstrip = ClipboardFilmstripLayout(
             context = service,
             store = store,
@@ -91,41 +140,31 @@ class ClipboardLayer(
                 refreshIfVisible()
             }
         )
-        filmstripView = filmstrip
-        if (isExpanded) {
-            filmstrip.visibility = View.VISIBLE
-            loadAsync(filmstrip)
-        } else {
-            filmstrip.visibility = View.GONE
+        box.addView(filmstrip)
+        trayFilmstrip = filmstrip
+        loadAsync(filmstrip)
+        val widthPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 320f, service.resources.displayMetrics).toInt()
+        val popup = PopupWindow(box, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            isOutsideTouchable = true
+            animationStyle = R.style.VoiceHistoryPopupAnimation
         }
-        return filmstrip
+        trayPopup = popup
+        host.takePopup(popup)
+        try {
+            popup.showAtLocation(host.rootView(), Gravity.CENTER, 0, 0)
+        } catch (_: Exception) {
+            dismissTray()
+        }
     }
 
-    fun toggle() {
-        isExpanded = !isExpanded
-        val container = filmstripView ?: return
-        val parentGroup = container.parent as? ViewGroup
-
-        if (!service.reducedMotion() && parentGroup != null) {
-            try {
-                val transition = TransitionSet().apply {
-                    ordering = TransitionSet.ORDERING_TOGETHER
-                    addTransition(ChangeBounds().apply {
-                        duration = 200L
-                        interpolator = DecelerateInterpolator()
-                    })
-                    addTransition(Fade().apply { duration = 150L })
-                }
-                TransitionManager.beginDelayedTransition(parentGroup, transition)
-            } catch (_: Exception) {}
-        }
-
-        if (isExpanded) {
-            container.visibility = View.VISIBLE
-            loadAsync(container)
-        } else {
-            container.visibility = View.GONE
-        }
+    private fun dismissTray() {
+        isExpanded = false
+        try {
+            trayPopup?.dismiss()
+        } catch (_: Exception) {}
+        trayPopup = null
+        trayFilmstrip = null
     }
 
     /** Long-press del botón pegar: pega lo último o abre la cinta. */
@@ -197,7 +236,7 @@ class ClipboardLayer(
                 }
             },
             onResult = { clips ->
-                if (isExpanded && filmstripView === target) {
+                if (isExpanded && trayFilmstrip === target) {
                     try {
                         target.renderClips(clips ?: emptyList())
                     } catch (_: Exception) {}
@@ -208,7 +247,7 @@ class ClipboardLayer(
 
     private fun refreshIfVisible() {
         if (isExpanded) {
-            filmstripView?.let { loadAsync(it) }
+            trayFilmstrip?.let { loadAsync(it) }
         }
     }
 

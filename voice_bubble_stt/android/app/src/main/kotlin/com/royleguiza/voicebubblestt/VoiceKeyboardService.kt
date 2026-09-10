@@ -207,8 +207,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // Y ahora Toolbar Interactiva Superior con Mic, Portapapeles, etc.
         // (SPK-05 módulo 12: vive en ToolbarLayer).
         addRow(toolbar.buildToolbar())
-        val filmstrip = clipboard.buildFilmstrip()
-        addRow(filmstrip)
 
         if (layer == Layer.TRACKPAD) {
             addRow(trackpad.buildLayer())

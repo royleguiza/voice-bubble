@@ -8,8 +8,6 @@ import android.text.Editable
 import android.text.InputType
 import android.text.TextUtils
 import android.text.TextWatcher
-import android.transition.ChangeBounds
-import android.transition.TransitionManager
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -111,19 +109,9 @@ class SnippetsLayer(
 
     private var searchActive = false
     private var searchField: EditText? = null
+    private var searchIconView: ImageView? = null
 
     val isSearchActive: Boolean get() = searchActive
-
-    /**
-     * Búsqueda compacta (lab snippets): arranca colapsada en 4 cuartos
-     * iguales (lupa + 3 botones); al abrir, la lupa domina y el resto se
-     * comprime con morph. Abrir = tocar la lupa o tipear (ver
-     * ensureSearchMode); al entrar sin tocar nada queda colapsada.
-     */
-    private var searchOpen = false
-    private var searchRow: LinearLayout? = null
-    private var searchBox: LinearLayout? = null
-    private var searchBoxLp: LinearLayout.LayoutParams? = null
 
     fun onCreateInputView() {
         store = SnippetStore(service)
@@ -139,11 +127,8 @@ class SnippetsLayer(
         if (host.currentLayer() == Layer.SNIPPETS) {
             host.setLayer(origin)
             searchActive = false
-            searchOpen = false
             searchField = null
-            searchRow = null
-            searchBox = null
-            searchBoxLp = null
+            searchIconView = null
             closeEditor()
             return
         }
@@ -164,11 +149,8 @@ class SnippetsLayer(
         query = ""
         gridContainer = null
         searchActive = false
-        searchOpen = false
         searchField = null
-        searchRow = null
-        searchBox = null
-        searchBoxLp = null
+        searchIconView = null
         mode = SnippetMode.NORMAL
         btnEditView = null
         btnDeleteView = null
@@ -246,6 +228,9 @@ class SnippetsLayer(
         val grid = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
         }
+        // Contorno uniforme con la barra (borde = entre chips).
+        val gm = host.dimenPx(R.dimen.kb_key_gap_h) / 2
+        grid.setPadding(gm, 0, gm, 0)
         gridContainer = grid
         scroll.addView(grid)
         refreshGrid()
@@ -253,7 +238,7 @@ class SnippetsLayer(
             ViewGroup.LayoutParams.MATCH_PARENT,
             host.scaledDimen(R.dimen.kb_snippets_grid_height),
         )
-        lp.topMargin = host.rowGap()
+        lp.topMargin = gm
         root.addView(scroll, lp)
     }
 
@@ -433,7 +418,7 @@ class SnippetsLayer(
             }
         }
         etNameField = etName
-        val lpName = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, host.scaledDimen(R.dimen.kb_snippet_search_height))
+        val lpName = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, host.scaledDimen(R.dimen.kb_snippet_bar_height))
         lpName.topMargin = pad
         container.addView(etName, lpName)
 
@@ -456,7 +441,7 @@ class SnippetsLayer(
             }
         }
         etContentField = etContent
-        val lpContent = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, host.scaledDimen(R.dimen.kb_snippet_search_height))
+        val lpContent = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, host.scaledDimen(R.dimen.kb_snippet_bar_height))
         lpContent.topMargin = pad
         container.addView(etContent, lpContent)
 
@@ -488,32 +473,43 @@ class SnippetsLayer(
      * con morph; colapsar limpia el query. Al entrar a la capa sin tocar
      * nada queda colapsada.
      */
+    /**
+     * Barra slim (pedido del dueño): la búsqueda ocupa el 70% con la lupa
+     * hardcodeada como placeholder (se oculta al enfocar o tipear); los 3
+     * botones comparten el 30% restante en la misma línea y altura, con el
+     * mismo gap en todo el contorno. Sin textos explicativos.
+     */
     private fun buildSearchRow(): LinearLayout {
         val row = host.horizontalRow()
-        val pad = host.dimenPx(R.dimen.kb_popup_padding)
-        val m = host.dimenPx(R.dimen.kb_key_gap) / 2
-        val h = host.scaledDimen(R.dimen.kb_snippet_search_height)
+        val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
+        val h = host.scaledDimen(R.dimen.kb_snippet_bar_height)
+        row.setPadding(m, 0, m, 0)
 
-        // Caja lupa: icono siempre visible + campo (GONE colapsado).
+        // Caja de búsqueda (70%): icono lupa + campo transparente.
         val box = LinearLayout(service).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setBackgroundResource(R.drawable.kb_key_bg)
         }
-        val iconSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, service.resources.displayMetrics).toInt()
+        val iconDp = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20f, service.resources.displayMetrics).toInt()
+        val iconPad = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f, service.resources.displayMetrics).toInt()
         val icon = ImageView(service).apply {
             setImageResource(R.drawable.ic_search)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            isClickable = true
-            isFocusable = true
-            setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
+            setColorFilter(ContextCompat.getColor(service, R.color.kb_label_secondary))
             contentDescription = if (host.isSpanish()) "buscar snippets" else "search snippets"
-            setOnClickListener { toggleSearch() }
+            setOnClickListener {
+                searchField?.requestFocus()
+                ensureSearchMode()
+            }
         }
-        box.addView(icon, LinearLayout.LayoutParams(iconSize, iconSize))
+        box.addView(icon, LinearLayout.LayoutParams(iconDp, iconDp).apply {
+            leftMargin = iconPad
+        })
+        searchIconView = icon
 
         val et = EditText(service)
-        et.hint = if (host.isSpanish()) "Buscar snippets..." else "Search snippets..."
+        et.hint = if (host.isSpanish()) "Buscar" else "Search"
         et.setSingleLine(true)
         et.maxLines = 1
         et.inputType = InputType.TYPE_CLASS_TEXT
@@ -522,12 +518,13 @@ class SnippetsLayer(
         et.setHintTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
         et.setBackgroundResource(0)
         et.setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
-        et.setPadding(pad, 0, pad, 0)
+        et.setPadding(iconPad, 0, iconPad, 0)
         et.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(s: Editable?) {
                 query = s?.toString() ?: ""
+                updateSearchIcon()
                 refreshGrid()
             }
         })
@@ -539,108 +536,73 @@ class SnippetsLayer(
         et.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
             searchActive = hasFocus
             applySearchVisual()
+            updateSearchIcon()
         }
         et.setOnClickListener { v ->
             if (!v.hasFocus()) v.requestFocus()
             searchActive = true
             applySearchVisual()
+            updateSearchIcon()
         }
         box.addView(et, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
-        val boxLp = LinearLayout.LayoutParams(0, h, 1f)
+        val boxLp = LinearLayout.LayoutParams(0, h, 7f)
         boxLp.setMargins(m, 0, m, 0)
         row.addView(box, boxLp)
-        searchBox = box
-        searchBoxLp = boxLp
 
-        // Boton [+] Nuevo
-        val btnPlus = host.makeIconKey(R.drawable.ic_add, R.drawable.kb_key_bg, 0f, if (host.isSpanish()) "nuevo snippet" else "new snippet", R.color.kb_label) {
+        // Botones slim (10% c/u): mismo alto, misma línea, mismo gap.
+        row.addView(slimToolButton(R.drawable.ic_add, if (host.isSpanish()) "nuevo snippet" else "new snippet", h, m) {
             openEditor(null)
-        }
-        val lpPlus = LinearLayout.LayoutParams(0, h, 1f)
-        lpPlus.setMargins(m, 0, m, 0)
-        btnPlus.layoutParams = lpPlus
-        row.addView(btnPlus)
-
-        // Boton [lapiz] Editar
-        val btnEdit = host.makeIconKey(
-            R.drawable.ic_edit,
-            if (mode == SnippetMode.EDIT) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
-            0f,
-            if (host.isSpanish()) "editar snippet" else "edit snippet",
-            R.color.kb_label,
-        ) {
+        })
+        val btnEdit = slimToolButton(R.drawable.ic_edit, if (host.isSpanish()) "editar snippet" else "edit snippet", h, m) {
             mode = if (mode == SnippetMode.EDIT) SnippetMode.NORMAL else SnippetMode.EDIT
             updateModeVisuals()
             refreshGrid()
         }
         btnEditView = btnEdit
-        val lpEdit = LinearLayout.LayoutParams(0, h, 1f)
-        lpEdit.setMargins(m, 0, m, 0)
-        btnEdit.layoutParams = lpEdit
         row.addView(btnEdit)
-
-        // Boton [papelera] Eliminar
-        val btnDelete = host.makeIconKey(
-            R.drawable.ic_delete,
-            if (mode == SnippetMode.DELETE) R.drawable.kb_key_danger else R.drawable.kb_key_bg,
-            0f,
-            if (host.isSpanish()) "eliminar snippet" else "delete snippet",
-            R.color.kb_label,
-        ) {
+        val btnDelete = slimToolButton(R.drawable.ic_delete, if (host.isSpanish()) "eliminar snippet" else "delete snippet", h, m) {
             mode = if (mode == SnippetMode.DELETE) SnippetMode.NORMAL else SnippetMode.DELETE
             updateModeVisuals()
             refreshGrid()
         }
         btnDeleteView = btnDelete
-        val lpDelete = LinearLayout.LayoutParams(0, h, 1f)
-        lpDelete.setMargins(m, 0, m, 0)
-        btnDelete.layoutParams = lpDelete
         row.addView(btnDelete)
 
-        searchRow = row
-        applySearchLayout(animate = false)
+        updateModeVisuals()
+        updateSearchIcon()
         return row
     }
 
-    /** Alterna la búsqueda (tap en la lupa): colapsar limpia el query. */
-    private fun toggleSearch() {
-        if (searchOpen) {
-            searchOpen = false
-            query = ""
-            refreshGrid()
-            exitSearchMode()
-            applySearchLayout(animate = true)
-        } else {
-            searchOpen = true
-            ensureSearchMode()
-            searchField?.requestFocus()
-            applySearchLayout(animate = true)
+    /** Botón slim de la barra: icono centrado, sin texto. */
+    private fun slimToolButton(iconRes: Int, description: String?, heightPx: Int, marginPx: Int, onTap: () -> Unit): ImageView {
+        val key = ImageView(service)
+        key.setImageResource(iconRes)
+        key.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        key.isClickable = true
+        key.isFocusable = true
+        key.minimumWidth = 0
+        key.minimumHeight = 0
+        key.setPadding(0, 0, 0, 0)
+        key.setBackgroundResource(R.drawable.kb_key_bg)
+        key.setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
+        if (description != null) {
+            key.contentDescription = description
         }
+        val lp = LinearLayout.LayoutParams(0, heightPx, 1f)
+        lp.setMargins(marginPx, 0, marginPx, 0)
+        key.layoutParams = lp
+        host.attachTap(key, onTap)
+        return key
     }
 
-    /** Aplica pesos colapsado (4 cuartos) o expandido (lupa domina). */
-    private fun applySearchLayout(animate: Boolean) {
-        val row = searchRow
-        val box = searchBox
-        val boxLp = searchBoxLp
+    /** La lupa es placeholder: visible solo en reposo (sin foco ni texto). */
+    private fun updateSearchIcon() {
+        val icon = searchIconView ?: return
         val et = searchField
-        if (row == null || box == null || boxLp == null || et == null) return
-        if (animate) {
-            try {
-                val t = ChangeBounds()
-                t.duration = 200L
-                TransitionManager.beginDelayedTransition(row, t)
-            } catch (_: Exception) {}
-        }
-        if (searchOpen) {
-            boxLp.weight = 8f
-            et.visibility = View.VISIBLE
-        } else {
-            boxLp.weight = 1f
-            et.visibility = View.GONE
-        }
-        box.layoutParams = boxLp
+        val typing = (et?.hasFocus() == true) || !et?.text.isNullOrEmpty()
+        icon.visibility = if (typing) View.GONE else View.VISIBLE
     }
+
 
     private fun updateModeVisuals() {
         btnEditView?.setBackgroundResource(
@@ -668,6 +630,11 @@ class SnippetsLayer(
     }
 
     /** Repuebla el grid con el filtro actual sobre el cache fresco del store. */
+    /**
+     * Grilla dinámica (pedido del dueño): máximo 3 columnas; con 4 items
+     * 2×2; con 5, 3+2. Chips a altura de tecla Enter, con el mismo gap en
+     * todo el contorno (borde, entre chips y con la barra superior).
+     */
     private fun refreshGrid() {
         val container = gridContainer ?: return
         container.removeAllViews()
@@ -682,22 +649,25 @@ class SnippetsLayer(
             container.addView(emptyView())
             return
         }
+        val gap = host.dimenPx(R.dimen.kb_key_gap_h)
+        val cols = if (filtered.size == 4) 2 else minOf(SNIPPET_GRID_COLUMNS, filtered.size)
         var i = 0
         while (i < filtered.size) {
-            val inRow = minOf(SNIPPET_GRID_COLUMNS, filtered.size - i)
+            val inRow = minOf(cols, filtered.size - i)
             val row = host.horizontalRow()
+            row.setPadding(gap / 2, 0, gap / 2, 0)
             for (j in 0 until inRow) {
                 val chip = makeChip(filtered[i + j])
                 val lp = chip.layoutParams as LinearLayout.LayoutParams
-                lp.weight = SNIPPET_GRID_COLUMNS.toFloat() / inRow
+                lp.weight = cols.toFloat() / inRow
                 row.addView(chip)
             }
             val lp = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                host.scaledDimen(R.dimen.kb_snippet_chip_height),
+                host.keyHeightPx(),
             )
             if (container.childCount > 0) {
-                lp.topMargin = host.rowGap()
+                lp.topMargin = gap / 2
             }
             container.addView(row, lp)
             i += inRow
@@ -754,8 +724,9 @@ class SnippetsLayer(
 
         chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
         chip.contentDescription = snippet.nombre
-        val lp = LinearLayout.LayoutParams(0, host.scaledDimen(R.dimen.kb_snippet_chip_height), 1f)
-        val m = host.dimenPx(R.dimen.kb_key_gap) / 2
+        // Altura de tecla Enter + mismo gap del contorno en los laterales.
+        val lp = LinearLayout.LayoutParams(0, host.keyHeightPx(), 1f)
+        val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, 0, m, 0)
         chip.layoutParams = lp
         return chip
@@ -1049,27 +1020,22 @@ class SnippetsLayer(
         searchActive = false
         searchField?.clearFocus()
         applySearchVisual()
-        // Sale también visualmente: vuelve a los 4 iconos.
-        if (searchOpen) {
-            searchOpen = false
-            applySearchLayout(animate = true)
-        }
+        updateSearchIcon()
     }
 
-    /** Enciende el modo busqueda bajo demanda (teclado de la propia capa). */
+    /**
+     * Enciende el modo busqueda bajo demanda (teclado de la propia capa).
+     * Tipeo directo = tocar la lupa: enfoca el campo (la lupa se oculta
+     * como placeholder) y el query filtra en vivo.
+     */
     fun ensureSearchMode() {
         if (!searchActive) {
             searchActive = true
             applySearchVisual()
         }
-        // Tipeo directo = tocar la lupa: expande la fila y enfoca el campo.
-        // Solo anima en la transicion cerrado->abierto; el resto es no-op.
-        if (!searchOpen) {
-            searchOpen = true
-            applySearchLayout(animate = true)
-        }
         if (searchField?.hasFocus() == false) {
             searchField?.requestFocus()
         }
+        updateSearchIcon()
     }
 }
