@@ -6,6 +6,8 @@ Verifica:
 2. SegmentedButton en SettingsScreen con los 4 perfiles requeridos.
 3. Constantes y factores matemáticos proporcionales (15% por nivel).
 4. Pruebas de regresión: los perfiles existentes ('baja', 'media', 'alta') permanecen intactos.
+5. Espaciado anti-fantasma: cadena completa Dart→prefs→Kotlin→gaps
+   (compacto/normal/amplio con fuente única de factores).
 """
 
 import sys
@@ -67,6 +69,49 @@ def test_kotlin_keyboard_service():
     assert 'HEIGHT_PROFILE_MUY_ALTA -> HEIGHT_FACTOR_MUY_ALTA' in kt_content
     print("  [PASS] Factor 1.30f (+15% respecto a 'alta') configurado y mapeado en Kotlin.")
 
+def test_key_spacing_chain():
+    print("  [TEST] Verificando cadena de espaciado anti-fantasma...")
+    with open("app_source/lib/services/storage_service.dart", "r", encoding="utf-8") as f:
+        dart = f.read()
+    # Dart: dominio + default + acceso validado.
+    assert "'compacto'" in dart and "'normal'" in dart and "'amplio'" in dart
+    assert "defaultKeySpacing = 'normal'" in dart
+    assert "getKeySpacing()" in dart and "setKeySpacing(" in dart
+    # UI: selector en el tab Teclado (no en otro tab) + cableado en Settings.
+    with open("app_source/lib/screens/settings/teclado_tab.dart", "r", encoding="utf-8") as f:
+        tab = f.read()
+    assert "kb-key-spacing-selector" in tab
+    assert "ButtonSegment(value: 'compacto'" in tab
+    assert "ButtonSegment(value: 'normal'" in tab
+    assert "ButtonSegment(value: 'amplio'" in tab
+    assert "onSaveKeySpacing" in tab
+    with open("app_source/lib/screens/settings_screen.dart", "r", encoding="utf-8") as f:
+        settings = f.read()
+    assert "_saveKeySpacing" in settings and "getKeySpacing()" in settings
+    # Contrato: la clave viaja por el puente verificado.
+    with open("docs/contract-keys.txt", "r", encoding="utf-8") as f:
+        assert "kb_key_spacing" in f.read().splitlines()
+    assert "kbKeySpacingKey" in dart
+    # Kotlin: consts + lectura tolerante + factor + punto único de escala.
+    kt_dir = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    with open(f"{kt_dir}/KeyboardSupport.kt", "r", encoding="utf-8") as f:
+        support = f.read()
+    assert 'SPACING_PROFILE_COMPACTO = "compacto"' in support
+    assert 'SPACING_PROFILE_NORMAL = "normal"' in support
+    assert 'SPACING_PROFILE_AMPLIO = "amplio"' in support
+    assert "SPACING_FACTOR_COMPACTO = 0.8f" in support
+    assert "SPACING_FACTOR_NORMAL = 1f" in support
+    assert "SPACING_FACTOR_AMPLIO = 1.5f" in support
+    with open(f"{kt_dir}/KeyboardPrefs.kt", "r", encoding="utf-8") as f:
+        prefs = f.read()
+    assert '"flutter.kb_key_spacing"' in prefs
+    assert "keySpacingFactor" in prefs
+    with open(f"{kt_dir}/VoiceKeyboardService.kt", "r", encoding="utf-8") as f:
+        vks = f.read()
+    assert "R.dimen.kb_key_gap" in vks and "R.dimen.kb_key_gap_h" in vks
+    assert "R.dimen.kb_key_gap_v" in vks and "keySpacingFactor" in vks
+    print("  [PASS] Cadena Dart→prefs→Kotlin→gaps verificada punta a punta (estático).")
+
 if __name__ == "__main__":
     print("=" * 60)
     print(" INICIANDO TEST SUITE: ALTURA DE TECLAS DEL TECLADO")
@@ -75,6 +120,7 @@ if __name__ == "__main__":
         test_height_profiles()
         test_settings_screen()
         test_kotlin_keyboard_service()
+        test_key_spacing_chain()
         print("=" * 60)
         print(" RESULTADOS: Todos los tests pasaron exitosamente.")
         print("=" * 60)
