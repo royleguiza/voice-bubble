@@ -205,6 +205,7 @@ class TecladoTab extends StatelessWidget {
           children: [
             _PaddedBlock(
               label: 'Altura del teclado',
+              hint: heightProfileHint,
               child: SegmentedButton<String>(
                 key: const ValueKey('kb-height-profile-selector'),
                 showSelectedIcon: false,
@@ -218,10 +219,10 @@ class TecladoTab extends StatelessWidget {
                 onSelectionChanged: (profiles) =>
                     onSaveHeightProfile(profiles.first),
               ),
-              hint: heightProfileHint,
             ),
             _PaddedBlock(
               label: 'Espaciado de teclas',
+              hint: keySpacingHint,
               child: SegmentedButton<String>(
                 key: const ValueKey('kb-key-spacing-selector'),
                 showSelectedIcon: false,
@@ -234,7 +235,6 @@ class TecladoTab extends StatelessWidget {
                 onSelectionChanged: (spacings) =>
                     onSaveKeySpacing(spacings.first),
               ),
-              hint: keySpacingHint,
             ),
             SwitchListTile(
               contentPadding:
@@ -315,6 +315,9 @@ class TecladoTab extends StatelessWidget {
             _PaddedBlock(
               label: 'Gesto de control',
               tooltip: true,
+              hint: spacebarTrackpadMode == 'ios_2d'
+                  ? 'Mantener presionado >300ms activa navegación 2D libre con borrado de teclas estilo iOS.'
+                  : 'Deslizar sobre la barra mueve el cursor lateralmente estilo Gboard.',
               child: SegmentedButton<String>(
                 key: const ValueKey('kb-spacebar-trackpad-mode-selector'),
                 showSelectedIcon: false,
@@ -329,9 +332,6 @@ class TecladoTab extends StatelessWidget {
                 onSelectionChanged: (s) =>
                     onSaveSpacebarTrackpadMode(s.first),
               ),
-              hint: spacebarTrackpadMode == 'ios_2d'
-                  ? 'Mantener presionado >300ms activa navegación 2D libre con borrado de teclas estilo iOS.'
-                  : 'Deslizar sobre la barra mueve el cursor lateralmente estilo Gboard.',
             ),
           ],
         ),
@@ -343,6 +343,8 @@ class TecladoTab extends StatelessWidget {
           children: [
             _PaddedBlock(
               label: 'Elevación inferior',
+              hint:
+                  'Despega el teclado del borde inferior de la pantalla. Ideal para dispositivos con barra de gestos o biseles delgados.',
               child: SegmentedButton<int>(
                 key: const ValueKey('kb-bottom-elevation-selector'),
                 showSelectedIcon: false,
@@ -357,8 +359,6 @@ class TecladoTab extends StatelessWidget {
                 onSelectionChanged: (dps) =>
                     onSaveBottomElevation(dps.first),
               ),
-              hint:
-                  'Despega el teclado del borde inferior de la pantalla. Ideal para dispositivos con barra de gestos o biseles delgados.',
             ),
             const SizedBox(height: 16),
             _HapticCompositeRow(

@@ -9,7 +9,7 @@ void main() async {
   try {
     final prefs = await SharedPreferences.getInstance();
     appThemeMode.value =
-        themeModeFromStorage(prefs.getString('theme_mode'));
+        themeModeFromStorage(prefs.getString('theme_mode') ?? 'sistema');
   } catch (_) {}
   runApp(const VoiceBubbleApp());
 }

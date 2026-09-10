@@ -60,7 +60,7 @@ class TrackpadTab extends StatelessWidget {
     required this.onSaveTrackpadAutoReturn,
   });
 
-  static const _sensitivityChips = <double, String>{
+  static final _sensitivityChips = <double, String>{
     0.5: '0.5x',
     1.0: '1.0x',
     1.5: '1.5x',
