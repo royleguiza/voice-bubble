@@ -61,11 +61,13 @@ internal const val HEIGHT_FACTOR_MUY_ALTA = 1.30f
 internal const val SPACING_PROFILE_COMPACTO = "compacto"
 internal const val SPACING_PROFILE_NORMAL = "normal"
 internal const val SPACING_PROFILE_AMPLIO = "amplio"
+internal const val SPACING_PROFILE_EXTRA = "extra"
 
 /** Factores aplicados a los gaps horizontales/verticales entre teclas. */
 internal const val SPACING_FACTOR_COMPACTO = 0.8f
 internal const val SPACING_FACTOR_NORMAL = 1f
 internal const val SPACING_FACTOR_AMPLIO = 1.5f
+internal const val SPACING_FACTOR_EXTRA = 2.0f
 
 /** Valores del estilo háptico escritos por Ajustes. */
 internal const val HAPTIC_STYLE_NITIDO = "nitido"

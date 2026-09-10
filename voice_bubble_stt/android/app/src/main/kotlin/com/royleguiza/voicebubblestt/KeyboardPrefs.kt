@@ -149,7 +149,7 @@ class KeyboardPrefs(private val context: Context) {
         keySpacing = try {
             context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .getString("flutter.kb_key_spacing", SPACING_PROFILE_NORMAL)
-                ?.takeIf { it == SPACING_PROFILE_COMPACTO || it == SPACING_PROFILE_NORMAL || it == SPACING_PROFILE_AMPLIO }
+                ?.takeIf { it == SPACING_PROFILE_COMPACTO || it == SPACING_PROFILE_NORMAL || it == SPACING_PROFILE_AMPLIO || it == SPACING_PROFILE_EXTRA }
                 ?: SPACING_PROFILE_NORMAL
         } catch (_: Exception) {
             SPACING_PROFILE_NORMAL
@@ -157,6 +157,7 @@ class KeyboardPrefs(private val context: Context) {
         keySpacingFactor = when (keySpacing) {
             SPACING_PROFILE_COMPACTO -> SPACING_FACTOR_COMPACTO
             SPACING_PROFILE_AMPLIO -> SPACING_FACTOR_AMPLIO
+            SPACING_PROFILE_EXTRA -> SPACING_FACTOR_EXTRA
             else -> SPACING_FACTOR_NORMAL
         }
         hapticStyle = try {
