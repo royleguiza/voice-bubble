@@ -23,6 +23,7 @@ SUITES = [
     ("Burbuja: modal de historial clásica (B1-B7)", "test_bubble_history_suite.py"),
     ("Claves: sección credenciales + llave y relleno en teclado", "test_credentials_suite.py"),
     ("Mayúsculas: ciclo de caso con Shift (MEJ-02)", "test_shift_case_suite.py"),
+    ("Ajustes: rediseño Settings v2 (5 tabs + crystal)", "test_settings_redesign_suite.py"),
 ]
 
 def run_test(name, func):

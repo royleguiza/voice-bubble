@@ -131,6 +131,19 @@ class StorageService {
   Future<void> saveBubbleHistoryEnabled(bool enabled) =>
       _setBool(_bubbleHistoryKey, enabled);
 
+  /// Tema de la app (rediseño v2, pedido del dueño): 'sistema' (default,
+  /// sigue al sistema), 'claro' u 'oscuro'. SOLO Dart: no entra en
+  /// [bridgeKeys] ni en contract-keys.txt (el IME no la lee).
+  static const String themeModeKey = 'theme_mode';
+  static const List<String> themeModes = ['sistema', 'claro', 'oscuro'];
+  static const String defaultThemeMode = 'sistema';
+
+  Future<String> loadThemeMode() =>
+      _getValidatedString(themeModeKey, themeModes, defaultThemeMode);
+
+  Future<void> saveThemeMode(String mode) =>
+      _setValidatedString(themeModeKey, themeModes, mode);
+
   static const String _keyboardTerminalRowKey = 'kb_terminal_row_visible';
 
   /// Fila terminal del teclado (TAB, ESC, CTRL, ALT, flechas).

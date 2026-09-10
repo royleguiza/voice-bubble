@@ -565,5 +565,18 @@ void main() {
       await service.saveFloatingBubbleEnabled(true);
       expect(await service.loadFloatingBubbleEnabled(), isTrue);
     });
+
+    test('theme_mode es solo-Dart con default sistema (rediseño v2)',
+        () async {
+      // El IME jamás lee el tema: no entra al puente ni al contrato.
+      expect(StorageService.bridgeKeys, isNot(contains('theme_mode')));
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.loadThemeMode(), 'sistema');
+      await service.saveThemeMode('oscuro');
+      expect(await service.loadThemeMode(), 'oscuro');
+      await service.saveThemeMode('invalido');
+      expect(await service.loadThemeMode(), 'oscuro');
+    });
   });
 }

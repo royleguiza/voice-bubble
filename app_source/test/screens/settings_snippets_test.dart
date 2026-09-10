@@ -101,7 +101,9 @@ void main() {
       }
       expect(find.text('Snippets'), findsWidgets);
       expect(find.text('5 / 50'), findsOneWidget);
-      expect(find.text('+ Nuevo snippet'), findsOneWidget);
+      expect(find.byKey(const ValueKey('snippets-add-button')),
+          findsOneWidget);
+      expect(find.byIcon(Icons.add_rounded), findsOneWidget);
     });
 
     testWidgets('crear snippet lo muestra en la lista y persiste',

@@ -127,9 +127,10 @@ def main():
     suite.check("Tab Claves en el dock", "tab-credenciales" in tabbar and
                 "'Claves'" in tabbar and "vpn_key" in tabbar,
                 "Dock sin sección propia")
-    suite.check("Settings monta tab 5 perezoso",
-                "CredentialsScreen(storageService: _storageService)" in settings
-                and "_builtTabs.contains(5)" in settings,
+    suite.check("Settings monta tab 4 perezoso (v2)",
+                "CredentialsScreen(" in settings
+                and "storageService: _storageService" in settings
+                and "_builtTabs.contains(4)" in settings,
                 "Tab no cableado")
 
     # --- 5. Teclado nativo: botón y capa ---

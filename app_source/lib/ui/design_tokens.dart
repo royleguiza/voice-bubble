@@ -20,6 +20,9 @@ const Color kRecordingDark = Color(0xFFFF453A);
 const Color kSuccessLight = Color(0xFF248A3D);
 const Color kSuccessDark = Color(0xFF30D158);
 
+/// Warning state color (píldoras de estado intermedias, lab v2).
+const Color kWarning = Color(0xFFFFD60A);
+
 // ---------------------------------------------------------------------------
 // Background Colors
 // ---------------------------------------------------------------------------
@@ -321,3 +324,71 @@ const Duration kAnimMorph = Duration(milliseconds: 350);
 
 /// Scrim sobre el contenido cuando hay sheet abierto.
 const Color kScrimColor = Color(0x4D000000); // black 30%
+
+// ---------------------------------------------------------------------------
+// Settings v2 – Rediseño laboratorio_ui/settings-redesign-v2.html
+// ---------------------------------------------------------------------------
+
+/// Título de página de Ajustes (28/800, tracking -0.5).
+const TextStyle kSettingsPageTitle = TextStyle(
+  fontSize: 28,
+  fontWeight: FontWeight.w800,
+  letterSpacing: -0.5,
+);
+
+/// Título de grupo semántico (12/600, mayúsculas en uso).
+const TextStyle kSettingsGroupTitle = TextStyle(
+  fontSize: 12,
+  fontWeight: FontWeight.w600,
+  letterSpacing: 0.5,
+);
+
+/// Título de fila de ajuste (15/500).
+const TextStyle kSettingRowTitle = TextStyle(
+  fontSize: 15,
+  fontWeight: FontWeight.w500,
+);
+
+/// Altura mínima de fila de ajuste.
+const double kSettingRowMinHeight = 52.0;
+
+/// Pastilla de icono de fila: 30x30, radio 8.
+const double kSettingIconSize = 30.0;
+const double kSettingIconRadius = 8.0;
+const double kSettingIconGlyph = 16.0;
+
+/// Tintes de pastilla de icono (idénticos en claro/oscuro, como el lab).
+const Color kTileBlue = Color(0xFF0A84FF);
+const Color kTileGreen = Color(0xFF30D158);
+const Color kTileOrange = Color(0xFFFF9F0A);
+const Color kTileRed = Color(0xFFFF453A);
+const Color kTilePurple = Color(0xFFBF5AF2);
+const Color kTileGray = Color(0xFF8E8E93);
+const Color kTilePink = Color(0xFFFF375F);
+
+/// Glass "Crystal" (variante elegida por el dueño): blur 10, alta
+/// saturación simulada con fill más vivo, borde especular 1.5px y
+/// highlight diagonal. Par claro/oscuro.
+const double kGlassBlurCrystal = 10.0;
+const Color kGlassFillCrystalLight = Color(0x8CFFFFFF); // white 55%
+const Color kGlassFillCrystalDark = Color(0x66121622); // rgba(18,22,34,.40)
+const Color kGlassBorderCrystalLight = Color(0xF2FFFFFF); // white 95%
+const Color kGlassBorderCrystalDark = Color(0x80FFFFFF); // white 50%
+
+/// Highlight especular diagonal del crystal (135°).
+const Color kGlassHighlightLight = Color(0xD9FFFFFF); // white 85%
+const Color kGlassHighlightDark = Color(0x73FFFFFF); // white 45%
+
+/// Sombra del crystal: profunda con aliento superior (inset simulado con
+/// segunda sombra clara de radio corto).
+const BoxShadow kGlassShadowCrystalLight = BoxShadow(
+  color: Color(0x1F000000), // rgba(0,0,0,.12)
+  blurRadius: 32.0,
+  offset: Offset(0, 12),
+);
+
+const BoxShadow kGlassShadowCrystalDark = BoxShadow(
+  color: Color(0x99000000), // rgba(0,0,0,.60)
+  blurRadius: 40.0,
+  offset: Offset(0, 14),
+);

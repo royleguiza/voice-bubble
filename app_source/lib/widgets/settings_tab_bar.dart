@@ -3,7 +3,7 @@ import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 
 /// Barra de pestañas inferior flotante con efecto Liquid Glass para la
-/// pantalla de Configuración (Frente 1 / C2 Tabs).
+/// pantalla de Configuración (rediseño v2: 5 tabs + glass Crystal).
 class SettingsTabBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
@@ -16,14 +16,9 @@ class SettingsTabBar extends StatelessWidget {
 
   static const _tabs = [
     _TabItemData(
-      key: ValueKey('tab-inicio'),
-      icon: Icons.home_rounded,
-      label: 'Inicio',
-    ),
-    _TabItemData(
-      key: ValueKey('tab-burbuja'),
-      icon: Icons.chat_bubble_outline_rounded,
-      label: 'Burbuja',
+      key: ValueKey('tab-general'),
+      icon: Icons.settings_rounded,
+      label: 'General',
     ),
     _TabItemData(
       key: ValueKey('tab-teclado'),
@@ -55,25 +50,28 @@ class SettingsTabBar extends StatelessWidget {
         mediaQuery.disableAnimations || mediaQuery.accessibleNavigation;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: SafeArea(
         top: false,
         child: GlassContainer(
-          borderRadius: kBorderRadiusCapsule,
-          small: false,
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: Row(
-            children: [
-              for (var i = 0; i < _tabs.length; i++)
-                _buildTabItem(
-                  context: context,
-                  data: _tabs[i],
-                  isSelected: selectedIndex == i,
-                  onTap: () => onTabSelected(i),
-                  isDark: isDark,
-                  reducedMotion: reducedMotion,
-                ),
-            ],
+          borderRadius: 32,
+          crystal: true,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          child: SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                for (var i = 0; i < _tabs.length; i++)
+                  _buildTabItem(
+                    context: context,
+                    data: _tabs[i],
+                    isSelected: selectedIndex == i,
+                    onTap: () => onTabSelected(i),
+                    isDark: isDark,
+                    reducedMotion: reducedMotion,
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -102,9 +100,16 @@ class SettingsTabBar extends StatelessWidget {
           child: InkWell(
             key: data.key,
             onTap: onTap,
-            borderRadius: BorderRadius.circular(kBorderRadiusCapsule),
-            child: Padding(
+            borderRadius: BorderRadius.circular(20),
+            child: AnimatedContainer(
+              duration: duration,
               padding: const EdgeInsets.symmetric(vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? activeColor.withValues(alpha: 0.15)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,

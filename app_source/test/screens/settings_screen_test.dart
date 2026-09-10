@@ -8,6 +8,7 @@ import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
+import 'package:voice_bubble_stt/ui/theme_mode.dart';
 import 'package:voice_bubble_stt/widgets/settings_tab_bar.dart';
 
 void main() {
@@ -107,12 +108,13 @@ void main() {
   }
 
   group('SettingsScreen - API Key & General', () {
-    testWidgets('renders AppBar with "Configuración" title', (tester) async {
+    testWidgets('muestra título General v2 sin AppBar', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      expect(find.text('Configuración'), findsOneWidget);
-      expect(find.byType(AppBar), findsOneWidget);
+      // Título de página + etiqueta del tab (ambos "General").
+      expect(find.text('General'), findsNWidgets(2));
+      expect(find.byType(AppBar), findsNothing);
     });
 
     testWidgets('shows "API Key de Groq" section header', (tester) async {
@@ -228,8 +230,38 @@ void main() {
       );
     });
 
-    testWidgets('TextField accepts text input in edit mode (v1)', (tester) async {
+    testWidgets('el sheet Acerca muestra el selector de tema en Sistema (v2)',
+        (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('about-open-button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('about-theme-selector')),
+          findsOneWidget);
+      expect(find.text('Sistema'), findsOneWidget);
+      expect(find.text('Claro'), findsOneWidget);
+      expect(find.text('Oscuro'), findsOneWidget);
+    });
+
+    testWidgets('elegir Oscuro persiste el tema (v2)', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('about-open-button')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Oscuro'));
+      await tester.pumpAndSettle();
+
+      expect(await storageService.loadThemeMode(), 'oscuro');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('theme_mode'), 'oscuro');
+      appThemeMode.value = ThemeMode.system;
+    });
+
+    testWidgets('TextField accepts text input in edit mode (v1)', (tester) async {      await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('api-cta-button')));
@@ -281,21 +313,21 @@ void main() {
   group('SettingsScreen - Floating Bubble Toggle & Permissions', () {
     Finder bubbleSwitch() => find.descendant(
           of: find.ancestor(
-            of: find.text('Activar burbuja flotante'),
+            of: find.text('Activar burbuja'),
             matching: find.byType(SwitchListTile),
           ),
           matching: find.byType(Switch),
         );
 
-    testWidgets('shows Floating Bubble switch tile (v1 burbuja tab)', (tester) async {
+    testWidgets('shows Floating Bubble switch tile (v2 general tab)', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Burbuja flotante'), findsOneWidget);
-      expect(find.text('Activar burbuja flotante'), findsOneWidget);
+      expect(find.text('BURBUJA FLOTANTE'), findsOneWidget);
+      expect(find.text('Activar burbuja'), findsOneWidget);
       expect(bubbleSwitch(), findsOneWidget);
     });
 
@@ -304,7 +336,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
 
       final historySwitch = find.byKey(const ValueKey('bubble-history-switch'));
@@ -326,7 +358,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
 
       final historySwitch = find.descendant(
@@ -345,7 +377,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
 
       final switchFinder = bubbleSwitch();
@@ -371,7 +403,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
 
       await tester.tap(bubbleSwitch());
@@ -400,7 +432,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
 
       final switchFinder = bubbleSwitch();
@@ -414,15 +446,34 @@ void main() {
       expect(await storageService.loadFloatingBubbleEnabled(), isFalse);
     });
 
-    testWidgets('burbuja tab muestra boton Revisar permiso (v1)', (tester) async {
+    testWidgets('general muestra fila de permiso con chevron (v2)',
+        (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Permiso de superposición'), findsOneWidget);
-      expect(find.text('Revisar'), findsOneWidget);
+      expect(find.text('Permiso superposición'), findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('burbuja-overlay-permission-row')),
+          findsOneWidget);
+    });
+
+    testWidgets('tocar la fila de permiso con permiso concedido avisa (v2)',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+          find.byKey(const ValueKey('burbuja-overlay-permission-row')));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.text('Permiso de superposición concedido'), findsOneWidget);
     });
   });
 
@@ -436,7 +487,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Teclado VoiceBubble'), findsOneWidget);
+      expect(find.text('Teclado'), findsNWidgets(2));
       expect(find.text('Abrir ajustes del sistema'), findsOneWidget);
       expect(find.byIcon(Icons.keyboard), findsOneWidget);
     });
@@ -748,22 +799,22 @@ void main() {
     });
   });
 
-  group('SettingsScreen - Tabs v1 Navigation & State', () {
-    testWidgets('arranca en Inicio por defecto y muestra los 6 tabs',
+  group('SettingsScreen - Tabs v2 Navigation & State', () {
+    testWidgets('arranca en General por defecto y muestra los 5 tabs',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       expect(find.byType(SettingsTabBar), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-inicio')), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-burbuja')), findsOneWidget);
+      expect(find.byKey(const ValueKey('tab-general')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-teclado')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-trackpad')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-snippets')), findsOneWidget);
       expect(find.byKey(const ValueKey('tab-credenciales')), findsOneWidget);
 
       expect(find.text('API Key de Groq'), findsOneWidget);
-      expect(find.text('Modo de grabación'), findsOneWidget);
+      expect(find.text('Toque'), findsOneWidget);
+      expect(find.text('Mantener'), findsOneWidget);
     });
 
     testWidgets('navega a todos los tabs y actualiza el contenido visible',
@@ -771,16 +822,14 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      // Navegar a Burbuja
-      await tester.tap(find.byKey(const ValueKey('tab-burbuja')));
-      await tester.pumpAndSettle();
-      expect(find.text('Burbuja flotante'), findsOneWidget);
-      expect(find.text('Activar burbuja flotante'), findsOneWidget);
+      // General ya visible: burbuja integrada
+      expect(find.text('BURBUJA FLOTANTE'), findsOneWidget);
+      expect(find.text('Activar burbuja'), findsOneWidget);
 
       // Navegar a Teclado
       await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
-      expect(find.text('Teclado VoiceBubble'), findsOneWidget);
+      expect(find.text('Teclado'), findsNWidgets(2));
       expect(find.text('Altura del teclado'), findsOneWidget);
 
       // Navegar a Trackpad
@@ -802,8 +851,8 @@ void main() {
       expect(
           find.byKey(const ValueKey('credenciales-add-nombre')), findsOneWidget);
 
-      // Acerca vive como sheet desde Inicio
-      await tester.tap(find.byKey(const ValueKey('tab-inicio')));
+      // Acerca vive como sheet desde General
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('about-open-button')));
       await tester.pumpAndSettle();
@@ -812,27 +861,26 @@ void main() {
       await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
 
-      // Regresar a Inicio
+      // Regresar a General
       expect(find.text('API Key de Groq'), findsOneWidget);
     });
 
-    testWidgets('Inicio tiene accesos directos a Burbuja y Teclado (v1)',
+    testWidgets('General integra burbuja y acerca sin accesos (v2)',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const ValueKey('inicio-go-burbuja')), findsOneWidget);
-      expect(find.byKey(const ValueKey('inicio-go-teclado')), findsOneWidget);
+      expect(find.byKey(const ValueKey('bubble-history-switch')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('about-open-button')), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('inicio-go-teclado')));
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pumpAndSettle();
-      expect(find.text('Teclado VoiceBubble'), findsOneWidget);
+      expect(find.text('Teclado'), findsNWidgets(2));
 
-      await tester.tap(find.byKey(const ValueKey('tab-inicio')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('inicio-go-burbuja')));
-      await tester.pumpAndSettle();
-      expect(find.text('Activar burbuja flotante'), findsOneWidget);
+      expect(find.text('Activar burbuja'), findsOneWidget);
     });
 
     testWidgets('persiste el estado de los inputs al cambiar de pestaña y volver',
@@ -854,7 +902,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Volver a Inicio
-      await tester.tap(find.byKey(const ValueKey('tab-inicio')));
+      await tester.tap(find.byKey(const ValueKey('tab-general')));
       await tester.pumpAndSettle();
 
       expect(find.text('gsk_temporal_test'), findsOneWidget);
@@ -882,7 +930,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('tab-teclado')));
       await tester.pump();
 
-      expect(find.text('Teclado VoiceBubble'), findsOneWidget);
+      expect(find.text('Teclado'), findsNWidgets(2));
     });
   });
 

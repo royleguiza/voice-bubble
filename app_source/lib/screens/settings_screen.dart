@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
 import 'credentials_screen.dart';
-import 'settings/burbuja_tab.dart';
-import 'settings/inicio_tab.dart';
+import 'settings/general_tab.dart';
 import 'settings/snippets_tab.dart';
 import 'settings/teclado_tab.dart';
 import 'settings/trackpad_tab.dart';
 import '../services/storage_service.dart';
+import '../ui/theme_mode.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/floating_trackpad_service.dart';
 import '../services/keyboard_service.dart';
@@ -79,6 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _trackpadHaptic = StorageService.defaultTrackpadHaptic;
   String _trackpadPointerStyle = StorageService.defaultTrackpadPointerStyle;
   int _trackpadAutoReturn = StorageService.defaultTrackpadAutoReturn;
+  String _themeMode = StorageService.defaultThemeMode;
 
   /// Tabs ya visitados: la pila es perezosa (solo construye lo visitado)
   /// pero conserva el estado (lo visitado nunca se desmonta).
@@ -152,6 +153,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final trackpadAutoReturn = await _storageService.getTrackpadAutoReturn();
     final bubbleHistory = await _storageService.loadBubbleHistoryEnabled();
     final clipboardImages = await _storageService.getClipboardImagesEnabled();
+    final themeMode = await _storageService.loadThemeMode();
     // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
     if (apiKey.isNotEmpty) {
       try {
@@ -194,6 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _trackpadAutoReturn = trackpadAutoReturn;
       _showBubbleHistory = bubbleHistory;
       _clipboardImagesEnabled = clipboardImages;
+      _themeMode = themeMode;
     });
   }
 
@@ -437,80 +440,125 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _keyboardService.showInputMethodPicker();
   }
 
+  Future<void> _saveThemeMode(String mode) async {
+    await _storageService.saveThemeMode(mode);
+    appThemeMode.value = themeModeFromStorage(mode);
+    if (mounted) setState(() => _themeMode = mode);
+  }
+
   /// Acerca de fuera del dock (prototipo v1): sheet informativo invocado
-  /// desde Inicio. Preserva textos de contrato (versión + descripción).
+  /// desde General. Preserva textos de contrato (versión + descripción).
   Future<void> _showAboutSheet() async {
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+      builder: (sheetContext) {
+        var sheetThemeMode = _themeMode;
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.mic_rounded,
-                    color: Theme.of(sheetContext).colorScheme.primary,
-                    size: 28,
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.mic_rounded,
+                        color: Theme.of(modalContext).colorScheme.primary,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'VoiceBubble STT v1.0.0',
+                          style:
+                              Theme.of(modalContext).textTheme.titleSmall,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        tooltip: 'Cerrar',
+                        onPressed: () =>
+                            Navigator.of(modalContext).pop(),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'VoiceBubble STT v1.0.0',
-                      style: Theme.of(sheetContext).textTheme.titleSmall,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Transcripción de voz a texto con Groq Whisper.',
+                    style: Theme.of(modalContext)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(
+                          color: Theme.of(modalContext)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Burbuja flotante + teclado del sistema con dictado. '
+                    'Historial de 20 transcripciones. Sin analytics, sin telemetría. '
+                    'El audio solo viaja a internet cuando tú inicias una transcripción.',
+                    style: Theme.of(modalContext).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'El teclado jamás registra ni guarda lo que escribes. '
+                    'Sin dictado ni snippets en campos de contraseña.',
+                    style: Theme.of(modalContext)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(
+                          color: Theme.of(modalContext)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Apariencia',
+                    style:
+                        Theme.of(modalContext).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<String>(
+                    key: const ValueKey('about-theme-selector'),
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(
+                          value: 'sistema', label: Text('Sistema')),
+                      ButtonSegment(
+                          value: 'claro', label: Text('Claro')),
+                      ButtonSegment(
+                          value: 'oscuro', label: Text('Oscuro')),
+                    ],
+                    selected: {sheetThemeMode},
+                    onSelectionChanged: (modes) {
+                      setModalState(
+                          () => sheetThemeMode = modes.first);
+                      _saveThemeMode(modes.first);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () =>
+                          Navigator.of(modalContext).pop(),
+                      child: const Text('Entendido'),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded),
-                    tooltip: 'Cerrar',
-                    onPressed: () => Navigator.of(sheetContext).pop(),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Transcripción de voz a texto con Groq Whisper.',
-                style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(sheetContext)
-                          .colorScheme
-                          .onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Burbuja flotante + teclado del sistema con dictado. '
-                'Historial de 20 transcripciones. Sin analytics, sin telemetría. '
-                'El audio solo viaja a internet cuando tú inicias una transcripción.',
-                style: Theme.of(sheetContext).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'El teclado jamás registra ni guarda lo que escribes. '
-                'Sin dictado ni snippets en campos de contraseña.',
-                style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(sheetContext)
-                          .colorScheme
-                          .onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  child: const Text('Entendido'),
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -756,59 +804,60 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configuración'),
-        centerTitle: true,
-      ),
-      body: Stack(
-        children: [
-          // Construcción perezosa por tab con estado preservado: solo los
-          // tabs visitados se construyen (antes IndexedStack montaba todo
-          // con sus ~10 lecturas iniciales), y lo visitado nunca se
-          // desmonta, así que inputs y scrolls sobreviven al cambio de tab.
-          // Estructura v1 laboratorio-ui: Inicio / Burbuja / Teclado /
-          // Trackpad / Snippets / Claves. Acerca vive como sheet desde Inicio.
-          IndexedStack(
-            index: _currentTab,
-            children: [
-              _builtTabs.contains(0)
-                  ? _buildInicioTab(context)
-                  : const SizedBox.shrink(),
-              _builtTabs.contains(1)
-                  ? _buildBurbujaTab(context)
-                  : const SizedBox.shrink(),
-              _builtTabs.contains(2)
-                  ? _buildKeyboardTab(context)
-                  : const SizedBox.shrink(),
-              _builtTabs.contains(3)
-                  ? _buildTrackpadTab(context)
-                  : const SizedBox.shrink(),
-              _builtTabs.contains(4)
-                  ? _buildSnippetsTab(context)
-                  : const SizedBox.shrink(),
-              _builtTabs.contains(5)
-                  ? CredentialsScreen(storageService: _storageService)
-                  : const SizedBox.shrink(),
-            ],
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SettingsTabBar(
-              selectedIndex: _currentTab,
-              onTabSelected: _selectTab,
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: Stack(
+          children: [
+            // Construcción perezosa por tab con estado preservado: solo los
+            // tabs visitados se construyen (antes IndexedStack montaba todo
+            // con sus ~10 lecturas iniciales), y lo visitado nunca se
+            // desmonta, así que inputs y scrolls sobreviven al cambio de tab.
+            // Estructura v2 (laboratorio_ui/settings-redesign-v2.html):
+            // General (Inicio+Burbuja) / Teclado / Trackpad / Snippets /
+            // Claves. Acerca vive como sheet desde General.
+            IndexedStack(
+              index: _currentTab,
+              children: [
+                _builtTabs.contains(0)
+                    ? _buildGeneralTab(context)
+                    : const SizedBox.shrink(),
+                _builtTabs.contains(1)
+                    ? _buildKeyboardTab(context)
+                    : const SizedBox.shrink(),
+                _builtTabs.contains(2)
+                    ? _buildTrackpadTab(context)
+                    : const SizedBox.shrink(),
+                _builtTabs.contains(3)
+                    ? _buildSnippetsTab(context)
+                    : const SizedBox.shrink(),
+                _builtTabs.contains(4)
+                    ? CredentialsScreen(
+                        storageService: _storageService,
+                        onSelectTab: _selectTab,
+                      )
+                    : const SizedBox.shrink(),
+              ],
             ),
-          ),
-        ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SettingsTabBar(
+                selectedIndex: _currentTab,
+                onTabSelected: _selectTab,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  /// Inicio v1 (laboratorio-ui): API Key como botón-estado + grabación +
-  /// modelo + accesos a Burbuja/Teclado + Acerca como sheet. Sin laberinto.
-  Widget _buildInicioTab(BuildContext context) {
-    return InicioTab(
+  /// General v2 (rediseño): API Key + grabación + modelo + burbuja +
+  /// acerca. Fusiona Inicio y Burbuja en una superficie agrupada.
+  Widget _buildGeneralTab(BuildContext context) {
+    return GeneralTab(
       hasApiKey: _hasApiKey,
       isEditingApiKey: _isEditingApiKey,
       apiKeyController: _apiKeyController,
@@ -827,21 +876,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       recordMode: _recordMode,
       onSaveRecordMode: _saveRecordMode,
       isBubbleEnabled: _isBubbleEnabled,
-      onSelectTab: _selectTab,
-      onShowAboutSheet: _showAboutSheet,
-    );
-  }
-
-  /// Burbuja v1: sección independiente (antes mezclada en General).
-  /// Preserva switches + diálogo de permiso de _toggleBubble.
-  /// SPK-06 módulo 2: delega a BurbujaTab sin cambiar conducta.
-  Widget _buildBurbujaTab(BuildContext context) {
-    return BurbujaTab(
-      isBubbleEnabled: _isBubbleEnabled,
       onToggleBubble: _toggleBubble,
       showBubbleHistory: _showBubbleHistory,
       onToggleBubbleHistory: _toggleBubbleHistory,
       onReviewOverlayPermission: _reviewOverlayPermission,
+      onShowAboutSheet: _showAboutSheet,
     );
   }
 
@@ -918,8 +957,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     return SnippetsTab(storageService: _storageService);
   }
 
-  // Acerca v1: ya no es tab (prototipo laboratorio-ui). Vive como sheet
-  // desde Inicio vía _showAboutSheet. Se conserva el contrato de textos
-  // (versión + descripción) para tests y usuario.
+  // Acerca v2: ya no es tab. Vive como sheet desde General vía
+  // _showAboutSheet (incluye el selector de tema Sistema/Claro/Oscuro).
+  // Se conserva el contrato de textos (versión + descripción).
 }
 

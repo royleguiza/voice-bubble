@@ -4,6 +4,7 @@ import '../../models/snippet.dart';
 import '../../services/storage_service.dart';
 import '../../ui/design_tokens.dart';
 import '../../ui/glass_container.dart';
+import '../../widgets/settings_v2.dart';
 
 /// Tab Snippets de Ajustes (SPK-06, módulo 1 de N): CRUD de fragmentos
 /// con su propio State, extraído de SettingsScreen sin cambiar conducta.
@@ -23,6 +24,7 @@ class SnippetsTab extends StatefulWidget {
 
 class _SnippetsTabState extends State<SnippetsTab> {
   List<Snippet> _snippets = [];
+  String _query = '';
 
   @override
   void initState() {
@@ -122,126 +124,197 @@ class _SnippetsTabState extends State<SnippetsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final q = _query.trim().toLowerCase();
+    final visible = q.isEmpty
+        ? _snippets
+        : _snippets
+            .where((s) =>
+                s.nombre.toLowerCase().contains(q) ||
+                s.contenido.toLowerCase().contains(q))
+            .toList();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
       children: [
+        const SettingsPageTitle('Snippets'),
         Row(
           children: [
-            Expanded(
-              child: Text(
-                'Snippets',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+            StatusPill(
+              dotColor: isDark ? kAccentDark : kAccentLight,
+              label: '${_snippets.length} / ${StorageService.maxSnippets}',
             ),
-            Text(
-              '${_snippets.length} / ${StorageService.maxSnippets}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+            const Spacer(),
+            IconButton.filled(
+              key: const ValueKey('snippets-add-button'),
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Nuevo snippet',
+              onPressed: () => _openSnippetSheet(),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 12),
+        TextField(
+          key: const ValueKey('snippets-search-field'),
+          decoration: InputDecoration(
+            hintText: 'Buscar snippets...',
+            prefixIcon: const Icon(Icons.search_rounded),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+          ),
+          onChanged: (value) {
+            if (mounted) setState(() => _query = value);
+          },
+        ),
+        const SizedBox(height: 12),
         Text(
           'Fragmentos que se insertan con un toque desde el teclado.',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+          style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            key: const ValueKey('snippets-add-button'),
-            icon: const Icon(Icons.add),
-            label: const Text('+ Nuevo snippet'),
-            onPressed: () => _openSnippetSheet(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (_snippets.isEmpty)
+        if (visible.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              'Todavía no hay snippets. Toca + para crear el primero.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+              q.isEmpty
+                  ? 'Todavía no hay snippets. Toca + para crear el primero.'
+                  : 'Sin resultados para "$_query".',
+              style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
             ),
           )
         else
-          for (var i = 0; i < _snippets.length; i++)
-            _buildSnippetTile(_snippets[i], i),
+          for (var i = 0; i < visible.length; i++)
+            _buildSnippetTile(visible[i], _snippets.indexOf(visible[i])),
       ],
     );
   }
 
+  /// Tarjeta con muesca (lab v2): título sobre el borde + acciones +
+  /// contenido + pie (#orden y largo). El Card exterior preserva el
+  /// contrato de tests (ancestro Card del nombre).
   Widget _buildSnippetTile(Snippet snippet, int index) {
+    final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 4, 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    snippet.nombre,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    snippet.contenido,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+      margin: const EdgeInsets.only(top: 8, bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 20, 14, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  snippet.contenido,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Divider(
+                  height: 1,
+                  thickness: 0.5,
+                  color: theme.dividerColor,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '#${index + 1}',
+                        style: kTextMeta.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
+                      ),
+                      Text(
+                        '${snippet.contenido.length} / ${StorageService.maxSnippetLength}',
+                        style: kTextMeta.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: -13,
+            left: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              decoration: BoxDecoration(
+                color: theme.cardTheme.color ?? theme.cardColor,
+                border: Border.all(color: theme.dividerColor),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                snippet.nombre,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(fontSize: 12.5),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -13,
+            right: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: theme.cardTheme.color ?? theme.cardColor,
+                border: Border.all(color: theme.dividerColor),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    key: ValueKey('snippet-up-${snippet.id}'),
+                    icon: const Icon(Icons.arrow_upward_rounded, size: 18),
+                    tooltip: 'Subir',
+                    visualDensity: VisualDensity.compact,
+                    onPressed:
+                        index > 0 ? () => _moveSnippet(snippet, -1) : null,
+                  ),
+                  IconButton(
+                    key: ValueKey('snippet-down-${snippet.id}'),
+                    icon: const Icon(Icons.arrow_downward_rounded, size: 18),
+                    tooltip: 'Bajar',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: index < _snippets.length - 1
+                        ? () => _moveSnippet(snippet, 1)
+                        : null,
+                  ),
+                  IconButton(
+                    key: ValueKey('snippet-edit-${snippet.id}'),
+                    icon: const Icon(Icons.edit_rounded, size: 18),
+                    tooltip: 'Editar',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _openSnippetSheet(existing: snippet),
+                  ),
+                  IconButton(
+                    key: ValueKey('snippet-delete-${snippet.id}'),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    tooltip: 'Eliminar',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _confirmDeleteSnippet(snippet),
                   ),
                 ],
               ),
             ),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  key: ValueKey('snippet-up-${snippet.id}'),
-                  icon: const Icon(Icons.arrow_upward_rounded),
-                  tooltip: 'Subir',
-                  visualDensity: VisualDensity.compact,
-                  onPressed:
-                      index > 0 ? () => _moveSnippet(snippet, -1) : null,
-                ),
-                IconButton(
-                  key: ValueKey('snippet-down-${snippet.id}'),
-                  icon: const Icon(Icons.arrow_downward_rounded),
-                  tooltip: 'Bajar',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: index < _snippets.length - 1
-                      ? () => _moveSnippet(snippet, 1)
-                      : null,
-                ),
-              ],
-            ),
-            IconButton(
-              key: ValueKey('snippet-edit-${snippet.id}'),
-              icon: const Icon(Icons.edit_rounded),
-              tooltip: 'Editar',
-              onPressed: () => _openSnippetSheet(existing: snippet),
-            ),
-            IconButton(
-              key: ValueKey('snippet-delete-${snippet.id}'),
-              icon: const Icon(Icons.delete_outline_rounded),
-              tooltip: 'Eliminar',
-              onPressed: () => _confirmDeleteSnippet(snippet),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -354,12 +427,23 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
           EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: GlassContainer(
         borderRadius: kBorderRadiusSheet,
-        small: false,
-        padding: const EdgeInsets.all(16),
+        crystal: true,
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).dividerColor,
+                  borderRadius: BorderRadius.circular(100),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(
               _isEditing ? 'Editar snippet' : 'Nuevo snippet',
               style: kTextTitle.copyWith(

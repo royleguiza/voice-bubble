@@ -118,9 +118,9 @@ check("Default ON del historial de burbuja",
       and ("?? true" in dart_storage
            or "_getBool(_bubbleHistoryKey, true)" in dart_storage))
 dart_settings = read("app_source/lib/screens/settings_screen.dart")
-dart_burbuja = read("app_source/lib/screens/settings/burbuja_tab.dart")
+dart_general = read("app_source/lib/screens/settings/general_tab.dart")
 check("Settings con switch bubble-history-switch",
-      ("bubble-history-switch" in dart_settings or "bubble-history-switch" in dart_burbuja) and ("Historial en la burbuja" in dart_settings or "Historial en la burbuja" in dart_burbuja))
+      ("bubble-history-switch" in dart_settings or "bubble-history-switch" in dart_general) and ("Historial en la burbuja" in dart_settings or "Historial en la burbuja" in dart_general))
 check("Toggle persiste via saveBubbleHistoryEnabled",
       "_toggleBubbleHistory" in dart_settings)
 contract = read("docs/contract-keys.txt").splitlines()

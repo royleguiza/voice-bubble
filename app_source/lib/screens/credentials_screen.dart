@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/credential.dart';
 import '../services/storage_service.dart';
+import '../ui/design_tokens.dart';
+import '../widgets/settings_v2.dart';
 
 /// Tab "Claves": sección propia de credenciales para relleno desde el
 /// teclado. No mezclada con el resto de opciones.
@@ -12,9 +14,14 @@ import '../services/storage_service.dart';
 class CredentialsScreen extends StatefulWidget {
   final StorageService storageService;
 
+  /// Destino del enlace "Banco de Snippets" (índice del tab Snippets).
+  /// Null = sin navegación (uso aislado en tests).
+  final ValueChanged<int>? onSelectTab;
+
   const CredentialsScreen({
     super.key,
     required this.storageService,
+    this.onSelectTab,
   });
 
   @override
@@ -88,90 +95,132 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
       children: [
-        Row(
+        const SettingsPageTitle('Claves y Datos'),
+        const SettingsGroupTitle('Acceso a Snippets'),
+        SettingsCard(
           children: [
-            Expanded(
-              child: Text(
-                'Claves',
-                style: theme.textTheme.titleMedium,
-              ),
-            ),
-            Text(
-              '${_credentials.length} / ${StorageService.maxCredentials}',
-              style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+            SettingChevronRow(
+              icon: Icons.segment_rounded,
+              iconColor: isDark ? kAccentDark : kAccentLight,
+              title: 'Banco de Snippets',
+              onTap: () => widget.onSelectTab?.call(3),
             ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Se rellenan con un toque desde la llave del teclado.',
-          style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Experimental: superficie congelada (SPK-09), sin cambios fuera de fixes.',
-          key: const ValueKey('experimental-banner-claves'),
-          style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          key: const ValueKey('credenciales-add-nombre'),
-          controller: _nameController,
-          decoration: const InputDecoration(
-            labelText: 'Nombre (ej. Banco)',
-            border: OutlineInputBorder(),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: Text(
+            'Gestionar plantillas de texto para el teclado.',
+            style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
           ),
+        ),
+        const SettingsGroupTitle('Claves y Credenciales'),
+        SettingsCard(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  const SettingIconTile(
+                    icon: Icons.lock_rounded,
+                    background: kTileRed,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Credenciales (${_credentials.length} / ${StorageService.maxCredentials})',
+                      style: kSettingRowTitle.copyWith(
+                        color: isDark
+                            ? kLabelPrimaryDark
+                            : kLabelPrimaryLight,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Se rellenan con un toque desde la llave del teclado.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Experimental: superficie congelada (SPK-09), sin cambios fuera de fixes.',
+                    key: const ValueKey('experimental-banner-claves'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const ValueKey('credenciales-add-nombre'),
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre (ej. Banco)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const ValueKey('credenciales-add-usuario'),
+                    controller: _userController,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Usuario',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const ValueKey('credenciales-add-password'),
+                    controller: _passController,
+                    obscureText: true,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Contraseña (solo escritura)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      key: const ValueKey('credenciales-add-button'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Guardar'),
+                      onPressed: _save,
+                    ),
+                  ),
+                  SwitchListTile(
+                    key: const ValueKey('credenciales-show-user'),
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Mostrar usuario junto al nombre'),
+                    value: _showUser,
+                    onChanged: _toggleShowUser,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
-        TextField(
-          key: const ValueKey('credenciales-add-usuario'),
-          controller: _userController,
-          autocorrect: false,
-          decoration: const InputDecoration(
-            labelText: 'Usuario',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          key: const ValueKey('credenciales-add-password'),
-          controller: _passController,
-          obscureText: true,
-          autocorrect: false,
-          enableSuggestions: false,
-          decoration: const InputDecoration(
-            labelText: 'Contraseña (solo escritura)',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            key: const ValueKey('credenciales-add-button'),
-            icon: const Icon(Icons.add),
-            label: const Text('Guardar'),
-            onPressed: _save,
-          ),
-        ),
-        SwitchListTile(
-          key: const ValueKey('credenciales-show-user'),
-          title: const Text('Mostrar usuario junto al nombre'),
-          value: _showUser,
-          onChanged: _toggleShowUser,
-        ),
         if (_credentials.isEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 4, left: 16),
             child: Text(
               'Todavía no hay claves. Guarda la primera arriba.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -181,26 +230,50 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
           )
         else
           for (final cred in _credentials)
-            Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Text(
-                    cred.nombre.isEmpty
-                        ? '•'
-                        : cred.nombre[0].toUpperCase(),
-                  ),
-                ),
-                title: Text(cred.nombre),
-                subtitle: _showUser ? Text(cred.usuario) : null,
-                trailing: IconButton(
-                  key: ValueKey('credenciales-delete-${cred.id}'),
-                  icon: const Icon(Icons.delete_outline),
-                  tooltip: 'Borrar',
-                  onPressed: () => _delete(cred.id),
-                ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _CredentialTile(
+                cred: cred,
+                showUser: _showUser,
+                onDelete: () => _delete(cred.id),
               ),
             ),
       ],
+    );
+  }
+}
+
+/// Fila de credencial con avatar + borrar (extraída para el restyle v2).
+class _CredentialTile extends StatelessWidget {
+  final VbCredential cred;
+  final bool showUser;
+  final VoidCallback onDelete;
+
+  const _CredentialTile({
+    required this.cred,
+    required this.showUser,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        leading: CircleAvatar(
+          child: Text(
+            cred.nombre.isEmpty ? '•' : cred.nombre[0].toUpperCase(),
+          ),
+        ),
+        title: Text(cred.nombre),
+        subtitle: showUser ? Text(cred.usuario) : null,
+        trailing: IconButton(
+          key: ValueKey('credenciales-delete-${cred.id}'),
+          icon: const Icon(Icons.delete_outline),
+          tooltip: 'Borrar',
+          onPressed: onDelete,
+        ),
+      ),
     );
   }
 }
