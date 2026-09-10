@@ -62,6 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _heightProfile = StorageService.defaultHeightProfile;
   String _keySpacing = StorageService.defaultKeySpacing;
   bool _hapticsEnabled = true;
+  String _hapticStyle = StorageService.defaultHapticStyle;
   int _bottomElevationDp = StorageService.defaultBottomElevationDp;
   bool _invertToolbar = false;
   String _spacebarAlignment = StorageService.defaultSpacebarAlignment;
@@ -130,6 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _storageService.getHeightProfile(),
       _storageService.getKeySpacing(),
       _storageService.getHapticsEnabled(),
+      _storageService.getHapticStyle(),
     ).wait;
     final bottomElevation = await _storageService.getBottomElevationDp();
     final invertToolbar = await _storageService.getInvertToolbar();
@@ -172,6 +174,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _heightProfile = results.$7;
       _keySpacing = results.$8;
       _hapticsEnabled = results.$9;
+      _hapticStyle = results.$10;
       _bottomElevationDp = bottomElevation;
       _invertToolbar = invertToolbar;
       _spacebarAlignment = spacebarAlign;
@@ -291,6 +294,22 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleHaptics(bool enabled) async {
     await _storageService.setHapticsEnabled(enabled);
     if (mounted) setState(() => _hapticsEnabled = enabled);
+  }
+
+  Future<void> _saveHapticStyle(String style) async {
+    await _storageService.setHapticStyle(style);
+    if (mounted) setState(() => _hapticStyle = style);
+  }
+
+  String get _hapticStyleHint {
+    switch (_hapticStyle) {
+      case 'nitido':
+        return 'Clic seco y corto, como botón físico.';
+      case 'suave':
+        return 'Toque leve y discreto.';
+      default:
+        return 'Vibración marcada al pulsar.';
+    }
   }
 
   Future<void> _toggleTrackpadEnabled(bool value) async {
@@ -854,6 +873,9 @@ class _SettingsScreenState extends State<SettingsScreen>
       onSaveBottomElevation: _saveBottomElevation,
       hapticsEnabled: _hapticsEnabled,
       onToggleHaptics: _toggleHaptics,
+      hapticStyle: _hapticStyle,
+      onSaveHapticStyle: _saveHapticStyle,
+      hapticStyleHint: _hapticStyleHint,
       isKeyboardEnabled: _isKeyboardEnabled,
       isKeyboardSelected: _isKeyboardSelected,
       onOpenKeyboardSettings: _openKeyboardSettings,

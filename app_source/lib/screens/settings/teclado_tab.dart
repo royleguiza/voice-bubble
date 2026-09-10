@@ -32,6 +32,9 @@ class TecladoTab extends StatelessWidget {
   final ValueChanged<int> onSaveBottomElevation;
   final bool hapticsEnabled;
   final ValueChanged<bool> onToggleHaptics;
+  final String hapticStyle;
+  final ValueChanged<String> onSaveHapticStyle;
+  final String hapticStyleHint;
   final bool isKeyboardEnabled;
   final bool isKeyboardSelected;
   final VoidCallback onOpenKeyboardSettings;
@@ -66,6 +69,9 @@ class TecladoTab extends StatelessWidget {
     required this.onSaveBottomElevation,
     required this.hapticsEnabled,
     required this.onToggleHaptics,
+    required this.hapticStyle,
+    required this.onSaveHapticStyle,
+    required this.hapticStyleHint,
     required this.isKeyboardEnabled,
     required this.isKeyboardSelected,
     required this.onOpenKeyboardSettings,
@@ -316,6 +322,32 @@ class TecladoTab extends StatelessWidget {
                   ),
                   value: hapticsEnabled,
                   onChanged: onToggleHaptics,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Estilo háptico',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  key: const ValueKey('kb-haptic-style-selector'),
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 'nitido', label: Text('Nítido')),
+                    ButtonSegment(value: 'firme', label: Text('Firme')),
+                    ButtonSegment(value: 'suave', label: Text('Suave')),
+                  ],
+                  selected: {hapticStyle},
+                  onSelectionChanged: (styles) =>
+                      onSaveHapticStyle(styles.first),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  hapticStyleHint,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
                 const SizedBox(height: 12),
                 if (!isKeyboardEnabled) ...[

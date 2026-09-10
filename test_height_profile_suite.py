@@ -112,6 +112,37 @@ def test_key_spacing_chain():
     assert "R.dimen.kb_key_gap_v" in vks and "keySpacingFactor" in vks
     print("  [PASS] Cadena Dart→prefs→Kotlin→gaps verificada punta a punta (estático).")
 
+def test_haptic_style_chain():
+    print("  [TEST] Verificando cadena de estilo háptico...")
+    with open("app_source/lib/services/storage_service.dart", "r", encoding="utf-8") as f:
+        dart = f.read()
+    assert "'nitido'" in dart and "'firme'" in dart and "'suave'" in dart
+    assert "defaultHapticStyle = 'nitido'" in dart
+    assert "getHapticStyle()" in dart and "setHapticStyle(" in dart
+    with open("app_source/lib/screens/settings/teclado_tab.dart", "r", encoding="utf-8") as f:
+        tab = f.read()
+    assert "kb-haptic-style-selector" in tab
+    assert "ButtonSegment(value: 'nitido'" in tab
+    assert "ButtonSegment(value: 'firme'" in tab
+    assert "ButtonSegment(value: 'suave'" in tab
+    assert "onSaveHapticStyle" in tab
+    with open("docs/contract-keys.txt", "r", encoding="utf-8") as f:
+        assert "kb_haptic_style" in f.read().splitlines()
+    kt_dir = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    with open(f"{kt_dir}/KeyboardSupport.kt", "r", encoding="utf-8") as f:
+        support = f.read()
+    assert 'HAPTIC_STYLE_NITIDO = "nitido"' in support
+    assert 'HAPTIC_STYLE_FIRME = "firme"' in support
+    assert 'HAPTIC_STYLE_SUAVE = "suave"' in support
+    with open(f"{kt_dir}/KeyboardPrefs.kt", "r", encoding="utf-8") as f:
+        prefs = f.read()
+    assert '"flutter.kb_haptic_style"' in prefs
+    with open(f"{kt_dir}/VoiceKeyboardService.kt", "r", encoding="utf-8") as f:
+        vks = f.read()
+    assert "PRIMITIVE_CLICK" in vks and "createOneShot" in vks
+    assert "areAllPrimitivesSupported" in vks
+    print("  [PASS] Estilo háptico: setting→pref→primitivas/fallback verificado.")
+
 if __name__ == "__main__":
     print("=" * 60)
     print(" INICIANDO TEST SUITE: ALTURA DE TECLAS DEL TECLADO")
@@ -121,6 +152,7 @@ if __name__ == "__main__":
         test_settings_screen()
         test_kotlin_keyboard_service()
         test_key_spacing_chain()
+        test_haptic_style_chain()
         print("=" * 60)
         print(" RESULTADOS: Todos los tests pasaron exitosamente.")
         print("=" * 60)

@@ -83,6 +83,12 @@ void main() {
   Set<String> selectedKeySpacing(WidgetTester tester) =>
       tester.widget<SegmentedButton<String>>(spacingSelector()).selected;
 
+  Finder hapticStyleSelector() =>
+      find.byKey(const ValueKey('kb-haptic-style-selector'));
+
+  Set<String> selectedHapticStyle(WidgetTester tester) =>
+      tester.widget<SegmentedButton<String>>(hapticStyleSelector()).selected;
+
   Set<String> selectedHeightProfile(WidgetTester tester) =>
       tester.widget<SegmentedButton<String>>(heightSelector()).selected;
 
@@ -240,6 +246,39 @@ void main() {
       expect(await StorageService().getKeySpacing(), 'amplio');
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('kb_key_spacing'), 'amplio');
+    });
+  });
+
+  group('SettingsScreen - estilo háptico de teclas', () {
+    testWidgets('muestra Nítido seleccionado por defecto', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Estilo háptico'), findsOneWidget);
+      expect(find.text('Nítido'), findsOneWidget);
+      expect(find.text('Firme'), findsOneWidget);
+      expect(find.text('Suave'), findsOneWidget);
+      expect(selectedHapticStyle(tester), {'nitido'});
+    });
+
+    testWidgets('elegir Firme persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Firme'));
+      await tester.pumpAndSettle();
+
+      expect(selectedHapticStyle(tester), {'firme'});
+      expect(await StorageService().getHapticStyle(), 'firme');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_haptic_style'), 'firme');
     });
   });
 

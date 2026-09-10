@@ -67,6 +67,11 @@ internal const val SPACING_FACTOR_COMPACTO = 0.8f
 internal const val SPACING_FACTOR_NORMAL = 1f
 internal const val SPACING_FACTOR_AMPLIO = 1.5f
 
+/** Valores del estilo háptico escritos por Ajustes. */
+internal const val HAPTIC_STYLE_NITIDO = "nitido"
+internal const val HAPTIC_STYLE_FIRME = "firme"
+internal const val HAPTIC_STYLE_SUAVE = "suave"
+
 /** Handler principal compartido: runOnMain no aloja uno por llamada. */
 private val sharedMainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
 

@@ -359,6 +359,42 @@ void main() {
     });
   });
 
+  group('StorageService - estilo háptico de teclas', () {
+    test('default nitido cuando no hay clave guardada', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.getHapticStyle(), 'nitido');
+    });
+
+    test('persiste firme y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setHapticStyle('firme');
+      expect(await service.getHapticStyle(), 'firme');
+    });
+
+    test('rechaza valor invalido y conserva el anterior', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setHapticStyle('suave');
+      await service.setHapticStyle('martillo');
+      expect(await service.getHapticStyle(), 'suave');
+    });
+
+    test('usa la clave compartida con el teclado nativo', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setHapticStyle('suave');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_haptic_style'), 'suave');
+    });
+
+    test('la clave pertenece al puente verificado por el CI', () {
+      expect(StorageService.bridgeKeys,
+          contains(StorageService.kbHapticStyleKey));
+    });
+  });
+
   group('StorageService - bóveda STT sin espejo plano (SPK-02)', () {
     test('saveSttMirror guarda en bóveda y publica presencia/config', () async {
       FlutterSecureStorage.setMockInitialValues({});
@@ -481,6 +517,7 @@ void main() {
       'kb_bottom_elevation_dp',
       'kb_clipboard_images_enabled',
       'kb_code_key_visible',
+      'kb_haptic_style',
       'kb_haptics_enabled',
       'kb_height_profile',
       'kb_invert_toolbar',
@@ -513,8 +550,8 @@ void main() {
       'voice_snippets_v1',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (34 claves)', () {
-      expect(StorageService.bridgeKeys.length, 34);
+    test('bridgeKeys cubre exactamente el contrato (35 claves)', () {
+      expect(StorageService.bridgeKeys.length, 35);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
     });
 

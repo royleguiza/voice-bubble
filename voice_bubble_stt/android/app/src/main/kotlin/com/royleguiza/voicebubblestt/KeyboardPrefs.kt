@@ -34,6 +34,9 @@ class KeyboardPrefs(private val context: Context) {
     var keySpacing = SPACING_PROFILE_NORMAL
     var keySpacingFactor = SPACING_FACTOR_NORMAL
 
+    // Estilo háptico de teclas (Nítido/Firme/Suave). Default nítido.
+    var hapticStyle = HAPTIC_STYLE_NITIDO
+
     // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
     var trackpadEnabled = true
     var trackpadToolbarVisible = true
@@ -155,6 +158,14 @@ class KeyboardPrefs(private val context: Context) {
             SPACING_PROFILE_COMPACTO -> SPACING_FACTOR_COMPACTO
             SPACING_PROFILE_AMPLIO -> SPACING_FACTOR_AMPLIO
             else -> SPACING_FACTOR_NORMAL
+        }
+        hapticStyle = try {
+            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_haptic_style", HAPTIC_STYLE_NITIDO)
+                ?.takeIf { it == HAPTIC_STYLE_NITIDO || it == HAPTIC_STYLE_FIRME || it == HAPTIC_STYLE_SUAVE }
+                ?: HAPTIC_STYLE_NITIDO
+        } catch (_: Exception) {
+            HAPTIC_STYLE_NITIDO
         }
 
         // MEJ-09: lectura de preferencias del trackpad

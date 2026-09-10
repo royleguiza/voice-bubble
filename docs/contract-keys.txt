@@ -2,6 +2,7 @@ bubble_history_enabled
 kb_bottom_elevation_dp
 kb_clipboard_images_enabled
 kb_code_key_visible
+kb_haptic_style
 kb_haptics_enabled
 kb_height_profile
 kb_invert_toolbar

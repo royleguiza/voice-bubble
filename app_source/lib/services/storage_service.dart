@@ -237,6 +237,25 @@ class StorageService {
   Future<void> setHapticsEnabled(bool enabled) =>
       _setBool(kbHapticsEnabledKey, enabled);
 
+  static const String kbHapticStyleKey = 'kb_haptic_style';
+
+  /// Estilo háptico de teclas, de más nítido a más suave.
+  static const List<String> kbHapticStyles = [
+    'nitido',
+    'firme',
+    'suave',
+  ];
+  static const String defaultHapticStyle = 'nitido';
+
+  /// Estilo del feedback háptico al pulsar teclas: 'nitido' (clic seco),
+  /// 'firme' o 'suave'. El teclado nativo Kotlin lee esta misma clave con
+  /// prefijo "flutter.". Un valor ausente o invalido cae al por defecto.
+  Future<String> getHapticStyle() => _getValidatedString(
+      kbHapticStyleKey, kbHapticStyles, defaultHapticStyle);
+
+  Future<void> setHapticStyle(String style) => _setValidatedString(
+      kbHapticStyleKey, kbHapticStyles, style);
+
   static const String kbKeySpacingKey = 'kb_key_spacing';
 
   /// Espaciado entre teclas anti-fantasma, de menor a mayor.
@@ -391,6 +410,7 @@ class StorageService {
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,
     kbHapticsEnabledKey,
+    kbHapticStyleKey,
     kbHeightProfileKey,
     kbInvertToolbarKey,
     _keyboardLanguageKeyVisibleKey,
