@@ -347,8 +347,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         weight: Float,
         description: String?,
         tintColorRes: Int,
+        useKeyHeight: Boolean,
         onClick: () -> Unit,
-    ): ImageView = keys.makeIconKey(iconRes, bgRes, weight, description, tintColorRes, onClick)
+    ): ImageView = keys.makeIconKey(iconRes, bgRes, weight, description, tintColorRes, useKeyHeight, onClick)
 
     private fun addRow(row: View) = layout.addRow(row)
 

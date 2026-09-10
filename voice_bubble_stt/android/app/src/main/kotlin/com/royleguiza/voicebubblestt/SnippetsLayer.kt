@@ -56,6 +56,7 @@ class SnippetsLayer(
             weight: Float,
             description: String?,
             tintColorRes: Int,
+            useKeyHeight: Boolean = false,
             onClick: () -> Unit,
         ): ImageView
         fun horizontalRow(): LinearLayout
@@ -250,6 +251,7 @@ class SnippetsLayer(
             1.3f,
             if (host.isSpanish()) "mayúsculas" else "shift",
             tintColorRes = R.color.kb_label,
+            useKeyHeight = true,
         ) {
             host.toggleShiftKey()
         }
@@ -304,6 +306,7 @@ class SnippetsLayer(
             1.3f,
             if (host.isSpanish()) "borrar" else "delete",
             tintColorRes = R.color.kb_label,
+            useKeyHeight = true,
         ) {
             ensureSearchMode()
             host.deleteBackward()

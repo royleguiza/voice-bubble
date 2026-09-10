@@ -63,9 +63,16 @@ class KeyFactory(
      *  descartadas. */
     private val cancellations = mutableListOf<() -> Unit>()
 
+    /**
+     * Fila horizontal con línea única garantizada: sin alineación por
+     * baseline (los glifos de 14/19/20sp la romperían) y centrada
+     * verticalmente para que iconos y texto compartan la misma línea.
+     */
     fun horizontalRow(): LinearLayout {
         val row = LinearLayout(service)
         row.orientation = LinearLayout.HORIZONTAL
+        row.baselineAligned = false
+        row.gravity = Gravity.CENTER_VERTICAL
         return row
     }
 
@@ -282,10 +289,14 @@ class KeyFactory(
         return key
     }
 
+    /**
+     * Tecla de símbolo en negrita (consistencia con letras y coma/punto):
+     * el grosor iguala el peso visual en todas las capas.
+     */
     fun makeSymbolKey(
         label: String,
         textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_small),
-        isBold: Boolean = false,
+        isBold: Boolean = true,
     ): TextView {
         val key = makeKey(
             label,
@@ -301,7 +312,8 @@ class KeyFactory(
     }
 
     /** Tecla de capa código: toque corto el símbolo, toque largo el par
-     *  cerrado (solo si existe pareja; si no, tap plano). */
+     *  cerrado (solo si existe pareja; si no, tap plano). Negrita como
+     *  el resto de símbolos. */
     fun makeCodeKey(ch: Char): TextView {
         val key = makeKey(
             ch.toString(),
@@ -309,6 +321,7 @@ class KeyFactory(
             R.drawable.kb_key_bg,
             R.color.kb_label,
             host.dimenPx(R.dimen.kb_key_text_size_small),
+            isBold = true,
         )
         key.contentDescription = ch.toString()
         host.attachPairKey(
@@ -398,6 +411,7 @@ class KeyFactory(
         weight: Float,
         description: String?,
         tintColorRes: Int = R.color.kb_label,
+        useKeyHeight: Boolean = false,
         onClick: () -> Unit,
     ): ImageView {
         val key = ImageView(service)
@@ -412,10 +426,20 @@ class KeyFactory(
         }
         key.setPadding(0, 0, 0, 0)
 
-        val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, service.resources.displayMetrics).toInt()
+        // useKeyHeight: filas de teclas a altura completa (misma que las
+        // letras); por defecto conserva el compacto 38dp de la toolbar.
+        val hPx = if (useKeyHeight) {
+            host.keyHeightPx()
+        } else {
+            TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, service.resources.displayMetrics).toInt()
+        }
         val lp = LinearLayout.LayoutParams(0, hPx, weight)
         val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
-        lp.setMargins(m, m, m, m)
+        if (useKeyHeight) {
+            lp.setMargins(m, 0, m, 0)
+        } else {
+            lp.setMargins(m, m, m, m)
+        }
         key.layoutParams = lp
 
         host.attachTap(key, onClick)

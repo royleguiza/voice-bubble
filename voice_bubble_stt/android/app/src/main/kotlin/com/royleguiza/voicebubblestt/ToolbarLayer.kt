@@ -38,6 +38,7 @@ class ToolbarLayer(
             weight: Float,
             description: String?,
             tintColorRes: Int = R.color.kb_label,
+            useKeyHeight: Boolean = false,
             onClick: () -> Unit,
         ): ImageView
         fun makeSpecial(

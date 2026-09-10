@@ -24,6 +24,7 @@ SUITES = [
     ("Claves: sección credenciales + llave y relleno en teclado", "test_credentials_suite.py"),
     ("Mayúsculas: ciclo de caso con Shift (MEJ-02)", "test_shift_case_suite.py"),
     ("Ajustes: rediseño Settings v2 (5 tabs + crystal)", "test_settings_redesign_suite.py"),
+    ("Teclado: filas parejas + glyphs gruesos (layout nativo)", "test_keyboard_layout_suite.py"),
 ]
 
 def run_test(name, func):
