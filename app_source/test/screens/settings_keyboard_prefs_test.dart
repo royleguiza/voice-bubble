@@ -423,8 +423,8 @@ void main() {
       final stopSel = find.byKey(const ValueKey('kb-mic-stop-style'));
       expect(startSel, findsOneWidget);
       expect(stopSel, findsOneWidget);
-      expect(tester.widget<SegmentedButton<String>>(startSel).selected, {'1'});
-      expect(tester.widget<SegmentedButton<String>>(stopSel).selected, {'1'});
+      expect(tester.widget<SegmentedButton<String>>(startSel).selected, {'3'});
+      expect(tester.widget<SegmentedButton<String>>(stopSel).selected, {'3'});
     });
 
     testWidgets('elegir opción 3 de inicio persiste', (tester) async {

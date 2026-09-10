@@ -305,7 +305,7 @@ class StorageService {
   static const String kbMicStartStyleKey = 'kb_mic_start_style';
   static const String kbMicStopStyleKey = 'kb_mic_stop_style';
   static const List<String> kbMicSoundStyles = ['1', '2', '3', '4'];
-  static const String defaultMicSoundStyle = '1';
+  static const String defaultMicSoundStyle = '3';
 
   Future<String> getMicStartStyle() => _getValidatedString(
       kbMicStartStyleKey, kbMicSoundStyles, defaultMicSoundStyle);

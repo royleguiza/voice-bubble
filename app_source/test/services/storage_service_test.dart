@@ -442,8 +442,8 @@ void main() {
     test('estilos de inicio/fin con default 1 y validación', () async {
       SharedPreferences.setMockInitialValues({});
       final service = StorageService();
-      expect(await service.getMicStartStyle(), '1');
-      expect(await service.getMicStopStyle(), '1');
+      expect(await service.getMicStartStyle(), '3');
+      expect(await service.getMicStopStyle(), '3');
       await service.setMicStartStyle('3');
       await service.setMicStopStyle('4');
       expect(await service.getMicStartStyle(), '3');

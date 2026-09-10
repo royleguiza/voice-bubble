@@ -375,10 +375,10 @@ class DictationController(
             val prefs = service.getSharedPreferences(
                 "FlutterSharedPreferences", Context.MODE_PRIVATE,
             )
-            val startStyle = prefs.getString("flutter.kb_mic_start_style", "1")
-                ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" } ?: "1"
-            val stopStyle = prefs.getString("flutter.kb_mic_stop_style", "1")
-                ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" } ?: "1"
+            val startStyle = prefs.getString("flutter.kb_mic_start_style", "3")
+                ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" } ?: "3"
+            val stopStyle = prefs.getString("flutter.kb_mic_stop_style", "3")
+                ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" } ?: "3"
             val pkg = service.packageName
             val res = service.resources
             soundStart = pool.load(service, res.getIdentifier("mic_start_$startStyle", "raw", pkg), 1)

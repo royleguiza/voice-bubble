@@ -46,8 +46,8 @@ class KeyboardPrefs(private val context: Context) {
     var micHapticPaste = true
     var micHapticCancel = true
     var micSoundsEnabled = false
-    var micStartStyle = "1"
-    var micStopStyle = "1"
+    var micStartStyle = "3"
+    var micStopStyle = "3"
 
     // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
     var trackpadEnabled = true
@@ -112,14 +112,14 @@ class KeyboardPrefs(private val context: Context) {
         def
     }
 
-    /** Estilo '1'..'4' de sonido; cualquier otro valor cae a '1'. */
+    /** Estilo '1'..'4' de sonido; cualquier otro valor cae a '3'. */
     private fun readStyle(key: String): String = try {
         context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getString(key, "1")
+            .getString(key, "3")
             ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" }
-            ?: "1"
+            ?: "3"
     } catch (_: Exception) {
-        "1"
+        "3"
     }
 
     fun load() {
