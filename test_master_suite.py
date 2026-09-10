@@ -80,6 +80,17 @@ def test_clean_logs():
     out = subprocess.check_output(cmd, shell=True, text=True).strip()
     assert not out, f"Filtración de contenido detectada en Logs:\n{out}"
 
+def test_no_versioned_secrets():
+    """SPK-01: ningún PAT ni archivo de secretos versionado (mirror del guard CI)."""
+    cmd = "git grep -nE 'github_pat_[A-Za-z0-9_]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}' -- . || true"
+    out = subprocess.check_output(cmd, shell=True, text=True).strip()
+    # El propio test nombra los patrones: filtrar su propia línea.
+    lines = [l for l in out.splitlines() if "test_master_suite.py" not in l]
+    assert not lines, f"Posible secreto versionado SPK-01:\n" + "\n".join(lines)
+    cmd2 = "git ls-files | grep -xE '\\.github_token|\\.agents/secrets\\.env' || true"
+    out2 = subprocess.check_output(cmd2, shell=True, text=True).strip()
+    assert not out2, f"Archivo de secretos trackeado SPK-01:\n{out2}"
+
 def test_secrets_vault():
     """SPK-02: secretos solo en bóveda cifrada, jamás en prefs planas ni backup."""
     kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
@@ -172,6 +183,7 @@ def main():
     tests = [
         ("CI Guard: Paridad de Claves de Contrato", test_contract_keys),
         ("CI Guard: Ausencia de Filtraciones en Logs", test_clean_logs),
+        ("CI Guard: Sin secretos versionados (SPK-01)", test_no_versioned_secrets),
         ("Seguridad: Bóveda cifrada de secretos (SPK-02)", test_secrets_vault),
         ("Dictado: tope 5min + timeouts (fuente única)", test_dictation_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
