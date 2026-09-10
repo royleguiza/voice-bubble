@@ -63,6 +63,12 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _keySpacing = StorageService.defaultKeySpacing;
   bool _hapticsEnabled = true;
   String _hapticStyle = StorageService.defaultHapticStyle;
+  bool _micHapticsEnabled = true;
+  bool _micHapticStart = true;
+  bool _micHapticRecording = true;
+  bool _micHapticPaste = true;
+  bool _micHapticCancel = true;
+  bool _micSoundsEnabled = false;
   int _bottomElevationDp = StorageService.defaultBottomElevationDp;
   bool _invertToolbar = false;
   String _spacebarAlignment = StorageService.defaultSpacebarAlignment;
@@ -135,6 +141,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     ).wait;
     // Fuera del record .wait (límite de aridad del SDK): carga aparte.
     final hapticStyle = await _storageService.getHapticStyle();
+    final micHapticsEnabled = await _storageService.getMicHapticsEnabled();
+    final micHapticStart = await _storageService.getMicHapticStart();
+    final micHapticRecording = await _storageService.getMicHapticRecording();
+    final micHapticPaste = await _storageService.getMicHapticPaste();
+    final micHapticCancel = await _storageService.getMicHapticCancel();
+    final micSoundsEnabled = await _storageService.getMicSoundsEnabled();
     final bottomElevation = await _storageService.getBottomElevationDp();
     final invertToolbar = await _storageService.getInvertToolbar();
     final spacebarAlign = await _storageService.getSpacebarAlignment();
@@ -178,6 +190,12 @@ class _SettingsScreenState extends State<SettingsScreen>
       _keySpacing = results.$8;
       _hapticsEnabled = results.$9;
       _hapticStyle = hapticStyle;
+      _micHapticsEnabled = micHapticsEnabled;
+      _micHapticStart = micHapticStart;
+      _micHapticRecording = micHapticRecording;
+      _micHapticPaste = micHapticPaste;
+      _micHapticCancel = micHapticCancel;
+      _micSoundsEnabled = micSoundsEnabled;
       _bottomElevationDp = bottomElevation;
       _invertToolbar = invertToolbar;
       _spacebarAlignment = spacebarAlign;
@@ -305,6 +323,36 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _saveHapticStyle(String style) async {
     await _storageService.setHapticStyle(style);
     if (mounted) setState(() => _hapticStyle = style);
+  }
+
+  Future<void> _toggleMicHaptics(bool v) async {
+    await _storageService.setMicHapticsEnabled(v);
+    if (mounted) setState(() => _micHapticsEnabled = v);
+  }
+
+  Future<void> _toggleMicHapticStart(bool v) async {
+    await _storageService.setMicHapticStart(v);
+    if (mounted) setState(() => _micHapticStart = v);
+  }
+
+  Future<void> _toggleMicHapticRecording(bool v) async {
+    await _storageService.setMicHapticRecording(v);
+    if (mounted) setState(() => _micHapticRecording = v);
+  }
+
+  Future<void> _toggleMicHapticPaste(bool v) async {
+    await _storageService.setMicHapticPaste(v);
+    if (mounted) setState(() => _micHapticPaste = v);
+  }
+
+  Future<void> _toggleMicHapticCancel(bool v) async {
+    await _storageService.setMicHapticCancel(v);
+    if (mounted) setState(() => _micHapticCancel = v);
+  }
+
+  Future<void> _toggleMicSounds(bool v) async {
+    await _storageService.setMicSoundsEnabled(v);
+    if (mounted) setState(() => _micSoundsEnabled = v);
   }
 
   String get _hapticStyleHint {
@@ -918,6 +966,18 @@ class _SettingsScreenState extends State<SettingsScreen>
       hapticStyle: _hapticStyle,
       onSaveHapticStyle: _saveHapticStyle,
       hapticStyleHint: _hapticStyleHint,
+      micHapticsEnabled: _micHapticsEnabled,
+      onToggleMicHaptics: _toggleMicHaptics,
+      micHapticStart: _micHapticStart,
+      onToggleMicHapticStart: _toggleMicHapticStart,
+      micHapticRecording: _micHapticRecording,
+      onToggleMicHapticRecording: _toggleMicHapticRecording,
+      micHapticPaste: _micHapticPaste,
+      onToggleMicHapticPaste: _toggleMicHapticPaste,
+      micHapticCancel: _micHapticCancel,
+      onToggleMicHapticCancel: _toggleMicHapticCancel,
+      micSoundsEnabled: _micSoundsEnabled,
+      onToggleMicSounds: _toggleMicSounds,
       isKeyboardEnabled: _isKeyboardEnabled,
       isKeyboardSelected: _isKeyboardSelected,
       onOpenKeyboardSettings: _openKeyboardSettings,

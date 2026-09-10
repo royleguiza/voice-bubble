@@ -7,6 +7,7 @@ import android.inputmethodservice.InputMethodService
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.SoundPool
 import android.os.Handler
 import android.os.SystemClock
 import android.transition.ChangeBounds
@@ -33,6 +34,19 @@ import androidx.core.content.ContextCompat
  * HistoryLayer (SPK-05 módulo 9, comparte popup con acentos vía takePopup)
  * y los avisos vía [UiHost.showNotice].
  */
+/**
+ * Snapshot de feedback del micrófono (prefs del puente, lectura en vivo
+ * por evento): hápticas independientes de las teclas + sonidos opt-in.
+ */
+data class MicFeedback(
+    val hapticsEnabled: Boolean,
+    val hapticStart: Boolean,
+    val hapticRecording: Boolean,
+    val hapticPaste: Boolean,
+    val hapticCancel: Boolean,
+    val soundsEnabled: Boolean,
+)
+
 class DictationController(
     private val service: InputMethodService,
     private val handler: Handler,
@@ -51,6 +65,8 @@ class DictationController(
         fun isServiceAlive(): Boolean
         fun setRecordingActive(active: Boolean)
         fun isRecordingActive(): Boolean
+        fun micFeedback(): MicFeedback
+        fun micBuzz(durationMs: Long, amplitude: Int)
     }
 
     private lateinit var sttClient: SpeechToTextClient
@@ -66,7 +82,14 @@ class DictationController(
     private var micPillCancel: TextView? = null
     private var timeoutRunnable: Runnable? = null
     private var recordingTimerRunnable: Runnable? = null
+    private var micTickRunnable: Runnable? = null
     private var recordingStartMs: Long = 0L
+    private var soundPool: SoundPool? = null
+    private var soundStart = 0
+    private var soundStop = 0
+    private var soundPaste = 0
+    private var soundCancel = 0
+    private var soundBusy = 0
     private var transcriptionGeneration = 0
     private var focusRequest: AudioFocusRequest? = null
     private var pulseAnimators: List<ObjectAnimator> = emptyList()
@@ -79,11 +102,14 @@ class DictationController(
     fun onCreateInputView() {
         cancelDictationIfActive()
         sttClient = SpeechToTextClient(service) { host.isSpanish() }
+        initMicSounds()
     }
 
     /** K5-T5: destruccion del servicio con dictado vivo = grabacion fantasma. */
     fun onDestroy() {
         stopRecordingTimer()
+        stopMicTicker()
+        releaseMicSounds()
         pulseAnimators.forEach { it.cancel() }
         pulseAnimators = emptyList()
         cancelDictationIfActive()
@@ -141,7 +167,7 @@ class DictationController(
             onLongPress = {
                 host.pressHaptic(normal)
                 when (micState) {
-                    MicState.RECORDING -> cancelDictation()
+                    MicState.RECORDING -> cancelDictation(announce = true)
                     MicState.IDLE, MicState.BUSY -> host.showHistoryPopup(container)
                     MicState.PROCESSING -> { /* transcribiendo: ignorar */ }
                 }
@@ -199,7 +225,7 @@ class DictationController(
             pill,
             onLongPress = {
                 host.pressHaptic(pill)
-                cancelDictation()
+                cancelDictation(announce = true)
             },
             onTapUp = {
                 host.pressHaptic(pill)
@@ -259,7 +285,7 @@ class DictationController(
         )
         cancel.setOnClickListener {
             host.pressHaptic(cancel)
-            cancelDictation()
+            cancelDictation(announce = true)
         }
         pill.addView(cancel, cancelLp)
 
@@ -278,6 +304,99 @@ class DictationController(
         return container
     }
 
+    /** Eventos de feedback del micrófono (hápticas + sonidos UI). */
+    private enum class MicEvent { START, STOP, PASTE, CANCEL, BUSY }
+
+    /**
+     * Feedback del micrófono, independiente de la vibración de teclas:
+     * cada evento vibra corto (estilo tecla) y/o suena según prefs.
+     * Sin contenido en juego: solo confirma la acción. Todo tolerante.
+     */
+    private fun micEvent(kind: MicEvent) {
+        val fb = try {
+            host.micFeedback()
+        } catch (_: Exception) {
+            return
+        }
+        try {
+            if (fb.hapticsEnabled) {
+                when (kind) {
+                    MicEvent.START -> if (fb.hapticStart) host.micBuzz(12L, 255)
+                    MicEvent.STOP -> if (fb.hapticStart) host.micBuzz(20L, 200)
+                    MicEvent.PASTE -> if (fb.hapticPaste) host.micBuzz(15L, 180)
+                    MicEvent.CANCEL -> if (fb.hapticCancel) host.micBuzz(30L, 160)
+                    MicEvent.BUSY -> host.micBuzz(20L, 140)
+                }
+            }
+            if (fb.soundsEnabled) {
+                val id = when (kind) {
+                    MicEvent.START -> soundStart
+                    MicEvent.STOP -> soundStop
+                    MicEvent.PASTE -> soundPaste
+                    MicEvent.CANCEL -> soundCancel
+                    MicEvent.BUSY -> soundBusy
+                }
+                if (id != 0) soundPool?.play(id, 1f, 1f, 1, 0, 1f)
+            }
+        } catch (_: Exception) {}
+    }
+
+    /** Pulso suave cada 3 s mientras graba (solo háptico, nunca sonido). */
+    private fun startMicTicker() {
+        stopMicTicker()
+        val r = object : Runnable {
+            override fun run() {
+                if (micState != MicState.RECORDING) return
+                try {
+                    val fb = host.micFeedback()
+                    if (fb.hapticsEnabled && fb.hapticRecording) host.micBuzz(10L, 120)
+                } catch (_: Exception) {}
+                handler.postDelayed(this, 3000L)
+            }
+        }
+        micTickRunnable = r
+        handler.postDelayed(r, 3000L)
+    }
+
+    private fun stopMicTicker() {
+        micTickRunnable?.let { handler.removeCallbacks(it) }
+        micTickRunnable = null
+    }
+
+    private fun initMicSounds() {
+        releaseMicSounds()
+        try {
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            val pool = SoundPool.Builder()
+                .setMaxStreams(2)
+                .setAudioAttributes(attrs)
+                .build()
+            soundStart = pool.load(service, R.raw.mic_start, 1)
+            soundStop = pool.load(service, R.raw.mic_stop, 1)
+            soundPaste = pool.load(service, R.raw.mic_paste, 1)
+            soundCancel = pool.load(service, R.raw.mic_cancel, 1)
+            soundBusy = pool.load(service, R.raw.mic_busy, 1)
+            soundPool = pool
+        } catch (_: Exception) {
+            soundPool = null
+        }
+    }
+
+    private fun releaseMicSounds() {
+        try {
+            soundPool?.release()
+        } catch (_: Exception) {}
+        soundPool = null
+        soundStart = 0
+        soundStop = 0
+        soundPaste = 0
+        soundCancel = 0
+        soundBusy = 0
+    }
+
     private fun handleMicTap() {
         host.tapFeedback()
         when (micState) {
@@ -294,6 +413,7 @@ class DictationController(
         if (bubbleBusy()) {
             micState = MicState.BUSY
             refreshMicVisual()
+            micEvent(MicEvent.BUSY)
             host.showNotice(if (host.isSpanish()) "Ocupado: la burbuja está grabando." else "Busy: the bubble is recording.")
             return
         }
@@ -383,6 +503,8 @@ class DictationController(
         micPillTimer?.text = "0:00"
         refreshMicVisual()
         startRecordingTimer()
+        startMicTicker()
+        micEvent(MicEvent.START)
         val t = Runnable { if (micState == MicState.RECORDING) finishDictation() }
         timeoutRunnable = t
         handler.postDelayed(t, SpeechToTextClient.MAX_SECONDS * 1000L)
@@ -390,6 +512,8 @@ class DictationController(
 
     private fun finishDictation() {
         stopRecordingTimer()
+        stopMicTicker()
+        micEvent(MicEvent.STOP)
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = null
         micState = MicState.PROCESSING
@@ -427,6 +551,7 @@ class DictationController(
                             // AT-A10: el dictado se comete directo en el campo
                             // destino; jamas alimenta el query de snippets.
                             service.currentInputConnection?.commitText(text, 1)
+                            micEvent(MicEvent.PASTE)
                         }
                     }
                 },
@@ -441,8 +566,15 @@ class DictationController(
         }
     }
 
-    private fun cancelDictation() {
+    /**
+     * Cancela el dictado. [announce]=true solo en gesto explícito del
+     * usuario (toque largo / X): las cancelaciones del sistema (foco,
+     * rotación) son silenciosas.
+     */
+    private fun cancelDictation(announce: Boolean = false) {
         stopRecordingTimer()
+        stopMicTicker()
+        if (announce) micEvent(MicEvent.CANCEL)
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = null
         micState = MicState.IDLE

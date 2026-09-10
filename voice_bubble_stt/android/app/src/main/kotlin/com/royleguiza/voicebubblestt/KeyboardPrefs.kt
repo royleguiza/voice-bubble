@@ -37,6 +37,16 @@ class KeyboardPrefs(private val context: Context) {
     // Estilo háptico de teclas (Nítido/Firme/Suave). Default nítido.
     var hapticStyle = HAPTIC_STYLE_NITIDO
 
+    // Micrófono: feedback independiente de la vibración de teclas.
+    // Master háptico + 4 eventos (inicio/grabando/pegar/cancelar), default ON;
+    // sonidos default OFF (opt-in).
+    var micHapticsEnabled = true
+    var micHapticStart = true
+    var micHapticRecording = true
+    var micHapticPaste = true
+    var micHapticCancel = true
+    var micSoundsEnabled = false
+
     // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
     var trackpadEnabled = true
     var trackpadToolbarVisible = true
@@ -93,6 +103,13 @@ class KeyboardPrefs(private val context: Context) {
      * FlutterSharedPreferences, claves con prefijo "flutter."). Parseo
      * tolerante: valor desconocido o error cae al default.
      */
+    private fun readFlag(key: String, def: Boolean): Boolean = try {
+        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getBoolean(key, def)
+    } catch (_: Exception) {
+        def
+    }
+
     fun load() {
         heightFactor = try {
             when (
@@ -113,6 +130,12 @@ class KeyboardPrefs(private val context: Context) {
         } catch (_: Exception) {
             true
         }
+        micHapticsEnabled = readFlag("flutter.kb_mic_haptics_enabled", true)
+        micHapticStart = readFlag("flutter.kb_mic_haptic_start", true)
+        micHapticRecording = readFlag("flutter.kb_mic_haptic_recording", true)
+        micHapticPaste = readFlag("flutter.kb_mic_haptic_paste", true)
+        micHapticCancel = readFlag("flutter.kb_mic_haptic_cancel", true)
+        micSoundsEnabled = readFlag("flutter.kb_mic_sounds_enabled", false)
         bottomElevationDp = try {
             context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .getLong("flutter.kb_bottom_elevation_dp", 24L).toInt()

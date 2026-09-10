@@ -205,12 +205,13 @@ class SettingChevronRow extends StatelessWidget {
 }
 
 /// Sección expandible "Avanzado" con chevron animado.
-/// Arranca abierta para que todo siga visible y testeable.
+/// [initiallyOpen]=false la deja colapsada (secciones densas opt-in).
 class ExpandableSettingsCard extends StatefulWidget {
   final IconData icon;
   final Color iconColor;
   final String title;
   final List<Widget> children;
+  final bool initiallyOpen;
 
   const ExpandableSettingsCard({
     super.key,
@@ -218,6 +219,7 @@ class ExpandableSettingsCard extends StatefulWidget {
     required this.iconColor,
     required this.title,
     required this.children,
+    this.initiallyOpen = true,
   });
 
   @override
@@ -225,7 +227,7 @@ class ExpandableSettingsCard extends StatefulWidget {
 }
 
 class _ExpandableSettingsCardState extends State<ExpandableSettingsCard> {
-  bool _open = true;
+  late bool _open = widget.initiallyOpen;
 
   @override
   Widget build(BuildContext context) {

@@ -269,6 +269,37 @@ class StorageService {
   Future<void> setHapticStyle(String style) => _setValidatedString(
       kbHapticStyleKey, kbHapticStyles, style);
 
+  /// Micrófono: feedback independiente de la vibración de teclas.
+  /// El teclado nativo Kotlin lee estas claves con prefijo "flutter.".
+  static const String kbMicHapticsEnabledKey = 'kb_mic_haptics_enabled';
+  static const String kbMicHapticStartKey = 'kb_mic_haptic_start';
+  static const String kbMicHapticRecordingKey = 'kb_mic_haptic_recording';
+  static const String kbMicHapticPasteKey = 'kb_mic_haptic_paste';
+  static const String kbMicHapticCancelKey = 'kb_mic_haptic_cancel';
+  static const String kbMicSoundsEnabledKey = 'kb_mic_sounds_enabled';
+
+  Future<bool> getMicHapticsEnabled() =>
+      _getBool(kbMicHapticsEnabledKey, true);
+  Future<void> setMicHapticsEnabled(bool v) =>
+      _setBool(kbMicHapticsEnabledKey, v);
+  Future<bool> getMicHapticStart() => _getBool(kbMicHapticStartKey, true);
+  Future<void> setMicHapticStart(bool v) =>
+      _setBool(kbMicHapticStartKey, v);
+  Future<bool> getMicHapticRecording() =>
+      _getBool(kbMicHapticRecordingKey, true);
+  Future<void> setMicHapticRecording(bool v) =>
+      _setBool(kbMicHapticRecordingKey, v);
+  Future<bool> getMicHapticPaste() => _getBool(kbMicHapticPasteKey, true);
+  Future<void> setMicHapticPaste(bool v) =>
+      _setBool(kbMicHapticPasteKey, v);
+  Future<bool> getMicHapticCancel() => _getBool(kbMicHapticCancelKey, true);
+  Future<void> setMicHapticCancel(bool v) =>
+      _setBool(kbMicHapticCancelKey, v);
+  Future<bool> getMicSoundsEnabled() =>
+      _getBool(kbMicSoundsEnabledKey, false);
+  Future<void> setMicSoundsEnabled(bool v) =>
+      _setBool(kbMicSoundsEnabledKey, v);
+
   static const String kbKeySpacingKey = 'kb_key_spacing';
 
   /// Espaciado entre teclas anti-fantasma, de menor a mayor.
@@ -429,6 +460,12 @@ class StorageService {
     kbInvertToolbarKey,
     _keyboardLanguageKeyVisibleKey,
     kbKeySpacingKey,
+    kbMicHapticCancelKey,
+    kbMicHapticPasteKey,
+    kbMicHapticRecordingKey,
+    kbMicHapticStartKey,
+    kbMicHapticsEnabledKey,
+    kbMicSoundsEnabledKey,
     snippetsSeededKey,
     kbSpacebarAlignmentKey,
     kbSpacebarTrackpadModeKey,

@@ -402,6 +402,44 @@ void main() {
     });
   });
 
+  group('StorageService - feedback del micrófono', () {
+    test('defaults: hápticas ON y sonidos OFF', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.getMicHapticsEnabled(), isTrue);
+      expect(await service.getMicHapticStart(), isTrue);
+      expect(await service.getMicHapticRecording(), isTrue);
+      expect(await service.getMicHapticPaste(), isTrue);
+      expect(await service.getMicHapticCancel(), isTrue);
+      expect(await service.getMicSoundsEnabled(), isFalse);
+    });
+
+    test('persiste toggles y sonidos', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setMicHapticCancel(false);
+      await service.setMicSoundsEnabled(true);
+      expect(await service.getMicHapticCancel(), isFalse);
+      expect(await service.getMicSoundsEnabled(), isTrue);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_mic_haptic_cancel'), isFalse);
+      expect(prefs.getBool('kb_mic_sounds_enabled'), isTrue);
+    });
+
+    test('las 6 claves pertenecen al puente verificado por el CI', () {
+      for (final key in [
+        StorageService.kbMicHapticsEnabledKey,
+        StorageService.kbMicHapticStartKey,
+        StorageService.kbMicHapticRecordingKey,
+        StorageService.kbMicHapticPasteKey,
+        StorageService.kbMicHapticCancelKey,
+        StorageService.kbMicSoundsEnabledKey,
+      ]) {
+        expect(StorageService.bridgeKeys, contains(key));
+      }
+    });
+  });
+
   group('StorageService - bóveda STT sin espejo plano (SPK-02)', () {
     test('saveSttMirror guarda en bóveda y publica presencia/config', () async {
       FlutterSecureStorage.setMockInitialValues({});
@@ -530,6 +568,12 @@ void main() {
       'kb_invert_toolbar',
       'kb_key_spacing',
       'kb_language_key_visible',
+      'kb_mic_haptic_cancel',
+      'kb_mic_haptic_paste',
+      'kb_mic_haptic_recording',
+      'kb_mic_haptic_start',
+      'kb_mic_haptics_enabled',
+      'kb_mic_sounds_enabled',
       'kb_snippets_seeded',
       'kb_spacebar_alignment',
       'kb_spacebar_trackpad_mode',
@@ -557,8 +601,8 @@ void main() {
       'voice_snippets_v1',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (35 claves)', () {
-      expect(StorageService.bridgeKeys.length, 35);
+    test('bridgeKeys cubre exactamente el contrato (41 claves)', () {
+      expect(StorageService.bridgeKeys.length, 41);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
     });
 

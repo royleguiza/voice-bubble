@@ -8,6 +8,12 @@ kb_height_profile
 kb_invert_toolbar
 kb_key_spacing
 kb_language_key_visible
+kb_mic_haptic_cancel
+kb_mic_haptic_paste
+kb_mic_haptic_recording
+kb_mic_haptic_start
+kb_mic_haptics_enabled
+kb_mic_sounds_enabled
 kb_snippets_seeded
 kb_spacebar_alignment
 kb_spacebar_trackpad_mode

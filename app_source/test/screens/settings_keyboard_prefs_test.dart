@@ -300,8 +300,7 @@ void main() {
     });
   });
 
-  group('SettingsScreen - imágenes del portapapeles opt-in (SPK-10)', () {
-    testWidgets('toggle visible y apagado por defecto', (tester) async {
+  group('SettingsScreen - imágenes del portapapeles opt-in (SPK-10)', () {    testWidgets('toggle visible y apagado por defecto', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
@@ -327,6 +326,90 @@ void main() {
       expect(await StorageService().getClipboardImagesEnabled(), isTrue);
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool('kb_clipboard_images_enabled'), isTrue);
+    });
+  });
+
+  group('SettingsScreen - micrófono vibración y sonido (colapsable)', () {
+    Future<void> openMicSection(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Micrófono: vibración y sonido'));
+      await tester.pumpAndSettle();
+    }
+
+    Finder micSwitch(String key) => find.descendant(
+          of: find.byKey(ValueKey(key)),
+          matching: find.byType(Switch),
+        );
+
+    testWidgets('sección colapsada por defecto', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Micrófono: vibración y sonido'), findsOneWidget);
+      expect(find.byKey(const ValueKey('kb-mic-haptics-enabled')),
+          findsNothing);
+    });
+
+    testWidgets('masters con defaults (háptica ON, sonidos OFF)',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+      await openMicSection(tester);
+
+      expect(
+          tester.widget<Switch>(micSwitch('kb-mic-haptics-enabled')).value,
+          isTrue);
+      expect(tester.widget<Switch>(micSwitch('kb-mic-sounds-enabled')).value,
+          isFalse);
+    });
+
+    testWidgets('los 4 eventos de vibración existen y prenden por defecto',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+      await openMicSection(tester);
+
+      for (final key in [
+        'kb-mic-haptic-start',
+        'kb-mic-haptic-recording',
+        'kb-mic-haptic-paste',
+        'kb-mic-haptic-cancel',
+      ]) {
+        expect(micSwitch(key), findsOneWidget);
+        expect(tester.widget<Switch>(micSwitch(key)).value, isTrue);
+      }
+    });
+
+    testWidgets('apagar vibrar-al-cancelar persiste', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+      await openMicSection(tester);
+
+      await tester.tap(micSwitch('kb-mic-haptic-cancel'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(micSwitch('kb-mic-haptic-cancel')).value,
+          isFalse);
+      expect(await StorageService().getMicHapticCancel(), isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_mic_haptic_cancel'), isFalse);
+    });
+
+    testWidgets('encender sonidos persiste', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+      await openMicSection(tester);
+
+      await tester.tap(micSwitch('kb-mic-sounds-enabled'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(micSwitch('kb-mic-sounds-enabled')).value,
+          isTrue);
+      expect(await StorageService().getMicSoundsEnabled(), isTrue);
     });
   });
 }

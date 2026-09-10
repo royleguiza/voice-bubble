@@ -36,6 +36,18 @@ class TecladoTab extends StatelessWidget {
   final String hapticStyle;
   final ValueChanged<String> onSaveHapticStyle;
   final String hapticStyleHint;
+  final bool micHapticsEnabled;
+  final ValueChanged<bool> onToggleMicHaptics;
+  final bool micHapticStart;
+  final ValueChanged<bool> onToggleMicHapticStart;
+  final bool micHapticRecording;
+  final ValueChanged<bool> onToggleMicHapticRecording;
+  final bool micHapticPaste;
+  final ValueChanged<bool> onToggleMicHapticPaste;
+  final bool micHapticCancel;
+  final ValueChanged<bool> onToggleMicHapticCancel;
+  final bool micSoundsEnabled;
+  final ValueChanged<bool> onToggleMicSounds;
   final bool isKeyboardEnabled;
   final bool isKeyboardSelected;
   final VoidCallback onOpenKeyboardSettings;
@@ -73,6 +85,18 @@ class TecladoTab extends StatelessWidget {
     required this.hapticStyle,
     required this.onSaveHapticStyle,
     required this.hapticStyleHint,
+    required this.micHapticsEnabled,
+    required this.onToggleMicHaptics,
+    required this.micHapticStart,
+    required this.onToggleMicHapticStart,
+    required this.micHapticRecording,
+    required this.onToggleMicHapticRecording,
+    required this.micHapticPaste,
+    required this.onToggleMicHapticPaste,
+    required this.micHapticCancel,
+    required this.onToggleMicHapticCancel,
+    required this.micSoundsEnabled,
+    required this.onToggleMicSounds,
     required this.isKeyboardEnabled,
     required this.isKeyboardSelected,
     required this.onOpenKeyboardSettings,
@@ -340,8 +364,7 @@ class TecladoTab extends StatelessWidget {
         ExpandableSettingsCard(
           icon: Icons.tune_rounded,
           iconColor: kTileGray,
-          title: 'Opciones Avanzadas',
-          children: [
+          title: 'Opciones Avanzadas',          children: [
             _PaddedBlock(
               label: 'Elevación inferior',
               hint:
@@ -368,6 +391,90 @@ class TecladoTab extends StatelessWidget {
               hapticStyle: hapticStyle,
               onSaveHapticStyle: onSaveHapticStyle,
               hapticStyleHint: hapticStyleHint,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        ExpandableSettingsCard(
+          icon: Icons.mic_rounded,
+          iconColor: kTileRed,
+          title: 'Micrófono: vibración y sonido',
+          initiallyOpen: false,
+          children: [
+            SwitchListTile(
+              key: const ValueKey('kb-mic-haptics-enabled'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Vibración del micrófono'),
+              subtitle: Text(
+                'Feedback al dictar, independiente de la vibración de teclas. '
+                'Puedes apagar las teclas y conservar este.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: variantColor),
+              ),
+              value: micHapticsEnabled,
+              onChanged: onToggleMicHaptics,
+            ),
+            SwitchListTile(
+              key: const ValueKey('kb-mic-haptic-start'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Vibrar al iniciar'),
+              subtitle: Text(
+                'Toque corto al empezar a grabar, como el resto de teclas.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: variantColor),
+              ),
+              value: micHapticStart,
+              onChanged: onToggleMicHapticStart,
+            ),
+            SwitchListTile(
+              key: const ValueKey('kb-mic-haptic-recording'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Vibrar grabando'),
+              subtitle: Text(
+                'Pulso suave cada 3 segundos mientras graba.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: variantColor),
+              ),
+              value: micHapticRecording,
+              onChanged: onToggleMicHapticRecording,
+            ),
+            SwitchListTile(
+              key: const ValueKey('kb-mic-haptic-paste'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Vibrar al pegar'),
+              subtitle: Text(
+                'Confirma cuando el dictado entra al campo de texto.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: variantColor),
+              ),
+              value: micHapticPaste,
+              onChanged: onToggleMicHapticPaste,
+            ),
+            SwitchListTile(
+              key: const ValueKey('kb-mic-haptic-cancel'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Vibrar al cancelar'),
+              subtitle: Text(
+                'Aviso al descartar con la ✕ o el toque largo.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: variantColor),
+              ),
+              value: micHapticCancel,
+              onChanged: onToggleMicHapticCancel,
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              key: const ValueKey('kb-mic-sounds-enabled'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Sonidos del micrófono'),
+              subtitle: Text(
+                'Respuestas sonoras al iniciar, terminar, pegar, cancelar '
+                'o si está ocupado. Apagado por defecto.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: variantColor),
+              ),
+              value: micSoundsEnabled,
+              onChanged: onToggleMicSounds,
             ),
           ],
         ),

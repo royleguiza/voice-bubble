@@ -491,6 +491,16 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun showNotice(message: String, openSettingsOnClick: Boolean) {
         if (::status.isInitialized) status.show(message, openSettingsOnClick)
     }
+    override fun micFeedback(): MicFeedback = MicFeedback(
+        hapticsEnabled = kbPrefs.micHapticsEnabled,
+        hapticStart = kbPrefs.micHapticStart,
+        hapticRecording = kbPrefs.micHapticRecording,
+        hapticPaste = kbPrefs.micHapticPaste,
+        hapticCancel = kbPrefs.micHapticCancel,
+        soundsEnabled = kbPrefs.micSoundsEnabled,
+    )
+    override fun micBuzz(durationMs: Long, amplitude: Int) =
+        vibrateOnce(durationMs, amplitude)
     // --- StatusLayer.UiHost (SPK-05 módulo 10). rootView y dimenPx ya
     // existen arriba y sirven a esta interfaz (misma firma, una sola
     // implementación).
