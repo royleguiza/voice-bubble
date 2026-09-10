@@ -35,7 +35,7 @@ toolbar = read(f"{KT}/ToolbarLayer.kt")
 
 # --- 1. Una sola línea por fila ---
 row = kf.split("fun horizontalRow()")[1].split("\n    fun ")[0]
-check("horizontalRow sin baseline", "baselineAligned = false" in row)
+check("horizontalRow sin baseline", "setBaselineAligned(false)" in row)
 check("horizontalRow centrado vertical", "Gravity.CENTER_VERTICAL" in row)
 
 # --- 2. Altura completa en Snippets ---
