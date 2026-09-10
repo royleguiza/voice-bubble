@@ -106,8 +106,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(SettingsScreen), findsOneWidget);
 
-        // Sin AppBar (v2): volver con el Back del sistema.
-        await tester.pageBack();
+        // Sin AppBar (v2): Back del sistema (gesto/botón Android, sin
+        // botón visible). handlePopRoute lo despacha al framework.
+        await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
 
         expect(find.byType(HomeScreen), findsOneWidget);
@@ -160,8 +161,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('API key guardada'), findsOneWidget);
 
-        // Sin AppBar (v2): volver con el Back del sistema.
-        await tester.pageBack();
+        // Sin AppBar (v2): Back del sistema (gesto/botón Android, sin
+        // botón visible). handlePopRoute lo despacha al framework.
+        await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
 
         expect(find.byType(HomeScreen), findsOneWidget);

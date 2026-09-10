@@ -131,7 +131,7 @@ for mode in ["'sistema'", "'claro'", "'oscuro'"]:
 
 # --- 7. Navegación v2: sin AppBar, Back del sistema ---
 flow = read("app_source/test/integration/full_flow_test.dart")
-check("Flujo usa Back del sistema (sin AppBar)", "pageBack()" in flow)
+check("Flujo usa Back del sistema (sin AppBar)", "handlePopRoute()" in flow)
 check("Sin arrow_back en flujo", "arrow_back" not in flow)
 
 print("\n============================================================")
