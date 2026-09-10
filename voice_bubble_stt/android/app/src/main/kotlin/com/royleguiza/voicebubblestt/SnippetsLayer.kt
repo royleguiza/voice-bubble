@@ -517,6 +517,7 @@ class SnippetsLayer(
             if (mode == SnippetMode.EDIT) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
             0f,
             if (host.isSpanish()) "editar snippet" else "edit snippet",
+            R.color.kb_label,
         ) {
             mode = if (mode == SnippetMode.EDIT) SnippetMode.NORMAL else SnippetMode.EDIT
             updateModeVisuals()
@@ -534,6 +535,7 @@ class SnippetsLayer(
             if (mode == SnippetMode.DELETE) R.drawable.kb_key_danger else R.drawable.kb_key_bg,
             0f,
             if (host.isSpanish()) "eliminar snippet" else "delete snippet",
+            R.color.kb_label,
         ) {
             mode = if (mode == SnippetMode.DELETE) SnippetMode.NORMAL else SnippetMode.DELETE
             updateModeVisuals()
