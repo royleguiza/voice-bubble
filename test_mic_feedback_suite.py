@@ -39,6 +39,8 @@ MIC_KEYS = [
     "kb_mic_haptic_paste",
     "kb_mic_haptic_cancel",
     "kb_mic_sounds_enabled",
+    "kb_mic_start_style",
+    "kb_mic_stop_style",
 ]
 
 # --- 1. Triángulo ---
@@ -56,7 +58,7 @@ check("Master háptico default ON", 'readFlag("flutter.kb_mic_haptics_enabled", 
 check("Sonidos default OFF (opt-in)", 'readFlag("flutter.kb_mic_sounds_enabled", false)' in prefs)
 
 # --- 2. WAVs ---
-for name in ["start", "stop", "paste", "cancel"]:
+for name in ["paste", "cancel"]:
     path = os.path.join(WORKSPACE, f"voice_bubble_stt/android/app/src/main/res/raw/mic_{name}.wav")
     check(f"WAV mic_{name} existe", os.path.isfile(path))
     if os.path.isfile(path):
@@ -65,6 +67,14 @@ for name in ["start", "stop", "paste", "cancel"]:
             check(f"WAV mic_{name} 44.1kHz mono 16-bit", ok)
             check(f"WAV mic_{name} corto (<250ms)",
                   w.getnframes() / w.getframerate() < 0.25)
+for n in ["1", "2", "3", "4"]:
+    for ev in ["start", "stop"]:
+        path = os.path.join(WORKSPACE, f"voice_bubble_stt/android/app/src/main/res/raw/mic_{ev}_{n}.wav")
+        check(f"Opción {n} de {ev} existe", os.path.isfile(path))
+        if os.path.isfile(path):
+            with wave.open(path, "rb") as w:
+                ok = (w.getframerate(), w.getsampwidth(), w.getnchannels()) == (44100, 2, 1)
+                check(f"Opción {n} de {ev} 44.1kHz mono 16-bit", ok)
 check("Sin WAV de ocupado (no existe ese estado)",
       not os.path.isfile(os.path.join(
           WORKSPACE, "voice_bubble_stt/android/app/src/main/res/raw/mic_busy.wav")))
@@ -73,8 +83,10 @@ check("Sin WAV de ocupado (no existe ese estado)",
 dic = read(f"{KT}/DictationController.kt")
 check("SoundPool con sonorización",
       "SoundPool.Builder()" in dic and "USAGE_ASSISTANCE_SONIFICATION" in dic)
-check("Carga los 4 sonidos",
-      all(f"R.raw.mic_{n}" in dic for n in ["start", "stop", "paste", "cancel"]))
+check("Carga los fijos + resuelve estilos por nombre",
+      "R.raw.mic_paste" in dic and "R.raw.mic_cancel" in dic
+      and 'getIdentifier("mic_start_$startStyle", "raw", pkg)' in dic
+      and 'getIdentifier("mic_stop_$stopStyle", "raw", pkg)' in dic)
 check("Sin evento BUSY (MicState.BUSY visual sigue intacto)",
       "MicEvent.BUSY" not in dic and "MicState.BUSY" in dic)
 check("Libera SoundPool al destruir", "releaseMicSounds()" in dic)
@@ -101,7 +113,8 @@ tab = read("app_source/lib/screens/settings/teclado_tab.dart")
 check("Sección colapsada por defecto", "initiallyOpen: false" in tab)
 for key in ["kb-mic-haptics-enabled", "kb-mic-haptic-start",
             "kb-mic-haptic-recording", "kb-mic-haptic-paste",
-            "kb-mic-haptic-cancel", "kb-mic-sounds-enabled"]:
+            "kb-mic-haptic-cancel", "kb-mic-sounds-enabled",
+            "kb-mic-start-style", "kb-mic-stop-style"]:
     check(f"UI con key {key}", f"'{key}'" in tab, f"falta {key}")
 v2 = read("app_source/lib/widgets/settings_v2.dart")
 check("Kit soporta initiallyOpen", "initiallyOpen" in v2)

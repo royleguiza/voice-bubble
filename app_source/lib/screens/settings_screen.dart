@@ -69,6 +69,8 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _micHapticPaste = true;
   bool _micHapticCancel = true;
   bool _micSoundsEnabled = false;
+  String _micStartStyle = StorageService.defaultMicSoundStyle;
+  String _micStopStyle = StorageService.defaultMicSoundStyle;
   int _bottomElevationDp = StorageService.defaultBottomElevationDp;
   bool _invertToolbar = false;
   String _spacebarAlignment = StorageService.defaultSpacebarAlignment;
@@ -147,6 +149,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     final micHapticPaste = await _storageService.getMicHapticPaste();
     final micHapticCancel = await _storageService.getMicHapticCancel();
     final micSoundsEnabled = await _storageService.getMicSoundsEnabled();
+    final micStartStyle = await _storageService.getMicStartStyle();
+    final micStopStyle = await _storageService.getMicStopStyle();
     final bottomElevation = await _storageService.getBottomElevationDp();
     final invertToolbar = await _storageService.getInvertToolbar();
     final spacebarAlign = await _storageService.getSpacebarAlignment();
@@ -196,6 +200,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       _micHapticPaste = micHapticPaste;
       _micHapticCancel = micHapticCancel;
       _micSoundsEnabled = micSoundsEnabled;
+      _micStartStyle = micStartStyle;
+      _micStopStyle = micStopStyle;
       _bottomElevationDp = bottomElevation;
       _invertToolbar = invertToolbar;
       _spacebarAlignment = spacebarAlign;
@@ -353,6 +359,16 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleMicSounds(bool v) async {
     await _storageService.setMicSoundsEnabled(v);
     if (mounted) setState(() => _micSoundsEnabled = v);
+  }
+
+  Future<void> _saveMicStartStyle(String v) async {
+    await _storageService.setMicStartStyle(v);
+    if (mounted) setState(() => _micStartStyle = v);
+  }
+
+  Future<void> _saveMicStopStyle(String v) async {
+    await _storageService.setMicStopStyle(v);
+    if (mounted) setState(() => _micStopStyle = v);
   }
 
   String get _hapticStyleHint {
@@ -978,6 +994,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       onToggleMicHapticCancel: _toggleMicHapticCancel,
       micSoundsEnabled: _micSoundsEnabled,
       onToggleMicSounds: _toggleMicSounds,
+      micStartStyle: _micStartStyle,
+      onSaveMicStartStyle: _saveMicStartStyle,
+      micStopStyle: _micStopStyle,
+      onSaveMicStopStyle: _saveMicStopStyle,
       isKeyboardEnabled: _isKeyboardEnabled,
       isKeyboardSelected: _isKeyboardSelected,
       onOpenKeyboardSettings: _openKeyboardSettings,

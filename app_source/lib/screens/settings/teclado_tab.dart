@@ -48,6 +48,10 @@ class TecladoTab extends StatelessWidget {
   final ValueChanged<bool> onToggleMicHapticCancel;
   final bool micSoundsEnabled;
   final ValueChanged<bool> onToggleMicSounds;
+  final String micStartStyle;
+  final ValueChanged<String> onSaveMicStartStyle;
+  final String micStopStyle;
+  final ValueChanged<String> onSaveMicStopStyle;
   final bool isKeyboardEnabled;
   final bool isKeyboardSelected;
   final VoidCallback onOpenKeyboardSettings;
@@ -97,6 +101,10 @@ class TecladoTab extends StatelessWidget {
     required this.onToggleMicHapticCancel,
     required this.micSoundsEnabled,
     required this.onToggleMicSounds,
+    required this.micStartStyle,
+    required this.onSaveMicStartStyle,
+    required this.micStopStyle,
+    required this.onSaveMicStopStyle,
     required this.isKeyboardEnabled,
     required this.isKeyboardSelected,
     required this.onOpenKeyboardSettings,
@@ -475,6 +483,46 @@ class TecladoTab extends StatelessWidget {
               ),
               value: micSoundsEnabled,
               onChanged: onToggleMicSounds,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Sonido al iniciar',
+              style: kSettingRowTitle.copyWith(
+                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              key: const ValueKey('kb-mic-start-style'),
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: '1', label: Text('Opción 1')),
+                ButtonSegment(value: '2', label: Text('Opción 2')),
+                ButtonSegment(value: '3', label: Text('Opción 3')),
+                ButtonSegment(value: '4', label: Text('Opción 4')),
+              ],
+              selected: {micStartStyle},
+              onSelectionChanged: (s) => onSaveMicStartStyle(s.first),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Sonido al terminar',
+              style: kSettingRowTitle.copyWith(
+                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              key: const ValueKey('kb-mic-stop-style'),
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: '1', label: Text('Opción 1')),
+                ButtonSegment(value: '2', label: Text('Opción 2')),
+                ButtonSegment(value: '3', label: Text('Opción 3')),
+                ButtonSegment(value: '4', label: Text('Opción 4')),
+              ],
+              selected: {micStopStyle},
+              onSelectionChanged: (s) => onSaveMicStopStyle(s.first),
             ),
           ],
         ),

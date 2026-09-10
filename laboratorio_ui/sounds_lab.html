@@ -45,6 +45,9 @@
   .name { font-size: 15px; font-weight: 600; }
   .desc { font-size: 12px; color: var(--label-secondary); margin-top: 2px; line-height: 1.4; }
   .dur { font-size: 11px; color: var(--label-tertiary); font-variant-numeric: tabular-nums; }
+  .variants { display: flex; gap: 8px; padding: 0 16px 12px 74px; flex-wrap: wrap; }
+  .variants button { border: 1px solid var(--separator); background: var(--bg-secondary); color: var(--label-secondary); border-radius: 100px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .variants button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .foot { font-size: 12px; color: var(--label-tertiary); margin: 8px 12px 30px; line-height: 1.5; }
   .seq { display: flex; gap: 10px; margin: 0 0 16px; }
   .seq button { flex: 1; padding: 12px; border-radius: 100px; border: none; background: var(--accent); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
@@ -61,7 +64,7 @@
     </div>
   </div>
   <h1>Sonidos del micrófono</h1>
-  <p class="sub">Los 5 archivos exactos que viajan en el APK (<code>res/raw/mic_*.wav</code>, 44.1kHz mono 16-bit). Tocá ▶ para escuchar cada evento.</p>
+  <p class="sub">Los archivos exactos que viajan en el APK (<code>res/raw/mic_*.wav</code>, 44.1kHz mono 16-bit). Inicio y Fin tienen 4 opciones cada uno — elegí la que más te guste y dime cuál queda.</p>
   <div class="seq">
     <button onclick="playSequence()">▶ Secuencia completa</button>
     <button class="ghost" onclick="stopAll()">Detener</button>
@@ -71,8 +74,8 @@
 </div>
 <script>
 const SOUNDS = [
-  { file: 'mic_start.wav',  name: 'Inicio',   desc: 'Sube 620→930 Hz · 120 ms · al empezar a grabar', dur: '120 ms' },
-  { file: 'mic_stop.wav',   name: 'Fin',      desc: 'Baja espejo 930→620 Hz · 120 ms · al soltar/detener', dur: '120 ms' },
+  { file: 'mic_start_1.wav', name: 'Inicio', desc: 'Sube 330→490 Hz · 130 ms · al empezar a grabar', dur: '130 ms', variants: ['mic_start_1.wav', 'mic_start_2.wav', 'mic_start_3.wav', 'mic_start_4.wav'], variantLabels: ['Opción 1: subida clásica', 'Opción 2: tok de marimba', 'Opción 3: dos notas', 'Opción 4: campana aireada'] },
+  { file: 'mic_stop_1.wav', name: 'Fin', desc: 'Baja espejo · 130 ms · al soltar/detener', dur: '130 ms', variants: ['mic_stop_1.wav', 'mic_stop_2.wav', 'mic_stop_3.wav', 'mic_stop_4.wav'], variantLabels: ['Opción 1: bajada clásica', 'Opción 2: tok grave', 'Opción 3: dos notas', 'Opción 4: campana aireada'] },
   { file: 'mic_paste.wav',  name: 'Pegado',   desc: 'Doble pop percusivo · 110 ms · al entrar al campo', dur: '110 ms' },
   { file: 'mic_cancel.wav', name: 'Cancelar', desc: 'Doble aviso grave · 180 ms · con ✕ o toque largo', dur: '180 ms' },
 ];
@@ -89,6 +92,27 @@ SOUNDS.forEach((s, i) => {
     <div class="dur">${s.dur}</div>`;
   row.querySelector('button').onclick = () => playOne(s.file);
   list.appendChild(row);
+  if (s.variants) {
+    const vwrap = document.createElement('div');
+    vwrap.className = 'variants';
+    s.variants.forEach((vf, vi) => {
+      const vb = document.createElement('button');
+      vb.textContent = 'Opción ' + (vi + 1);
+      vb.title = s.variantLabels[vi];
+      if (vi === 0) vb.classList.add('active');
+      vb.onclick = () => {
+        vwrap.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        vb.classList.add('active');
+        const a = audios[s.file];
+        a.src = 'sounds/' + vf;
+        a.play().catch(() => {});
+      };
+      vwrap.appendChild(vb);
+    });
+    const sep = document.createElement('div');
+    sep.appendChild(vwrap);
+    list.appendChild(sep);
+  }
   a.onended = () => setPlaying(s.file, false);
 });
 function setPlaying(file, on) {

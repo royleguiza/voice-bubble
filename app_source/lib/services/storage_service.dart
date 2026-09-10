@@ -300,6 +300,22 @@ class StorageService {
   Future<void> setMicSoundsEnabled(bool v) =>
       _setBool(kbMicSoundsEnabledKey, v);
 
+  /// Estilo de sonido de inicio/fin (opciones '1'..'4', default '1').
+  /// El teclado nativo resuelve mic_start_<n> / mic_stop_<n> en res/raw.
+  static const String kbMicStartStyleKey = 'kb_mic_start_style';
+  static const String kbMicStopStyleKey = 'kb_mic_stop_style';
+  static const List<String> kbMicSoundStyles = ['1', '2', '3', '4'];
+  static const String defaultMicSoundStyle = '1';
+
+  Future<String> getMicStartStyle() => _getValidatedString(
+      kbMicStartStyleKey, kbMicSoundStyles, defaultMicSoundStyle);
+  Future<void> setMicStartStyle(String v) =>
+      _setValidatedString(kbMicStartStyleKey, kbMicSoundStyles, v);
+  Future<String> getMicStopStyle() => _getValidatedString(
+      kbMicStopStyleKey, kbMicSoundStyles, defaultMicSoundStyle);
+  Future<void> setMicStopStyle(String v) =>
+      _setValidatedString(kbMicStopStyleKey, kbMicSoundStyles, v);
+
   static const String kbKeySpacingKey = 'kb_key_spacing';
 
   /// Espaciado entre teclas anti-fantasma, de menor a mayor.
@@ -466,6 +482,8 @@ class StorageService {
     kbMicHapticStartKey,
     kbMicHapticsEnabledKey,
     kbMicSoundsEnabledKey,
+    kbMicStartStyleKey,
+    kbMicStopStyleKey,
     snippetsSeededKey,
     kbSpacebarAlignmentKey,
     kbSpacebarTrackpadModeKey,

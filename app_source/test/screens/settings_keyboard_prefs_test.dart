@@ -411,5 +411,38 @@ void main() {
           isTrue);
       expect(await StorageService().getMicSoundsEnabled(), isTrue);
     });
+
+    testWidgets('opciones 1-4 de inicio y fin con default 1', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+      await openMicSection(tester);
+
+      expect(find.text('Sonido al iniciar'), findsOneWidget);
+      expect(find.text('Sonido al terminar'), findsOneWidget);
+      final startSel = find.byKey(const ValueKey('kb-mic-start-style'));
+      final stopSel = find.byKey(const ValueKey('kb-mic-stop-style'));
+      expect(startSel, findsOneWidget);
+      expect(stopSel, findsOneWidget);
+      expect(tester.widget<SegmentedButton<String>>(startSel).selected, {'1'});
+      expect(tester.widget<SegmentedButton<String>>(stopSel).selected, {'1'});
+    });
+
+    testWidgets('elegir opción 3 de inicio persiste', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+      await openMicSection(tester);
+
+      await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey('kb-mic-start-style')),
+        matching: find.text('Opción 3'),
+      ));
+      await tester.pumpAndSettle();
+
+      final startSel = find.byKey(const ValueKey('kb-mic-start-style'));
+      expect(tester.widget<SegmentedButton<String>>(startSel).selected, {'3'});
+      expect(await StorageService().getMicStartStyle(), '3');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_mic_start_style'), '3');
+    });
   });
 }

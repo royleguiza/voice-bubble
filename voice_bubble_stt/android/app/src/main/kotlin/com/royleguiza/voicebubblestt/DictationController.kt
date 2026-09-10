@@ -371,8 +371,18 @@ class DictationController(
                 .setMaxStreams(2)
                 .setAudioAttributes(attrs)
                 .build()
-            soundStart = pool.load(service, R.raw.mic_start, 1)
-            soundStop = pool.load(service, R.raw.mic_stop, 1)
+            // Estilos elegidos en Ajustes (mic_start_<n>/mic_stop_<n>).
+            val prefs = service.getSharedPreferences(
+                "FlutterSharedPreferences", Context.MODE_PRIVATE,
+            )
+            val startStyle = prefs.getString("flutter.kb_mic_start_style", "1")
+                ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" } ?: "1"
+            val stopStyle = prefs.getString("flutter.kb_mic_stop_style", "1")
+                ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" } ?: "1"
+            val pkg = service.packageName
+            val res = service.resources
+            soundStart = pool.load(service, res.getIdentifier("mic_start_$startStyle", "raw", pkg), 1)
+            soundStop = pool.load(service, res.getIdentifier("mic_stop_$stopStyle", "raw", pkg), 1)
             soundPaste = pool.load(service, R.raw.mic_paste, 1)
             soundCancel = pool.load(service, R.raw.mic_cancel, 1)
             soundPool = pool

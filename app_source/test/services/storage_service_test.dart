@@ -438,6 +438,23 @@ void main() {
         expect(StorageService.bridgeKeys, contains(key));
       }
     });
+
+    test('estilos de inicio/fin con default 1 y validación', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.getMicStartStyle(), '1');
+      expect(await service.getMicStopStyle(), '1');
+      await service.setMicStartStyle('3');
+      await service.setMicStopStyle('4');
+      expect(await service.getMicStartStyle(), '3');
+      expect(await service.getMicStopStyle(), '4');
+      await service.setMicStartStyle('9');
+      expect(await service.getMicStartStyle(), '3');
+      expect(StorageService.bridgeKeys,
+          contains(StorageService.kbMicStartStyleKey));
+      expect(StorageService.bridgeKeys,
+          contains(StorageService.kbMicStopStyleKey));
+    });
   });
 
   group('StorageService - bóveda STT sin espejo plano (SPK-02)', () {
@@ -574,6 +591,8 @@ void main() {
       'kb_mic_haptic_start',
       'kb_mic_haptics_enabled',
       'kb_mic_sounds_enabled',
+      'kb_mic_start_style',
+      'kb_mic_stop_style',
       'kb_snippets_seeded',
       'kb_spacebar_alignment',
       'kb_spacebar_trackpad_mode',
@@ -601,8 +620,8 @@ void main() {
       'voice_snippets_v1',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (41 claves)', () {
-      expect(StorageService.bridgeKeys.length, 41);
+    test('bridgeKeys cubre exactamente el contrato (43 claves)', () {
+      expect(StorageService.bridgeKeys.length, 43);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
     });
 

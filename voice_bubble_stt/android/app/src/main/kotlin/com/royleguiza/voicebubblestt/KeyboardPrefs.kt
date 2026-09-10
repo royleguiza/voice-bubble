@@ -46,6 +46,8 @@ class KeyboardPrefs(private val context: Context) {
     var micHapticPaste = true
     var micHapticCancel = true
     var micSoundsEnabled = false
+    var micStartStyle = "1"
+    var micStopStyle = "1"
 
     // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
     var trackpadEnabled = true
@@ -110,6 +112,16 @@ class KeyboardPrefs(private val context: Context) {
         def
     }
 
+    /** Estilo '1'..'4' de sonido; cualquier otro valor cae a '1'. */
+    private fun readStyle(key: String): String = try {
+        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getString(key, "1")
+            ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" }
+            ?: "1"
+    } catch (_: Exception) {
+        "1"
+    }
+
     fun load() {
         heightFactor = try {
             when (
@@ -136,6 +148,8 @@ class KeyboardPrefs(private val context: Context) {
         micHapticPaste = readFlag("flutter.kb_mic_haptic_paste", true)
         micHapticCancel = readFlag("flutter.kb_mic_haptic_cancel", true)
         micSoundsEnabled = readFlag("flutter.kb_mic_sounds_enabled", false)
+        micStartStyle = readStyle("flutter.kb_mic_start_style")
+        micStopStyle = readStyle("flutter.kb_mic_stop_style")
         bottomElevationDp = try {
             context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .getLong("flutter.kb_bottom_elevation_dp", 24L).toInt()
