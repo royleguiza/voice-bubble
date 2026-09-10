@@ -94,13 +94,6 @@ class TrackpadTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          'Modo Trackpad y Puntero Virtual',
-          style: kSettingRowTitle.copyWith(
-            color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-          ),
-        ),
-        const SizedBox(height: 8),
         SettingsCard(
           children: [
             Padding(

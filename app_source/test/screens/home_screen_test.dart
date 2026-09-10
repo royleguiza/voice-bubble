@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
+import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
@@ -85,7 +86,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.settings));
       await tester.pumpAndSettle();
 
-      expect(find.text('Configuración'), findsOneWidget);
+      expect(find.byType(SettingsScreen), findsOneWidget);
       expect(find.text('API Key de Groq'), findsOneWidget);
     });
 

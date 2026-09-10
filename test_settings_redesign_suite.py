@@ -129,6 +129,11 @@ for txt in ["VoiceBubble STT v1.0.0", "Transcripción de voz a texto con Groq Wh
 for mode in ["'sistema'", "'claro'", "'oscuro'"]:
     check(f"About ofrece modo {mode}", mode in screen)
 
+# --- 7. Navegación v2: sin AppBar, Back del sistema ---
+flow = read("app_source/test/integration/full_flow_test.dart")
+check("Flujo usa Back del sistema (sin AppBar)", "pageBack()" in flow)
+check("Sin arrow_back en flujo", "arrow_back" not in flow)
+
 print("\n============================================================")
 print(f" RESULTADO SUITE SETTINGS-V2: {suite.passed} pasados, {suite.failed} fallidos.")
 print("============================================================\n")

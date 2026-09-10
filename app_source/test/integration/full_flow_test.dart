@@ -46,7 +46,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(SettingsScreen), findsOneWidget);
-        expect(find.text('Configuración'), findsOneWidget);
+        expect(find.text('General'), findsNWidgets(2));
       },
     );
 
@@ -106,7 +106,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(SettingsScreen), findsOneWidget);
 
-        await tester.tap(find.byIcon(Icons.arrow_back));
+        // Sin AppBar (v2): volver con el Back del sistema.
+        await tester.pageBack();
         await tester.pumpAndSettle();
 
         expect(find.byType(HomeScreen), findsOneWidget);
@@ -159,7 +160,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('API key guardada'), findsOneWidget);
 
-        await tester.tap(find.byIcon(Icons.arrow_back));
+        // Sin AppBar (v2): volver con el Back del sistema.
+        await tester.pageBack();
         await tester.pumpAndSettle();
 
         expect(find.byType(HomeScreen), findsOneWidget);
