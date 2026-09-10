@@ -8,6 +8,8 @@ import android.text.Editable
 import android.text.InputType
 import android.text.TextUtils
 import android.text.TextWatcher
+import android.transition.ChangeBounds
+import android.transition.TransitionManager
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -112,6 +114,17 @@ class SnippetsLayer(
 
     val isSearchActive: Boolean get() = searchActive
 
+    /**
+     * Búsqueda compacta (lab snippets): arranca colapsada en 4 cuartos
+     * iguales (lupa + 3 botones); al abrir, la lupa domina y el resto se
+     * comprime con morph. Abrir = tocar la lupa o tipear (ver
+     * ensureSearchMode); al entrar sin tocar nada queda colapsada.
+     */
+    private var searchOpen = false
+    private var searchRow: LinearLayout? = null
+    private var searchBox: LinearLayout? = null
+    private var searchBoxLp: LinearLayout.LayoutParams? = null
+
     fun onCreateInputView() {
         store = SnippetStore(service)
     }
@@ -126,7 +139,11 @@ class SnippetsLayer(
         if (host.currentLayer() == Layer.SNIPPETS) {
             host.setLayer(origin)
             searchActive = false
+            searchOpen = false
             searchField = null
+            searchRow = null
+            searchBox = null
+            searchBoxLp = null
             closeEditor()
             return
         }
@@ -147,7 +164,11 @@ class SnippetsLayer(
         query = ""
         gridContainer = null
         searchActive = false
+        searchOpen = false
         searchField = null
+        searchRow = null
+        searchBox = null
+        searchBoxLp = null
         mode = SnippetMode.NORMAL
         btnEditView = null
         btnDeleteView = null
@@ -461,9 +482,36 @@ class SnippetsLayer(
         return container
     }
 
+    /**
+     * Fila compacta: 4 cuartos iguales (lupa + nuevo + editar + borrar).
+     * La lupa expande el campo (tap o tipeo directo) y comprime el resto
+     * con morph; colapsar limpia el query. Al entrar a la capa sin tocar
+     * nada queda colapsada.
+     */
     private fun buildSearchRow(): LinearLayout {
         val row = host.horizontalRow()
         val pad = host.dimenPx(R.dimen.kb_popup_padding)
+        val m = host.dimenPx(R.dimen.kb_key_gap) / 2
+        val h = host.scaledDimen(R.dimen.kb_snippet_search_height)
+
+        // Caja lupa: icono siempre visible + campo (GONE colapsado).
+        val box = LinearLayout(service).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundResource(R.drawable.kb_key_bg)
+        }
+        val iconSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, service.resources.displayMetrics).toInt()
+        val icon = ImageView(service).apply {
+            setImageResource(R.drawable.ic_search)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            isClickable = true
+            isFocusable = true
+            setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
+            contentDescription = if (host.isSpanish()) "buscar snippets" else "search snippets"
+            setOnClickListener { toggleSearch() }
+        }
+        box.addView(icon, LinearLayout.LayoutParams(iconSize, iconSize))
+
         val et = EditText(service)
         et.hint = if (host.isSpanish()) "Buscar snippets..." else "Search snippets..."
         et.setSingleLine(true)
@@ -472,9 +520,9 @@ class SnippetsLayer(
         et.imeOptions = EditorInfo.IME_ACTION_SEARCH
         et.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
         et.setHintTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
-        et.setBackgroundResource(R.drawable.kb_key_bg)
+        et.setBackgroundResource(0)
         et.setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
-        et.setPadding(pad, pad, pad, pad)
+        et.setPadding(pad, 0, pad, 0)
         et.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -497,19 +545,18 @@ class SnippetsLayer(
             searchActive = true
             applySearchVisual()
         }
-        val lp = LinearLayout.LayoutParams(0, host.scaledDimen(R.dimen.kb_snippet_search_height), 1f)
-        val m = host.dimenPx(R.dimen.kb_key_gap) / 2
-        lp.setMargins(m, 0, m, 0)
-        row.addView(et, lp)
-
-        val btnH = host.scaledDimen(R.dimen.kb_snippet_search_height)
-        val btnW = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, service.resources.displayMetrics).toInt()
+        box.addView(et, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+        val boxLp = LinearLayout.LayoutParams(0, h, 1f)
+        boxLp.setMargins(m, 0, m, 0)
+        row.addView(box, boxLp)
+        searchBox = box
+        searchBoxLp = boxLp
 
         // Boton [+] Nuevo
         val btnPlus = host.makeIconKey(R.drawable.ic_add, R.drawable.kb_key_bg, 0f, if (host.isSpanish()) "nuevo snippet" else "new snippet", R.color.kb_label) {
             openEditor(null)
         }
-        val lpPlus = LinearLayout.LayoutParams(btnW, btnH)
+        val lpPlus = LinearLayout.LayoutParams(0, h, 1f)
         lpPlus.setMargins(m, 0, m, 0)
         btnPlus.layoutParams = lpPlus
         row.addView(btnPlus)
@@ -527,7 +574,7 @@ class SnippetsLayer(
             refreshGrid()
         }
         btnEditView = btnEdit
-        val lpEdit = LinearLayout.LayoutParams(btnW, btnH)
+        val lpEdit = LinearLayout.LayoutParams(0, h, 1f)
         lpEdit.setMargins(m, 0, m, 0)
         btnEdit.layoutParams = lpEdit
         row.addView(btnEdit)
@@ -545,12 +592,54 @@ class SnippetsLayer(
             refreshGrid()
         }
         btnDeleteView = btnDelete
-        val lpDelete = LinearLayout.LayoutParams(btnW, btnH)
+        val lpDelete = LinearLayout.LayoutParams(0, h, 1f)
         lpDelete.setMargins(m, 0, m, 0)
         btnDelete.layoutParams = lpDelete
         row.addView(btnDelete)
 
+        searchRow = row
+        applySearchLayout(animate = false)
         return row
+    }
+
+    /** Alterna la búsqueda (tap en la lupa): colapsar limpia el query. */
+    private fun toggleSearch() {
+        if (searchOpen) {
+            searchOpen = false
+            query = ""
+            refreshGrid()
+            exitSearchMode()
+            applySearchLayout(animate = true)
+        } else {
+            searchOpen = true
+            ensureSearchMode()
+            searchField?.requestFocus()
+            applySearchLayout(animate = true)
+        }
+    }
+
+    /** Aplica pesos colapsado (4 cuartos) o expandido (lupa domina). */
+    private fun applySearchLayout(animate: Boolean) {
+        val row = searchRow
+        val box = searchBox
+        val boxLp = searchBoxLp
+        val et = searchField
+        if (row == null || box == null || boxLp == null || et == null) return
+        if (animate) {
+            try {
+                val t = ChangeBounds()
+                t.duration = 200L
+                TransitionManager.beginDelayedTransition(row, t)
+            } catch (_: Exception) {}
+        }
+        if (searchOpen) {
+            boxLp.weight = 8f
+            et.visibility = View.VISIBLE
+        } else {
+            boxLp.weight = 1f
+            et.visibility = View.GONE
+        }
+        box.layoutParams = boxLp
     }
 
     private fun updateModeVisuals() {
@@ -632,16 +721,18 @@ class SnippetsLayer(
 
         when (mode) {
             SnippetMode.EDIT -> {
-                chip.setBackgroundResource(R.drawable.kb_key_accent)
-                chip.setTextColor(ContextCompat.getColor(service, R.color.kb_label_on_accent))
+                // Lab compacta: borde punteado azul, contenido intacto.
+                chip.setBackgroundResource(R.drawable.kb_chip_edit)
+                chip.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
                 chip.setOnClickListener {
                     host.haptic(chip)
                     openEditor(snippet)
                 }
             }
             SnippetMode.DELETE -> {
-                chip.setBackgroundResource(R.drawable.kb_key_danger)
-                chip.setTextColor(ContextCompat.getColor(service, R.color.kb_label_on_accent))
+                // Lab compacta: borde punteado rojo, contenido intacto.
+                chip.setBackgroundResource(R.drawable.kb_chip_delete)
+                chip.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
                 chip.setOnClickListener {
                     host.haptic(chip)
                     showDeleteConfirmation(snippet)
@@ -958,6 +1049,11 @@ class SnippetsLayer(
         searchActive = false
         searchField?.clearFocus()
         applySearchVisual()
+        // Sale también visualmente: vuelve a los 4 iconos.
+        if (searchOpen) {
+            searchOpen = false
+            applySearchLayout(animate = true)
+        }
     }
 
     /** Enciende el modo busqueda bajo demanda (teclado de la propia capa). */
@@ -965,6 +1061,15 @@ class SnippetsLayer(
         if (!searchActive) {
             searchActive = true
             applySearchVisual()
+        }
+        // Tipeo directo = tocar la lupa: expande la fila y enfoca el campo.
+        // Solo anima en la transicion cerrado->abierto; el resto es no-op.
+        if (!searchOpen) {
+            searchOpen = true
+            applySearchLayout(animate = true)
+        }
+        if (searchField?.hasFocus() == false) {
+            searchField?.requestFocus()
         }
     }
 }

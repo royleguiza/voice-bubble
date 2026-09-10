@@ -68,6 +68,30 @@ import re
 for name, src in [("KeyFactory", kf), ("SnippetsLayer", snip), ("ToolbarLayer", toolbar)]:
     check(f"Sin Log en {name}", not re.search(r"\bLog\.[dvwie]", src))
 
+# --- 5. Snippets compacta (lab): 4 cuartos + lupa + punteados ---
+check("Lupa ic_search existe",
+      os.path.isfile(os.path.join(
+          WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/ic_search.xml")))
+check("Dibujable kb_chip_edit existe",
+      os.path.isfile(os.path.join(
+          WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/kb_chip_edit.xml")))
+check("Dibujable kb_chip_delete existe",
+      os.path.isfile(os.path.join(
+          WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/kb_chip_delete.xml")))
+for dw, color in [("kb_chip_edit.xml", "kb_key_bg_accent"), ("kb_chip_delete.xml", "kb_recording")]:
+    raw = read(f"voice_bubble_stt/android/app/src/main/res/drawable/{dw}")
+    check(f"{dw} punteado", "dashWidth" in raw and "dashGap" in raw, f"sin dash en {dw}")
+    check(f"{dw} trazo {color}", color in raw)
+check("Fila arranca colapsada (searchOpen=false)",
+      "private var searchOpen = false" in snip)
+check("Lupa alterna con morph", "fun toggleSearch()" in snip and "ChangeBounds" in snip)
+check("Tipeo abre la lupa", "fun ensureSearchMode()" in snip and "searchOpen = true" in snip)
+check("Salir colapsa", "fun exitSearchMode()" in snip and "searchOpen = false" in snip)
+check("Chips con punteado en modos",
+      "R.drawable.kb_chip_edit" in snip and "R.drawable.kb_chip_delete" in snip)
+check("Contenido intacto en modos",
+      snip.count("R.color.kb_label)") >= 2)
+
 print("\n============================================================")
 print(f" RESULTADO SUITE TECLADO-LAYOUT: {suite.passed} pasados, {suite.failed} fallidos.")
 print("============================================================\n")

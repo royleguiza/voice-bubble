@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chip en modo borrado: fondo intacto + borde punteado rojo (lab compacta). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <corners android:radius="@dimen/kb_key_radius" />
+    <solid android:color="@color/kb_key_bg" />
+    <stroke
+        android:width="2dp"
+        android:color="@color/kb_recording"
+        android:dashWidth="4dp"
+        android:dashGap="3dp" />
+</shape>
