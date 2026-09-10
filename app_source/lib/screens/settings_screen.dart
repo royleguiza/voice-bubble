@@ -60,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _showLanguageKey = true;
   bool _clipboardImagesEnabled = false;
   String _heightProfile = StorageService.defaultHeightProfile;
+  String _keySpacing = StorageService.defaultKeySpacing;
   bool _hapticsEnabled = true;
   int _bottomElevationDp = StorageService.defaultBottomElevationDp;
   bool _invertToolbar = false;
@@ -127,6 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _storageService.loadKeyboardCodeKeyVisible(),
       _storageService.loadKeyboardLanguageKeyVisible(),
       _storageService.getHeightProfile(),
+      _storageService.getKeySpacing(),
       _storageService.getHapticsEnabled(),
     ).wait;
     final bottomElevation = await _storageService.getBottomElevationDp();
@@ -168,7 +170,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       _showCodeKey = results.$5;
       _showLanguageKey = results.$6;
       _heightProfile = results.$7;
-      _hapticsEnabled = results.$8;
+      _keySpacing = results.$8;
+      _hapticsEnabled = results.$9;
       _bottomElevationDp = bottomElevation;
       _invertToolbar = invertToolbar;
       _spacebarAlignment = spacebarAlign;
@@ -236,6 +239,11 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (mounted) setState(() => _heightProfile = profile);
   }
 
+  Future<void> _saveKeySpacing(String spacing) async {
+    await _storageService.setKeySpacing(spacing);
+    if (mounted) setState(() => _keySpacing = spacing);
+  }
+
   Future<void> _saveBottomElevation(int dp) async {
     await _storageService.setBottomElevationDp(dp);
     if (mounted) setState(() => _bottomElevationDp = dp);
@@ -266,6 +274,17 @@ class _SettingsScreenState extends State<SettingsScreen>
         return 'Teclas extra altas para máxima comodidad y precisión.';
       default:
         return 'Altura equilibrada entre espacio y precisión.';
+    }
+  }
+
+  String get _keySpacingHint {
+    switch (_keySpacing) {
+      case 'compacto':
+        return 'Teclas más juntas para pantallas chicas.';
+      case 'amplio':
+        return 'Más aire entre teclas para evitar pulsaciones vecinas.';
+      default:
+        return 'Separación equilibrada entre teclas.';
     }
   }
 
@@ -822,6 +841,9 @@ class _SettingsScreenState extends State<SettingsScreen>
       heightProfile: _heightProfile,
       onSaveHeightProfile: _saveHeightProfile,
       heightProfileHint: _heightProfileHint,
+      keySpacing: _keySpacing,
+      onSaveKeySpacing: _saveKeySpacing,
+      keySpacingHint: _keySpacingHint,
       invertToolbar: _invertToolbar,
       onToggleInvertToolbar: _toggleInvertToolbar,
       spacebarAlignment: _spacebarAlignment,

@@ -19,6 +19,9 @@ class TecladoTab extends StatelessWidget {
   final String heightProfile;
   final ValueChanged<String> onSaveHeightProfile;
   final String heightProfileHint;
+  final String keySpacing;
+  final ValueChanged<String> onSaveKeySpacing;
+  final String keySpacingHint;
   final bool invertToolbar;
   final ValueChanged<bool> onToggleInvertToolbar;
   final String spacebarAlignment;
@@ -50,6 +53,9 @@ class TecladoTab extends StatelessWidget {
     required this.heightProfile,
     required this.onSaveHeightProfile,
     required this.heightProfileHint,
+    required this.keySpacing,
+    required this.onSaveKeySpacing,
+    required this.keySpacingHint,
     required this.invertToolbar,
     required this.onToggleInvertToolbar,
     required this.spacebarAlignment,
@@ -188,6 +194,32 @@ class TecladoTab extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   heightProfileHint,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Espaciado de teclas',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  key: const ValueKey('kb-key-spacing-selector'),
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: 'compacto', label: Text('Compacto')),
+                    ButtonSegment(value: 'normal', label: Text('Normal')),
+                    ButtonSegment(value: 'amplio', label: Text('Amplio')),
+                  ],
+                  selected: {keySpacing},
+                  onSelectionChanged: (spacings) =>
+                      onSaveKeySpacing(spacings.first),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  keySpacingHint,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color:
                             Theme.of(context).colorScheme.onSurfaceVariant,

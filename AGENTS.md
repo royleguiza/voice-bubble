@@ -272,6 +272,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 
 **Deuda reportada en dispositivo (2026-09-10, r127, APARCADA por el dueño)**: (1) clipboard no guarda imágenes aun con el switch ON — no mirar por ahora; (2) capa snippets del teclado perdió minimalismo: al abrirla, shift (izq. de Z) y borrar quedan bajos vs resto, y la selección en edición hoy rellena en verde/azul completo en vez del borde punteado azul por tarjeta de antes — solo tener en cuenta; (3) editando un snippet no andan gestos del teclado (deslizar borrando, deslizar en barra espaciadora).
 
+**Espaciado anti-fantasma (2026-09-10, local sin push, pedido del dueño)**: pref `kb_key_spacing` (compacto/normal/amplio, default normal sin cambio de conducta) en triángulo Kotlin==contrato==Dart; `VKS.dimenPx` escala solo los 3 gaps (alturas intactas); SegmentedButton en Ajustes→Teclado + tests (storage, snapshot bridge 34, widget); master local 13/13.
+
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
 - Mejora futura registrada: `<monochrome>` en el icono adaptive (themed icons Android 13+); contador de generación para invalidar callbacks de transcripción obsoletos tras rotación (menor UX detectado en auditoría K5-T5); limpiar PNGs huérfanos de `mipmap-*dpi` (minSdk 28 usa anydpi-v26).

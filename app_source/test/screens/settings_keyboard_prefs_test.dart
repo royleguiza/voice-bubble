@@ -77,6 +77,12 @@ void main() {
   Finder heightSelector() =>
       find.byKey(const ValueKey('kb-height-profile-selector'));
 
+  Finder spacingSelector() =>
+      find.byKey(const ValueKey('kb-key-spacing-selector'));
+
+  Set<String> selectedKeySpacing(WidgetTester tester) =>
+      tester.widget<SegmentedButton<String>>(spacingSelector()).selected;
+
   Set<String> selectedHeightProfile(WidgetTester tester) =>
       tester.widget<SegmentedButton<String>>(heightSelector()).selected;
 
@@ -203,6 +209,39 @@ void main() {
         ),
         matching: find.byType(Switch),
       );
+
+  group('SettingsScreen - espaciado de teclas anti-fantasma', () {
+    testWidgets('muestra Normal seleccionado por defecto', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Espaciado de teclas'), findsOneWidget);
+      expect(find.text('Compacto'), findsOneWidget);
+      expect(find.text('Normal'), findsOneWidget);
+      expect(find.text('Amplio'), findsOneWidget);
+      expect(selectedKeySpacing(tester), {'normal'});
+    });
+
+    testWidgets('elegir Amplio persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Amplio'));
+      await tester.pumpAndSettle();
+
+      expect(selectedKeySpacing(tester), {'amplio'});
+      expect(await StorageService().getKeySpacing(), 'amplio');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_key_spacing'), 'amplio');
+    });
+  });
 
   group('SettingsScreen - imágenes del portapapeles opt-in (SPK-10)', () {
     testWidgets('toggle visible y apagado por defecto', (tester) async {

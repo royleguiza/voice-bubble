@@ -237,6 +237,26 @@ class StorageService {
   Future<void> setHapticsEnabled(bool enabled) =>
       _setBool(kbHapticsEnabledKey, enabled);
 
+  static const String kbKeySpacingKey = 'kb_key_spacing';
+
+  /// Espaciado entre teclas anti-fantasma, de menor a mayor.
+  static const List<String> kbKeySpacings = [
+    'compacto',
+    'normal',
+    'amplio',
+  ];
+  static const String defaultKeySpacing = 'normal';
+
+  /// Separación entre teclas: 'compacto', 'normal' o 'amplio'.
+  /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter."
+  /// y escala solo los gaps (las alturas las dueña el perfil de altura).
+  /// Un valor ausente o invalido cae al perfil por defecto.
+  Future<String> getKeySpacing() => _getValidatedString(
+      kbKeySpacingKey, kbKeySpacings, defaultKeySpacing);
+
+  Future<void> setKeySpacing(String spacing) => _setValidatedString(
+      kbKeySpacingKey, kbKeySpacings, spacing);
+
   // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
   static const String kbTrackpadEnabledKey = 'kb_trackpad_enabled';
   static const String kbTrackpadToolbarVisibleKey = 'kb_trackpad_toolbar_visible';
@@ -374,6 +394,7 @@ class StorageService {
     kbHeightProfileKey,
     kbInvertToolbarKey,
     _keyboardLanguageKeyVisibleKey,
+    kbKeySpacingKey,
     snippetsSeededKey,
     kbSpacebarAlignmentKey,
     kbSpacebarTrackpadModeKey,

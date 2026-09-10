@@ -57,6 +57,16 @@ internal const val HEIGHT_FACTOR_MEDIA = 1f
 internal const val HEIGHT_FACTOR_ALTA = 1.15f
 internal const val HEIGHT_FACTOR_MUY_ALTA = 1.30f
 
+/** Valores del espaciado entre teclas escritos por Ajustes (anti-fantasma). */
+internal const val SPACING_PROFILE_COMPACTO = "compacto"
+internal const val SPACING_PROFILE_NORMAL = "normal"
+internal const val SPACING_PROFILE_AMPLIO = "amplio"
+
+/** Factores aplicados a los gaps horizontales/verticales entre teclas. */
+internal const val SPACING_FACTOR_COMPACTO = 0.8f
+internal const val SPACING_FACTOR_NORMAL = 1f
+internal const val SPACING_FACTOR_AMPLIO = 1.5f
+
 /** Handler principal compartido: runOnMain no aloja uno por llamada. */
 private val sharedMainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
 

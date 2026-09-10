@@ -30,6 +30,10 @@ class KeyboardPrefs(private val context: Context) {
     // SPK-10: imágenes del portapapeles opt-in (texto primero). Default OFF.
     var clipboardImagesEnabled = false
 
+    // Anti-fantasma: espaciado entre teclas (Compacto/Normal/Amplio).
+    var keySpacing = SPACING_PROFILE_NORMAL
+    var keySpacingFactor = SPACING_FACTOR_NORMAL
+
     // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
     var trackpadEnabled = true
     var trackpadToolbarVisible = true
@@ -138,6 +142,19 @@ class KeyboardPrefs(private val context: Context) {
                 .getBoolean("flutter.kb_clipboard_images_enabled", false)
         } catch (_: Exception) {
             false
+        }
+        keySpacing = try {
+            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_key_spacing", SPACING_PROFILE_NORMAL)
+                ?.takeIf { it == SPACING_PROFILE_COMPACTO || it == SPACING_PROFILE_NORMAL || it == SPACING_PROFILE_AMPLIO }
+                ?: SPACING_PROFILE_NORMAL
+        } catch (_: Exception) {
+            SPACING_PROFILE_NORMAL
+        }
+        keySpacingFactor = when (keySpacing) {
+            SPACING_PROFILE_COMPACTO -> SPACING_FACTOR_COMPACTO
+            SPACING_PROFILE_AMPLIO -> SPACING_FACTOR_AMPLIO
+            else -> SPACING_FACTOR_NORMAL
         }
 
         // MEJ-09: lectura de preferencias del trackpad

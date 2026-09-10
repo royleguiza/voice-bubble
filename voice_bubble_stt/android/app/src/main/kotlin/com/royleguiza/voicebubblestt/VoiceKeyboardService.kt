@@ -296,7 +296,16 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // --- SnippetsLayer.UiHost (SPK-05 módulo 8). commitText no sirve aquí:
     // insertar un snippet debe saltear el ruteo al query (bucle), por eso
     // la capa comitea directo vía el InputConnection del servicio.
-    override fun dimenPx(resId: Int): Int = dimen(resId)
+    // Punto único del espaciado anti-fantasma: solo los 3 gaps escalan
+    // con el perfil (el resto pasa intacto; las alturas las dueña el
+    // perfil de altura vía scaleV, jamás este factor).
+    override fun dimenPx(resId: Int): Int {
+        val base = dimen(resId)
+        if (resId != R.dimen.kb_key_gap && resId != R.dimen.kb_key_gap_h && resId != R.dimen.kb_key_gap_v) {
+            return base
+        }
+        return (base * kbPrefs.keySpacingFactor).toInt()
+    }
     override fun addContentRow(view: View) = addRow(view)
     override fun showCenteredBox(box: LinearLayout, widthPx: Int) {
         if (::snippets.isInitialized) snippets.showCenteredBox(box, widthPx)

@@ -5,6 +5,7 @@ kb_code_key_visible
 kb_haptics_enabled
 kb_height_profile
 kb_invert_toolbar
+kb_key_spacing
 kb_language_key_visible
 kb_snippets_seeded
 kb_spacebar_alignment
