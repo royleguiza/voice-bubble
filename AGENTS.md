@@ -274,6 +274,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 
 **Espaciado anti-fantasma (2026-09-10, local sin push, pedido del dueño)**: pref `kb_key_spacing` (compacto/normal/amplio, default normal sin cambio de conducta) en triángulo Kotlin==contrato==Dart; `VKS.dimenPx` escala solo los 3 gaps (alturas intactas); SegmentedButton en Ajustes→Teclado + tests (storage, snapshot bridge 34, widget); master local 13/13.
 
+**Estilo háptico (2026-09-10, CI verde run `34432445249`, artefacto `voice-bubble-arm64-debug-apk-r131`)**: pref `kb_haptic_style` (nitido/firme/suave, default nitido) en puente (35 claves); `VKS.haptic` deja el `KEYBOARD_TAP` del sistema y vibra directo (nítido 12ms/255, firme 30ms/220, suave 15ms/90). Camino al verde: `.wait` de records limitado a 9 (estilo fuera del record) + `areAllPrimitivesSupported` inexistente en el SDK (one-shot garantizado en vez de Composition).
+
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
 - Mejora futura registrada: `<monochrome>` en el icono adaptive (themed icons Android 13+); contador de generación para invalidar callbacks de transcripción obsoletos tras rotación (menor UX detectado en auditoría K5-T5); limpiar PNGs huérfanos de `mipmap-*dpi` (minSdk 28 usa anydpi-v26).
