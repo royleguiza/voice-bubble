@@ -1,6 +1,7 @@
 package com.royleguiza.voicebubblestt
 
 import android.graphics.Typeface
+import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.text.Editable

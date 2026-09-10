@@ -232,7 +232,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // Sincronizar estados visuales persistentes tras reconstruir la vista.
         if (::editor.isInitialized) editor.applyCase()
         refreshModifiers()
-        applyMicVisual()
+        if (::dictation.isInitialized) dictation.refreshMicVisual()
     }
     // --- ToolbarLayer.UiHost (SPK-05 módulo 12). isSpanish,
     // isPasswordField, currentLayer, dimenPx, horizontalRow, makeIconKey y
@@ -272,7 +272,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun micKeyView(): View = dictation.makeMicKey()
     override fun micClearViews() = dictation.clearViews()
     override fun isTerminalRowPref(): Boolean = kbPrefs.terminalRowVisiblePref
-    override fun toggleTerminalRowPref() = kbPrefs.terminalRowVisiblePref = !kbPrefs.terminalRowVisiblePref
+    override fun toggleTerminalRowPref() { kbPrefs.terminalRowVisiblePref = !kbPrefs.terminalRowVisiblePref }
     override fun isCodeKeyPref(): Boolean = kbPrefs.codeKeyVisiblePref
     override fun isTrackpadToolbarAllowed(): Boolean = kbPrefs.trackpadEnabled && kbPrefs.trackpadToolbarVisible
     override fun isToolbarInverted(): Boolean = kbPrefs.invertToolbar
@@ -304,9 +304,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun showAnchoredBox(box: LinearLayout, anchor: View) {
         if (::snippets.isInitialized) snippets.showAnchoredBox(box, anchor)
     }
-    override fun setLayer(next: Layer) = layer = next
+    override fun setLayer(next: Layer) { layer = next }
+    override fun consumeModifiers() = editor.consumeModifiers()
     override fun lastLetters(): Layer = lastLettersLayer
-    override fun setLastLetters(l: Layer) = lastLettersLayer = l
+    override fun setLastLetters(l: Layer) { lastLettersLayer = l }
     override fun rootView(): LinearLayout = root
     override fun beginTransition() = trackpad.playTransition()
 
@@ -334,7 +335,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         bgRes: Int,
         weight: Float,
         description: String?,
-        tintColorRes: Int = R.color.kb_label,
+        tintColorRes: Int,
         onClick: () -> Unit,
     ): ImageView = keys.makeIconKey(iconRes, bgRes, weight, description, tintColorRes, onClick)
 
@@ -370,7 +371,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // commitText, rootView y dimenPx ya existen arriba y sirven a esta
     // interfaz (misma firma, una sola implementación).
     override fun isAlive(): Boolean = instance === this
-    override fun takePopup(popup: PopupWindow?) = activePopup = popup
+    override fun takePopup(popup: PopupWindow?) { activePopup = popup }
     override fun currentPopup(): PopupWindow? = activePopup
     override fun dismissPopups() = dismissPopup()
 
@@ -413,7 +414,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun pressSpace() {
         // En snippets el espacio alimenta el query solo si no esta abierto el editor.
         if (layer == Layer.SNIPPETS && !snippets.isEditorOpen) snippets.ensureSearchMode()
-        commit(" ")
+        editor.commit(" ")
     }
     override fun pressEnter() = editor.handleEnter()
     override fun attachSpacebar(view: View) = spacebar.attachSpacebarGestures(view)
@@ -460,7 +461,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // existen arriba y sirven a esta interfaz (misma firma, una sola
     // implementación).
     override fun currentInputView(): View? = inputView
-    override fun setRecordingActive(active: Boolean) = keyboardRecordingActive = active
+    override fun setRecordingActive(active: Boolean) { keyboardRecordingActive = active }
     override fun isRecordingActive(): Boolean = keyboardRecordingActive
 
     /** Shell SPK-05: el contenido vive en SnippetsLayer (módulo 13: hasta
@@ -468,8 +469,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private fun buildSnippetRows() {
         snippets.buildContent()
         when (snippets.subLayer) {
-            Layer.SYMBOLS -> buildSymbolRows()
-            Layer.CODE -> buildCodeRows()
+            Layer.SYMBOLS -> layout.buildSymbolRows()
+            Layer.CODE -> layout.buildCodeRows()
             else -> snippets.buildLetterRows()
         }
     }

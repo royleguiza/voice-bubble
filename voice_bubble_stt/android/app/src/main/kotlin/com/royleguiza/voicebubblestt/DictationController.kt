@@ -507,7 +507,8 @@ class DictationController(
         recordingTimerRunnable = null
     }
 
-    private fun refreshMicVisual() {
+    /** Sincroniza el visual del mic tras reconstruir la vista (lo llama VKS). */
+    fun refreshMicVisual() {
         // AT-A4: sin cambio de campo no hay otro punto que reevalue la
         // burbuja; si ella dejo de grabar, BUSY zombi vuelve a IDLE.
         if (micState == MicState.BUSY && !bubbleBusy()) {

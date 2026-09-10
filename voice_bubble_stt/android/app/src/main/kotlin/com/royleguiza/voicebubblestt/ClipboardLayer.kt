@@ -16,6 +16,7 @@ import android.widget.LinearLayout
 import androidx.core.content.FileProvider
 import androidx.core.view.inputmethod.EditorInfoCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
+import androidx.core.view.inputmethod.InputContentInfoCompat
 
 /**
  * Capa Portapapeles (SPK-05, módulo 7 de N): filmstrip multimodal
