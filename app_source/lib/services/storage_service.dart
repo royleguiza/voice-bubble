@@ -300,8 +300,8 @@ class StorageService {
   Future<void> setMicSoundsEnabled(bool v) =>
       _setBool(kbMicSoundsEnabledKey, v);
 
-  /// Estilo de sonido de inicio/fin (opciones '1'..'4', default '1').
-  /// El teclado nativo resuelve mic_start_<n> / mic_stop_<n> en res/raw.
+  /// Estilo de sonido de inicio/fin (opciones '1'..'4', default '3').
+  /// El teclado nativo resuelve el recurso `mic_start_N` / `mic_stop_N` en res/raw.
   static const String kbMicStartStyleKey = 'kb_mic_start_style';
   static const String kbMicStopStyleKey = 'kb_mic_stop_style';
   static const List<String> kbMicSoundStyles = ['1', '2', '3', '4'];
