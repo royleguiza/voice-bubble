@@ -131,8 +131,9 @@ class _SettingsScreenState extends State<SettingsScreen>
       _storageService.getHeightProfile(),
       _storageService.getKeySpacing(),
       _storageService.getHapticsEnabled(),
-      _storageService.getHapticStyle(),
     ).wait;
+    // Fuera del record .wait (límite de aridad del SDK): carga aparte.
+    final hapticStyle = await _storageService.getHapticStyle();
     final bottomElevation = await _storageService.getBottomElevationDp();
     final invertToolbar = await _storageService.getInvertToolbar();
     final spacebarAlign = await _storageService.getSpacebarAlignment();
@@ -174,7 +175,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _heightProfile = results.$7;
       _keySpacing = results.$8;
       _hapticsEnabled = results.$9;
-      _hapticStyle = results.$10;
+      _hapticStyle = hapticStyle;
       _bottomElevationDp = bottomElevation;
       _invertToolbar = invertToolbar;
       _spacebarAlignment = spacebarAlign;
