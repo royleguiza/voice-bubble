@@ -228,6 +228,7 @@ void main() {
       expect(find.text('Compacto'), findsOneWidget);
       expect(find.text('Normal'), findsOneWidget);
       expect(find.text('Amplio'), findsOneWidget);
+      expect(find.text('Extra'), findsOneWidget);
       expect(selectedKeySpacing(tester), {'normal'});
     });
 
@@ -246,6 +247,23 @@ void main() {
       expect(await StorageService().getKeySpacing(), 'amplio');
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('kb_key_spacing'), 'amplio');
+    });
+
+    testWidgets('elegir Extra persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Extra'));
+      await tester.pumpAndSettle();
+
+      expect(selectedKeySpacing(tester), {'extra'});
+      expect(await StorageService().getKeySpacing(), 'extra');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_key_spacing'), 'extra');
     });
   });
 

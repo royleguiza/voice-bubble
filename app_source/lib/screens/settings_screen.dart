@@ -290,6 +290,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         return 'Teclas más juntas para pantallas chicas.';
       case 'amplio':
         return 'Más aire entre teclas para evitar pulsaciones vecinas.';
+      case 'extra':
+        return 'Separación máxima: teclas bien aisladas contra toques falsos.';
       default:
         return 'Separación equilibrada entre teclas.';
     }

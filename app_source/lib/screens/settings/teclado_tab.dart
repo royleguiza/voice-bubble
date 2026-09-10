@@ -230,6 +230,7 @@ class TecladoTab extends StatelessWidget {
                   ButtonSegment(value: 'compacto', label: Text('Compacto')),
                   ButtonSegment(value: 'normal', label: Text('Normal')),
                   ButtonSegment(value: 'amplio', label: Text('Amplio')),
+                  ButtonSegment(value: 'extra', label: Text('Extra')),
                 ],
                 selected: {keySpacing},
                 onSelectionChanged: (spacings) =>

@@ -337,6 +337,13 @@ void main() {
       expect(await service.getKeySpacing(), 'amplio');
     });
 
+    test('persiste extra y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setKeySpacing('extra');
+      expect(await service.getKeySpacing(), 'extra');
+    });
+
     test('rechaza valor invalido y conserva el anterior', () async {
       SharedPreferences.setMockInitialValues({});
       final service = StorageService();

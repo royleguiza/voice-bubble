@@ -75,6 +75,7 @@ def test_key_spacing_chain():
         dart = f.read()
     # Dart: dominio + default + acceso validado.
     assert "'compacto'" in dart and "'normal'" in dart and "'amplio'" in dart
+    assert "'extra'" in dart
     assert "defaultKeySpacing = 'normal'" in dart
     assert "getKeySpacing()" in dart and "setKeySpacing(" in dart
     # UI: selector en el tab Teclado (no en otro tab) + cableado en Settings.
@@ -84,6 +85,7 @@ def test_key_spacing_chain():
     assert "ButtonSegment(value: 'compacto'" in tab
     assert "ButtonSegment(value: 'normal'" in tab
     assert "ButtonSegment(value: 'amplio'" in tab
+    assert "ButtonSegment(value: 'extra'" in tab
     assert "onSaveKeySpacing" in tab
     with open("app_source/lib/screens/settings_screen.dart", "r", encoding="utf-8") as f:
         settings = f.read()
@@ -99,12 +101,15 @@ def test_key_spacing_chain():
     assert 'SPACING_PROFILE_COMPACTO = "compacto"' in support
     assert 'SPACING_PROFILE_NORMAL = "normal"' in support
     assert 'SPACING_PROFILE_AMPLIO = "amplio"' in support
+    assert 'SPACING_PROFILE_EXTRA = "extra"' in support
     assert "SPACING_FACTOR_COMPACTO = 0.8f" in support
     assert "SPACING_FACTOR_NORMAL = 1f" in support
     assert "SPACING_FACTOR_AMPLIO = 1.5f" in support
+    assert "SPACING_FACTOR_EXTRA = 2.0f" in support
     with open(f"{kt_dir}/KeyboardPrefs.kt", "r", encoding="utf-8") as f:
         prefs = f.read()
     assert '"flutter.kb_key_spacing"' in prefs
+    assert "SPACING_PROFILE_EXTRA" in prefs
     assert "keySpacingFactor" in prefs
     with open(f"{kt_dir}/VoiceKeyboardService.kt", "r", encoding="utf-8") as f:
         vks = f.read()

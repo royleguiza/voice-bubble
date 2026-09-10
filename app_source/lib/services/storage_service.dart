@@ -276,10 +276,11 @@ class StorageService {
     'compacto',
     'normal',
     'amplio',
+    'extra',
   ];
   static const String defaultKeySpacing = 'normal';
 
-  /// Separación entre teclas: 'compacto', 'normal' o 'amplio'.
+  /// Separación entre teclas: 'compacto', 'normal', 'amplio' o 'extra'.
   /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter."
   /// y escala solo los gaps (las alturas las dueña el perfil de altura).
   /// Un valor ausente o invalido cae al perfil por defecto.
