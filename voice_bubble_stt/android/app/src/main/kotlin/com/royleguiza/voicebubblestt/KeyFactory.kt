@@ -71,7 +71,7 @@ class KeyFactory(
     fun horizontalRow(): LinearLayout {
         val row = LinearLayout(service)
         row.orientation = LinearLayout.HORIZONTAL
-        row.baselineAligned = false
+        row.setBaselineAligned(false)
         row.gravity = Gravity.CENTER_VERTICAL
         return row
     }

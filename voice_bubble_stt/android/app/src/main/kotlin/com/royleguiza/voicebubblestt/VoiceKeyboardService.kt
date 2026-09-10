@@ -347,6 +347,15 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         weight: Float,
         description: String?,
         tintColorRes: Int,
+        onClick: () -> Unit,
+    ): ImageView = keys.makeIconKey(iconRes, bgRes, weight, description, tintColorRes, false, onClick)
+
+    override fun makeIconKey(
+        iconRes: Int,
+        bgRes: Int,
+        weight: Float,
+        description: String?,
+        tintColorRes: Int,
         useKeyHeight: Boolean,
         onClick: () -> Unit,
     ): ImageView = keys.makeIconKey(iconRes, bgRes, weight, description, tintColorRes, useKeyHeight, onClick)

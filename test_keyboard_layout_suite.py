@@ -45,8 +45,9 @@ check("VKS propaga useKeyHeight",
       "useKeyHeight: Boolean" in vks and "useKeyHeight, onClick" in vks)
 check("SnippetsLayer.UiHost expone useKeyHeight",
       "useKeyHeight: Boolean = false" in snip)
-check("ToolbarLayer.UiHost expone useKeyHeight",
-      "useKeyHeight: Boolean = false" in toolbar)
+check("Toolbar conserva firma compacta (VKS la adapta)",
+      "useKeyHeight" not in toolbar
+      and vks.count("override fun makeIconKey(") == 2)
 check("Shift de Snippets a altura completa",
       "useKeyHeight = true" in snip.split("host.toggleShiftKey()")[0][-600:])
 check("Borrar de Snippets a altura completa",
