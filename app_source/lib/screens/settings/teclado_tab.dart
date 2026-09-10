@@ -468,8 +468,8 @@ class TecladoTab extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: const Text('Sonidos del micrófono'),
               subtitle: Text(
-                'Respuestas sonoras al iniciar, terminar, pegar, cancelar '
-                'o si está ocupado. Apagado por defecto.',
+                'Respuestas sonoras al iniciar, terminar, pegar y cancelar. '
+                'Apagado por defecto.',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: variantColor),
               ),

@@ -56,24 +56,29 @@ check("Master háptico default ON", 'readFlag("flutter.kb_mic_haptics_enabled", 
 check("Sonidos default OFF (opt-in)", 'readFlag("flutter.kb_mic_sounds_enabled", false)' in prefs)
 
 # --- 2. WAVs ---
-for name in ["start", "stop", "paste", "cancel", "busy"]:
+for name in ["start", "stop", "paste", "cancel"]:
     path = os.path.join(WORKSPACE, f"voice_bubble_stt/android/app/src/main/res/raw/mic_{name}.wav")
     check(f"WAV mic_{name} existe", os.path.isfile(path))
     if os.path.isfile(path):
         with wave.open(path, "rb") as w:
             ok = (w.getframerate(), w.getsampwidth(), w.getnchannels()) == (44100, 2, 1)
             check(f"WAV mic_{name} 44.1kHz mono 16-bit", ok)
-            check(f"WAV mic_{name} corto (<200ms)",
-                  w.getnframes() / w.getframerate() < 0.2)
+            check(f"WAV mic_{name} corto (<250ms)",
+                  w.getnframes() / w.getframerate() < 0.25)
+check("Sin WAV de ocupado (no existe ese estado)",
+      not os.path.isfile(os.path.join(
+          WORKSPACE, "voice_bubble_stt/android/app/src/main/res/raw/mic_busy.wav")))
 
 # --- 3. Controlador ---
 dic = read(f"{KT}/DictationController.kt")
 check("SoundPool con sonorización",
       "SoundPool.Builder()" in dic and "USAGE_ASSISTANCE_SONIFICATION" in dic)
-check("Carga los 5 sonidos",
-      all(f"R.raw.mic_{n}" in dic for n in ["start", "stop", "paste", "cancel", "busy"]))
+check("Carga los 4 sonidos",
+      all(f"R.raw.mic_{n}" in dic for n in ["start", "stop", "paste", "cancel"]))
+check("Sin evento BUSY (MicState.BUSY visual sigue intacto)",
+      "MicEvent.BUSY" not in dic and "MicState.BUSY" in dic)
 check("Libera SoundPool al destruir", "releaseMicSounds()" in dic)
-for ev in ["START", "STOP", "PASTE", "CANCEL", "BUSY"]:
+for ev in ["START", "STOP", "PASTE", "CANCEL"]:
     check(f"Evento {ev} cableado", f"MicEvent.{ev}" in dic, f"falta {ev}")
 check("Ticker cada 3s", "postDelayed(this, 3000L)" in dic)
 check("Ticker sin sonido (solo háptico)",

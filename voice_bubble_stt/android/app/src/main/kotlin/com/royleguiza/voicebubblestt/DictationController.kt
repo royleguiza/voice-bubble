@@ -89,7 +89,6 @@ class DictationController(
     private var soundStop = 0
     private var soundPaste = 0
     private var soundCancel = 0
-    private var soundBusy = 0
     private var transcriptionGeneration = 0
     private var focusRequest: AudioFocusRequest? = null
     private var pulseAnimators: List<ObjectAnimator> = emptyList()
@@ -305,7 +304,7 @@ class DictationController(
     }
 
     /** Eventos de feedback del micrófono (hápticas + sonidos UI). */
-    private enum class MicEvent { START, STOP, PASTE, CANCEL, BUSY }
+    private enum class MicEvent { START, STOP, PASTE, CANCEL }
 
     /**
      * Feedback del micrófono, independiente de la vibración de teclas:
@@ -325,7 +324,6 @@ class DictationController(
                     MicEvent.STOP -> if (fb.hapticStart) host.micBuzz(20L, 200)
                     MicEvent.PASTE -> if (fb.hapticPaste) host.micBuzz(15L, 180)
                     MicEvent.CANCEL -> if (fb.hapticCancel) host.micBuzz(30L, 160)
-                    MicEvent.BUSY -> host.micBuzz(20L, 140)
                 }
             }
             if (fb.soundsEnabled) {
@@ -334,7 +332,6 @@ class DictationController(
                     MicEvent.STOP -> soundStop
                     MicEvent.PASTE -> soundPaste
                     MicEvent.CANCEL -> soundCancel
-                    MicEvent.BUSY -> soundBusy
                 }
                 if (id != 0) soundPool?.play(id, 1f, 1f, 1, 0, 1f)
             }
@@ -378,7 +375,6 @@ class DictationController(
             soundStop = pool.load(service, R.raw.mic_stop, 1)
             soundPaste = pool.load(service, R.raw.mic_paste, 1)
             soundCancel = pool.load(service, R.raw.mic_cancel, 1)
-            soundBusy = pool.load(service, R.raw.mic_busy, 1)
             soundPool = pool
         } catch (_: Exception) {
             soundPool = null
@@ -394,7 +390,6 @@ class DictationController(
         soundStop = 0
         soundPaste = 0
         soundCancel = 0
-        soundBusy = 0
     }
 
     private fun handleMicTap() {
@@ -413,7 +408,6 @@ class DictationController(
         if (bubbleBusy()) {
             micState = MicState.BUSY
             refreshMicVisual()
-            micEvent(MicEvent.BUSY)
             host.showNotice(if (host.isSpanish()) "Ocupado: la burbuja está grabando." else "Busy: the bubble is recording.")
             return
         }
