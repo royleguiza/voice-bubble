@@ -55,7 +55,7 @@ class SnippetsLayer(
             bgRes: Int,
             weight: Float,
             description: String?,
-            tintColorRes: Int = R.color.kb_label,
+            tintColorRes: Int,
             onClick: () -> Unit,
         ): ImageView
         fun horizontalRow(): LinearLayout
@@ -503,7 +503,7 @@ class SnippetsLayer(
         val btnW = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, service.resources.displayMetrics).toInt()
 
         // Boton [+] Nuevo
-        val btnPlus = host.makeIconKey(R.drawable.ic_add, R.drawable.kb_key_bg, 0f, if (host.isSpanish()) "nuevo snippet" else "new snippet") {
+        val btnPlus = host.makeIconKey(R.drawable.ic_add, R.drawable.kb_key_bg, 0f, if (host.isSpanish()) "nuevo snippet" else "new snippet", R.color.kb_label) {
             openEditor(null)
         }
         val lpPlus = LinearLayout.LayoutParams(btnW, btnH)
