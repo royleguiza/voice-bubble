@@ -4,6 +4,7 @@ import android.inputmethodservice.InputMethodService
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.ExtractedTextRequest
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -31,6 +32,8 @@ class EditEngine(
         fun currentLayer(): Layer
         fun isSpanish(): Boolean
         fun refreshModifiers()
+        fun isPasswordField(): Boolean
+        fun cycleNotice(message: String)
     }
 
     private var shiftState = ShiftState.OFF
@@ -93,6 +96,78 @@ class EditEngine(
             else -> ShiftState.OFF
         }
         applyCase()
+    }
+
+    /** Estado de caso aplicado por el ciclo de ⇧ (MEJ-02, orden Gboard). */
+    internal enum class CaseState { LOWER, SENTENCE, UPPER }
+
+    /** Sentence case (D-M1): primera letra de la selección en mayúscula, resto en minúsculas. */
+    internal fun toSentenceCase(text: String): String {
+        val lower = text.lowercase()
+        val idx = lower.indexOfFirst { it.isLetter() }
+        if (idx < 0) return text
+        return lower.substring(0, idx) + lower[idx].uppercaseChar() + lower.substring(idx + 1)
+    }
+
+    internal fun hasCasedLetter(text: String): Boolean = text.any { it.lowercaseChar() != it.uppercaseChar() }
+
+    internal fun isSentenceCase(text: String): Boolean =
+        hasCasedLetter(text) && text == toSentenceCase(text)
+
+    /** Siguiente estado del ciclo minúsculas → primera letra → MAYÚSCULAS. */
+    internal fun nextCase(text: String): Pair<String, CaseState> {
+        if (text == text.lowercase()) return Pair(toSentenceCase(text), CaseState.SENTENCE)
+        if (isSentenceCase(text)) return Pair(text.uppercase(), CaseState.UPPER)
+        if (text == text.uppercase()) return Pair(text.lowercase(), CaseState.LOWER)
+        return Pair(text.lowercase(), CaseState.LOWER)
+    }
+
+    /**
+     * Ciclo de caso con ⇧ sobre la selección (MEJ-02, D-M1…D-M7).
+     * Devuelve true si consumió el tap (no llamar a toggleShift).
+     * Lectura puntual bajo demanda, en memoria, sin persistir ni loguear.
+     */
+    fun handleShiftTap(): Boolean {
+        if (ctrlActive || altActive) return false
+        if (host.isPasswordField()) return false
+        if (host.currentLayer() == Layer.SNIPPETS && snippets()?.isSearchActive == true) return false
+        val ic = service.currentInputConnection ?: return false
+        val selected = try {
+            ic.getSelectedText(0)?.toString()
+        } catch (_: Exception) {
+            null
+        }
+        if (selected.isNullOrEmpty()) return false
+        if (!hasCasedLetter(selected)) return false
+        val (transformed, state) = nextCase(selected)
+        if (transformed == selected) return false
+        val req = ExtractedTextRequest()
+        req.hintMaxChars = 0
+        val sel = try {
+            ic.getExtractedText(req, 0)
+        } catch (_: Exception) {
+            null
+        }
+        val start = sel?.selectionStart ?: -1
+        val end = sel?.selectionEnd ?: -1
+        ic.beginBatchEdit()
+        try {
+            ic.commitText(transformed, 1)
+            if (transformed.length == selected.length && start >= 0 && end >= 0 && end > start) {
+                ic.setSelection(start, start + transformed.length)
+            }
+        } finally {
+            ic.endBatchEdit()
+        }
+        val es = host.isSpanish()
+        host.cycleNotice(
+            when (state) {
+                CaseState.LOWER -> if (es) "Minúsculas" else "Lowercase"
+                CaseState.SENTENCE -> if (es) "Primera mayúscula" else "Sentence case"
+                CaseState.UPPER -> if (es) "MAYÚSCULAS" else "UPPERCASE"
+            },
+        )
+        return true
     }
 
     fun applyCase() {

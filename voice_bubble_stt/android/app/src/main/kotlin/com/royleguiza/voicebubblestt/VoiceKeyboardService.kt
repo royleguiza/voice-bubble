@@ -522,7 +522,12 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun commitLetterKey(base: Char) = editor.commitLetter(base)
     override fun trackLetterKey(key: TextView, base: Char) = editor.trackLetter(key, base)
     override fun trackShiftKey(key: ImageView) = editor.trackShift(key)
-    override fun toggleShiftKey() = editor.toggleShift()
+    override fun toggleShiftKey() {
+        if (!editor.handleShiftTap()) editor.toggleShift()
+    }
+    override fun cycleNotice(message: String) {
+        if (::status.isInitialized) status.show(message, false)
+    }
     override fun showAccentsPopup(anchor: View, base: Char) {
         if (::accents.isInitialized) accents.showPopup(anchor, base)
     }
