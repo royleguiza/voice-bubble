@@ -139,9 +139,9 @@ def test_haptic_style_chain():
     assert '"flutter.kb_haptic_style"' in prefs
     with open(f"{kt_dir}/VoiceKeyboardService.kt", "r", encoding="utf-8") as f:
         vks = f.read()
-    assert "PRIMITIVE_CLICK" in vks and "createOneShot" in vks
-    assert "areAllPrimitivesSupported" in vks
-    print("  [PASS] Estilo háptico: setting→pref→primitivas/fallback verificado.")
+    assert "createOneShot" in vks and "vibrateOnce" in vks
+    assert "HAPTIC_STYLE_SUAVE" in vks and "HAPTIC_STYLE_FIRME" in vks
+    print("  [PASS] Estilo háptico: setting→pref→one-shot verificado.")
 
 if __name__ == "__main__":
     print("=" * 60)

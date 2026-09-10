@@ -2,7 +2,6 @@ package com.royleguiza.voicebubblestt
 
 import android.content.Context
 import android.inputmethodservice.InputMethodService
-import android.os.Build
 import android.os.DeadObjectException
 import android.os.Handler
 import android.os.Looper
@@ -368,27 +367,13 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
 
     /**
-     * Clic seco anti-"rrrr": primitivas de hardware en API 30+ (CLICK
-     * calibrado) y one-shot corto a tope en el resto. Todo best-effort:
+     * Clic seco anti-"rrrr": pulso corto a amplitud máxima (12 ms).
+     * Sin primitivas Composition (no existen en este SDK de compilación);
+     * el "tuc" sale de duración corta + amplitud a tope. Best-effort:
      * jamás lanza (el teclado no puede morir por vibrar).
      */
     private fun crispTap() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val vib = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                if (vib != null && vib.hasVibrator() &&
-                    Vibrator.areAllPrimitivesSupported(VibrationEffect.Composition.PRIMITIVE_CLICK)
-                ) {
-                    vib.vibrate(
-                        VibrationEffect.startComposition()
-                            .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
-                            .compose()
-                    )
-                    return
-                }
-            } catch (_: Exception) {}
-        }
-        vibrateOnce(15L, 255)
+        vibrateOnce(12L, 255)
     }
 
     private fun vibrateOnce(ms: Long, amplitude: Int) {
