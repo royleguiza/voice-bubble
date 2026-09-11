@@ -212,7 +212,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             addRow(trackpad.buildLayer())
         } else {
             trackpad.hide()
-            if (kbPrefs.terminalRowVisiblePref) {
+            // En CLIPBOARD se salta la terminal para compensar la cinta.
+            if (kbPrefs.terminalRowVisiblePref && layer != Layer.CLIPBOARD) {
                 addRow(toolbar.buildTerminalRow())
             }
             when (layer) {
@@ -221,7 +222,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 Layer.CODE -> layout.buildCodeRows()
                 Layer.SNIPPETS -> buildSnippetRows()
                 Layer.CREDENTIALS -> buildCredentialRows()
-                Layer.CLIPBOARD -> addRow(clipboard.buildRows())
+                Layer.CLIPBOARD -> {
+                    addRow(clipboard.buildRows())
+                    layout.buildLetterRows()
+                }
                 Layer.TRACKPAD -> {}
             }
             addRow(layout.buildBottomBar())

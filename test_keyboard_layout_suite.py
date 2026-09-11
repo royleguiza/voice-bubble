@@ -105,7 +105,10 @@ clip = read(f"{KT}/ClipboardLayer.kt")
 check("Capa CLIPBOARD en el enum",
       "CREDENTIALS, CLIPBOARD" in read(f"{KT}/KeyboardTypes.kt"))
 check("VKS construye la capa clipboard",
-      "Layer.CLIPBOARD -> addRow(clipboard.buildRows())" in vks)
+      "Layer.CLIPBOARD -> {" in vks and "addRow(clipboard.buildRows())" in vks
+      and "layout.buildLetterRows()" in vks)
+check("Clipboard sin terminal (compensa la cinta)",
+      "layer != Layer.CLIPBOARD" in vks)
 check("Toggle con origen (ida y vuelta)",
       "fun toggle()" in clip and "origin = host.currentLayer()" in clip)
 check("Pegar vuelve al origen",
