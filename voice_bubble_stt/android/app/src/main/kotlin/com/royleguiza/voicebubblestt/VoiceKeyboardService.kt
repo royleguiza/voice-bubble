@@ -134,7 +134,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         dictation.cancelDictationIfActive()
         kbPrefs.load()
         currentIsPasswordField = isPasswordInput(info)
-        if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS)) {
+        if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS || layer == Layer.CLIPBOARD)) {
             layer = Layer.LETTERS
         }
         trackpad.hide()
@@ -221,6 +221,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 Layer.CODE -> layout.buildCodeRows()
                 Layer.SNIPPETS -> buildSnippetRows()
                 Layer.CREDENTIALS -> buildCredentialRows()
+                Layer.CLIPBOARD -> addRow(clipboard.buildRows())
                 Layer.TRACKPAD -> {}
             }
             addRow(layout.buildBottomBar())
@@ -468,6 +469,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun symbolsLabel(): String = when {
         layer == Layer.SNIPPETS && (snippets.subLayer == Layer.SYMBOLS || snippets.subLayer == Layer.CODE) -> "ABC"
         layer == Layer.SYMBOLS || layer == Layer.CODE || layer == Layer.CREDENTIALS -> "ABC"
+        layer == Layer.CLIPBOARD -> "ABC"
         else -> "?123"
     }
     override fun isLanguageKeyVisible(): Boolean = kbPrefs.languageKeyVisiblePref

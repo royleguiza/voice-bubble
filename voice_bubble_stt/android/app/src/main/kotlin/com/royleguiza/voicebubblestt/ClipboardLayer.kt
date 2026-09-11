@@ -3,18 +3,10 @@ package com.royleguiza.voicebubblestt
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
-import android.util.TypedValue
-import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.PopupWindow
-import android.widget.TextView
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.inputmethod.EditorInfoCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
@@ -40,14 +32,13 @@ class ClipboardLayer(
         fun rootView(): LinearLayout
         fun haptic(view: View)
         fun commitText(text: String)
-        fun takePopup(popup: PopupWindow?)
-        fun dismissPopups()
+        fun currentLayer(): Layer
+        fun showLayer(next: Layer)
     }
 
     private lateinit var store: ClipboardStore
-    private var trayPopup: PopupWindow? = null
-    private var trayFilmstrip: ClipboardFilmstripLayout? = null
-    private var isExpanded = false
+    private var filmstripView: ClipboardFilmstripLayout? = null
+    private var origin = Layer.LETTERS
 
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
         handlePrimaryClipChanged()
@@ -74,57 +65,25 @@ class ClipboardLayer(
     }
 
     fun onStartInputView(restarting: Boolean) {
-        if (!restarting) {
-            isExpanded = false
-        }
-        dismissTray()
         handlePrimaryClipChanged()
     }
 
     /**
-     * Bandeja en overlay centrado (no empuja las teclas ni cambia el alto
-     * del teclado): una sola sección visible a la vez; rebuilds y cambios
-     * de capa la descartan vía dismissPopup del servicio.
+     * Capa propia excluyente (como Claves): una sola sección visible a la
+     * vez. El carrusel vive en el flujo donde estaba, reemplazando el
+     * contenido en vez de apilarse: no empuja teclas ni esconde mitades.
      */
     fun toggle() {
-        if (isExpanded) {
-            dismissTray()
+        if (host.currentLayer() == Layer.CLIPBOARD) {
+            host.showLayer(origin)
             return
         }
-        isExpanded = true
-        host.dismissPopups()
-        val pad = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 12f, service.resources.displayMetrics).toInt()
-        val box = LinearLayout(service).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundResource(R.drawable.kb_popup_bg)
-            setPadding(pad, pad, pad, pad)
-        }
-        val titleRow = LinearLayout(service).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-        val title = TextView(service).apply {
-            text = if (host.isSpanish()) "Portapapeles" else "Clipboard"
-            setTextColor(ContextCompat.getColor(service, R.color.kb_label))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
-            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-        }
-        titleRow.addView(title)
-        val close = TextView(service).apply {
-            text = "✕"
-            gravity = Gravity.CENTER
-            setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-            minimumWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 44f, service.resources.displayMetrics).toInt()
-            setPadding(pad, pad / 2, pad, pad / 2)
-            setOnClickListener {
-                host.haptic(this)
-                dismissTray()
-            }
-        }
-        titleRow.addView(close)
-        box.addView(titleRow)
+        origin = host.currentLayer()
+        host.showLayer(Layer.CLIPBOARD)
+    }
+
+    /** Contenido de la capa: la cinta de siempre, visible y cargada. */
+    fun buildRows(): ClipboardFilmstripLayout {
         val filmstrip = ClipboardFilmstripLayout(
             context = service,
             store = store,
@@ -140,31 +99,9 @@ class ClipboardLayer(
                 refreshIfVisible()
             }
         )
-        box.addView(filmstrip)
-        trayFilmstrip = filmstrip
+        filmstripView = filmstrip
         loadAsync(filmstrip)
-        val widthPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 320f, service.resources.displayMetrics).toInt()
-        val popup = PopupWindow(box, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT, true).apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            isOutsideTouchable = true
-            animationStyle = R.style.VoiceHistoryPopupAnimation
-        }
-        trayPopup = popup
-        host.takePopup(popup)
-        try {
-            popup.showAtLocation(host.rootView(), Gravity.CENTER, 0, 0)
-        } catch (_: Exception) {
-            dismissTray()
-        }
-    }
-
-    private fun dismissTray() {
-        isExpanded = false
-        try {
-            trayPopup?.dismiss()
-        } catch (_: Exception) {}
-        trayPopup = null
-        trayFilmstrip = null
+        return filmstrip
     }
 
     /** Long-press del botón pegar: pega lo último o abre la cinta. */
@@ -236,7 +173,7 @@ class ClipboardLayer(
                 }
             },
             onResult = { clips ->
-                if (isExpanded && trayFilmstrip === target) {
+                if (filmstripView === target) {
                     try {
                         target.renderClips(clips ?: emptyList())
                     } catch (_: Exception) {}
@@ -246,19 +183,18 @@ class ClipboardLayer(
     }
 
     private fun refreshIfVisible() {
-        if (isExpanded) {
-            trayFilmstrip?.let { loadAsync(it) }
-        }
+        filmstripView?.let { loadAsync(it) }
     }
 
     private fun pasteClip(clip: ClipboardItem, autoClose: Boolean = true) {
         host.haptic(host.rootView())
+        // Al pegar desde la capa, volver al origen como hace Claves.
+        if (autoClose && host.currentLayer() == Layer.CLIPBOARD) {
+            host.showLayer(origin)
+        }
         when (clip.type) {
             ClipType.TEXT, ClipType.CODE, ClipType.MATH, ClipType.URL -> {
                 clip.text?.let { host.commitText(it) }
-                if (autoClose && isExpanded) {
-                    toggle()
-                }
             }
             ClipType.IMAGE -> {
                 commitImageClip(clip, autoClose)
@@ -307,8 +243,6 @@ class ClipboardLayer(
                 )
                 if (!success) {
                     service.showClipboardNotice(if (host.isSpanish()) "La app no aceptó la imagen" else "App rejected image")
-                } else if (autoClose && isExpanded) {
-                    toggle()
                 }
             } catch (_: Exception) {
                 service.showClipboardNotice(if (host.isSpanish()) "Error al insertar imagen" else "Error inserting image")

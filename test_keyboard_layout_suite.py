@@ -100,17 +100,20 @@ check("Chips con punteado en modos",
 check("Contenido intacto en modos",
       snip.count("R.color.kb_label)") >= 2)
 
-# --- 6. Clipboard en overlay (una sección, sin empujar teclas) ---
+# --- 6. Clipboard como capa excluyente (carrusel en flujo, sin apilar) ---
 clip = read(f"{KT}/ClipboardLayer.kt")
-check("Clipboard pide popup al host",
-      "fun takePopup(" in clip and "fun dismissPopups()" in clip)
-check("Toggle abre popup centrado",
-      "PopupWindow(" in clip and "Gravity.CENTER" in clip)
-check("Sin filmstrip in-flow", "fun buildFilmstrip" not in clip)
-vks = read(f"{KT}/VoiceKeyboardService.kt")
-check("VKS ya expone takePopup/dismissPopups",
-      "override fun takePopup(" in vks and "override fun dismissPopups()" in vks)
-check("Rebuild sin filmstrip en flujo", "buildFilmstrip" not in vks)
+check("Capa CLIPBOARD en el enum",
+      "CREDENTIALS, CLIPBOARD" in read(f"{KT}/KeyboardTypes.kt"))
+check("VKS construye la capa clipboard",
+      "Layer.CLIPBOARD -> addRow(clipboard.buildRows())" in vks)
+check("Toggle con origen (ida y vuelta)",
+      "fun toggle()" in clip and "origin = host.currentLayer()" in clip)
+check("Pegar vuelve al origen",
+      "host.showLayer(origin)" in clip)
+check("Sin popup en clipboard", "PopupWindow" not in clip)
+check("Sin filmstrip suelto en rebuild", "buildFilmstrip" not in vks)
+check("Clipboard fuera de contraseñas",
+      "Layer.TRACKPAD || layer == Layer.SNIPPETS || layer == Layer.CLIPBOARD" in vks)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TECLADO-LAYOUT: {suite.passed} pasados, {suite.failed} fallidos.")
