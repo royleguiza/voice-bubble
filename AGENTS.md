@@ -284,6 +284,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 
 **Clipboard capa propia (2026-09-10, CI verde run `34546508962`, artefacto `voice-bubble-arm64-debug-apk-r144`)**: revert del popup por pedido del dueño — la cinta vuelve adentro como capa `CLIPBOARD` excluyente (origen + retorno al pegar + fuera de contraseñas), sin apilar ni empujar. Master local 18/18.
 
+**Clipboard con letras (2026-09-10, CI verde run `34547855509`, artefacto `voice-bubble-arm64-debug-apk-r145`)**: la capa muestra cinta + QWERTY + barra inferior (sin terminal para compensar el alto). Master local 18/18.
+
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
 - Mejora futura registrada: `<monochrome>` en el icono adaptive (themed icons Android 13+); contador de generación para invalidar callbacks de transcripción obsoletos tras rotación (menor UX detectado en auditoría K5-T5); limpiar PNGs huérfanos de `mipmap-*dpi` (minSdk 28 usa anydpi-v26).
