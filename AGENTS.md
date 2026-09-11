@@ -282,6 +282,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 
 **Snippets barra slim + clipboard overlay (2026-09-10, CI verde run `34543156993`, artefacto `voice-bubble-arm64-debug-apk-r143`)**: búsqueda 70% slim 28dp con lupa placeholder (se oculta al tipear) + 3 botones 10%; chips dinámicos (4→2×2, resto ≤3) a altura Enter con gap uniforme; clipboard como popup centrado (exclusivo, no empuja teclas). Camino al verde: altura Enter vía `scaledDimen` del host. Master local 18/18.
 
+**Clipboard capa propia (2026-09-10, CI verde run `34546508962`, artefacto `voice-bubble-arm64-debug-apk-r144`)**: revert del popup por pedido del dueño — la cinta vuelve adentro como capa `CLIPBOARD` excluyente (origen + retorno al pegar + fuera de contraseñas), sin apilar ni empujar. Master local 18/18.
+
 **Deuda técnica menor (no bloqueante)**:
 - (resuelta 2026-08-22 en commit `e5b3c4c`) Los mocks muertos de canales `plugin.speech_to_text.*` en `app_source/test/screens/home_screen_test.dart` fueron eliminados; la nota anterior quedaba desactualizada respecto al árbol real.
 - Mejora futura registrada: `<monochrome>` en el icono adaptive (themed icons Android 13+); contador de generación para invalidar callbacks de transcripción obsoletos tras rotación (menor UX detectado en auditoría K5-T5); limpiar PNGs huérfanos de `mipmap-*dpi` (minSdk 28 usa anydpi-v26).
