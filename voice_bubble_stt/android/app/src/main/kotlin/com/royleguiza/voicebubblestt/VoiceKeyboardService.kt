@@ -274,7 +274,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         textSizePx: Int,
         isBold: Boolean,
         onClick: () -> Unit,
-    ): TextView = keys.makeSpecialKey(label, bgRes, weight, description, textSizePx, isBold, onClick)
+    ): TextView = keys.makeSpecialKey(label, bgRes, weight, description, textSizePx, isBold, onClick = onClick)
     override fun rebuildKeyboard() = rebuild()
     /** Snippets en mini (MEJ-12): SIEMPRE despliega al completo primero. */
     override fun snippetsToggle() {
