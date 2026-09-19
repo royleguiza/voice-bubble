@@ -68,5 +68,7 @@ __pycache__/
 # Impeccable
 .impeccable/
 .github_token
+gh-actions-readonly.token
+*.readonly.token
 .agents/secrets.env
 auditoria-serve/

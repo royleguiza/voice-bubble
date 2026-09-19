@@ -209,13 +209,30 @@ Ver `INSTALL.md` §4 para la lista vigente y su justificación (única fuente de
 ### 9.4 Ritual post-push y Monitoreo de GitHub Actions (OBLIGATORIO)
 
 Para asegurar la integridad de las compilaciones sin acceso local a SDK:
-- **Auth**: usar `gh` con la autenticación ya existente en la máquina (`gh auth status`).
-  No crear ni leer archivos de token, no exportar `GITHUB_TOKEN` salvo que el entorno
-  ya lo provea, y **NUNCA** imprimir, redirigir a logs ni commitear ningún secreto.
-- **Redacción**: si un comando pudiera mostrar credenciales, anteponer
-  `GH_TOKEN="<redacted>"` en el reporte y usar `gh` (que no imprime el token).
+
+#### Política de dos tokens (2026-09-19, repo pronto público)
+
+- **Token Global (amplio: push/commits/API): NO TOCAR.** Permanece tal como
+  está y es la única credencial para escribir (push, commits y demás).
+  Ningún agente lo rota, lo mueve ni lo usa para monitoreo.
+- **Token JetCab (solo lectura de Actions): SOLO monitoreo.** Scope mínimo
+  (`actions:read` y nada más): `gh run watch/view`, listar runs/jobs/logs
+  fallidos y artefactos. JAMÁS push, JAMÁS escritura de workflows, JAMÁS API
+  de escritura. Su blast radius es mínimo por diseño.
+- **Almacenamiento**: SOLO en `~/.config/voicebubble/gh-actions-readonly.token`
+  (archivo 600, directorio 700, FUERA de cualquier repo). El VALOR jamás entra
+  al repo (será público), jamás a logs/diffs/reportes (siempre `<redacted>`),
+  jamás a variables de entorno persistentes ni al historial de shell.
+- **Uso**: ÚNICAMENTE vía el wrapper local `~/.config/voicebubble/ci-watch.sh`
+  (no versionado), que inyecta el token solo al proceso `gh` hijo y nunca lo
+  imprime. Anteponer `GH_TOKEN="<redacted>"` en cualquier reporte.
+- **Rotación**: ante cualquier sospecha de exposición, revocar en GitHub y
+  generar uno nuevo con el mismo scope mínimo; el Global no se toca.
 
 #### Procedimiento obligatorio tras CADA push (sin exponer secretos):
+
+> `gh` abajo significa `~/.config/voicebubble/ci-watch.sh` (wrapper local con
+> el token JetCab de solo lectura; requiere `gh` CLI instalado).
 1. **Monitorear el workflow** con `gh` hasta que el estado sea `completed`:
    ```bash
    SHORT_SHA="<SHORT_COMMIT_SHA>"
