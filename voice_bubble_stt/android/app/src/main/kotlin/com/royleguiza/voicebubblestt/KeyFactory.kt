@@ -82,6 +82,7 @@ class KeyFactory(
                 MotionEvent.ACTION_DOWN -> {
                     host.haptic(v)
                     v.isPressed = true
+                    pressPop(v, true)
                     true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -89,15 +90,30 @@ class KeyFactory(
                         onClick()
                     }
                     v.isPressed = false
+                    pressPop(v, false)
                     true
                 }
                 MotionEvent.ACTION_CANCEL -> {
                     v.isPressed = false
+                    pressPop(v, false)
                     true
                 }
                 else -> false
             }
         }
+    }
+
+    /**
+     * Pop visual de escritura (confianza a velocidad): la tecla crece un 7%
+     * al apoyar el dedo y vuelve al soltar. Escala instantánea (sin
+     * animador: no interfiere con pump de tests ni con popups) y apagada
+     * con Reduced Motion (anti-patrón §8: jamás overriding de animaciones).
+     */
+    private fun pressPop(v: View, down: Boolean) {
+        if (service.reducedMotion()) return
+        val s = if (down) 1.07f else 1f
+        v.scaleX = s
+        v.scaleY = s
     }
 
     /**
@@ -160,6 +176,7 @@ class KeyFactory(
                     swipeAnchorX = ev.rawX
                     host.haptic(v)
                     v.isPressed = true
+                    pressPop(v, true)
                     val r = Runnable {
                         longPressFired = true
                         onLongPress()
@@ -210,12 +227,14 @@ class KeyFactory(
                         onTapUp()
                     }
                     v.isPressed = false
+                    pressPop(v, false)
                     true
                 }
                 MotionEvent.ACTION_CANCEL -> {
                     cancelPending()
                     cancelRepeating()
                     v.isPressed = false
+                    pressPop(v, false)
                     true
                 }
                 else -> false
@@ -253,6 +272,7 @@ class KeyFactory(
         for (c in chars) {
             row.addView(makeLetterKey(c))
         }
+        makeGapTolerant(row)
         return row
     }
 
@@ -261,6 +281,7 @@ class KeyFactory(
         for (c in chars) {
             row.addView(makeSymbolKey(c.toString()))
         }
+        makeGapTolerant(row)
         return row
     }
 
@@ -269,7 +290,51 @@ class KeyFactory(
         for (c in chars) {
             row.addView(makeCodeKey(c))
         }
+        makeGapTolerant(row)
         return row
+    }
+
+    /**
+     * Filas gap-tolerantes (precisión de escritura): la fila captura los
+     * toques que caen en gaps/márgenes (ningún hijo los consume: antes no
+     * escribían nada) y los resuelve a la tecla hija más cercana,
+     * disparando su commit de tap (guardado en `tag`). Los toques sobre
+     * teclas siguen su ruta original intacta; las filas mixtas (shift/⌫)
+     * quedan fuera a propósito (gestos propios).
+     */
+    private fun makeGapTolerant(row: LinearLayout) {
+        row.setOnTouchListener { _, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> true
+                MotionEvent.ACTION_UP -> {
+                    nearestChild(row, ev.x, ev.y)?.let { child ->
+                        child.isPressed = true
+                        handler.postDelayed({ child.isPressed = false }, 80L)
+                        @Suppress("UNCHECKED_CAST")
+                        (child.tag as? () -> Unit)?.invoke()
+                    }
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> true
+                else -> false
+            }
+        }
+    }
+
+    private fun nearestChild(row: LinearLayout, x: Float, y: Float): View? {
+        var best: View? = null
+        var bestDist = Float.MAX_VALUE
+        for (i in 0 until row.childCount) {
+            val c = row.getChildAt(i)
+            val dx = x - (c.left + c.width / 2f)
+            val dy = y - (c.top + c.height / 2f)
+            val d = dx * dx + dy * dy
+            if (d < bestDist) {
+                bestDist = d
+                best = c
+            }
+        }
+        return best
     }
 
     fun makeLetterKey(base: Char): TextView {
@@ -280,10 +345,14 @@ class KeyFactory(
             R.color.kb_label,
             host.dimenPx(R.dimen.kb_key_text_size),
         )
+        // Commit de tap en el tag: lo usa la fila gap-tolerante para
+        // resolver toques entre teclas (misma lambda, cero duplicación).
+        val commit: () -> Unit = { host.commitLetterKey(base) }
+        key.tag = commit
         if (accentsFor(base).isEmpty()) {
-            host.attachTap(key) { host.commitLetterKey(base) }
+            host.attachTap(key, commit)
         } else {
-            host.attachAccentKey(key, base) { host.commitLetterKey(base) }
+            host.attachAccentKey(key, base, commit)
         }
         host.trackLetterKey(key, base)
         return key
@@ -307,7 +376,9 @@ class KeyFactory(
             isBold = isBold,
         )
         key.contentDescription = label
-        host.attachTap(key) { host.commitSymbolKey(label) }
+        val commit: () -> Unit = { host.commitSymbolKey(label) }
+        key.tag = commit
+        host.attachTap(key, commit)
         return key
     }
 
@@ -324,10 +395,13 @@ class KeyFactory(
             isBold = true,
         )
         key.contentDescription = ch.toString()
+        val onTapCommit: (String) -> Unit = { host.commitSymbolKey(it) }
+        // El toque en gap resuelve al tap corto (nunca al par auto-cerrado).
+        key.tag = { onTapCommit(ch.toString()) }
         host.attachPairKey(
             key,
             ch,
-            onCommit = { host.commitSymbolKey(it) },
+            onCommit = onTapCommit,
             onAutoPair = { open, close ->
                 host.commitText("$open$close")
                 host.sendCode(android.view.KeyEvent.KEYCODE_DPAD_LEFT)
@@ -343,6 +417,7 @@ class KeyFactory(
         description: String?,
         textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_small),
         isBold: Boolean = true,
+        heightPx: Int? = null,
         onClick: () -> Unit,
     ): TextView {
         val key = makeKey(
@@ -352,6 +427,7 @@ class KeyFactory(
             R.color.kb_label,
             textSizePx,
             isBold = isBold,
+            heightPx = heightPx,
         )
         if (description != null) {
             key.contentDescription = description
@@ -366,6 +442,7 @@ class KeyFactory(
         weight: Float,
         description: String?,
         tintColorRes: Int = R.color.kb_label,
+        heightPx: Int? = null,
         onClick: () -> Unit,
     ): ImageView {
         val key = ImageView(service)
@@ -381,7 +458,7 @@ class KeyFactory(
         if (description != null) {
             key.contentDescription = description
         }
-        val lp = LinearLayout.LayoutParams(0, host.keyHeightPx(), weight)
+        val lp = LinearLayout.LayoutParams(0, heightPx ?: host.keyHeightPx(), weight)
         val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, 0, m, 0)
         key.layoutParams = lp
@@ -389,13 +466,14 @@ class KeyFactory(
         return key
     }
 
-    fun makeBackspaceKey(): ImageView {
+    fun makeBackspaceKey(heightPx: Int? = null): ImageView {
         val key = makeActionIconKey(
             R.drawable.ic_backspace,
             R.drawable.kb_key_alt,
             1.3f,
             if (host.isSpanish()) "borrar" else "delete",
             tintColorRes = R.color.kb_label,
+            heightPx = heightPx,
         ) {
             host.deleteBackward()
         }
@@ -453,6 +531,7 @@ class KeyFactory(
         colorRes: Int,
         textSizePx: Int,
         isBold: Boolean = false,
+        heightPx: Int? = null,
     ): TextView {
         val key = TextView(service)
         key.text = label
@@ -469,7 +548,7 @@ class KeyFactory(
         if (isBold) {
             key.setTypeface(null, Typeface.BOLD)
         }
-        val lp = LinearLayout.LayoutParams(0, host.keyHeightPx(), weight)
+        val lp = LinearLayout.LayoutParams(0, heightPx ?: host.keyHeightPx(), weight)
         val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, 0, m, 0)
         key.layoutParams = lp
