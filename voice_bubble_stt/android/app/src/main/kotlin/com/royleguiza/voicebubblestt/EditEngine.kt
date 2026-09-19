@@ -98,26 +98,46 @@ class EditEngine(
         applyCase()
     }
 
-    /** Estado de caso aplicado por el ciclo de ⇧ (MEJ-02, orden Gboard). */
-    internal enum class CaseState { LOWER, SENTENCE, UPPER }
+    /** Estado de caso aplicado por el ciclo de ⇧ (MEJ-02, orden pedido por el dueño). */
+    internal enum class CaseState { LOWER, TITLE, UPPER }
 
-    /** Sentence case (D-M1): primera letra de la selección en mayúscula, resto en minúsculas. */
-    internal fun toSentenceCase(text: String): String {
+    /**
+     * Title case por palabra (pedido explícito del dueño, override de D-M1
+     * sentence case): primera letra de CADA palabra en mayúscula, resto en
+     * minúsculas. Frontera de palabra = cualquier carácter sin caso
+     * (espacios, guiones, `_`, dígitos, símbolos): `mi_funcion` →
+     * `Mi_Funcion`, `hola mundo` → `Hola Mundo`. Acentos ES mapean 1:1.
+     */
+    internal fun toTitleCase(text: String): String {
         val lower = text.lowercase()
-        val idx = lower.indexOfFirst { it.isLetter() }
-        if (idx < 0) return text
-        return lower.substring(0, idx) + lower[idx].uppercaseChar() + lower.substring(idx + 1)
+        val sb = StringBuilder(lower.length)
+        var wordStart = true
+        for (c in lower) {
+            if (c.isLetter()) {
+                sb.append(if (wordStart) c.uppercaseChar() else c)
+                wordStart = false
+            } else {
+                sb.append(c)
+                wordStart = true
+            }
+        }
+        return sb.toString()
     }
 
     internal fun hasCasedLetter(text: String): Boolean = text.any { it.lowercaseChar() != it.uppercaseChar() }
 
-    internal fun isSentenceCase(text: String): Boolean =
-        hasCasedLetter(text) && text == toSentenceCase(text)
+    internal fun isTitleCase(text: String): Boolean =
+        hasCasedLetter(text) && text == toTitleCase(text)
 
-    /** Siguiente estado del ciclo minúsculas → primera letra → MAYÚSCULAS. */
+    /**
+     * Siguiente estado del ciclo minúsculas → Title → MAYÚSCULAS → minúsculas.
+     * Sin estado entre toques (D-M6): la decisión sale solo del contenido
+     * actual de la selección, así que una selección perdida/colapsada por el
+     * editor degrada honesto a shift normal en vez de ciclar fantasma.
+     */
     internal fun nextCase(text: String): Pair<String, CaseState> {
-        if (text == text.lowercase()) return Pair(toSentenceCase(text), CaseState.SENTENCE)
-        if (isSentenceCase(text)) return Pair(text.uppercase(), CaseState.UPPER)
+        if (text == text.lowercase()) return Pair(toTitleCase(text), CaseState.TITLE)
+        if (isTitleCase(text)) return Pair(text.uppercase(), CaseState.UPPER)
         if (text == text.uppercase()) return Pair(text.lowercase(), CaseState.LOWER)
         return Pair(text.lowercase(), CaseState.LOWER)
     }
@@ -163,7 +183,7 @@ class EditEngine(
         host.cycleNotice(
             when (state) {
                 CaseState.LOWER -> if (es) "Minúsculas" else "Lowercase"
-                CaseState.SENTENCE -> if (es) "Primera mayúscula" else "Sentence case"
+                CaseState.TITLE -> if (es) "Mayúsculas iniciales" else "Title Case"
                 CaseState.UPPER -> if (es) "MAYÚSCULAS" else "UPPERCASE"
             },
         )
