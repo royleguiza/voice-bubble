@@ -41,6 +41,7 @@ class LayoutLayer(
         fun isLanguageKeyVisible(): Boolean
         fun spacebarAlignment(): String
         fun bottomElevationDp(): Int
+        fun miniKeyHeightPx(): Int
     }
 
     var spaceView: View? = null
@@ -162,6 +163,45 @@ class LayoutLayer(
 
         row.addView(enter)
         return row
+    }
+
+    /**
+     * Fila única del modo mini (MEJ-12): borrar (con sus gestos: tap,
+     * repetición y swipe-palabra) + espacio (con gestos de la espaciadora)
+     * + enter, a altura compacta. Sin gap-tolerancia (fila mixta, igual que
+     * las row3 del modo completo).
+     */
+    fun buildMiniRow() {
+        val row = keys.horizontalRow()
+        val h = host.miniKeyHeightPx()
+
+        row.addView(keys.makeBackspaceKey(h))
+
+        val space = keys.makeSpecialKey(
+            "",
+            R.drawable.kb_key_bg,
+            5.0f,
+            if (host.isSpanish()) "espacio" else "space",
+            heightPx = h,
+        ) {
+            host.pressSpace()
+        }
+        host.attachSpacebar(space)
+        row.addView(space)
+
+        row.addView(
+            keys.makeActionIconKey(
+                R.drawable.ic_enter,
+                R.drawable.kb_key_accent,
+                1.8f,
+                if (host.isSpanish()) "intro" else "enter",
+                tintColorRes = R.color.kb_label_on_accent,
+                heightPx = h,
+            ) {
+                host.pressEnter()
+            },
+        )
+        host.addContentRow(row)
     }
 
     fun addRow(row: View) {

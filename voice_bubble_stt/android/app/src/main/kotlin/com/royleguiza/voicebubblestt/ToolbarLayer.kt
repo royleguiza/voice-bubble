@@ -65,6 +65,8 @@ class ToolbarLayer(
         fun isCodeKeyPref(): Boolean
         fun isTrackpadToolbarAllowed(): Boolean
         fun isToolbarInverted(): Boolean
+        fun isMiniMode(): Boolean
+        fun miniToggle()
         fun registerModifier(key: TextView, isCtrl: Boolean)
         fun isModifierActive(isCtrl: Boolean): Boolean
         fun toggleModifier(isCtrl: Boolean)
@@ -196,6 +198,23 @@ class ToolbarLayer(
             }
             items.add(btnTrackpad)
         }
+
+        // Modo mini (MEJ-12): teclado+flecita abajo para compactar (pedido
+        // del dueño); al estar en mini el icono es expandir (flecha arriba).
+        // Va al borde, junto al micrófono.
+        val btnMicro = host.makeIconKey(
+            if (host.isMiniMode()) R.drawable.ic_micro_expand else R.drawable.ic_micro_collapse,
+            R.drawable.kb_key_alt,
+            1.0f,
+            if (host.isSpanish()) {
+                if (host.isMiniMode()) "teclado completo" else "mini-teclado"
+            } else {
+                if (host.isMiniMode()) "full keyboard" else "mini keyboard"
+            },
+        ) {
+            host.miniToggle()
+        }
+        items.add(btnMicro)
 
         // Elementos borde (Micrófono):
         if (!host.isPasswordField()) {

@@ -28,6 +28,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
+    // --- Modo mini (MEJ-12): micro-teclado de 2 filas (toolbar + fila
+    // compacta). Estado local del IME con persistencia propia (MiniModeStore,
+    // fuera del contrato flutter.*). Default: completo.
+    private var miniMode = false
+    private lateinit var miniStore: MiniModeStore
     // @Volatile: el cliente STT lo consulta desde su hilo de fondo para
     // localizar los avisos de error (K5-T4).
     @Volatile
@@ -85,6 +90,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         super.onCreate()
         instance = this
         kbPrefs = KeyboardPrefs(this)
+        miniStore = MiniModeStore(this)
         clipboard = ClipboardLayer(this, handler, this)
         clipboard.onCreate()
         trackpad = TrackpadBridge(this, kbPrefs, this)
@@ -133,8 +139,14 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // K5-T5: defensa extra; nunca arrancar un campo con dictado vivo.
         dictation.cancelDictationIfActive()
         kbPrefs.load()
+        if (::miniStore.isInitialized) miniMode = miniStore.load()
         currentIsPasswordField = isPasswordInput(info)
         if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS || layer == Layer.CLIPBOARD)) {
+            layer = Layer.LETTERS
+        }
+        // Saneado mini: solo LETTERS/CLIPBOARD/CREDENTIALS viven en 2 filas;
+        // el resto exige altura completa (vuelve a LETTERS, sin perder el modo).
+        if (miniMode && layer != Layer.LETTERS && layer != Layer.CLIPBOARD && layer != Layer.CREDENTIALS) {
             layer = Layer.LETTERS
         }
         trackpad.hide()
@@ -208,7 +220,18 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // (SPK-05 módulo 12: vive en ToolbarLayer).
         addRow(toolbar.buildToolbar())
 
-        if (layer == Layer.TRACKPAD) {
+        // Modo mini (MEJ-12): 2 filas fijas (toolbar + fila compacta), sin
+        // fila terminal. CLIPBOARD/CREDENTIALS se muestran inline (cinta +
+        // lista) sin desplegar; el resto de capas no vive en mini (saneado
+        // al entrar y en onStartInputView).
+        if (miniMode) {
+            when (layer) {
+                Layer.CLIPBOARD -> addRow(clipboard.buildRows())
+                Layer.CREDENTIALS -> credentials.buildRows(root)
+                else -> {}
+            }
+            layout.buildMiniRow()
+        } else if (layer == Layer.TRACKPAD) {
             addRow(trackpad.buildLayer())
         } else {
             trackpad.hide()
@@ -253,13 +276,23 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         onClick: () -> Unit,
     ): TextView = keys.makeSpecialKey(label, bgRes, weight, description, textSizePx, isBold, onClick)
     override fun rebuildKeyboard() = rebuild()
-    override fun snippetsToggle() = snippets.toggle()
+    /** Snippets en mini (MEJ-12): SIEMPRE despliega al completo primero. */
+    override fun snippetsToggle() {
+        if (miniMode) setMiniMode(false, rebuildNow = false)
+        snippets.toggle()
+    }
     override fun credentialsToggle() = credentials.toggle()
+    /** Portapapeles en mini (MEJ-12): inline, sin desplegar. */
     override fun clipboardToggle() = clipboard.toggle()
     override fun clipboardPasteLatest() = clipboard.pasteLatestOrToggle()
-    override fun trackpadToggle() = trackpad.toggle()
+    /** Trackpad en mini (MEJ-12): exige altura completa, despliega primero. */
+    override fun trackpadToggle() {
+        if (miniMode) setMiniMode(false, rebuildNow = false)
+        trackpad.toggle()
+    }
     /** Cambiador de capas con memoria de la ultima capa no-codigo. */
     override fun codeToggle() {
+        if (miniMode) setMiniMode(false, rebuildNow = false)
         if (layer == Layer.SNIPPETS) {
             snippets.cycleSubLayerForCode()
             return
@@ -272,6 +305,28 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             layer = Layer.CODE
         }
         rebuild()
+    }
+
+    /**
+     * Modo mini (MEJ-12): alterna entre teclado completo y 2 filas.
+     * Al compactar, las capas que exigen altura completa (símbolos, código,
+     * snippets, trackpad) vuelven a LETTERS; CLIPBOARD/CREDENTIALS se
+     * conservan porque en mini se muestran inline. Persiste en MiniModeStore
+     * (sobrevive rotación y cambios de campo).
+     */
+    override fun isMiniMode(): Boolean = miniMode
+    override fun miniToggle() = setMiniMode(!miniMode)
+    private fun setMiniMode(enabled: Boolean, rebuildNow: Boolean = true) {
+        if (enabled && layer != Layer.LETTERS && layer != Layer.CLIPBOARD && layer != Layer.CREDENTIALS) {
+            layer = Layer.LETTERS
+        }
+        miniMode = enabled
+        if (::miniStore.isInitialized) miniStore.save(enabled)
+        val es = spanishMode
+        if (::status.isInitialized) {
+            status.show(if (enabled) (if (es) "Mini-teclado" else "Mini keyboard") else (if (es) "Teclado completo" else "Full keyboard"), false)
+        }
+        if (rebuildNow) rebuild()
     }
     override fun sendCode(code: Int) = editor.sendKeyCode(code)
     override fun micKeyView(): View = dictation.makeMicKey()
@@ -446,6 +501,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // firma, una sola implementación).
     override fun trackpadHeightPx(): Int = getTargetTrackpadHeightPx()
     override fun pressSymbolsKey() {
+        if (miniMode) setMiniMode(false, rebuildNow = false)
         if (layer == Layer.SNIPPETS) {
             snippets.cycleSubLayerForSymbols()
         } else {
@@ -586,6 +642,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
     /** Altura de tecla estandar escalada por el perfil activo. */
     override fun keyHeightPx(): Int = scaleV(dimen(R.dimen.kb_key_height))
+
+    /** Altura compacta de la fila única del modo mini (MEJ-12). */
+    override fun miniKeyHeightPx(): Int = scaleV(dimen(R.dimen.kb_mini_key_height))
 
     /** Margen vertical entre filas, escalado ergonómico estilo Gboard. */
     override fun rowGapPx(): Int = scaleV(dimen(R.dimen.kb_key_gap_v))
