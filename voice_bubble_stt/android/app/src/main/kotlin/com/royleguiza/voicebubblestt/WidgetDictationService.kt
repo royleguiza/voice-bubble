@@ -108,7 +108,7 @@ class WidgetDictationService : Service() {
         BackgroundWork.execute {
             val ok = c.startRecording()
             if (!ok) {
-                BackgroundWork.executeOnMain {
+                BackgroundWork.postMain {
                     isRecording = false
                     updateWidgetsState("idle")
                     stopForeground(true)
@@ -131,7 +131,7 @@ class WidgetDictationService : Service() {
         BackgroundWork.execute {
             val wav = c.stopRecording()
             if (c.isEmptyCapture(wav)) {
-                BackgroundWork.executeOnMain {
+                BackgroundWork.postMain {
                     updateWidgetsState("idle")
                     stopForeground(true)
                     stopSelf()
@@ -140,7 +140,7 @@ class WidgetDictationService : Service() {
             }
             val cfg = c.loadConfig()
             if (cfg.apiKey.isBlank()) {
-                BackgroundWork.executeOnMain {
+                BackgroundWork.postMain {
                     updateWidgetsState("idle")
                     stopForeground(true)
                     stopSelf()
@@ -148,7 +148,7 @@ class WidgetDictationService : Service() {
                 return@execute
             }
             c.transcribe(wav, cfg, onDone = { text ->
-                BackgroundWork.executeOnMain {
+                BackgroundWork.postMain {
                     if (text != null && text.isNotBlank()) {
                         saveUntitledNote(text.trim())
                     }
@@ -165,7 +165,7 @@ class WidgetDictationService : Service() {
                     mainHandler.postDelayed(sr, 1200)
                 }
             }, onError = { _ ->
-                BackgroundWork.executeOnMain {
+                BackgroundWork.postMain {
                     updateWidgetsState("idle")
                     stopForeground(true)
                     stopSelf()
@@ -177,7 +177,7 @@ class WidgetDictationService : Service() {
     private fun saveUntitledNote(text: String) {
         try {
             val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val raw = prefs.getString("flutter.voice_notes_v1")
+            val raw = prefs.getString("flutter.voice_notes_v1", null)
             val arr = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
             val now = java.time.Instant.now().toString()
             val obj = JSONObject()
