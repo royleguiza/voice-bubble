@@ -30,4 +30,7 @@
     <dimen name="kb_snippet_bar_height">28dp</dimen>
     <!-- Altura de chips de snippets (minimo tactil 48dp, SPK-16). -->
     <dimen name="kb_snippet_chip_height">48dp</dimen>
+    <!-- Respiro entre chips de snippets (márgenes + filas): desacoplado del
+         gap de teclas para que los chips no queden apretados. -->
+    <dimen name="kb_snippet_chip_gap">10dp</dimen>
 </resources>

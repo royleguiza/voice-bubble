@@ -228,8 +228,9 @@ class SnippetsLayer(
         val grid = LinearLayout(service).apply {
             orientation = LinearLayout.VERTICAL
         }
-        // Contorno uniforme con la barra (borde = entre chips).
-        val gm = host.dimenPx(R.dimen.kb_key_gap_h) / 2
+        // Contorno uniforme con la barra (borde = entre chips): usa el gap
+        // propio de chips para que respiren, no el de teclas.
+        val gm = host.dimenPx(R.dimen.kb_snippet_chip_gap) / 2
         grid.setPadding(gm, 0, gm, 0)
         gridContainer = grid
         scroll.addView(grid)
@@ -649,7 +650,7 @@ class SnippetsLayer(
             container.addView(emptyView())
             return
         }
-        val gap = host.dimenPx(R.dimen.kb_key_gap_h)
+        val gap = host.dimenPx(R.dimen.kb_snippet_chip_gap)
         val cols = if (filtered.size == 4) 2 else minOf(SNIPPET_GRID_COLUMNS, filtered.size)
         var i = 0
         while (i < filtered.size) {
@@ -724,9 +725,9 @@ class SnippetsLayer(
 
         chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
         chip.contentDescription = snippet.nombre
-        // Altura de tecla Enter + mismo gap del contorno en los laterales.
+        // Altura de tecla Enter + gap propio de chips en los laterales.
         val lp = LinearLayout.LayoutParams(0, host.scaledDimen(R.dimen.kb_key_height), 1f)
-        val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
+        val m = host.dimenPx(R.dimen.kb_snippet_chip_gap) / 2
         lp.setMargins(m, 0, m, 0)
         chip.layoutParams = lp
         return chip
