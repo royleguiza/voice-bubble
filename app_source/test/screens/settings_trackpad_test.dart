@@ -48,6 +48,15 @@ void main() {
     );
   }
 
+  /// El tab arranca con el trackpad OFF (default): los detalles solo se
+  /// renderizan tras activar el switch (el tab los oculta con `if`).
+  Future<void> openTrackpadTabAndEnable(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('kb-trackpad-enabled-switch')));
+    await tester.pumpAndSettle();
+  }
+
   group('SettingsScreen - Trackpad y Puntero Virtual', () {
     testWidgets('muestra la sección Modo Trackpad en la pestaña Trackpad (v1)',
         (tester) async {
@@ -63,13 +72,28 @@ void main() {
       expect(find.text('Activar modo trackpad'), findsOneWidget);
     });
 
-    testWidgets('cambiar selector de posición de scroll persiste en SharedPreferences',
+    testWidgets('con trackpad OFF los detalles quedan ocultos por defecto',
         (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
       await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('kb-trackpad-enabled-switch')),
+          findsOneWidget);
+      expect(
+          find.byKey(const ValueKey('kb-trackpad-scroll-position-selector')),
+          findsNothing);
+      expect(await StorageService().getTrackpadEnabled(), isFalse);
+    });
+
+    testWidgets('cambiar selector de posición de scroll persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await openTrackpadTabAndEnable(tester);
 
       final scrollSelector = find.byKey(const ValueKey('kb-trackpad-scroll-position-selector'));
       expect(scrollSelector, findsOneWidget);
@@ -93,8 +117,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
-      await tester.pumpAndSettle();
+      await openTrackpadTabAndEnable(tester);
 
       final pointerSelector = find.byKey(const ValueKey('kb-trackpad-pointer-style-selector'));
       expect(pointerSelector, findsOneWidget);
@@ -116,8 +139,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
-      await tester.pumpAndSettle();
+      await openTrackpadTabAndEnable(tester);
 
       final layoutSelector = find.byKey(const ValueKey('kb-trackpad-button-layout-selector'));
       expect(layoutSelector, findsOneWidget);

@@ -138,6 +138,7 @@ class TrackpadTab extends StatelessWidget {
               ),
             ),
             SwitchListTile(
+              key: const ValueKey('kb-trackpad-enabled-switch'),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16),
               title: const Text('Activar modo trackpad'),
