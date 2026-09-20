@@ -270,6 +270,22 @@ check("StorageService acota get/setTrackpadSensitivity a [0.5, 2.5] centralizado
       and "clampTrackpadSensitivity(raw)" in storage_content
       and "clampTrackpadSensitivity(sensitivity)" in storage_content,
       "El clamp de sensibilidad no es central [0.5, 2.5] en get+set")
+# Defaults OFF (2026-09-20, pedido del dueño): instalación nueva sin
+# trackpad; quien lo tenía ON lo conserva en prefs (no hay reseteo).
+check("Trackpad apagado por defecto en Dart (enabled)",
+      "static const bool defaultTrackpadEnabled = false;" in storage_content,
+      "El default volvió a true: instalación nueva mostraría el trackpad")
+check("Trackpad apagado por defecto en Dart (toolbar)",
+      "static const bool defaultTrackpadToolbarVisible = false;" in storage_content,
+      "El default volvió a true en la toolbar")
+check("Trackpad apagado por defecto en Kotlin (campos)",
+      "var trackpadEnabled = false" in vk_content
+      and "var trackpadToolbarVisible = false" in vk_content,
+      "KeyboardPrefs.kt volvió a default true")
+check("Trackpad apagado por defecto en Kotlin (lectura)",
+      '.getBoolean("flutter.kb_trackpad_enabled", false)' in vk_content
+      and '.getBoolean("flutter.kb_trackpad_toolbar_visible", false)' in vk_content,
+      "La lectura de prefs volvió a defaultear true")
 
 # --- TEST 9: SettingsScreen (Dart) ---
 dart_settings_path = os.path.join(WORKSPACE, "app_source/lib/screens/settings_screen.dart")

@@ -50,8 +50,10 @@ class KeyboardPrefs(private val context: Context) {
     var micStopStyle = "3"
 
     // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
-    var trackpadEnabled = true
-    var trackpadToolbarVisible = true
+    // Defaults OFF (2026-09-20, pedido del dueño): en instalación nueva el
+    // trackpad arranca desactivado; quien lo tenía ON lo conserva en prefs.
+    var trackpadEnabled = false
+    var trackpadToolbarVisible = false
     var trackpadButtonLayout = "top"
     var trackpadScrollPosition = "right"
     var trackpadSensitivity = 1.2f
@@ -221,15 +223,15 @@ class KeyboardPrefs(private val context: Context) {
         }
         trackpadEnabled = try {
             context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_trackpad_enabled", true)
+                .getBoolean("flutter.kb_trackpad_enabled", false)
         } catch (_: Exception) {
-            true
+            false
         }
         trackpadToolbarVisible = try {
             context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_trackpad_toolbar_visible", true)
+                .getBoolean("flutter.kb_trackpad_toolbar_visible", false)
         } catch (_: Exception) {
-            true
+            false
         }
         trackpadScrollPosition = try {
             context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)

@@ -381,8 +381,8 @@ class StorageService {
   static const String kbTrackpadPointerStyleKey = 'kb_trackpad_pointer_style';
   static const String kbTrackpadAutoReturnKey = 'kb_trackpad_auto_return';
 
-  static const bool defaultTrackpadEnabled = true;
-  static const bool defaultTrackpadToolbarVisible = true;
+  static const bool defaultTrackpadEnabled = false;
+  static const bool defaultTrackpadToolbarVisible = false;
   static const String defaultTrackpadButtonLayout = 'top'; // top, wings
   static const String defaultTrackpadScrollPosition = 'right'; // right, left, disabled
   static const double defaultTrackpadSensitivity = 1.2; // 0.5 to 2.5

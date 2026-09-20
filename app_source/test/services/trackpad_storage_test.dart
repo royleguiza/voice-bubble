@@ -13,8 +13,9 @@ void main() {
     test('default values match contract specifications', () async {
       final storage = StorageService();
 
-      expect(await storage.getTrackpadEnabled(), isTrue);
-      expect(await storage.getTrackpadToolbarVisible(), isTrue);
+      // Defaults OFF (2026-09-20): instalación nueva sin trackpad.
+      expect(await storage.getTrackpadEnabled(), isFalse);
+      expect(await storage.getTrackpadToolbarVisible(), isFalse);
       expect(await storage.getTrackpadScrollPosition(), 'right');
       expect(await storage.getTrackpadSensitivity(), 1.2);
       expect(await storage.getTrackpadAccelCurve(), 'dynamic');
@@ -30,19 +31,29 @@ void main() {
 
     test('trackpad enabled setter persists in SharedPreferences', () async {
       final storage = StorageService();
+      await storage.setTrackpadEnabled(true);
+
+      expect(await storage.getTrackpadEnabled(), isTrue);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool(StorageService.kbTrackpadEnabledKey), isTrue);
+
       await storage.setTrackpadEnabled(false);
 
       expect(await storage.getTrackpadEnabled(), isFalse);
-      final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool(StorageService.kbTrackpadEnabledKey), isFalse);
     });
 
     test('trackpad toolbar visible setter persists in SharedPreferences', () async {
       final storage = StorageService();
+      await storage.setTrackpadToolbarVisible(true);
+
+      expect(await storage.getTrackpadToolbarVisible(), isTrue);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool(StorageService.kbTrackpadToolbarVisibleKey), isTrue);
+
       await storage.setTrackpadToolbarVisible(false);
 
       expect(await storage.getTrackpadToolbarVisible(), isFalse);
-      final prefs = await SharedPreferences.getInstance();
       expect(prefs.getBool(StorageService.kbTrackpadToolbarVisibleKey), isFalse);
     });
 
