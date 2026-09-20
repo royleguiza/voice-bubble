@@ -39,7 +39,7 @@ La única app de transcripción que ofrece:
 ## Capabilities and Constraints
 
 ### Capacidades confirmadas
-- Transcripción Cloud con Groq (whisper-large-v3)
+- Transcripción Cloud con Groq (whisper-large-v3-turbo)
 - Historial de últimas 20 transcripciones (FIFO)
 - Burbuja flotante con copiado rápido
 - Teclado nativo con 3 capas: QWERTY, Código, Snippets

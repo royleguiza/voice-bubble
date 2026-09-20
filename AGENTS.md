@@ -13,7 +13,7 @@
 
 **VoiceBubble STT**: app Android de transcripción de voz a texto, extremadamente simple.
 
-- Motor **Cloud** único (Groq `whisper-large-v3`; compatible también con OpenAI). El modo **Local offline fue removido** en el Hito 2 (decisión del dueño, 2026-08-22; restaurable desde git history; su regreso está pospuesto — ver `docs/archive/teclado-voice.md` D4).
+- Motor **Cloud** único (Groq `whisper-large-v3-turbo`; compatible también con OpenAI). El modo **Local offline fue removido** en el Hito 2 (decisión del dueño, 2026-08-22; restaurable desde git history; su regreso está pospuesto — ver `docs/archive/teclado-voice.md` D4).
 - Historial de las últimas **20** transcripciones (FIFO).
 - **Burbuja flotante** para transcribir desde cualquier otra app y copiar el resultado (Hito 3, verificada en dispositivo real).
 - Próxima extensión planificada: **teclado del sistema con dictado** (`docs/archive/teclado-voice.md`, hitos T0–K5).

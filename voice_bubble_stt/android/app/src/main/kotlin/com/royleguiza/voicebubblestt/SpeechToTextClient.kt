@@ -39,6 +39,14 @@ class SpeechToTextClient(
         val language: String,
     )
 
+    /** Modelo vigente: Turbo (rápido, misma calidad). Las prefs escritas
+     *  por versiones viejas traen `whisper-large-v3`: se migran en lectura
+     *  (la app republica el valor nuevo al abrirse vía saveSttMirror). */
+    private fun resolveModel(raw: String?): String =
+        if (raw == "whisper-large-v3") "whisper-large-v3-turbo"
+        else if (raw.isNullOrBlank()) "whisper-large-v3-turbo"
+        else raw
+
     /** Config D7: ver docs/contrato-stt.md (bóveda + prefs planas). */
     fun loadConfig(): Config {
         val prefs = context.getSharedPreferences(
@@ -51,8 +59,7 @@ class SpeechToTextClient(
             ) ?: "https://api.groq.com/openai/v1/audio/transcriptions",
             apiKey = SecureStore.read(context, SecureStore.STT_API_KEY)
                 ?: migrateLegacyMirror(prefs).orEmpty(),
-            model = prefs.getString("flutter.kb_stt_model", "whisper-large-v3")
-                ?: "whisper-large-v3",
+            model = resolveModel(prefs.getString("flutter.kb_stt_model", "whisper-large-v3-turbo")),
             language = prefs.getString("flutter.kb_stt_language", "es") ?: "es",
         )
     }

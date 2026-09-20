@@ -5,7 +5,7 @@ Aplicación Android **extremadamente simple** cuyo propósito es convertir voz e
 ## Características principales
 
 * Transcripción de voz a texto **solo** (nada de notas, resúmenes, traducción, etc.).
-* **Motor único Cloud**: Groq `whisper-large-v3` (compatible con OpenAI). La API key la configura el usuario en Settings (detalle: `INSTALL.md` §3). El modo local offline fue **removido** en el Hito 2 (decisión del dueño); su regreso está pospuesto (`docs/archive/teclado-voice.md`, D4).
+* **Motor único Cloud**: Groq `whisper-large-v3-turbo` (compatible con OpenAI). La API key la configura el usuario en Settings (detalle: `INSTALL.md` §3). El modo local offline fue **removido** en el Hito 2 (decisión del dueño); su regreso está pospuesto (`docs/archive/teclado-voice.md`, D4).
 * UI minimalista: botón Grabar → texto → **Copiar con un solo click**.
 * Historial persistente de las **últimas 20 transcripciones** (FIFO) con timestamp y modo usado.
 * **Burbuja flotante** (overlay) arrastrable:

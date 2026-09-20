@@ -24,6 +24,7 @@ SUITES = [
     ("Claves: sección credenciales + llave y relleno en teclado", "test_credentials_suite.py"),
     ("Mayúsculas: ciclo de caso con Shift (MEJ-02)", "test_shift_case_suite.py"),
     ("Pulsación larga: símbolos y tildes sin cambiar de capa (MEJ-05)", "test_long_press_symbols_suite.py"),
+    ("Modelo: whisper-large-v3-turbo con migración de legado", "test_turbo_model_suite.py"),
     ("Escritura: precisión dedos + gaps + targets (typing-feel)", "test_typing_feel_suite.py"),
     ("Micro-teclado: modo mini 2 filas (MEJ-12)", "test_micro_keyboard_suite.py"),
     ("Ajustes: rediseño Settings v2 (5 tabs + crystal)", "test_settings_redesign_suite.py"),

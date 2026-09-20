@@ -46,7 +46,7 @@ class CloudSttService {
   // --- Constantes del motor (sin literales mágicos) ---
   static const String _endpoint =
       'https://api.groq.com/openai/v1/audio/transcriptions';
-  static const String _model = 'whisper-large-v3';
+  static const String _model = 'whisper-large-v3-turbo';
   static const String _language = 'es';
   static const String _multipartFieldFile = 'file';
   static const String _multipartFieldModel = 'model';
