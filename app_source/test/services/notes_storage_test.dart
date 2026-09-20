@@ -42,7 +42,7 @@ void main() {
     test('addFromTranscription usa titulo truncado', () async {
       final s = NotesService();
       expect(await s.addFromTranscription('Hola mundo desde widget'), isTrue);
-      final n = (await s.notes).first;
+      final n = s.notes.first;
       expect(n.titulo, 'Hola mundo desde widget');
       expect(n.cuerpo, 'Hola mundo desde widget');
     });

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/voice_note.dart';
@@ -55,7 +56,7 @@ class _NotesScreenState extends State<NotesScreen> {
   Future<void> _dictateNew() async {
     if (_isRecording || _isTranscribing) return;
     setState(() => _isRecording = true);
-    HapticFeedback.mediumImpact();
+    unawaited(HapticFeedback.mediumImpact());
     try {
       final dir = await getTemporaryDirectory();
       final path =
@@ -75,7 +76,7 @@ class _NotesScreenState extends State<NotesScreen> {
       _isRecording = false;
       _isTranscribing = true;
     });
-    HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     try {
       final path = await _transcriptionService.stopRecording();
       if (path == null) {
@@ -436,7 +437,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   onPressed: () async {
                     await widget.notesService.deleteNote(widget.note!.id);
                     await WidgetService().updateWidgets();
-                    if (mounted) Navigator.of(context).pop(true);
+                    if (!mounted) return;
+                    if (context.mounted) Navigator.of(context).pop(true);
                   },
                 ),
             ],
