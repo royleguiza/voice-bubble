@@ -19,6 +19,7 @@ class WidgetDictationService : Service() {
 
     companion object {
         const val ACTION_TOGGLE = "com.royleguiza.voicebubblestt.WIDGET_TOGGLE"
+        const val ACTION_CANCEL = "com.royleguiza.voicebubblestt.WIDGET_CANCEL"
         const val EXTRA_WIDGET_ID = "widgetId"
         private const val CHANNEL_ID = "widget_dictation_channel"
         private const val NOTIF_ID = 2002
@@ -76,14 +77,32 @@ class WidgetDictationService : Service() {
         val action = intent?.action
         val widgetId = intent?.getIntExtra(EXTRA_WIDGET_ID, -1) ?: -1
 
-        if (action == ACTION_TOGGLE) {
-            if (isRecording) {
-                stopAndTranscribe()
-            } else {
-                startRecording(widgetId)
+        when (action) {
+            ACTION_TOGGLE -> {
+                if (isRecording) {
+                    stopAndTranscribe()
+                } else {
+                    startRecording(widgetId)
+                }
             }
+            ACTION_CANCEL -> cancelRecording()
         }
         return START_NOT_STICKY
+    }
+
+    private fun cancelRecording() {
+        if (!isRecording) return
+        isRecording = false
+        autoStopRunnable?.let { mainHandler.removeCallbacks(it) }
+        try {
+            client?.cancelRecording()
+        } catch (_: Exception) {}
+        client = null
+        updateWidgetsState("idle")
+        try {
+            stopForeground(true)
+        } catch (_: Exception) {}
+        stopSelf()
     }
 
     private fun startRecording(widgetId: Int) {
@@ -213,15 +232,15 @@ class WidgetDictationService : Service() {
             for (id in rowIds) {
                 WidgetRowProvider.updateOneWithState(ctx, awm, id, state)
             }
-            refreshWidgets()
+            refreshWidgets(state)
         } catch (_: Exception) {}
     }
 
-    private fun refreshWidgets() {
+    private fun refreshWidgets(state: String = "idle") {
         try {
             val awm = AppWidgetManager.getInstance(this)
             val notesIds = awm.getAppWidgetIds(ComponentName(this, WidgetNotesProvider::class.java))
-            for (id in notesIds) WidgetNotesProvider.updateOne(this, awm, id)
+            for (id in notesIds) WidgetNotesProvider.updateOneWithState(this, awm, id, state)
         } catch (_: Exception) {}
     }
 }

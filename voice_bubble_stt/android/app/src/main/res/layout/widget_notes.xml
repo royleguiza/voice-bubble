@@ -181,6 +181,7 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/widget_bottom_bar"
         android:layout_width="match_parent"
         android:layout_height="44dp"
         android:layout_marginTop="8dp"
@@ -205,6 +206,24 @@
                 android:tint="#007AFF" />
         </FrameLayout>
 
+        <View
+            android:id="@+id/widget_rec_dot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/widget_rec_dot"
+            android:visibility="gone" />
+
+        <Chronometer
+            android:id="@+id/widget_chrono"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#0B1220"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/widget_notes_mic_label"
             android:layout_width="0dp"
@@ -215,6 +234,21 @@
             android:textColor="#6B7A90"
             android:textStyle="bold"
             android:paddingStart="6dp" />
+
+        <FrameLayout
+            android:id="@+id/widget_cancel"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/widget_mic_bg"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_x"
+                android:tint="#0B1220" />
+        </FrameLayout>
 
         <FrameLayout
             android:id="@+id/widget_notes_mic"

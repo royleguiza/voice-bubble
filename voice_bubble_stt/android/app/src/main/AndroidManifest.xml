@@ -78,6 +78,11 @@
             android:exported="false"
             android:foregroundServiceType="microphone" />
         <activity
+            android:name=".WidgetNoteEditActivity"
+            android:theme="@style/WidgetEditTheme"
+            android:windowSoftInputMode="stateVisible|adjustResize"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"

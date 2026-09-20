@@ -35,12 +35,29 @@ class WidgetNotesProvider : AppWidgetProvider() {
             context: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int,
+        ) = updateOneWithState(context, appWidgetManager, appWidgetId, "idle")
+
+        fun updateOneWithState(
+            context: Context,
+            appWidgetManager: AppWidgetManager,
+            appWidgetId: Int,
+            state: String,
         ) {
             val views = RemoteViews(context.packageName, R.layout.widget_notes)
             val notes = NoteStore(context).load()
             val count = notes.size
 
+            val isDark = (context.resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val primary = if (isDark) 0xFFF5F7FB.toInt() else 0xFF0B1220.toInt()
+            val secondary = if (isDark) 0xFFA7B3C7.toInt() else 0xFF5B6B82.toInt()
+
             views.setTextViewText(R.id.widget_notes_count, "$count / 50")
+            views.setTextColor(R.id.widget_notes_title, primary)
+            views.setTextColor(R.id.widget_notes_count, secondary)
+            views.setTextColor(R.id.widget_notes_mic_label, secondary)
+            views.setTextColor(R.id.widget_chrono, primary)
 
             // Detecta altura por options: si el usuario estiro a 5x4, mostramos 3 notas.
             val opts = appWidgetManager.getAppWidgetOptions(appWidgetId)
@@ -72,6 +89,9 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     1 -> R.id.widget_note_time_1
                     else -> R.id.widget_note_time_2
                 }
+                views.setTextColor(titleId, primary)
+                views.setTextColor(bodyId, secondary)
+                views.setTextColor(timeId, secondary)
                 if (i < visible && i < count) {
                     val n = notes[i]
                     val displayTitle = n.titulo.ifBlank { "Sin título" }
@@ -80,9 +100,8 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     views.setTextViewText(bodyId, n.cuerpo)
                     views.setTextViewText(timeId, formatTime(n.updatedAt))
                     views.setContentDescription(containerId, "Abrir nota $displayTitle")
-                    val noteIntent = Intent(context, MainActivity::class.java).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        putExtra("widget_action", "open_note")
+                    // Todo dentro del widget: overlay translucido, no MainActivity
+                    val noteIntent = Intent(context, WidgetNoteEditActivity::class.java).apply {
                         putExtra("note_id", n.id)
                     }
                     val pi = PendingIntent.getActivity(
@@ -106,9 +125,38 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     .getString("flutter.widget_mic_position", "right") ?: "right"
             } catch (_: Exception) { "right" }
             val micLeft = micPos == "left"
-            views.setViewVisibility(R.id.widget_notes_mic_left, if (micLeft) View.VISIBLE else View.GONE)
-            views.setViewVisibility(R.id.widget_notes_mic, if (micLeft) View.GONE else View.VISIBLE)
-            // Label centrado sigue igual
+            val recording = state == "recording"
+
+            // Pill de grabacion: dot + cronometro + X; mic oculto grabando
+            views.setViewVisibility(R.id.widget_rec_dot, if (recording) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_chrono, if (recording) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_cancel, if (recording) View.VISIBLE else View.GONE)
+            views.setViewVisibility(
+                R.id.widget_notes_mic_left,
+                if (!recording && micLeft) View.VISIBLE else View.GONE,
+            )
+            views.setViewVisibility(
+                R.id.widget_notes_mic,
+                if (!recording && !micLeft) View.VISIBLE else View.GONE,
+            )
+            views.setTextViewText(
+                R.id.widget_notes_mic_label,
+                when (state) {
+                    "recording" -> "Grabando"
+                    "transcribing" -> "Procesando"
+                    "saved" -> "Nota guardada"
+                    else -> "Dictar nota"
+                },
+            )
+            views.setInt(
+                R.id.widget_bottom_bar, "setBackgroundResource",
+                if (recording) R.drawable.widget_rec_bar_bg else R.drawable.widget_glass_inner,
+            )
+            if (recording) {
+                views.setChronometer(
+                    R.id.widget_chrono, android.os.SystemClock.elapsedRealtime(), null, true,
+                )
+            }
 
             val dictateIntent = Intent(context, WidgetDictationService::class.java).apply {
                 action = WidgetDictationService.ACTION_TOGGLE
@@ -120,6 +168,16 @@ class WidgetNotesProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_notes_mic, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_notes_mic_left, dictatePi)
+            views.setOnClickPendingIntent(R.id.widget_notes_mic_label, dictatePi)
+
+            val cancelIntent = Intent(context, WidgetDictationService::class.java).apply {
+                action = WidgetDictationService.ACTION_CANCEL
+            }
+            val cancelPi = PendingIntent.getService(
+                context, 400 + appWidgetId, cancelIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setOnClickPendingIntent(R.id.widget_cancel, cancelPi)
             // Add (+) debe abrir notas para creacion manual, no dictar
             val addIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
