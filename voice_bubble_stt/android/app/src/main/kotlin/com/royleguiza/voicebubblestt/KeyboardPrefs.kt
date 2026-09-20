@@ -63,6 +63,12 @@ class KeyboardPrefs(private val context: Context) {
     var trackpadPointerStyle = "arrow"
     var trackpadAutoReturn = 0
 
+    // --- Pulsación larga de símbolos (MEJ-05): switch + retardo
+    // Rápido/Normal/Relajado. Default ON + normal (350ms, conducta histórica).
+    var longPressSymbolsEnabled = true
+    var longPressDelay = LONG_PRESS_DELAY_NORMAL
+    var longPressDelayMs = LONG_PRESS_DELAY_NORMAL_MS
+
     /**
      * Preferencia escrita por los Ajustes de la app (Flutter shared_preferences
      * guarda con prefijo "flutter." en el archivo FlutterSharedPreferences).
@@ -291,5 +297,21 @@ class KeyboardPrefs(private val context: Context) {
         } catch (_: Exception) {
             0
         }
+        // MEJ-05: menús de pulsación larga + retardo (parseo tolerante).
+        longPressSymbolsEnabled = try {
+            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getBoolean("flutter.kb_long_press_symbols", true)
+        } catch (_: Exception) {
+            true
+        }
+        longPressDelay = try {
+            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                .getString("flutter.kb_long_press_delay", LONG_PRESS_DELAY_NORMAL)
+                ?.takeIf { it == LONG_PRESS_DELAY_RAPIDO || it == LONG_PRESS_DELAY_NORMAL || it == LONG_PRESS_DELAY_RELAJADO }
+                ?: LONG_PRESS_DELAY_NORMAL
+        } catch (_: Exception) {
+            LONG_PRESS_DELAY_NORMAL
+        }
+        longPressDelayMs = longPressDelayMillis(longPressDelay)
     }
 }

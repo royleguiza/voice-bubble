@@ -75,6 +75,8 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _invertToolbar = false;
   String _spacebarAlignment = StorageService.defaultSpacebarAlignment;
   String _spacebarTrackpadMode = StorageService.defaultSpacebarTrackpadMode;
+  bool _longPressSymbolsEnabled = StorageService.defaultLongPressSymbols;
+  String _longPressDelay = StorageService.defaultLongPressDelay;
   bool _trackpadEnabled = StorageService.defaultTrackpadEnabled;
   bool _trackpadToolbarVisible = StorageService.defaultTrackpadToolbarVisible;
   String _trackpadButtonLayout = StorageService.defaultTrackpadButtonLayout;
@@ -169,6 +171,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     final trackpadAutoReturn = await _storageService.getTrackpadAutoReturn();
     final bubbleHistory = await _storageService.loadBubbleHistoryEnabled();
     final clipboardImages = await _storageService.getClipboardImagesEnabled();
+    final longPressSymbols = await _storageService.getLongPressSymbolsEnabled();
+    final longPressDelay = await _storageService.getLongPressDelay();
     final themeMode = await _storageService.loadThemeMode();
     // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
     if (apiKey.isNotEmpty) {
@@ -220,6 +224,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       _trackpadAutoReturn = trackpadAutoReturn;
       _showBubbleHistory = bubbleHistory;
       _clipboardImagesEnabled = clipboardImages;
+      _longPressSymbolsEnabled = longPressSymbols;
+      _longPressDelay = longPressDelay;
       _themeMode = themeMode;
     });
   }
@@ -293,6 +299,27 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _saveSpacebarTrackpadMode(String mode) async {
     await _storageService.setSpacebarTrackpadMode(mode);
     if (mounted) setState(() => _spacebarTrackpadMode = mode);
+  }
+
+  Future<void> _toggleLongPressSymbols(bool enabled) async {
+    await _storageService.setLongPressSymbolsEnabled(enabled);
+    if (mounted) setState(() => _longPressSymbolsEnabled = enabled);
+  }
+
+  Future<void> _saveLongPressDelay(String delay) async {
+    await _storageService.setLongPressDelay(delay);
+    if (mounted) setState(() => _longPressDelay = delay);
+  }
+
+  String get _longPressDelayHint {
+    switch (_longPressDelay) {
+      case 'rapido':
+        return 'El menú aparece a los 250ms: escritura veloz.';
+      case 'relajado':
+        return 'El menú espera 450ms: evita aperturas accidentales.';
+      default:
+        return 'El menú aparece a los 350ms: equilibrio entre velocidad y precisión.';
+    }
   }
 
   String get _heightProfileHint {
@@ -975,6 +1002,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       onSaveSpacebarAlignment: _saveSpacebarAlignment,
       spacebarTrackpadMode: _spacebarTrackpadMode,
       onSaveSpacebarTrackpadMode: _saveSpacebarTrackpadMode,
+      longPressSymbolsEnabled: _longPressSymbolsEnabled,
+      onToggleLongPressSymbols: _toggleLongPressSymbols,
+      longPressDelay: _longPressDelay,
+      onSaveLongPressDelay: _saveLongPressDelay,
+      longPressDelayHint: _longPressDelayHint,
       bottomElevationDp: _bottomElevationDp,
       onSaveBottomElevation: _saveBottomElevation,
       hapticsEnabled: _hapticsEnabled,

@@ -337,6 +337,36 @@ class StorageService {
   Future<void> setKeySpacing(String spacing) => _setValidatedString(
       kbKeySpacingKey, kbKeySpacings, spacing);
 
+  /// Menús de pulsación larga MEJ-05 (símbolos y tildes sin cambiar de capa).
+  /// El teclado nativo Kotlin lee estas claves con prefijo "flutter.".
+  static const String kbLongPressSymbolsKey = 'kb_long_press_symbols';
+  static const String kbLongPressDelayKey = 'kb_long_press_delay';
+
+  /// Retardos de long-press, de más rápido a más relajado.
+  static const List<String> kbLongPressDelays = [
+    'rapido',
+    'normal',
+    'relajado',
+  ];
+  static const String defaultLongPressDelay = 'normal';
+  static const bool defaultLongPressSymbols = true;
+
+  /// Switch de menús de pulsación larga (default ON, sin cambio de conducta
+  /// al actualizar: antes siempre estaban activos los acentos).
+  Future<bool> getLongPressSymbolsEnabled() =>
+      _getBool(kbLongPressSymbolsKey, defaultLongPressSymbols);
+
+  Future<void> setLongPressSymbolsEnabled(bool enabled) =>
+      _setBool(kbLongPressSymbolsKey, enabled);
+
+  /// Retardo del long-press: 'rapido' (250ms), 'normal' (350ms, default) o
+  /// 'relajado' (450ms). Valor ausente o inválido cae al por defecto.
+  Future<String> getLongPressDelay() => _getValidatedString(
+      kbLongPressDelayKey, kbLongPressDelays, defaultLongPressDelay);
+
+  Future<void> setLongPressDelay(String delay) => _setValidatedString(
+      kbLongPressDelayKey, kbLongPressDelays, delay);
+
   // --- Modo Trackpad y Puntero Virtual (MEJ-09) ---
   static const String kbTrackpadEnabledKey = 'kb_trackpad_enabled';
   static const String kbTrackpadToolbarVisibleKey = 'kb_trackpad_toolbar_visible';
@@ -476,6 +506,8 @@ class StorageService {
     kbInvertToolbarKey,
     _keyboardLanguageKeyVisibleKey,
     kbKeySpacingKey,
+    kbLongPressDelayKey,
+    kbLongPressSymbolsKey,
     kbMicHapticCancelKey,
     kbMicHapticPasteKey,
     kbMicHapticRecordingKey,

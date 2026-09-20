@@ -388,6 +388,14 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // implementación).
     override fun commitSymbolKey(text: String) = editor.commitSymbolText(text)
     override fun attachAccentKey(key: TextView, base: Char, onTapUp: () -> Unit) = accents.attachAccent(key, base, onTapUp)
+    override fun attachSymbolKey(key: TextView, base: Char, onTapUp: () -> Unit) =
+        accents.attachSymbol(key, base, { kbPrefs.longPressSymbolsEnabled }, onTapUp)
+    override fun isLongPressSymbolsEnabled(): Boolean = kbPrefs.longPressSymbolsEnabled
+    override fun longPressDelayMs(): Long = try {
+        kbPrefs.longPressDelayMs
+    } catch (_: Exception) {
+        LONG_PRESS_MILLIS
+    }
     override fun attachPairKey(
         key: TextView,
         ch: Char,

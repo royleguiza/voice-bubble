@@ -402,6 +402,42 @@ void main() {
     });
   });
 
+  group('StorageService - pulsación larga MEJ-05', () {
+    test('defaults: menús ON y retardo normal', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.getLongPressSymbolsEnabled(), isTrue);
+      expect(await service.getLongPressDelay(), 'normal');
+    });
+
+    test('persiste switch y retardo', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setLongPressSymbolsEnabled(false);
+      await service.setLongPressDelay('relajado');
+      expect(await service.getLongPressSymbolsEnabled(), isFalse);
+      expect(await service.getLongPressDelay(), 'relajado');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_long_press_symbols'), isFalse);
+      expect(prefs.getString('kb_long_press_delay'), 'relajado');
+    });
+
+    test('rechaza retardo invalido y conserva el anterior', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.setLongPressDelay('rapido');
+      await service.setLongPressDelay('turbo');
+      expect(await service.getLongPressDelay(), 'rapido');
+    });
+
+    test('las 2 claves pertenecen al puente verificado por el CI', () {
+      expect(StorageService.bridgeKeys,
+          contains(StorageService.kbLongPressSymbolsKey));
+      expect(StorageService.bridgeKeys,
+          contains(StorageService.kbLongPressDelayKey));
+    });
+  });
+
   group('StorageService - feedback del micrófono', () {
     test('defaults: hápticas ON y sonidos OFF', () async {
       SharedPreferences.setMockInitialValues({});
@@ -585,6 +621,8 @@ void main() {
       'kb_invert_toolbar',
       'kb_key_spacing',
       'kb_language_key_visible',
+      'kb_long_press_delay',
+      'kb_long_press_symbols',
       'kb_mic_haptic_cancel',
       'kb_mic_haptic_paste',
       'kb_mic_haptic_recording',
@@ -620,8 +658,8 @@ void main() {
       'voice_snippets_v1',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (43 claves)', () {
-      expect(StorageService.bridgeKeys.length, 43);
+    test('bridgeKeys cubre exactamente el contrato (45 claves)', () {
+      expect(StorageService.bridgeKeys.length, 45);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
     });
 

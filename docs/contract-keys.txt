@@ -8,6 +8,8 @@ kb_height_profile
 kb_invert_toolbar
 kb_key_spacing
 kb_language_key_visible
+kb_long_press_delay
+kb_long_press_symbols
 kb_mic_haptic_cancel
 kb_mic_haptic_paste
 kb_mic_haptic_recording

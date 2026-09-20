@@ -5,6 +5,7 @@ import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -49,6 +50,32 @@ class AccentLayer(
         )
     }
 
+    /** Puntuación MEJ-05: largo abre el menú de símbolos, tap delega.
+     *  Si [enabled] es false (switch OFF en Ajustes) queda tap plano. */
+    fun attachSymbol(
+        key: TextView,
+        base: Char,
+        enabled: () -> Boolean,
+        onTapUp: () -> Unit,
+    ) {
+        if (symbolsFor(base).isEmpty()) {
+            key.setOnClickListener { onTapUp() }
+            return
+        }
+        host.attachPress(
+            key,
+            onLongPress = {
+                if (!enabled()) {
+                    onTapUp()
+                    return@attachPress
+                }
+                host.haptic(key)
+                showSymbolsPopup(key, base)
+            },
+            onTapUp = onTapUp,
+        )
+    }
+
     /** Símbolo de código: largo inserta el par cerrado (solo si hay pareja;
      *  AT-A11: sin pareja el toque es un click plano con el mismo commit). */
     fun attachPair(
@@ -70,8 +97,24 @@ class AccentLayer(
     }
 
     fun showPopup(anchor: View, base: Char) {
-        host.dismissPopups()
         val options = accentsFor(base)
+        if (options.isEmpty()) return
+        showOptionsPopup(anchor, options)
+    }
+
+    /** Menú de puntuación MEJ-05: mismas reglas visuales que tildes. */
+    fun showSymbolsPopup(anchor: View, base: Char) {
+        val options = symbolsFor(base)
+        if (options.isEmpty()) return
+        showOptionsPopup(anchor, options)
+    }
+
+    /** Popup glass compartido (tildes + símbolos MEJ-05): tap en opción
+     *  comite directo; deslizar sobre el menú y soltar comite la opción
+     *  bajo el dedo; soltar sin moverse comite la primera (secundario
+     *  predeterminado). Sin Log de contenido. */
+    fun showOptionsPopup(anchor: View, options: List<String>) {
+        host.dismissPopups()
         if (options.isEmpty()) return
         val box = LinearLayout(service)
         box.orientation = LinearLayout.HORIZONTAL
@@ -94,6 +137,53 @@ class AccentLayer(
                 host.dismissPopups()
             }
             box.addView(tv)
+        }
+        // MEJ-05: deslizamiento sobre el menú (estilo tildes mejorado).
+        // MOVE resalta la opción bajo el dedo; UP comite la resaltada o la
+        // primera si se soltó sin moverse (secundario predeterminado).
+        var highlighted: TextView? = null
+        fun childAt(x: Float, y: Float): TextView? {
+            for (i in 0 until box.childCount) {
+                val c = box.getChildAt(i) as? TextView ?: continue
+                if (x >= c.left && x <= c.right && y >= c.top && y <= c.bottom) return c
+            }
+            return null
+        }
+        fun setHighlighted(tv: TextView?) {
+            if (highlighted === tv) return
+            try { highlighted?.isPressed = false } catch (_: Exception) {}
+            highlighted = tv
+            try { tv?.isPressed = true } catch (_: Exception) {}
+        }
+        box.setOnTouchListener { _, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    setHighlighted(childAt(ev.x, ev.y))
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    setHighlighted(childAt(ev.x, ev.y))
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val target = childAt(ev.x, ev.y) ?: highlighted ?: (box.getChildAt(0) as? TextView)
+                    val text = target?.text?.toString()
+                    try { highlighted?.isPressed = false } catch (_: Exception) {}
+                    highlighted = null
+                    if (text != null) {
+                        host.haptic(box)
+                        host.commitText(text)
+                    }
+                    host.dismissPopups()
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    try { highlighted?.isPressed = false } catch (_: Exception) {}
+                    highlighted = null
+                    true
+                }
+                else -> false
+            }
         }
         val popup = PopupWindow(
             box,

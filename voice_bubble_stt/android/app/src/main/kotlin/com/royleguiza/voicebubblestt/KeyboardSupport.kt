@@ -74,6 +74,22 @@ internal const val HAPTIC_STYLE_NITIDO = "nitido"
 internal const val HAPTIC_STYLE_FIRME = "firme"
 internal const val HAPTIC_STYLE_SUAVE = "suave"
 
+/** Valores del retardo de pulsación larga escritos por Ajustes (MEJ-05). */
+internal const val LONG_PRESS_DELAY_RAPIDO = "rapido"
+internal const val LONG_PRESS_DELAY_NORMAL = "normal"
+internal const val LONG_PRESS_DELAY_RELAJADO = "relajado"
+
+/** Retardos efectivos del long-press (MEJ-05): Rápido 250, Normal 350, Relajado 450. */
+internal const val LONG_PRESS_DELAY_RAPIDO_MS = 250L
+internal const val LONG_PRESS_DELAY_NORMAL_MS = 350L
+internal const val LONG_PRESS_DELAY_RELAJADO_MS = 450L
+
+internal fun longPressDelayMillis(delay: String): Long = when (delay) {
+    LONG_PRESS_DELAY_RAPIDO -> LONG_PRESS_DELAY_RAPIDO_MS
+    LONG_PRESS_DELAY_RELAJADO -> LONG_PRESS_DELAY_RELAJADO_MS
+    else -> LONG_PRESS_DELAY_NORMAL_MS
+}
+
 /** Handler principal compartido: runOnMain no aloja uno por llamada. */
 private val sharedMainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
 
@@ -141,6 +157,15 @@ internal fun accentsFor(c: Char): List<String> = when (c) {
     'u' -> listOf("ú", "ù", "ü", "û")
     'n' -> listOf("ñ")
     'c' -> listOf("ç")
+    else -> emptyList()
+}
+
+/** Menú de pulsación larga de puntuación (MEJ-05): popup glass con
+ *  deslizamiento para elegir sin cambiar de capa. La primera opción es el
+ *  secundario predeterminado (tap del popup sin mover = esa opción). */
+internal fun symbolsFor(c: Char): List<String> = when (c) {
+    '.' -> listOf(";", ":", "...", "!", "?", "/")
+    ',' -> listOf(":", ";", "_", "-", "\\")
     else -> emptyList()
 }
 

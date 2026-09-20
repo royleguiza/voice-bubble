@@ -29,6 +29,11 @@ class TecladoTab extends StatelessWidget {
   final ValueChanged<String> onSaveSpacebarAlignment;
   final String spacebarTrackpadMode;
   final ValueChanged<String> onSaveSpacebarTrackpadMode;
+  final bool longPressSymbolsEnabled;
+  final ValueChanged<bool> onToggleLongPressSymbols;
+  final String longPressDelay;
+  final ValueChanged<String> onSaveLongPressDelay;
+  final String longPressDelayHint;
   final int bottomElevationDp;
   final ValueChanged<int> onSaveBottomElevation;
   final bool hapticsEnabled;
@@ -82,6 +87,11 @@ class TecladoTab extends StatelessWidget {
     required this.onSaveSpacebarAlignment,
     required this.spacebarTrackpadMode,
     required this.onSaveSpacebarTrackpadMode,
+    required this.longPressSymbolsEnabled,
+    required this.onToggleLongPressSymbols,
+    required this.longPressDelay,
+    required this.onSaveLongPressDelay,
+    required this.longPressDelayHint,
     required this.bottomElevationDp,
     required this.onSaveBottomElevation,
     required this.hapticsEnabled,
@@ -364,6 +374,39 @@ class TecladoTab extends StatelessWidget {
                 selected: {spacebarTrackpadMode},
                 onSelectionChanged: (s) =>
                     onSaveSpacebarTrackpadMode(s.first),
+              ),
+            ),
+          ],
+        ),
+        const SettingsGroupTitle('Pulsación larga'),
+        SettingsCard(
+          children: [
+            SwitchListTile(
+              key: const ValueKey('kb-long-press-symbols-switch'),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16),
+              title: const Text('Menús de pulsación larga'),
+              subtitle: Text(
+                'Mantén . , y letras para ; : ! ? ñ y tildes sin cambiar de capa.',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: variantColor),
+              ),
+              value: longPressSymbolsEnabled,
+              onChanged: onToggleLongPressSymbols,
+            ),
+            _PaddedBlock(
+              label: 'Retardo de pulsación larga',
+              hint: longPressDelayHint,
+              child: SegmentedButton<String>(
+                key: const ValueKey('kb-long-press-delay-selector'),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: 'rapido', label: Text('Rápido')),
+                  ButtonSegment(value: 'normal', label: Text('Normal')),
+                  ButtonSegment(value: 'relajado', label: Text('Relajado')),
+                ],
+                selected: {longPressDelay},
+                onSelectionChanged: (d) => onSaveLongPressDelay(d.first),
               ),
             ),
           ],

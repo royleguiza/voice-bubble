@@ -427,22 +427,71 @@ void main() {
       expect(tester.widget<SegmentedButton<String>>(stopSel).selected, {'3'});
     });
 
-    testWidgets('elegir opción 2 de inicio persiste', (tester) async {
+  group('SettingsScreen - pulsación larga MEJ-05', () {
+    Finder longPressSwitch() => find.descendant(
+          of: find.byKey(const ValueKey('kb-long-press-symbols-switch')),
+          matching: find.byType(Switch),
+        );
+
+    Finder longPressDelaySelector() =>
+        find.byKey(const ValueKey('kb-long-press-delay-selector'));
+
+    testWidgets('muestra switch ON y Normal por defecto', (tester) async {
       await tester.pumpWidget(buildTestableWidget(tester));
       await tester.pumpAndSettle();
-      await openMicSection(tester);
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Menús de pulsación larga'), findsOneWidget);
+      expect(longPressSwitch(), findsOneWidget);
+      expect(tester.widget<Switch>(longPressSwitch()).value, isTrue);
+      expect(
+          tester
+              .widget<SegmentedButton<String>>(longPressDelaySelector())
+              .selected,
+          {'normal'});
+    });
+
+    testWidgets('apagar menús persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(longPressSwitch());
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Switch>(longPressSwitch()).value, isFalse);
+      expect(await StorageService().getLongPressSymbolsEnabled(), isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_long_press_symbols'), isFalse);
+    });
+
+    testWidgets('elegir Relajado persiste en SharedPreferences',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.descendant(
-        of: find.byKey(const ValueKey('kb-mic-start-style')),
-        matching: find.text('Opción 2'),
+        of: longPressDelaySelector(),
+        matching: find.text('Relajado'),
       ));
       await tester.pumpAndSettle();
 
-      final startSel = find.byKey(const ValueKey('kb-mic-start-style'));
-      expect(tester.widget<SegmentedButton<String>>(startSel).selected, {'2'});
-      expect(await StorageService().getMicStartStyle(), '2');
+      expect(
+          tester
+              .widget<SegmentedButton<String>>(longPressDelaySelector())
+              .selected,
+          {'relajado'});
+      expect(await StorageService().getLongPressDelay(), 'relajado');
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_mic_start_style'), '2');
+      expect(prefs.getString('kb_long_press_delay'), 'relajado');
     });
   });
 }

@@ -40,6 +40,9 @@ class KeyFactory(
         fun attachTap(view: View, onTap: () -> Unit)
         fun attachPress(key: View, onLongPress: () -> Unit, onTapUp: () -> Unit)
         fun attachAccentKey(key: TextView, base: Char, onTapUp: () -> Unit)
+        fun attachSymbolKey(key: TextView, base: Char, onTapUp: () -> Unit)
+        fun isLongPressSymbolsEnabled(): Boolean
+        fun longPressDelayMs(): Long
         fun attachPairKey(
             key: TextView,
             ch: Char,
@@ -199,7 +202,12 @@ class KeyFactory(
                         }
                     }
                     pending = r
-                    handler.postDelayed(r, LONG_PRESS_MILLIS)
+                    val delayMs = try {
+                        host.longPressDelayMs()
+                    } catch (_: Exception) {
+                        LONG_PRESS_MILLIS
+                    }
+                    handler.postDelayed(r, delayMs)
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
@@ -361,6 +369,8 @@ class KeyFactory(
     /**
      * Tecla de símbolo en negrita (consistencia con letras y coma/punto):
      * el grosor iguala el peso visual en todas las capas.
+     * MEJ-05: coma y punto abren menú de pulsación larga (símbolos);
+     * el resto queda tap plano.
      */
     fun makeSymbolKey(
         label: String,
@@ -378,7 +388,12 @@ class KeyFactory(
         key.contentDescription = label
         val commit: () -> Unit = { host.commitSymbolKey(label) }
         key.tag = commit
-        host.attachTap(key, commit)
+        val base = label.singleOrNull()
+        if (base != null && symbolsFor(base).isNotEmpty()) {
+            host.attachSymbolKey(key, base, commit)
+        } else {
+            host.attachTap(key, commit)
+        }
         return key
     }
 
