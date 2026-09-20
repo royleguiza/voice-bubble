@@ -427,6 +427,28 @@ void main() {
       expect(tester.widget<SegmentedButton<String>>(stopSel).selected, {'3'});
     });
 
+    testWidgets('elegir opción 2 de inicio persiste', (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Micrófono: vibración y sonido'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.descendant(
+        of: find.byKey(const ValueKey('kb-mic-start-style')),
+        matching: find.text('Opción 2'),
+      ));
+      await tester.pumpAndSettle();
+
+      final startSel = find.byKey(const ValueKey('kb-mic-start-style'));
+      expect(tester.widget<SegmentedButton<String>>(startSel).selected, {'2'});
+      expect(await StorageService().getMicStartStyle(), '2');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_mic_start_style'), '2');
+    });
+  });
+
   group('SettingsScreen - pulsación larga MEJ-05', () {
     Finder longPressSwitch() => find.descendant(
           of: find.byKey(const ValueKey('kb-long-press-symbols-switch')),
