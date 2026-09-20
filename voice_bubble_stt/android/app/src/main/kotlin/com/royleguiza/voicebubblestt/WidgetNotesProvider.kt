@@ -74,10 +74,12 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 }
                 if (i < visible && i < count) {
                     val n = notes[i]
+                    val displayTitle = n.titulo.ifBlank { "Sin título" }
                     views.setViewVisibility(containerId, View.VISIBLE)
-                    views.setTextViewText(titleId, n.titulo.ifBlank { "Nota" })
+                    views.setTextViewText(titleId, displayTitle)
                     views.setTextViewText(bodyId, n.cuerpo)
                     views.setTextViewText(timeId, formatTime(n.updatedAt))
+                    views.setContentDescription(containerId, "Abrir nota $displayTitle")
                     val noteIntent = Intent(context, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         putExtra("widget_action", "open_note")
@@ -98,16 +100,36 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 }
             }
 
-            val dictateIntent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                putExtra("widget_action", "dictate_note")
+            // Mic posicion configurable: izq/der desde Ajustes (flutter.widget_mic_position)
+            val micPos = try {
+                context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                    .getString("flutter.widget_mic_position", "right") ?: "right"
+            } catch (_: Exception) { "right" }
+            val micLeft = micPos == "left"
+            views.setViewVisibility(R.id.widget_notes_mic_left, if (micLeft) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_notes_mic, if (micLeft) View.GONE else View.VISIBLE)
+            // Label centrado sigue igual
+
+            val dictateIntent = Intent(context, WidgetDictationService::class.java).apply {
+                action = WidgetDictationService.ACTION_TOGGLE
+                putExtra(WidgetDictationService.EXTRA_WIDGET_ID, appWidgetId)
             }
-            val dictatePi = PendingIntent.getActivity(
+            val dictatePi = PendingIntent.getService(
                 context, appWidgetId, dictateIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             views.setOnClickPendingIntent(R.id.widget_notes_mic, dictatePi)
-            views.setOnClickPendingIntent(R.id.widget_notes_add, dictatePi)
+            views.setOnClickPendingIntent(R.id.widget_notes_mic_left, dictatePi)
+            // Add (+) debe abrir notas para creacion manual, no dictar
+            val addIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                putExtra("widget_action", "open_notes")
+            }
+            val addPi = PendingIntent.getActivity(
+                context, 300 + appWidgetId, addIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setOnClickPendingIntent(R.id.widget_notes_add, addPi)
 
             val openIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -124,13 +146,20 @@ class WidgetNotesProvider : AppWidgetProvider() {
 
         private fun formatTime(iso: String): String {
             if (iso.isBlank()) return ""
+            val fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm")
             return try {
-                val dt = java.time.Instant.parse(iso)
-                val local = dt.atZone(java.time.ZoneId.systemDefault())
-                val fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm")
-                fmt.format(local)
+                java.time.Instant.parse(iso).atZone(java.time.ZoneId.systemDefault()).let { fmt.format(it) }
             } catch (_: Exception) {
-                iso.take(16)
+                try {
+                    java.time.OffsetDateTime.parse(iso).atZoneSameInstant(java.time.ZoneId.systemDefault()).let { fmt.format(it) }
+                } catch (_: Exception) {
+                    try {
+                        java.time.LocalDateTime.parse(iso).atZone(java.time.ZoneId.systemDefault()).let { fmt.format(it) }
+                    } catch (_: Exception) {
+                        // Fallback relativo
+                        iso.take(16).replace('T', ' ')
+                    }
+                }
             }
         }
     }

@@ -8,4 +8,16 @@ class WidgetService {
       await _channel.invokeMethod('updateWidgets');
     } catch (_) {}
   }
+
+  Future<Map<String, String?>> getInitialAction() async {
+    try {
+      final res = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getInitialWidgetAction',
+      );
+      if (res == null) return {};
+      return res.map((k, v) => MapEntry(k.toString(), v?.toString()));
+    } catch (_) {
+      return {};
+    }
+  }
 }

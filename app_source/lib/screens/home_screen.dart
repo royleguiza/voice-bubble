@@ -13,6 +13,9 @@ import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
 import 'settings_screen.dart';
 import 'notes_screen.dart';
+import '../models/voice_note.dart';
+import '../services/notes_service.dart';
+import '../services/widget_service.dart';
 import '../widgets/record_button.dart';
 import '../widgets/history_list.dart';
 import '../widgets/transcription_popup.dart';
@@ -147,8 +150,49 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() {});
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _transcriptionService.requestPermissions();
+        _handleWidgetAction();
       });
     }
+  }
+
+  Future<void> _handleWidgetAction() async {
+    try {
+      final action = await WidgetService().getInitialAction();
+      final act = action['action'];
+      final noteId = action['noteId'];
+      if (!mounted) return;
+      if (act == 'open_notes') {
+        if (!mounted) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NotesScreen()),
+        );
+      } else if (act == 'open_note' && noteId != null && noteId.isNotEmpty) {
+        final notesService = NotesService();
+        await notesService.load();
+        VoiceNote? note;
+        try {
+          note = notesService.notes.firstWhere((n) => n.id == noteId);
+        } catch (_) {
+          note = null;
+        }
+        if (note != null) {
+          if (!mounted) return;
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => NoteEditorScreen(note: note, notesService: notesService),
+            ),
+          );
+        } else {
+          if (!mounted) return;
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotesScreen()),
+          );
+        }
+      }
+    } catch (_) {}
   }
 
   bool get motionSafe => !MediaQuery.of(context).disableAnimations;

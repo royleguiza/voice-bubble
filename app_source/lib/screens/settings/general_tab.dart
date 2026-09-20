@@ -27,6 +27,8 @@ class GeneralTab extends StatelessWidget {
   final ValueChanged<bool> onToggleBubbleHistory;
   final VoidCallback onReviewOverlayPermission;
   final VoidCallback onShowAboutSheet;
+  final String widgetMicPosition;
+  final ValueChanged<String> onWidgetMicPosition;
 
   const GeneralTab({
     super.key,
@@ -49,6 +51,8 @@ class GeneralTab extends StatelessWidget {
     required this.onToggleBubbleHistory,
     required this.onReviewOverlayPermission,
     required this.onShowAboutSheet,
+    required this.widgetMicPosition,
+    required this.onWidgetMicPosition,
   });
 
   @override
@@ -170,6 +174,53 @@ class GeneralTab extends StatelessWidget {
               iconColor: kTileOrange,
               title: 'Permiso superposición',
               onTap: onReviewOverlayPermission,
+            ),
+          ],
+        ),
+        const SettingsGroupTitle('Widgets'),
+        SettingsCard(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(
+                children: [
+                  const SettingIconTile(
+                    icon: Icons.widgets_rounded,
+                    background: kTileBlue,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Posición del micrófono',
+                          style: kSettingRowTitle.copyWith(
+                            color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'En el widget grande de notas',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: variantColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: 'left', label: Text('Izquierda')),
+                  ButtonSegment(value: 'right', label: Text('Derecha')),
+                ],
+                selected: {widgetMicPosition},
+                onSelectionChanged: (s) => onWidgetMicPosition(s.first),
+              ),
             ),
           ],
         ),

@@ -657,10 +657,11 @@ void main() {
       'vb_credentials_v1',
       'voice_notes_v1',
       'voice_snippets_v1',
+      'widget_mic_position',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (46 claves)', () {
-      expect(StorageService.bridgeKeys.length, 46);
+    test('bridgeKeys cubre exactamente el contrato (47 claves)', () {
+      expect(StorageService.bridgeKeys.length, 47);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
     });
 

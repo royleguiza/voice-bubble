@@ -30,7 +30,7 @@ class NoteCard extends StatelessWidget {
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     return Semantics(
       button: true,
-      label: 'Abrir nota ${note.titulo}',
+      label: 'Abrir nota ${note.titulo.isEmpty ? 'Sin título' : note.titulo}',
       child: Material(
         color: isDark ? kBgSecondaryDark : kBgSecondaryLight,
         borderRadius: BorderRadius.circular(kBorderRadiusCard),
@@ -54,12 +54,13 @@ class NoteCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        note.titulo,
+                        note.titulo.isEmpty ? 'Sin título' : note.titulo,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: kTextSubhead.copyWith(
                           fontWeight: FontWeight.w600,
                           color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+                          fontStyle: note.titulo.isEmpty ? FontStyle.italic : FontStyle.normal,
                         ),
                       ),
                       const SizedBox(height: 4),

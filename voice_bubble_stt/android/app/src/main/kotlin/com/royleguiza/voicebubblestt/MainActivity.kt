@@ -23,6 +23,8 @@ class MainActivity : FlutterActivity() {
     private val TRACKPAD_CHANNEL = "com.royleguiza.voicebubblestt/floating_trackpad"
     private val WIDGET_CHANNEL = "com.royleguiza.voicebubblestt/widgets"
     private var methodChannel: MethodChannel? = null
+    private var pendingWidgetAction: String? = null
+    private var pendingWidgetNoteId: String? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -235,6 +237,10 @@ class MainActivity : FlutterActivity() {
             }
         }
 
+        // Capturar accion del widget al arrancar
+        pendingWidgetAction = intent.getStringExtra("widget_action")
+        pendingWidgetNoteId = intent.getStringExtra("note_id")
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "updateWidgets" -> {
@@ -254,9 +260,25 @@ class MainActivity : FlutterActivity() {
                         result.success(false)
                     }
                 }
+                "getInitialWidgetAction" -> {
+                    val map = HashMap<String, String?>()
+                    map["action"] = pendingWidgetAction
+                    map["noteId"] = pendingWidgetNoteId
+                    // Consumir una vez
+                    pendingWidgetAction = null
+                    pendingWidgetNoteId = null
+                    result.success(map)
+                }
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingWidgetAction = intent.getStringExtra("widget_action")
+        pendingWidgetNoteId = intent.getStringExtra("note_id")
     }
 
     /**

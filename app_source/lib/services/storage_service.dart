@@ -490,6 +490,16 @@ class StorageService {
   Future<void> setTrackpadAutoReturn(int seconds) => _setValidatedInt(
       kbTrackpadAutoReturnKey, kbTrackpadAutoReturns, seconds);
 
+  static const String widgetMicPositionKey = 'widget_mic_position';
+  static const List<String> widgetMicPositions = ['left', 'right'];
+  static const String defaultWidgetMicPosition = 'right';
+
+  Future<String> getWidgetMicPosition() => _getValidatedString(
+      widgetMicPositionKey, widgetMicPositions, defaultWidgetMicPosition);
+
+  Future<void> setWidgetMicPosition(String pos) => _setValidatedString(
+      widgetMicPositionKey, widgetMicPositions, pos);
+
   /// Tabla del contrato puente SPK-07: EXACTAMENTE las claves de
   /// docs/contract-keys.txt (lo que Kotlin lee con prefijo "flutter.").
   /// Fuente única del lado Dart (referencia los const de arriba, sin
@@ -538,6 +548,7 @@ class StorageService {
     kbTrackpadSensitivityKey,
     kbTrackpadTapToClickKey,
     kbTrackpadToolbarVisibleKey,
+    widgetMicPositionKey,
     _key,
     credPassKey,
     credShowUserKey,

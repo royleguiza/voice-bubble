@@ -31,7 +31,7 @@
             android:layout_width="28dp"
             android:layout_height="28dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_micro_expand"
+            android:src="@drawable/ic_mic"
             android:tint="#007AFF" />
     </FrameLayout>
 

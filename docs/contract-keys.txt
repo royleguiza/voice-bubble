@@ -44,3 +44,4 @@ vb_cred_show_user
 vb_credentials_v1
 voice_notes_v1
 voice_snippets_v1
+widget_mic_position

@@ -140,20 +140,19 @@ class NotesService {
     } catch (_) {}
   }
 
-  /// Crea nota desde transcripcion. Titulo = primeras 32 chars del cuerpo.
   Future<bool> addFromTranscription(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
     if (trimmed.length > maxCuerpoLength) return false;
     await _ensureLoaded();
+    // Recarga fresca para no pisar notas del widget
+    final merged = await _loadMerged();
+    _notes = merged;
     if (_notes.length >= maxNotes) return false;
     final now = DateTime.now();
-    final titulo = trimmed.length > 32
-        ? '${trimmed.substring(0, 32).trim()}...'
-        : trimmed;
     final note = VoiceNote(
       id: _nextId(),
-      titulo: titulo.isEmpty ? 'Nota' : titulo,
+      titulo: '',
       cuerpo: trimmed,
       createdAt: now,
       updatedAt: now,
@@ -172,7 +171,7 @@ class NotesService {
   }) async {
     final t = titulo.trim();
     final c = cuerpo.trim();
-    if (t.isEmpty || c.isEmpty) return false;
+    if (c.isEmpty) return false;
     if (t.length > maxTituloLength || c.length > maxCuerpoLength) return false;
     await _ensureLoaded();
     if (_notes.length >= maxNotes) return false;
@@ -194,15 +193,15 @@ class NotesService {
     String? titulo,
     String? cuerpo,
   }) async {
-    if (titulo != null &&
-        (titulo.trim().isEmpty || titulo.length > maxTituloLength)) {
+    if (titulo != null && titulo.length > maxTituloLength) {
       return false;
     }
     if (cuerpo != null &&
         (cuerpo.trim().isEmpty || cuerpo.length > maxCuerpoLength)) {
       return false;
     }
-    await _ensureLoaded();
+    final merged = await _loadMerged();
+    _notes = merged;
     final idx = _notes.indexWhere((n) => n.id == id);
     if (idx == -1) return false;
     final now = DateTime.now();
@@ -218,7 +217,8 @@ class NotesService {
   }
 
   Future<bool> deleteNote(String id) async {
-    await _ensureLoaded();
+    final merged = await _loadMerged();
+    _notes = merged;
     final before = _notes.length;
     _notes = _notes.where((n) => n.id != id).toList();
     if (_notes.length == before) return false;
@@ -227,12 +227,8 @@ class NotesService {
   }
 
   Future<void> _ensureLoaded() async {
-    if (_notes.isEmpty) {
-      final merged = await _loadMerged();
-      // Si hay datos en disco pero memoria vacia, cargarlos sin re-persistir
-      // innecesariamente si ya estan en prefs.
-      if (merged.isNotEmpty) _notes = merged;
-    }
+    final merged = await _loadMerged();
+    _notes = merged;
   }
 
   /// Busqueda simple insensible a mayusculas en titulo+cuerpo.

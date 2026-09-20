@@ -17,7 +17,7 @@
             android:layout_width="18dp"
             android:layout_height="18dp"
             android:layout_gravity="center"
-            android:src="@drawable/ic_micro_expand"
+            android:src="@drawable/ic_mic"
             android:tint="#007AFF" />
     </FrameLayout>
 
@@ -58,7 +58,7 @@
         android:text="00:00"
         android:textSize="11sp"
         android:textColor="#6B7A90"
-        android:background="#14000000"
+        android:background="@drawable/widget_pill_bg"
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
         android:paddingTop="6dp"

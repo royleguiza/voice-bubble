@@ -9,6 +9,7 @@ import 'settings/snippets_tab.dart';
 import 'settings/teclado_tab.dart';
 import 'settings/trackpad_tab.dart';
 import '../services/storage_service.dart';
+import '../services/widget_service.dart';
 import '../ui/theme_mode.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/floating_trackpad_service.dart';
@@ -90,6 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _trackpadPointerStyle = StorageService.defaultTrackpadPointerStyle;
   int _trackpadAutoReturn = StorageService.defaultTrackpadAutoReturn;
   String _themeMode = StorageService.defaultThemeMode;
+  String _widgetMicPosition = StorageService.defaultWidgetMicPosition;
 
   /// Tabs ya visitados: la pila es perezosa (solo construye lo visitado)
   /// pero conserva el estado (lo visitado nunca se desmonta).
@@ -174,6 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final longPressSymbols = await _storageService.getLongPressSymbolsEnabled();
     final longPressDelay = await _storageService.getLongPressDelay();
     final themeMode = await _storageService.loadThemeMode();
+    final widgetMicPos = await _storageService.getWidgetMicPosition();
     // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
     if (apiKey.isNotEmpty) {
       try {
@@ -227,6 +230,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _longPressSymbolsEnabled = longPressSymbols;
       _longPressDelay = longPressDelay;
       _themeMode = themeMode;
+      _widgetMicPosition = widgetMicPos;
     });
   }
 
@@ -238,6 +242,16 @@ class _SettingsScreenState extends State<SettingsScreen>
       await _storageService.saveBubbleHistoryEnabled(enabled);
     } catch (_) {}
     if (mounted) setState(() => _showBubbleHistory = enabled);
+  }
+
+  Future<void> _setWidgetMicPosition(String pos) async {
+    try {
+      await _storageService.setWidgetMicPosition(pos);
+    } catch (_) {}
+    if (mounted) setState(() => _widgetMicPosition = pos);
+    try {
+      await WidgetService().updateWidgets();
+    } catch (_) {}
   }
 
   /// Lee la API key del secure storage. Frontera de canal: el keystore de
@@ -974,6 +988,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       onToggleBubbleHistory: _toggleBubbleHistory,
       onReviewOverlayPermission: _reviewOverlayPermission,
       onShowAboutSheet: _showAboutSheet,
+      widgetMicPosition: _widgetMicPosition,
+      onWidgetMicPosition: _setWidgetMicPosition,
     );
   }
 

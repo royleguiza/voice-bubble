@@ -311,9 +311,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   Future<void> _save() async {
     final titulo = _titleCtrl.text.trim();
     final cuerpo = _bodyCtrl.text.trim();
-    if (titulo.isEmpty || cuerpo.isEmpty) {
+    if (cuerpo.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Titulo y cuerpo requeridos')),
+        const SnackBar(content: Text('Cuerpo requerido')),
       );
       return;
     }

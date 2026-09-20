@@ -53,10 +53,28 @@ class NoteStore(private val context: Context) {
                     )
                 )
             }
-            out.sortedByDescending { it.updatedAt }
+            out.sortedByDescending { parseEpoch(it.updatedAt) }
         } catch (_: Exception) {
             Log.w(TAG, "json invalido")
             emptyList()
+        }
+    }
+
+    private fun parseEpoch(iso: String): Long {
+        if (iso.isBlank()) return 0L
+        return try {
+            java.time.Instant.parse(iso).toEpochMilli()
+        } catch (_: Exception) {
+            try {
+                java.time.OffsetDateTime.parse(iso).toInstant().toEpochMilli()
+            } catch (_: Exception) {
+                try {
+                    java.time.LocalDateTime.parse(iso)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                } catch (_: Exception) {
+                    0L
+                }
+            }
         }
     }
 }
