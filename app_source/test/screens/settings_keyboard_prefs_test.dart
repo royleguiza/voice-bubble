@@ -59,10 +59,11 @@ void main() {
   });
 
   Widget buildTestableWidget(WidgetTester tester) {
-    // Superficie alta (800x2400 logicos): la pagina de Settings crece con
-    // las preferencias nuevas de altura/vibracion y el ListView lazy no
-    // construye lo que queda fuera del viewport (9.1-17 / 9.1-21).
-    tester.view.physicalSize = const Size(1600, 4800);
+    // Superficie alta (800x3000 logicos): la pagina de Settings crece con
+    // las preferencias nuevas (MEJ-05 suma la tarjeta de pulsación larga)
+    // y el ListView lazy no construye lo que queda fuera del viewport
+    // (9.1-17 / 9.1-21).
+    tester.view.physicalSize = const Size(1600, 6000);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
     return MaterialApp(
@@ -225,10 +226,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Espaciado de teclas'), findsOneWidget);
-      expect(find.text('Compacto'), findsOneWidget);
-      expect(find.text('Normal'), findsOneWidget);
-      expect(find.text('Amplio'), findsOneWidget);
-      expect(find.text('Extra'), findsOneWidget);
+      // 'Normal' existe dos veces en la página (espaciado + retardo MEJ-05):
+      // se acota al selector de espaciado (regla §9.2-12: por Key, no por copy).
+      final spacing = find.byKey(const ValueKey('kb-key-spacing-selector'));
+      expect(find.descendant(of: spacing, matching: find.text('Compacto')),
+          findsOneWidget);
+      expect(find.descendant(of: spacing, matching: find.text('Normal')),
+          findsOneWidget);
+      expect(find.descendant(of: spacing, matching: find.text('Amplio')),
+          findsOneWidget);
+      expect(find.descendant(of: spacing, matching: find.text('Extra')),
+          findsOneWidget);
       expect(selectedKeySpacing(tester), {'normal'});
     });
 
