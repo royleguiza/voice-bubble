@@ -39,20 +39,20 @@ void main() {
       expect(fresh.notes.map((n) => n.titulo).toList(), ['Dos', 'Uno']);
     });
 
-    test('addFromTranscription usa titulo truncado', () async {
+    test('addFromTranscription usa titulo vacio (Sin titulo)', () async {
       final s = NotesService();
       expect(await s.addFromTranscription('Hola mundo desde widget'), isTrue);
       final n = s.notes.first;
-      expect(n.titulo, 'Hola mundo desde widget');
+      expect(n.titulo, '');
       expect(n.cuerpo, 'Hola mundo desde widget');
     });
 
-    test('addFromTranscription titulo largo trunca a 32 chars', () async {
+    test('addFromTranscription titulo largo guarda sin titulo', () async {
       final s = NotesService();
       final long = 'a' * 40;
       await s.addFromTranscription(long);
-      expect(s.notes.first.titulo.length, 35); // 32 + ...
-      expect(s.notes.first.titulo.endsWith('...'), isTrue);
+      expect(s.notes.first.titulo, '');
+      expect(s.notes.first.cuerpo, long);
     });
 
     test('updateNote cambia titulo y cuerpo', () async {
@@ -88,10 +88,12 @@ void main() {
       expect(await s.addNote(titulo: 't', cuerpo: 'a' * 2001), isFalse);
     });
 
-    test('rechaza titulo vacio', () async {
+    test('permite titulo vacio (Sin titulo)', () async {
       final s = NotesService();
-      expect(await s.addNote(titulo: '', cuerpo: 'c'), isFalse);
-      expect(await s.addNote(titulo: '  ', cuerpo: 'c'), isFalse);
+      expect(await s.addNote(titulo: '', cuerpo: 'c'), isTrue);
+      expect(s.notes.first.titulo, '');
+      expect(await s.addNote(titulo: '  ', cuerpo: 'd'), isTrue);
+      expect(s.notes.first.titulo, '');
     });
 
     test('search filtra insensible a mayusculas', () async {
