@@ -12,6 +12,7 @@ import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
 import 'settings_screen.dart';
+import 'notes_screen.dart';
 import '../widgets/record_button.dart';
 import '../widgets/history_list.dart';
 import '../widgets/transcription_popup.dart';
@@ -669,6 +670,13 @@ class _HomeScreenState extends State<HomeScreen>
     await _loadRecordMode();
   }
 
+  Future<void> _openNotes() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotesScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final insets = MediaQuery.paddingOf(context);
@@ -681,9 +689,30 @@ class _HomeScreenState extends State<HomeScreen>
         title: const Text('VoiceBubble STT'),
         centerTitle: true,
         actions: [
-          // Acceso a Configuración en Liquid Glass (design.md §7): círculo
-          // de vidrio de 44 dp con el mismo engrane de siempre. El destino
-          // y la recarga posterior no cambian (ver _openSettings).
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Center(
+              child: GlassContainer(
+                borderRadius: kBorderRadiusCapsule,
+                small: true,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: _openNotes,
+                    child: const Tooltip(
+                      message: 'Notas',
+                      child: SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Icon(Icons.note_rounded, size: 22),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: Center(

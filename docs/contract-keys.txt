@@ -42,4 +42,5 @@ transcriptions
 vb_cred_pass_v1
 vb_cred_show_user
 vb_credentials_v1
+voice_notes_v1
 voice_snippets_v1

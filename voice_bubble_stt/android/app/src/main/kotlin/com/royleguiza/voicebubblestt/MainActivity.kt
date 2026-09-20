@@ -21,6 +21,7 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.royleguiza.voicebubblestt/floating_bubble"
     private val KEYBOARD_CHANNEL = "com.royleguiza.voicebubblestt/keyboard"
     private val TRACKPAD_CHANNEL = "com.royleguiza.voicebubblestt/floating_trackpad"
+    private val WIDGET_CHANNEL = "com.royleguiza.voicebubblestt/widgets"
     private var methodChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -231,6 +232,29 @@ class MainActivity : FlutterActivity() {
                 runOnUiThread {
                     methodChannel?.invokeMethod("onBubbleClose", null)
                 }
+            }
+        }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "updateWidgets" -> {
+                    try {
+                        val awm = android.appwidget.AppWidgetManager.getInstance(this@MainActivity)
+                        // Compact
+                        val compactIds = awm.getAppWidgetIds(android.content.ComponentName(this@MainActivity, WidgetCompactProvider::class.java))
+                        for (id in compactIds) WidgetCompactProvider.updateOne(this@MainActivity, awm, id)
+                        // Row
+                        val rowIds = awm.getAppWidgetIds(android.content.ComponentName(this@MainActivity, WidgetRowProvider::class.java))
+                        for (id in rowIds) WidgetRowProvider.updateOne(this@MainActivity, awm, id)
+                        // Notes
+                        val notesIds = awm.getAppWidgetIds(android.content.ComponentName(this@MainActivity, WidgetNotesProvider::class.java))
+                        for (id in notesIds) WidgetNotesProvider.updateOne(this@MainActivity, awm, id)
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
+                }
+                else -> result.notImplemented()
             }
         }
     }

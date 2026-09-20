@@ -495,6 +495,8 @@ class StorageService {
   /// Fuente única del lado Dart (referencia los const de arriba, sin
   /// literales duplicados); el master la verifica contra el contrato y
   /// el CI contra Kotlin. Clave nueva = entrar aquí + contrato + Kotlin.
+  static const String notesKey = 'voice_notes_v1';
+
   static const List<String> bridgeKeys = [
     _bubbleHistoryKey,
     kbBottomElevationDpKey,
@@ -540,6 +542,7 @@ class StorageService {
     credPassKey,
     credShowUserKey,
     credentialsKey,
+    notesKey,
     snippetsKey,
   ];
 
