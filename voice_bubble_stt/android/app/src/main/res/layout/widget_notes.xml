@@ -184,14 +184,14 @@
 
         <FrameLayout
             android:id="@+id/widget_notes_add"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@drawable/widget_mic_bg"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/widget_pill_bg"
             android:contentDescription="Añadir nota">
 
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_add"
                 android:tint="#007AFF" />
@@ -201,13 +201,13 @@
             android:id="@+id/widget_notes_mic_left"
             android:layout_width="52dp"
             android:layout_height="52dp"
-            android:background="@drawable/widget_mic_bg"
+            android:background="@drawable/widget_pill_bg"
             android:contentDescription="Dictar nota"
             android:visibility="gone">
 
             <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_mic"
                 android:tint="#007AFF" />
@@ -255,20 +255,14 @@
                 android:gravity="center_vertical"
                 android:paddingStart="6dp" />
 
-            <FrameLayout
+            <ImageView
                 android:id="@+id/widget_cancel"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
-                android:background="@drawable/widget_mic_bg"
-                android:contentDescription="Cancelar grabación">
-
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/ic_x"
-                    android:tint="#0B1220" />
-            </FrameLayout>
+                android:src="@drawable/ic_x"
+                android:tint="#FFFF3B30"
+                android:padding="12dp"
+                android:contentDescription="Cancelar grabación" />
         </LinearLayout>
 
         <TextView
@@ -285,15 +279,15 @@
 
         <FrameLayout
             android:id="@+id/widget_notes_add_right"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@drawable/widget_mic_bg"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/widget_pill_bg"
             android:contentDescription="Añadir nota"
             android:visibility="gone">
 
             <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_add"
                 android:tint="#007AFF" />
@@ -303,12 +297,12 @@
             android:id="@+id/widget_notes_mic"
             android:layout_width="52dp"
             android:layout_height="52dp"
-            android:background="@drawable/widget_mic_bg"
+            android:background="@drawable/widget_pill_bg"
             android:contentDescription="Dictar nota">
 
             <ImageView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_mic"
                 android:tint="#007AFF" />

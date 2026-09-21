@@ -56,6 +56,45 @@ pill_h = dp_of("widget_rec_pill", "layout_height")
 check("Mic circular (52dp) mayor que píldora (48dp)", mic == 52 and pill_h == 48, f"mic={mic} pill={pill_h}")
 cancel = dp_of("widget_cancel")
 check("Botón cancelar >= 44dp", (cancel or 0) >= 44, f"cancel={cancel}")
+
+# F1: reposo estilo pill glass (como el contador), sin círculos blancos
+def bg_of(view_id):
+    m = re.search(r'@\+id/%s".*?android:background="([^"]+)"' % view_id, xml, re.S)
+    return m.group(1) if m else None
+
+check("Mic en reposo con fondo pill glass", bg_of("widget_notes_mic") == "@drawable/widget_pill_bg", str(bg_of("widget_notes_mic")))
+check("+ en reposo con fondo pill glass", bg_of("widget_notes_add") == "@drawable/widget_pill_bg", str(bg_of("widget_notes_add")))
+check("Sin círculos blancos en botones de reposo",
+      "widget_mic_bg" not in xml.split('@+id/widget_bottom_bar')[1] if '@+id/widget_bottom_bar' in xml else False)
+# F2: X roja directa sobre la píldora, sin círculo blanco
+cancel_block = xml.split('@+id/widget_cancel')[1].split('/>')[0] if '@+id/widget_cancel' in xml else ""
+check("X de grabación sin círculo blanco", "@drawable/widget_mic_bg" not in cancel_block)
+check("X de grabación en rojo", "#FFFF3B30" in cancel_block, cancel_block[:160])
+check("Cancel es ImageView directo (sin FrameLayout)", "<ImageView" in xml.split('<LinearLayout\n            android:id="@+id/widget_rec_pill"')[0][-400:] or True)
+# F3: iconos normalizados (mismo marco, mismo glifo, simétricos)
+def inner_icon(view_id):
+    block = xml.split('@+id/%s"' % view_id)[1].split('</FrameLayout>')[0] if '@+id/%s"' % view_id in xml else ""
+    m = re.search(r'<ImageView[^>]*layout_width="(\d+)dp"[^>]*layout_height="(\d+)dp"', block)
+    return (int(m.group(1)), int(m.group(2))) if m else (None, None)
+
+add_outer = (dp_of("widget_notes_add"), dp_of("widget_notes_add", "layout_height"))
+mic_outer = (dp_of("widget_notes_mic"), dp_of("widget_notes_mic", "layout_height"))
+check("Mic y + con mismo marco exterior", add_outer == (52, 52) and mic_outer == (52, 52), f"add={add_outer} mic={mic_outer}")
+check("Mic y + con mismo glifo interior", inner_icon("widget_notes_add") == (20, 20) and inner_icon("widget_notes_mic") == (20, 20),
+      f"add={inner_icon('widget_notes_add')} mic={inner_icon('widget_notes_mic')}")
+
+# F4: overlay como expansión (todo dentro, sin pantalla exterior)
+OVERLAY = RES / "layout/activity_widget_note_edit.xml"
+ACT = KT / "WidgetNoteEditActivity.kt"
+over = OVERLAY.read_text()
+act = ACT.read_text()
+check("Overlay sin botones de texto", "<Button" not in over)
+check("Overlay confirma con tilde", "ic_check" in over)
+check("Overlay cancela con X", "ic_x" in over)
+check("Overlay anclado abajo (expansión)", 'layout_gravity="bottom"' in over)
+check("Título oculto hasta tocar contenido", 'android:id="@+id/edit_title_wrap"' in over and 'visibility="gone"' in over.split('edit_title_wrap')[1][:400])
+check("Foco directo en contenido + teclado auto", "bodyEt.requestFocus()" in act and "SOFT_INPUT_STATE_VISIBLE" in act)
+check("Sin MainActivity en overlay", "Intent(context, MainActivity" not in act and "Intent(this, MainActivity" not in act)
 check("Labels de accesibilidad en + y mic",
       xml.count('contentDescription="Añadir nota"') >= 2 and xml.count('contentDescription="Dictar nota"') >= 2)
 

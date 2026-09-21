@@ -4,9 +4,10 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
+import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import org.json.JSONArray
 import org.json.JSONObject
@@ -21,6 +22,7 @@ class WidgetNoteEditActivity : Activity() {
 
         noteId = intent.getStringExtra("note_id")
 
+        val titleWrap = findViewById<View>(R.id.edit_title_wrap)
         val titleEt = findViewById<EditText>(R.id.edit_title)
         val bodyEt = findViewById<EditText>(R.id.edit_body)
 
@@ -28,10 +30,24 @@ class WidgetNoteEditActivity : Activity() {
         val note = notes.firstOrNull { it.id == noteId }
         titleEt.setText(note?.titulo.orEmpty())
         bodyEt.setText(note?.cuerpo.orEmpty())
-        titleEt.hint = "Sin título"
 
-        findViewById<Button>(R.id.btn_cancel).setOnClickListener { finish() }
-        findViewById<Button>(R.id.btn_save).setOnClickListener {
+        // Nota existente con título: mostrarlo. Nueva: el título aparece
+        // solo si el usuario toca el contenido (foco directo en contenido).
+        titleWrap.visibility = if (!note?.titulo.isNullOrBlank()) View.VISIBLE else View.GONE
+        bodyEt.setOnClickListener {
+            if (titleWrap.visibility != View.VISIBLE) titleWrap.visibility = View.VISIBLE
+        }
+
+        // Foco directo en el contenido + teclado automático, sin clics extra.
+        bodyEt.requestFocus()
+        try {
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(bodyEt, InputMethodManager.SHOW_IMPLICIT)
+        } catch (_: Exception) {}
+
+        findViewById<View>(R.id.btn_cancel).setOnClickListener { finish() }
+        findViewById<View>(R.id.btn_save).setOnClickListener {
             saveNote(titleEt.text.toString(), bodyEt.text.toString())
             finish()
         }
