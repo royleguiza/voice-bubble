@@ -157,6 +157,8 @@ check("Modal singleTop (sin ventanas apiladas)", 'launchMode="singleTop"' in _ma
 
 # Sin texto en reposo: solo la píldora habla
 check("Sin label idle en el widget", "widget_notes_mic_label" not in xml)
+check("Espaciador separa + y mic en reposo",
+      '@+id/widget_bottom_spacer' in xml and 'widget_bottom_spacer' in prov)
 check("Píldora visible también al procesar/guardar",
       'state == "transcribing"' in prov and 'state == "saved"' in prov)
 # Modal: título visible, botones fondo campo, cierre exterior

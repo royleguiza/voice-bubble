@@ -58,6 +58,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     fallback.setTextViewText(R.id.widget_note_time_0, "")
                     fallback.setTextViewText(R.id.widget_notes_count, "")
                     fallback.setViewVisibility(R.id.widget_rec_pill, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_bottom_spacer, View.VISIBLE)
                     fallback.setViewVisibility(R.id.widget_notes_add, View.VISIBLE)
                     fallback.setViewVisibility(R.id.widget_notes_add_right, View.GONE)
                     fallback.setViewVisibility(R.id.widget_notes_mic_left, View.GONE)
@@ -181,6 +182,11 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setViewVisibility(
                 R.id.widget_rec_pill,
                 if (pillVisible) View.VISIBLE else View.GONE,
+            )
+            // En reposo el espaciador empuja el mic al borde opuesto del +.
+            views.setViewVisibility(
+                R.id.widget_bottom_spacer,
+                if (pillVisible) View.GONE else View.VISIBLE,
             )
             views.setViewVisibility(
                 R.id.widget_rec_dot,

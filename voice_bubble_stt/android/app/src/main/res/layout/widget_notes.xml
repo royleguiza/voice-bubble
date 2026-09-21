@@ -280,6 +280,13 @@
                 android:tint="#007AFF" />
         </FrameLayout>
 
+        <LinearLayout
+            android:id="@+id/widget_bottom_spacer"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="horizontal" />
+
         <FrameLayout
             android:id="@+id/widget_notes_mic"
             android:layout_width="52dp"
