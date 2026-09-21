@@ -69,7 +69,8 @@ check("Sin círculos blancos en botones de reposo",
 # F2: X roja directa sobre la píldora, sin círculo blanco
 cancel_block = xml.split('@+id/widget_cancel')[1].split('/>')[0] if '@+id/widget_cancel' in xml else ""
 check("X de grabación sin círculo blanco", "@drawable/widget_mic_bg" not in cancel_block)
-check("X de grabación en rojo", "#FFFF3B30" in cancel_block, cancel_block[:160])
+check("X de grabación en rojo",
+      "#FFFF3B30" in cancel_block or "widget_ic_x" in cancel_block and "#FFFF3B30" in (RES / "drawable/widget_ic_x.xml").read_text())
 check("Cancel es ImageView directo (sin FrameLayout)", "<ImageView" in xml.split('<LinearLayout\n            android:id="@+id/widget_rec_pill"')[0][-400:] or True)
 # F3: iconos normalizados (mismo marco, mismo glifo, simétricos)
 def inner_icon(view_id):
@@ -88,6 +89,24 @@ OVERLAY = RES / "layout/activity_widget_note_edit.xml"
 ACT = KT / "WidgetNoteEditActivity.kt"
 over = OVERLAY.read_text()
 act = ACT.read_text()
+# F5: modal legible claro/oscuro, sobre el teclado, X/tilde gruesos
+check("Overlay sin texto oscuro hardcodeado (contraste noche)",
+      "#0B1220" not in over and "#6B7A90" not in over)
+check("Overlay con colores adaptativos claro/oscuro",
+      "@color/kb_label" in over and "@color/kb_label_secondary" in over)
+check("Tarjeta overlay menos cristal (glass_inner 90%)",
+      'android:background="@drawable/widget_glass_inner"' in over.split('layout_gravity="bottom"')[1][:600])
+check("Botones overlay opacos (círculo visible)",
+      over.count('@+id/btn_cancel') >= 1 and 'widget_mic_bg' in over.split('@+id/btn_cancel')[1][:500]
+      and 'widget_mic_bg' in over.split('@+id/btn_save')[1][:500])
+for _icon, _min in [("widget_ic_x", 2.8), ("widget_ic_check", 3.0)]:
+    _t = (RES / f"drawable/{_icon}.xml").read_text()
+    _m = re.search(r'strokeWidth="([\d.]+)"', _t)
+    check(f"Trazo grueso {_icon}", _m is not None and float(_m.group(1)) >= _min, _t[:120])
+check("Overlay sobre el teclado (insets + resize)",
+      "overlay_root" in act and "systemWindowInsetBottom" in act and "SOFT_INPUT_ADJUST_RESIZE" in act)
+check("Márgenes laterales iguales (12dp)", 'paddingStart="12dp"' in over and 'paddingEnd="12dp"' in over)
+check("X de grabación usa icono grueso propio", 'widget_ic_x' in xml.split('@+id/widget_cancel')[1][:400])
 check("Overlay sin botones de texto", "<Button" not in over)
 check("Overlay confirma con tilde", "ic_check" in over)
 check("Overlay cancela con X", "ic_x" in over)

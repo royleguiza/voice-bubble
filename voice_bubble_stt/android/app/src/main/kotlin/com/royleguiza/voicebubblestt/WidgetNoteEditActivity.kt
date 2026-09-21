@@ -38,10 +38,29 @@ class WidgetNoteEditActivity : Activity() {
             if (titleWrap.visibility != View.VISIBLE) titleWrap.visibility = View.VISIBLE
         }
 
+        // La modal pertenece al teclado: se ancla sobre él con el mismo
+        // margen lateral a ambos lados y 12dp por encima del teclado.
+        // adjustResize puede no aplicarse en temas translúcidos, se fuerza.
+        try {
+            window.setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or
+                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
+            )
+        } catch (_: Exception) {}
+        try {
+            val root = findViewById<View>(R.id.overlay_root)
+            val side = root.paddingLeft
+            root.setOnApplyWindowInsetsListener { v, insets ->
+                @Suppress("DEPRECATION")
+                val imeBottom = insets.systemWindowInsetBottom
+                v.setPadding(side, v.paddingTop, side, imeBottom)
+                insets
+            }
+        } catch (_: Exception) {}
+
         // Foco directo en el contenido + teclado automático, sin clics extra.
         bodyEt.requestFocus()
         try {
-            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
             val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(bodyEt, InputMethodManager.SHOW_IMPLICIT)
         } catch (_: Exception) {}
