@@ -96,9 +96,9 @@ check("Overlay con colores adaptativos claro/oscuro",
       "@color/kb_label" in over and "@color/kb_label_secondary" in over)
 check("Tarjeta overlay menos cristal (glass_inner 90%)",
       'android:background="@drawable/widget_glass_inner"' in over.split('layout_gravity="bottom"')[1][:600])
-check("Botones overlay opacos (círculo visible)",
-      over.count('@+id/btn_cancel') >= 1 and 'widget_mic_bg' in over.split('@+id/btn_cancel')[1][:500]
-      and 'widget_mic_bg' in over.split('@+id/btn_save')[1][:500])
+check("Botones overlay opacos (fondo campo)",
+      over.count('@+id/btn_cancel') >= 1 and 'widget_note_card_bg' in over.split('@+id/btn_cancel')[1][:500]
+      and 'widget_note_card_bg' in over.split('@+id/btn_save')[1][:500])
 for _icon, _min in [("widget_ic_x", 2.8), ("widget_ic_check", 3.0)]:
     _t = (RES / f"drawable/{_icon}.xml").read_text()
     _m = re.search(r'strokeWidth="([\d.]+)"', _t)
@@ -111,7 +111,8 @@ check("Overlay sin botones de texto", "<Button" not in over)
 check("Overlay confirma con tilde", "ic_check" in over)
 check("Overlay cancela con X", "ic_x" in over)
 check("Overlay anclado abajo (expansión)", 'layout_gravity="bottom"' in over)
-check("Título oculto hasta tocar contenido", 'android:id="@+id/edit_title_wrap"' in over and 'visibility="gone"' in over.split('edit_title_wrap')[1][:400])
+check("Título siempre visible en overlay (check legado retirado)",
+      'android:id="@+id/edit_title_wrap"' in over)
 check("Foco directo en contenido + teclado auto", "bodyEt.requestFocus()" in act and "SOFT_INPUT_STATE_VISIBLE" in act)
 check("Sin MainActivity en overlay", "Intent(context, MainActivity" not in act and "Intent(this, MainActivity" not in act)
 check("Labels de accesibilidad en + y mic",
@@ -138,6 +139,33 @@ check("Sonido al cancelar (cancel)", 'playMicSound("cancel")' in svc)
 check("Sonidos opt-in como teclado", 'flutter.kb_mic_sounds_enabled' in svc)
 check("Estilos inicio/fin del teclado", 'flutter.kb_mic_start_style' in svc and 'flutter.kb_mic_stop_style' in svc)
 check("Libera SoundPool", 'releaseMicSounds()' in svc and 'soundPool?.release()' in svc)
+
+# Un solo widget: sin rastro de compact/row
+gone = ["WidgetCompactProvider.kt", "WidgetRowProvider.kt", "widget_compact.xml",
+        "widget_row.xml", "widget_compact_info.xml", "widget_row_info.xml"]
+for g in gone:
+    check(f"Eliminado {g}", not list(ROOT.glob(f"**/{g}")))
+import subprocess as _sp
+_refs = _sp.check_output(
+    "grep -rn 'WidgetCompactProvider\\|WidgetRowProvider\\|widget_compact\\|widget_row'"
+    " voice_bubble_stt/ docs/contract-keys.txt 2>/dev/null || true",
+    shell=True, text=True).strip()
+check("Sin referencias a widgets chicos en código", _refs == "", _refs[:200])
+_manifest = (RES.parent / "AndroidManifest.xml").read_text() if (RES.parent / "AndroidManifest.xml").exists() else (ROOT / "voice_bubble_stt/android/app/src/main/AndroidManifest.xml").read_text()
+check("Un solo receiver de widget en manifest", _manifest.count("WidgetNotesProvider") >= 1 and "WidgetCompactProvider" not in _manifest and "WidgetRowProvider" not in _manifest)
+check("Modal singleTop (sin ventanas apiladas)", 'launchMode="singleTop"' in _manifest.split("WidgetNoteEditActivity")[1][:500])
+
+# Sin texto en reposo: solo la píldora habla
+check("Sin label idle en el widget", "widget_notes_mic_label" not in xml)
+check("Píldora visible también al procesar/guardar",
+      'state == "transcribing"' in prov and 'state == "saved"' in prov)
+# Modal: título visible, botones fondo campo, cierre exterior
+check("Título visible con placeholder",
+      'android:hint="Sin título"' in over and 'edit_title_wrap' in over
+      and 'visibility="gone"' not in over.split('edit_title_wrap')[1][:300])
+check("Botones con fondo del campo", over.count('@drawable/widget_note_card_bg') >= 3)
+check("Cierre al tocar fuera", "setFinishOnTouchOutside(true)" in act)
+check("Reutiliza instancia (onNewIntent)", "onNewIntent" in act)
 
 # Contrato de claves intacto (CI lo exige exacto)
 import subprocess

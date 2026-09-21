@@ -30,14 +30,13 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:orientation="vertical"
-            android:visibility="gone">
+            android:orientation="vertical">
 
             <EditText
                 android:id="@+id/edit_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Título"
+                android:hint="Sin título"
                 android:textSize="13sp"
                 android:textColor="@color/kb_label"
                 android:textColorHint="@color/kb_label_secondary"
@@ -72,7 +71,7 @@
                 android:id="@+id/btn_cancel"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="@drawable/widget_mic_bg"
+                android:background="@drawable/widget_note_card_bg"
                 android:contentDescription="Cancelar">
 
                 <ImageView
@@ -91,7 +90,7 @@
                 android:id="@+id/btn_save"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="@drawable/widget_mic_bg"
+                android:background="@drawable/widget_note_card_bg"
                 android:contentDescription="Guardar nota">
 
                 <ImageView

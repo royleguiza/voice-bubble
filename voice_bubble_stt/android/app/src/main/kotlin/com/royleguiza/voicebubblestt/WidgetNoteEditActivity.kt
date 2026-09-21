@@ -16,13 +16,24 @@ class WidgetNoteEditActivity : Activity() {
 
     private var noteId: String? = null
 
+    // singleTop: si llega otro tap con la modal abierta, se reutiliza en
+    // vez de apilar instancias (evita las "5 ventanas" encadenadas).
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        recreate()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_widget_note_edit)
+        // Tocar fuera cierra sin guardar (igual que la X).
+        try {
+            setFinishOnTouchOutside(true)
+        } catch (_: Exception) {}
 
         noteId = intent.getStringExtra("note_id")
 
-        val titleWrap = findViewById<View>(R.id.edit_title_wrap)
         val titleEt = findViewById<EditText>(R.id.edit_title)
         val bodyEt = findViewById<EditText>(R.id.edit_body)
 
@@ -30,13 +41,6 @@ class WidgetNoteEditActivity : Activity() {
         val note = notes.firstOrNull { it.id == noteId }
         titleEt.setText(note?.titulo.orEmpty())
         bodyEt.setText(note?.cuerpo.orEmpty())
-
-        // Nota existente con título: mostrarlo. Nueva: el título aparece
-        // solo si el usuario toca el contenido (foco directo en contenido).
-        titleWrap.visibility = if (!note?.titulo.isNullOrBlank()) View.VISIBLE else View.GONE
-        bodyEt.setOnClickListener {
-            if (titleWrap.visibility != View.VISIBLE) titleWrap.visibility = View.VISIBLE
-        }
 
         // La modal pertenece al teclado: se ancla sobre él con el mismo
         // margen lateral a ambos lados y 12dp por encima del teclado.

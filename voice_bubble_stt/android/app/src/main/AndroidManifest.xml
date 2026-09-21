@@ -55,18 +55,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/clipboard_file_paths" />
         </provider>
-        <receiver android:name=".WidgetCompactProvider" android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_compact_info" />
-        </receiver>
-        <receiver android:name=".WidgetRowProvider" android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_row_info" />
-        </receiver>
         <receiver android:name=".WidgetNotesProvider" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -81,6 +69,7 @@
             android:name=".WidgetNoteEditActivity"
             android:theme="@style/WidgetEditTheme"
             android:windowSoftInputMode="stateVisible|adjustResize"
+            android:launchMode="singleTop"
             android:exported="false" />
         <activity
             android:name=".MainActivity"

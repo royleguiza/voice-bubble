@@ -246,13 +246,7 @@ class MainActivity : FlutterActivity() {
                 "updateWidgets" -> {
                     try {
                         val awm = android.appwidget.AppWidgetManager.getInstance(this@MainActivity)
-                        // Compact
-                        val compactIds = awm.getAppWidgetIds(android.content.ComponentName(this@MainActivity, WidgetCompactProvider::class.java))
-                        for (id in compactIds) WidgetCompactProvider.updateOne(this@MainActivity, awm, id)
-                        // Row
-                        val rowIds = awm.getAppWidgetIds(android.content.ComponentName(this@MainActivity, WidgetRowProvider::class.java))
-                        for (id in rowIds) WidgetRowProvider.updateOne(this@MainActivity, awm, id)
-                        // Notes
+                        // Notes (único widget)
                         val notesIds = awm.getAppWidgetIds(android.content.ComponentName(this@MainActivity, WidgetNotesProvider::class.java))
                         for (id in notesIds) WidgetNotesProvider.updateOne(this@MainActivity, awm, id)
                         result.success(true)

@@ -287,17 +287,6 @@ class WidgetDictationService : Service() {
 
     private fun updateWidgetsState(state: String) {
         try {
-            val awm = AppWidgetManager.getInstance(this)
-            val ctx = this
-            // Compact y Row: delegan a Provider para preservar PendingIntents
-            val compactIds = awm.getAppWidgetIds(ComponentName(ctx, WidgetCompactProvider::class.java))
-            for (id in compactIds) {
-                WidgetCompactProvider.updateOneWithState(ctx, awm, id, state)
-            }
-            val rowIds = awm.getAppWidgetIds(ComponentName(ctx, WidgetRowProvider::class.java))
-            for (id in rowIds) {
-                WidgetRowProvider.updateOneWithState(ctx, awm, id, state)
-            }
             refreshWidgets(state)
         } catch (_: Exception) {}
     }

@@ -264,18 +264,6 @@
                 android:contentDescription="Cancelar grabación" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/widget_notes_mic_label"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Dictar nota"
-            android:textSize="11sp"
-            android:textColor="#6B7A90"
-            android:textStyle="bold"
-            android:paddingStart="10dp"
-            android:paddingEnd="6dp" />
-
         <FrameLayout
             android:id="@+id/widget_notes_add_right"
             android:layout_width="52dp"

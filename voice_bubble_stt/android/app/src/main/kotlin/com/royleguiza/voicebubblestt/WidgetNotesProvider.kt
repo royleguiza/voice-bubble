@@ -58,8 +58,6 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     fallback.setTextViewText(R.id.widget_note_time_0, "")
                     fallback.setTextViewText(R.id.widget_notes_count, "")
                     fallback.setViewVisibility(R.id.widget_rec_pill, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_notes_mic_label, View.VISIBLE)
-                    fallback.setTextViewText(R.id.widget_notes_mic_label, "Dictar nota")
                     fallback.setViewVisibility(R.id.widget_notes_add, View.VISIBLE)
                     fallback.setViewVisibility(R.id.widget_notes_add_right, View.GONE)
                     fallback.setViewVisibility(R.id.widget_notes_mic_left, View.GONE)
@@ -88,7 +86,6 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_notes_count, "$count / 50")
             views.setTextColor(R.id.widget_notes_title, primary)
             views.setTextColor(R.id.widget_notes_count, secondary)
-            views.setTextColor(R.id.widget_notes_mic_label, secondary)
             views.setTextColor(R.id.widget_chrono, primary)
             views.setTextColor(R.id.widget_rec_label, primary)
 
@@ -161,9 +158,10 @@ class WidgetNotesProvider : AppWidgetProvider() {
             val micLeft = micPos == "left"
             val recording = state == "recording"
 
-            // Píldora de grabación estilo teclado: el mic circular (52dp) se
-            // reemplaza por la píldora roja (48dp) que se extiende casi hasta
-            // el +; tap en el centro detiene y envía, X cancela.
+            // Píldora de estado estilo teclado: en reposo no hay texto (solo
+            // + y mic); la píldora roja aparece al grabar/procesar/guardar.
+            // Tap en el centro detiene y envía, X cancela.
+            val pillVisible = recording || state == "transcribing" || state == "saved"
             views.setViewVisibility(
                 R.id.widget_notes_add,
                 if (!micLeft) View.VISIBLE else View.GONE,
@@ -174,28 +172,27 @@ class WidgetNotesProvider : AppWidgetProvider() {
             )
             views.setViewVisibility(
                 R.id.widget_notes_mic_left,
-                if (!recording && micLeft) View.VISIBLE else View.GONE,
+                if (!pillVisible && micLeft) View.VISIBLE else View.GONE,
             )
             views.setViewVisibility(
                 R.id.widget_notes_mic,
-                if (!recording && !micLeft) View.VISIBLE else View.GONE,
+                if (!pillVisible && !micLeft) View.VISIBLE else View.GONE,
             )
             views.setViewVisibility(
                 R.id.widget_rec_pill,
+                if (pillVisible) View.VISIBLE else View.GONE,
+            )
+            views.setViewVisibility(
+                R.id.widget_rec_dot,
                 if (recording) View.VISIBLE else View.GONE,
             )
             views.setViewVisibility(
-                R.id.widget_notes_mic_label,
-                if (!recording) View.VISIBLE else View.GONE,
+                R.id.widget_chrono,
+                if (recording) View.VISIBLE else View.GONE,
             )
-            views.setTextViewText(
-                R.id.widget_notes_mic_label,
-                when (state) {
-                    "recording" -> "Grabando"
-                    "transcribing" -> "Procesando"
-                    "saved" -> "Nota guardada"
-                    else -> "Dictar nota"
-                },
+            views.setViewVisibility(
+                R.id.widget_cancel,
+                if (recording) View.VISIBLE else View.GONE,
             )
             views.setTextViewText(
                 R.id.widget_rec_label,
@@ -221,7 +218,6 @@ class WidgetNotesProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_notes_mic, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_notes_mic_left, dictatePi)
-            views.setOnClickPendingIntent(R.id.widget_notes_mic_label, dictatePi)
             // Centro de la píldora detiene y envía (igual que el teclado).
             views.setOnClickPendingIntent(R.id.widget_rec_pill, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_rec_dot, dictatePi)
