@@ -57,10 +57,11 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     fallback.setTextViewText(R.id.widget_note_body_0, "Toca Dictar para crear una nota")
                     fallback.setTextViewText(R.id.widget_note_time_0, "")
                     fallback.setTextViewText(R.id.widget_notes_count, "")
+                    fallback.setViewVisibility(R.id.widget_rec_pill, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_notes_mic_label, View.VISIBLE)
                     fallback.setTextViewText(R.id.widget_notes_mic_label, "Dictar nota")
-                    fallback.setViewVisibility(R.id.widget_rec_dot, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_chrono, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_cancel, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_notes_add, View.VISIBLE)
+                    fallback.setViewVisibility(R.id.widget_notes_add_right, View.GONE)
                     fallback.setViewVisibility(R.id.widget_notes_mic_left, View.GONE)
                     fallback.setViewVisibility(R.id.widget_notes_mic, View.VISIBLE)
                     appWidgetManager.updateAppWidget(appWidgetId, fallback)
@@ -89,6 +90,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setTextColor(R.id.widget_notes_count, secondary)
             views.setTextColor(R.id.widget_notes_mic_label, secondary)
             views.setTextColor(R.id.widget_chrono, primary)
+            views.setTextColor(R.id.widget_rec_label, primary)
 
             // Detecta altura por options: si el usuario estiro a 5x4, mostramos 3 notas.
             val opts = appWidgetManager.getAppWidgetOptions(appWidgetId)
@@ -150,7 +152,8 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 }
             }
 
-            // Mic posicion configurable: izq/der desde Ajustes (flutter.widget_mic_position)
+            // Mic posicion configurable: izq/der desde Ajustes (flutter.widget_mic_position).
+            // El + queda siempre del lado opuesto (derecha por defecto: + abajo-izq).
             val micPos = try {
                 context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                     .getString("flutter.widget_mic_position", "right") ?: "right"
@@ -158,10 +161,17 @@ class WidgetNotesProvider : AppWidgetProvider() {
             val micLeft = micPos == "left"
             val recording = state == "recording"
 
-            // Pill de grabacion: dot + cronometro + X; mic oculto grabando
-            views.setViewVisibility(R.id.widget_rec_dot, if (recording) View.VISIBLE else View.GONE)
-            views.setViewVisibility(R.id.widget_chrono, if (recording) View.VISIBLE else View.GONE)
-            views.setViewVisibility(R.id.widget_cancel, if (recording) View.VISIBLE else View.GONE)
+            // Píldora de grabación estilo teclado: el mic circular (52dp) se
+            // reemplaza por la píldora roja (48dp) que se extiende casi hasta
+            // el +; tap en el centro detiene y envía, X cancela.
+            views.setViewVisibility(
+                R.id.widget_notes_add,
+                if (!micLeft) View.VISIBLE else View.GONE,
+            )
+            views.setViewVisibility(
+                R.id.widget_notes_add_right,
+                if (micLeft) View.VISIBLE else View.GONE,
+            )
             views.setViewVisibility(
                 R.id.widget_notes_mic_left,
                 if (!recording && micLeft) View.VISIBLE else View.GONE,
@@ -169,6 +179,14 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setViewVisibility(
                 R.id.widget_notes_mic,
                 if (!recording && !micLeft) View.VISIBLE else View.GONE,
+            )
+            views.setViewVisibility(
+                R.id.widget_rec_pill,
+                if (recording) View.VISIBLE else View.GONE,
+            )
+            views.setViewVisibility(
+                R.id.widget_notes_mic_label,
+                if (!recording) View.VISIBLE else View.GONE,
             )
             views.setTextViewText(
                 R.id.widget_notes_mic_label,
@@ -179,9 +197,13 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     else -> "Dictar nota"
                 },
             )
-            views.setInt(
-                R.id.widget_bottom_bar, "setBackgroundResource",
-                if (recording) R.drawable.widget_rec_bar_bg else R.drawable.widget_glass_inner,
+            views.setTextViewText(
+                R.id.widget_rec_label,
+                when (state) {
+                    "transcribing" -> "Procesando"
+                    "saved" -> "Nota guardada"
+                    else -> "Grabando"
+                },
             )
             if (recording) {
                 views.setChronometer(
@@ -200,6 +222,11 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_notes_mic, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_notes_mic_left, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_notes_mic_label, dictatePi)
+            // Centro de la píldora detiene y envía (igual que el teclado).
+            views.setOnClickPendingIntent(R.id.widget_rec_pill, dictatePi)
+            views.setOnClickPendingIntent(R.id.widget_rec_dot, dictatePi)
+            views.setOnClickPendingIntent(R.id.widget_chrono, dictatePi)
+            views.setOnClickPendingIntent(R.id.widget_rec_label, dictatePi)
 
             val cancelIntent = Intent(context, WidgetDictationService::class.java).apply {
                 action = WidgetDictationService.ACTION_CANCEL
@@ -209,16 +236,15 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             views.setOnClickPendingIntent(R.id.widget_cancel, cancelPi)
-            // Add (+) debe abrir notas para creacion manual, no dictar
-            val addIntent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                putExtra("widget_action", "open_notes")
-            }
+            // Add (+) abre el overlay de edición con teclado, sin salir del
+            // widget ni abrir la app (RemoteViews no admite EditText inline).
+            val addIntent = Intent(context, WidgetNoteEditActivity::class.java)
             val addPi = PendingIntent.getActivity(
                 context, 300 + appWidgetId, addIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             views.setOnClickPendingIntent(R.id.widget_notes_add, addPi)
+            views.setOnClickPendingIntent(R.id.widget_notes_add_right, addPi)
 
             val openIntent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

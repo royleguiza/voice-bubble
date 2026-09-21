@@ -9,6 +9,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.os.Build
 import android.os.IBinder
 import android.widget.RemoteViews
@@ -30,6 +32,10 @@ class WidgetDictationService : Service() {
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var autoStopRunnable: Runnable? = null
     private var savedResetRunnable: Runnable? = null
+    private var soundPool: SoundPool? = null
+    private var soundStart = 0
+    private var soundStop = 0
+    private var soundCancel = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -44,7 +50,63 @@ class WidgetDictationService : Service() {
         autoStopRunnable = null
         savedResetRunnable = null
         isRecording = false
+        releaseMicSounds()
         super.onDestroy()
+    }
+
+    /**
+     * Sonidos del teclado (Ajustes → Teclado → Micrófono, opt-in con
+     * flutter.kb_mic_sounds_enabled; estilos flutter.kb_mic_start_style /
+     * flutter.kb_mic_stop_style, default "3"). Misma fuente que el teclado.
+     */
+    private fun ensureMicSounds() {
+        if (soundPool != null) return
+        try {
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            val pool = SoundPool.Builder()
+                .setMaxStreams(2)
+                .setAudioAttributes(attrs)
+                .build()
+            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val startStyle = prefs.getString("flutter.kb_mic_start_style", "3")
+                ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" } ?: "3"
+            val stopStyle = prefs.getString("flutter.kb_mic_stop_style", "3")
+                ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" } ?: "3"
+            val pkg = packageName
+            soundStart = pool.load(this, resources.getIdentifier("mic_start_$startStyle", "raw", pkg), 1)
+            soundStop = pool.load(this, resources.getIdentifier("mic_stop_$stopStyle", "raw", pkg), 1)
+            soundCancel = pool.load(this, R.raw.mic_cancel, 1)
+            soundPool = pool
+        } catch (_: Exception) {
+            soundPool = null
+        }
+    }
+
+    private fun playMicSound(kind: String) {
+        try {
+            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("flutter.kb_mic_sounds_enabled", false)) return
+            ensureMicSounds()
+            val id = when (kind) {
+                "start" -> soundStart
+                "stop" -> soundStop
+                else -> soundCancel
+            }
+            if (id != 0) soundPool?.play(id, 1f, 1f, 1, 0, 1f)
+        } catch (_: Exception) {}
+    }
+
+    private fun releaseMicSounds() {
+        try {
+            soundPool?.release()
+        } catch (_: Exception) {}
+        soundPool = null
+        soundStart = 0
+        soundStop = 0
+        soundCancel = 0
     }
 
     private fun createChannel() {
@@ -93,6 +155,7 @@ class WidgetDictationService : Service() {
     private fun cancelRecording() {
         if (!isRecording) return
         isRecording = false
+        playMicSound("cancel")
         autoStopRunnable?.let { mainHandler.removeCallbacks(it) }
         try {
             client?.cancelRecording()
@@ -123,6 +186,7 @@ class WidgetDictationService : Service() {
             startForeground(NOTIF_ID, notif("Grabando..."))
         }
         isRecording = true
+        playMicSound("start")
         updateWidgetsState("recording")
         BackgroundWork.execute {
             val ok = c.startRecording()
@@ -135,16 +199,18 @@ class WidgetDictationService : Service() {
                 }
             }
         }
-        // Auto-stop a los 60s por seguridad (MAX_SECONDS 300, pero widget corta antes).
+        // Tope igual que el teclado: MAX_SECONDS (300s). Solo corta si el
+        // usuario no pausó antes; el envío lo dispara siempre el usuario.
         autoStopRunnable?.let { mainHandler.removeCallbacks(it) }
         val r = Runnable { if (isRecording) stopAndTranscribe() }
         autoStopRunnable = r
-        mainHandler.postDelayed(r, 60000)
+        mainHandler.postDelayed(r, SpeechToTextClient.MAX_SECONDS * 1000L)
     }
 
     private fun stopAndTranscribe() {
         if (!isRecording) return
         isRecording = false
+        playMicSound("stop")
         updateWidgetsState("transcribing")
         val c = client ?: return
         BackgroundWork.execute {

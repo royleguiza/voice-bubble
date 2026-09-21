@@ -4,7 +4,10 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_glass_bg"
     android:orientation="vertical"
-    android:padding="10dp">
+    android:paddingTop="6dp"
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="10dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -35,16 +38,6 @@
             android:paddingEnd="7dp"
             android:paddingTop="3dp"
             android:paddingBottom="3dp" />
-
-        <ImageView
-            android:id="@+id/widget_notes_add"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginStart="6dp"
-            android:src="@drawable/ic_add"
-            android:tint="#007AFF"
-            android:background="@drawable/widget_mic_bg"
-            android:padding="10dp" />
     </LinearLayout>
 
     <LinearLayout
@@ -52,7 +45,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:orientation="vertical">
 
         <LinearLayout
@@ -183,47 +176,100 @@
     <LinearLayout
         android:id="@+id/widget_bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
+        android:layout_height="60dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/widget_glass_inner"
+        android:background="@android:color/transparent"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="10dp"
-        android:paddingEnd="6dp">
+        android:gravity="center_vertical">
 
         <FrameLayout
-            android:id="@+id/widget_notes_mic_left"
+            android:id="@+id/widget_notes_add"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="@drawable/widget_mic_bg"
-            android:visibility="gone">
+            android:contentDescription="Añadir nota">
 
             <ImageView
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 android:layout_gravity="center"
+                android:src="@drawable/ic_add"
+                android:tint="#007AFF" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/widget_notes_mic_left"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/widget_mic_bg"
+            android:contentDescription="Dictar nota"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_gravity="center"
                 android:src="@drawable/ic_mic"
                 android:tint="#007AFF" />
         </FrameLayout>
 
-        <ImageView
-            android:id="@+id/widget_rec_dot"
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:layout_marginStart="4dp"
-            android:background="@drawable/widget_rec_dot"
-            android:contentDescription="@null"
-            android:visibility="gone" />
-
-        <Chronometer
-            android:id="@+id/widget_chrono"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <LinearLayout
+            android:id="@+id/widget_rec_pill"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
             android:layout_marginStart="6dp"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textColor="#0B1220"
-            android:visibility="gone" />
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/widget_rec_bar_bg"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="10dp"
+            android:paddingEnd="4dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/widget_rec_dot"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/widget_rec_dot"
+                android:contentDescription="@null" />
+
+            <Chronometer
+                android:id="@+id/widget_chrono"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#0B1220" />
+
+            <TextView
+                android:id="@+id/widget_rec_label"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Grabando"
+                android:textSize="11sp"
+                android:textColor="#0B1220"
+                android:textStyle="bold"
+                android:gravity="center_vertical"
+                android:paddingStart="6dp" />
+
+            <FrameLayout
+                android:id="@+id/widget_cancel"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/widget_mic_bg"
+                android:contentDescription="Cancelar grabación">
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_x"
+                    android:tint="#0B1220" />
+            </FrameLayout>
+        </LinearLayout>
 
         <TextView
             android:id="@+id/widget_notes_mic_label"
@@ -234,32 +280,35 @@
             android:textSize="11sp"
             android:textColor="#6B7A90"
             android:textStyle="bold"
-            android:paddingStart="6dp" />
+            android:paddingStart="10dp"
+            android:paddingEnd="6dp" />
 
         <FrameLayout
-            android:id="@+id/widget_cancel"
+            android:id="@+id/widget_notes_add_right"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="@drawable/widget_mic_bg"
+            android:contentDescription="Añadir nota"
             android:visibility="gone">
-
-            <ImageView
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_x"
-                android:tint="#0B1220" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/widget_notes_mic"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@drawable/widget_mic_bg">
 
             <ImageView
                 android:layout_width="18dp"
                 android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_add"
+                android:tint="#007AFF" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/widget_notes_mic"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:background="@drawable/widget_mic_bg"
+            android:contentDescription="Dictar nota">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_mic"
                 android:tint="#007AFF" />
