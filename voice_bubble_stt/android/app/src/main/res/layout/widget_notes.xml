@@ -206,12 +206,13 @@
                 android:tint="#007AFF" />
         </FrameLayout>
 
-        <View
+        <ImageView
             android:id="@+id/widget_rec_dot"
             android:layout_width="8dp"
             android:layout_height="8dp"
             android:layout_marginStart="4dp"
             android:background="@drawable/widget_rec_dot"
+            android:contentDescription="@null"
             android:visibility="gone" />
 
         <Chronometer

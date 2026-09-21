@@ -43,6 +43,37 @@ class WidgetNotesProvider : AppWidgetProvider() {
             appWidgetId: Int,
             state: String,
         ) {
+            try {
+                updateRemoteViews(context, appWidgetManager, appWidgetId, state)
+            } catch (_: Exception) {
+                // Fallback mínimo: jamás dejar al launcher sin vista válida
+                // ("No se puede mostrar"). Sin contenido de notas en el fallback.
+                try {
+                    val fallback = RemoteViews(context.packageName, R.layout.widget_notes)
+                    fallback.setViewVisibility(R.id.widget_note_1, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_note_2, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_note_0, View.VISIBLE)
+                    fallback.setTextViewText(R.id.widget_note_title_0, "Notas")
+                    fallback.setTextViewText(R.id.widget_note_body_0, "Toca Dictar para crear una nota")
+                    fallback.setTextViewText(R.id.widget_note_time_0, "")
+                    fallback.setTextViewText(R.id.widget_notes_count, "")
+                    fallback.setTextViewText(R.id.widget_notes_mic_label, "Dictar nota")
+                    fallback.setViewVisibility(R.id.widget_rec_dot, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_chrono, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_cancel, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_notes_mic_left, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_notes_mic, View.VISIBLE)
+                    appWidgetManager.updateAppWidget(appWidgetId, fallback)
+                } catch (_: Exception) { }
+            }
+        }
+
+        private fun updateRemoteViews(
+            context: Context,
+            appWidgetManager: AppWidgetManager,
+            appWidgetId: Int,
+            state: String,
+        ) {
             val views = RemoteViews(context.packageName, R.layout.widget_notes)
             val notes = NoteStore(context).load()
             val count = notes.size
