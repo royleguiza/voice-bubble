@@ -123,7 +123,7 @@ class _NotesScreenState extends State<NotesScreen> {
       final retryable =
           e is TranscriptionException && e.isRetryable && path != null;
       if (retryable && _deferredQueueEnabled) {
-        final item = await _pendingQueue.enqueueFromTemp(path!);
+        final item = await _pendingQueue.enqueueFromTemp(path);
         if (!mounted) return;
         setState(() {});
         if (item != null) {

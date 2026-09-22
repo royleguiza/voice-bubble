@@ -52,7 +52,6 @@ class PendingNoteQueue {
   static const String pendingKey = 'voice_notes_pending_v1';
   static const int maxPending = 15;
   static const String pendingDirName = 'pending_notes';
-  static const String _tmpSuffix = '.tmp';
 
   List<PendingNote> _items = [];
 
