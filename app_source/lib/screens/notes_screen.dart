@@ -254,7 +254,7 @@ class _NotesScreenState extends State<NotesScreen> {
                         onCopy: () async {
                           // Solo el contenido (cuerpo), nunca el título.
                           final copy = await copyTranscriptionText(n.cuerpo);
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(copy == ClipboardCopyResult.ok
@@ -456,7 +456,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                     return;
                   }
                   final copy = await copyTranscriptionText(txt);
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(copy == ClipboardCopyResult.ok
