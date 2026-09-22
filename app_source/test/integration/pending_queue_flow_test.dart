@@ -234,7 +234,6 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 150));
     }
-    await tester.pumpAndSettle();
 
     expect(cloud.requestedPaths.length, 2);
     expect(queue.items, isEmpty);
@@ -243,7 +242,9 @@ void main() {
       find.textContaining('dictado offline luego nube'),
       findsOneWidget,
     );
+    // SnackBar antes de pumpAndSettle (que lo auto-descartaría tras 4s).
     expect(find.text('Nota guardada'), findsOneWidget);
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
