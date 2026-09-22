@@ -122,8 +122,8 @@ class PendingNoteQueue {
   Future<PendingNote?> enqueueFromTemp(String tempPath) async {
     await _ensureLoaded();
     final src = File(tempPath);
-    // ignore: avoid_slow_async_io
-    if (!await src.exists()) return null;
+    // Sync IO: dart:io async se cuelga bajo fakeAsync (lección 10).
+    if (!src.existsSync()) return null;
 
     final dir = await _dir();
     if (dir == null) return null;
