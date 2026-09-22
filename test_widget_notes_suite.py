@@ -169,6 +169,30 @@ check("Botones con fondo del campo", over.count('@drawable/widget_note_card_bg')
 check("Cierre al tocar fuera", "setFinishOnTouchOutside(true)" in act)
 check("Reutiliza instancia (onNewIntent)", "onNewIntent" in act)
 
+# Paridad app-widget: misma nota en ambos lados (fix contenido divergente)
+STORE = KT / "NoteStore.kt"
+store = STORE.read_text()
+check("NoteStore fusiona archivo+prefs (paridad con Dart)",
+      'NOTES_FILE' in store and 'voice_notes.json' in store
+      and 'merge(fileRaw, prefsRaw)' in store)
+check("NoteStore dedup por id con newest-wins (como Dart)",
+      'byId' in store and 'parseEpoch(n.updatedAt) > parseEpoch(cur.updatedAt)' in store)
+check("NoteStore tope 50 (como Dart maxNotes)",
+      'MAX_NOTES = 50' in store and 'out.size > MAX_NOTES' in store)
+check("NoteStore ignora ids vacios (como Dart)",
+      'if (n.id.isEmpty()) continue' in store)
+check("IDs Kotlin con UUID (sin colision de millis)",
+      'UUID.randomUUID().toString()' in (KT / "WidgetDictationService.kt").read_text()
+      and 'UUID.randomUUID().toString()' in act
+      and '.put("id", "${System.currentTimeMillis()}")' not in (KT / "WidgetDictationService.kt").read_text()
+      and '"${System.currentTimeMillis()}"' not in act)
+check("Overlay escribe espejo en archivo (write-through)",
+      'writeFileMirror' in act)
+check("Dictado escribe espejo en archivo (write-through)",
+      'writeFileMirror' in svc)
+check("Overlay respeta tope 50 en nota nueva (como Dart addNote)",
+      'Límite de 50 notas' in act)
+
 # Contrato de claves intacto (CI lo exige exacto)
 import subprocess
 out = subprocess.check_output(

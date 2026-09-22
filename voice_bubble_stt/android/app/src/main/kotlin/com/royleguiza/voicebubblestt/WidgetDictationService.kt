@@ -14,6 +14,7 @@ import android.media.SoundPool
 import android.os.Build
 import android.os.IBinder
 import android.widget.RemoteViews
+import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -266,7 +267,7 @@ class WidgetDictationService : Service() {
             val arr = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
             val now = java.time.Instant.now().toString()
             val obj = JSONObject()
-                .put("id", "${System.currentTimeMillis()}")
+                .put("id", UUID.randomUUID().toString())
                 .put("titulo", "")
                 .put("cuerpo", text)
                 .put("createdAt", now)
@@ -278,9 +279,10 @@ class WidgetDictationService : Service() {
                 if (newArr.length() >= 50) break
                 newArr.put(arr.getJSONObject(i))
             }
-            prefs.edit().putString("flutter.voice_notes_v1", newArr.toString()).apply()
-            // Tambien archivo atomico para NoteStore file path (opcional)
-            // El Dart NotesService leera prefs, no hace falta file.
+            val finalJson = newArr.toString()
+            prefs.edit().putString("flutter.voice_notes_v1", finalJson).apply()
+            // Espejo en archivo (ver NoteStore): Dart y widget leen lo mismo.
+            NoteStore.writeFileMirror(this, finalJson)
             refreshWidgets()
         } catch (_: Exception) {}
     }

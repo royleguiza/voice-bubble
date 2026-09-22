@@ -12,6 +12,7 @@ import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.Toast
+import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -97,6 +98,11 @@ class WidgetNoteEditActivity : Activity() {
     private fun saveNote(titulo: String, cuerpo: String) {
         if (cuerpo.trim().isEmpty()) return
         try {
+            // Tope como Dart `addNote`: con 50 notas no se crea una mas.
+            if (noteId == null && NoteStore(this).load().size >= NoteStore.MAX_NOTES) {
+                Toast.makeText(this, "Límite de 50 notas", Toast.LENGTH_SHORT).show()
+                return
+            }
             val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val raw = prefs.getString("flutter.voice_notes_v1", null)
             val arr = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
@@ -113,9 +119,12 @@ class WidgetNoteEditActivity : Activity() {
                 }
                 out.put(o)
             }
+            // UUID (no millis): dos notas creadas en el mismo milisegundo
+            // colisionaban de id y el widget podia abrir la equivocada.
+            val finalJson: String
             if (!found) {
                 val obj = JSONObject()
-                    .put("id", noteId ?: "${System.currentTimeMillis()}")
+                    .put("id", noteId ?: UUID.randomUUID().toString())
                     .put("titulo", titulo.trim())
                     .put("cuerpo", cuerpo.trim())
                     .put("createdAt", now)
@@ -123,10 +132,14 @@ class WidgetNoteEditActivity : Activity() {
                 val wrapped = JSONArray()
                 wrapped.put(obj)
                 for (i in 0 until out.length()) wrapped.put(out.getJSONObject(i))
-                prefs.edit().putString("flutter.voice_notes_v1", wrapped.toString()).apply()
+                finalJson = wrapped.toString()
             } else {
-                prefs.edit().putString("flutter.voice_notes_v1", out.toString()).apply()
+                finalJson = out.toString()
             }
+            prefs.edit().putString("flutter.voice_notes_v1", finalJson).apply()
+            // Write-through al archivo para que Dart y widget lean lo mismo
+            // aun si la app no vuelve a abrirse antes de mirar el widget.
+            NoteStore.writeFileMirror(this, finalJson)
             // Actualiza widgets sin abrir la app: todo queda en home screen.
             // Futura accion "Ver en app" lanzaria MainActivity con open_notes.
             val awm = AppWidgetManager.getInstance(this)
