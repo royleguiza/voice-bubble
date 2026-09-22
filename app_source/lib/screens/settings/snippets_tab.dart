@@ -25,6 +25,9 @@ class SnippetsTab extends StatefulWidget {
 class _SnippetsTabState extends State<SnippetsTab> {
   List<Snippet> _snippets = [];
   String _query = '';
+  /// Bloquea ↑↓/borrar mientras una reordenación o borrado está en vuelo
+  /// (evita doble tap concurrente sobre el mismo índice).
+  bool _reordering = false;
 
   @override
   void initState() {
@@ -55,15 +58,21 @@ class _SnippetsTabState extends State<SnippetsTab> {
   }
 
   Future<void> _moveSnippet(Snippet snippet, int delta) async {
+    if (_reordering) return;
     final index = _snippets.indexWhere((s) => s.id == snippet.id);
     final target = index + delta;
     if (index == -1 || target < 0 || target >= _snippets.length) return;
+    setState(() => _reordering = true);
     final reordered = [..._snippets];
     final item = reordered.removeAt(index);
     reordered.insert(target, item);
-    await widget.storageService
-        .reorderSnippets(reordered.map((s) => s.id).toList());
-    await _reloadSnippets();
+    try {
+      await widget.storageService
+          .reorderSnippets(reordered.map((s) => s.id).toList());
+      await _reloadSnippets();
+    } finally {
+      if (mounted) setState(() => _reordering = false);
+    }
   }
 
   Future<void> _confirmDeleteSnippet(Snippet snippet) async {
@@ -87,8 +96,13 @@ class _SnippetsTabState extends State<SnippetsTab> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    await widget.storageService.deleteSnippet(snippet.id);
-    await _reloadSnippets();
+    setState(() => _reordering = true);
+    try {
+      await widget.storageService.deleteSnippet(snippet.id);
+      await _reloadSnippets();
+    } finally {
+      if (mounted) setState(() => _reordering = false);
+    }
   }
 
   Future<void> _openSnippetSheet({Snippet? existing}) async {
@@ -203,133 +217,150 @@ class _SnippetsTabState extends State<SnippetsTab> {
     );
   }
 
-  /// Tarjeta con muesca (lab v2): título sobre el borde + acciones +
-  /// contenido + pie (#orden y largo). El Card exterior preserva el
-  /// contrato de tests (ancestro Card del nombre). Si el snippet tiene
-  /// color de paleta, el borde de la tarjeta lo tiñe.
+  /// Tarjeta Variante C (lab snippets): título + swatch arriba, contenido
+  /// al centro, acciones compactas al pie junto al meta. Fill teñido ~20% +
+  /// stroke ~45% (token snippetPaletteStroke), radio kBorderRadiusCard.
+  /// Sin muesca. Claves y tipo IconButton intactos (contrato K4).
   Widget _buildSnippetTile(Snippet snippet, int index) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final base = snippetPaletteBase(snippet.color, isDark: isDark);
+    final fill = snippetPaletteFill(snippet.color, isDark: isDark);
     final stroke = snippetPaletteStroke(snippet.color, isDark: isDark);
+    final labelPrimary = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
+    final labelSecondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
+    final cardBase = theme.cardTheme.color ?? theme.cardColor;
+    final canReorder = !_reordering;
     return Card(
       margin: const EdgeInsets.only(top: 8, bottom: 16),
+      color: fill != null ? Color.alphaBlend(fill, cardBase) : cardBase,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(kBorderRadiusCard),
         side: stroke != null
-            ? BorderSide(color: stroke, width: 1.25)
+            ? BorderSide(color: stroke, width: 1.5)
             : BorderSide.none,
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 20, 14, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(
-                  snippet.contenido,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Divider(
-                  height: 1,
-                  thickness: 0.5,
-                  color: theme.dividerColor,
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '#${index + 1}',
-                        style: kTextMeta.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      Text(
-                        '${snippet.contenido.length} / ${StorageService.maxSnippetLength}',
-                        style: kTextMeta.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+                if (base != null) ...[
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(color: base, shape: BoxShape.circle),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    snippet.nombre,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: kSettingRowTitle.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: labelPrimary,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-          Positioned(
-            top: -13,
-            left: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: theme.cardTheme.color ?? theme.cardColor,
-                border: Border.all(color: theme.dividerColor),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                snippet.nombre,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(fontSize: 12.5),
+            const SizedBox(height: 6),
+            Text(
+              snippet.contenido,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: kTextCallout.copyWith(
+                color: labelPrimary,
+                height: 1.35,
               ),
             ),
-          ),
-          Positioned(
-            top: -13,
-            right: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: theme.cardTheme.color ?? theme.cardColor,
-                border: Border.all(color: theme.dividerColor),
-                borderRadius: BorderRadius.circular(8),
-              ),
+            const SizedBox(height: 10),
+            Divider(
+              height: 1,
+              thickness: 0.5,
+              color: theme.dividerColor,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    key: ValueKey('snippet-up-${snippet.id}'),
-                    icon: const Icon(Icons.arrow_upward_rounded, size: 18),
-                    tooltip: 'Subir',
-                    visualDensity: VisualDensity.compact,
-                    onPressed:
-                        index > 0 ? () => _moveSnippet(snippet, -1) : null,
+                  Flexible(
+                    child: Text(
+                      '#${index + 1} · ${snippet.contenido.length} / '
+                      '${StorageService.maxSnippetLength}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: kTextMeta.copyWith(color: labelSecondary),
+                    ),
                   ),
-                  IconButton(
-                    key: ValueKey('snippet-down-${snippet.id}'),
-                    icon: const Icon(Icons.arrow_downward_rounded, size: 18),
-                    tooltip: 'Bajar',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: index < _snippets.length - 1
-                        ? () => _moveSnippet(snippet, 1)
-                        : null,
+                  const Spacer(),
+                  _snippetActionButton(
+                    actionKey: 'snippet-up-${snippet.id}',
+                    icon: Icons.arrow_upward_rounded,
+                    tooltip: 'Subir ${snippet.nombre}',
+                    enabled: canReorder && index > 0,
+                    onPressed: () => _moveSnippet(snippet, -1),
+                    labelSecondary: labelSecondary,
                   ),
-                  IconButton(
-                    key: ValueKey('snippet-edit-${snippet.id}'),
-                    icon: const Icon(Icons.edit_rounded, size: 18),
-                    tooltip: 'Editar',
-                    visualDensity: VisualDensity.compact,
+                  _snippetActionButton(
+                    actionKey: 'snippet-down-${snippet.id}',
+                    icon: Icons.arrow_downward_rounded,
+                    tooltip: 'Bajar ${snippet.nombre}',
+                    enabled: canReorder && index < _snippets.length - 1,
+                    onPressed: () => _moveSnippet(snippet, 1),
+                    labelSecondary: labelSecondary,
+                  ),
+                  const SizedBox(width: 8),
+                  _snippetActionButton(
+                    actionKey: 'snippet-edit-${snippet.id}',
+                    icon: Icons.edit_rounded,
+                    tooltip: 'Editar ${snippet.nombre}',
+                    enabled: true,
                     onPressed: () => _openSnippetSheet(existing: snippet),
+                    labelSecondary: labelSecondary,
                   ),
-                  IconButton(
-                    key: ValueKey('snippet-delete-${snippet.id}'),
-                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                    tooltip: 'Eliminar',
-                    visualDensity: VisualDensity.compact,
+                  const SizedBox(width: 4),
+                  _snippetActionButton(
+                    actionKey: 'snippet-delete-${snippet.id}',
+                    icon: Icons.delete_outline_rounded,
+                    tooltip: 'Eliminar ${snippet.nombre}',
+                    enabled: canReorder,
                     onPressed: () => _confirmDeleteSnippet(snippet),
+                    labelSecondary: labelSecondary,
                   ),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  /// Botón de acción compacto de la tarjeta (glifo 18, caja 44 dp).
+  /// Sin rojo: design.md §4 reserva el rojo para el estado grabando;
+  /// el borrado se confirma en diálogo.
+  Widget _snippetActionButton({
+    required String actionKey,
+    required IconData icon,
+    required String tooltip,
+    required bool enabled,
+    required VoidCallback onPressed,
+    required Color labelSecondary,
+  }) {
+    return IconButton(
+      key: ValueKey(actionKey),
+      icon: Icon(icon, size: 18),
+      tooltip: tooltip,
+      color: labelSecondary,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+      onPressed: enabled ? onPressed : null,
     );
   }
 }

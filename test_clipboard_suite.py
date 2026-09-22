@@ -11,7 +11,7 @@ Verifica al 100% de certeza:
    de ClipboardStore.kt (sin mocks que repliquen la lógica).
 7. Clasificación de contenido: asserts estáticos sobre classifyTextContent()
    y detectCodeHeuristic() REALES en ClipboardStore.kt.
-8. Sintaxis y ejecución JS de laboratorio_ui/index.html
+8. Lab snippets_lab.html presente (reemplazo de index.html)
 9. Resiliencia de escritura atómica ante disco lleno (try/catch + .tmp).
 """
 
@@ -212,16 +212,16 @@ check(
     "Falta generateTextPreview acotado",
 )
 
-# --- TEST 8: Validación de UI Laboratorio (index.html) ---
-lab_html_path = os.path.join(WORKSPACE, "laboratorio_ui/index.html")
-with open(lab_html_path, "r", encoding="utf-8") as f:
-    lab_html = f.read()
-
-check("Laboratorio UI contiene Opción 2 Filmstrip Reel", "Opción 2: Filmstrip Reel" in lab_html)
-check("Laboratorio UI contiene tbBtnPaste para expandir/contraer", "id=\"tbBtnPaste\"" in lab_html)
-check("Laboratorio UI contiene clipboardLayerArea", "id=\"clipboardLayerArea\"" in lab_html)
-check("Laboratorio UI contiene función toggleClipboardLayer", "toggleClipboardLayer" in lab_html)
-check("Laboratorio UI contiene renderOption2FilmstripReel", "renderOption2FilmstripReel" in lab_html)
+# --- TEST 8: Lab HTML de clipboard reemplazado por snippets_lab ---
+# El lab multi-opción (index.html) se retiró a pedido del dueño
+# (2026-09-22); la UI de snippets vive en laboratorio_ui/snippets_lab.html.
+# No se exige contenido Filmstrip en un archivo que ya no existe.
+lab_html_path = os.path.join(WORKSPACE, "laboratorio_ui/snippets_lab.html")
+check(
+    "Lab snippets_lab.html presente (reemplaza index.html)",
+    os.path.isfile(lab_html_path),
+    "falta laboratorio_ui/snippets_lab.html",
+)
 
 # --- TEST 9: Escritura atómica resiliente (disco lleno no corrompe) ---
 save_block_start = store.find("private fun saveToDisk(list: List<ClipboardItem>)")

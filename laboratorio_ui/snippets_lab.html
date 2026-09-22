@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VoiceBubble · Lab Snippets Settings</title>
+<style>
+  :root {
+    --bg-base: #F2F2F7;
+    --bg-elevated: #FFFFFF;
+    --bg-secondary: #FFFFFF;
+    --label-primary: #000000;
+    --label-secondary: rgba(60, 60, 67, 0.6);
+    --label-tertiary: rgba(60, 60, 67, 0.3);
+    --separator: rgba(60, 60, 67, 0.29);
+    --tint-accent: #007AFF;
+    --tint-record: #FF3B30;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+    --phone-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
+    --panel: #FFFFFF;
+    --panel-border: rgba(0, 0, 0, 0.06);
+    --chip-bg: rgba(120, 120, 128, 0.12);
+    --btn-bg: rgba(120, 120, 128, 0.12);
+    --btn-bg-hover: rgba(120, 120, 128, 0.18);
+    --danger-soft: rgba(255, 59, 48, 0.12);
+    --ok-soft: rgba(36, 138, 61, 0.12);
+    --shell: #E8E8ED;
+    --focus: 0 0 0 3px rgba(0, 122, 255, 0.35);
+    /* palette bases */
+    --c-azul: #007AFF;
+    --c-verde: #248A3D;
+    --c-rojo: #FF3B30;
+    --c-naranja: #FF9F0A;
+    --c-violeta: #BF5AF2;
+    --c-gris: #8E8E93;
+  }
+  [data-theme="dark"] {
+    --bg-base: #000000;
+    --bg-elevated: #1C1C1E;
+    --bg-secondary: #2C2C2E;
+    --label-primary: #FFFFFF;
+    --label-secondary: rgba(235, 235, 245, 0.6);
+    --label-tertiary: rgba(235, 235, 245, 0.3);
+    --separator: rgba(84, 84, 88, 0.6);
+    --tint-accent: #0A84FF;
+    --tint-record: #FF453A;
+    --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --phone-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+    --panel: #1C1C1E;
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --chip-bg: rgba(120, 120, 128, 0.24);
+    --btn-bg: rgba(120, 120, 128, 0.24);
+    --btn-bg-hover: rgba(120, 120, 128, 0.34);
+    --danger-soft: rgba(255, 69, 58, 0.16);
+    --ok-soft: rgba(48, 209, 88, 0.14);
+    --shell: #0A0A0B;
+    --focus: 0 0 0 3px rgba(10, 132, 255, 0.4);
+    --c-azul: #0A84FF;
+    --c-verde: #30D158;
+    --c-rojo: #FF453A;
+    --c-naranja: #FF9F0A;
+    --c-violeta: #BF5AF2;
+    --c-gris: #8E8E93;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--shell);
+    color: var(--label-primary);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.25s ease, color 0.25s ease;
+  }
+  button { font: inherit; color: inherit; cursor: pointer; border: none; background: none; }
+  button:focus-visible { outline: none; box-shadow: var(--focus); }
+  .app { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--panel-border);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand-dot {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--tint-accent), var(--c-violeta));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    position: relative;
+  }
+  .brand-dot::after {
+    content: ""; position: absolute; inset: 8px 8px 10px 10px;
+    border-radius: 50%; background: rgba(255,255,255,0.9);
+  }
+  .brand h1 { font-size: 15px; font-weight: 700; margin: 0; letter-spacing: -0.02em; }
+  .brand p { font-size: 11px; margin: 2px 0 0; color: var(--label-secondary); }
+
+  .side-section { display: flex; flex-direction: column; gap: 8px; }
+  .side-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--label-tertiary);
+  }
+  .theme-toggle {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: var(--chip-bg); border-radius: 12px; padding: 4px;
+  }
+  .theme-toggle button {
+    padding: 8px 10px; border-radius: 9px; font-size: 13px; font-weight: 600;
+    color: var(--label-secondary); transition: all 0.15s ease;
+  }
+  .theme-toggle button[aria-pressed="true"] {
+    background: var(--bg-secondary); color: var(--label-primary);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+
+  .variant-list { display: flex; flex-direction: column; gap: 6px; }
+  .variant-btn {
+    text-align: left; padding: 10px 12px; border-radius: 12px;
+    border: 1px solid transparent; background: transparent;
+    display: grid; grid-template-columns: 28px 1fr; gap: 10px;
+    align-items: start; transition: all 0.15s ease;
+  }
+  .variant-btn:hover { background: var(--chip-bg); }
+  .variant-btn[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--tint-accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--tint-accent) 35%, transparent);
+  }
+  .variant-num {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--chip-bg); display: grid; place-items: center;
+    font-size: 12px; font-weight: 800; color: var(--label-secondary);
+  }
+  .variant-btn[aria-pressed="true"] .variant-num {
+    background: var(--tint-accent); color: #fff;
+  }
+  .variant-meta strong { display: block; font-size: 13px; font-weight: 650; letter-spacing: -0.01em; }
+  .variant-meta span { display: block; font-size: 11px; color: var(--label-secondary); margin-top: 2px; line-height: 1.35; }
+
+  .notes {
+    background: var(--chip-bg); border-radius: 14px; padding: 12px 14px;
+    font-size: 12px; line-height: 1.5; color: var(--label-secondary);
+  }
+  .notes strong { color: var(--label-primary); display: block; margin-bottom: 6px; font-size: 12px; }
+  .notes ul { margin: 0; padding-left: 16px; }
+  .notes li { margin: 4px 0; }
+
+  /* ── Stage ── */
+  .stage {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 28px 24px 48px; gap: 20px;
+  }
+  .stage-bar {
+    width: min(720px, 100%);
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .stage-title h2 { margin: 0; font-size: 20px; font-weight: 750; letter-spacing: -0.03em; }
+  .stage-title p { margin: 4px 0 0; font-size: 13px; color: var(--label-secondary); }
+  .toast {
+    background: var(--label-primary); color: var(--bg-base);
+    font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 100px;
+    opacity: 0; transform: translateY(-6px); transition: all 0.2s ease;
+    pointer-events: none; max-width: 320px;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ── Phone ── */
+  .phone {
+    width: 390px;
+    background: #111;
+    border-radius: 54px;
+    padding: 12px;
+    box-shadow: var(--phone-shadow);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .phone-screen {
+    background: var(--bg-base);
+    border-radius: 42px;
+    overflow: hidden;
+    height: 780px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.25s ease;
+  }
+  .dynamic-island {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    width: 118px; height: 32px; background: #000; border-radius: 100px; z-index: 5;
+  }
+  .status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 26px 6px; font-size: 13px; font-weight: 650;
+    color: var(--label-primary); z-index: 4;
+  }
+  .status-icons { display: flex; gap: 5px; align-items: center; opacity: 0.9; }
+  .status-icons i { display: block; background: currentColor; border-radius: 1px; }
+  .bat { width: 22px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; opacity: 0.9; }
+  .bat::after { content: ""; position: absolute; left: 1.5px; top: 1.5px; bottom: 1.5px; width: 12px; background: currentColor; border-radius: 1px; }
+  .bat::before { content: ""; position: absolute; right: -4px; top: 3px; width: 2px; height: 5px; background: currentColor; border-radius: 0 1px 1px 0; }
+
+  .screen-scroll {
+    flex: 1; overflow-y: auto; padding: 8px 18px 28px;
+    scrollbar-width: thin; scrollbar-color: var(--label-tertiary) transparent;
+  }
+  .screen-scroll::-webkit-scrollbar { width: 5px; }
+  .screen-scroll::-webkit-scrollbar-thumb { background: var(--label-tertiary); border-radius: 10px; }
+
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-top: 8px; }
+  .page-head h3 {
+    margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1;
+  }
+  .head-actions { display: flex; align-items: center; gap: 8px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--chip-bg); border-radius: 100px; padding: 6px 12px;
+    font-size: 12px; font-weight: 650; color: var(--label-secondary);
+    height: 32px;
+  }
+  .status-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-verde); }
+  .add-btn {
+    width: 32px; height: 32px; border-radius: 100px;
+    background: var(--tint-accent); color: #fff;
+    display: grid; place-items: center;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--tint-accent) 40%, transparent);
+    transition: transform 0.12s ease;
+  }
+  .add-btn:active { transform: scale(0.92); }
+  .add-btn svg { width: 16px; height: 16px; }
+
+  .search {
+    margin-top: 14px; display: flex; align-items: center; gap: 8px;
+    background: var(--chip-bg); border-radius: 12px; padding: 0 12px; height: 40px;
+  }
+  .search svg { width: 16px; height: 16px; color: var(--label-tertiary); flex-shrink: 0; }
+  .search input {
+    flex: 1; border: none; background: transparent; outline: none;
+    font-size: 15px; color: var(--label-primary); font-family: inherit; min-width: 0;
+  }
+  .search input::placeholder { color: var(--label-tertiary); }
+  .hint { margin: 10px 2px 4px; font-size: 12px; color: var(--label-secondary); line-height: 1.4; }
+
+  .list { display: flex; flex-direction: column; margin-top: 12px; }
+  .list-empty {
+    text-align: center; padding: 40px 16px; color: var(--label-tertiary); font-size: 13px;
+  }
+
+  /* shared action buttons: small glyphs, 44px hit via padding */
+  .act {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: grid; place-items: center;
+    color: var(--label-secondary);
+    transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
+    position: relative;
+  }
+  .act::before {
+    /* expand hit to ~44 without growing visual box much */
+    content: ""; position: absolute; inset: -4px;
+  }
+  .act:hover { background: var(--btn-bg-hover); color: var(--label-primary); }
+  .act:active { transform: scale(0.92); }
+  .act:disabled { opacity: 0.28; pointer-events: none; }
+  .act svg { width: 15px; height: 15px; }
+  .act.danger:hover { background: var(--danger-soft); color: var(--tint-record); }
+  .act.on-color:hover { background: color-mix(in srgb, currentColor 16%, transparent); }
+
+  /* color helpers: fill 20% + stroke 40% of base */
+  .swatch {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    background: var(--sw);
+  }
+
+  /* ═══════ VARIANT A — rail lateral + acciones fantasma ═══════ */
+  .card-a {
+    --sw: var(--c-gris);
+    background: color-mix(in srgb, var(--sw) 14%, var(--bg-secondary));
+    border: 1.5px solid color-mix(in srgb, var(--sw) 42%, transparent);
+    border-radius: 16px;
+    padding: 14px 14px 12px 18px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 14px;
+  }
+  .card-a::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--sw); border-radius: 4px 0 0 4px;
+  }
+  .card-a.no-color {
+    background: var(--bg-secondary);
+    border-color: var(--separator);
+    padding-left: 14px;
+  }
+  .card-a.no-color::before { display: none; }
+  .card-a-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-a-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .card-a-title strong {
+    font-size: 15px; font-weight: 700; letter-spacing: -0.02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-a-actions { display: flex; gap: 2px; flex-shrink: 0; }
+  .card-a-body {
+    margin-top: 8px; font-size: 13.5px; line-height: 1.45;
+    color: var(--label-secondary); display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card-a-foot {
+    margin-top: 10px; padding-top: 8px; border-top: 0.5px solid var(--separator);
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--label-tertiary); font-weight: 500;
+  }
+
+  /* ═══════ VARIANT B — header teñido ═══════ */
+  .card-b {
+    --sw: var(--c-gris);
+    background: var(--bg-secondary);
+    border: 1px solid color-mix(in srgb, var(--sw) 40%, transparent);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 14px;
+  }
+  .card-b.no-color { border-color: var(--separator); }
+  .card-b-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 10px 10px 14px;
+    background: color-mix(in srgb, var(--sw) 18%, var(--bg-secondary));
+    border-bottom: 1px solid color-mix(in srgb, var(--sw) 30%, transparent);
+  }
+  .card-b.no-color .card-b-head {
+    background: var(--chip-bg); border-bottom-color: var(--separator);
+  }
+  .card-b-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .card-b-title strong {
+    font-size: 14px; font-weight: 700; letter-spacing: -0.01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-b-actions { display: flex; gap: 2px; flex-shrink: 0; }
+  .card-b-body { padding: 12px 14px 10px; font-size: 13.5px; line-height: 1.45; color: var(--label-secondary); }
+  .card-b-foot {
+    padding: 0 14px 12px; display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--label-tertiary); font-weight: 500;
+  }
+
+  /* ═══════ VARIANT C — acciones al pie ═══════ */
+  .card-c {
+    --sw: var(--c-gris);
+    background: color-mix(in srgb, var(--sw) 10%, var(--bg-secondary));
+    border: 1px solid color-mix(in srgb, var(--sw) 38%, transparent);
+    border-radius: 16px;
+    padding: 14px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 14px;
+  }
+  .card-c.no-color { background: var(--bg-secondary); border-color: var(--separator); }
+  .card-c-title { display: flex; align-items: center; gap: 8px; }
+  .card-c-title strong {
+    font-size: 15.5px; font-weight: 750; letter-spacing: -0.02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-c-body {
+    margin-top: 6px; font-size: 13.5px; line-height: 1.45; color: var(--label-secondary);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card-c-foot {
+    margin-top: 12px; padding-top: 10px; border-top: 0.5px solid var(--separator);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .card-c-meta { font-size: 11px; color: var(--label-tertiary); font-weight: 500; }
+  .card-c-actions { display: flex; gap: 4px; }
+
+  /* ═══════ VARIANT D — lista compacta iOS ═══════ */
+  .list-inset {
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--panel-border);
+    margin-bottom: 14px;
+  }
+  .row-d {
+    --sw: transparent;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 8px 12px 14px;
+    position: relative;
+    background: var(--bg-secondary);
+  }
+  .row-d + .row-d::before {
+    content: ""; position: absolute; left: 42px; right: 0; top: 0;
+    height: 0.5px; background: var(--separator);
+  }
+  .row-d.has-color {
+    background: color-mix(in srgb, var(--sw) 12%, var(--bg-secondary));
+  }
+  .row-d-chip {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: color-mix(in srgb, var(--sw) 28%, transparent);
+    border: 1px solid color-mix(in srgb, var(--sw) 55%, transparent);
+    display: grid; place-items: center;
+  }
+  .row-d-chip.none { background: var(--chip-bg); border-color: var(--separator); }
+  .row-d-chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--sw); display: block; }
+  .row-d-chip.none i { background: var(--label-tertiary); }
+  .row-d-text { min-width: 0; }
+  .row-d-text strong {
+    display: block; font-size: 14px; font-weight: 650; letter-spacing: -0.01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .row-d-text span {
+    display: block; font-size: 12px; color: var(--label-secondary); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .row-d-actions { display: flex; gap: 0; padding-right: 4px; }
+  .row-d-actions .act { width: 32px; height: 32px; border-radius: 8px; }
+  .row-d-actions .act svg { width: 14px; height: 14px; }
+  .row-d-actions .act::before { inset: -6px; }
+
+  /* ═══════ VARIANT E — minimal ghost + rail ═══════ */
+  .card-e {
+    --sw: var(--c-gris);
+    background: var(--bg-secondary);
+    border: none;
+    border-left: 3.5px solid var(--sw);
+    border-radius: 4px 16px 16px 4px;
+    padding: 14px 12px 14px 16px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .card-e.no-color { border-left-color: var(--separator); border-radius: 16px; }
+  .card-e::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: color-mix(in srgb, var(--sw) 9%, transparent);
+    pointer-events: none;
+  }
+  .card-e.no-color::after { display: none; }
+  .card-e > * { position: relative; z-index: 1; }
+  .card-e-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .card-e-title strong {
+    font-size: 15px; font-weight: 700; letter-spacing: -0.02em; display: block;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
+  }
+  .card-e-title .path {
+    font-size: 11px; color: var(--label-tertiary); margin-top: 3px; display: block; font-weight: 500;
+  }
+  .card-e-actions { display: flex; gap: 1px; opacity: 0.7; transition: opacity 0.15s; }
+  .card-e:hover .card-e-actions, .card-e:focus-within .card-e-actions { opacity: 1; }
+  .card-e-body {
+    margin-top: 8px; font-size: 13.5px; line-height: 1.45; color: var(--label-secondary);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card-e-foot {
+    margin-top: 10px; display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--label-tertiary); font-weight: 500;
+  }
+
+  /* ═══════ VARIANT F — toolbar segmentado ═══════ */
+  .card-f {
+    --sw: var(--c-gris);
+    background: color-mix(in srgb, var(--sw) 12%, var(--bg-secondary));
+    border: 1.5px solid color-mix(in srgb, var(--sw) 45%, transparent);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 14px;
+  }
+  .card-f.no-color { background: var(--bg-secondary); border-color: var(--separator); }
+  .card-f-top { display: flex; align-items: center; gap: 8px; }
+  .card-f-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: color-mix(in srgb, var(--sw) 24%, var(--bg-secondary));
+    border: 1px solid color-mix(in srgb, var(--sw) 50%, transparent);
+    color: var(--label-primary);
+    border-radius: 100px; padding: 4px 10px 4px 7px;
+    font-size: 12px; font-weight: 700; letter-spacing: -0.01em;
+    max-width: 46%;
+  }
+  .card-f.no-color .card-f-badge {
+    background: var(--chip-bg); border-color: var(--separator);
+  }
+  .card-f-badge span {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .card-f-body {
+    margin-top: 8px; font-size: 13.5px; line-height: 1.45; color: var(--label-secondary);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    padding: 0 2px;
+  }
+  .card-f-foot {
+    margin-top: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .card-f-meta { font-size: 11px; color: var(--label-tertiary); font-weight: 500; }
+  .toolbar-f {
+    display: flex; align-items: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--separator);
+    border-radius: 100px;
+    padding: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  .toolbar-f .act {
+    width: 30px; height: 30px; border-radius: 100px;
+  }
+  .toolbar-f .act::before { inset: -7px; }
+  .toolbar-f .act svg { width: 14px; height: 14px; }
+  .toolbar-f .sep {
+    width: 1px; height: 14px; background: var(--separator); margin: 0 2px;
+  }
+
+  /* legend under phone */
+  .legend {
+    width: min(720px, 100%);
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 18px;
+    padding: 16px 18px;
+    display: none;
+  }
+  .legend.visible { display: block; }
+  .legend h4 { margin: 0 0 8px; font-size: 14px; font-weight: 700; letter-spacing: -0.02em; }
+  .legend p { margin: 0 0 8px; font-size: 13px; line-height: 1.5; color: var(--label-secondary); }
+  .legend ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.55; color: var(--label-secondary); }
+  .legend li { margin: 3px 0; }
+  .legend .tag {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    background: color-mix(in srgb, var(--tint-accent) 14%, transparent);
+    color: var(--tint-accent); border-radius: 6px; padding: 2px 7px;
+    margin-right: 6px;
+  }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--panel-border); }
+    .phone { width: min(390px, calc(100vw - 32px)); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-dot" aria-hidden="true"></div>
+      <div>
+        <h1>VoiceBubble Lab</h1>
+        <p>Snippets · Settings UI</p>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-label">Modo</div>
+      <div class="theme-toggle" role="group" aria-label="Modo claro u oscuro">
+        <button type="button" id="theme-light" aria-pressed="true">☀️ Claro</button>
+        <button type="button" id="theme-dark" aria-pressed="false">🌙 Oscuro</button>
+      </div>
+    </div>
+
+    <div class="side-section">
+      <div class="side-label">Alternativas (6)</div>
+      <div class="variant-list" id="variant-list" role="listbox" aria-label="Variantes de diseño"></div>
+    </div>
+
+    <div class="notes">
+      <strong>Problemas del diseño actual</strong>
+      <ul>
+        <li>Color solo como borde 1,25 dp @45% (casi invisible; design.md pide fill ~20% + stroke ~40%)</li>
+        <li>4 IconButtons ~40–48 dp en el notch derecho ≫ chip del título 12,5 px</li>
+        <li>Notch frágil: sobresale −13 px y corta ópticamente el borde de la Card</li>
+        <li>Asimetría chip título vs chip acciones; radius 14 fuera de escala (token 16)</li>
+        <li>Cuerpo en texto secundario → jerarquía plana; Divider casi decorativo</li>
+      </ul>
+    </div>
+
+    <div class="notes">
+      <strong>Interacción</strong>
+      <ul>
+        <li>Cambiá variante o tema desde esta columna</li>
+        <li>Probá búsqueda, + y las acciones de cada tarjeta</li>
+        <li>Snippet «Sin color» muestra el caso <code>null</code></li>
+      </ul>
+    </div>
+  </aside>
+
+  <main class="stage">
+    <div class="stage-bar">
+      <div class="stage-title">
+        <h2 id="variant-name">Variante A</h2>
+        <p id="variant-tagline">—</p>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="phone" aria-label="Mockup de teléfono">
+      <div class="dynamic-island" aria-hidden="true"></div>
+      <div class="phone-screen">
+        <div class="status-bar" aria-hidden="true">
+          <span>9:41</span>
+          <div class="status-icons">
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="0.8"/><rect x="4.5" y="5" width="3" height="6" rx="0.8"/><rect x="9" y="2.5" width="3" height="8.5" rx="0.8"/><rect x="13.5" y="0" width="3" height="11" rx="0.8" opacity="0.35"/></svg>
+            <svg width="15" height="11" viewBox="0 0 15 11" fill="currentColor"><path d="M7.5 9.5a1.4 1.4 0 100 2.8 1.4 1.4 0 000-2.8zM7.5 6.2c1.5 0 2.9.6 3.9 1.6l-1.3 1.3a3.7 3.7 0 00-5.2 0L3.6 7.8a5.5 5.5 0 013.9-1.6zM7.5 2.8c2.4 0 4.6 1 6.2 2.5l-1.3 1.3a7.2 7.2 0 00-9.8 0L1.3 5.3A8.9 8.9 0 017.5 2.8z" transform="translate(0 -2)"/></svg>
+            <span class="bat"></span>
+          </div>
+        </div>
+
+        <div class="screen-scroll">
+          <div class="page-head">
+            <h3>Snippets</h3>
+            <div class="head-actions">
+              <span class="status-pill"><span class="dot"></span><span id="count-pill">4 / 50</span></span>
+              <button type="button" class="add-btn" id="add-btn" aria-label="Agregar snippet">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="search">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14" stroke-linecap="round"/></svg>
+            <input type="search" id="search-input" placeholder="Buscar snippet…" autocomplete="off" />
+          </div>
+          <p class="hint">Toca un snippet para insertarlo. Mantén para reordenar o editar.</p>
+
+          <div class="list" id="snippet-list" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+
+    <section class="legend visible" id="legend" aria-live="polite"></section>
+  </main>
+</div>
+
+<script>
+/* ─── Icons ─── */
+const ICONS = {
+  up: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3M8 3L3.5 7.5M8 3l4.5 4.5"/></svg>',
+  down: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v10M8 13l-4.5-4.5M8 13l4.5-4.5"/></svg>',
+  edit: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11.2 2.8a1.7 1.7 0 012.4 2.4L5.5 13.3 2.5 14l.7-3 8-8.2z"/></svg>',
+  trash: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.5 4.5V3.2A1.2 1.2 0 017.7 2h0a1.2 1.2 0 011.2 1.2v1.3M4.5 4.5l.6 8.2A1.5 1.5 0 006.6 14h2.8a1.5 1.5 0 001.5-1.3l.6-8.2"/></svg>',
+  color: '<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="5"/></svg>'
+};
+
+const VARIANTS = [
+  {
+    id: 'A',
+    name: 'Rail de acento + acciones fantasma',
+    tagline: 'Color como estructura (rail 4 px + fill), acciones compactas arriba a la derecha.',
+    legend: `
+      <h4><span class="tag">A</span>Rail de acento + acciones fantasma</h4>
+      <p>Ataca de raíz el problema del color casi invisible y el clúster de iconos gigante.</p>
+      <ul>
+        <li><b>Color:</b> rail vertical 4 px con el color base + fondo teñido ~14% + borde 1,5 px @42% (cerca del fill 20% / stroke 40% que pide design.md §12).</li>
+        <li><b>Acciones:</b> glyphs 15 px en botones de 36 px (hit ~44 px vía pseudo-elemento) sin píldoras Material enormes; alineadas a la derecha del header interno.</li>
+        <li><b>Título dentro de la tarjeta</b> a 15 px/700 — gana jerarquía sobre los iconos (hoy 12,5 px en un notch).</li>
+        <li>Sin notch: borde continuo, radius 16 (token de tarjeta).</li>
+        <li>Pie con separador fino: orden + largo, meta en 11 px.</li>
+      </ul>`
+  },
+  {
+    id: 'B',
+    name: 'Header teñido de categoría',
+    tagline: 'Franja superior con el color de la categoría; acciones vivien en esa franja.',
+    legend: `
+      <h4><span class="tag">B</span>Header teñido de categoría</h4>
+      <p>El color ocupa una banda dedicada: se lee de un vistazo en una lista larga.</p>
+      <ul>
+        <li><b>Header</b> de ~44 px con fill del color @18% + borde inferior teñido → identidad sin depender de un filo de 1,25 dp.</li>
+        <li>Título a 14 px/700 a la izquierda del header; acciones a 15 px a la derecha (mismo patrón fila Settings).</li>
+        <li>Cuerpo sobre fondo neutro de la tarjeta → contraste del texto intacto (no se escribe encima del color saturado).</li>
+        <li>Snippet sin color: header en chip neutro → misma estructura, cero rama especial rota.</li>
+      </ul>`
+  },
+  {
+    id: 'C',
+    name: 'Acciones al pie (reading-first)',
+    tagline: 'Título arriba, contenido, y la barra de acciones abajo junto al meta.',
+    legend: `
+      <h4><span class="tag">C</span>Acciones al pie — reading-first</h4>
+      <p>El contenido manda: los iconos dejan de pelear con el título en la franja superior.</p>
+      <ul>
+        <li><b>Header limpio:</b> solo swatch + nombre (15,5 px/750) — máximo protagonista.</li>
+        <li><b>Acciones en el footer</b> junto a «#N · largo», con separador hairline: el pulgar las alcanza sin tapar el texto al scrollear.</li>
+        <li>Glyphs 15 px, botones 36 px, gap 4 px → clúster total ~150 px discreto (hoy ~160–190 px solo arriba).</li>
+        <li>Fill suave 10% + stroke 38%: color presente sin gritar.</li>
+      </ul>`
+  },
+  {
+    id: 'D',
+    name: 'Lista inset tipo iOS',
+    tagline: 'Filas compactas agrupadas en un único card; máximo info por píxel.',
+    legend: `
+      <h4><span class="tag">D</span>Lista inset tipo iOS</h4>
+      <p>Patrón de Settings de iOS: un grupo, muchas filas, cero tarjetas flotantes apiladas.</p>
+      <ul>
+        <li><b>Chip de color 28×28</b> con relleno teñido + punto → el color es un ítem de la fila, no un filo perimetral.</li>
+        <li>Preview en una línea secundaria: se escanea el listado completo en un gesto.</li>
+        <li>Acciones a la derecha en 32 px (glyph 14) — densidad alta, targets ampliados con <code>::before</code>.</li>
+        <li>Sin sombra por fila: una sola sombra del grupo (menos ruido visual).</li>
+        <li>Ideal si el número de snippets crece (tope 50).</li>
+      </ul>`
+  },
+  {
+    id: 'E',
+    name: 'Minimal: rail fino + ghost actions',
+    tagline: 'Máximo silencio visual; el color solo marca, las acciones se atenúan.',
+    legend: `
+      <h4><span class="tag">E</span>Minimal — rail fino + ghost actions</h4>
+      <p>«Menos es más»: sin bordes perimetrales fuertes ni toolbars; color como acento quirúrgico.</p>
+      <ul>
+        <li><b>Rail izquierdo 3,5 px</b> + wash de color al 9% — casi como un marker de carpeta.</li>
+        <li><b>Acciones ghost</b> al 70% de opacidad; suben a 100% en hover/focus del card → la fila no parece una toolbar permanente.</li>
+        <li>Título con ruta meta debajo («Teclado · #2») para dar contexto sin divider interno.</li>
+        <li>Rail gris neutro cuando <code>color: null</code> → nunca hay tarjeta «rota».</li>
+      </ul>`
+  },
+  {
+    id: 'F',
+    name: 'Badge + toolbar segmentado',
+    tagline: 'Nombre en pill con color; acciones en una toolbar redonda unificada.',
+    legend: `
+      <h4><span class="tag">F</span>Badge de color + toolbar segmentada</h4>
+      <p>Agrupa las 4 acciones en UN control (hoy 4 targets M3 sueltos generan el clúster pesado).</p>
+      <ul>
+        <li><b>Badge</b> con swatch + nombre en pill teñido @24% → título y color son un solo elemento.</li>
+        <li><b>Toolbar pill</b> de 30 px con separadores hairline entre subir/bajar · editar/borrar: lectura de «grupo de acciones» no de 4 botones enormes.</li>
+        <li>Hit areas ampliadas a ~44 px sin crecer el control visual.</li>
+        <li>Card con fill 12% + stroke 45% — equilibrio entre A y C.</li>
+      </ul>`
+  }
+];
+
+const COLOR_MAP = {
+  azul: 'var(--c-azul)',
+  verde: 'var(--c-verde)',
+  rojo: 'var(--c-rojo)',
+  naranja: 'var(--c-naranja)',
+  violeta: 'var(--c-violeta)',
+  gris: 'var(--c-gris)',
+  null: 'var(--c-gris)'
+};
+
+let snippets = [
+  { id: 's1', nombre: 'Saludo formal', color: 'azul', contenido: 'Estimado/a, gracias por contactarnos. Quedo a la disposición para cualquier consulta que desee realizar.' },
+  { id: 's2', nombre: 'Cierre de correo', color: 'verde', contenido: 'Sin otro particular, le envío un cordial saludo y quedo atento ante cualquier inconveniente.' },
+  { id: 's3', nombre: 'Dirección oficina', color: 'naranja', contenido: 'Av. Corrientes 1234, piso 8, oficina B, C1043 CABA, Buenos Aires, Argentina.' },
+  { id: 's4', nombre: 'Sin color', color: null, contenido: 'Snippet de ejemplo sin categoría de color asignada, para verificar el estado neutro de la tarjeta.' }
+];
+
+let currentVariant = 'A';
+let query = '';
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function swStyle(color) {
+  return `--sw:${COLOR_MAP[color] || COLOR_MAP.null}`;
+}
+function isNoColor(color) { return !color; }
+
+function actBtn(action, id, label, opts = {}) {
+  const disabled = opts.disabled ? ' disabled' : '';
+  const danger = opts.danger ? ' danger' : '';
+  const aria = ` aria-label="${label}" title="${label}"`;
+  return `<button type="button" class="act${danger}" data-action="${action}" data-id="${id}"${aria}${disabled}>${ICONS[action] || ''}</button>`;
+}
+
+function renderActions(id, idx, total) {
+  return actBtn('up', id, 'Subir', { disabled: idx === 0 })
+    + actBtn('down', id, 'Bajar', { disabled: idx === total - 1 })
+    + actBtn('edit', id, 'Editar')
+    + actBtn('trash', id, 'Eliminar', { danger: true });
+}
+
+function renderA(s, idx, total) {
+  const nc = isNoColor(s.color);
+  return `<article class="card-a${nc ? ' no-color' : ''}" style="${swStyle(s.color)}" data-card="${s.id}" tabindex="0">
+    <div class="card-a-head">
+      <div class="card-a-title">
+        ${nc ? '' : `<span class="swatch" aria-hidden="true"></span>`}
+        <strong>${esc(s.nombre)}</strong>
+      </div>
+      <div class="card-a-actions">${renderActions(s.id, idx, total)}</div>
+    </div>
+    <p class="card-a-body">${esc(s.contenido)}</p>
+    <div class="card-a-foot"><span>#${idx + 1}</span><span>${s.contenido.length} / 500</span></div>
+  </article>`;
+}
+
+function renderB(s, idx, total) {
+  const nc = isNoColor(s.color);
+  return `<article class="card-b${nc ? ' no-color' : ''}" style="${swStyle(s.color)}" data-card="${s.id}" tabindex="0">
+    <div class="card-b-head">
+      <div class="card-b-title">
+        ${nc ? '' : `<span class="swatch" aria-hidden="true"></span>`}
+        <strong>${esc(s.nombre)}</strong>
+      </div>
+      <div class="card-b-actions">${renderActions(s.id, idx, total)}</div>
+    </div>
+    <p class="card-b-body">${esc(s.contenido)}</p>
+    <div class="card-b-foot"><span>#${idx + 1}</span><span>${s.contenido.length} / 500</span></div>
+  </article>`;
+}
+
+function renderC(s, idx, total) {
+  const nc = isNoColor(s.color);
+  return `<article class="card-c${nc ? ' no-color' : ''}" style="${swStyle(s.color)}" data-card="${s.id}" tabindex="0">
+    <div class="card-c-title">
+      ${nc ? '' : `<span class="swatch" aria-hidden="true"></span>`}
+      <strong>${esc(s.nombre)}</strong>
+    </div>
+    <p class="card-c-body">${esc(s.contenido)}</p>
+    <div class="card-c-foot">
+      <span class="card-c-meta">#${idx + 1} · ${s.contenido.length}/500</span>
+      <div class="card-c-actions">${renderActions(s.id, idx, total)}</div>
+    </div>
+  </article>`;
+}
+
+function renderD(list, visible) {
+  const rows = visible.map((s) => {
+    const idx = snippets.indexOf(s);
+    const nc = isNoColor(s.color);
+    return `<div class="row-d${nc ? '' : ' has-color'}" style="${swStyle(s.color)}" data-card="${s.id}" tabindex="0">
+      <div class="row-d-chip${nc ? ' none' : ''}" aria-hidden="true"><i></i></div>
+      <div class="row-d-text">
+        <strong>${esc(s.nombre)}</strong>
+        <span>${esc(s.contenido)}</span>
+      </div>
+      <div class="row-d-actions">${renderActions(s.id, idx, snippets.length)}</div>
+    </div>`;
+  }).join('');
+  return `<div class="list-inset">${rows}</div>`;
+}
+
+function renderE(s, idx, total) {
+  const nc = isNoColor(s.color);
+  return `<article class="card-e${nc ? ' no-color' : ''}" style="${swStyle(s.color)}" data-card="${s.id}" tabindex="0">
+    <div class="card-e-head">
+      <div class="card-e-title">
+        <strong>${esc(s.nombre)}</strong>
+        <span class="path">${nc ? 'Sin color' : s.color} · #${idx + 1}</span>
+      </div>
+      <div class="card-e-actions">${renderActions(s.id, idx, total)}</div>
+    </div>
+    <p class="card-e-body">${esc(s.contenido)}</p>
+    <div class="card-e-foot"><span></span><span>${s.contenido.length} / 500</span></div>
+  </article>`;
+}
+
+function renderF(s, idx, total) {
+  const nc = isNoColor(s.color);
+  const toolbar = actBtn('up', s.id, 'Subir', { disabled: idx === 0 })
+    + `<span class="sep" aria-hidden="true"></span>`
+    + actBtn('down', s.id, 'Bajar', { disabled: idx === total - 1 })
+    + `<span class="sep" aria-hidden="true"></span>`
+    + actBtn('edit', s.id, 'Editar')
+    + actBtn('trash', s.id, 'Eliminar', { danger: true });
+  return `<article class="card-f${nc ? ' no-color' : ''}" style="${swStyle(s.color)}" data-card="${s.id}" tabindex="0">
+    <div class="card-f-top">
+      <span class="card-f-badge">${nc ? '' : `<span class="swatch" aria-hidden="true"></span>`}<span>${esc(s.nombre)}</span></span>
+    </div>
+    <p class="card-f-body">${esc(s.contenido)}</p>
+    <div class="card-f-foot">
+      <span class="card-f-meta">#${idx + 1} · ${s.contenido.length}/500</span>
+      <div class="toolbar-f">${toolbar}</div>
+    </div>
+  </article>`;
+}
+
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function render() {
+  const listEl = document.getElementById('snippet-list');
+  const q = query.trim().toLowerCase();
+  const visible = snippets.filter((s) =>
+    !q || s.nombre.toLowerCase().includes(q) || s.contenido.toLowerCase().includes(q)
+  );
+  document.getElementById('count-pill').textContent = `${snippets.length} / 50`;
+
+  if (!visible.length) {
+    listEl.innerHTML = `<div class="list-empty">Sin resultados para «${esc(query)}»</div>`;
+    return;
+  }
+
+  if (currentVariant === 'D') {
+    listEl.innerHTML = renderD(listEl, visible);
+    return;
+  }
+
+  const map = { A: renderA, B: renderB, C: renderC, E: renderE, F: renderF };
+  const fn = map[currentVariant] || renderA;
+  listEl.innerHTML = visible.map((s, i) => {
+    const realIdx = snippets.indexOf(s);
+    // for actions, use real index among ALL snippets for up/down disabled logic consistency
+    return fn(s, realIdx, snippets.length);
+  }).join('');
+}
+
+function renderVariantList() {
+  const el = document.getElementById('variant-list');
+  el.innerHTML = VARIANTS.map((v) => `
+    <button type="button" class="variant-btn" role="option" data-variant="${v.id}" aria-pressed="${v.id === currentVariant}" aria-selected="${v.id === currentVariant}">
+      <span class="variant-num">${v.id}</span>
+      <span class="variant-meta"><strong>${v.name}</strong><span>${v.tagline}</span></span>
+    </button>
+  `).join('');
+}
+
+function setVariant(id) {
+  currentVariant = id;
+  const v = VARIANTS.find((x) => x.id === id);
+  document.getElementById('variant-name').textContent = `Variante ${v.id} — ${v.name}`;
+  document.getElementById('variant-tagline').textContent = v.tagline;
+  document.getElementById('legend').innerHTML = v.legend;
+  document.getElementById('legend').classList.add('visible');
+  document.querySelectorAll('.variant-btn').forEach((b) => {
+    const on = b.dataset.variant === id;
+    b.setAttribute('aria-pressed', on);
+    b.setAttribute('aria-selected', on);
+  });
+  render();
+}
+
+function setTheme(mode) {
+  document.documentElement.setAttribute('data-theme', mode);
+  document.getElementById('theme-light').setAttribute('aria-pressed', mode === 'light');
+  document.getElementById('theme-dark').setAttribute('aria-pressed', mode === 'dark');
+}
+
+/* ─── Events ─── */
+document.getElementById('theme-light').addEventListener('click', () => setTheme('light'));
+document.getElementById('theme-dark').addEventListener('click', () => setTheme('dark'));
+
+document.getElementById('variant-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-variant]');
+  if (btn) setVariant(btn.dataset.variant);
+});
+
+document.getElementById('search-input').addEventListener('input', (e) => {
+  query = e.target.value;
+  render();
+});
+
+document.getElementById('add-btn').addEventListener('click', () => {
+  showToast('+ Agregar snippet (demo)');
+});
+
+document.getElementById('snippet-list').addEventListener('click', (e) => {
+  const act = e.target.closest('[data-action]');
+  if (act) {
+    e.stopPropagation();
+    const { action, id } = act.dataset;
+    const s = snippets.find((x) => x.id === id);
+    const name = s ? s.nombre : '';
+    const labels = { up: '↑ Subir', down: '↓ Bajar', edit: '✏ Editar', trash: '🗑 Eliminar' };
+    if (action === 'up' || action === 'down') {
+      const i = snippets.findIndex((x) => x.id === id);
+      const j = action === 'up' ? i - 1 : i + 1;
+      if (j >= 0 && j < snippets.length) {
+        [snippets[i], snippets[j]] = [snippets[j], snippets[i]];
+        render();
+        showToast(`${labels[action]} «${name}» — orden actualizado`);
+        return;
+      }
+    }
+    showToast(`${labels[action]} «${name}» (demo)`);
+    return;
+  }
+  const card = e.target.closest('[data-card]');
+  if (card) {
+    const s = snippets.find((x) => x.id === card.dataset.card);
+    if (s) showToast(`Insertar «${s.nombre}» en el cursor (demo)`);
+  }
+});
+
+document.getElementById('snippet-list').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    const card = e.target.closest('[data-card]');
+    if (card && e.target === card) {
+      e.preventDefault();
+      card.click();
+    }
+  }
+});
+
+/* ─── Init ─── */
+renderVariantList();
+setVariant('A');
+setTheme(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+</script>
+</body>
+</html>

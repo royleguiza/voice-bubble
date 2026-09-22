@@ -19,7 +19,7 @@ const MIME_TYPES = {
 const server = http.createServer((req, res) => {
     let reqPath = req.url.split('?')[0];
     if (reqPath === '/' || reqPath === '/index.html') {
-        reqPath = '/trackpad_lab.html';
+        reqPath = '/snippets_lab.html';
     }
 
     const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
