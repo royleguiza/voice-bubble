@@ -230,8 +230,15 @@ void main() {
       ValueKey('transcribeCloudButton-${queue.items.first.id}'),
     );
     expect(btn, findsOneWidget);
+    // Cerrar el SnackBar de encolado: si sigue visible, el de éxito queda
+    // en cola y find.text('Nota guardada') falla.
+    final scaffoldMessenger = tester.widget<ScaffoldMessenger>(
+      find.byType(ScaffoldMessenger),
+    );
+    scaffoldMessenger.clearSnackBars();
+    await tester.pump();
     await tester.tap(btn);
-    for (var i = 0; i < 8; i++) {
+    for (var i = 0; i < 12; i++) {
       await tester.pump(const Duration(milliseconds: 150));
     }
 
@@ -242,7 +249,6 @@ void main() {
       find.textContaining('dictado offline luego nube'),
       findsOneWidget,
     );
-    // SnackBar antes de pumpAndSettle (que lo auto-descartaría tras 4s).
     expect(find.text('Nota guardada'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
