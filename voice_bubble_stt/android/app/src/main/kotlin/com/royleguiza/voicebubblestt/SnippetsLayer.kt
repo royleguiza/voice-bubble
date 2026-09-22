@@ -3,6 +3,7 @@ package com.royleguiza.voicebubblestt
 import android.graphics.Typeface
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.inputmethodservice.InputMethodService
 import android.text.Editable
 import android.text.InputType
@@ -104,8 +105,10 @@ class SnippetsLayer(
         private set
     private var draftName = ""
     private var draftContent = ""
+    private var draftColor: String? = null
     private var draftActiveIsContent = false
     private var draftCursor = 0
+    private var colorSwatchRow: LinearLayout? = null
 
     private var searchActive = false
     private var searchField: EditText? = null
@@ -161,8 +164,10 @@ class SnippetsLayer(
         etContentField = null
         draftName = ""
         draftContent = ""
+        draftColor = null
         draftActiveIsContent = false
         draftCursor = 0
+        colorSwatchRow = null
         subLayer = Layer.LETTERS
     }
 
@@ -184,6 +189,7 @@ class SnippetsLayer(
         editing = snippet
         draftName = snippet?.nombre.orEmpty()
         draftContent = snippet?.contenido.orEmpty()
+        draftColor = snippet?.color
         draftActiveIsContent = false
         draftCursor = draftName.length
         subLayer = Layer.LETTERS
@@ -199,10 +205,12 @@ class SnippetsLayer(
         etContentField = null
         draftName = ""
         draftContent = ""
+        draftColor = null
         draftActiveIsContent = false
         draftCursor = 0
         subLayer = Layer.LETTERS
         mode = SnippetMode.NORMAL
+        colorSwatchRow = null
         host.rebuild()
     }
 
@@ -387,9 +395,15 @@ class SnippetsLayer(
                 val content = etContentField?.text?.toString()?.trim().orEmpty()
                 if (name.isNotEmpty()) {
                     val toSave = if (isEdit && editing != null) {
-                        editing!!.copy(nombre = name, contenido = content)
+                        editing!!.copy(nombre = name, contenido = content, color = draftColor)
                     } else {
-                        VbSnippet(id = "", nombre = name, contenido = content, orden = 0)
+                        VbSnippet(
+                            id = "",
+                            nombre = name,
+                            contenido = content,
+                            orden = 0,
+                            color = draftColor,
+                        )
                     }
                     store.saveSnippet(toSave)
                     closeEditor()
@@ -445,6 +459,17 @@ class SnippetsLayer(
         val lpContent = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, host.scaledDimen(R.dimen.kb_snippet_bar_height))
         lpContent.topMargin = pad
         container.addView(etContent, lpContent)
+
+        // Selector de color (paleta fija de 6 + sin color): el primer toque
+        // alterna y el Guardar persiste draftColor en el snippet.
+        val label = TextView(service).apply {
+            text = if (host.isSpanish()) "Color" else "Color"
+            setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
+            setPadding(0, pad, 0, pad / 2)
+        }
+        container.addView(label)
+        container.addView(buildColorSwatchRow(pad))
 
         if (draftActiveIsContent) {
             activeField = etContent
@@ -665,7 +690,7 @@ class SnippetsLayer(
             }
             val lp = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                host.scaledDimen(R.dimen.kb_key_height),
+                host.scaledDimen(R.dimen.kb_snippet_chip_height),
             )
             if (container.childCount > 0) {
                 lp.topMargin = gap / 2
@@ -710,7 +735,11 @@ class SnippetsLayer(
                 }
             }
             SnippetMode.NORMAL -> {
-                chip.setBackgroundResource(R.drawable.kb_key_bg)
+                if (snippet.color != null) {
+                    chip.background = tintedChipBackground(snippet.color)
+                } else {
+                    chip.setBackgroundResource(R.drawable.kb_key_bg)
+                }
                 chip.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
                 host.attachPress(
                     chip,
@@ -723,14 +752,109 @@ class SnippetsLayer(
             }
         }
 
-        chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
+        chip.setTextSize(
+            TypedValue.COMPLEX_UNIT_PX,
+            host.dimenPx(R.dimen.kb_snippet_chip_text_size).toFloat(),
+        )
+        chip.typeface = Typeface.DEFAULT_BOLD
         chip.contentDescription = snippet.nombre
-        // Altura de tecla Enter + gap propio de chips en los laterales.
-        val lp = LinearLayout.LayoutParams(0, host.scaledDimen(R.dimen.kb_key_height), 1f)
+        // Chips compactos 40dp (pedido del dueño) + gap propio en laterales.
+        val lp = LinearLayout.LayoutParams(0, host.scaledDimen(R.dimen.kb_snippet_chip_height), 1f)
         val m = host.dimenPx(R.dimen.kb_snippet_chip_gap) / 2
         lp.setMargins(m, 0, m, 0)
         chip.layoutParams = lp
         return chip
+    }
+
+    /** Fondo teñido del chip (fill ~20% + stroke del color de paleta). */
+    private fun tintedChipBackground(colorId: String): GradientDrawable {
+        val radius = host.dimenPx(R.dimen.kb_key_radius).toFloat()
+        val stroke = host.dimenPx(R.dimen.kb_key_stroke_width)
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = radius
+            setColor(ContextCompat.getColor(service, SnippetPalette.fillRes(colorId)))
+            setStroke(stroke, ContextCompat.getColor(service, SnippetPalette.strokeRes(colorId)))
+        }
+    }
+
+    /** Fila de swatches: primera opción = sin color; luego los 6 de paleta. */
+    private fun buildColorSwatchRow(pad: Int): LinearLayout {
+        val row = LinearLayout(service).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        colorSwatchRow = row
+        val size = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, 28f, service.resources.displayMetrics,
+        ).toInt()
+        val gap = pad / 2
+
+        row.removeAllViews()
+        // Sin color (default)
+        row.addView(makeSwatch(null, size, gap, selected = draftColor == null,
+            description = if (host.isSpanish()) "sin color" else "no color"))
+        for (id in SnippetPalette.IDS) {
+            row.addView(makeSwatch(id, size, gap, selected = draftColor == id, description = id))
+        }
+        return row
+    }
+
+    private fun makeSwatch(
+        colorId: String?,
+        size: Int,
+        gapPx: Int,
+        selected: Boolean,
+        description: String,
+    ): View {
+        val v = View(service)
+        v.isClickable = true
+        v.isFocusable = true
+        v.contentDescription = description
+        val bg = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            if (colorId == null) {
+                setColor(ContextCompat.getColor(service, R.color.kb_key_bg))
+                setStroke(
+                    if (selected) 3 else host.dimenPx(R.dimen.kb_key_stroke_width),
+                    ContextCompat.getColor(
+                        service,
+                        if (selected) R.color.kb_key_bg_accent else R.color.kb_key_stroke,
+                    ),
+                )
+            } else {
+                setColor(ContextCompat.getColor(service, SnippetPalette.fillRes(colorId)))
+                setStroke(
+                    if (selected) 3 else host.dimenPx(R.dimen.kb_key_stroke_width),
+                    ContextCompat.getColor(
+                        service,
+                        if (selected) SnippetPalette.strokeRes(colorId) else R.color.kb_key_stroke,
+                    ),
+                )
+            }
+        }
+        v.background = bg
+        val lp = LinearLayout.LayoutParams(size, size)
+        lp.rightMargin = gapPx
+        v.layoutParams = lp
+        v.setOnClickListener {
+            host.haptic(it)
+            draftColor = colorId
+            // Repinta solo los swatches de esta fila.
+            val parent = colorSwatchRow ?: return@setOnClickListener
+            parent.removeAllViews()
+            val pad = host.dimenPx(R.dimen.kb_popup_padding)
+            val sz = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 28f, service.resources.displayMetrics,
+            ).toInt()
+            val g = pad / 2
+            parent.addView(makeSwatch(null, sz, g, draftColor == null,
+                if (host.isSpanish()) "sin color" else "no color"))
+            for (id in SnippetPalette.IDS) {
+                parent.addView(makeSwatch(id, sz, g, draftColor == id, id))
+            }
+        }
+        return v
     }
 
     private fun showDeleteConfirmation(snippet: VbSnippet) {

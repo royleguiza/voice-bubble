@@ -8,13 +8,43 @@ import android.util.Log
 
 /**
  * Snippet del teclado (K4): item de la lista compartida con la app Flutter.
+ * [color] es opcional: id de la paleta fija de 6 (diseño), null = default.
  */
 data class VbSnippet(
     val id: String,
     val nombre: String,
     val contenido: String,
     val orden: Int,
+    val color: String? = null,
 )
+
+/**
+ * Paleta acotada de snippets (design.md §12): 6 ids fijos, jamás color libre.
+ * Los fills/strokes viven en colors.xml + values-night (fondo teñido).
+ */
+object SnippetPalette {
+    val IDS: List<String> = listOf("azul", "verde", "rojo", "naranja", "violeta", "gris")
+
+    fun isValid(id: String?): Boolean = id == null || id in IDS
+
+    fun fillRes(id: String): Int = when (id) {
+        "azul" -> R.color.snippet_fill_azul
+        "verde" -> R.color.snippet_fill_verde
+        "rojo" -> R.color.snippet_fill_rojo
+        "naranja" -> R.color.snippet_fill_naranja
+        "violeta" -> R.color.snippet_fill_violeta
+        else -> R.color.snippet_fill_gris
+    }
+
+    fun strokeRes(id: String): Int = when (id) {
+        "azul" -> R.color.snippet_stroke_azul
+        "verde" -> R.color.snippet_stroke_verde
+        "rojo" -> R.color.snippet_stroke_rojo
+        "naranja" -> R.color.snippet_stroke_naranja
+        "violeta" -> R.color.snippet_stroke_violeta
+        else -> R.color.snippet_stroke_gris
+    }
+}
 
 /**
  * Store de snippets del teclado (K4): lee/escribe la lista compartida con la
@@ -144,13 +174,16 @@ class SnippetStore(private val context: Context) {
     fun writeAll(snippets: List<VbSnippet>) {
         val arr = JSONArray()
         for (s in snippets) {
-            arr.put(
-                JSONObject()
-                    .put("id", s.id)
-                    .put("nombre", s.nombre)
-                    .put("contenido", s.contenido)
-                    .put("orden", s.orden),
-            )
+            val obj = JSONObject()
+                .put("id", s.id)
+                .put("nombre", s.nombre)
+                .put("contenido", s.contenido)
+                .put("orden", s.orden)
+            // color es aditivo y solo si tiene valor (JSON compacto).
+            if (s.color != null && SnippetPalette.isValid(s.color)) {
+                obj.put("color", s.color)
+            }
+            arr.put(obj)
         }
         prefs().edit().putString(KEY_DATA, arr.toString()).apply()
     }
@@ -171,6 +204,11 @@ class SnippetStore(private val context: Context) {
                     Log.w(TAG, "entrada ignorada en indice $i")
                     continue
                 }
+                val rawColor = if (obj.has("color") && !obj.isNull("color")) {
+                    obj.optString("color")
+                } else {
+                    null
+                }
                 out.add(
                     VbSnippet(
                         id = obj.optString("id"),
@@ -178,6 +216,7 @@ class SnippetStore(private val context: Context) {
                         contenido = obj.optString("contenido"),
                         // Sin campo explicito, el indice conserva orden estable.
                         orden = obj.optInt("orden", i),
+                        color = rawColor?.takeIf { SnippetPalette.isValid(it) },
                     ),
                 )
             }

@@ -102,17 +102,25 @@ class _SnippetsTabState extends State<SnippetsTab> {
         existing: existing,
         maxContentLength: StorageService.maxSnippetLength,
         maxSnippets: StorageService.maxSnippets,
-        onSubmit: ({required String nombre, required String contenido}) {
+        onSubmit: ({
+          required String nombre,
+          required String contenido,
+          String? color,
+          bool clearColor = false,
+        }) {
           if (existing == null) {
             return widget.storageService.addSnippet(
               nombre: nombre,
               contenido: contenido,
+              color: color,
             );
           }
           return widget.storageService.updateSnippet(
             existing.id,
             nombre: nombre,
             contenido: contenido,
+            color: color,
+            clearColor: clearColor,
           );
         },
       ),
@@ -197,13 +205,19 @@ class _SnippetsTabState extends State<SnippetsTab> {
 
   /// Tarjeta con muesca (lab v2): título sobre el borde + acciones +
   /// contenido + pie (#orden y largo). El Card exterior preserva el
-  /// contrato de tests (ancestro Card del nombre).
+  /// contrato de tests (ancestro Card del nombre). Si el snippet tiene
+  /// color de paleta, el borde de la tarjeta lo tiñe.
   Widget _buildSnippetTile(Snippet snippet, int index) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final stroke = snippetPaletteStroke(snippet.color, isDark: isDark);
     return Card(
       margin: const EdgeInsets.only(top: 8, bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
+        side: stroke != null
+            ? BorderSide(color: stroke, width: 1.25)
+            : BorderSide.none,
       ),
       child: Stack(
         clipBehavior: Clip.none,
@@ -327,6 +341,8 @@ class _SnippetFormSheet extends StatefulWidget {
   final Future<bool> Function({
     required String nombre,
     required String contenido,
+    String? color,
+    bool clearColor,
   }) onSubmit;
 
   const _SnippetFormSheet({
@@ -351,6 +367,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
   String? _contenidoError;
   String? _generalError;
   bool _submitting = false;
+  String? _color;
 
   bool get _isEditing => widget.existing != null;
 
@@ -363,6 +380,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
         TextEditingController(text: widget.existing?.contenido ?? '');
     _contentLength =
         ValueNotifier<int>(_contenidoController.text.length);
+    _color = widget.existing?.color;
   }
 
   @override
@@ -391,7 +409,14 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
     setState(() => _submitting = true);
     bool saved = false;
     try {
-      saved = await widget.onSubmit(nombre: nombre, contenido: contenido);
+      final clearColor =
+          _color == null && widget.existing?.color != null;
+      saved = await widget.onSubmit(
+        nombre: nombre,
+        contenido: contenido,
+        color: _color,
+        clearColor: clearColor,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -496,6 +521,33 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                 },
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Color',
+              style: kSettingsGroupTitle.copyWith(color: labelSecondary),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                _ColorSwatch(
+                  key: const ValueKey('snippet-color-none'),
+                  selected: _color == null,
+                  base: null,
+                  label: 'Sin color',
+                  onTap: () => setState(() => _color = null),
+                ),
+                for (final id in kSnippetColorIds)
+                  _ColorSwatch(
+                    key: ValueKey('snippet-color-$id'),
+                    selected: _color == id,
+                    base: snippetPaletteBase(id, isDark: isDark),
+                    label: id,
+                    onTap: () => setState(() => _color = id),
+                  ),
+              ],
+            ),
             if (_generalError != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -524,6 +576,58 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Swatch circular de la paleta de snippets (6 ids + sin color).
+class _ColorSwatch extends StatelessWidget {
+  final bool selected;
+  final Color? base;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ColorSwatch({
+    super.key,
+    required this.selected,
+    required this.base,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fill = base == null
+        ? Theme.of(context).colorScheme.surfaceContainerHighest
+        : base!.withValues(alpha: selected ? 0.90 : 0.35);
+    final stroke = base == null
+        ? Theme.of(context).dividerColor
+        : base!.withValues(alpha: selected ? 1.0 : 0.55);
+    return Tooltip(
+      message: label,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: label,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: fill,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: stroke,
+                width: selected ? 2.5 : 1.25,
+              ),
+            ),
+            child: selected && base != null
+                ? Icon(Icons.check_rounded, size: 18, color: base)
+                : null,
+          ),
         ),
       ),
     );

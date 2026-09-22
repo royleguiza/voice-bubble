@@ -24,6 +24,39 @@ const Color kSuccessDark = Color(0xFF30D158);
 const Color kWarning = Color(0xFFFFD60A);
 
 // ---------------------------------------------------------------------------
+// Snippet Palette – 6 ids fijos (design.md §12); sin color libre.
+// Base = token del tema; fill/stroke derivados con alfa de teñido.
+// ---------------------------------------------------------------------------
+
+/// Resolve el color base de la paleta de snippets para el modo [isDark].
+Color? snippetPaletteBase(String? id, {required bool isDark}) {
+  switch (id) {
+    case 'azul':
+      return isDark ? kAccentDark : kAccentLight;
+    case 'verde':
+      return isDark ? kSuccessDark : kSuccessLight;
+    case 'rojo':
+      return isDark ? kRecordingDark : kRecording;
+    case 'naranja':
+      return const Color(0xFFFF9F0A);
+    case 'violeta':
+      return const Color(0xFFBF5AF2);
+    case 'gris':
+      return const Color(0xFF8E8E93);
+    default:
+      return null;
+  }
+}
+
+/// Fondo teñido del snippet (~20% de opacidad) para chips/cards.
+Color? snippetPaletteFill(String? id, {required bool isDark}) =>
+    snippetPaletteBase(id, isDark: isDark)?.withValues(alpha: 0.20);
+
+/// Stroke teñido (~40%) del snippet.
+Color? snippetPaletteStroke(String? id, {required bool isDark}) =>
+    snippetPaletteBase(id, isDark: isDark)?.withValues(alpha: 0.45);
+
+// ---------------------------------------------------------------------------
 // Background Colors
 // ---------------------------------------------------------------------------
 

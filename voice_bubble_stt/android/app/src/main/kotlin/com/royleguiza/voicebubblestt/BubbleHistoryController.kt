@@ -90,6 +90,9 @@ class BubbleHistoryController(
     private val selected = LinkedHashSet<String>()
     // Clave -> texto visible de las tarjetas vigentes (se reconstruye con ellas).
     private val keyToText = LinkedHashMap<String, String>()
+    // Clave snippet -> id de color de paleta (null = sin tinte); se repinta
+    // al deseleccionar para no perder el fondo teñido.
+    private val keyToColor = LinkedHashMap<String, String?>()
     private var isShowing = false
     /** Sección vigente (SECTION_HISTORY por defecto en cada apertura). */
     private var section = SECTION_HISTORY
@@ -227,6 +230,7 @@ class BubbleHistoryController(
         params = null
         selected.clear()
         keyToText.clear()
+        keyToColor.clear()
         if (isShowing) {
             isShowing = false
             try {
@@ -541,6 +545,7 @@ class BubbleHistoryController(
         } catch (_: Throwable) {}
         selected.clear()
         keyToText.clear()
+        keyToColor.clear()
         refreshCopyAll()
         // I/O fuera del main (disco + XML + prefs del repositorio): el render
         // vuelve al main y pinta solo si la modal sigue abierta.
@@ -648,6 +653,7 @@ class BubbleHistoryController(
         } catch (_: Throwable) {}
         selected.clear()
         keyToText.clear()
+        keyToColor.clear()
         refreshCopyAll()
         BackgroundWork.executeWithResult(
             block = {
@@ -681,6 +687,7 @@ class BubbleHistoryController(
         val dark = isDarkUi()
         val key = "snip|${s.id}"
         keyToText[key] = s.contenido
+        keyToColor[key] = s.color
         return SnippetsCardView.buildSnippetCard(
             context, density, dark, s, key,
             onCopy = { iv ->
@@ -693,14 +700,15 @@ class BubbleHistoryController(
             onAttach = { box, tx, badge ->
                 attachCardGestures(
                     row = box, tv = tx, badge = badge, text = s.contenido, key = key, dark = dark,
-                    paintBackground = { sel -> box.background = snippetBoxBackground(dark, sel) }
+                    paintBackground = { sel ->
+                        box.background = SnippetsCardView.snippetBoxBackground(
+                            density, dark, sel, if (sel) null else s.color, context,
+                        )
+                    }
                 )
             },
         )
     }
-
-    private fun snippetBoxBackground(dark: Boolean, selected: Boolean = false): GradientDrawable =
-        SnippetsCardView.snippetBoxBackground(density, dark, selected)
 
     /** Editar vive en la app: se la abre y se compacta la modal. */
     private fun openAppForEdit() {
@@ -971,11 +979,13 @@ class BubbleHistoryController(
                 val row = frame.getChildAt(0) as? LinearLayout ?: continue
                 val badge = frame.getChildAt(1) as? ImageView ?: continue
                 badge.visibility = View.GONE
-                // Las cajas de snippet conservan su outlined (no el relleno
-                // de historial): se distinguen por el prefijo de su clave.
+                // Las cajas de snippet conservan su outlined/tinte (no el
+                // relleno de historial): se distinguen por el prefijo de clave.
                 val tag = row.tag as? String
                 row.background = if (tag != null && tag.startsWith("snip|")) {
-                    snippetBoxBackground(dark)
+                    SnippetsCardView.snippetBoxBackground(
+                        density, dark, false, keyToColor[tag], context,
+                    )
                 } else {
                     cardBackground(selected = false, dark = dark)
                 }

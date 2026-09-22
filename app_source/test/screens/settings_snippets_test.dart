@@ -332,5 +332,63 @@ void main() {
       expect(loaded.length, 5);
       expect(loaded.where((s) => s.contenido == 'sin nombre'), isEmpty);
     });
+
+    testWidgets('elegir color de paleta persiste en el snippet',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('snippet-name-field')),
+        'Con color',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('snippet-content-field')),
+        'contenido',
+      );
+      await tester.tap(find.byKey(const ValueKey('snippet-color-azul')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Guardar'));
+      await tester.pumpAndSettle();
+
+      final loaded = await StorageService().loadSnippets();
+      final created = loaded.singleWhere((s) => s.nombre == 'Con color');
+      expect(created.color, 'azul');
+    });
+
+    testWidgets('editar snippet puede limpiar el color a Sin color',
+        (tester) async {
+      final withColor = const Snippet(
+        id: 'c1',
+        nombre: 'Teñido',
+        contenido: 'x',
+        orden: 0,
+        color: 'verde',
+      );
+      await storageService.saveSnippets([withColor]);
+
+      await tester.pumpWidget(buildTestableWidget(tester));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(tileAction('Teñido', Icons.edit_rounded));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('snippet-color-none')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Guardar cambios'));
+      await tester.pumpAndSettle();
+
+      final loaded = await StorageService().loadSnippets();
+      expect(loaded.single.color, isNull);
+    });
   });
 }

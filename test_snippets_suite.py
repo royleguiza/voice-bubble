@@ -76,7 +76,40 @@ def test_keyboard_service_snippet_sublayer():
 
     # Comprobación de que el shift sigue cableado (VKS delega al motor)
     assert "toggleShift()" in content or "fun toggleShift()" in engine
-    print("  [PASS] Arquitectura de subcapas de snippets, símbolos y borrador reactivo 100% verificada.")
+    print("  [PASS] Arquitectura de capas de snippets, símbolos y borrador reactivo 100% verificada.")
+
+def test_snippet_color_palette():
+    print("  [TEST] Verificando paleta de color de snippets (Kotlin)...")
+    store_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SnippetStore.kt"
+    layer_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SnippetsLayer.kt"
+    with open(store_path, "r", encoding="utf-8") as f:
+        store = f.read()
+    with open(layer_path, "r", encoding="utf-8") as f:
+        layer = f.read()
+
+    # Modelo con color opcional + paleta de 6 ids
+    assert "val color: String? = null" in store, "Falta color opcional en VbSnippet"
+    assert "object SnippetPalette" in store, "Falta SnippetPalette"
+    assert 'listOf("azul", "verde", "rojo", "naranja", "violeta", "gris")' in store
+    assert 'obj.put("color"' in store, "writeAll debe persistir color"
+    assert 'rawColor?.takeIf { SnippetPalette.isValid(it) }' in store
+
+    # Editor inline con draftColor y swatches
+    assert "draftColor" in layer, "Falta draftColor en el editor"
+    assert "buildColorSwatchRow" in layer, "Falta fila de swatches"
+    assert "SnippetPalette.fillRes" in layer, "Chip sin fondo teñido"
+    assert "kb_snippet_chip_text_size" in layer, "Chip sin tipografía 16sp"
+    assert "Typeface.DEFAULT_BOLD" in layer, "Chip sin bold"
+
+    # Recursos de paleta (claro + oscuro)
+    for theme in ("values", "values-night"):
+        path = f"voice_bubble_stt/android/app/src/main/res/{theme}/colors.xml"
+        with open(path, "r", encoding="utf-8") as f:
+            raw = f.read()
+        for cid in ("azul", "verde", "rojo", "naranja", "violeta", "gris"):
+            assert f"snippet_fill_{cid}" in raw, f"Falta fill {cid} en {theme}"
+            assert f"snippet_stroke_{cid}" in raw, f"Falta stroke {cid} en {theme}"
+    print("  [PASS] Paleta de 6 colores, editor con swatches y chips teñidos 100% verificados.")
 
 if __name__ == "__main__":
     print("=" * 60)
@@ -85,6 +118,7 @@ if __name__ == "__main__":
     try:
         test_manifest_retention()
         test_keyboard_service_snippet_sublayer()
+        test_snippet_color_palette()
         print("=" * 60)
         print(" RESULTADOS: Todos los tests pasaron exitosamente.")
         print("=" * 60)

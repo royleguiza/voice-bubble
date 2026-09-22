@@ -651,7 +651,9 @@ class StorageService {
   // Contrato compartido con el teclado nativo Kotlin: el valor de
   // [snippetsKey] es un STRING con un JSON array de objetos con claves
   // "id" (String), "nombre" (String), "contenido" (String) e "orden"
-  // (int). El lado Kotlin lee estas mismas claves con prefijo "flutter.".
+  // (int). Opcional aditivo: "color" (String, id de paleta de 6; solo se
+  // escribe si tiene valor). El lado Kotlin lee estas mismas claves con
+  // prefijo "flutter.".
   static const String snippetsKey = 'voice_snippets_v1';
   static const String snippetsSeededKey = 'kb_snippets_seeded';
 
@@ -724,12 +726,15 @@ class StorageService {
   /// Agrega un snippet al final de la lista. Devuelve false si viola los
   /// limites del contrato: nombre vacio, contenido mayor a
   /// [maxSnippetLength] caracteres o ya existen [maxSnippets] snippets.
+  /// [color] es opcional: id de la paleta fija de 6 (null = default).
   Future<bool> addSnippet({
     required String nombre,
     required String contenido,
+    String? color,
   }) async {
     if (nombre.trim().isEmpty) return false;
     if (contenido.length > maxSnippetLength) return false;
+    if (color != null && !kSnippetColorIds.contains(color)) return false;
     final current = await _readSnippets();
     // Lectura ilegible: bloqueada la escritura para no pisar datos.
     if (current == null) return false;
@@ -741,29 +746,42 @@ class StorageService {
         nombre: nombre,
         contenido: contenido,
         orden: current.length,
+        color: color,
       ),
     ]);
     return true;
   }
 
-  /// Actualiza nombre y/o contenido del snippet con ese id. Devuelve false
-  /// si el id no existe o los valores nuevos violan los limites de
-  /// [addSnippet] (el snippet queda intacto en ese caso).
+  /// Actualiza nombre, contenido y/o color del snippet con ese id. Devuelve
+  /// false si el id no existe o los valores nuevos violan los limites de
+  /// [addSnippet] (el snippet queda intacto en ese caso). Para limpiar el
+  /// color usar [clearColor] (o [color] no nulo para establecerlo).
   Future<bool> updateSnippet(
     String id, {
     String? nombre,
     String? contenido,
+    String? color,
+    bool clearColor = false,
   }) async {
     if (nombre != null && nombre.trim().isEmpty) return false;
     if (contenido != null && contenido.length > maxSnippetLength) {
       return false;
     }
+    if (color != null && !kSnippetColorIds.contains(color)) return false;
     final current = await _readSnippets();
     if (current == null) return false;
     final index = current.indexWhere((s) => s.id == id);
     if (index == -1) return false;
-    current[index] =
-        current[index].copyWith(nombre: nombre, contenido: contenido);
+    final nextColor = clearColor
+        ? null
+        : color != null
+            ? color
+            : current[index].color;
+    current[index] = current[index].copyWith(
+      nombre: nombre,
+      contenido: contenido,
+      color: nextColor,
+    );
     await saveSnippets(current);
     return true;
   }

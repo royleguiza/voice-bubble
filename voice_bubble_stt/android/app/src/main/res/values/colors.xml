@@ -31,4 +31,19 @@
 
     <!-- Icono adaptive / splash (H5-T3): azul iOS de marca (design.md) -->
     <color name="ic_launcher_background">#FF007AFF</color>
+
+    <!-- Paleta de snippets (design.md §12): solo 6 ids fijos.
+         Fondo teñido ~20% (0x33) + stroke ~40% (0x66) sobre el tema. -->
+    <color name="snippet_fill_azul">#33007AFF</color>
+    <color name="snippet_stroke_azul">#66007AFF</color>
+    <color name="snippet_fill_verde">#33248A3D</color>
+    <color name="snippet_stroke_verde">#66248A3D</color>
+    <color name="snippet_fill_rojo">#33FF3B30</color>
+    <color name="snippet_stroke_rojo">#66FF3B30</color>
+    <color name="snippet_fill_naranja">#33FF9F0A</color>
+    <color name="snippet_stroke_naranja">#66FF9F0A</color>
+    <color name="snippet_fill_violeta">#33BF5AF2</color>
+    <color name="snippet_stroke_violeta">#66BF5AF2</color>
+    <color name="snippet_fill_gris">#338E8E93</color>
+    <color name="snippet_stroke_gris">#668E8E93</color>
 </resources>

@@ -23,13 +23,25 @@ import androidx.core.content.ContextCompat
  */
 object SnippetsCardView {
 
-    fun snippetBoxBackground(density: Float, dark: Boolean, selected: Boolean = false): GradientDrawable {
+    fun snippetBoxBackground(
+        density: Float,
+        dark: Boolean,
+        selected: Boolean = false,
+        colorId: String? = null,
+        context: Context? = null,
+    ): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 12f * density
             if (selected) {
                 setColor(Color.parseColor("#FF238636"))
                 setStroke((1.5f * density).toInt(), Color.parseColor("#FF3FB950"))
+            } else if (colorId != null && context != null && SnippetPalette.isValid(colorId)) {
+                setColor(ContextCompat.getColor(context, SnippetPalette.fillRes(colorId)))
+                setStroke(
+                    (1f * density).toInt(),
+                    ContextCompat.getColor(context, SnippetPalette.strokeRes(colorId)),
+                )
             } else {
                 // Caja transparente: solo el borde sutil (el fondo lo pone la modal).
                 setColor(Color.TRANSPARENT)
@@ -74,7 +86,7 @@ object SnippetsCardView {
         }
         val box = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            background = snippetBoxBackground(density, dark)
+            background = snippetBoxBackground(density, dark, false, snippet.color, context)
             val padH = (12 * density).toInt()
             // Arriba hay aire para que la leyenda muerda el borde a la mitad.
             setPadding(padH, (14 * density).toInt(), padH, (10 * density).toInt())

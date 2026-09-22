@@ -58,6 +58,69 @@ void main() {
       expect((decoded.single as Map).keys.toList(),
           ['id', 'nombre', 'contenido', 'orden']);
     });
+
+    test('color opcional: solo agrega la clave si tiene valor', () async {
+      final service = StorageService();
+      expect(
+        await service.addSnippet(
+          nombre: 'Azul',
+          contenido: 'c',
+          color: 'azul',
+        ),
+        isTrue,
+      );
+      expect(
+        await service.addSnippet(nombre: 'Plain', contenido: 'p'),
+        isTrue,
+      );
+
+      final decoded =
+          jsonDecode((await SharedPreferences.getInstance())
+              .getString('voice_snippets_v1')!) as List;
+      final azul = decoded.firstWhere((e) => e['nombre'] == 'Azul') as Map;
+      final plain = decoded.firstWhere((e) => e['nombre'] == 'Plain') as Map;
+      expect(azul.keys.toList(), ['id', 'nombre', 'contenido', 'orden', 'color']);
+      expect(azul['color'], 'azul');
+      expect(plain.containsKey('color'), isFalse);
+    });
+
+    test('updateSnippet establece y limpia color; rechaza id fuera de paleta',
+        () async {
+      final service = StorageService();
+      await service.addSnippet(nombre: 'X', contenido: 'x');
+      final id = (await service.loadSnippets()).single.id;
+
+      expect(await service.updateSnippet(id, color: 'verde'), isTrue);
+      expect((await service.loadSnippets()).single.color, 'verde');
+
+      expect(
+        await service.updateSnippet(id, color: 'arcoiris'),
+        isFalse,
+      );
+      expect((await service.loadSnippets()).single.color, 'verde');
+
+      expect(await service.updateSnippet(id, clearColor: true), isTrue);
+      expect((await service.loadSnippets()).single.color, isNull);
+    });
+
+    test('fromJson descarta color fuera de la paleta', () {
+      final s = Snippet.fromJson({
+        'id': 'a',
+        'nombre': 'A',
+        'contenido': 'c',
+        'orden': 0,
+        'color': 'arcoiris',
+      });
+      expect(s.color, isNull);
+      final ok = Snippet.fromJson({
+        'id': 'a',
+        'nombre': 'A',
+        'contenido': 'c',
+        'orden': 0,
+        'color': 'rojo',
+      });
+      expect(ok.color, 'rojo');
+    });
   });
 
   group('StorageService - CRUD de snippets', () {

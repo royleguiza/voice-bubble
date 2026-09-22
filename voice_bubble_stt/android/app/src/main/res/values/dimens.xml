@@ -28,8 +28,10 @@
     <!-- Barra slim de snippets (lab compacta): ~mitad de la search clásica.
          Excepción del dueño a SPK-16 solo en esta superficie. -->
     <dimen name="kb_snippet_bar_height">28dp</dimen>
-    <!-- Altura de chips de snippets (minimo tactil 48dp, SPK-16). -->
-    <dimen name="kb_snippet_chip_height">48dp</dimen>
+    <!-- Altura de chips de snippets: 40dp (pedido del dueño, más denso
+         que la tecla Enter) + tipografía 16sp bold para legibilidad. -->
+    <dimen name="kb_snippet_chip_height">40dp</dimen>
+    <dimen name="kb_snippet_chip_text_size">16sp</dimen>
     <!-- Respiro entre chips de snippets (márgenes + filas): desacoplado del
          gap de teclas para que los chips no queden apretados. -->
     <dimen name="kb_snippet_chip_gap">10dp</dimen>

@@ -259,11 +259,27 @@ Además:
 | `kb_label_secondary` | `labelSecondary` | `labelSecondary` | Hints de capa superior (shift/symbols) |
 | `kb_recording` | `tintRecord #FF3B30` | `#FF453A` | Anillo del micrófono grabando (único rojo, semántico) |
 
+### Paleta de snippets (color por snippet)
+
+Solo **6 ids fijos** (nunca color libre). El chip/card usa **fondo teñido ~20%** + **stroke ~40%** del color base; texto sigue `kb_label`. `color` es opcional en el JSON (`null` = sin tinte, visual actual).
+
+| id | Base claro | Base oscuro |
+|---|---|---|
+| `azul` | `#007AFF` | `#0A84FF` |
+| `verde` | `#248A3D` | `#30D158` |
+| `rojo` | `#FF3B30` | `#FF453A` |
+| `naranja` | `#FF9F0A` | `#FF9F0A` |
+| `violeta` | `#BF5AF2` | `#BF5AF2` |
+| `gris` | `#8E8E93` | `#8E8E93` |
+
+Selectores de color: editor inline del teclado (`SnippetsLayer`) y sheet de Ajustes → Snippets (`snippets_tab.dart`), ambos con las mismas 6 opciones + “Sin color”.
+
 ### Métricas
 
 | Medida | Valor | Nota |
 |---|---|---|
 | Altura de tecla | 42–48 dp | 4 filas QWERTY; gap entre teclas 6 dp |
+| **Chip de snippet** | **40 dp** + **16 sp bold** | Excepción a 48 dp por densidad/legibilidad (pedido del dueño); respeta perfil de altura |
 | Radio de tecla | 8 dp | concéntrico con el surface (16 dp) |
 | Stroke de tecla alt | 1 dp | `kb_key_stroke`; presente también en estado presionado |
 | Fila terminal | misma altura que teclas | TAB/ESC/CTRL/ALT/flechas presente en todas las capas; ocultable desde Settings para quien ya tiene teclas propias (ej. Termux) |
