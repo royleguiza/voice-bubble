@@ -15,6 +15,16 @@ Los APK se generan automáticamente con **GitHub Actions**; no hay builds locale
    - Ajustes de Android → Aplicaciones → Acceso especial → Instalar apps desconocidas → concede el permiso al navegador/gestor de archivos que uses.
 6. Abre el `.apk` y confirma la instalación. Android mostrará el aviso estándar de fuentes desconocidas (es normal: es un APK debug distribuido fuera de una tienda).
 
+### Actualizar a una versión nueva (conserva tus datos)
+
+Cada APK del CI sale con un número de versión superior al anterior y la misma firma, así que Android lo instala como **actualización**: se conservan notas, snippets, clipboard, historial, ajustes y API key.
+
+1. Descarga el artefacto del run verde más reciente (pasos 1–4 de arriba).
+2. Abre el `.apk` nuevo **sin desinstalar la app anterior** y confirma "Actualizar".
+3. Listo: abre la app y verifica que tus notas y ajustes siguen ahí.
+
+> ⚠️ **No desinstales la app antes**: desinstalar borra todos los datos (notas, snippets, clipboard, historial, ajustes). Si Android rechaza la instalación con "App no instalada", avisa con captura: indicaría firma o versión inesperada en ese run.
+
 ## 2. Activación de la burbuja flotante
 
 La burbuja requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW**, "Mostrar sobre otras apps"): Android no lo concede automáticamente.

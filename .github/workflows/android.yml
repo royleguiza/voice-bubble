@@ -98,7 +98,12 @@ jobs:
 
       - name: Build APK debug (split por ABI)
         working-directory: voice_bubble_stt
-        run: flutter build apk --debug --split-per-abi
+        # build-number = run_number: cada APK sale con versionCode superior
+        # al anterior para que Android lo trate como ACTUALIZACIÓN (conserva
+        # notas, snippets, clipboard, historial y ajustes) en vez de
+        # reinstalación de la misma versión. La firma ya es estable
+        # (debug.keystore versionado en android/app).
+        run: flutter build apk --debug --split-per-abi --build-number=${{ github.run_number }}
 
       - name: Upload APK arm64
         uses: actions/upload-artifact@v4
