@@ -6,12 +6,14 @@ class NoteCard extends StatelessWidget {
   final VoiceNote note;
   final VoidCallback onTap;
   final VoidCallback? onDelete;
+  final VoidCallback? onCopy;
 
   const NoteCard({
     super.key,
     required this.note,
     required this.onTap,
     this.onDelete,
+    this.onCopy,
   });
 
   String _format(DateTime dt) {
@@ -79,6 +81,14 @@ class NoteCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
+                if (onCopy != null)
+                  IconButton(
+                    tooltip: 'Copiar contenido',
+                    icon: Icon(Icons.copy_rounded, size: 18, color: secondary),
+                    onPressed: onCopy,
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  ),
                 if (onDelete != null)
                   IconButton(
                     tooltip: 'Borrar',
@@ -87,7 +97,7 @@ class NoteCard extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                   )
-                else
+                else if (onCopy == null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8, right: 6),
                     child: Icon(

@@ -9,6 +9,7 @@ import '../services/storage_service.dart';
 import '../services/widget_service.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
+import '../ui/transcription_feedback.dart';
 import '../widgets/note_card.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -250,6 +251,18 @@ class _NotesScreenState extends State<NotesScreen> {
                       return NoteCard(
                         note: n,
                         onTap: () => _openEditor(n),
+                        onCopy: () async {
+                          // Solo el contenido (cuerpo), nunca el título.
+                          final copy = await copyTranscriptionText(n.cuerpo);
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(copy == ClipboardCopyResult.ok
+                                  ? copiedToClipboardMessage
+                                  : clipboardFailureMessage),
+                            ),
+                          );
+                        },
                         onDelete: () async {
                           await _notesService.deleteNote(n.id);
                           await WidgetService().updateWidgets();
@@ -413,7 +426,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               OutlinedButton.icon(
                 icon: const Icon(Icons.content_paste_rounded, size: 16),
@@ -426,7 +441,31 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   }
                 },
               ),
-              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                key: const ValueKey('noteEditorCopyButton'),
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                label: const Text('Copiar'),
+                onPressed: () async {
+                  // Copia el contenido (cuerpo) en edición, no el título.
+                  final txt = _bodyCtrl.text;
+                  if (txt.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Sin contenido para copiar')),
+                    );
+                    return;
+                  }
+                  final copy = await copyTranscriptionText(txt);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(copy == ClipboardCopyResult.ok
+                          ? copiedToClipboardMessage
+                          : clipboardFailureMessage),
+                    ),
+                  );
+                },
+              ),
               if (widget.note != null)
                 OutlinedButton.icon(
                   icon: const Icon(Icons.delete_outline_rounded, size: 16),

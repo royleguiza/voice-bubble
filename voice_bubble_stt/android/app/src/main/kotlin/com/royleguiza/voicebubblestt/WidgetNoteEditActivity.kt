@@ -2,6 +2,8 @@ package com.royleguiza.voicebubblestt
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
@@ -9,6 +11,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.Toast
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -70,6 +73,21 @@ class WidgetNoteEditActivity : Activity() {
         } catch (_: Exception) {}
 
         findViewById<View>(R.id.btn_cancel).setOnClickListener { finish() }
+        findViewById<View>(R.id.btn_copy).setOnClickListener {
+            // Copia el contenido (cuerpo) en edición, nunca el título.
+            val text = bodyEt.text.toString()
+            if (text.isBlank()) {
+                Toast.makeText(this, "Sin contenido para copiar", Toast.LENGTH_SHORT).show()
+            } else {
+                try {
+                    val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("nota", text))
+                    Toast.makeText(this, "Contenido copiado", Toast.LENGTH_SHORT).show()
+                } catch (_: Exception) {
+                    Toast.makeText(this, "No se pudo copiar", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
         findViewById<View>(R.id.btn_save).setOnClickListener {
             saveNote(titleEt.text.toString(), bodyEt.text.toString())
             finish()

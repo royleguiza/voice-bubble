@@ -87,6 +87,24 @@
                 android:layout_weight="1" />
 
             <FrameLayout
+                android:id="@+id/btn_copy"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/widget_note_card_bg"
+                android:contentDescription="Copiar contenido">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/widget_ic_copy" />
+            </FrameLayout>
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="wrap_content" />
+
+            <FrameLayout
                 android:id="@+id/btn_save"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
