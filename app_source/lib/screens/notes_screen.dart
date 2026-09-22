@@ -286,7 +286,7 @@ class _NotesScreenState extends State<NotesScreen> {
           onPressed: _isTranscribing ? null : _toggleRecord,
           icon: Icon(
             _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-            size: 20,
+            size: 22,
           ),
           label: Text(_isRecording ? 'Detener' : 'Dictar'),
         ),
@@ -431,7 +431,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             runSpacing: 8,
             children: [
               OutlinedButton.icon(
-                icon: const Icon(Icons.content_paste_rounded, size: 16),
+                icon: const Icon(Icons.content_paste_rounded, size: 18),
                 label: const Text('Pegar'),
                 onPressed: () async {
                   final data = await Clipboard.getData('text/plain');
@@ -443,7 +443,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
               OutlinedButton.icon(
                 key: const ValueKey('noteEditorCopyButton'),
-                icon: const Icon(Icons.copy_rounded, size: 16),
+                icon: const Icon(Icons.copy_rounded, size: 18),
                 label: const Text('Copiar'),
                 onPressed: () async {
                   // Copia el contenido (cuerpo) en edición, no el título.
@@ -468,7 +468,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
               if (widget.note != null)
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
                   label: const Text('Borrar'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: kRecording,
