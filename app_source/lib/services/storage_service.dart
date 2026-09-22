@@ -773,9 +773,12 @@ class StorageService {
     final index = current.indexWhere((s) => s.id == id);
     if (index == -1) return false;
     final nextColor = clearColor ? null : color ?? current[index].color;
-    current[index] = current[index].copyWith(
-      nombre: nombre,
-      contenido: contenido,
+    // copyWith usa sentinel: null explícito castearía nombre/contenido a
+    // String. Forzar keep; color siempre se envía (set/clear/keep).
+    final base = current[index];
+    current[index] = base.copyWith(
+      nombre: nombre ?? base.nombre,
+      contenido: contenido ?? base.contenido,
       color: nextColor,
     );
     await saveSnippets(current);
