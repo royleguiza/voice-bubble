@@ -264,6 +264,47 @@ check(
     "La purga no distingue referenciados o no corre en loadItems",
 )
 
+# --- TEST 11: Captura REAL de imágenes (fix rama muerta) ---
+layer_path = os.path.join(
+    WORKSPACE,
+    "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/ClipboardLayer.kt",
+)
+check("ClipboardLayer.kt existe", os.path.isfile(layer_path))
+with open(layer_path, "r", encoding="utf-8") as f:
+    layer = f.read()
+
+check(
+    "Detección de imagen con wildcard (compareMimeTypes, no hasMimeType exacto)",
+    'ClipDescription.compareMimeTypes(mt, "image/*")' in layer
+    and 'hasMimeType("image/*")' not in layer,
+    "La rama de imágenes jamás igualaba tipos reales como image/png",
+)
+check(
+    "La imagen se busca en TODOS los items del clip (no solo item 0)",
+    "clipData.getItemAt(j).uri" in layer
+    and "0 until clipData.itemCount" in layer,
+    "Imagen fuera de la posición 0 se pierde",
+)
+check(
+    "Guardia anti-duplicados: el clip vigente no se recaptura en cada foco",
+    "lastImageSignature" in layer
+    and 'val signature = "$uri|$mime"' in layer,
+    "Cada apertura del teclado duplicaría la imagen (UUID sin dedup)",
+)
+check(
+    "Fallo de guardado avisa en primer plano y calla en background",
+    "No se pudo guardar la imagen" in layer
+    and "handlePrimaryClipChanged(notifyOnFailure = true)" in layer
+    and "handlePrimaryClipChanged(notifyOnFailure = false)" in layer,
+    "El fallo de copia de bytes quedaba 100% silencioso",
+)
+check(
+    "addImageClip expone onError para el fallo de stream",
+    "onError: (() -> Unit)? = null" in store
+    and "onError?.invoke()" in store,
+    "Sin canal de error el layer no puede avisar",
+)
+
 # --- RESUMEN FINAL ---
 print("\n============================================================")
 print(f" RESULTADOS: {suite.passed} Pasados, {suite.failed} Fallidos")

@@ -199,8 +199,15 @@ class ClipboardStore(
     /**
      * Copia de forma segura los bytes de una imagen URI al sandbox privado local y agrega el clip.
      * SPK-10: opt-in tras flag (texto primero). Default OFF.
+     * [onError] se invoca en el hilo del executor (el llamador postea al
+     * main si toca UI) cuando el stream no se pudo abrir o copiar.
      */
-    fun addImageClip(uri: Uri, mimeType: String, onComplete: ((List<ClipboardItem>) -> Unit)? = null) {
+    fun addImageClip(
+        uri: Uri,
+        mimeType: String,
+        onComplete: ((List<ClipboardItem>) -> Unit)? = null,
+        onError: (() -> Unit)? = null,
+    ) {
         if (!imagesEnabled()) {
             onComplete?.invoke(loadItems())
             return
@@ -214,7 +221,12 @@ class ClipboardStore(
                     FileOutputStream(destFile).use { output ->
                         input.copyTo(output)
                     }
-                } ?: return@execute
+                } ?: run {
+                    try {
+                        onError?.invoke()
+                    } catch (_: Exception) {}
+                    return@execute
+                }
 
                 val item = ClipboardItem(
                     type = ClipType.IMAGE,
@@ -227,6 +239,9 @@ class ClipboardStore(
                 onComplete?.invoke(updated)
             } catch (e: Exception) {
                 Log.e(TAG, "Error guardando imagen en cache local", e)
+                try {
+                    onError?.invoke()
+                } catch (_: Exception) {}
             }
         }
     }

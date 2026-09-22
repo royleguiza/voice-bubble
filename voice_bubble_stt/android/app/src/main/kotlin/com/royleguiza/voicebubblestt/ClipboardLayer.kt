@@ -1,9 +1,11 @@
 package com.royleguiza.voicebubblestt
 
+import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.inputmethodservice.InputMethodService
+import android.net.Uri
 import android.os.Handler
 import android.view.View
 import android.widget.LinearLayout
@@ -39,9 +41,13 @@ class ClipboardLayer(
     private lateinit var store: ClipboardStore
     private var filmstripView: ClipboardFilmstripLayout? = null
     private var origin = Layer.LETTERS
+    // Firma del último clip de imagen capturado (uri+mime): el listener y
+    // cada foco del teclado re-leen el clip vigente; sin esta firma cada
+    // apertura guardaba otra copia (el dedup del store es por nombre UUID).
+    private var lastImageSignature: String? = null
 
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
-        handlePrimaryClipChanged()
+        handlePrimaryClipChanged(notifyOnFailure = false)
     }
 
     fun onCreate() {
@@ -65,7 +71,7 @@ class ClipboardLayer(
     }
 
     fun onStartInputView(restarting: Boolean) {
-        handlePrimaryClipChanged()
+        handlePrimaryClipChanged(notifyOnFailure = true)
     }
 
     /**
@@ -118,7 +124,7 @@ class ClipboardLayer(
         }
     }
 
-    private fun handlePrimaryClipChanged() {
+    private fun handlePrimaryClipChanged(notifyOnFailure: Boolean = false) {
         val cm = service.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
         if (!cm.hasPrimaryClip()) return
 
@@ -130,7 +136,6 @@ class ClipboardLayer(
 
         if (clipData.itemCount == 0) return
 
-        val item = clipData.getItemAt(0)
         val description = clipData.description
 
         // Privacidad: ignorar clips marcados como confidenciales (passwords, OTPs, etc.)
@@ -143,12 +148,35 @@ class ClipboardLayer(
             if (isSensitive) return
         }
 
-        if (description != null && description.hasMimeType("image/*") && item.uri != null) {
-            val mime = description.getMimeType(0) ?: "image/png"
-            store.addImageClip(item.uri, mime) {
-                handler.post { refreshIfVisible() }
-            }
+        val image = findFirstImage(clipData, description)
+        if (image != null) {
+            val (uri, mime) = image
+            val signature = "$uri|$mime"
+            if (signature == lastImageSignature) return
+            lastImageSignature = signature
+            store.addImageClip(
+                uri,
+                mime,
+                onComplete = { handler.post { refreshIfVisible() } },
+                // Aviso solo en primer plano: en background el fallo es
+                // esperable (sin foco no hay grant de lectura) y se reintenta
+                // en el próximo onStartInputView.
+                onError = if (notifyOnFailure) {
+                    {
+                        handler.post {
+                            service.showClipboardNotice(
+                                if (host.isSpanish()) "No se pudo guardar la imagen"
+                                else "Could not save image"
+                            )
+                        }
+                    }
+                } else {
+                    null
+                },
+            )
         } else {
+            lastImageSignature = null
+            val item = clipData.getItemAt(0)
             val text = item.text?.toString() ?: item.coerceToText(service)?.toString()
             if (!text.isNullOrEmpty()) {
                 store.addTextClip(text) {
@@ -156,6 +184,34 @@ class ClipboardLayer(
                 }
             }
         }
+    }
+
+    /**
+     * Primera imagen del clip (uri + mime concreto). La detección usa
+     * [ClipDescription.compareMimeTypes] con wildcard: el `hasMimeType`
+     * exacto jamás igualaba tipos reales como image/png, por eso ninguna
+     * imagen llegaba a guardarse. Se revisan TODOS los items: la imagen
+     * no siempre viaja en la posición 0.
+     */
+    private fun findFirstImage(clipData: ClipData, description: ClipDescription?): Pair<Uri, String>? {
+        if (description == null) return null
+        for (i in 0 until description.mimeTypeCount) {
+            val mt = try {
+                description.getMimeType(i)
+            } catch (_: Exception) {
+                null
+            } ?: continue
+            if (!ClipDescription.compareMimeTypes(mt, "image/*")) continue
+            for (j in 0 until clipData.itemCount) {
+                val u = try {
+                    clipData.getItemAt(j).uri
+                } catch (_: Exception) {
+                    null
+                }
+                if (u != null) return u to mt
+            }
+        }
+        return null
     }
 
     /**
