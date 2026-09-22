@@ -772,11 +772,7 @@ class StorageService {
     if (current == null) return false;
     final index = current.indexWhere((s) => s.id == id);
     if (index == -1) return false;
-    final nextColor = clearColor
-        ? null
-        : color != null
-            ? color
-            : current[index].color;
+    final nextColor = clearColor ? null : color ?? current[index].color;
     current[index] = current[index].copyWith(
       nombre: nombre,
       contenido: contenido,
