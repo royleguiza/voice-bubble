@@ -25,6 +25,8 @@ class GeneralTab extends StatelessWidget {
   final ValueChanged<bool> onToggleBubble;
   final bool showBubbleHistory;
   final ValueChanged<bool> onToggleBubbleHistory;
+  final bool notesDeferredQueue;
+  final ValueChanged<bool> onToggleNotesDeferredQueue;
   final VoidCallback onReviewOverlayPermission;
   final VoidCallback onShowAboutSheet;
   final String widgetMicPosition;
@@ -49,6 +51,8 @@ class GeneralTab extends StatelessWidget {
     required this.onToggleBubble,
     required this.showBubbleHistory,
     required this.onToggleBubbleHistory,
+    required this.notesDeferredQueue,
+    required this.onToggleNotesDeferredQueue,
     required this.onReviewOverlayPermission,
     required this.onShowAboutSheet,
     required this.widgetMicPosition,
@@ -147,8 +151,7 @@ class GeneralTab extends StatelessWidget {
                 icon: Icons.chat_bubble_rounded,
                 background: kTileGreen,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               title: const Text('Activar burbuja'),
               value: isBubbleEnabled,
               onChanged: onToggleBubble,
@@ -159,8 +162,7 @@ class GeneralTab extends StatelessWidget {
                 icon: Icons.history_rounded,
                 background: kTileGray,
               ),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               title: const Text('Historial en la burbuja'),
               subtitle: const Text(
                 'El toque largo sobre la burbuja abre el historial con morph inteligente. Apagado: el toque largo no hace nada.',
@@ -174,6 +176,25 @@ class GeneralTab extends StatelessWidget {
               iconColor: kTileOrange,
               title: 'Permiso superposición',
               onTap: onReviewOverlayPermission,
+            ),
+          ],
+        ),
+        const SettingsGroupTitle('Notas'),
+        SettingsCard(
+          children: [
+            SwitchListTile(
+              key: const ValueKey('notes-deferred-queue-switch'),
+              secondary: const SettingIconTile(
+                icon: Icons.cloud_off_rounded,
+                background: kTileOrange,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              title: const Text('Guardar audio sin conexión'),
+              subtitle: const Text(
+                'Si no hay red al dictar, el audio queda en Notas. Transcribir solo cuando lo pidas.',
+              ),
+              value: notesDeferredQueue,
+              onChanged: onToggleNotesDeferredQueue,
             ),
           ],
         ),

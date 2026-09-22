@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoiceBubble — Laboratorio Widgets Liquid Glass</title>
+<style>
+/* Apple system font stack — no webfont, SF Pro native */
+:root{ --ease-apple:cubic-bezier(0.32,0.72,0,1); --ease-spring:cubic-bezier(0.16,1,0.3,1); }
+:root[data-theme="light"]{
+  --canvas:#f5f7fb;
+  --text:#0b1220; --muted:#6b7a90; --line:rgba(11,18,32,.08);
+  --glass-bg:rgba(255,255,255,.68); --glass-border:rgba(255,255,255,.62);
+  --glass-inner:rgba(255,255,255,.9); --glass-shadow:0 14px 40px rgba(11,18,32,.11),0 1px 0 rgba(255,255,255,.88) inset;
+  --glass-blur:22px;
+  --card:#ffffff; --card-2:#f8f9fb; --chip:rgba(11,18,32,.06);
+  --tint:#007AFF; --tint-strong:#0058D1; --tint-glow:rgba(0,122,255,.22); --danger:#FF3B30; --danger-glow:rgba(255,59,48,.18);
+  --phone-bezel:#0b0c10; --phone-screen:#eef2f7;
+  --focus:0 0 0 3px rgba(0,122,255,.28);
+}
+:root[data-theme="dark"]{
+  --canvas:#07080b;
+  --text:#f5f7fb; --muted:#9aa7bd; --line:rgba(255,255,255,.09);
+  --glass-bg:rgba(20,22,28,.64); --glass-border:rgba(255,255,255,.13);
+  --glass-inner:rgba(255,255,255,.07); --glass-shadow:0 18px 44px rgba(0,0,0,.52),0 1px 0 rgba(255,255,255,.06) inset;
+  --glass-blur:24px;
+  --card:rgba(255,255,255,.06); --card-2:rgba(255,255,255,.04); --chip:rgba(255,255,255,.07);
+  --tint:#0A84FF; --tint-strong:#409CFF; --tint-glow:rgba(10,132,255,.34); --danger:#FF453A; --danger-glow:rgba(255,69,58,.28);
+  --phone-bezel:#0a0a0e; --phone-screen:#0a0c10;
+  --focus:0 0 0 3px rgba(10,132,255,.38);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+  background:var(--canvas); color:var(--text); line-height:1.55;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;
+}
+a{color:var(--tint);text-decoration:none}
+button{font:inherit}
+*:focus-visible{outline:none;box-shadow:var(--focus);border-color:var(--tint) !important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* Icon base — SF-style */
+.i{width:16px;height:16px;display:inline-block;vertical-align:middle;flex-shrink:0;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.i-14{width:14px;height:14px}
+.i-18{width:18px;height:18px}
+.i-20{width:20px;height:20px}
+.i-22{width:22px;height:22px}
+.i-fill{fill:currentColor;stroke:none}
+
+/* Header — Apple toolbar */
+.lab-header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.74);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:0.5px solid var(--line);padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+:root[data-theme="dark"] .lab-header{background:rgba(14,14,18,.72)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(180deg,#0A84FF 0%,#0058D1 100%);display:grid;place-items:center;color:#fff;box-shadow:0 8px 20px var(--tint-glow), 0 1px 0 rgba(255,255,255,.4) inset;position:relative;overflow:hidden}
+.brand-mark::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent 56%);pointer-events:none}
+.brand h1{font-size:15px;font-weight:700;letter-spacing:-.022em;line-height:1.1}
+.brand p{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.header-actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{padding:6px 10px;border-radius:999px;background:var(--chip);border:1px solid var(--line);font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--muted)}
+.pill strong{color:var(--text)}
+.btn{padding:8px 14px;border-radius:999px;border:0.5px solid var(--line);background:var(--card);cursor:pointer;font-size:12.5px;font-weight:600;transition:transform .14s var(--ease-apple), box-shadow .14s var(--ease-apple), background .14s}
+.btn:hover{transform:translateY(-0.5px);box-shadow:0 6px 18px rgba(11,18,32,.08)}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--tint);color:#fff;border-color:rgba(0,0,0,.06);box-shadow:0 8px 20px var(--tint-glow)}
+.btn.primary:hover{background:var(--tint-strong)}
+.btn.ghost{background:transparent}
+
+/* Tabs — Apple segmented */
+.tabs{max-width:1280px;margin:16px auto 0;padding:0 16px;display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:8px 13px;border-radius:11px;border:0.5px solid var(--line);background:var(--card);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;transition:all .14s var(--ease-apple);color:var(--muted)}
+.tab:hover{color:var(--text);border-color:rgba(11,18,32,.12)}
+.tab.active{background:var(--text);color:var(--canvas);border-color:var(--text);box-shadow:0 6px 16px rgba(0,0,0,.12)}
+:root[data-theme="dark"] .tab.active{background:#fff;color:#0a0a0e}
+.tab em{font-style:normal;font-size:11px;opacity:.62;font-weight:500}
+
+/* Layout */
+.wrap{max-width:1280px;margin:14px auto 36px;padding:0 16px}
+.section{display:none;animation:fade .22s var(--ease-apple)}
+.section.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.grid2{display:grid;grid-template-columns:1.06fr .92fr;gap:18px}
+.grid2 > *{min-width:0}
+@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+.hero{padding:18px 18px 16px;border-radius:20px;background:var(--card);border:0.5px solid var(--line);box-shadow:0 6px 24px rgba(11,18,32,.04);min-width:0;overflow-wrap:anywhere}
+.hero pre, .arch pre{max-width:100%;overflow-x:auto;white-space:pre;word-break:break-word;overflow-wrap:anywhere}
+.phone-stage{min-width:0;max-width:100%}
+.arch{min-width:0;overflow-wrap:anywhere}
+.hero h2{font-size:19px;letter-spacing:-.028em;font-weight:700;line-height:1.2}
+.hero p{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.62}
+.hero ul{margin:10px 0 0 16px;font-size:12.5px;color:var(--muted)}
+.hero li{margin:4px 0}
+.badge-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.badge{padding:4px 8px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:0.5px solid var(--line)}
+.badge.blue{background:rgba(0,122,255,.10);color:var(--tint);border-color:rgba(0,122,255,.16)}
+.badge.dim{background:var(--chip);color:var(--muted)}
+
+/* Variant segmented — Apple */
+.variant-bar{display:flex;gap:0;flex-wrap:wrap;margin:12px 0;padding:3px;border-radius:12px;background:var(--chip);border:0.5px solid var(--line);width:fit-content}
+.vbtn{padding:7px 12px;border-radius:9px;border:0;background:transparent;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .14s var(--ease-apple);color:var(--muted)}
+.vbtn.active{background:var(--card);color:var(--text);box-shadow:0 2px 10px rgba(11,18,32,.08);border:0.5px solid var(--line)}
+.vbtn small{opacity:.6;font-weight:500}
+.vbtn:hover{color:var(--text)}
+
+/* Phone */
+.phone-stage{position:sticky;top:68px;display:flex;flex-direction:column;align-items:center;gap:10px}
+@media(max-width:980px){.phone-stage{position:relative;top:auto}}
+.phone{width:min(360px, calc(100vw - 32px));height:740px;border-radius:46px;border:10px solid var(--phone-bezel);overflow:hidden;position:relative;background:var(--phone-screen);box-shadow:0 24px 56px rgba(0,0,0,.30),0 0 0 1px rgba(0,0,0,.06);display:flex;flex-direction:column}
+@media(max-width:420px){.phone{height:700px;border-radius:40px}}
+.phone-notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:96px;height:24px;background:var(--phone-bezel);border-radius:999px;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
+.phone-notch i{width:8px;height:8px;border-radius:50%;background:#0a0a0a;border:1px solid #1a1a1a}
+.phone-notch b{width:6px;height:6px;border-radius:50%;background:#30d158;box-shadow:0 0 8px #30d158}
+.launcher{flex:1;position:relative;padding:48px 12px 90px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+/* Apple mesh wallpaper — no grid lines */
+.launcher::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(680px 520px at 70% -8%, rgba(0,122,255,.16), transparent 62%),
+  radial-gradient(520px 420px at 10% 18%, rgba(64,156,255,.10), transparent 60%),
+  linear-gradient(180deg,#dbe8ff 0%,#eef2ff 22%,#f5f7fb 46%,#e9edf3 100%);
+  pointer-events:none}
+:root[data-theme="dark"] .launcher::before{background:
+  radial-gradient(640px 520px at 70% -10%, rgba(10,132,255,.26), transparent 62%),
+  radial-gradient(520px 420px at 12% 20%, rgba(90,200,250,.12), transparent 60%),
+  linear-gradient(180deg,#0a1020 0%,#0b1224 22%,#0a0a0f 62%,#070709 100%)}
+.status{position:absolute;top:6px;left:14px;right:14px;display:flex;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.02em;color:#0b1220;z-index:1}
+:root[data-theme="dark"] .status{color:#f5f7fb}
+.dock{position:absolute;left:12px;right:12px;bottom:12px;height:62px;border-radius:20px;background:rgba(255,255,255,.58);backdrop-filter:saturate(180%) blur(18px);border:0.5px solid rgba(255,255,255,.52);display:flex;align-items:center;justify-content:space-around;padding:0 8px;box-shadow:0 8px 22px rgba(11,18,32,.12);z-index:1}
+:root[data-theme="dark"] .dock{background:rgba(24,26,32,.54);border-color:rgba(255,255,255,.11)}
+.dock i{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.92);border:0.5px solid rgba(11,18,32,.06);box-shadow:0 2px 8px rgba(11,18,32,.08);color:#0b1220}
+:root[data-theme="dark"] .dock i{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.07);color:#f5f7fb}
+.icon-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding-top:8px}
+.icon-grid span{aspect-ratio:1;border-radius:15px;background:rgba(255,255,255,.72);border:0.5px solid rgba(255,255,255,.7);display:grid;place-items:center;box-shadow:0 4px 12px rgba(11,18,32,.07);color:#0b1220}
+:root[data-theme="dark"] .icon-grid span{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);color:#e8eefc}
+.widget-slot{position:relative;z-index:1;border:1px dashed rgba(11,18,32,.14);border-radius:20px;padding:6px;background:rgba(255,255,255,.10);min-height:88px;display:grid;place-items:center}
+:root[data-theme="dark"] .widget-slot{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.04)}
+.widget-slot strong{position:absolute;top:-8px;left:12px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:var(--tint);color:#fff;padding:2px 7px;border-radius:999px;font-weight:700}
+.size-hint{position:absolute;right:8px;bottom:6px;font-size:9px;font-weight:600;letter-spacing:.04em;color:rgba(11,18,32,.58);background:rgba(255,255,255,.78);padding:2px 7px;border-radius:999px;border:0.5px solid var(--line)}
+:root[data-theme="dark"] .size-hint{color:rgba(255,255,255,.68);background:rgba(0,0,0,.34)}
+
+/* Glass — Apple Liquid */
+.glass{position:relative;background:var(--glass-bg);backdrop-filter:blur(var(--glass-blur)) saturate(180%);-webkit-backdrop-filter:blur(var(--glass-blur)) saturate(180%);border:0.5px solid var(--glass-border);box-shadow:var(--glass-shadow);border-radius:20px;overflow:hidden}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.38),transparent 58%);pointer-events:none;opacity:.58}
+.glass::after{content:"";position:absolute;top:0;left:1px;right:1px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);opacity:.62;pointer-events:none;border-radius:999px}
+:root[data-theme="dark"] .glass::before{background:linear-gradient(180deg,rgba(255,255,255,.08),transparent 60%)}
+
+/* Widget UIs */
+.w2{width:100%;padding:12px;display:flex;flex-direction:column;gap:10px}
+.w2-head{display:flex;align-items:center;justify-content:space-between}
+.w2-head b{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.w2-mic{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;margin:2px auto 0;background:radial-gradient(120px 120px at 30% 20%,rgba(255,255,255,.92),rgba(255,255,255,.56) 44%,rgba(255,255,255,.20) 100%),var(--card);border:0.5px solid var(--glass-border);box-shadow:0 10px 22px rgba(11,18,32,.13),0 1px 0 rgba(255,255,255,.86) inset;cursor:pointer;transition:transform .14s var(--ease-apple), box-shadow .14s;color:var(--tint)}
+.w2-mic:active{transform:scale(.97)}
+.w2-mic.rec{animation:pulse 1.15s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 10px 22px rgba(11,18,32,.13),0 0 0 0 rgba(255,59,48,0)}50%{box-shadow:0 10px 22px rgba(11,18,32,.13),0 0 0 10px rgba(255,59,48,.14)}}
+@media (prefers-reduced-motion:reduce){ .w2-mic.rec{animation:none} .wave i{animation:none !important} }
+.w2-actions{display:flex;gap:6px}
+.w2-actions button{flex:1;padding:8px 6px;border-radius:11px;border:0.5px solid var(--line);background:var(--card);font-size:11px;font-weight:700;cursor:pointer;color:var(--text)}
+.w2-actions button.primary{background:var(--tint);color:#fff;border-color:rgba(0,0,0,.06)}
+.wave{height:22px;display:flex;align-items:center;gap:3px;justify-content:center}
+.wave i{display:block;width:3px;height:8px;border-radius:999px;background:var(--tint);animation:wave .72s infinite alternate ease-in-out}
+.wave i:nth-child(2){animation-delay:.08s;height:14px}
+.wave i:nth-child(3){animation-delay:.16s;height:18px}
+.wave i:nth-child(4){animation-delay:.24s;height:12px}
+.wave i:nth-child(5){animation-delay:.32s;height:16px}
+@keyframes wave{from{transform:scaleY(.72)}to{transform:scaleY(1.18)}}
+
+.wf{width:100%;padding:10px 12px;display:flex;align-items:center;gap:10px}
+.wf-mic{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:var(--card);border:0.5px solid var(--line);box-shadow:0 4px 12px rgba(11,18,32,.08);cursor:pointer;flex-shrink:0;color:var(--tint);transition:all .14s var(--ease-apple)}
+.wf-mic.rec{background:rgba(255,59,48,.10);border-color:rgba(255,59,48,.20);color:var(--danger)}
+.wf-text{flex:1;min-width:0}
+.wf-text b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.wf-text s{display:block;font-size:11px;color:var(--muted);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wf-copy{padding:8px 11px;border-radius:11px;border:0.5px solid var(--line);background:var(--card);font-size:11px;font-weight:700;cursor:pointer;color:var(--text)}
+.wf-copy.ok{background:var(--tint);color:#fff;border-color:var(--tint)}
+
+.wn{width:100%;padding:10px 10px 8px 10px;display:flex;flex-direction:column;gap:8px}
+.wn-head{display:flex;align-items:center;justify-content:space-between}
+.wn-head h4{font-size:12.5px;letter-spacing:-.02em;display:flex;gap:6px;align-items:center;font-weight:700}
+.wn-head h4 span{padding:2px 7px;border-radius:999px;background:var(--chip);font-size:10px;font-weight:700;letter-spacing:.04em;border:0.5px solid var(--line);color:var(--muted)}
+.wn-search{display:flex;gap:6px;align-items:center}
+.wn-search input{flex:1;padding:9px 12px;border-radius:12px;border:0.5px solid var(--line);background:var(--card);font-size:12.5px;outline:none;color:var(--text)}
+.wn-search input::placeholder{color:var(--muted)}
+.wn-search input:focus{border-color:var(--tint);box-shadow:var(--focus)}
+.wn-list{display:grid;gap:7px;max-height:300px;overflow:auto;padding:2px}
+.wn-card{padding:11px 11px;border-radius:14px;background:var(--card);border:0.5px solid var(--line);display:grid;gap:4px;cursor:pointer;transition:transform .12s var(--ease-apple), box-shadow .12s, border-color .12s}
+.wn-card:hover{transform:translateY(-1px);box-shadow:0 8px 18px rgba(11,18,32,.06);border-color:rgba(0,122,255,.16)}
+.wn-card.selected{border-color:var(--tint);box-shadow:var(--focus);background:rgba(0,122,255,.06)}
+.wn-card b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.wn-card p{font-size:12px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:26px;line-height:1.45}
+.wn-card small{font-size:10.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.wn-card small i{font-style:normal;padding:2px 7px;border-radius:999px;background:var(--chip);border:0.5px solid var(--line);font-weight:600}
+.wn-bar{height:52px;border-radius:15px;background:var(--glass-bg);backdrop-filter:blur(16px) saturate(180%);border:0.5px solid var(--glass-border);display:flex;align-items:center;gap:8px;padding:0 8px;box-shadow:var(--glass-shadow)}
+.wn-bar button{border:0.5px solid var(--line);background:var(--card);border-radius:11px;padding:8px 11px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:6px}
+.wn-bar button.mic{margin-left:auto;background:var(--tint);color:#fff;border-color:rgba(0,0,0,.06);box-shadow:0 8px 18px var(--tint-glow)}
+.wn-bar button.mic.rec{background:var(--danger);border-color:var(--danger)}
+
+/* Specs */
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:680px){.specs{grid-template-columns:1fr}}
+.spec{padding:12px;border-radius:14px;background:var(--card);border:0.5px solid var(--line)}
+.spec b{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.spec p{font-size:12.5px;color:var(--muted);margin-top:4px}
+.spec code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:11px;background:var(--chip);padding:2px 6px;border-radius:8px;border:0.5px solid var(--line)}
+
+/* Architecture */
+.arch{padding:14px;border-radius:16px;background:linear-gradient(180deg,rgba(0,122,255,.06),transparent);border:0.5px solid var(--line)}
+.arch-grid{display:grid;grid-template-columns:1.08fr .92fr;gap:12px}
+@media(max-width:860px){.arch-grid{grid-template-columns:1fr}}
+.kv{display:grid;grid-template-columns:118px 1fr;gap:8px;padding:9px 10px;border-radius:12px;background:var(--card);border:0.5px solid var(--line);font-size:12.5px}
+.kv b{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.note{background:rgba(255,204,0,.10);border:0.5px solid rgba(255,204,0,.22);color:#5a4a00;padding:10px 12px;border-radius:12px;font-size:12.5px}
+:root[data-theme="dark"] .note{color:#ffdb4d;background:rgba(255,204,0,.12)}
+.table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border-radius:12px;border:0.5px solid var(--line);background:var(--card)}
+.table th,.table td{padding:8px 10px;font-size:12.5px;text-align:left;border-bottom:0.5px solid var(--line)}
+.table th{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--chip)}
+</style>
+</head>
+<body>
+
+<!-- Icons: Apple SF Symbols style (stroke, no emoji) -->
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"/><path d="M19 10a7 7 0 0 1-14 0"/><path d="M12 19v3"/><path d="M8 22h8"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="1.5"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M10 13H8"/><path d="M16 17H8"/><path d="M13 13h3"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2.2M12 19.3V21.5M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12H4.7M19.3 12H21.5M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.3 15.3 20 20"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M12 20H19"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h2"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="2" width="6" height="6" rx="1"/><path d="M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6 15 12 9 18"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4.5 12 7H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2.5l-2.5-2.5Z"/><circle cx="12" cy="13" r="3"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12 7.8L3 21l1.7-5A8.5 8.5 0 0 1 21 11.5Z"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="7" cy="18" r="2.5"/><circle cx="17" cy="16" r="2.5"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 18 3 15V4l6 3 6-3 6 3v11l-6-3Z"/><path d="M9 4v14M15 7v14"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M3 7 12 13 21 7"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-game" viewBox="0 0 24 24"><rect x="6" y="8" width="12" height="8" rx="3"/><path d="M9 12H9.01M15 11v2M13 12h2"/><circle cx="9" cy="12" r="0.5" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="0.5" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2M12 19.5V22M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2.5 12H5M19 12h2.5M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V9"/><path d="M10 19V13"/><path d="M16 19V5"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 10.5a1.5 1.5 0 1 1 0 .1Z" fill="currentColor" stroke="none"/><path d="M12 7.5a1 1 0 1 1 0 .1Z" fill="currentColor" stroke="none"/><path d="M15.5 10.5a1.2 1.2 0 1 1 0 .1Z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-browser" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></symbol>
+</svg>
+
+<header class="lab-header">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true"><svg class="i i-20" style="color:#fff"><use href="#i-mic"/></svg></div>
+    <div>
+      <h1>VoiceBubble — Laboratorio Widgets</h1>
+      <p>Liquid Glass · Home Screen Widgets · Notas 50 independ.</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="pill"><strong>2 celdas</strong> · Fila completa · Notas grande</span>
+    <button class="btn ghost" onclick="toggleTheme()" id="themeBtn" aria-label="Cambiar tema"><svg class="i i-14" aria-hidden="true"><use href="#i-palette"/></svg> <span>Oscuro</span></button>
+    <button class="btn primary" onclick="document.getElementById('impl').scrollIntoView({behavior:'smooth'})"><svg class="i i-14" aria-hidden="true"><use href="#i-chevron"/></svg> Implementación</button>
+  </div>
+</header>
+
+<nav class="tabs" role="tablist" aria-label="Familias de widgets">
+  <button class="tab active" role="tab" aria-selected="true" aria-controls="sec-c2" data-tab="c2" onclick="switchTab('c2',this)"><svg class="i i-14" aria-hidden="true"><use href="#i-grid"/></svg> Compacto 2 celdas <em>2×2 · 160dp</em></button>
+  <button class="tab" role="tab" aria-selected="false" aria-controls="sec-row" data-tab="row" onclick="switchTab('row',this)"><svg class="i i-14" aria-hidden="true"><use href="#i-panel"/></svg> Fila completa <em>4×1 / 5×1</em></button>
+  <button class="tab" role="tab" aria-selected="false" aria-controls="sec-notes" data-tab="notes" onclick="switchTab('notes',this)"><svg class="i i-14" aria-hidden="true"><use href="#i-doc"/></svg> Notas grande <em>4×2 · 4×3 · responsive</em></button>
+  <button class="tab" role="tab" aria-selected="false" aria-controls="sec-arch" data-tab="arch" onclick="switchTab('arch',this)"><svg class="i i-14" aria-hidden="true"><use href="#i-gear"/></svg> Arquitectura & Contrato</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- 2-CELDAS -->
+  <section id="sec-c2" class="section active" role="tabpanel">
+    <div class="grid2">
+      <div>
+        <div class="hero">
+          <div class="badge-row"><span class="badge blue">3 variantes</span><span class="badge dim">Ocupa 2 posiciones · ~2×2 celdas</span><span class="badge dim">Liquid Glass Regular</span></div>
+          <h2>Widget compacto 2 celdas — Dictado rápido</h2>
+          <p>Objetivo: <strong>un toque para grabar</strong> sin abrir la app. Ocupa <strong>2 posiciones</strong> del launcher (2×2 en grid 5×5). Glass Regular — frost 68% · blur 22 · borde .62 · highlight especular. Respeta Reduce Motion (anillo estático).</p>
+          <ul>
+            <li><strong>No mezcla</strong> con contenido: solo capa funcional. Radio 20, concéntrico al slot.</li>
+            <li>Estados: <code>idle</code> → <code>grabando</code> (anillo rojo) → <code>procesando</code> (wave) → <code>resultado</code>. Micrófono exclusivo burbuja ↔ teclado.</li>
+            <li>Acción secundaria configurable: copiar · ver último · abrir app.</li>
+          </ul>
+          <div class="variant-bar" role="group" aria-label="Variantes 2 celdas">
+            <button class="vbtn active" onclick="pick('c2','a',this)">A — Orb <small>esencial</small></button>
+            <button class="vbtn" onclick="pick('c2','b',this)">B — Duo <small>mic + preview</small></button>
+            <button class="vbtn" onclick="pick('c2','c',this)">C — Wave <small>visual</small></button>
+          </div>
+          <div class="specs">
+            <div class="spec"><b>Tamaño contrato</b><p>minWidth 110dp, minHeight 110dp · resize: horizontal+vertical · 2×2 recomendado · fallback 2×1</p><code>widget_2x2_info.xml</code></div>
+            <div class="spec"><b>Interacción</b><p>Tap → iniciar/detener (hasta 5 min). AppWidget: <code>PendingIntent</code> → <code>ForegroundService</code> (mic tipado). Solo RemoteViews.</p><code>VoiceNotesWidget2x2</code></div>
+          </div>
+        </div>
+        <div id="desc-c2-a" class="hero" style="margin-top:10px">
+          <b>Variante A — Orb Esencial (recomendada)</b>
+          <p>Glass circle 84dp centrado + label “Tocar para dictar”. Máximo contraste, mínimo ruido. Ideal para solo dictar. Mejor legibilidad sobre wallpapers variados (Regular adaptativo).</p>
+        </div>
+        <div id="desc-c2-b" class="hero" style="margin-top:10px;display:none">
+          <b>Variante B — Duo Action</b>
+          <p>Card dividida: mic 56dp + preview de <strong>última transcripción</strong> (no nota) + botón copiar. Útil si usás el historial de 20. No apila vidrio sobre vidrio.</p>
+        </div>
+        <div id="desc-c2-c" class="hero" style="margin-top:10px;display:none">
+          <b>Variante C — Wave Card</b>
+          <p>Card con waveform + cronómetro <code>M:SS</code>. Más expresivo, mayor feedback. Reduce Motion: sin wave, solo punto estático.</p>
+        </div>
+      </div>
+
+      <div class="phone-stage">
+        <div class="phone" role="img" aria-label="Mockup teléfono con widget 2 celdas">
+          <div class="phone-notch" aria-hidden="true"><i></i><b></b></div>
+          <div class="launcher">
+            <div class="status"><span>09:41</span><span>— — — 87%</span></div>
+            <div class="icon-grid" aria-hidden="true">
+              <span><svg class="i i-18"><use href="#i-camera"/></svg></span><span><svg class="i i-18"><use href="#i-message"/></svg></span><span><svg class="i i-18"><use href="#i-music"/></svg></span><span><svg class="i i-18"><use href="#i-map"/></svg></span>
+              <span><svg class="i i-18"><use href="#i-mail"/></svg></span><span><svg class="i i-18"><use href="#i-folder"/></svg></span><span><svg class="i i-18"><use href="#i-game"/></svg></span><span><svg class="i i-18"><use href="#i-settings"/></svg></span>
+            </div>
+            <div class="widget-slot" style="min-height:176px">
+              <strong>Widget · 2 posiciones</strong>
+              <span class="size-hint">2×2 · 160×160dp</span>
+              <div id="w-c2-a" class="glass w2" style="width:100%">
+                <div class="w2-head"><b>VoiceBubble</b><span style="font-size:10px;font-weight:700;letter-spacing:.04em;background:var(--chip);padding:3px 7px;border-radius:999px;border:0.5px solid var(--line)">2×2</span></div>
+                <button class="w2-mic" id="mic-c2-a" onclick="toggleMic(this)" aria-label="Grabar"><svg class="i i-22 mic-icon"><use href="#i-mic"/></svg><svg class="i i-22 stop-icon" style="display:none"><use href="#i-stop"/></svg></button>
+                <div style="text-align:center"><b style="font-size:12.5px;letter-spacing:-.01em">Tocar para dictar</b><div style="font-size:11px;color:var(--muted)">Groq whisper-large-v3-turbo · 5 min</div></div>
+                <div class="w2-actions"><button><svg class="i i-14" aria-hidden="true"><use href="#i-doc"/></svg> Último</button><button class="primary"><svg class="i i-14" aria-hidden="true"><use href="#i-copy"/></svg> Copiar</button></div>
+                <div class="wave" id="wave-c2-a" style="display:none" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+              </div>
+              <div id="w-c2-b" class="glass w2" style="width:100%;display:none">
+                <div class="w2-head"><b>VoiceBubble</b><span style="font-size:10px;font-weight:700;background:var(--chip);padding:3px 7px;border-radius:999px;border:0.5px solid var(--line)">Duo</span></div>
+                <div style="display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:center">
+                  <button class="w2-mic" style="width:64px;height:64px;margin:0" onclick="toggleMic(this)" aria-label="Grabar"><svg class="i i-20 mic-icon"><use href="#i-mic"/></svg><svg class="i i-20 stop-icon" style="display:none"><use href="#i-stop"/></svg></button>
+                  <div style="min-width:0;background:var(--card);border:0.5px solid var(--line);border-radius:14px;padding:8px 9px">
+                    <div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Último · 10:32</div>
+                    <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Reunión con el cliente…</div>
+                    <div style="font-size:11px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">Necesitamos cerrar el presupuesto antes del viernes.</div>
+                  </div>
+                </div>
+                <div class="w2-actions"><button><svg class="i i-14"><use href="#i-copy"/></svg> Copiar</button><button class="primary">Abrir app</button></div>
+              </div>
+              <div id="w-c2-c" class="glass w2" style="width:100%;display:none">
+                <div class="w2-head"><b id="state-c2-c">Listo</b><span style="font-size:11px;font-weight:600;color:var(--muted)">0:00</span></div>
+                <button class="w2-mic" onclick="toggleMic(this, 'state-c2-c','wave-c2-c')" aria-label="Grabar"><svg class="i i-22 mic-icon"><use href="#i-mic"/></svg><svg class="i i-22 stop-icon" style="display:none"><use href="#i-stop"/></svg></button>
+                <div class="wave" id="wave-c2-c" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+                <div style="display:flex;gap:6px"><button style="flex:1;padding:8px;border-radius:11px;border:0.5px solid var(--line);background:var(--card);font-size:11px;font-weight:700">Cancelar</button><button style="flex:1;padding:8px;border-radius:11px;background:var(--tint);color:#fff;border:0.5px solid rgba(0,0,0,.06);font-size:11px;font-weight:700">Insertar</button></div>
+              </div>
+            </div>
+            <div class="icon-grid" aria-hidden="true">
+              <span><svg class="i i-18"><use href="#i-doc"/></svg></span><span><svg class="i i-18"><use href="#i-chart"/></svg></span><span><svg class="i i-18"><use href="#i-folder"/></svg></span><span><svg class="i i-18"><use href="#i-palette"/></svg></span>
+            </div>
+            <div class="dock" aria-hidden="true"><i><svg class="i i-18"><use href="#i-phone"/></svg></i><i><svg class="i i-18"><use href="#i-message"/></svg></i><i><svg class="i i-18"><use href="#i-browser"/></svg></i><i><svg class="i i-18"><use href="#i-camera"/></svg></i></div>
+          </div>
+        </div>
+        <div class="pill">Tocá el mic para simular grabación (anillo rojo + wave)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FILA COMPLETA -->
+  <section id="sec-row" class="section" role="tabpanel">
+    <div class="grid2">
+      <div>
+        <div class="hero">
+          <div class="badge-row"><span class="badge blue">3 variantes</span><span class="badge dim">Fila completa · 4×1 / 5×1</span><span class="badge dim">Glass capsule / bar</span></div>
+          <h2>Widget fila completa — Barra inteligente</h2>
+          <p>Ocupa <strong>toda la fila horizontal</strong> (stretch en grid). Altura fija <strong>72–88dp</strong>. Para launcher principal: dictado + acceso a última transcripción sin abrir app.</p>
+          <ul>
+            <li>Forma: <strong>cápsula 20–24dp</strong> concéntrica con launcher. Highlight superior 1px.</li>
+            <li>No compite con Notas: muestra <strong>historial de 20 transcripciones</strong> (no notas). Copiar/insertar rápido.</li>
+            <li>Responsive: 4 col → 4×1 (320dp), 5 col → 5×1 (360dp). Padding elástico.</li>
+          </ul>
+          <div class="variant-bar" role="group" aria-label="Variantes fila">
+            <button class="vbtn active" onclick="pick('row','a',this)">A — Pill <small>centrada</small></button>
+            <button class="vbtn" onclick="pick('row','b',this)">B — Split <small>texto + copiar</small></button>
+            <button class="vbtn" onclick="pick('row','c',this)">C — Edge <small>full-bleed</small></button>
+          </div>
+          <div class="specs">
+            <div class="spec"><b>Spec fila</b><p>minWidth 250dp, minHeight 56dp, max 110dp · targetCellWidth 4 · resize horizontal</p><code>widget_row_info.xml</code></div>
+            <div class="spec"><b>UX</b><p>Tap mic → <code>VoiceBubbleDictationService</code> (FGS). Tap texto → abre <code>HomeScreen</code>. Long press → config.</p></div>
+          </div>
+        </div>
+        <div id="desc-row-a" class="hero" style="margin-top:10px"><b>A — Pill Centrada (recomendada)</b><p>Cápsula glass centrada con mic 44dp + waveform + timer. Equilibrio entre simplicidad y feedback. Regular adaptativo.</p></div>
+        <div id="desc-row-b" class="hero" style="margin-top:10px;display:none"><b>B — Split Texto</b><p>Mic + texto truncado de última transcripción + botón Copiar. Para copiar todo el día (1 tap).</p></div>
+        <div id="desc-row-c" class="hero" style="margin-top:10px;display:none"><b>C — Edge Full-Bleed</b><p>Ancho completo con 20dp radius, sin margen lateral. Más moderno edge-to-edge, ideal Pixel.</p></div>
+      </div>
+      <div class="phone-stage">
+        <div class="phone">
+          <div class="phone-notch" aria-hidden="true"><i></i><b></b></div>
+          <div class="launcher">
+            <div class="status"><span>09:41</span><span>— — — 87%</span></div>
+            <div class="icon-grid" aria-hidden="true"><span><svg class="i i-18"><use href="#i-camera"/></svg></span><span><svg class="i i-18"><use href="#i-message"/></svg></span><span><svg class="i i-18"><use href="#i-music"/></svg></span><span><svg class="i i-18"><use href="#i-map"/></svg></span></div>
+            <div class="widget-slot" style="min-height:92px;padding:8px 6px">
+              <strong>Fila completa</strong><span class="size-hint">4×1 · 320×72dp</span>
+              <div id="w-row-a" class="glass wf" style="width:100%;border-radius:999px;padding:8px 10px">
+                <button class="wf-mic" onclick="toggleMic(this)" aria-label="Grabar"><svg class="i i-18 mic-icon"><use href="#i-mic"/></svg><svg class="i i-18 stop-icon" style="display:none"><use href="#i-stop"/></svg></button>
+                <div class="wf-text"><b>Tocar para dictar</b><s>Whisper turbo · 20 historial</s></div>
+                <div class="wave" style="display:none" aria-hidden="true"><i></i><i></i><i></i></div>
+                <span style="font-size:11px;font-weight:700;letter-spacing:.04em;background:var(--chip);padding:6px 10px;border-radius:999px;border:0.5px solid var(--line)">00:00</span>
+              </div>
+              <div id="w-row-b" class="glass wf" style="width:100%;display:none;border-radius:18px">
+                <button class="wf-mic" onclick="toggleMic(this)" aria-label="Grabar"><svg class="i i-18 mic-icon"><use href="#i-mic"/></svg><svg class="i i-18 stop-icon" style="display:none"><use href="#i-stop"/></svg></button>
+                <div class="wf-text"><b>Reunión cliente — presupuesto…</b><s>Hace 12 min · Tocar para abrir</s></div>
+                <button class="wf-copy" onclick="this.classList.add('ok');this.textContent='¡Copiado!';setTimeout(()=>{this.classList.remove('ok');this.textContent='Copiar'},1200)"><svg class="i i-14" aria-hidden="true"><use href="#i-copy"/></svg> Copiar</button>
+              </div>
+              <div id="w-row-c" class="glass wf" style="width:100%;display:none;border-radius:20px">
+                <button class="wf-mic" onclick="toggleMic(this)" aria-label="Grabar"><svg class="i i-18 mic-icon"><use href="#i-mic"/></svg><svg class="i i-18 stop-icon" style="display:none"><use href="#i-stop"/></svg></button>
+                <div class="wf-text"><b>Dictá ahora → se copia automático</b><s>Glass Regular · blur 22 · borde .62</s></div>
+                <svg class="i i-14" aria-hidden="true"><use href="#i-chevron"/></svg>
+              </div>
+            </div>
+            <div class="icon-grid" aria-hidden="true"><span><svg class="i i-18"><use href="#i-doc"/></svg></span><span><svg class="i i-18"><use href="#i-chart"/></svg></span><span><svg class="i i-18"><use href="#i-folder"/></svg></span><span><svg class="i i-18"><use href="#i-palette"/></svg></span><span><svg class="i i-18"><use href="#i-settings"/></svg></span><span><svg class="i i-18"><use href="#i-folder"/></svg></span><span><svg class="i i-18"><use href="#i-game"/></svg></span><span><svg class="i i-18"><use href="#i-camera"/></svg></span></div>
+            <div class="dock" aria-hidden="true"><i><svg class="i i-18"><use href="#i-phone"/></svg></i><i><svg class="i i-18"><use href="#i-message"/></svg></i><i><svg class="i i-18"><use href="#i-browser"/></svg></i><i><svg class="i i-18"><use href="#i-camera"/></svg></i></div>
+          </div>
+        </div>
+        <div class="pill">Probá: mic → grabando (rojo) · Copiar en variante B</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NOTAS GRANDE -->
+  <section id="sec-notes" class="section" role="tabpanel">
+    <div class="grid2">
+      <div>
+        <div class="hero">
+          <div class="badge-row"><span class="badge blue">3 variantes + responsive</span><span class="badge dim">Notas independientes · 50 max</span><span class="badge dim">No toca historial 20</span></div>
+          <h2>Widget Notas grande — Dictado que queda</h2>
+          <p>Ocupa <strong>toda la fila y altura</strong> (4×2 compacto, <strong>4×3 / 5×4 responsive</strong> si el usuario estira). App de notas mini: dictás desde el widget, la nota se guarda; tapping en una nota abre edición completa (seguir dictando / escribiendo / pegar).</p>
+          <ul>
+            <li><strong>Independiente</strong> del historial 20 FIFO. Notas = <strong>50 max</strong>, editables, persistentes en almacenamiento interno (<code>SharedPreferences</code> + archivo atómico).</li>
+            <li>Glass Regular grande: blur 24, fill 68% (claro) / 64% (oscuro), borde especular. Tarjetas internas en <code>bgElevated</code> (no glass) — jerarquía <code>design.md §2</code>.</li>
+            <li>Responsive: 4×2 → 3 notas + barra mic; 5×4 → 6–7 notas + search. Grid elástico sin cortes.</li>
+            <li>Targets 44dp, contraste 4.5:1, Reduce Motion = sin wave.</li>
+          </ul>
+          <div class="variant-bar" role="group" aria-label="Variantes notas">
+            <button class="vbtn active" onclick="pick('notes','a',this)">A — Stack <small>lista + FAB</small></button>
+            <button class="vbtn" onclick="pick('notes','b',this)">B — Focus <small>nota grande + carrusel</small></button>
+            <button class="vbtn" onclick="pick('notes','c',this)">C — Timeline <small>cronológica</small></button>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn" onclick="setNotesSize('compact')"><svg class="i i-14" aria-hidden="true"><use href="#i-panel"/></svg> 4×2 compacto</button>
+            <button class="btn" onclick="setNotesSize('medium')"><svg class="i i-14" aria-hidden="true"><use href="#i-panel"/></svg> 4×3 medio</button>
+            <button class="btn primary" onclick="setNotesSize('large')"><svg class="i i-14" aria-hidden="true"><use href="#i-grid"/></svg> 5×4 grande</button>
+            <span class="pill" id="sizeLabel">Actual: 4×3 medio</span>
+          </div>
+          <div class="note" style="margin-top:10px"><strong>Contrato:</strong> Notas ≠ Transcripciones. La nota guarda <code>{id, titulo, cuerpo, createdAt, updatedAt}</code>. Al transcribir desde widget se crea nota nueva (título = primeras 32 chars). Editar no contamina historial.</div>
+        </div>
+        <div id="desc-notes-a" class="hero" style="margin-top:10px">
+          <b>A — Stack List + FAB (recomendada)</b>
+          <p>Lista vertical de 3–6 notas + barra mic capsule inferior. <strong>Menos es más</strong>: tapping nota → <code>NoteEditorScreen</code> (deep link). Mejor densidad y legibilidad en Liquid Glass.</p>
+        </div>
+        <div id="desc-notes-b" class="hero" style="margin-top:10px;display:none">
+          <b>B — Focus Single</b>
+          <p>Preview grande de última nota (editable) + carrusel horizontal de chips. Ideal si trabajás sobre <strong>una nota principal</strong> (borrador largo).</p>
+        </div>
+        <div id="desc-notes-c" class="hero" style="margin-top:10px;display:none">
+          <b>C — Timeline Cronológica</b>
+          <p>Notas ordenadas por fecha con separadores “Hoy / Ayer / Esta semana”. Más contexto temporal. Wave en barra inferior.</p>
+        </div>
+        <div class="arch" style="margin-top:12px">
+          <b style="font-size:12px">Flujo notas (widget → app)</b>
+          <div style="display:grid;gap:6px;margin-top:8px;font-size:12.5px">
+            <div class="kv"><b>1. Tap mic widget</b><span>Inicia <code>ForegroundService + MediaRecorder</code> (FGS micrófono) — mismo motor Groq. Exclusión mutua con burbuja/teclado.</span></div>
+            <div class="kv"><b>2. Transcribe</b><span><code>CloudSttService.transcribe()</code> → texto. Si éxito, crea <code>VoiceNote</code> y persiste via <code>NotesService</code> (50, no toca <code>StorageService.transcriptions</code>).</span></div>
+            <div class="kv"><b>3. Feedback</b><span>Widget actualiza RemoteViews: última nota arriba + “Nota guardada”. Sin abrir app.</span></div>
+            <div class="kv"><b>4. Editar</b><span>Tap nota → <code>PendingIntent</code> con <code>noteId</code> → <code>notes/detail?id=...</code> → editor (texto + dictado continuo + pegar + guardar).</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phone-stage">
+        <div class="phone" id="phone-notes" style="height:760px">
+          <div class="phone-notch" aria-hidden="true"><i></i><b></b></div>
+          <div class="launcher" style="padding-bottom:12px">
+            <div class="status"><span>09:41</span><span>— — — 87%</span></div>
+            <div style="height:8px"></div>
+            <div class="widget-slot" id="notes-slot" style="min-height:420px;align-items:stretch;padding:6px">
+              <strong>Widget Notas · fila completa + alto</strong><span class="size-hint" id="notes-size-hint">4×3 · 360×340dp</span>
+              <div id="w-notes-a" class="glass wn" style="width:100%;min-height:408px">
+                <div class="wn-head"><h4>Notas <span>50</span><span style="background:rgba(0,122,255,.10);color:var(--tint);border-color:rgba(0,122,255,.14)">independ.</span></h4>
+                  <button class="btn" style="padding:6px 10px;font-size:11px;font-weight:700" onclick="openEditor(null)"><svg class="i i-14" aria-hidden="true"><use href="#i-plus"/></svg> Nueva</button>
+                </div>
+                <div class="wn-search">
+                  <label class="sr-only" for="notes-search">Buscar notas</label>
+                  <input id="notes-search" placeholder="Buscar en 50 notas…" oninput="filterNotes(this.value)" autocomplete="off">
+                  <button class="btn" style="padding:8px 11px" aria-label="Buscar" onclick="document.getElementById('notes-search').focus()"><svg class="i i-14" aria-hidden="true"><use href="#i-search"/></svg></button>
+                </div>
+                <div class="wn-list" id="notes-list" style="max-height:246px" role="list"></div>
+                <div class="wn-bar">
+                  <span style="font-size:11px;color:var(--muted);font-weight:600">Dictar nota → queda guardada</span>
+                  <button class="mic" id="mic-notes-a" onclick="dictateNote()" aria-label="Dictar nota"><svg class="i i-14 mic-icon" aria-hidden="true"><use href="#i-mic"/></svg><svg class="i i-14 stop-icon" style="display:none" aria-hidden="true"><use href="#i-stop"/></svg> Dictar</button>
+                </div>
+                <div id="notes-wave" class="wave" style="display:none;justify-content:flex-start;padding-left:6px" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><span style="font-size:11px;font-weight:700;margin-left:8px">Grabando 0:07 — soltar para guardar</span></div>
+              </div>
+              <div id="w-notes-b" class="glass wn" style="width:100%;display:none;min-height:408px">
+                <div style="padding:12px;border-radius:14px;background:var(--card);border:0.5px solid var(--line);cursor:pointer" onclick="openEditor(currentNoteId)" role="button" tabindex="0">
+                  <div style="font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Nota actual · hoy 09:12</div>
+                  <div id="focus-title" style="font-size:14px;font-weight:700;margin-top:4px;letter-spacing:-.015em">Ideas para el reel de VoiceBubble</div>
+                  <div id="focus-body" style="font-size:12.5px;color:var(--muted);margin-top:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">Mostrar el widget dictando en home screen y que la nota quede guardada sin abrir la app. Luego tocar y seguir editando…</div>
+                  <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+                    <span style="padding:4px 8px;border-radius:999px;background:var(--chip);border:0.5px solid var(--line);font-size:11px;font-weight:600;display:flex;gap:4px;align-items:center"><svg class="i i-14"><use href="#i-pencil"/></svg> Seguir editando</span>
+                    <span style="padding:4px 8px;border-radius:999px;background:var(--tint);color:#fff;font-size:11px;font-weight:600;display:flex;gap:4px;align-items:center"><svg class="i i-14"><use href="#i-mic"/></svg> Seguir dictando</span>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;overflow:auto;padding:4px 2px" id="chips-row" role="list"></div>
+                <div class="wn-bar"><span style="font-size:11px;color:var(--muted);font-weight:600">4 notas más</span><button class="mic" onclick="dictateNote()" aria-label="Dictar nueva"><svg class="i i-14 mic-icon"><use href="#i-mic"/></svg><svg class="i i-14 stop-icon" style="display:none"><use href="#i-stop"/></svg> Dictar nueva</button></div>
+              </div>
+              <div id="w-notes-c" class="glass wn" style="width:100%;display:none;min-height:408px">
+                <div class="wn-search">
+                  <label class="sr-only" for="notes-search-c">Buscar notas</label>
+                  <input id="notes-search-c" placeholder="Buscar notas…" autocomplete="off"><span style="font-size:11px;font-weight:700;letter-spacing:.03em;background:var(--chip);padding:6px 9px;border-radius:999px;border:0.5px solid var(--line);color:var(--muted)">50 notas</span>
+                </div>
+                <div class="wn-list" id="notes-list-c" style="max-height:300px" role="list"></div>
+                <div class="wn-bar"><span style="font-size:11px;color:var(--muted);font-weight:600">Hoy · 3 notas</span><button class="mic" onclick="dictateNote()" aria-label="Dictar"><svg class="i i-14 mic-icon"><use href="#i-mic"/></svg><svg class="i i-14 stop-icon" style="display:none"><use href="#i-stop"/></svg> Dictar</button></div>
+              </div>
+            </div>
+            <div class="dock" aria-hidden="true"><i><svg class="i i-18"><use href="#i-phone"/></svg></i><i><svg class="i i-18"><use href="#i-message"/></svg></i><i><svg class="i i-18"><use href="#i-browser"/></svg></i><i><svg class="i i-18"><use href="#i-camera"/></svg></i></div>
+          </div>
+        </div>
+        <div class="pill">Probá: “Dictar” crea nota nueva · Tocá una nota para editar · Buscador filtra</div>
+      </div>
+    </div>
+
+    <div id="editor" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(8,10,14,.38);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);place-items:center;padding:16px">
+      <div class="glass" role="dialog" aria-modal="true" aria-labelledby="editor-heading" style="width:min(640px,100%);max-height:86vh;overflow:auto;padding:16px;display:grid;gap:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <h3 id="editor-heading" style="font-size:16px;letter-spacing:-.02em;font-weight:700">Editar nota</h3>
+          <button class="btn" onclick="closeEditor()" aria-label="Cerrar"><svg class="i i-14" aria-hidden="true"><use href="#i-chevron"/></svg> Cerrar</button>
+        </div>
+        <label class="sr-only" for="edit-title">Título</label>
+        <input id="edit-title" placeholder="Título" style="padding:11px 12px;border-radius:12px;border:0.5px solid var(--line);background:var(--card);font-size:14px;font-weight:600;outline:none;color:var(--text)">
+        <label class="sr-only" for="edit-body">Cuerpo</label>
+        <textarea id="edit-body" placeholder="Cuerpo de la nota… podés pegar, escribir o seguir dictando" style="min-height:180px;padding:12px;border-radius:12px;border:0.5px solid var(--line);background:var(--card);font-size:13px;outline:none;resize:vertical;color:var(--text)"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="appendToEditor(' — pegado desde portapapeles — ')"><svg class="i i-14" aria-hidden="true"><use href="#i-clipboard"/></svg> Pegar</button>
+          <button class="btn" onclick="dictateIntoEditor()"><svg class="i i-14" aria-hidden="true"><use href="#i-mic"/></svg> Dictar aquí</button>
+          <button class="btn primary" onclick="saveEditor()"><svg class="i i-14" aria-hidden="true"><use href="#i-copy"/></svg> Guardar</button>
+          <button class="btn" style="margin-left:auto;color:var(--danger);border-color:rgba(255,59,48,.18)" onclick="deleteCurrentNote()"><svg class="i i-14" aria-hidden="true"><use href="#i-trash"/></svg> Borrar</button>
+        </div>
+        <div class="note">Se guarda en <code>SharedPreferences voice_notes_v1</code> (JSON array, 50 max) + archivo atómico — <strong>sin tocar</strong> <code>transcription_history.json</code> (20).</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCH -->
+  <section id="sec-arch" class="section" role="tabpanel">
+    <div class="hero">
+      <div class="badge-row"><span class="badge blue">Contrato</span><span class="badge dim">Kotlin · Flutter · WidgetProvider</span></div>
+      <h2>Arquitectura & plan de implementación</h2>
+      <p>Cómo encaja sin romper nada: notas independientes, widgets nativos RemoteViews, y contrato claro.</p>
+    </div>
+    <div class="arch-grid" style="margin-top:12px">
+      <div class="arch">
+        <b>Modelo & almacenamiento (Dart)</b>
+        <div style="margin-top:8px;display:grid;gap:8px">
+          <div class="kv"><b>Nuevo modelo</b><span><code>lib/models/voice_note.dart</code> → <code>{id, titulo, cuerpo, createdAt, updatedAt}</code> · <code>toJson/fromJson</code> igual a transcripciones pero con <strong>id estable</strong> y límite 2000 chars.</span></div>
+          <div class="kv"><b>Servicio</b><span><code>lib/services/notes_service.dart</code> (50 max, CRUD, search) — espejo de <code>storage_service.dart:20</code> pero <strong>store separado</strong>: key <code>voice_notes_v1</code> + archivo <code>voice_notes.json</code> atómico (tmp+rename). No reutiliza <code>transcriptions</code>.</span></div>
+          <div class="kv"><b>Contrato prefs</b><span>Nuevas keys <code>voice_notes_v1</code>, <code>voice_notes_file</code>. No entran en <code>bridgeKeys</code> salvo que el widget las lea via <code>flutter.</code> (evaluar).</span></div>
+          <div class="kv"><b>UI app</b><span><code>lib/screens/notes_screen.dart</code> + <code>notes/detail</code> (editor con texto + mic). Reusa <code>TranscriptionService</code> para STT. Historial 20 intacto.</span></div>
+        </div>
+        <table class="table" style="margin-top:10px">
+          <tr><th>Store</th><th>Key / archivo</th><th>Límite</th><th>Uso</th></tr>
+          <tr><td>Transcripciones</td><td><code>transcriptions / transcription_history.json</code></td><td>20 FIFO</td><td>Mic app / burbuja / teclado</td></tr>
+          <tr><td>Notas widget</td><td><code>voice_notes_v1 / voice_notes.json</code></td><td>50 editables</td><td>Widgets home screen</td></tr>
+          <tr><td>Snippets</td><td><code>voice_snippets_v1</code></td><td>50</td><td>Teclado</td></tr>
+        </table>
+      </div>
+      <div class="arch">
+        <b>Widgets Android (Kotlin)</b>
+        <div style="margin-top:8px;display:grid;gap:8px">
+          <div class="kv"><b>Stack recomendado</b><span><code>AppWidgetProvider</code> + <code>RemoteViews</code> (clásico) + <code>WorkManager</code> opcional. <strong>No Jetpack Glance</strong> en v1 (suma Compose).</span></div>
+          <div class="kv"><b>3 providers</b><span><code>Widget2x2Provider</code> (110×110dp), <code>WidgetRowProvider</code> (250×56dp, 4×1), <code>WidgetNotesProvider</code> (250×160dp, resize both + <code>widgetCategory=home_screen</code>). Manifest + <code>xml/widget_*_info.xml</code>.</span></div>
+          <div class="kv"><b>RemoteViews límites</b><span>Sin <code>BackdropFilter</code> real. Glass = <code>shape</code> con <code>solid #A0FFFFFF</code> (claro) / <code>#6B14141A</code> (oscuro) + <code>stroke</code> + <code>elevation</code>.</span></div>
+          <div class="kv"><b>Acciones</b><span>Mic → <code>ForegroundService(TYPE_MICROPHONE)</code> → transcribe → guarda nota → <code>AppWidgetManager.updateAppWidget</code>. Tap nota → deep link <code>voicebubble://notes/:id</code>.</span></div>
+        </div>
+        <div class="note" style="margin-top:10px"><strong>Privacidad:</strong> audio solo viaja si el usuario toca mic del widget. Sin analytics.</div>
+      </div>
+    </div>
+    <div class="hero" style="margin-top:12px">
+      <b>Plan por pasos (sin romper CI)</b>
+      <ol style="margin:8px 0 0 18px;font-size:13px;color:var(--muted);line-height:1.7">
+        <li><strong>Modelo + servicio notas</strong> en <code>app_source</code> con tests (CRUD, 50 límite, search, persistencia). <code>flutter analyze</code> estricto.</li>
+        <li><strong>Pantalla Notas</strong> (lista + editor) con deep link <code>notes/detail</code>. Reusa tokens <code>design.md</code>.</li>
+        <li><strong>Native bridge</strong>: método <code>getNotesForWidgets</code> (MethodChannel) que expone JSON para RemoteViews.</li>
+        <li><strong>Providers Kotlin</strong> + <code>xml</code> + <code>drawable/glass_widget_bg.xml</code>. Manejo de <code>onUpdate / onAppWidgetOptionsChanged</code> para responsive.</li>
+        <li><strong>Servicio dictado widget</strong> (FGS). Ya existe <code>SpeechToTextClient</code> en teclado → reutilizar.</li>
+        <li><strong>Tests widget</strong> con <code>AppWidgetHost</code> mock + <code>test/widgets/widget_*.dart</code>.</li>
+      </ol>
+      <div class="specs" style="margin-top:10px">
+        <div class="spec"><b>Responsive real</b><p>En <code>onAppWidgetOptionsChanged</code> leer <code>minWidth/minHeight</code> (dp). &lt;200dp → 4×2 (3 notas), 200–280dp → 4×3 (4 notas + search), ≥300dp → 5×4 (6 notas + search + FAB).</p></div>
+        <div class="spec"><b>Preview</b><p><code>previewImage</code> en xml + <code>previewLayout</code> para launcher. Icono adaptativo ya existente.</p></div>
+      </div>
+    </div>
+    <div id="impl" class="hero" style="margin-top:12px">
+      <b>Snippet de layout responsive (Kotlin — conceptual)</b>
+      <pre style="margin-top:8px;padding:12px;border-radius:12px;background:#0b1220;color:#cbd5e1;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.6">val opts = appWidgetManager.getAppWidgetOptions(id)
+val w = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
+val h = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)
+val layout = when {
+  h &lt; 200 -&gt; R.layout.widget_notes_compact // 4×2
+  h &lt; 280 -&gt; R.layout.widget_notes_medium  // 4×3
+  else     -&gt; R.layout.widget_notes_large   // 5×4
+}
+RemoteViews(packageName, layout).also { rv -&gt;
+  rv.setTextViewText(R.id.title, "Notas • ${notes.size}/50")
+  notes.take(visibleCount).forEachIndexed { i, n -&gt;
+    rv.setTextViewText(noteIds[i], n.titulo)
+    rv.setOnClickPendingIntent(noteIds[i], pendingFor(noteId=n.id))
+  }
+  rv.setOnClickPendingIntent(R.id.mic, pendingDictate())
+  appWidgetManager.updateAppWidget(id, rv)
+}</pre>
+      <div class="note" style="margin-top:10px">Laboratorio estático — no modifica <code>app_source</code> ni CI. Al elegir variante, se porta a <code>voice_note.dart + notes_service.dart + Widget*Provider.kt</code> con tests al 100%.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+function toggleTheme(){
+  const html=document.documentElement;
+  const next=html.getAttribute('data-theme')==='dark'?'light':'dark';
+  html.setAttribute('data-theme',next);
+  const btn=document.getElementById('themeBtn');
+  btn.querySelector('span').textContent = next==='dark' ? 'Claro' : 'Oscuro';
+}
+function switchTab(id,el){
+  document.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false')});
+  el.classList.add('active'); el.setAttribute('aria-selected','true');
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function pick(family,variant,btn){
+  const bar=btn.closest('.variant-bar');
+  bar.querySelectorAll('.vbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['a','b','c'].forEach(v=>{
+    const d=document.getElementById('desc-'+family+'-'+v);
+    if(d) d.style.display = v===variant?'block':'none';
+  });
+  if(family==='c2'){
+    ['a','b','c'].forEach(v=>{
+      const w=document.getElementById('w-c2-'+v);
+      if(w) w.style.display = v===variant?'':'none';
+    });
+  }
+  if(family==='row'){
+    ['a','b','c'].forEach(v=>{
+      const w=document.getElementById('w-row-'+v);
+      if(w) w.style.display = v===variant?'flex':'none';
+    });
+  }
+  if(family==='notes'){
+    ['a','b','c'].forEach(v=>{
+      const w=document.getElementById('w-notes-'+v);
+      if(w) w.style.display = v===variant?'':'none';
+    });
+  }
+}
+function toggleMic(btn, labelId, waveId){
+  const rec = btn.classList.toggle('rec');
+  btn.style.transform = rec? 'scale(.97)':'';
+  if(labelId){
+    const lab=document.getElementById(labelId);
+    if(lab) lab.textContent = rec? 'Grabando…':'Listo';
+  }
+  let wave=null;
+  if(waveId) wave=document.getElementById(waveId);
+  else wave=btn.closest('.glass')?.querySelector('.wave');
+  if(wave) wave.style.display = rec? 'flex':'none';
+  const micIcon = btn.querySelector('.mic-icon');
+  const stopIcon = btn.querySelector('.stop-icon');
+  if(micIcon && stopIcon){
+    micIcon.style.display = rec? 'none':'block';
+    stopIcon.style.display = rec? 'block':'none';
+  }
+  btn.setAttribute('aria-label', rec? 'Detener' : 'Grabar');
+  if(rec){
+    setTimeout(()=>{ if(btn.classList.contains('rec')) toggleMic(btn,labelId,waveId); }, 2200);
+  }
+}
+let notes = [
+  {id:'1', titulo:'Reunión cliente — presupuesto', cuerpo:'Cerrar presupuesto antes del viernes. Enviar propuesta con IVA desglosado y timeline de 3 semanas.', ts:'hoy 10:32'},
+  {id:'2', titulo:'Ideas reel VoiceBubble', cuerpo:'Mostrar dictado desde widget en home y que la nota quede. Tocar y seguir editando con mic.', ts:'hoy 09:12'},
+  {id:'3', titulo:'Compra súper', cuerpo:'Leche, pan, huevos, palta, café. Recordar voucher descuento.', ts:'ayer 19:40'},
+  {id:'4', titulo:'Snippet nuevo: git push', cuerpo:'git push origin main — agregar alias gp', ts:'ayer 18:02'},
+  {id:'5', titulo:'Llamar a mamá', cuerpo:'Preguntar por el turno del médico y confirmar cena domingo.', ts:'hace 2 días'},
+  {id:'6', titulo:'Bug teclado — overlap', cuerpo:'Revisar insets de barra de gestos en VoiceKeyboardService.', ts:'hace 3 días'},
+];
+let currentNoteId = '2';
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])) }
+function renderNotes(filter=''){
+  const list=document.getElementById('notes-list');
+  const listC=document.getElementById('notes-list-c');
+  const chips=document.getElementById('chips-row');
+  if(!list) return;
+  const q=filter.trim().toLowerCase();
+  const filtered = q? notes.filter(n=> (n.titulo+n.cuerpo).toLowerCase().includes(q)) : notes;
+  const html = filtered.slice(0,6).map(n=>`
+    <div class="wn-card ${n.id===currentNoteId?'selected':''}" onclick="openEditor('${n.id}')" role="listitem" tabindex="0">
+      <b>${escapeHtml(n.titulo)}</b>
+      <p>${escapeHtml(n.cuerpo)}</p>
+      <small><i>${escapeHtml(n.ts)}</i> · tocar para editar</small>
+    </div>
+  `).join('') || `<div class="wn-card" style="cursor:default"><b>Sin resultados</b><p>No hay notas que coincidan con “${escapeHtml(filter)}”.</p></div>`;
+  list.innerHTML = html;
+  if(listC) listC.innerHTML = filtered.map(n=>`
+    <div class="wn-card" onclick="openEditor('${n.id}')" role="listitem" tabindex="0">
+      <small style="justify-content:space-between"><i>${escapeHtml(n.ts)}</i><svg class="i i-14" aria-hidden="true"><use href="#i-chevron"/></svg></small>
+      <b>${escapeHtml(n.titulo)}</b><p>${escapeHtml(n.cuerpo)}</p>
+    </div>
+  `).join('');
+  if(chips){
+    chips.innerHTML = notes.slice(0,5).map(n=>`<button class="btn" style="padding:6px 10px;font-size:11px;white-space:nowrap;border-radius:999px${n.id===currentNoteId?' ;background:var(--tint);color:#fff;border-color:var(--tint)':''}" onclick="currentNoteId='${n.id}';renderNotes(document.getElementById('notes-search')?.value||'');document.getElementById('focus-title').textContent='${escapeHtml(n.titulo).replace(/'/g,"\\'")}';document.getElementById('focus-body').textContent='${escapeHtml(n.cuerpo).replace(/'/g,"\\'")}'" role="listitem">${escapeHtml(n.titulo.slice(0,18))}</button>`).join('');
+  }
+}
+function filterNotes(v){ renderNotes(v) }
+function setNotesSize(size){
+  const slot=document.getElementById('notes-slot');
+  const hint=document.getElementById('notes-size-hint');
+  const phone=document.getElementById('phone-notes');
+  const list=document.getElementById('notes-list');
+  const label=document.getElementById('sizeLabel');
+  if(size==='compact'){ slot.style.minHeight='300px'; phone.style.height='680px'; if(list) list.style.maxHeight='126px'; hint.textContent='4×2 · 360×220dp · 3 notas'; label.textContent='Actual: 4×2 compacto';}
+  if(size==='medium'){ slot.style.minHeight='420px'; phone.style.height='760px'; if(list) list.style.maxHeight='246px'; hint.textContent='4×3 · 360×340dp · 4 notas + search'; label.textContent='Actual: 4×3 medio';}
+  if(size==='large'){ slot.style.minHeight='560px'; phone.style.height='840px'; if(list) list.style.maxHeight='386px'; hint.textContent='5×4 · 360×480dp · 6 notas + search + FAB · responsive'; label.textContent='Actual: 5×4 grande/responsive';}
+}
+function dictateNote(){
+  const btn=document.getElementById('mic-notes-a');
+  const wave=document.getElementById('notes-wave');
+  if(btn){ btn.classList.add('rec'); const mi=btn.querySelector('.mic-icon'), si=btn.querySelector('.stop-icon'); if(mi) mi.style.display='none'; if(si) si.style.display='block'; }
+  if(wave) wave.style.display='flex';
+  if(btn) btn.setAttribute('aria-label','Detener');
+  setTimeout(()=>{
+    if(btn){ btn.classList.remove('rec'); const mi=btn.querySelector('.mic-icon'), si=btn.querySelector('.stop-icon'); if(mi) mi.style.display='block'; if(si) si.style.display='none'; btn.setAttribute('aria-label','Dictar nota');}
+    if(wave) wave.style.display='none';
+    const now=new Date();
+    const hh=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    const newNote={id:String(Date.now()), titulo:'Nota dictada '+hh, cuerpo:'Transcripción de prueba desde el widget — “Hola, esto es una nota dictada que queda guardada y luego puedo seguir editando…”.', ts:'hoy '+hh};
+    notes.unshift(newNote);
+    if(notes.length>50) notes=notes.slice(0,50);
+    currentNoteId=newNote.id;
+    renderNotes(document.getElementById('notes-search')?.value||'');
+    const bar=document.querySelector('#w-notes-a .wn-bar span');
+    const old=bar.textContent;
+    bar.textContent='Nota guardada — tocar para editar';
+    setTimeout(()=>bar.textContent=old,1800);
+  },1600);
+}
+let editingId=null;
+let lastFocus=null;
+function openEditor(id){
+  lastFocus=document.activeElement;
+  editingId=id;
+  const n = notes.find(x=>x.id===id);
+  document.getElementById('edit-title').value = n? n.titulo : '';
+  document.getElementById('edit-body').value = n? n.cuerpo : '';
+  const ed=document.getElementById('editor');
+  ed.style.display='grid';
+  setTimeout(()=>document.getElementById('edit-title').focus(), 30);
+  document.addEventListener('keydown', trapEsc);
+}
+function closeEditor(){
+  document.getElementById('editor').style.display='none';
+  document.removeEventListener('keydown', trapEsc);
+  if(lastFocus) lastFocus.focus();
+}
+function trapEsc(e){ if(e.key==='Escape') closeEditor(); }
+function appendToEditor(t){ const ta=document.getElementById('edit-body'); ta.value += t; ta.focus(); }
+function dictateIntoEditor(){
+  const ta=document.getElementById('edit-body');
+  const old=ta.value;
+  ta.value += (old?'\n':'') + '“texto dictado dentro de la nota… puedo seguir escribiendo después.”';
+  ta.focus();
+}
+function saveEditor(){
+  const title=document.getElementById('edit-title').value.trim() || 'Nota sin título';
+  const body=document.getElementById('edit-body').value.trim();
+  if(!body && !title) return;
+  if(editingId){
+    const n=notes.find(x=>x.id===editingId);
+    if(n){ n.titulo=title.slice(0,64); n.cuerpo=body.slice(0,2000); n.ts='hoy '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}); }
+  } else {
+    const nn={id:String(Date.now()), titulo:title.slice(0,64), cuerpo:body.slice(0,2000), ts:'hoy '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})};
+    notes.unshift(nn);
+    if(notes.length>50) notes=notes.slice(0,50);
+    editingId=nn.id;
+  }
+  renderNotes(document.getElementById('notes-search')?.value||'');
+  closeEditor();
+}
+function deleteCurrentNote(){
+  if(!editingId) {closeEditor();return;}
+  notes=notes.filter(n=>n.id!==editingId);
+  editingId=null;
+  renderNotes(document.getElementById('notes-search')?.value||'');
+  closeEditor();
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderNotes('');
+  setNotesSize('medium');
+  document.getElementById('editor')?.addEventListener('click', (e)=>{ if(e.target.id==='editor') closeEditor(); });
+});
+</script>
+</body>
+</html>

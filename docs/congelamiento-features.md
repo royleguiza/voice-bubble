@@ -15,6 +15,7 @@ Archivo >500 líneas o >10 `fun` nuevos exige partir antes del próximo feature.
 | Feature | Flag | Default | Dónde |
 |---|---|---|---|
 | Imágenes del portapapeles | `kb_clipboard_images_enabled` | OFF (texto primero) | Ajustes → Teclado → "Imágenes en portapapeles"; IME lo lee en `KeyboardPrefs` + gate en `ClipboardStore.addImageClip` |
+| Cola diferida cloud Notas | `notes_deferred_queue_enabled` | OFF | Ajustes → General → "Guardar audio sin conexión"; `PendingNoteQueue` + hook en `NotesScreen`; plan `plan-notas-cola-nube.md` (tarjeta C1–C7 admitida por el dueño 2026-09-22) |
 | Claves (password-manager) | — (sin flag: visible pero congelada) | Congelada, banner "Experimental" en UI | `CredentialsScreen` + `CredentialsLayer`; cero cambios fuera de fixes |
 
 Claves no lleva flag de apagado porque su suite (`test_credentials_suite.py`)

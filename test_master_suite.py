@@ -30,6 +30,7 @@ SUITES = [
     ("Ajustes: rediseño Settings v2 (5 tabs + crystal)", "test_settings_redesign_suite.py"),
     ("Teclado: filas parejas + glyphs gruesos (layout nativo)", "test_keyboard_layout_suite.py"),
     ("Micrófono: hápticas y sonidos por evento", "test_mic_feedback_suite.py"),
+    ("Notas: cola diferida cloud offline (C1-C7)", "test_pending_notes_suite.py"),
 ]
 
 def run_test(name, func):

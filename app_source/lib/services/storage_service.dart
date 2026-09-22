@@ -186,6 +186,17 @@ class StorageService {
   Future<void> setClipboardImagesEnabled(bool enabled) =>
       _setBool(kbClipboardImagesEnabledKey, enabled);
 
+  static const String notesDeferredQueueKey = 'notes_deferred_queue_enabled';
+
+  /// Cola diferida cloud en Notas (C1–C7, plan-notas-cola-nube.md).
+  /// SOLO Dart: no entra a [bridgeKeys] ni contract-keys.txt (el IME no
+  /// la lee). Default OFF hasta verificación en dispositivo.
+  Future<bool> loadNotesDeferredQueueEnabled() =>
+      _getBool(notesDeferredQueueKey, false);
+
+  Future<void> saveNotesDeferredQueueEnabled(bool enabled) =>
+      _setBool(notesDeferredQueueKey, enabled);
+
   static const String kbHeightProfileKey = 'kb_height_profile';
   static const String kbHapticsEnabledKey = 'kb_haptics_enabled';
   static const String kbBottomElevationDpKey = 'kb_bottom_elevation_dp';

@@ -12,6 +12,7 @@ import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
 import 'settings_screen.dart';
+import 'note_editor_screen.dart';
 import 'notes_screen.dart';
 import '../models/voice_note.dart';
 import '../services/notes_service.dart';

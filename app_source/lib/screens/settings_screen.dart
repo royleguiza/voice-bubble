@@ -54,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _recordMode = StorageService.defaultRecordMode;
   bool _isBubbleEnabled = false;
   bool _showBubbleHistory = true;
+  bool _notesDeferredQueue = false;
   bool _isKeyboardEnabled = false;
   bool _isKeyboardSelected = false;
   bool _showTerminalRow = true;
@@ -172,6 +173,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     final trackpadPointerStyle = await _storageService.getTrackpadPointerStyle();
     final trackpadAutoReturn = await _storageService.getTrackpadAutoReturn();
     final bubbleHistory = await _storageService.loadBubbleHistoryEnabled();
+    final notesDeferred =
+        await _storageService.loadNotesDeferredQueueEnabled();
     final clipboardImages = await _storageService.getClipboardImagesEnabled();
     final longPressSymbols = await _storageService.getLongPressSymbolsEnabled();
     final longPressDelay = await _storageService.getLongPressDelay();
@@ -226,6 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _trackpadPointerStyle = trackpadPointerStyle;
       _trackpadAutoReturn = trackpadAutoReturn;
       _showBubbleHistory = bubbleHistory;
+      _notesDeferredQueue = notesDeferred;
       _clipboardImagesEnabled = clipboardImages;
       _longPressSymbolsEnabled = longPressSymbols;
       _longPressDelay = longPressDelay;
@@ -242,6 +246,15 @@ class _SettingsScreenState extends State<SettingsScreen>
       await _storageService.saveBubbleHistoryEnabled(enabled);
     } catch (_) {}
     if (mounted) setState(() => _showBubbleHistory = enabled);
+  }
+
+  /// Cola diferida cloud en Notas (C1–C7): solo gate de encolar nuevos.
+  /// No borra pendientes existentes al apagar.
+  Future<void> _toggleNotesDeferredQueue(bool enabled) async {
+    try {
+      await _storageService.saveNotesDeferredQueueEnabled(enabled);
+    } catch (_) {}
+    if (mounted) setState(() => _notesDeferredQueue = enabled);
   }
 
   Future<void> _setWidgetMicPosition(String pos) async {
@@ -986,6 +999,8 @@ class _SettingsScreenState extends State<SettingsScreen>
       onToggleBubble: _toggleBubble,
       showBubbleHistory: _showBubbleHistory,
       onToggleBubbleHistory: _toggleBubbleHistory,
+      notesDeferredQueue: _notesDeferredQueue,
+      onToggleNotesDeferredQueue: _toggleNotesDeferredQueue,
       onReviewOverlayPermission: _reviewOverlayPermission,
       onShowAboutSheet: _showAboutSheet,
       widgetMicPosition: _widgetMicPosition,

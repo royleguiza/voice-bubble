@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/voice_note.dart';
 import '../services/notes_service.dart';
+import '../services/pending_note_queue.dart';
 import '../services/transcription_service.dart';
 import '../services/cloud_stt_service.dart';
 import '../services/storage_service.dart';
@@ -11,16 +12,20 @@ import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
 import '../widgets/note_card.dart';
+import '../widgets/pending_note_tile.dart';
+import 'note_editor_screen.dart';
 import 'package:path_provider/path_provider.dart';
 
 class NotesScreen extends StatefulWidget {
   final NotesService? notesService;
   final TranscriptionService? transcriptionService;
+  final PendingNoteQueue? pendingQueue;
 
   const NotesScreen({
     super.key,
     this.notesService,
     this.transcriptionService,
+    this.pendingQueue,
   });
 
   @override
@@ -30,10 +35,14 @@ class NotesScreen extends StatefulWidget {
 class _NotesScreenState extends State<NotesScreen> {
   late final NotesService _notesService;
   late final TranscriptionService _transcriptionService;
+  late final PendingNoteQueue _pendingQueue;
   final _searchCtrl = TextEditingController();
   String _query = '';
   bool _isRecording = false;
   bool _isTranscribing = false;
+  bool _deferredQueueEnabled = false;
+  bool _isTranscribingPending = false;
+  bool _queueLoaded = false;
 
   @override
   void initState() {
@@ -44,11 +53,20 @@ class _NotesScreenState extends State<NotesScreen> {
           cloudService: const CloudSttService(apiKey: ''),
           storageService: StorageService(),
         );
+    _pendingQueue = widget.pendingQueue ?? PendingNoteQueue();
     _load();
   }
 
   Future<void> _load() async {
     await _notesService.load();
+    try {
+      _deferredQueueEnabled =
+          await StorageService().loadNotesDeferredQueueEnabled();
+    } catch (_) {
+      _deferredQueueEnabled = false;
+    }
+    await _pendingQueue.load();
+    _queueLoaded = true;
     if (mounted) setState(() {});
   }
 
@@ -78,8 +96,9 @@ class _NotesScreenState extends State<NotesScreen> {
       _isTranscribing = true;
     });
     unawaited(HapticFeedback.lightImpact());
+    String? path;
     try {
-      final path = await _transcriptionService.stopRecording();
+      path = await _transcriptionService.stopRecording();
       if (path == null) {
         setState(() => _isTranscribing = false);
         return;
@@ -97,13 +116,99 @@ class _NotesScreenState extends State<NotesScreen> {
         setState(() {});
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isTranscribing = false);
+      if (!mounted) return;
+      setState(() => _isTranscribing = false);
+      // Cola diferida: solo fallos reintentables (red/servidor) y con flag ON.
+      // Nunca auto-upload: el envío posterior es un toque del usuario.
+      final retryable =
+          e is TranscriptionException && e.isRetryable && path != null;
+      if (retryable && _deferredQueueEnabled) {
+        final item = await _pendingQueue.enqueueFromTemp(path!);
+        if (!mounted) return;
+        setState(() {});
+        if (item != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sin conexión · audio guardado en Notas'),
+            ),
+          );
+          return;
+        }
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  Future<void> _transcribePending(PendingNote item) async {
+    if (_isTranscribingPending) return;
+    setState(() => _isTranscribingPending = true);
+    try {
+      final key = await StorageService.espSecureStorage
+              .read(key: 'groq_api_key') ??
+          '';
+      _transcriptionService.updateApiKey(key);
+      final file = await _transcriptionService.transcribe(item.audioPath);
+      final ok = await _notesService.addFromTranscription(file.text);
+      // transcribe() ya borró el WAV en éxito; quitamos el índice.
+      await _pendingQueue.remove(item.id, deleteAudio: false);
+      await WidgetService().updateWidgets();
+      if (!mounted) return;
+      setState(() => _isTranscribingPending = false);
+      if (ok) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          const SnackBar(content: Text('Nota guardada')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nota no guardada (límite o vacío)')),
         );
       }
+      setState(() {});
+    } on TranscriptionException catch (e) {
+      if (!mounted) return;
+      setState(() => _isTranscribingPending = false);
+      final msg = e.kind == TranscriptionErrorKind.auth
+          ? 'Falta la API key. Configurala en Ajustes.'
+          : e.isRetryable
+              ? 'Sigue sin red. El audio queda pendiente.'
+              : e.message;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isTranscribingPending = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
     }
+  }
+
+  Future<void> _discardPending(PendingNote item) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Descartar audio'),
+        content: const Text(
+            'Se borrará el audio sin transcribir. Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Descartar'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    await _pendingQueue.remove(item.id, deleteAudio: true);
+    if (mounted) setState(() {});
   }
 
   Future<void> _toggleRecord() async {
@@ -112,7 +217,9 @@ class _NotesScreenState extends State<NotesScreen> {
     } else {
       // Cargar API key antes de grabar
       try {
-        final key = await StorageService.espSecureStorage.read(key: 'groq_api_key') ?? '';
+        final key =
+            await StorageService.espSecureStorage.read(key: 'groq_api_key') ??
+                '';
         _transcriptionService.updateApiKey(key);
       } catch (_) {}
       await _dictateNew();
@@ -174,7 +281,8 @@ class _NotesScreenState extends State<NotesScreen> {
                 ),
                 filled: true,
                 fillColor: isDark ? kBgSecondaryDark : kBgSecondaryLight,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(kBorderRadiusCard),
                   borderSide: BorderSide(
@@ -232,6 +340,38 @@ class _NotesScreenState extends State<NotesScreen> {
             ),
           ),
           const SizedBox(height: 8),
+          if (_deferredQueueEnabled &&
+              _queueLoaded &&
+              _pendingQueue.items.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Pendientes · ${_pendingQueue.items.length}',
+                key: const ValueKey('pendingNotesList'),
+                style: kTextCaption.copyWith(
+                  color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  for (final p in _pendingQueue.items) ...[
+                    PendingNoteTile(
+                      item: p,
+                      busy: _isTranscribingPending,
+                      onTranscribe: () => _transcribePending(p),
+                      onDiscard: () => _discardPending(p),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ],
+              ),
+            ),
+          ],
           Expanded(
             child: _filtered.isEmpty
                 ? Center(
@@ -292,198 +432,6 @@ class _NotesScreenState extends State<NotesScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
-  }
-}
-
-class NoteEditorScreen extends StatefulWidget {
-  final VoiceNote? note;
-  final NotesService notesService;
-
-  const NoteEditorScreen({
-    super.key,
-    this.note,
-    required this.notesService,
-  });
-
-  @override
-  State<NoteEditorScreen> createState() => _NoteEditorScreenState();
-}
-
-class _NoteEditorScreenState extends State<NoteEditorScreen> {
-  late final TextEditingController _titleCtrl;
-  late final TextEditingController _bodyCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _titleCtrl = TextEditingController(text: widget.note?.titulo ?? '');
-    _bodyCtrl = TextEditingController(text: widget.note?.cuerpo ?? '');
-  }
-
-  Future<void> _save() async {
-    final titulo = _titleCtrl.text.trim();
-    final cuerpo = _bodyCtrl.text.trim();
-    if (cuerpo.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cuerpo requerido')),
-      );
-      return;
-    }
-    bool ok;
-    if (widget.note == null) {
-      ok = await widget.notesService.addNote(titulo: titulo, cuerpo: cuerpo);
-    } else {
-      ok = await widget.notesService.updateNote(
-        widget.note!.id,
-        titulo: titulo,
-        cuerpo: cuerpo,
-      );
-    }
-    if (!mounted) return;
-    if (ok) {
-      await WidgetService().updateWidgets();
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Limite alcanzado o error')),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _bodyCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.note == null ? 'Nueva nota' : 'Editar nota'),
-        centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: _save,
-            child: const Text('Guardar'),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        children: [
-          TextField(
-            controller: _titleCtrl,
-            textInputAction: TextInputAction.next,
-            maxLength: NotesService.maxTituloLength,
-            style: kTextSubhead.copyWith(fontWeight: FontWeight.w600),
-            decoration: InputDecoration(
-              labelText: 'Titulo',
-              labelStyle: kTextFootnote.copyWith(
-                color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
-              ),
-              filled: true,
-              fillColor: isDark ? kBgSecondaryDark : kBgSecondaryLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(kBorderRadiusCard),
-                borderSide: BorderSide(
-                  color: isDark ? kSeparatorDark : kSeparatorLight,
-                ),
-              ),
-              counterStyle: kTextCaption.copyWith(
-                color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _bodyCtrl,
-            minLines: 8,
-            maxLines: 14,
-            maxLength: NotesService.maxCuerpoLength,
-            style: kTextBody,
-            decoration: InputDecoration(
-              labelText: 'Cuerpo',
-              alignLabelWithHint: true,
-              labelStyle: kTextFootnote.copyWith(
-                color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
-              ),
-              filled: true,
-              fillColor: isDark ? kBgSecondaryDark : kBgSecondaryLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(kBorderRadiusCard),
-                borderSide: BorderSide(
-                  color: isDark ? kSeparatorDark : kSeparatorLight,
-                ),
-              ),
-              counterStyle: kTextCaption.copyWith(
-                color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              OutlinedButton.icon(
-                icon: const Icon(Icons.content_paste_rounded, size: 18),
-                label: const Text('Pegar'),
-                onPressed: () async {
-                  final data = await Clipboard.getData('text/plain');
-                  final txt = data?.text ?? '';
-                  if (txt.isNotEmpty) {
-                    _bodyCtrl.text = '${_bodyCtrl.text}$txt';
-                  }
-                },
-              ),
-              OutlinedButton.icon(
-                key: const ValueKey('noteEditorCopyButton'),
-                icon: const Icon(Icons.copy_rounded, size: 18),
-                label: const Text('Copiar'),
-                onPressed: () async {
-                  // Copia el contenido (cuerpo) en edición, no el título.
-                  final txt = _bodyCtrl.text;
-                  if (txt.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content: Text('Sin contenido para copiar')),
-                    );
-                    return;
-                  }
-                  final copy = await copyTranscriptionText(txt);
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(copy == ClipboardCopyResult.ok
-                          ? copiedToClipboardMessage
-                          : clipboardFailureMessage),
-                    ),
-                  );
-                },
-              ),
-              if (widget.note != null)
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: const Text('Borrar'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: kRecording,
-                  ),
-                  onPressed: () async {
-                    await widget.notesService.deleteNote(widget.note!.id);
-                    await WidgetService().updateWidgets();
-                    if (!mounted) return;
-                    if (context.mounted) Navigator.of(context).pop(true);
-                  },
-                ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

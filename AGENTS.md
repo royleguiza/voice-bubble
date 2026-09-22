@@ -17,7 +17,7 @@
 - Historial de las últimas **20** transcripciones (FIFO).
 - **Burbuja flotante** para transcribir desde cualquier otra app y copiar el resultado (Hito 3, verificada en dispositivo real).
 - Próxima extensión planificada: **teclado del sistema con dictado** (`docs/archive/teclado-voice.md`, hitos T0–K5).
-- Nada más fuera de alcance (no notas, no traducción, no resúmenes).
+- Nada más fuera de alcance acordado (no traducción, no resúmenes).
 
 ## 2. Stack y decisiones tomadas (NO re-decidir)
 

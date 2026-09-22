@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoiceBubble — Lab Widgets v2 (pill + overlay)</title>
+<style>
+:root{ --ease:cubic-bezier(0.32,0.72,0,1); }
+:root[data-theme="light"]{
+  --canvas:#f5f7fb; --text:#0b1220; --muted:#5b6b82; --line:rgba(11,18,32,.09);
+  --glass:rgba(255,255,255,.72); --glass-border:rgba(255,255,255,.65);
+  --card:#ffffff; --chip:rgba(11,18,32,.06); --tint:#007AFF; --tint-strong:#0058D1;
+  --danger:#FF3B30; --danger-bg:rgba(255,59,48,.13);
+  --shadow:0 14px 40px rgba(11,18,32,.11);
+}
+:root[data-theme="dark"]{
+  --canvas:#07080b; --text:#f5f7fb; --muted:#a7b3c7; --line:rgba(255,255,255,.1);
+  --glass:rgba(22,24,30,.72); --glass-border:rgba(255,255,255,.13);
+  --card:#1c1c1e; --chip:rgba(255,255,255,.07); --tint:#0A84FF; --tint-strong:#409CFF;
+  --danger:#FF453A; --danger-bg:rgba(255,69,58,.2);
+  --shadow:0 18px 44px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none !important}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Helvetica,Arial,sans-serif;background:var(--canvas);color:var(--text);line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit}
+*:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.i-16{width:16px;height:16px}.i-20{width:20px;height:20px}
+header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+header h1{font-size:14px;font-weight:700;letter-spacing:-.02em}
+header p{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.btn{padding:9px 14px;min-height:44px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:13px;font-weight:600;cursor:pointer}
+.btn.primary{background:var(--tint);border-color:var(--tint);color:#fff}
+.wrap{max-width:1100px;margin:14px auto 40px;padding:0 16px;display:grid;grid-template-columns:1fr 380px;gap:18px}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}}
+.hero{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px}
+.hero h2{font-size:17px;letter-spacing:-.02em}
+.hero p{font-size:13px;color:var(--muted);margin-top:6px}
+.hero ul{margin:10px 0 0 16px;font-size:12.5px;color:var(--muted)}
+.hero li{margin:4px 0}
+.phone{width:min(360px,calc(100vw - 32px));border-radius:46px;border:10px solid #0b0c10;overflow:hidden;background:#eef2f7;box-shadow:var(--shadow);margin:0 auto}
+:root[data-theme="dark"] .phone{background:#0a0c10}
+.screen{padding:48px 12px 90px;position:relative;min-height:680px;background:radial-gradient(600px 400px at 70% 0%,rgba(0,122,255,.14),transparent 60%),linear-gradient(180deg,#dbe8ff,#f5f7fb 45%,#e9edf3)}
+:root[data-theme="dark"] .screen{background:radial-gradient(600px 400px at 70% 0%,rgba(10,132,255,.22),transparent 60%),linear-gradient(180deg,#0a1020,#070709)}
+.glass{position:relative;background:var(--glass);backdrop-filter:blur(22px) saturate(180%);border:1px solid var(--glass-border);box-shadow:var(--shadow);border-radius:20px;overflow:hidden}
+.glass::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.35),transparent 55%);pointer-events:none}
+.widget{padding:10px;display:flex;flex-direction:column;gap:8px}
+.whead{display:flex;align-items:center;gap:8px}
+.whead b{font-size:12.5px}
+.count{margin-left:auto;font-size:10.5px;color:var(--muted);background:var(--chip);border:1px solid var(--line);padding:3px 8px;border-radius:999px}
+.iconbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);cursor:pointer;color:var(--tint)}
+.cards{display:grid;gap:7px}
+.ncard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 11px;cursor:pointer;text-align:left;width:100%;color:var(--text)}
+.ncard:hover{border-color:rgba(0,122,255,.3)}
+.ncard b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ncard.untitled b{color:var(--text);font-style:italic}
+.ncard p{font-size:12px;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px}
+.ncard small{font-size:10.5px;color:var(--muted)}
+.ncard .row{display:flex;align-items:center;gap:6px}
+.ncard .edit{margin-left:auto;width:44px;height:44px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--line);background:var(--chip);color:var(--muted)}
+.bar{height:52px;border-radius:14px;background:var(--glass);border:1px solid var(--glass-border);display:flex;align-items:center;gap:8px;padding:0 6px 0 10px}
+.bar .lbl{font-size:11.5px;font-weight:700;color:var(--muted);flex:1}
+.bar.rec{background:var(--danger-bg);border-color:rgba(255,59,48,.35)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--danger);flex-shrink:0}
+.rec .dot{animation:pulse 1.1s infinite}
+@keyframes pulse{50%{transform:scale(1.5);opacity:.5}}
+@media (prefers-reduced-motion:reduce){.rec .dot{animation:none}}
+.chrono{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;min-width:38px}
+.xbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;cursor:pointer;color:var(--text)}
+.overlay{position:absolute;inset:0;z-index:5;display:none;place-items:center;padding:14px;background:rgba(8,10,14,.38);backdrop-filter:blur(10px)}
+.overlay.open{display:grid}
+.sheet{width:100%;border-radius:20px;padding:14px;display:grid;gap:10px;box-shadow:var(--shadow)}
+.sheet h3{font-size:15px}
+.sheet input,.sheet textarea{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);font-size:13px;outline:none}
+.sheet textarea{min-height:120px;resize:vertical}
+.sheet .actions{display:flex;gap:8px}
+.note{font-size:12px;color:var(--muted);background:var(--chip);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+</style>
+</head>
+<body>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0"><symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z"/><path d="M19 10a7 7 0 0 1-14 0"/><path d="M12 19v3M8 22h8"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol><symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20H19"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol></svg>
+<header>
+<div><h1>VoiceBubble — Lab Widgets v2</h1><p>Pill cronómetro + overlay edición · claro / oscuro</p></div>
+<div style="margin-left:auto;display:flex;gap:8px">
+<button class="btn" id="themeBtn">Oscuro</button>
+<button class="btn" id="sizeBtn">Ancho: 390</button>
+</div>
+</header>
+<div class="wrap">
+<div>
+<div class="hero"><h2>Widget grande — todo dentro del widget</h2>
+<p>Mic 44dp izq/der configurable. Tap mic inicia dictado sin abrir app. La barra se expande a pill roja con punto, cronómetro M:SS y X para cancelar. Tap en tarjeta abre overlay de edición con teclado, sin salir del widget.</p>
+<ul><li><b>Sin título</b> en color primario 100% italic (fix contraste oscuro).</li>
+<li>Pill: punto 8dp + Chronometer + X 44dp. Reduce Motion detiene pulso.</li>
+<li>Overlay: activity translúcida 20dp, slide 220ms, Guardar/Cancelar.</li></ul></div>
+<div class="hero" style="margin-top:10px"><h2>Controles de prueba</h2>
+<p>Usar para validar flujo completo antes de portar a Kotlin.</p>
+<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+<button class="btn primary" id="btnRec">Iniciar grabación</button>
+<button class="btn" id="btnCancel">Cancelar (X)</button>
+<button class="btn" id="btnEdit">Abrir editor overlay</button>
+<button class="btn" id="btnSave">Simular nota guardada</button>
+</div>
+<div class="note" style="margin-top:10px">Cronómetro: <b id="labChrono">0:00</b> · Estado: <b id="labState">idle</b></div>
+</div>
+</div>
+<div>
+<div class="phone" role="img" aria-label="Mockup widget grande v2">
+<div class="screen">
+<div class="glass widget" id="widget">
+<div class="whead"><b>Notas</b><span class="count">2 / 50</span><button class="iconbtn" aria-label="Nueva nota"><svg class="i i-16"><use href="#i-plus"/></svg></button></div>
+<div class="cards" id="cards">
+<button class="ncard untitled" data-edit="1"><div class="row"><b>Sin título</b><span class="edit" aria-hidden="true"><svg class="i i-16"><use href="#i-pen"/></svg></span></div><p>Dictado de prueba desde el widget, queda guardado sin abrir la app…</p><small>hoy 10:32 · tocar para editar</small></button>
+<button class="ncard" data-edit="2"><div class="row"><b>Compra</b><span class="edit" aria-hidden="true"><svg class="i i-16"><use href="#i-pen"/></svg></span></div><p>Leche, pan, huevos, palta, café.</p><small>ayer 19:40</small></button>
+</div>
+<div class="bar" id="bar">
+<span class="dot" id="dot" hidden></span>
+<span class="chrono" id="chrono" hidden>0:00</span>
+<span class="lbl" id="barLbl">Dictar nota</span>
+<button class="xbtn" id="xbtn" aria-label="Cancelar grabación" hidden><svg class="i i-16"><use href="#i-x"/></svg></button>
+<button class="iconbtn" id="micbtn" aria-label="Dictar nota"><svg class="i i-20"><use href="#i-mic"/></svg></button>
+</div>
+<div class="overlay" id="overlay">
+<div class="glass sheet" role="dialog" aria-modal="true" aria-labelledby="editH">
+<h3 id="editH">Editar nota</h3>
+<label class="sr-only" for="fTitle">Título</label>
+<input id="fTitle" placeholder="Sin título">
+<label class="sr-only" for="fBody">Cuerpo</label>
+<textarea id="fBody">Dictado de prueba desde el widget…</textarea>
+<div class="actions"><button class="btn" id="btnClose">Cancelar</button><button class="btn primary" id="btnDone">Guardar</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+const root=document.documentElement;
+const themeBtn=document.getElementById('themeBtn');
+themeBtn.onclick=()=>{const n=root.getAttribute('data-theme')==='dark'?'light':'dark';root.setAttribute('data-theme',n);themeBtn.textContent=n==='dark'?'Claro':'Oscuro';};
+let sec=0,timer=null;
+const bar=document.getElementById('bar'),dot=document.getElementById('dot'),chrono=document.getElementById('chrono'),xbtn=document.getElementById('xbtn'),micbtn=document.getElementById('micbtn'),barLbl=document.getElementById('barLbl');
+const labState=document.getElementById('labState'),labChrono=document.getElementById('labChrono');
+function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function setState(st){labState.textContent=st;bar.classList.toggle('rec',st==='recording');
+const rec=st==='recording';dot.hidden=!rec;chrono.hidden=!rec;xbtn.hidden=!rec;micbtn.style.display=rec?'none':'grid';
+barLbl.textContent=rec?'Grabando':(st==='saved'?'Nota guardada':'Dictar nota');}
+function start(){if(timer)return;sec=0;setState('recording');timer=setInterval(()=>{sec++;chrono.textContent=fmt(sec);labChrono.textContent=fmt(sec);},1000);}
+function stop(save){clearInterval(timer);timer=null;if(save){setState('saved');setTimeout(()=>setState('idle'),1200);}else setState('idle');}
+document.getElementById('btnRec').onclick=start;micbtn.onclick=start;
+document.getElementById('btnCancel').onclick=()=>stop(false);xbtn.onclick=()=>stop(false);
+document.getElementById('btnSave').onclick=()=>stop(true);
+const overlay=document.getElementById('overlay');
+function openEdit(){overlay.classList.add('open');setTimeout(()=>document.getElementById('fTitle').focus(),50);}
+function closeEdit(){overlay.classList.remove('open');}
+document.getElementById('btnEdit').onclick=openEdit;
+document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=openEdit);
+document.getElementById('btnClose').onclick=closeEdit;
+document.getElementById('btnDone').onclick=closeEdit;
+overlay.addEventListener('click',e=>{if(e.target===overlay)closeEdit();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEdit();});
+document.getElementById('sizeBtn').onclick=(e)=>{const w=document.querySelector('.phone');const cur=w.style.maxWidth==='340px';w.style.maxWidth=cur?'':'340px';e.target.textContent=cur?'Ancho: 390':'Ancho: 340';};
+</script>
+</body>
+</html>
