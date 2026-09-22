@@ -232,11 +232,11 @@ void main() {
     expect(btn, findsOneWidget);
     // Cerrar el SnackBar de encolado: si sigue visible, el de éxito queda
     // en cola y find.text('Nota guardada') falla.
-    final scaffoldMessenger = tester.widget<ScaffoldMessenger>(
-      find.byType(ScaffoldMessenger),
-    );
-    scaffoldMessenger.clearSnackBars();
+    ScaffoldMessenger.of(
+      tester.element(find.byType(ScaffoldMessenger)),
+    ).hideCurrentSnackBar();
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(btn);
     for (var i = 0; i < 12; i++) {
       await tester.pump(const Duration(milliseconds: 150));
