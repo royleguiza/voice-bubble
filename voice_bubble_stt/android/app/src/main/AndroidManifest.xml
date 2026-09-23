@@ -65,6 +65,13 @@
             android:name=".WidgetDictationService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+        <!-- Colección con scroll del widget (pendientes + notas):
+             el launcher la consulta vía RemoteViewsFactory. Sin este
+             permiso el ListView queda vacío. -->
+        <service
+            android:name=".WidgetNotesListService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
         <activity
             android:name=".WidgetNoteEditActivity"
             android:theme="@style/WidgetEditTheme"

@@ -248,6 +248,8 @@ class MainActivity : FlutterActivity() {
                         val awm = android.appwidget.AppWidgetManager.getInstance(this@MainActivity)
                         // Notes (único widget)
                         val notesIds = awm.getAppWidgetIds(android.content.ComponentName(this@MainActivity, WidgetNotesProvider::class.java))
+                        // La colección re-consulta notas + pendientes.
+                        WidgetNotesProvider.requestListRefresh(this@MainActivity, awm)
                         for (id in notesIds) WidgetNotesProvider.updateOne(this@MainActivity, awm, id)
                         result.success(true)
                     } catch (_: Exception) {

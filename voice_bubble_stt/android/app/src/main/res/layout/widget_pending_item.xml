@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_pending_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/widget_note_card_bg"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="10dp"
+    android:layout_marginBottom="6dp">
+
+    <FrameLayout
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/widget_pill_bg"
+        android:contentDescription="@null">
+
+        <ImageView
+            android:id="@+id/widget_pending_icon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_mic"
+            android:tint="#007AFF" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="10dp">
+
+        <TextView
+            android:id="@+id/widget_pending_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Audio sin transcribir"
+            android:textSize="12sp"
+            android:textColor="#0B1220"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/widget_pending_time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Toca para transcribirlo en la app"
+            android:textSize="10sp"
+            android:textColor="#6B7A90"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:layout_marginTop="2dp" />
+    </LinearLayout>
+</LinearLayout>

@@ -113,21 +113,46 @@ check("Overlay cancela con X", "ic_x" in over)
 check("Overlay anclado abajo (expansión)", 'layout_gravity="bottom"' in over)
 check("Título siempre visible en overlay (check legado retirado)",
       'android:id="@+id/edit_title_wrap"' in over)
+check("Overlay modo pendiente: ver + play/pausa sin transcribir",
+      'pending_id' in act and 'setupPendingMode' in act
+      and 'MediaPlayer' in act and 'togglePlayback' in act
+      and '.transcribe(' not in act and 'SpeechToTextClient' not in act)
+check("Overlay pendiente avisa si el audio ya no está",
+      'El audio ya no está pendiente' in act)
+check("Overlay pendiente oculta guardar/copiar y muestra play",
+      'btn_play' in over and 'widget_play_icon' in over
+      and 'overlay_title' in over
+      and 'R.id.btn_save' in act and 'View.GONE' in act)
+for _icon, _min in [("widget_ic_play", 2.8), ("widget_ic_pause", 3.0)]:
+    _t = (RES / f"drawable/{_icon}.xml").read_text()
+    _m = re.search(r'strokeWidth="([\d.]+)"', _t)
+    check(f"Trazo grueso {_icon}", _m is not None and float(_m.group(1)) >= _min, _t[:120])
 check("Foco directo en contenido + teclado auto", "bodyEt.requestFocus()" in act and "SOFT_INPUT_STATE_VISIBLE" in act)
 check("Sin MainActivity en overlay", "Intent(context, MainActivity" not in act and "Intent(this, MainActivity" not in act)
 check("Labels de accesibilidad en + y mic",
       xml.count('contentDescription="Añadir nota"') >= 2 and xml.count('contentDescription="Dictar nota"') >= 2)
 
 prov = PROVIDER.read_text()
-ids_xml = set(re.findall(r'@\+id/([\w_]+)', xml))
-ids_kt = set(re.findall(r'R\.id\.([\w_]+)', prov))
-check("IDs Kotlin existen en layout", ids_kt <= ids_xml, str(ids_kt - ids_xml))
+FACTORY = KT / "WidgetNotesListService.kt"
+factory = FACTORY.read_text()
+NOTE_ITEM = (RES / "layout/widget_note_item.xml").read_text()
+PENDING_ITEM = (RES / "layout/widget_pending_item.xml").read_text()
+MAIN = (ROOT / "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/MainActivity.kt").read_text()
+ids_xml = (set(re.findall(r'@\+id/([\w_]+)', xml))
+           | set(re.findall(r'@\+id/([\w_]+)', NOTE_ITEM))
+           | set(re.findall(r'@\+id/([\w_]+)', PENDING_ITEM)))
+ids_kt = (set(re.findall(r'R\.id\.([\w_]+)', prov))
+          | set(re.findall(r'R\.id\.([\w_]+)', factory)))
+check("IDs Kotlin existen en layouts", ids_kt <= ids_xml, str(ids_kt - ids_xml))
 check("Tap en píldora detiene (TOGGLE)", 'R.id.widget_rec_pill, dictatePi' in prov)
 add_block = prov.split('Add (+)')[1].split('val openIntent')[0] if 'Add (+)' in prov else ""
 check("+ abre overlay, no MainActivity",
       'R.id.widget_notes_add, addPi' in prov and 'WidgetNoteEditActivity' in add_block
       and 'widget_action' not in add_block and 'MainActivity' not in add_block)
-check("Fallback usa IDs nuevos", 'widget_rec_pill' in prov.split('Fallback')[1] if 'Fallback' in prov else False)
+check("Fallback usa vista vacía (sin IDs fijos viejos)",
+      'widget_notes_empty' in prov.split('Fallback')[1]
+      and 'widget_note_0' not in prov and 'widget_note_title_0' not in prov
+      if 'Fallback' in prov else False)
 check("Sin swap de fondo en barra (píldora propia)", 'setBackgroundResource' not in prov)
 
 svc = SERVICE.read_text()
@@ -139,6 +164,37 @@ check("Sonido al cancelar (cancel)", 'playMicSound("cancel")' in svc)
 check("Sonidos opt-in como teclado", 'flutter.kb_mic_sounds_enabled' in svc)
 check("Estilos inicio/fin del teclado", 'flutter.kb_mic_start_style' in svc and 'flutter.kb_mic_stop_style' in svc)
 check("Libera SoundPool", 'releaseMicSounds()' in svc and 'soundPool?.release()' in svc)
+
+# Colección con scroll: pendientes arriba + notas debajo, sin tope visual
+_manifest_early = (ROOT / "voice_bubble_stt/android/app/src/main/AndroidManifest.xml").read_text()
+check("Lista con scroll (ListView + adapter)",
+      '<ListView' in xml and 'setRemoteAdapter' in prov
+      and 'WidgetNotesListService' in prov)
+check("Vista vacía cableada",
+      '@+id/widget_notes_empty' in xml and 'setEmptyView' in prov)
+check("Servicio de colección declarado (BIND_REMOTEVIEWS)",
+      'WidgetNotesListService' in _manifest_early and 'BIND_REMOTEVIEWS' in _manifest_early)
+check("Fábrica: pendientes arriba + notas debajo",
+      'WidgetPendingStore.load' in factory and 'NoteStore(context).load()' in factory
+      and 'pendings.size + notes.size' in factory)
+check("Fábrica con 2 tipos de fila (pendiente + nota)",
+      'getViewTypeCount' in factory and 'setOnClickFillInIntent' in factory)
+check("Filas abren la modal directo (un toque)",
+      '"pending_id"' in factory and '"note_id"' in factory
+      and 'setOnClickFillInIntent' in factory
+      and 'setPendingIntentTemplate' in prov
+      and 'WidgetNoteEditActivity' in prov
+      and 'widget_action' not in factory)
+check("Refresco de colección en todos los caminos",
+      'notifyAppWidgetViewDataChanged' in prov and 'requestListRefresh' in prov
+      and 'requestListRefresh' in act and 'requestListRefresh' in MAIN)
+for _name, _item in (("nota", NOTE_ITEM), ("pendiente", PENDING_ITEM)):
+    _tags = [t for t in re.findall(r'<(\w+)', _item) if t not in ("xml",)]
+    check(f"Fila {_name} solo vistas permitidas",
+          all(t in ALLOWED_REMOTEVIEWS for t in _tags), str(sorted(set(_tags))))
+check("Fila pendiente con logo de grabación y entrada tocable",
+      'ic_mic' in PENDING_ITEM and 'Audio sin transcribir' in PENDING_ITEM
+      and 'widget_pending_root' in PENDING_ITEM)
 
 # Un solo widget: sin rastro de compact/row
 gone = ["WidgetCompactProvider.kt", "WidgetRowProvider.kt", "widget_compact.xml",
@@ -204,16 +260,16 @@ check("Label 'Audio guardado' en pendiente",
 check("Contador de pendientes en header (ID cableado)",
       '@+id/widget_pending_count' in xml
       and 'R.id.widget_pending_count' in prov
-      and 'flutter.voice_notes_pending_v1' in prov
+      and 'WidgetPendingStore.load' in prov
       and 'pendiente' in prov)
-check("Marca de audio por nota (3 filas cableadas)",
-      all(f'widget_note_audio_{i}' in xml for i in range(3))
-      and all(f'R.id.widget_note_audio_{i}' in prov for i in range(3))
-      and 'widget_ic_audio' in xml)
+check("Marca de audio por nota en la fila (paridad con la app)",
+      'widget_item_audio' in NOTE_ITEM
+      and 'R.id.widget_item_audio' in factory
+      and 'widget_ic_audio' in NOTE_ITEM)
 check("Drawable widget_ic_audio.xml existe",
       (RES / "drawable/widget_ic_audio.xml").exists())
 check("Nota con audio muestra la marca (paridad con la app)",
-      'audioFileExists' in prov and 'Nota con audio original' in prov)
+      'Nota con audio original' in factory)
 check("IDs Kotlin con UUID (sin colision de millis)",
       'UUID.randomUUID().toString()' in (KT / "WidgetDictationService.kt").read_text()
       and 'UUID.randomUUID().toString()' in act

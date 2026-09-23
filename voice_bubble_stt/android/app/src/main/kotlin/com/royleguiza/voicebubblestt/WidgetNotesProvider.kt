@@ -44,19 +44,20 @@ class WidgetNotesProvider : AppWidgetProvider() {
             state: String,
         ) {
             try {
+                // La colección re-consulta sus datos (notas + pendientes).
+                requestListRefresh(context, appWidgetManager)
                 updateRemoteViews(context, appWidgetManager, appWidgetId, state)
             } catch (_: Exception) {
                 // Fallback mínimo: jamás dejar al launcher sin vista válida
                 // ("No se puede mostrar"). Sin contenido de notas en el fallback.
                 try {
                     val fallback = RemoteViews(context.packageName, R.layout.widget_notes)
-                    fallback.setViewVisibility(R.id.widget_note_1, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_note_2, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_note_0, View.VISIBLE)
-                    fallback.setTextViewText(R.id.widget_note_title_0, "Notas")
-                    fallback.setTextViewText(R.id.widget_note_body_0, "Toca Dictar para crear una nota")
-                    fallback.setTextViewText(R.id.widget_note_time_0, "")
+                    fallback.setTextViewText(R.id.widget_notes_title, "Notas")
                     fallback.setTextViewText(R.id.widget_notes_count, "")
+                    fallback.setViewVisibility(R.id.widget_pending_count, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_notes_list, View.GONE)
+                    fallback.setViewVisibility(R.id.widget_notes_empty, View.VISIBLE)
+                    fallback.setTextViewText(R.id.widget_notes_empty, "Toca Dictar para crear una nota")
                     fallback.setViewVisibility(R.id.widget_rec_pill, View.GONE)
                     fallback.setViewVisibility(R.id.widget_bottom_spacer, View.VISIBLE)
                     fallback.setViewVisibility(R.id.widget_notes_add, View.VISIBLE)
@@ -66,6 +67,18 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     appWidgetManager.updateAppWidget(appWidgetId, fallback)
                 } catch (_: Exception) { }
             }
+        }
+
+        /** La ListView re-consulta notas + pendientes en su fábrica. */
+        fun requestListRefresh(context: Context, appWidgetManager: AppWidgetManager) {
+            try {
+                val ids = appWidgetManager.getAppWidgetIds(
+                    ComponentName(context, WidgetNotesProvider::class.java),
+                )
+                if (ids.isNotEmpty()) {
+                    appWidgetManager.notifyAppWidgetViewDataChanged(ids, R.id.widget_notes_list)
+                }
+            } catch (_: Exception) {}
         }
 
         private fun updateRemoteViews(
@@ -93,7 +106,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
 
             // Pendientes offline (cola Dart + widget): el audio grabado sin
             // red se ve también en el widget, no solo en la app.
-            val pending = pendingCount(context)
+            val pending = WidgetPendingStore.load(context).size
             if (pending > 0) {
                 views.setViewVisibility(R.id.widget_pending_count, View.VISIBLE)
                 views.setTextViewText(
@@ -105,78 +118,20 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_pending_count, "")
             }
 
-            // Detecta altura por options: si el usuario estiro a 5x4, mostramos 3 notas.
-            val opts = appWidgetManager.getAppWidgetOptions(appWidgetId)
-            val h = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 160)
-            val visible = when {
-                h < 200 -> 1
-                h < 280 -> 2
-                else -> 3
-            }
-
-            for (i in 0 until 3) {
-                val containerId = when (i) {
-                    0 -> R.id.widget_note_0
-                    1 -> R.id.widget_note_1
-                    else -> R.id.widget_note_2
-                }
-                val titleId = when (i) {
-                    0 -> R.id.widget_note_title_0
-                    1 -> R.id.widget_note_title_1
-                    else -> R.id.widget_note_title_2
-                }
-                val bodyId = when (i) {
-                    0 -> R.id.widget_note_body_0
-                    1 -> R.id.widget_note_body_1
-                    else -> R.id.widget_note_body_2
-                }
-                val timeId = when (i) {
-                    0 -> R.id.widget_note_time_0
-                    1 -> R.id.widget_note_time_1
-                    else -> R.id.widget_note_time_2
-                }
-                val audioId = when (i) {
-                    0 -> R.id.widget_note_audio_0
-                    1 -> R.id.widget_note_audio_1
-                    else -> R.id.widget_note_audio_2
-                }
-                views.setTextColor(titleId, primary)
-                views.setTextColor(bodyId, secondary)
-                views.setTextColor(timeId, secondary)
-                if (i < visible && i < count) {
-                    val n = notes[i]
-                    val displayTitle = n.titulo.ifBlank { "Sin título" }
-                    views.setViewVisibility(containerId, View.VISIBLE)
-                    views.setTextViewText(titleId, displayTitle)
-                    views.setTextViewText(bodyId, n.cuerpo)
-                    views.setTextViewText(timeId, formatTime(n.updatedAt))
-                    views.setContentDescription(containerId, "Abrir nota $displayTitle")
-                    // Marca de audio conservado (texto + audio): paridad con
-                    // la tarjeta de la app.
-                    if (n.audioPath.isNotBlank() && audioFileExists(n.audioPath)) {
-                        views.setViewVisibility(audioId, View.VISIBLE)
-                        views.setContentDescription(audioId, "Nota con audio original")
-                    } else {
-                        views.setViewVisibility(audioId, View.GONE)
-                    }
-                    // Todo dentro del widget: overlay translucido, no MainActivity
-                    val noteIntent = Intent(context, WidgetNoteEditActivity::class.java).apply {
-                        putExtra("note_id", n.id)
-                    }
-                    val pi = PendingIntent.getActivity(
-                        context, 100 + appWidgetId * 10 + i, noteIntent,
-                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                    )
-                    views.setOnClickPendingIntent(containerId, pi)
-                } else if (i == 0 && count == 0) {
-                    views.setViewVisibility(containerId, View.VISIBLE)
-                    views.setTextViewText(titleId, "Sin notas")
-                    views.setTextViewText(bodyId, "Toca Dictar para crear la primera nota")
-                    views.setTextViewText(timeId, "")
-                } else {
-                    views.setViewVisibility(containerId, View.GONE)
-                }
-            }
+            // Colección con scroll: pendientes arriba + notas debajo, sin
+            // tope visual (la altura del widget solo cambia cuánto se ve
+            // sin desplazar). Los taps van directo a la modal del widget
+            // (un toque abre: nota → ver/editar, pendiente → ver/escuchar).
+            val listIntent = Intent(context, WidgetNotesListService::class.java)
+            views.setRemoteAdapter(R.id.widget_notes_list, listIntent)
+            views.setEmptyView(R.id.widget_notes_list, R.id.widget_notes_empty)
+            views.setTextColor(R.id.widget_notes_empty, secondary)
+            val rowTemplate = Intent(context, WidgetNoteEditActivity::class.java)
+            val rowTemplatePi = PendingIntent.getActivity(
+                context, 500 + appWidgetId, rowTemplate,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+            views.setPendingIntentTemplate(R.id.widget_notes_list, rowTemplatePi)
 
             // Mic posicion configurable: izq/der desde Ajustes (flutter.widget_mic_position).
             // El + queda siempre del lado opuesto (derecha por defecto: + abajo-izq).
@@ -290,54 +245,6 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_notes_title, openPi)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
-        }
-
-        /** Pendientes offline con WAV válido (misma clave que Dart). */
-        private fun pendingCount(context: Context): Int {
-            return try {
-                val raw = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                    .getString("flutter.voice_notes_pending_v1", null)
-                if (raw.isNullOrBlank()) return 0
-                val arr = org.json.JSONArray(raw)
-                var n = 0
-                for (i in 0 until arr.length()) {
-                    val o = arr.optJSONObject(i) ?: continue
-                    if (o.optString("id").isBlank()) continue
-                    val p = o.optString("audioPath")
-                    if (p.isBlank()) continue
-                    if (audioFileExists(p)) n++
-                }
-                n
-            } catch (_: Exception) {
-                0
-            }
-        }
-
-        private fun audioFileExists(path: String): Boolean {
-            return try {
-                java.io.File(path).exists()
-            } catch (_: Exception) {
-                false
-            }
-        }
-
-        private fun formatTime(iso: String): String {
-            if (iso.isBlank()) return ""
-            val fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM HH:mm")
-            return try {
-                java.time.Instant.parse(iso).atZone(java.time.ZoneId.systemDefault()).let { fmt.format(it) }
-            } catch (_: Exception) {
-                try {
-                    java.time.OffsetDateTime.parse(iso).atZoneSameInstant(java.time.ZoneId.systemDefault()).let { fmt.format(it) }
-                } catch (_: Exception) {
-                    try {
-                        java.time.LocalDateTime.parse(iso).atZone(java.time.ZoneId.systemDefault()).let { fmt.format(it) }
-                    } catch (_: Exception) {
-                        // Fallback relativo
-                        iso.take(16).replace('T', ' ')
-                    }
-                }
-            }
         }
     }
 }

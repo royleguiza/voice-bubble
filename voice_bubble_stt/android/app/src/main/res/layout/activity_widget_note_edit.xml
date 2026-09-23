@@ -18,6 +18,7 @@
         android:elevation="16dp">
 
         <TextView
+            android:id="@+id/overlay_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Nueva nota"
@@ -85,6 +86,28 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />
+
+            <FrameLayout
+                android:id="@+id/btn_play"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/widget_note_card_bg"
+                android:contentDescription="Reproducir audio"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/widget_play_icon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/widget_ic_play" />
+            </FrameLayout>
+
+            <Space
+                android:id="@+id/btn_play_gap"
+                android:layout_width="8dp"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
 
             <FrameLayout
                 android:id="@+id/btn_copy"
