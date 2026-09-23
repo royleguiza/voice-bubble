@@ -306,6 +306,12 @@ class EditEngine(
     }
 
     fun sendKeyEventWithMeta(keyCode: Int, meta: Int) {
+        if (isCursorKey(keyCode)) {
+            val extend = (meta and KeyEvent.META_SHIFT_ON) != 0
+            val s = snippets()
+            if (s?.moveCursorInEditor(keyCode, extend) == true) return
+            if (s?.moveCursorInQuery(keyCode, extend) == true) return
+        }
         val ic = service.currentInputConnection ?: return
         val now = SystemClock.uptimeMillis()
         ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
@@ -314,9 +320,20 @@ class EditEngine(
 
     fun sendKeyCode(keyCode: Int) {
         host.haptic(host.rootView())
+        if (isCursorKey(keyCode)) {
+            val s = snippets()
+            if (s?.moveCursorInEditor(keyCode, false) == true) return
+            if (s?.moveCursorInQuery(keyCode, false) == true) return
+        }
         if (service.currentInputConnection == null) return
         service.sendDownUpKeyEvents(keyCode)
     }
+
+    private fun isCursorKey(keyCode: Int): Boolean =
+        keyCode == KeyEvent.KEYCODE_DPAD_LEFT ||
+            keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ||
+            keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+            keyCode == KeyEvent.KEYCODE_DPAD_DOWN
 
     fun consumeModifiers() {
         ctrlActive = false
@@ -358,12 +375,14 @@ class EditEngine(
     }
 
     /**
-     * Borrado por palabra para el gesto deslizante de ⌫ (P6). En la capa
-     * snippets opera SIEMPRE sobre el query (nunca toca el documento); en el
-     * resto usa deleteSurroundingText con el limite de palabra calculado
-     * sobre una ventana previa. Si el cursor esta pegado a separadores,
-     * consume primero ese tramo; palabras mas largas que la ventana se
-     * recortan parciales (limite v1.1: no borra frases completas de golpe).
+     * Borrado por palabra para el gesto deslizante de ⌫ (P6). Con el editor
+     * de snippets abierto opera sobre el campo activo (nunca toca el query
+     * ni el documento); en la capa snippets sin editor opera sobre el query
+     * (nunca toca el documento); en el resto usa deleteSurroundingText con
+     * el limite de palabra calculado sobre una ventana previa. Si el cursor
+     * esta pegado a separadores, consume primero ese tramo; palabras mas
+     * largas que la ventana se recortan parciales (limite v1.1: no borra
+     * frases completas de golpe).
      */
     fun deleteWordBeforeCursor() {
         fun wordStart(text: CharSequence, from: Int): Int {
@@ -372,6 +391,10 @@ class EditEngine(
             val eatingWord = text[start - 1].isLetterOrDigit()
             while (start > 0 && text[start - 1].isLetterOrDigit() == eatingWord) start--
             return start
+        }
+        if (snippets()?.isEditorOpen == true) {
+            snippets()?.deleteWordInEditor()
+            return
         }
         if (host.currentLayer() == Layer.SNIPPETS) {
             snippets()?.deleteQueryWord()

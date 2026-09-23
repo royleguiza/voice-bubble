@@ -11,6 +11,7 @@ import android.text.TextUtils
 import android.text.TextWatcher
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -1137,6 +1138,138 @@ class SnippetsLayer(
         } else if (activeField == etContentField) {
             insertToEditor("\n")
         }
+        return true
+    }
+
+    /**
+     * Mueve el cursor dentro del editor inline (nombre/contenido). Los
+     * gestos del teclado (deslizar en espaciadora, flechas de la fila
+     * terminal, auto-par) llegan como DPAD via EditEngine; sin este ruteo
+     * caian al InputConnection externo y el cursor interno no se movia.
+     * Consume (true) cuando el editor esta abierto y la tecla es DPAD,
+     * aunque no haya movimiento (evita fugas al documento destino).
+     */
+    fun moveCursorInEditor(keyCode: Int, extendSelection: Boolean): Boolean {
+        if (!isEditorOpen) return false
+        val et = activeField ?: etNameField ?: return false
+        val singleLine = (et === etNameField)
+        return moveCursorInField(et, keyCode, extendSelection, singleLine)
+    }
+
+    /**
+     * Mueve el cursor dentro del campo de busqueda de la capa (mismo bug
+     * que el editor: el DPAD iba al documento externo en vez del query).
+     * Solo cuando no hay editor abierto y la busqueda esta activa.
+     */
+    fun moveCursorInQuery(keyCode: Int, extendSelection: Boolean): Boolean {
+        if (isEditorOpen) return false
+        if (host.currentLayer() != Layer.SNIPPETS || !searchActive) return false
+        val et = searchField ?: return false
+        return moveCursorInField(et, keyCode, extendSelection, singleLine = true)
+    }
+
+    private fun moveCursorInField(
+        et: EditText,
+        keyCode: Int,
+        extendSelection: Boolean,
+        singleLine: Boolean,
+    ): Boolean {
+        val text = et.text ?: return false
+        val len = text.length
+        val a = et.selectionStart.coerceAtLeast(0).coerceAtMost(len)
+        val b = et.selectionEnd.coerceAtLeast(0).coerceAtMost(len)
+        if (!et.hasFocus()) et.requestFocus()
+        when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (extendSelection) {
+                    val anchor = maxOf(a, b)
+                    val active = (minOf(a, b) - 1).coerceAtLeast(0)
+                    et.setSelection(anchor, active)
+                } else {
+                    if (a != b) et.setSelection(minOf(a, b))
+                    else et.setSelection((a - 1).coerceAtLeast(0))
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                if (extendSelection) {
+                    val anchor = minOf(a, b)
+                    val active = (maxOf(a, b) + 1).coerceAtMost(len)
+                    et.setSelection(anchor, active)
+                } else {
+                    if (a != b) et.setSelection(maxOf(a, b))
+                    else et.setSelection((a + 1).coerceAtMost(len))
+                }
+            }
+            KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                // En campos de una linea no hay vertical: se consume sin
+                // mover para no fugar el gesto a la app destino.
+                if (singleLine) return true
+                val cursor = if (a == b) {
+                    a
+                } else {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) minOf(a, b) else maxOf(a, b)
+                }
+                var lineStart = cursor
+                while (lineStart > 0 && text[lineStart - 1] != '\n') lineStart--
+                var lineEnd = cursor
+                while (lineEnd < len && text[lineEnd] != '\n') lineEnd++
+                val target = if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    if (cursor > lineStart) {
+                        lineStart
+                    } else if (lineStart == 0) {
+                        0
+                    } else {
+                        var p = lineStart - 1
+                        while (p > 0 && text[p - 1] != '\n') p--
+                        p
+                    }
+                } else {
+                    if (cursor < lineEnd) {
+                        lineEnd
+                    } else if (lineEnd >= len) {
+                        len
+                    } else {
+                        var p = lineEnd + 1
+                        while (p < len && text[p] != '\n') p++
+                        p
+                    }
+                }
+                if (extendSelection) {
+                    val anchor = if (keyCode == KeyEvent.KEYCODE_DPAD_UP) maxOf(a, b) else minOf(a, b)
+                    et.setSelection(anchor, target)
+                } else {
+                    et.setSelection(target)
+                }
+            }
+            else -> return false
+        }
+        return true
+    }
+
+    /**
+     * Borrado por palabra dentro del editor (gesto deslizar en ⌫). Sin
+     * este ruteo, EditEngine caia a deleteQueryWord aun con el editor
+     * abierto y el gesto no borraba en el campo activo.
+     */
+    fun deleteWordInEditor(): Boolean {
+        if (!isEditorOpen) return false
+        val et = activeField ?: etNameField ?: return false
+        val text = et.text ?: return false
+        val len = text.length
+        val a = et.selectionStart.coerceAtLeast(0).coerceAtMost(len)
+        val b = et.selectionEnd.coerceAtLeast(0).coerceAtMost(len)
+        if (a != b) {
+            text.delete(minOf(a, b), maxOf(a, b))
+            et.setSelection(minOf(a, b))
+            return true
+        }
+        val cursor = a
+        if (cursor == 0) return true
+        var start = cursor
+        val eatingWord = text[start - 1].isLetterOrDigit()
+        while (start > 0 && text[start - 1].isLetterOrDigit() == eatingWord) start--
+        text.delete(start, cursor)
+        et.setSelection(start)
         return true
     }
 
