@@ -282,6 +282,28 @@ check("Dictado escribe espejo en archivo (write-through)",
 check("Overlay respeta tope 50 en nota nueva (como Dart addNote)",
       'Límite de 50 notas' in act)
 
+# Lista sin recortes: aire en bordes + separacion real + difuminado
+_list_block = xml.split('@+id/widget_notes_list')[1].split('/>')[0] if '@+id/widget_notes_list' in xml else ""
+check("Lista con aire superior/inferior (primera/ultima sin corte)",
+      'android:paddingTop="6dp"' in _list_block and 'android:paddingBottom="6dp"' in _list_block
+      and 'android:clipToPadding="false"' in _list_block)
+check("Lista sin margen que robe aire (padding manda)",
+      'android:layout_marginTop' not in _list_block)
+check("Separacion real entre tarjetas (divider ListView, no margenes muertos)",
+      'android:dividerHeight="6dp"' in _list_block
+      and 'layout_marginBottom' not in NOTE_ITEM and 'layout_marginBottom' not in PENDING_ITEM)
+check("Difuminado vertical avisa mas tarjetas (fading edge sistema)",
+      'android:requiresFadingEdge="vertical"' in _list_block
+      and 'android:fadingEdgeLength=' in _list_block)
+# Tap abre la nota: plantilla MUTABLE (fill-in) + modal nunca vacia en silencio
+_prov_tpl = prov.split('rowTemplatePi')[1][:600] if 'rowTemplatePi' in prov else ""
+check("Plantilla de tap MUTABLE (fill-in note_id/pending_id llega)",
+      'FLAG_MUTABLE' in _prov_tpl and 'WidgetNoteEditActivity' in prov)
+check("PIs directos siguen IMMUTABLE (solo la plantilla es mutable)",
+      prov.count('FLAG_IMMUTABLE') >= 4 and 'FLAG_MUTABLE' in prov)
+check("Modal avisa si la nota ya no existe (nunca vacia en silencio)",
+      'La nota ya no existe' in act and 'noteId != null && note == null' in act)
+
 # Contrato de claves intacto (CI lo exige exacto)
 import subprocess
 out = subprocess.check_output(

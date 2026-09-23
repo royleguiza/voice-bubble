@@ -50,14 +50,22 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- Lista con aire en ambos bordes (primera/ultima tarjeta nunca
+         cortadas) + separacion real entre tarjetas via divider (los margenes
+         en hijos de ListView se ignoran) + difuminado vertical del sistema
+         que avisa que hay mas tarjetas abajo/arriba. -->
     <ListView
         android:id="@+id/widget_notes_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="6dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:clipToPadding="false"
         android:divider="@android:color/transparent"
-        android:dividerHeight="0dp"
+        android:dividerHeight="6dp"
+        android:requiresFadingEdge="vertical"
+        android:fadingEdgeLength="24dp"
         android:scrollbars="vertical" />
 
     <TextView

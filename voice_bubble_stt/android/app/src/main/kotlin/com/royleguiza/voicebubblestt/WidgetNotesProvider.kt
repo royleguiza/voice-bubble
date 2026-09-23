@@ -129,9 +129,13 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setEmptyView(R.id.widget_notes_list, R.id.widget_notes_empty)
             views.setTextColor(R.id.widget_notes_empty, secondary)
             val rowTemplate = Intent(context, WidgetNoteEditActivity::class.java)
+            // MUTABLE a proposito: el launcher combina esta plantilla con el
+            // fill-in de cada fila (note_id/pending_id); con IMMUTABLE el
+            // sistema ignora el fill-in y la modal abria vacia. Componente
+            // fijo + actividad no exportada: sin superficie extra.
             val rowTemplatePi = PendingIntent.getActivity(
                 context, 500 + appWidgetId, rowTemplate,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
             )
             views.setPendingIntentTemplate(R.id.widget_notes_list, rowTemplatePi)
 

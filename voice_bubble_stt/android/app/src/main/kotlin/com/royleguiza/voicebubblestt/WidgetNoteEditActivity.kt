@@ -65,6 +65,11 @@ class WidgetNoteEditActivity : Activity() {
 
         val notes = NoteStore(this).load()
         val note = notes.firstOrNull { it.id == noteId }
+        if (noteId != null && note == null) {
+            Toast.makeText(this, "La nota ya no existe", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
         titleEt.setText(note?.titulo.orEmpty())
         bodyEt.setText(note?.cuerpo.orEmpty())
 
