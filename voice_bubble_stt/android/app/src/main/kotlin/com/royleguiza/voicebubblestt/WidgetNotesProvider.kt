@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
+import androidx.core.content.ContextCompat
 
 class WidgetNotesProvider : AppWidgetProvider() {
 
@@ -92,11 +93,11 @@ class WidgetNotesProvider : AppWidgetProvider() {
             val notes = NoteStore(context).load()
             val count = notes.size
 
-            val isDark = (context.resources.configuration.uiMode and
-                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
-                android.content.res.Configuration.UI_MODE_NIGHT_YES
-            val primary = if (isDark) 0xFFF5F7FB.toInt() else 0xFF0B1220.toInt()
-            val secondary = if (isDark) 0xFFA7B3C7.toInt() else 0xFF5B6B82.toInt()
+            // Colores adaptativos claro/oscuro desde la fuente unica
+            // (res/values + values-night): el cambio automatico por horario
+            // del sistema resuelve el valor vigente sin hex duplicados.
+            val primary = ContextCompat.getColor(context, R.color.kb_label)
+            val secondary = ContextCompat.getColor(context, R.color.kb_label_secondary)
 
             views.setTextViewText(R.id.widget_notes_count, "$count / 50")
             views.setTextColor(R.id.widget_notes_title, primary)

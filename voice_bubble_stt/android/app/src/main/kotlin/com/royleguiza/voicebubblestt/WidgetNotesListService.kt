@@ -5,6 +5,7 @@ import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
+import androidx.core.content.ContextCompat
 
 /**
  * Colección con scroll del widget de notas: pendientes offline arriba
@@ -60,6 +61,10 @@ private class WidgetNotesFactory(
     /** Entrada superior: audio sin transcribir, abre la modal del widget. */
     private fun pendingView(p: VbPending): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_pending_item)
+        // Texto adaptativo claro/oscuro (el XML ya usa @color, esto cubre
+        // vistas cacheadas tras el cambio automatico por horario).
+        views.setTextColor(R.id.widget_pending_title, ContextCompat.getColor(context, R.color.kb_label))
+        views.setTextColor(R.id.widget_pending_time, ContextCompat.getColor(context, R.color.kb_label_secondary))
         views.setTextViewText(R.id.widget_pending_title, "Audio sin transcribir")
         views.setTextViewText(
             R.id.widget_pending_time,
@@ -80,6 +85,9 @@ private class WidgetNotesFactory(
 
     private fun noteView(n: VbNote): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_note_item)
+        views.setTextColor(R.id.widget_item_title, ContextCompat.getColor(context, R.color.kb_label))
+        views.setTextColor(R.id.widget_item_body, ContextCompat.getColor(context, R.color.kb_label_secondary))
+        views.setTextColor(R.id.widget_item_time, ContextCompat.getColor(context, R.color.kb_label_secondary))
         views.setTextViewText(
             R.id.widget_item_title,
             n.titulo.ifBlank { "Sin título" },

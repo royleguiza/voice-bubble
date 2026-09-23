@@ -22,7 +22,7 @@
             android:layout_weight="1"
             android:text="Notas"
             android:textSize="12sp"
-            android:textColor="#0B1220"
+            android:textColor="@color/kb_label"
             android:textStyle="bold"
             android:letterSpacing="-0.01" />
 
@@ -32,7 +32,7 @@
             android:layout_height="wrap_content"
             android:text="0 / 50"
             android:textSize="10sp"
-            android:textColor="#6B7A90"
+            android:textColor="@color/kb_label_secondary"
             android:background="@drawable/widget_pill_bg"
             android:paddingStart="7dp"
             android:paddingEnd="7dp"
@@ -45,7 +45,7 @@
             android:layout_height="wrap_content"
             android:text=""
             android:textSize="10sp"
-            android:textColor="#6B7A90"
+            android:textColor="@color/kb_label_secondary"
             android:layout_marginStart="6dp"
             android:visibility="gone" />
     </LinearLayout>
@@ -69,7 +69,7 @@
         android:gravity="center"
         android:text="Sin notas — toca Dictar para crear la primera"
         android:textSize="11sp"
-        android:textColor="#6B7A90"
+        android:textColor="@color/kb_label_secondary"
         android:visibility="gone" />
 
     <LinearLayout
@@ -140,7 +140,7 @@
                 android:layout_marginStart="6dp"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:textColor="#0B1220" />
+                android:textColor="@color/kb_label" />
 
             <TextView
                 android:id="@+id/widget_rec_label"
@@ -149,7 +149,7 @@
                 android:layout_weight="1"
                 android:text="Grabando"
                 android:textSize="11sp"
-                android:textColor="#0B1220"
+                android:textColor="@color/kb_label"
                 android:textStyle="bold"
                 android:gravity="center_vertical"
                 android:paddingStart="6dp" />
