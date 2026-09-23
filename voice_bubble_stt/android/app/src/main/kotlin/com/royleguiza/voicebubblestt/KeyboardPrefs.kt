@@ -26,6 +26,7 @@ class KeyboardPrefs(private val context: Context) {
     var terminalRowVisiblePref = true
     var codeKeyVisiblePref = true
     var languageKeyVisiblePref = true
+    var credentialsKeyVisiblePref = true
 
     // SPK-10: imágenes del portapapeles opt-in (texto primero). Default OFF.
     var clipboardImagesEnabled = false
@@ -108,6 +109,17 @@ class KeyboardPrefs(private val context: Context) {
     }
 
     /**
+     * Llavecita de credenciales en la barra superior del teclado
+     * (Ajustes → Claves). Default true (visible, conducta histórica).
+     */
+    fun credentialsKeyVisible(): Boolean = try {
+        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getBoolean("flutter.kb_credentials_key_visible", true)
+    } catch (_: Exception) {
+        true
+    }
+
+    /**
      * K5-T2/T3 + AT-A8: lectura UNICA por ciclo del campo (onStartInputView)
      * de las preferencias de aspecto escritas por Ajustes (archivo
      * FlutterSharedPreferences, claves con prefijo "flutter."). Parseo
@@ -185,6 +197,7 @@ class KeyboardPrefs(private val context: Context) {
         terminalRowVisiblePref = terminalRowVisible()
         codeKeyVisiblePref = codeKeyVisible()
         languageKeyVisiblePref = languageKeyVisible()
+        credentialsKeyVisiblePref = credentialsKeyVisible()
         clipboardImagesEnabled = try {
             context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
                 .getBoolean("flutter.kb_clipboard_images_enabled", false)

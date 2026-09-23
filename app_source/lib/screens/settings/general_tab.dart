@@ -89,7 +89,7 @@ class GeneralTab extends StatelessWidget {
               icon: Icons.psychology_rounded,
               iconColor: kTilePurple,
               title: 'Modelo Transcripción',
-              value: 'Cloud Whisper',
+              value: 'Cloud Whisper (sin local)',
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -191,7 +191,7 @@ class GeneralTab extends StatelessWidget {
               contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               title: const Text('Guardar audio sin conexión'),
               subtitle: const Text(
-                'Si no hay red al dictar, el audio queda en Notas. Transcribir solo cuando lo pidas.',
+                'Si no hay red al dictar, el audio queda en Notas. Transcribir solo cuando lo pidas. Solo nube Groq por ahora: transcripción local (offline) aún no disponible.',
               ),
               value: notesDeferredQueue,
               onChanged: onToggleNotesDeferredQueue,

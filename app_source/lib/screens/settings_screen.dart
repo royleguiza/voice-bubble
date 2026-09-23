@@ -60,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _showTerminalRow = true;
   bool _showCodeKey = true;
   bool _showLanguageKey = true;
+  bool _showCredentialsKey = true;
   bool _clipboardImagesEnabled = false;
   String _heightProfile = StorageService.defaultHeightProfile;
   String _keySpacing = StorageService.defaultKeySpacing;
@@ -175,6 +176,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     final bubbleHistory = await _storageService.loadBubbleHistoryEnabled();
     final notesDeferred =
         await _storageService.loadNotesDeferredQueueEnabled();
+    final credentialsKeyVisible =
+        await _storageService.loadKeyboardCredentialsKeyVisible();
     final clipboardImages = await _storageService.getClipboardImagesEnabled();
     final longPressSymbols = await _storageService.getLongPressSymbolsEnabled();
     final longPressDelay = await _storageService.getLongPressDelay();
@@ -200,6 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _showTerminalRow = results.$4;
       _showCodeKey = results.$5;
       _showLanguageKey = results.$6;
+      _showCredentialsKey = credentialsKeyVisible;
       _heightProfile = results.$7;
       _keySpacing = results.$8;
       _hapticsEnabled = results.$9;
@@ -291,6 +295,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleKeyboardLanguageKey(bool visible) async {
     await _storageService.saveKeyboardLanguageKeyVisible(visible);
     if (mounted) setState(() => _showLanguageKey = visible);
+  }
+
+  Future<void> _toggleKeyboardCredentialsKey(bool visible) async {
+    await _storageService.saveKeyboardCredentialsKeyVisible(visible);
+    if (mounted) setState(() => _showCredentialsKey = visible);
   }
 
   Future<void> _toggleClipboardImages(bool enabled) async {
@@ -955,6 +964,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ? CredentialsScreen(
                         storageService: _storageService,
                         onSelectTab: _selectTab,
+                        showCredentialsKey: _showCredentialsKey,
+                        onToggleCredentialsKey:
+                            _toggleKeyboardCredentialsKey,
                       )
                     : const SizedBox.shrink(),
               ],

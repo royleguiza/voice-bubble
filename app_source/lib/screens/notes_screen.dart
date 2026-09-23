@@ -97,14 +97,24 @@ class _NotesScreenState extends State<NotesScreen> {
     });
     unawaited(HapticFeedback.lightImpact());
     String? path;
+    String? keptPath;
     try {
       path = await _transcriptionService.stopRecording();
       if (path == null) {
         setState(() => _isTranscribing = false);
         return;
       }
+      // Conservar audio: copia durable ANTES de transcribir (transcribe
+      // borra el temporal en éxito). La nota queda con texto + audio.
+      keptPath = await _pendingQueue.keepCopyForNote(path);
       final file = await _transcriptionService.transcribe(path);
-      final ok = await _notesService.addFromTranscription(file.text);
+      final ok = await _notesService.addFromTranscription(
+        file.text,
+        audioPath: keptPath,
+      );
+      if (!ok) {
+        _pendingQueue.deleteKeptAudio(keptPath);
+      }
       if (!mounted) return;
       setState(() => _isTranscribing = false);
       if (ok) {
@@ -124,6 +134,9 @@ class _NotesScreenState extends State<NotesScreen> {
           e is TranscriptionException && e.isRetryable && path != null;
       if (retryable && _deferredQueueEnabled) {
         final item = await _pendingQueue.enqueueFromTemp(path);
+        // El pendiente ya guarda su propio WAV: el copiado previo a
+        // notes_audio queda huérfano y se limpia.
+        _pendingQueue.deleteKeptAudio(keptPath);
         if (!mounted) return;
         setState(() {});
         if (item != null) {
@@ -134,6 +147,8 @@ class _NotesScreenState extends State<NotesScreen> {
           );
           return;
         }
+      } else {
+        _pendingQueue.deleteKeptAudio(keptPath);
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,14 +160,23 @@ class _NotesScreenState extends State<NotesScreen> {
   Future<void> _transcribePending(PendingNote item) async {
     if (_isTranscribingPending) return;
     setState(() => _isTranscribingPending = true);
+    // Copia durable a notes_audio ANTES de transcribir: si el envío
+    // tiene éxito, la nota queda con texto + audio original.
+    final keptPath = await _pendingQueue.promoteToKept(item);
     try {
       final key = await StorageService.espSecureStorage
               .read(key: 'groq_api_key') ??
           '';
       _transcriptionService.updateApiKey(key);
       final file = await _transcriptionService.transcribe(item.audioPath);
-      final ok = await _notesService.addFromTranscription(file.text);
-      // transcribe() ya borró el WAV en éxito; quitamos el índice.
+      final ok = await _notesService.addFromTranscription(
+        file.text,
+        audioPath: keptPath,
+      );
+      if (!ok) {
+        _pendingQueue.deleteKeptAudio(keptPath);
+      }
+      // transcribe() ya borró el WAV pendiente en éxito; quitamos el índice.
       await _pendingQueue.remove(item.id, deleteAudio: false);
       await WidgetService().updateWidgets();
       if (!mounted) return;
@@ -168,6 +192,7 @@ class _NotesScreenState extends State<NotesScreen> {
       }
       setState(() {});
     } on TranscriptionException catch (e) {
+      _pendingQueue.deleteKeptAudio(keptPath);
       if (!mounted) return;
       setState(() => _isTranscribingPending = false);
       final msg = e.kind == TranscriptionErrorKind.auth
@@ -179,6 +204,7 @@ class _NotesScreenState extends State<NotesScreen> {
         SnackBar(content: Text(msg)),
       );
     } catch (e) {
+      _pendingQueue.deleteKeptAudio(keptPath);
       if (!mounted) return;
       setState(() => _isTranscribingPending = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -208,6 +234,32 @@ class _NotesScreenState extends State<NotesScreen> {
     );
     if (confirm != true) return;
     await _pendingQueue.remove(item.id, deleteAudio: true);
+    if (mounted) setState(() {});
+  }
+
+  /// Borra solo el audio conservado de una nota (el texto permanece).
+  Future<void> _deleteNoteAudio(VoiceNote note) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Borrar audio'),
+        content: const Text(
+            'Se borrará el audio original. La transcripción queda.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Borrar audio'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    await _notesService.updateNote(note.id, clearAudioPath: true);
+    await WidgetService().updateWidgets();
     if (mounted) setState(() {});
   }
 
@@ -354,6 +406,16 @@ class _NotesScreenState extends State<NotesScreen> {
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Text(
+                'Sin transcripción local todavía: el audio se guarda en el teléfono y solo sale a la nube cuando tocas Transcribir.',
+                key: const ValueKey('pendingLocalInfo'),
+                style: kTextCaption.copyWith(
+                  color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
+                ),
+              ),
+            ),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -391,6 +453,9 @@ class _NotesScreenState extends State<NotesScreen> {
                       return NoteCard(
                         note: n,
                         onTap: () => _openEditor(n),
+                        onDeleteAudio: n.hasAudio
+                            ? () => _deleteNoteAudio(n)
+                            : null,
                         onCopy: () async {
                           // Solo el contenido (cuerpo), nunca el título.
                           final copy = await copyTranscriptionText(n.cuerpo);

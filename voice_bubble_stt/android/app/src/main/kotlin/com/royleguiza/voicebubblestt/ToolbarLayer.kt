@@ -63,6 +63,7 @@ class ToolbarLayer(
         fun isTerminalRowPref(): Boolean
         fun toggleTerminalRowPref()
         fun isCodeKeyPref(): Boolean
+        fun isCredentialsKeyPref(): Boolean
         fun isTrackpadToolbarAllowed(): Boolean
         fun isToolbarInverted(): Boolean
         fun isMiniMode(): Boolean
@@ -122,18 +123,21 @@ class ToolbarLayer(
             items.add(btnSnippets)
         }
 
-        // Llave de credenciales: SIEMPRE visible, tambien en contraseñas
-        // (ahi es donde se necesita: relleno explicito usuario+clave).
-        val btnCredentials = host.makeIconKey(
-            R.drawable.ic_key,
-            if (host.currentLayer() == Layer.CREDENTIALS) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
-            1.0f,
-            if (host.isSpanish()) "credenciales" else "credentials",
-            tintColorRes = if (host.currentLayer() == Layer.CREDENTIALS) R.color.kb_label_on_accent else R.color.kb_label,
-        ) {
-            host.credentialsToggle()
+        // Llave de credenciales: visible salvo pref en OFF (Ajustes →
+        // Claves). En contraseñas sigue disponible si la pref está ON
+        // (ahí es donde se necesita: relleno explícito usuario+clave).
+        if (host.isCredentialsKeyPref()) {
+            val btnCredentials = host.makeIconKey(
+                R.drawable.ic_key,
+                if (host.currentLayer() == Layer.CREDENTIALS) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
+                1.0f,
+                if (host.isSpanish()) "credenciales" else "credentials",
+                tintColorRes = if (host.currentLayer() == Layer.CREDENTIALS) R.color.kb_label_on_accent else R.color.kb_label,
+            ) {
+                host.credentialsToggle()
+            }
+            items.add(btnCredentials)
         }
-        items.add(btnCredentials)
 
         // Elementos centrales:
         val btnSettings = host.makeIconKey(R.drawable.ic_settings, R.drawable.kb_key_alt, 1.0f, "ajustes") {

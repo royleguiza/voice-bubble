@@ -169,5 +169,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Banco'), findsNothing);
     });
+
+    testWidgets('el switch de la llave oculta la llavecita del teclado',
+        (tester) async {
+      await openCredencialesTab(tester);
+
+      final switchFinder =
+          find.byKey(const ValueKey('credenciales-key-visible-switch'));
+      expect(switchFinder, findsOneWidget);
+      expect(tester.widget<SwitchListTile>(switchFinder).value, isTrue);
+
+      await tester.tap(switchFinder);
+      await tester.pumpAndSettle();
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_credentials_key_visible'), isFalse);
+      expect(
+        tester.widget<SwitchListTile>(switchFinder).value,
+        isFalse,
+      );
+    });
   });
 }

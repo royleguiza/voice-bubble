@@ -161,9 +161,15 @@ def main():
                 "Falta la capa")
     suite.check("Botón llave en toolbar", "R.drawable.ic_key" in vks and
                 ("credentials.toggle()" in vks or "credentialsToggle()" in vks), "Falta el botón")
-    suite.check("Llave visible en campos password",
-                "tambien en contraseñas" in vks,
-                "La llave debe vivir en el login")
+    suite.check("Llave ocultable desde Ajustes → Claves (default visible)",
+                "isCredentialsKeyPref()" in vks
+                and "kb_credentials_key_visible" in storage
+                and "credenciales-key-visible-switch" in screen,
+                "Falta el switch de la llavecita")
+    suite.check("Llave visible en campos password cuando la pref está ON",
+                "sigue disponible si la pref" in vks
+                or "tambien en contraseñas" in vks,
+                "La llave debe vivir en el login cuando está visible")
     suite.check("Capa sobrevive en password (no reseteada)",
                 "TRACKPAD || layer == Layer.SNIPPETS" in vks and
                 "CREDENTIALS" not in vks.split("TRACKPAD || layer == Layer.SNIPPETS")[0].split("\n")[-1],
@@ -205,6 +211,10 @@ def main():
     suite.check("Contrato de claves incluye las 3",
                 all(k in contract for k in ("vb_credentials_v1", "vb_cred_pass_v1", "vb_cred_show_user")),
                 "contract-keys.txt desactualizado")
+    suite.check("Contrato incluye la llave del toolbar en el puente",
+                "kb_credentials_key_visible" in contract
+                and "kb_credentials_key_visible" in storage,
+                "contract-keys.txt o StorageService sin la llave")
 
     print("\n============================================================")
     print(f" RESULTADOS: {suite.passed} Pasados, {suite.failed} Fallidos")

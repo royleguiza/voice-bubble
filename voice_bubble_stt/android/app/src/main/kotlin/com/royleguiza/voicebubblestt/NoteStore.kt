@@ -20,6 +20,7 @@ data class VbNote(
     val cuerpo: String,
     val createdAt: String,
     val updatedAt: String,
+    val audioPath: String = "",
 )
 
 class NoteStore(private val context: Context) {
@@ -96,6 +97,7 @@ class NoteStore(private val context: Context) {
                         cuerpo = obj.optString("cuerpo"),
                         createdAt = obj.optString("createdAt"),
                         updatedAt = obj.optString("updatedAt"),
+                        audioPath = obj.optString("audioPath"),
                     )
                 )
             }

@@ -53,6 +53,10 @@ class PendingNoteQueue {
   static const int maxPending = 15;
   static const String pendingDirName = 'pending_notes';
 
+  /// WAVs conservados junto a la nota ya transcrita (texto + audio).
+  /// Pedido del dueño 2026-09-23: el audio permanece aunque se transcriba.
+  static const String notesAudioDirName = 'notes_audio';
+
   List<PendingNote> _items = [];
 
   List<PendingNote> get items => List.unmodifiable(_items);
@@ -63,6 +67,19 @@ class PendingNoteQueue {
     try {
       final base = await getApplicationSupportDirectory();
       final dir = Directory('${base.path}/$pendingDirName');
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      }
+      return dir;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Directory?> _audioDir() async {
+    try {
+      final base = await getApplicationSupportDirectory();
+      final dir = Directory('${base.path}/$notesAudioDirName');
       if (!dir.existsSync()) {
         dir.createSync(recursive: true);
       }
@@ -183,6 +200,54 @@ class PendingNoteQueue {
     }
     await _persist();
     return true;
+  }
+
+  /// Copia [srcPath] a `notes_audio/` para conservarlo junto a la nota
+  /// ya transcrita (texto + audio). No toca la cola. Devuelve la ruta
+  /// durable o null si falla. IO síncrona (segura bajo fakeAsync).
+  Future<String?> keepCopyForNote(String srcPath) async {
+    final src = File(srcPath);
+    if (!src.existsSync()) return null;
+    final dir = await _audioDir();
+    if (dir == null) return null;
+    final destPath =
+        '${dir.path}/${DateTime.now().microsecondsSinceEpoch}.wav';
+    try {
+      src.copySync(destPath);
+      return destPath;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Copia el WAV de un pendiente a `notes_audio/` (éxito de
+  /// "Transcribir con nube"): la nota queda con texto + audio.
+  /// El original pendiente lo borra `transcribe()` en éxito, así que el
+  /// efecto neto es un traslado. Devuelve la ruta durable o null si falla.
+  Future<String?> promoteToKept(PendingNote item) async {
+    final src = File(item.audioPath);
+    if (!src.existsSync()) return null;
+    final dir = await _audioDir();
+    if (dir == null) return null;
+    final destPath = '${dir.path}/${item.id}.wav';
+    try {
+      src.copySync(destPath);
+      return destPath;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Borra un WAV conservado en `notes_audio/` (al borrar la nota o al
+  /// limpiar un huérfano tras un fallo). Nunca lanza.
+  void deleteKeptAudio(String? path) {
+    if (path == null || path.isEmpty) return;
+    try {
+      final f = File(path);
+      if (f.existsSync()) {
+        f.deleteSync();
+      }
+    } catch (_) {}
   }
 
   /// Descarta todos los pendientes y sus audios (toggle OFF / limpieza).

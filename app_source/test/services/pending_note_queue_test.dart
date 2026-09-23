@@ -63,7 +63,7 @@ void main() {
       expect(PendingNoteQueue.pendingDirName, 'pending_notes');
     });
 
-    test('clave NO está en contract-keys.txt (solo Dart)', () {
+    test('clave en contract-keys.txt (compartida con el widget)', () {
       final f = File('docs/contract-keys.txt');
       if (!f.existsSync()) {
         // cwd puede ser app_source en algunos runners; buscar desde repo.
@@ -71,11 +71,11 @@ void main() {
         final raw = alt.existsSync()
             ? alt.readAsStringSync()
             : (f.existsSync() ? f.readAsStringSync() : '');
-        expect(raw.contains('voice_notes_pending_v1'), isFalse);
+        expect(raw.contains('voice_notes_pending_v1'), isTrue);
         return;
       }
       expect(f.readAsStringSync().contains('voice_notes_pending_v1'),
-          isFalse);
+          isTrue);
     });
 
     test('fromJson tolera campos ausentes', () {
@@ -193,6 +193,45 @@ void main() {
       expect(q.items, isEmpty);
       expect(File(a!.audioPath).existsSync(), isFalse);
       expect(File(b!.audioPath).existsSync(), isFalse);
+    });
+  });
+
+  group('PendingNoteQueue - audio conservado (texto + audio)', () {
+    test('keepCopyForNote copia a notes_audio sin tocar el original',
+        () async {
+      final q = PendingNoteQueue();
+      await q.load();
+      final src = makeTempWav('online.wav');
+      final kept = await q.keepCopyForNote(src);
+      expect(kept, isNotNull);
+      expect(kept!.contains('notes_audio'), isTrue);
+      expect(File(kept).existsSync(), isTrue);
+      // El original sigue vivo (transcribe lo borra en éxito).
+      expect(File(src).existsSync(), isTrue);
+    });
+
+    test('promoteToKept copia el pendiente a notes_audio', () async {
+      final q = PendingNoteQueue();
+      await q.load();
+      final item =
+          await q.enqueueFromTemp(makeTempWav('offline.wav'));
+      expect(item, isNotNull);
+      final kept = await q.promoteToKept(item!);
+      expect(kept, isNotNull);
+      expect(kept!.contains('notes_audio'), isTrue);
+      expect(File(kept).existsSync(), isTrue);
+    });
+
+    test('deleteKeptAudio borra el conservado sin lanzar', () async {
+      final q = PendingNoteQueue();
+      await q.load();
+      final kept = await q.keepCopyForNote(makeTempWav('t.wav'));
+      expect(File(kept!).existsSync(), isTrue);
+      q.deleteKeptAudio(kept);
+      expect(File(kept).existsSync(), isFalse);
+      q.deleteKeptAudio(null);
+      q.deleteKeptAudio('');
+      q.deleteKeptAudio('${tempDir.path}/nope.wav');
     });
   });
 

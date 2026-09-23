@@ -18,10 +18,16 @@ class CredentialsScreen extends StatefulWidget {
   /// Null = sin navegación (uso aislado en tests).
   final ValueChanged<int>? onSelectTab;
 
+  /// Visibilidad de la llavecita en la barra superior del teclado.
+  final bool showCredentialsKey;
+  final ValueChanged<bool>? onToggleCredentialsKey;
+
   const CredentialsScreen({
     super.key,
     required this.storageService,
     this.onSelectTab,
+    this.showCredentialsKey = true,
+    this.onToggleCredentialsKey,
   });
 
   @override
@@ -211,6 +217,16 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
                     title: const Text('Mostrar usuario junto al nombre'),
                     value: _showUser,
                     onChanged: _toggleShowUser,
+                  ),
+                  SwitchListTile(
+                    key: const ValueKey('credenciales-key-visible-switch'),
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Llave en el teclado'),
+                    subtitle: const Text(
+                      'La llavecita en la barra superior del teclado. Apágala para liberar espacio.',
+                    ),
+                    value: widget.showCredentialsKey,
+                    onChanged: widget.onToggleCredentialsKey,
                   ),
                 ],
               ),

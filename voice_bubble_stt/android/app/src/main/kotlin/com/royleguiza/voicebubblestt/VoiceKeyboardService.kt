@@ -334,6 +334,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun isTerminalRowPref(): Boolean = kbPrefs.terminalRowVisiblePref
     override fun toggleTerminalRowPref() { kbPrefs.terminalRowVisiblePref = !kbPrefs.terminalRowVisiblePref }
     override fun isCodeKeyPref(): Boolean = kbPrefs.codeKeyVisiblePref
+    override fun isCredentialsKeyPref(): Boolean = kbPrefs.credentialsKeyVisiblePref
     override fun isTrackpadToolbarAllowed(): Boolean = kbPrefs.trackpadEnabled && kbPrefs.trackpadToolbarVisible
     override fun isToolbarInverted(): Boolean = kbPrefs.invertToolbar
     override fun registerModifier(key: TextView, isCtrl: Boolean) = toolbar.registerModifier(key, isCtrl)

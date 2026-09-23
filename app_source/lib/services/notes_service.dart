@@ -140,7 +140,7 @@ class NotesService {
     } catch (_) {}
   }
 
-  Future<bool> addFromTranscription(String text) async {
+  Future<bool> addFromTranscription(String text, {String? audioPath}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
     if (trimmed.length > maxCuerpoLength) return false;
@@ -156,6 +156,7 @@ class NotesService {
       cuerpo: trimmed,
       createdAt: now,
       updatedAt: now,
+      audioPath: audioPath,
     );
     _notes.insert(0, note);
     if (_notes.length > maxNotes) {
@@ -192,6 +193,7 @@ class NotesService {
     String id, {
     String? titulo,
     String? cuerpo,
+    bool clearAudioPath = false,
   }) async {
     if (titulo != null && titulo.length > maxTituloLength) {
       return false;
@@ -205,11 +207,16 @@ class NotesService {
     final idx = _notes.indexWhere((n) => n.id == id);
     if (idx == -1) return false;
     final now = DateTime.now();
+    final prevAudio = _notes[idx].audioPath;
     _notes[idx] = _notes[idx].copyWith(
       titulo: titulo?.trim(),
       cuerpo: cuerpo?.trim(),
       updatedAt: now,
+      clearAudioPath: clearAudioPath,
     );
+    if (clearAudioPath) {
+      _deleteAudioFile(prevAudio);
+    }
     // Reordena por updatedAt desc.
     _notes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     await _persist();
@@ -220,10 +227,27 @@ class NotesService {
     final merged = await _loadMerged();
     _notes = merged;
     final before = _notes.length;
+    final victim = _notes.where((n) => n.id == id).toList();
     _notes = _notes.where((n) => n.id != id).toList();
     if (_notes.length == before) return false;
+    // Limpieza: el WAV conservado no queda huérfano en disco.
+    for (final n in victim) {
+      _deleteAudioFile(n.audioPath);
+    }
     await _persist();
     return true;
+  }
+
+  /// Borra el WAV conservado de una nota (nunca lanza; IO síncrona para
+  /// no colgar bajo fakeAsync en tests).
+  void _deleteAudioFile(String? path) {
+    if (path == null || path.isEmpty) return;
+    try {
+      final f = File(path);
+      if (f.existsSync()) {
+        f.deleteSync();
+      }
+    } catch (_) {}
   }
 
   Future<void> _ensureLoaded() async {

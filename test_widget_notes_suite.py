@@ -181,6 +181,15 @@ check("NoteStore tope 50 (como Dart maxNotes)",
       'MAX_NOTES = 50' in store and 'out.size > MAX_NOTES' in store)
 check("NoteStore ignora ids vacios (como Dart)",
       'if (n.id.isEmpty()) continue' in store)
+check("NoteStore preserva audioPath (texto + audio)",
+      'audioPath' in store and 'optString("audioPath")' in store)
+check("Widget conserva audio al transcribir (texto + audio)",
+      'writeWavFile("notes_audio"' in svc and '"audioPath", audioPath' in svc)
+check("Widget encola offline con flag ON (sin auth)",
+      'enqueuePendingWav' in svc and 'notes_deferred_queue_enabled' in svc
+      and 'pending_notes' in svc and 'voice_notes_pending_v1' in svc)
+check("Widget no encola fallos de API key",
+      'isAuthError' in svc and 'API key' in svc)
 check("IDs Kotlin con UUID (sin colision de millis)",
       'UUID.randomUUID().toString()' in (KT / "WidgetDictationService.kt").read_text()
       and 'UUID.randomUUID().toString()' in act

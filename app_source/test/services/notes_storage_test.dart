@@ -143,5 +143,60 @@ void main() {
       expect(n.id, '');
       expect(n.titulo, '');
     });
+
+    test('audioPath opcional: round-trip y ausente en viejas', () {
+      final withAudio = VoiceNote(
+        id: 'a',
+        titulo: '',
+        cuerpo: 'C',
+        createdAt: DateTime(2026, 1, 1, 10),
+        updatedAt: DateTime(2026, 1, 1, 11),
+        audioPath: '/tmp/notes_audio/x.wav',
+      );
+      expect(withAudio.hasAudio, isTrue);
+      final restored = VoiceNote.fromJson(withAudio.toJson());
+      expect(restored.audioPath, '/tmp/notes_audio/x.wav');
+      expect(restored, withAudio);
+
+      final legacy = VoiceNote.fromJson({
+        'id': 'b',
+        'titulo': '',
+        'cuerpo': 'C',
+        'createdAt': '2026-01-01T10:00:00.000',
+        'updatedAt': '2026-01-01T11:00:00.000',
+      });
+      expect(legacy.audioPath, isNull);
+      expect(legacy.hasAudio, isFalse);
+      expect(legacy.toJson().containsKey('audioPath'), isFalse);
+    });
+  });
+
+  group('NotesService - audio conservado (texto + audio)', () {
+    test('addFromTranscription guarda audioPath cuando viene', () async {
+      final s = NotesService();
+      expect(
+          await s.addFromTranscription('Hola', audioPath: '/tmp/a.wav'),
+          isTrue);
+      expect(s.notes.first.audioPath, '/tmp/a.wav');
+      expect(s.notes.first.hasAudio, isTrue);
+    });
+
+    test('addFromTranscription sin audio deja null (notas a mano)',
+        () async {
+      final s = NotesService();
+      expect(await s.addFromTranscription('Hola'), isTrue);
+      expect(s.notes.first.audioPath, isNull);
+    });
+
+    test('updateNote clearAudioPath limpia el campo', () async {
+      final s = NotesService();
+      expect(
+          await s.addFromTranscription('Hola', audioPath: '/tmp/a.wav'),
+          isTrue);
+      final id = s.notes.first.id;
+      expect(await s.updateNote(id, clearAudioPath: true), isTrue);
+      expect(s.notes.first.audioPath, isNull);
+      expect(s.notes.first.hasAudio, isFalse);
+    });
   });
 }

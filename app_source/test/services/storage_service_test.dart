@@ -293,6 +293,39 @@ void main() {
     });
   });
 
+  group('StorageService - llave de credenciales del teclado', () {
+    test('default visible cuando no hay clave guardada', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.loadKeyboardCredentialsKeyVisible(), isTrue);
+    });
+
+    test('persiste oculto y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardCredentialsKeyVisible(false);
+      expect(await service.loadKeyboardCredentialsKeyVisible(), isFalse);
+    });
+
+    test('persiste visible y lo recupera', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardCredentialsKeyVisible(false);
+      await service.saveKeyboardCredentialsKeyVisible(true);
+      expect(await service.loadKeyboardCredentialsKeyVisible(), isTrue);
+    });
+
+    test('usa la clave compartida con el teclado nativo', () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      await service.saveKeyboardCredentialsKeyVisible(false);
+      // El lado Kotlin lee "flutter.kb_credentials_key_visible" en
+      // FlutterSharedPreferences; el plugin antepone "flutter." al guardar.
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('kb_credentials_key_visible'), isFalse);
+    });
+  });
+
   group('StorageService - imágenes del portapapeles opt-in (SPK-10)', () {
     test('default OFF cuando no hay clave guardada (texto primero)',
         () async {
@@ -615,6 +648,7 @@ void main() {
       'kb_bottom_elevation_dp',
       'kb_clipboard_images_enabled',
       'kb_code_key_visible',
+      'kb_credentials_key_visible',
       'kb_haptic_style',
       'kb_haptics_enabled',
       'kb_height_profile',
@@ -631,6 +665,8 @@ void main() {
       'kb_mic_sounds_enabled',
       'kb_mic_start_style',
       'kb_mic_stop_style',
+      'notes_deferred_queue_enabled',
+      'voice_notes_pending_v1',
       'kb_snippets_seeded',
       'kb_spacebar_alignment',
       'kb_spacebar_trackpad_mode',
@@ -660,8 +696,8 @@ void main() {
       'widget_mic_position',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (47 claves)', () {
-      expect(StorageService.bridgeKeys.length, 47);
+    test('bridgeKeys cubre exactamente el contrato (50 claves)', () {
+      expect(StorageService.bridgeKeys.length, 50);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
     });
 

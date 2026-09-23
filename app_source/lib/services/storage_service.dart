@@ -175,6 +175,18 @@ class StorageService {
   Future<void> saveKeyboardLanguageKeyVisible(bool visible) =>
       _setBool(_keyboardLanguageKeyVisibleKey, visible);
 
+  static const String _keyboardCredentialsKeyVisibleKey =
+      'kb_credentials_key_visible';
+
+  /// Llavecita de credenciales en la barra superior del teclado.
+  /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
+  /// Default true (visible, conducta histórica).
+  Future<bool> loadKeyboardCredentialsKeyVisible() =>
+      _getBool(_keyboardCredentialsKeyVisibleKey, true);
+
+  Future<void> saveKeyboardCredentialsKeyVisible(bool visible) =>
+      _setBool(_keyboardCredentialsKeyVisibleKey, visible);
+
   static const String kbClipboardImagesEnabledKey =
       'kb_clipboard_images_enabled';
 
@@ -189,13 +201,21 @@ class StorageService {
   static const String notesDeferredQueueKey = 'notes_deferred_queue_enabled';
 
   /// Cola diferida cloud en Notas (C1–C7, plan-notas-cola-nube.md).
-  /// SOLO Dart: no entra a [bridgeKeys] ni contract-keys.txt (el IME no
-  /// la lee). Default OFF hasta verificación en dispositivo.
+  /// Compartida con el widget nativo (WidgetDictationService encola en
+  /// offline): entra al puente y al contrato. Default OFF hasta
+  /// verificación en dispositivo.
   Future<bool> loadNotesDeferredQueueEnabled() =>
       _getBool(notesDeferredQueueKey, false);
 
   Future<void> saveNotesDeferredQueueEnabled(bool enabled) =>
       _setBool(notesDeferredQueueKey, enabled);
+
+  /// Cola de audios pendientes (JSON array `{id,audioPath,createdAtMs}`).
+  /// Fuente del valor: `PendingNoteQueue.pendingKey`; se duplica aquí
+  /// como const para entrar a [bridgeKeys] (el master exige que cada
+  /// ident del puente exista en este archivo). La escribe Dart
+  /// (PendingNoteQueue) y el widget Kotlin; nadie la lee en el IME.
+  static const String notesPendingKey = 'voice_notes_pending_v1';
 
   static const String kbHeightProfileKey = 'kb_height_profile';
   static const String kbHapticsEnabledKey = 'kb_haptics_enabled';
@@ -523,6 +543,7 @@ class StorageService {
     kbBottomElevationDpKey,
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,
+    _keyboardCredentialsKeyVisibleKey,
     kbHapticsEnabledKey,
     kbHapticStyleKey,
     kbHeightProfileKey,
@@ -539,6 +560,8 @@ class StorageService {
     kbMicSoundsEnabledKey,
     kbMicStartStyleKey,
     kbMicStopStyleKey,
+    notesDeferredQueueKey,
+    notesPendingKey,
     snippetsSeededKey,
     kbSpacebarAlignmentKey,
     kbSpacebarTrackpadModeKey,

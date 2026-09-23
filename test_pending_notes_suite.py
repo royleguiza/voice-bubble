@@ -78,12 +78,14 @@ check("Default flag OFF", re.search(
 check("Switch en GeneralTab con ValueKey",
       "notes-deferred-queue-switch" in read(GENERAL))
 check("Wiring en settings_screen", "onToggleNotesDeferredQueue" in read(SETTINGS))
-check("Flag NO en contract-keys", "notes_deferred_queue_enabled" not in read(CONTRACT))
-check("Flag NO en bridgeKeys block",
-      "notesDeferredQueueKey" not in re.search(
+check("Flag en contract-keys (widget lee la cola)",
+      "notes_deferred_queue_enabled" in read(CONTRACT))
+check("Flag en bridgeKeys block (widget lee la cola)",
+      "notesDeferredQueueKey" in re.search(
           r"bridgeKeys = \[(.*?)\];", st, re.DOTALL).group(1)
-          if re.search(r"bridgeKeys = \[(.*?)\];", st, re.DOTALL) else True)
-check("Pending key NO en contract-keys", "voice_notes_pending_v1" not in read(CONTRACT))
+          if re.search(r"bridgeKeys = \[(.*?)\];", st, re.DOTALL) else False)
+check("Pending key en contract-keys (widget encola)",
+      "voice_notes_pending_v1" in read(CONTRACT))
 
 # --- 4. Privacidad / sin auto-upload ---
 pub = read(PUBSPEC)
@@ -94,7 +96,26 @@ check("Sin auto-flush en notes_screen (sin addListener red / Timer upload)",
 check("Cero logs de contenido en cola",
       "print(" not in q and "debugPrint(" not in q and "Log." not in q)
 
-# --- 5. Docs y freeze ---
+# --- 5. Audio conservado (texto + audio, pedido 2026-09-23) ---
+model = read("app_source/lib/models/voice_note.dart")
+notesvc = read("app_source/lib/services/notes_service.dart")
+card = read("app_source/lib/widgets/note_card.dart")
+check("VoiceNote con audioPath opcional", "audioPath" in model and "hasAudio" in model)
+check("NotesService guarda audioPath al transcribir",
+      "addFromTranscription" in notesvc and "audioPath" in notesvc)
+check("Cola conserva copia en notes_audio",
+      "notesAudioDirName" in q and "notes_audio" in q
+      and "keepCopyForNote" in q and "promoteToKept" in q)
+check("Borrar nota limpia su WAV (sin huérfanos)",
+      "deleteKeptAudio" in q or "_deleteAudioFile" in notesvc)
+check("NoteCard muestra audio conservado + borrar audio",
+      "Audio original conservado" in card and "noteDeleteAudio-" in card)
+check("Transparencia local en pendientes (sin local todavía)",
+      "pendingLocalInfo" in notes or "transcripción local" in notes.lower())
+check("Ajustes transparenta solo-nube (sin local)",
+      "aún no disponible" in read(GENERAL))
+
+# --- 6. Docs y freeze ---
 readme = read(README)
 agents = read(AGENTS)
 freeze = read(FREEZE)

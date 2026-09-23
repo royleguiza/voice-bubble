@@ -236,7 +236,10 @@ class WidgetDictationService : Service() {
             c.transcribe(wav, cfg, onDone = { text ->
                 BackgroundWork.postMain {
                     if (text != null && text.isNotBlank()) {
-                        saveUntitledNote(text.trim())
+                        // Texto + audio: el WAV original se conserva junto a
+                        // la nota (pedido del dueño 2026-09-23).
+                        val kept = writeWavFile("notes_audio", "${UUID.randomUUID()}.wav", wav)
+                        saveUntitledNote(text.trim(), kept)
                     }
                     updateWidgetsState("idle")
                     // Notifica save breve
@@ -250,7 +253,13 @@ class WidgetDictationService : Service() {
                     savedResetRunnable = sr
                     mainHandler.postDelayed(sr, 1200)
                 }
-            }, onError = { _ ->
+            }, onError = { msg ->
+                // Sin red / fallo reintentable: con el flag ON el audio se
+                // encola en pending_notes para transcribirlo desde la app
+                // ("Transcribir con nube"). Auth (sin/ mala key) no encola.
+                if (isDeferredQueueEnabled() && !isAuthError(msg)) {
+                    enqueuePendingWav(wav)
+                }
                 BackgroundWork.postMain {
                     updateWidgetsState("idle")
                     stopForeground(true)
@@ -260,7 +269,7 @@ class WidgetDictationService : Service() {
         }
     }
 
-    private fun saveUntitledNote(text: String) {
+    private fun saveUntitledNote(text: String, audioPath: String? = null) {
         try {
             val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val raw = prefs.getString("flutter.voice_notes_v1", null)
@@ -272,6 +281,9 @@ class WidgetDictationService : Service() {
                 .put("cuerpo", text)
                 .put("createdAt", now)
                 .put("updatedAt", now)
+            if (!audioPath.isNullOrBlank()) {
+                obj.put("audioPath", audioPath)
+            }
             // Insertar al inicio
             val newArr = JSONArray()
             newArr.put(obj)
@@ -284,6 +296,71 @@ class WidgetDictationService : Service() {
             // Espejo en archivo (ver NoteStore): Dart y widget leen lo mismo.
             NoteStore.writeFileMirror(this, finalJson)
             refreshWidgets()
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Cola diferida (mismo contrato que Dart `PendingNoteQueue`):
+     * WAV durable en `filesDir/pending_notes/<id>.wav` + entrada
+     * `{id, audioPath, createdAtMs}` al inicio de
+     * `flutter.voice_notes_pending_v1`, tope 15 FIFO (descarta el más
+     * viejo y su WAV). La app la transcribe con "Transcribir con nube".
+     * Solo con el flag `flutter.notes_deferred_queue_enabled` en ON.
+     */
+    private fun isDeferredQueueEnabled(): Boolean = try {
+        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            .getBoolean("flutter.notes_deferred_queue_enabled", false)
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun isAuthError(msg: String): Boolean =
+        msg.contains("API key", ignoreCase = true)
+
+    private fun writeWavFile(dirName: String, fileName: String, wav: ByteArray): String? {
+        return try {
+            val dir = java.io.File(filesDir, dirName)
+            if (!dir.exists()) dir.mkdirs()
+            val dest = java.io.File(dir, fileName)
+            dest.writeBytes(wav)
+            dest.absolutePath
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun enqueuePendingWav(wav: ByteArray) {
+        try {
+            val id = UUID.randomUUID().toString()
+            val path = writeWavFile("pending_notes", "$id.wav", wav) ?: return
+            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val raw = prefs.getString("flutter.voice_notes_pending_v1", null)
+            val arr = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
+            val nowMs = System.currentTimeMillis()
+            val obj = JSONObject()
+                .put("id", id)
+                .put("audioPath", path)
+                .put("createdAtMs", nowMs)
+            val old = ArrayList<JSONObject>()
+            for (i in 0 until arr.length()) {
+                val o = arr.optJSONObject(i) ?: continue
+                if (o.optString("id").isBlank() || o.optString("audioPath").isBlank()) continue
+                old.add(o)
+            }
+            val merged = JSONArray()
+            merged.put(obj)
+            for (o in old.take(14)) merged.put(o)
+            // FIFO: lo que no entró (más viejo) se descarta con su WAV.
+            for (o in old.drop(14)) {
+                try {
+                    val victimPath = o.optString("audioPath")
+                    if (victimPath.isNotBlank()) {
+                        val f = java.io.File(victimPath)
+                        if (f.exists()) f.delete()
+                    }
+                } catch (_: Exception) {}
+            }
+            prefs.edit().putString("flutter.voice_notes_pending_v1", merged.toString()).apply()
         } catch (_: Exception) {}
     }
 

@@ -7,6 +7,7 @@ class NoteCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onDelete;
   final VoidCallback? onCopy;
+  final VoidCallback? onDeleteAudio;
 
   const NoteCard({
     super.key,
@@ -14,6 +15,7 @@ class NoteCard extends StatelessWidget {
     required this.onTap,
     this.onDelete,
     this.onCopy,
+    this.onDeleteAudio,
   });
 
   String _format(DateTime dt) {
@@ -77,6 +79,42 @@ class NoteCard extends StatelessWidget {
                         _format(note.updatedAt),
                         style: kTextCaption.copyWith(color: secondary),
                       ),
+                      if (note.hasAudio) ...[
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.audiotrack_rounded,
+                              size: 18,
+                              color: secondary,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Audio original conservado',
+                                style: kTextCaption.copyWith(color: secondary),
+                              ),
+                            ),
+                            if (onDeleteAudio != null)
+                              InkWell(
+                                key: ValueKey(
+                                    'noteDeleteAudio-${note.id}'),
+                                onTap: onDeleteAudio,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Text(
+                                    'Borrar audio',
+                                    style: kTextCaption.copyWith(
+                                      color: secondary,
+                                      decoration:
+                                          TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
