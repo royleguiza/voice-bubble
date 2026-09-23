@@ -304,6 +304,30 @@ check("PIs directos siguen IMMUTABLE (solo la plantilla es mutable)",
 check("Modal avisa si la nota ya no existe (nunca vacia en silencio)",
       'La nota ya no existe' in act and 'noteId != null && note == null' in act)
 
+# Tacho en la modal: junto a la X, solo editando, con confirmacion
+_del_btn = over.split('@+id/btn_delete"')[1].split('</FrameLayout>')[0] if '@+id/btn_delete"' in over else ""
+check("Tacho junto a la X (48dp, fondo campo, icono propio)",
+      '@+id/btn_delete' in over and '48dp' in _del_btn
+      and 'widget_note_card_bg' in _del_btn and 'widget_ic_delete' in _del_btn)
+check("Tacho oculto por defecto (solo editando existente)",
+      'android:visibility="gone"' in _del_btn and '@+id/btn_delete_gap' in over)
+check("Espaciado parejo 8dp entre tacho y X (sin huecos indebidos)",
+      over.count('android:layout_width="8dp"') >= 2)
+check("Icono tacho existe, trazo grueso y rojo peligro",
+      (RES / "drawable/widget_ic_delete.xml").exists()
+      and 'M3,6h18' in (RES / "drawable/widget_ic_delete.xml").read_text()
+      and '#FFFF3B30' in (RES / "drawable/widget_ic_delete.xml").read_text())
+_t_del = (RES / "drawable/widget_ic_delete.xml").read_text()
+_m_del = re.search(r'strokeWidth="([\d.]+)"', _t_del)
+check("Trazo grueso widget_ic_delete", _m_del is not None and float(_m_del.group(1)) >= 3.0, _t_del[:120])
+check("Tacho solo en edicion (nota nueva y pendiente sin borrar)",
+      'R.id.btn_delete' in act and 'note != null' in act)
+check("Borrado con confirmacion (patron snippets)",
+      '¿Eliminar nota?' in act and 'confirmDelete' in act and 'deleteCurrentNote' in act)
+check("Borrado con paridad Dart (espejo + refresco + WAV sin huerfanos)",
+      'writeFileMirror' in act and 'requestListRefresh' in act
+      and 'audioToDelete' in act and 'Nota eliminada' in act)
+
 # Contrato de claves intacto (CI lo exige exacto)
 import subprocess
 out = subprocess.check_output(

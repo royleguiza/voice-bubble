@@ -83,6 +83,27 @@
             </FrameLayout>
 
             <Space
+                android:id="@+id/btn_delete_gap"
+                android:layout_width="8dp"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+            <FrameLayout
+                android:id="@+id/btn_delete"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/widget_note_card_bg"
+                android:contentDescription="Eliminar nota"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/widget_ic_delete" />
+            </FrameLayout>
+
+            <Space
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1" />

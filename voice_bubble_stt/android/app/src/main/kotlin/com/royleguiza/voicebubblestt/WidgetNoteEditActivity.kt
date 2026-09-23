@@ -70,6 +70,13 @@ class WidgetNoteEditActivity : Activity() {
             finish()
             return
         }
+        // Tacho solo editando una nota existente: en nota nueva y en modo
+        // pendiente no hay nada que borrar.
+        if (note != null) {
+            findViewById<View>(R.id.btn_delete).visibility = View.VISIBLE
+            findViewById<View>(R.id.btn_delete_gap).visibility = View.VISIBLE
+            findViewById<View>(R.id.btn_delete).setOnClickListener { confirmDelete() }
+        }
         titleEt.setText(note?.titulo.orEmpty())
         bodyEt.setText(note?.cuerpo.orEmpty())
 
@@ -239,6 +246,59 @@ class WidgetNoteEditActivity : Activity() {
     override fun onDestroy() {
         releasePlayer()
         super.onDestroy()
+    }
+
+    /**
+     * Tacho: confirmacion (patron del borrado de snippets) y borrado real
+     * con paridad Dart `deleteNote`: quita la nota, borra su WAV para no
+     * dejar huerfanos en disco, espeja el archivo y refresca los widgets.
+     */
+    private fun confirmDelete() {
+        try {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("¿Eliminar nota?")
+                .setMessage("Se borra la nota y su audio. No se puede deshacer.")
+                .setPositiveButton("Eliminar") { _, _ -> deleteCurrentNote() }
+                .setNegativeButton("Cancelar", null)
+                .show()
+        } catch (_: Exception) {}
+    }
+
+    private fun deleteCurrentNote() {
+        val id = noteId ?: return
+        try {
+            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val raw = prefs.getString("flutter.voice_notes_v1", null)
+            var audioToDelete: String? = null
+            if (!raw.isNullOrBlank()) {
+                val arr = JSONArray(raw)
+                val out = JSONArray()
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    if (o.optString("id") == id) {
+                        audioToDelete = o.optString("audioPath").takeIf { it.isNotBlank() }
+                        continue
+                    }
+                    out.put(o)
+                }
+                val finalJson = out.toString()
+                prefs.edit().putString("flutter.voice_notes_v1", finalJson).apply()
+                NoteStore.writeFileMirror(this, finalJson)
+            }
+            // Paridad Dart `_deleteAudioFile`: el WAV no queda huerfano.
+            try {
+                val f = audioToDelete?.let { java.io.File(it) }
+                if (f != null && f.exists()) f.delete()
+            } catch (_: Exception) {}
+            Toast.makeText(this, "Nota eliminada", Toast.LENGTH_SHORT).show()
+            val awm = AppWidgetManager.getInstance(this)
+            WidgetNotesProvider.requestListRefresh(this, awm)
+            val ids = awm.getAppWidgetIds(ComponentName(this, WidgetNotesProvider::class.java))
+            for (widgetId in ids) WidgetNotesProvider.updateOne(this, awm, widgetId)
+        } catch (_: Exception) {
+            Toast.makeText(this, "No se pudo eliminar", Toast.LENGTH_SHORT).show()
+        }
+        finish()
     }
 
     private fun saveNote(titulo: String, cuerpo: String) {
