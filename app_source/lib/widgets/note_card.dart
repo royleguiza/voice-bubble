@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/voice_note.dart';
 import '../ui/design_tokens.dart';
+import 'note_audio_row.dart';
 
 class NoteCard extends StatelessWidget {
   final VoiceNote note;
@@ -81,38 +82,10 @@ class NoteCard extends StatelessWidget {
                       ),
                       if (note.hasAudio) ...[
                         const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.audiotrack_rounded,
-                              size: 18,
-                              color: secondary,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                'Audio original conservado',
-                                style: kTextCaption.copyWith(color: secondary),
-                              ),
-                            ),
-                            if (onDeleteAudio != null)
-                              InkWell(
-                                key: ValueKey(
-                                    'noteDeleteAudio-${note.id}'),
-                                onTap: onDeleteAudio,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Text(
-                                    'Borrar audio',
-                                    style: kTextCaption.copyWith(
-                                      color: secondary,
-                                      decoration:
-                                          TextDecoration.underline,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                        NoteAudioRow(
+                          audioPath: note.audioPath!,
+                          noteId: note.id,
+                          onDeleteAudio: onDeleteAudio,
                         ),
                       ],
                     ],

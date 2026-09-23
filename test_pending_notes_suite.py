@@ -108,12 +108,28 @@ check("Cola conserva copia en notes_audio",
       and "keepCopyForNote" in q and "promoteToKept" in q)
 check("Borrar nota limpia su WAV (sin huérfanos)",
       "deleteKeptAudio" in q or "_deleteAudioFile" in notesvc)
-check("NoteCard muestra audio conservado + borrar audio",
-      "Audio original conservado" in card and "noteDeleteAudio-" in card)
+check("NoteCard delega el audio a NoteAudioRow",
+      "NoteAudioRow" in card and "note.hasAudio" in card)
 check("Transparencia local en pendientes (sin local todavía)",
       "pendingLocalInfo" in notes or "transcripción local" in notes.lower())
 check("Ajustes transparenta solo-nube (sin local)",
       "aún no disponible" in read(GENERAL))
+
+# --- 6. Visibilidad widget→app + reproducción (pedido 2026-09-23) ---
+card_row = read("app_source/lib/widgets/note_audio_row.dart")
+check("Cola re-lee prefs nativas (reload contra caché Dart)",
+      "prefs.reload()" in q)
+check("Notas refresca al volver del fondo (observer)",
+      "didChangeAppLifecycleState" in notes and "_refreshFromWidget" in notes)
+check("Dependencia audioplayers para reproducir",
+      "audioplayers" in pub)
+check("Fila de audio con reproducir/detener (perezoso, sin red)",
+      "notePlayAudio-" in card_row and "DeviceFileSource" in card_row
+      and "onPlayerComplete" in card_row
+      and "Audio original conservado" in card_row
+      and "noteDeleteAudio-" in card_row)
+check("Test widget de la fila de audio existe",
+      os.path.isfile(os.path.join(WORKSPACE, "app_source/test/widgets/note_audio_row_test.dart")))
 
 # --- 6. Docs y freeze ---
 readme = read(README)

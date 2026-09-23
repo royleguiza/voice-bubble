@@ -32,7 +32,8 @@ class NotesScreen extends StatefulWidget {
   State<NotesScreen> createState() => _NotesScreenState();
 }
 
-class _NotesScreenState extends State<NotesScreen> {
+class _NotesScreenState extends State<NotesScreen>
+    with WidgetsBindingObserver {
   late final NotesService _notesService;
   late final TranscriptionService _transcriptionService;
   late final PendingNoteQueue _pendingQueue;
@@ -47,6 +48,7 @@ class _NotesScreenState extends State<NotesScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _notesService = widget.notesService ?? NotesService();
     _transcriptionService = widget.transcriptionService ??
         TranscriptionService(
@@ -55,6 +57,25 @@ class _NotesScreenState extends State<NotesScreen> {
         );
     _pendingQueue = widget.pendingQueue ?? PendingNoteQueue();
     _load();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // El widget puede encolar offline mientras la app está en fondo:
+    // al volver se re-lee la cola (con reload de prefs) y las notas.
+    if (state == AppLifecycleState.resumed) {
+      _refreshFromWidget();
+    }
+  }
+
+  Future<void> _refreshFromWidget() async {
+    await _notesService.load();
+    try {
+      _deferredQueueEnabled =
+          await StorageService().loadNotesDeferredQueueEnabled();
+    } catch (_) {}
+    await _pendingQueue.load();
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -291,6 +312,7 @@ class _NotesScreenState extends State<NotesScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchCtrl.dispose();
     super.dispose();
   }

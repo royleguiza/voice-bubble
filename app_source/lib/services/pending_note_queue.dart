@@ -96,6 +96,12 @@ class PendingNoteQueue {
   Future<List<PendingNote>> _loadRaw() async {
     try {
       final prefs = await _prefs();
+      // reload: el widget nativo escribe esta misma clave fuera del
+      // caché en memoria de Dart; sin reload los pendientes del widget
+      // no se ven en la app (mismo patrón que NotesService._readPrefs).
+      try {
+        await prefs.reload();
+      } catch (_) {}
       final raw = prefs.getString(pendingKey);
       if (raw == null || raw.isEmpty) return [];
       final decoded = jsonDecode(raw);
@@ -129,9 +135,9 @@ class PendingNoteQueue {
   }
 
   Future<void> _ensureLoaded() async {
-    if (_items.isEmpty) {
-      _items = await _loadRaw();
-    }
+    // Recarga siempre (no solo en vacío): el widget nativo puede encolar
+    // en cualquier momento y persistir sin re-leer pisaría sus entradas.
+    _items = await _loadRaw();
   }
 
   /// Mueve/copía el WAV [tempPath] a la cola durable y lo registra.
