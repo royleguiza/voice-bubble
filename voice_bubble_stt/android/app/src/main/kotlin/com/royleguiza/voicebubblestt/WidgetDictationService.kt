@@ -33,6 +33,7 @@ class WidgetDictationService : Service() {
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var autoStopRunnable: Runnable? = null
     private var savedResetRunnable: Runnable? = null
+    private var pendingResetRunnable: Runnable? = null
     private var soundPool: SoundPool? = null
     private var soundStart = 0
     private var soundStop = 0
@@ -48,8 +49,10 @@ class WidgetDictationService : Service() {
     override fun onDestroy() {
         autoStopRunnable?.let { mainHandler.removeCallbacks(it) }
         savedResetRunnable?.let { mainHandler.removeCallbacks(it) }
+        pendingResetRunnable?.let { mainHandler.removeCallbacks(it) }
         autoStopRunnable = null
         savedResetRunnable = null
+        pendingResetRunnable = null
         isRecording = false
         releaseMicSounds()
         super.onDestroy()
@@ -257,13 +260,26 @@ class WidgetDictationService : Service() {
                 // Sin red / fallo reintentable: con el flag ON el audio se
                 // encola en pending_notes para transcribirlo desde la app
                 // ("Transcribir con nube"). Auth (sin/ mala key) no encola.
-                if (isDeferredQueueEnabled() && !isAuthError(msg)) {
+                // El widget avisa con la píldora "Audio guardado" para que
+                // lo grabado se vea también acá, no solo en la app.
+                val enqueued = isDeferredQueueEnabled() && !isAuthError(msg) &&
                     enqueuePendingWav(wav)
-                }
                 BackgroundWork.postMain {
-                    updateWidgetsState("idle")
-                    stopForeground(true)
-                    stopSelf()
+                    if (enqueued) {
+                        updateWidgetsState("pending")
+                        pendingResetRunnable?.let { mainHandler.removeCallbacks(it) }
+                        val pr = Runnable {
+                            updateWidgetsState("idle")
+                            stopForeground(true)
+                            stopSelf()
+                        }
+                        pendingResetRunnable = pr
+                        mainHandler.postDelayed(pr, 2000)
+                    } else {
+                        updateWidgetsState("idle")
+                        stopForeground(true)
+                        stopSelf()
+                    }
                 }
             })
         }
@@ -329,10 +345,10 @@ class WidgetDictationService : Service() {
         }
     }
 
-    private fun enqueuePendingWav(wav: ByteArray) {
+    private fun enqueuePendingWav(wav: ByteArray): Boolean {
         try {
             val id = UUID.randomUUID().toString()
-            val path = writeWavFile("pending_notes", "$id.wav", wav) ?: return
+            val path = writeWavFile("pending_notes", "$id.wav", wav) ?: return false
             val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val raw = prefs.getString("flutter.voice_notes_pending_v1", null)
             val arr = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
@@ -361,7 +377,11 @@ class WidgetDictationService : Service() {
                 } catch (_: Exception) {}
             }
             prefs.edit().putString("flutter.voice_notes_pending_v1", merged.toString()).apply()
-        } catch (_: Exception) {}
+            refreshWidgets()
+            return true
+        } catch (_: Exception) {
+            return false
+        }
     }
 
     private fun updateWidgetsState(state: String) {

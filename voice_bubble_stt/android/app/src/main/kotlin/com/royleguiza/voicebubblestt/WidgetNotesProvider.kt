@@ -87,8 +87,23 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_notes_count, "$count / 50")
             views.setTextColor(R.id.widget_notes_title, primary)
             views.setTextColor(R.id.widget_notes_count, secondary)
+            views.setTextColor(R.id.widget_pending_count, secondary)
             views.setTextColor(R.id.widget_chrono, primary)
             views.setTextColor(R.id.widget_rec_label, primary)
+
+            // Pendientes offline (cola Dart + widget): el audio grabado sin
+            // red se ve también en el widget, no solo en la app.
+            val pending = pendingCount(context)
+            if (pending > 0) {
+                views.setViewVisibility(R.id.widget_pending_count, View.VISIBLE)
+                views.setTextViewText(
+                    R.id.widget_pending_count,
+                    if (pending == 1) "· 1 pendiente" else "· $pending pendientes",
+                )
+            } else {
+                views.setViewVisibility(R.id.widget_pending_count, View.GONE)
+                views.setTextViewText(R.id.widget_pending_count, "")
+            }
 
             // Detecta altura por options: si el usuario estiro a 5x4, mostramos 3 notas.
             val opts = appWidgetManager.getAppWidgetOptions(appWidgetId)
@@ -120,6 +135,11 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     1 -> R.id.widget_note_time_1
                     else -> R.id.widget_note_time_2
                 }
+                val audioId = when (i) {
+                    0 -> R.id.widget_note_audio_0
+                    1 -> R.id.widget_note_audio_1
+                    else -> R.id.widget_note_audio_2
+                }
                 views.setTextColor(titleId, primary)
                 views.setTextColor(bodyId, secondary)
                 views.setTextColor(timeId, secondary)
@@ -131,6 +151,14 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     views.setTextViewText(bodyId, n.cuerpo)
                     views.setTextViewText(timeId, formatTime(n.updatedAt))
                     views.setContentDescription(containerId, "Abrir nota $displayTitle")
+                    // Marca de audio conservado (texto + audio): paridad con
+                    // la tarjeta de la app.
+                    if (n.audioPath.isNotBlank() && audioFileExists(n.audioPath)) {
+                        views.setViewVisibility(audioId, View.VISIBLE)
+                        views.setContentDescription(audioId, "Nota con audio original")
+                    } else {
+                        views.setViewVisibility(audioId, View.GONE)
+                    }
                     // Todo dentro del widget: overlay translucido, no MainActivity
                     val noteIntent = Intent(context, WidgetNoteEditActivity::class.java).apply {
                         putExtra("note_id", n.id)
@@ -161,8 +189,10 @@ class WidgetNotesProvider : AppWidgetProvider() {
 
             // Píldora de estado estilo teclado: en reposo no hay texto (solo
             // + y mic); la píldora roja aparece al grabar/procesar/guardar.
-            // Tap en el centro detiene y envía, X cancela.
-            val pillVisible = recording || state == "transcribing" || state == "saved"
+            // "pending" = offline encolado: el audio quedó guardado para
+            // transcribirlo desde la app. Tap en el centro detiene y envía,
+            // X cancela.
+            val pillVisible = recording || state == "transcribing" || state == "saved" || state == "pending"
             views.setViewVisibility(
                 R.id.widget_notes_add,
                 if (!micLeft) View.VISIBLE else View.GONE,
@@ -205,6 +235,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 when (state) {
                     "transcribing" -> "Procesando"
                     "saved" -> "Nota guardada"
+                    "pending" -> "Audio guardado"
                     else -> "Grabando"
                 },
             )
@@ -259,6 +290,35 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_notes_title, openPi)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+
+        /** Pendientes offline con WAV válido (misma clave que Dart). */
+        private fun pendingCount(context: Context): Int {
+            return try {
+                val raw = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                    .getString("flutter.voice_notes_pending_v1", null)
+                if (raw.isNullOrBlank()) return 0
+                val arr = org.json.JSONArray(raw)
+                var n = 0
+                for (i in 0 until arr.length()) {
+                    val o = arr.optJSONObject(i) ?: continue
+                    if (o.optString("id").isBlank()) continue
+                    val p = o.optString("audioPath")
+                    if (p.isBlank()) continue
+                    if (audioFileExists(p)) n++
+                }
+                n
+            } catch (_: Exception) {
+                0
+            }
+        }
+
+        private fun audioFileExists(path: String): Boolean {
+            return try {
+                java.io.File(path).exists()
+            } catch (_: Exception) {
+                false
+            }
         }
 
         private fun formatTime(iso: String): String {

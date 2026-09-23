@@ -190,6 +190,30 @@ check("Widget encola offline con flag ON (sin auth)",
       and 'pending_notes' in svc and 'voice_notes_pending_v1' in svc)
 check("Widget no encola fallos de API key",
       'isAuthError' in svc and 'API key' in svc)
+check("Enqueue avisa 'Audio guardado' y luego vuelve a idle",
+      'updateWidgetsState("pending")' in svc
+      and 'pendingResetRunnable' in svc
+      and 'mainHandler.postDelayed(pr, 2000)' in svc)
+check("Enqueue devuelve si guardó (solo avisa en éxito)",
+      'fun enqueuePendingWav(wav: ByteArray): Boolean' in svc
+      and 'val enqueued = ' in svc)
+check("Píldora visible también en pendiente",
+      'state == "pending"' in prov)
+check("Label 'Audio guardado' en pendiente",
+      '"pending" -> "Audio guardado"' in prov)
+check("Contador de pendientes en header (ID cableado)",
+      '@+id/widget_pending_count' in xml
+      and 'R.id.widget_pending_count' in prov
+      and 'flutter.voice_notes_pending_v1' in prov
+      and 'pendiente' in prov)
+check("Marca de audio por nota (3 filas cableadas)",
+      all(f'widget_note_audio_{i}' in xml for i in range(3))
+      and all(f'R.id.widget_note_audio_{i}' in prov for i in range(3))
+      and 'widget_ic_audio' in xml)
+check("Drawable widget_ic_audio.xml existe",
+      (RES / "drawable/widget_ic_audio.xml").exists())
+check("Nota con audio muestra la marca (paridad con la app)",
+      'audioFileExists' in prov and 'Nota con audio original' in prov)
 check("IDs Kotlin con UUID (sin colision de millis)",
       'UUID.randomUUID().toString()' in (KT / "WidgetDictationService.kt").read_text()
       and 'UUID.randomUUID().toString()' in act

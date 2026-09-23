@@ -38,6 +38,16 @@
             android:paddingEnd="7dp"
             android:paddingTop="3dp"
             android:paddingBottom="3dp" />
+
+        <TextView
+            android:id="@+id/widget_pending_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="10sp"
+            android:textColor="#6B7A90"
+            android:layout_marginStart="6dp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <LinearLayout
@@ -79,14 +89,30 @@
                 android:ellipsize="end"
                 android:layout_marginTop="2dp" />
 
-            <TextView
-                android:id="@+id/widget_note_time_0"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text=""
-                android:textSize="10sp"
-                android:textColor="#6B7A90"
-                android:layout_marginTop="4dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <TextView
+                    android:id="@+id/widget_note_time_0"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="10sp"
+                    android:textColor="#6B7A90" />
+
+                <ImageView
+                    android:id="@+id/widget_note_audio_0"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_marginStart="4dp"
+                    android:src="@drawable/widget_ic_audio"
+                    android:contentDescription="Con audio original"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
@@ -121,14 +147,30 @@
                 android:ellipsize="end"
                 android:layout_marginTop="2dp" />
 
-            <TextView
-                android:id="@+id/widget_note_time_1"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text=""
-                android:textSize="10sp"
-                android:textColor="#6B7A90"
-                android:layout_marginTop="4dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <TextView
+                    android:id="@+id/widget_note_time_1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="10sp"
+                    android:textColor="#6B7A90" />
+
+                <ImageView
+                    android:id="@+id/widget_note_audio_1"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_marginStart="4dp"
+                    android:src="@drawable/widget_ic_audio"
+                    android:contentDescription="Con audio original"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout
@@ -162,14 +204,30 @@
                 android:ellipsize="end"
                 android:layout_marginTop="2dp" />
 
-            <TextView
-                android:id="@+id/widget_note_time_2"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text=""
-                android:textSize="10sp"
-                android:textColor="#6B7A90"
-                android:layout_marginTop="4dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <TextView
+                    android:id="@+id/widget_note_time_2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="10sp"
+                    android:textColor="#6B7A90" />
+
+                <ImageView
+                    android:id="@+id/widget_note_audio_2"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_marginStart="4dp"
+                    android:src="@drawable/widget_ic_audio"
+                    android:contentDescription="Con audio original"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 
