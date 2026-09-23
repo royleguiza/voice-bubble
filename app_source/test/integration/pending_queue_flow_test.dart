@@ -230,16 +230,22 @@ void main() {
       ValueKey('transcribeCloudButton-${queue.items.first.id}'),
     );
     expect(btn, findsOneWidget);
-    // Cerrar el SnackBar de encolado: si sigue visible, el de éxito queda
-    // en cola y find.text('Nota guardada') falla.
+    // Vaciar el messenger: si el SnackBar de encolado sigue vivo, el de
+    // éxito queda en cola y find.text('Nota guardada') falla.
+    // removeCurrentSnackBar es instantáneo (sin animación de salida).
     tester.state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger))
-        .hideCurrentSnackBar();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+        .removeCurrentSnackBar();
+    await tester.pumpAndSettle();
+    expect(find.textContaining('audio guardado en Notas'), findsNothing);
+
     await tester.tap(btn);
-    for (var i = 0; i < 12; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-    }
+    // Completar la cadena async (transcribe → add → remove → showSnackBar)
+    // sin avanzar 4s (eso auto-descartaría el SnackBar de éxito).
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(cloud.requestedPaths.length, 2);
     expect(queue.items, isEmpty);
