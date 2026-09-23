@@ -61,6 +61,9 @@
             android:gravity="top"
             android:inputType="textMultiLine" />
 
+        <!-- Botonera equitativa: cada boton vive en un slot de igual peso,
+             asi los visibles quedan siempre a la misma distancia entre si
+             (2, 3 o 4 segun el modo) sin huecos indebidos. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -68,99 +71,117 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
-            <FrameLayout
-                android:id="@+id/btn_cancel"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/widget_note_card_bg"
-                android:contentDescription="Cancelar">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/widget_ic_x" />
-            </FrameLayout>
-
-            <Space
-                android:id="@+id/btn_delete_gap"
-                android:layout_width="8dp"
-                android:layout_height="wrap_content"
-                android:visibility="gone" />
-
-            <FrameLayout
-                android:id="@+id/btn_delete"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/widget_note_card_bg"
-                android:contentDescription="Eliminar nota"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/widget_ic_delete" />
-            </FrameLayout>
-
-            <Space
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
+                android:layout_weight="1"
+                android:gravity="center">
 
-            <FrameLayout
-                android:id="@+id/btn_play"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/widget_note_card_bg"
-                android:contentDescription="Reproducir audio"
+                <FrameLayout
+                    android:id="@+id/btn_cancel"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Cancelar">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_x" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/slot_delete"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
                 android:visibility="gone">
 
-                <ImageView
-                    android:id="@+id/widget_play_icon"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/widget_ic_play" />
-            </FrameLayout>
+                <FrameLayout
+                    android:id="@+id/btn_delete"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Eliminar nota">
 
-            <Space
-                android:id="@+id/btn_play_gap"
-                android:layout_width="8dp"
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_delete" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/slot_play"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:visibility="gone" />
+                android:layout_weight="1"
+                android:gravity="center"
+                android:visibility="gone">
 
-            <FrameLayout
-                android:id="@+id/btn_copy"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/widget_note_card_bg"
-                android:contentDescription="Copiar contenido">
+                <FrameLayout
+                    android:id="@+id/btn_play"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Reproducir audio">
 
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/widget_ic_copy" />
-            </FrameLayout>
+                    <ImageView
+                        android:id="@+id/widget_play_icon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_play" />
+                </FrameLayout>
+            </LinearLayout>
 
-            <Space
-                android:layout_width="8dp"
-                android:layout_height="wrap_content" />
+            <LinearLayout
+                android:id="@+id/slot_copy"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center">
 
-            <FrameLayout
-                android:id="@+id/btn_save"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/widget_note_card_bg"
-                android:contentDescription="Guardar nota">
+                <FrameLayout
+                    android:id="@+id/btn_copy"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Copiar contenido">
 
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/widget_ic_check" />
-            </FrameLayout>
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_copy" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/slot_save"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center">
+
+                <FrameLayout
+                    android:id="@+id/btn_save"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Guardar nota">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_check" />
+                </FrameLayout>
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

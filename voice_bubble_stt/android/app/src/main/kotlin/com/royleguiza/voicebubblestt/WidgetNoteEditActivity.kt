@@ -14,6 +14,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
@@ -73,8 +74,7 @@ class WidgetNoteEditActivity : Activity() {
         // Tacho solo editando una nota existente: en nota nueva y en modo
         // pendiente no hay nada que borrar.
         if (note != null) {
-            findViewById<View>(R.id.btn_delete).visibility = View.VISIBLE
-            findViewById<View>(R.id.btn_delete_gap).visibility = View.VISIBLE
+            findViewById<View>(R.id.slot_delete).visibility = View.VISIBLE
             findViewById<View>(R.id.btn_delete).setOnClickListener { confirmDelete() }
         }
         titleEt.setText(note?.titulo.orEmpty())
@@ -150,10 +150,9 @@ class WidgetNoteEditActivity : Activity() {
         bodyEt.isEnabled = false
         bodyEt.isFocusable = false
         // Sin teclado en este modo: no hay nada que escribir.
-        findViewById<View>(R.id.btn_save).visibility = View.GONE
-        findViewById<View>(R.id.btn_copy).visibility = View.GONE
-        findViewById<View>(R.id.btn_play).visibility = View.VISIBLE
-        findViewById<View>(R.id.btn_play_gap).visibility = View.VISIBLE
+        findViewById<View>(R.id.slot_save).visibility = View.GONE
+        findViewById<View>(R.id.slot_copy).visibility = View.GONE
+        findViewById<View>(R.id.slot_play).visibility = View.VISIBLE
         findViewById<View>(R.id.btn_play).setOnClickListener { togglePlayback() }
     }
 
@@ -249,18 +248,83 @@ class WidgetNoteEditActivity : Activity() {
     }
 
     /**
-     * Tacho: confirmacion (patron del borrado de snippets) y borrado real
-     * con paridad Dart `deleteNote`: quita la nota, borra su WAV para no
-     * dejar huerfanos en disco, espeja el archivo y refresca los widgets.
+     * Tacho: confirmacion con la misma lengua glass de la modal (fondo
+     * widget_glass_inner, titulo kb_label, texto secundario y Eliminar en
+     * rojo peligro) en vez del cartel negro generico del sistema.
+     * El borrado real tiene paridad Dart `deleteNote`: quita la nota,
+     * borra su WAV para no dejar huerfanos en disco, espeja el archivo
+     * y refresca los widgets.
      */
     private fun confirmDelete() {
         try {
-            android.app.AlertDialog.Builder(this)
-                .setTitle("¿Eliminar nota?")
-                .setMessage("Se borra la nota y su audio. No se puede deshacer.")
-                .setPositiveButton("Eliminar") { _, _ -> deleteCurrentNote() }
-                .setNegativeButton("Cancelar", null)
-                .show()
+            val density = resources.displayMetrics.density
+            val pad = (14 * density).toInt()
+            val dialog = android.app.Dialog(this)
+            dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+            dialog.window?.setBackgroundDrawable(
+                android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT),
+            )
+            val box = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setBackgroundResource(R.drawable.widget_glass_inner)
+                setPadding(pad, pad, pad, pad)
+            }
+            val title = android.widget.TextView(this).apply {
+                text = "¿Eliminar nota?"
+                setTextColor(ContextCompat.getColor(context, R.color.kb_label))
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            }
+            box.addView(title)
+            val desc = android.widget.TextView(this).apply {
+                text = "Se borra la nota y su audio. No se puede deshacer."
+                setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+                setPadding(0, (8 * density).toInt(), 0, pad)
+            }
+            box.addView(desc)
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.END
+            }
+            val btnLp = android.widget.LinearLayout.LayoutParams(
+                0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
+            )
+            val cancel = android.widget.TextView(this).apply {
+                text = "Cancelar"
+                gravity = android.view.Gravity.CENTER
+                setPadding(pad, pad, pad, pad)
+                setBackgroundResource(R.drawable.widget_note_card_bg)
+                setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+                setOnClickListener { dialog.dismiss() }
+            }
+            val cancelLp = android.widget.LinearLayout.LayoutParams(
+                0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
+            )
+            cancelLp.rightMargin = (pad / 2)
+            row.addView(cancel, cancelLp)
+            val remove = android.widget.TextView(this).apply {
+                text = "Eliminar"
+                gravity = android.view.Gravity.CENTER
+                setPadding(pad, pad, pad, pad)
+                setBackgroundResource(R.drawable.kb_key_danger)
+                setTextColor(ContextCompat.getColor(context, R.color.kb_label_on_accent))
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                setOnClickListener {
+                    dialog.dismiss()
+                    deleteCurrentNote()
+                }
+            }
+            row.addView(remove, btnLp)
+            box.addView(row)
+            dialog.setContentView(box)
+            dialog.window?.setLayout(
+                (resources.displayMetrics.widthPixels - (48 * density).toInt()),
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            dialog.show()
         } catch (_: Exception) {}
     }
 

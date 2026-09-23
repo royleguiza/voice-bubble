@@ -122,7 +122,8 @@ check("Overlay pendiente avisa si el audio ya no está",
 check("Overlay pendiente oculta guardar/copiar y muestra play",
       'btn_play' in over and 'widget_play_icon' in over
       and 'overlay_title' in over
-      and 'R.id.btn_save' in act and 'View.GONE' in act)
+      and 'R.id.slot_save' in act and 'R.id.slot_copy' in act and 'R.id.slot_play' in act
+      and 'View.GONE' in act)
 for _icon, _min in [("widget_ic_play", 2.8), ("widget_ic_pause", 3.0)]:
     _t = (RES / f"drawable/{_icon}.xml").read_text()
     _m = re.search(r'strokeWidth="([\d.]+)"', _t)
@@ -310,9 +311,14 @@ check("Tacho junto a la X (48dp, fondo campo, icono propio)",
       '@+id/btn_delete' in over and '48dp' in _del_btn
       and 'widget_note_card_bg' in _del_btn and 'widget_ic_delete' in _del_btn)
 check("Tacho oculto por defecto (solo editando existente)",
-      'android:visibility="gone"' in _del_btn and '@+id/btn_delete_gap' in over)
-check("Espaciado parejo 8dp entre tacho y X (sin huecos indebidos)",
-      over.count('android:layout_width="8dp"') >= 2)
+      '@+id/slot_delete' in over
+      and 'android:visibility="gone"' in over.split('@+id/slot_delete"')[1].split('>')[0])
+check("Botonera equitativa (slots de igual peso, sin huecos indebidos)",
+      over.count('android:layout_weight="1"') >= 5
+      and all(s in over for s in ('@+id/slot_delete', '@+id/slot_play', '@+id/slot_copy', '@+id/slot_save'))
+      and 'btn_delete_gap' not in over and 'btn_play_gap' not in over)
+check("Fila de botones sin espaciadores fijos (reparto por peso)",
+      '<Space' not in over.split('layout_marginTop="10dp"')[1])
 check("Icono tacho existe, trazo grueso y rojo peligro",
       (RES / "drawable/widget_ic_delete.xml").exists()
       and 'M3,6h18' in (RES / "drawable/widget_ic_delete.xml").read_text()
@@ -322,8 +328,10 @@ _m_del = re.search(r'strokeWidth="([\d.]+)"', _t_del)
 check("Trazo grueso widget_ic_delete", _m_del is not None and float(_m_del.group(1)) >= 3.0, _t_del[:120])
 check("Tacho solo en edicion (nota nueva y pendiente sin borrar)",
       'R.id.btn_delete' in act and 'note != null' in act)
-check("Borrado con confirmacion (patron snippets)",
-      '¿Eliminar nota?' in act and 'confirmDelete' in act and 'deleteCurrentNote' in act)
+check("Borrado con confirmacion estilo glass (sin cartel negro generico)",
+      '¿Eliminar nota?' in act and 'confirmDelete' in act and 'deleteCurrentNote' in act
+      and 'AlertDialog' not in act and 'widget_glass_inner' in act
+      and 'kb_key_danger' in act)
 check("Borrado con paridad Dart (espejo + refresco + WAV sin huerfanos)",
       'writeFileMirror' in act and 'requestListRefresh' in act
       and 'audioToDelete' in act and 'Nota eliminada' in act)
