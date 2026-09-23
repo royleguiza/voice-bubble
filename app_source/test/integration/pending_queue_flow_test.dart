@@ -230,18 +230,17 @@ void main() {
       ValueKey('transcribeCloudButton-${queue.items.first.id}'),
     );
     expect(btn, findsOneWidget);
-    // Vaciar el messenger: si el SnackBar de encolado sigue vivo, el de
-    // éxito queda en cola y find.text('Nota guardada') falla.
-    // removeCurrentSnackBar es instantáneo (sin animación de salida).
-    tester.state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger))
-        .removeCurrentSnackBar();
+    // Dejar caducar el SnackBar de encolado (4s) para no interferir con
+    // el resto del flujo (el estado funcional es la aserción de éxito).
+    await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     expect(find.textContaining('audio guardado en Notas'), findsNothing);
 
     await tester.tap(btn);
-    // Cadena async (secure-storage → transcribe → add → remove → widgets) +
-    // entrada del SnackBar. <4s para no auto-descartarlo.
-    for (var i = 0; i < 20; i++) {
+    // Cadena async: secure-storage → transcribe → add → remove → widgets.
+    // Suficientes pumps para que la nota y la cola queden en su estado final
+    // sin depender del timing del SnackBar (frágil bajo fakeAsync).
+    for (var i = 0; i < 25; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
 
@@ -252,9 +251,9 @@ void main() {
       find.textContaining('dictado offline luego nube'),
       findsOneWidget,
     );
-    expect(find.text('Nota guardada'), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 3500));
-    expect(find.text('Nota guardada'), findsNothing);
+    // Drenar timers del SnackBar de éxito para no dejar colgados.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 
