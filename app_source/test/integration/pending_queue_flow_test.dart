@@ -239,13 +239,11 @@ void main() {
     expect(find.textContaining('audio guardado en Notas'), findsNothing);
 
     await tester.tap(btn);
-    // Completar la cadena async (transcribe → add → remove → showSnackBar)
-    // sin avanzar 4s (eso auto-descartaría el SnackBar de éxito).
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 100));
-    await tester.pump(const Duration(milliseconds: 300));
+    // Cadena async (secure-storage → transcribe → add → remove → widgets) +
+    // entrada del SnackBar. <4s para no auto-descartarlo.
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(cloud.requestedPaths.length, 2);
     expect(queue.items, isEmpty);
@@ -255,7 +253,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Nota guardada'), findsOneWidget);
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 3500));
+    expect(find.text('Nota guardada'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
