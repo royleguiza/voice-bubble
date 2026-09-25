@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
+import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 import 'package:voice_bubble_stt/widgets/record_button.dart';
@@ -27,13 +28,19 @@ import 'package:voice_bubble_stt/widgets/record_button.dart';
 ///   en reposo.
 /// - 17: superficie alta en todo test que renderice HomeScreen.
 class _FakeRecorder implements AudioRecorder {
+  final Completer<void> postFrameApplied = Completer<void>();
   int startCount = 0;
   int stopCount = 0;
+  int permissionRequestCount = 0;
   RecordConfig? lastConfig;
   String? lastPath;
 
   @override
-  Future<bool> hasPermission({bool request = true}) async => true;
+  Future<bool> hasPermission({bool request = true}) async {
+    permissionRequestCount += 1;
+    if (!postFrameApplied.isCompleted) postFrameApplied.complete();
+    return true;
+  }
 
   @override
   Future<void> start(RecordConfig config, {required String path}) async {
@@ -92,9 +99,38 @@ class _FrozenCloudTranscriptionService extends TranscriptionService {
   void updateApiKey(String apiKey) {}
 }
 
+class _TrackedFloatingBubbleService extends FloatingBubbleService {
+  final List<Completer<void>> _expectedIdleUpdates = <Completer<void>>[];
+
+  Future<void> expectNextIdleUpdate() {
+    final completion = Completer<void>();
+    _expectedIdleUpdates.add(completion);
+    return completion.future;
+  }
+
+  @override
+  Future<bool> updateBubbleState(BubbleVisualState state) async {
+    final result = await super.updateBubbleState(state);
+    if (state == BubbleVisualState.idle && _expectedIdleUpdates.isNotEmpty) {
+      _expectedIdleUpdates.removeAt(0).complete();
+    }
+    return result;
+  }
+}
+
 class _ReadyStorageService extends StorageService {
+  final Completer<void> loadCompleted = Completer<void>();
   final Completer<void> recordModeRead = Completer<void>();
+  final Completer<void> floatingBubbleRead = Completer<void>();
   String? loadedMode;
+  bool? loadedFloatingBubble;
+
+  @override
+  Future<bool> load() async {
+    final result = await super.load();
+    if (!loadCompleted.isCompleted) loadCompleted.complete();
+    return result;
+  }
 
   @override
   Future<String> loadRecordMode() async {
@@ -103,15 +139,30 @@ class _ReadyStorageService extends StorageService {
     if (!recordModeRead.isCompleted) recordModeRead.complete();
     return mode;
   }
+
+  @override
+  Future<bool> loadFloatingBubbleEnabled() async {
+    final enabled = await super.loadFloatingBubbleEnabled();
+    loadedFloatingBubble = enabled;
+    if (!floatingBubbleRead.isCompleted) floatingBubbleRead.complete();
+    return enabled;
+  }
 }
 
 class _Bundle {
   final _FakeRecorder recorder;
   final _ScriptedCloudSttService cloud;
+  final _TrackedFloatingBubbleService bubble;
   final _ReadyStorageService storage;
   final TranscriptionService service;
 
-  _Bundle(this.recorder, this.cloud, this.storage, this.service);
+  _Bundle(
+    this.recorder,
+    this.cloud,
+    this.bubble,
+    this.storage,
+    this.service,
+  );
 }
 
 void main() {
@@ -212,43 +263,49 @@ void main() {
     }
   });
 
-  Future<void> pumpUntilRecordMode(
+  void pumpUntilRecordMode(
     WidgetTester tester,
     _ReadyStorageService storage,
     String mode,
-  ) async {
+  ) {
     final finder = find.byKey(const ValueKey('recordButton'));
+    final button = tester.widget<RecordButton>(finder);
     final expectsHold = mode == StorageService.recordModeHold;
-    for (var attempt = 0; attempt < 200; attempt++) {
-      final button = tester.widget<RecordButton>(finder);
-      if (storage.recordModeRead.isCompleted &&
-          storage.loadedMode == mode &&
-          (button.onPressed == null) == expectsHold &&
-          (button.onHoldStart != null) == expectsHold &&
-          (button.onHoldEnd != null) == expectsHold) {
-        return;
-      }
-      await tester.pump(const Duration(milliseconds: 10));
-    }
-    throw TestFailure('El modo $mode no llegó al botón de grabación');
+    expect(storage.recordModeRead.isCompleted, isTrue);
+    expect(storage.loadedMode, mode);
+    expect((button.onPressed == null), expectsHold);
+    expect((button.onHoldStart != null), expectsHold);
+    expect((button.onHoldEnd != null), expectsHold);
   }
 
   _Bundle makeBundle(List<Object> outcomes) {
     final recorder = _FakeRecorder();
     final cloud = _ScriptedCloudSttService(outcomes);
+    final bubble = _TrackedFloatingBubbleService();
     final storage = _ReadyStorageService();
     final service = _FrozenCloudTranscriptionService(
       cloudService: cloud,
       storageService: storage,
       recorder: recorder,
     );
-    return _Bundle(recorder, cloud, storage, service);
+    return _Bundle(recorder, cloud, bubble, storage, service);
+  }
+
+  Future<void> drainAfterIdleUpdate(
+    WidgetTester tester,
+    Future<void> idleUpdate,
+  ) async {
+    await tester.runAsync(() => idleUpdate);
+    await tester.pump();
+    await tester.pumpAndSettle();
   }
 
   Future<void> pumpHome(
     WidgetTester tester,
     TranscriptionService service,
-    StorageService storage,
+    _ReadyStorageService storage,
+    _TrackedFloatingBubbleService bubble,
+    _FakeRecorder recorder,
   ) async {
     // Superficie alta: contenido completo siempre construido (9.1-17/21).
     tester.view.physicalSize = const Size(1600, 4800);
@@ -263,10 +320,26 @@ void main() {
         child: HomeScreen(
           transcriptionService: service,
           storageService: storage,
+          floatingBubbleService: bubble,
         ),
       ),
     ));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.runAsync(
+      () => Future.wait<void>([
+        storage.loadCompleted.future,
+        storage.recordModeRead.future,
+        storage.floatingBubbleRead.future,
+      ]),
+    );
+    await tester.pump();
+    await tester.runAsync(() => recorder.postFrameApplied.future);
+    await tester.pump();
+    expect(storage.loadCompleted.isCompleted, isTrue);
+    expect(storage.recordModeRead.isCompleted, isTrue);
+    expect(storage.floatingBubbleRead.isCompleted, isTrue);
+    expect(storage.loadedFloatingBubble, isFalse);
+    expect(recorder.permissionRequestCount, 1);
   }
 
   group('Punto 1 - grabacion larga simulada', () {
@@ -279,7 +352,13 @@ void main() {
           timestamp: DateTime.now(),
         ),
       ]);
-      await pumpHome(tester, bundle.service, bundle.storage);
+      await pumpHome(
+        tester,
+        bundle.service,
+        bundle.storage,
+        bundle.bubble,
+        bundle.recorder,
+      );
       expect(find.text('Listo para transcribir'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
@@ -301,11 +380,12 @@ void main() {
       expect(bundle.recorder.lastConfig?.sampleRate, 16000);
       expect(bundle.recorder.lastConfig?.numChannels, 1);
 
+      final transcriptionCompleted = bundle.bubble.expectNextIdleUpdate();
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       for (var i = 0; i < 6; i++) {
         await tester.pump(const Duration(milliseconds: 150));
       }
-      await tester.pumpAndSettle();
+      await drainAfterIdleUpdate(tester, transcriptionCompleted);
 
       // Un solo ciclo start/stop y una sola llamada de transcripcion.
       expect(bundle.recorder.startCount, 1);
@@ -338,14 +418,22 @@ void main() {
           timestamp: DateTime.now(),
         ),
       ]);
-      await pumpHome(tester, bundle.service, bundle.storage);
+      await pumpHome(
+        tester,
+        bundle.service,
+        bundle.storage,
+        bundle.bubble,
+        bundle.recorder,
+      );
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pump(const Duration(milliseconds: 400));
+      final firstAttemptCompleted = bundle.bubble.expectNextIdleUpdate();
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       for (var i = 0; i < 6; i++) {
         await tester.pump(const Duration(milliseconds: 150));
       }
+      await drainAfterIdleUpdate(tester, firstAttemptCompleted);
 
       // Primer intento: fallo de red reintentable.
       expect(find.textContaining('Sin conexión a internet'), findsOneWidget);
@@ -358,11 +446,12 @@ void main() {
       expect(bundle.recorder.stopCount, 1);
 
       // Reintento desde la accion del SnackBar.
+      final retryCompleted = bundle.bubble.expectNextIdleUpdate();
       await tester.tap(find.text('Reintentar'));
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 250));
       }
-      await tester.pumpAndSettle();
+      await drainAfterIdleUpdate(tester, retryCompleted);
 
       // NINGUN start/stop adicional: se transcribe el mismo archivo.
       expect(bundle.recorder.startCount, 1);
@@ -394,13 +483,22 @@ void main() {
 
       // --- Fase A: primera pantalla (StorageService nuevo lee 'hold').
       final bundleA = makeBundle(<Object>[]);
-      await pumpHome(tester, bundleA.service, bundleA.storage);
-      await pumpUntilRecordMode(
+      await pumpHome(
+        tester,
+        bundleA.service,
+        bundleA.storage,
+        bundleA.bubble,
+        bundleA.recorder,
+      );
+      pumpUntilRecordMode(
         tester,
         bundleA.storage,
         StorageService.recordModeHold,
       );
-      expect(await bundleA.storage.loadRecordMode(), 'hold');
+      expect(
+        await tester.runAsync(() => bundleA.storage.loadRecordMode()),
+        'hold',
+      );
 
       // En hold, onTap esta deshabilitado: tocar NO inicia grabacion.
       final button = find.byKey(const ValueKey('recordButton'));
@@ -431,8 +529,14 @@ void main() {
 
       // --- Fase B: pantalla recreada con INSTANCIA nueva de almacenamiento.
       final bundleB = makeBundle(<Object>[]);
-      await pumpHome(tester, bundleB.service, bundleB.storage);
-      await pumpUntilRecordMode(
+      await pumpHome(
+        tester,
+        bundleB.service,
+        bundleB.storage,
+        bundleB.bubble,
+        bundleB.recorder,
+      );
+      pumpUntilRecordMode(
         tester,
         bundleB.storage,
         StorageService.recordModeHold,
@@ -444,15 +548,23 @@ void main() {
       expect(bundleB.recorder.startCount, 0);
 
       // --- Fase C: volver a 'tap' persiste igual de bien.
-      await bundleB.storage.saveRecordMode('tap');
+      await tester.runAsync(
+        () => bundleB.storage.saveRecordMode('tap'),
+      );
       final bundleC = makeBundle([
         Transcription(
           text: 'dictado modo toque',
           timestamp: DateTime.now(),
         ),
       ]);
-      await pumpHome(tester, bundleC.service, bundleC.storage);
-      await pumpUntilRecordMode(
+      await pumpHome(
+        tester,
+        bundleC.service,
+        bundleC.storage,
+        bundleC.bubble,
+        bundleC.recorder,
+      );
+      pumpUntilRecordMode(
         tester,
         bundleC.storage,
         StorageService.defaultRecordMode,
