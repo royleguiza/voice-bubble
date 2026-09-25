@@ -252,13 +252,25 @@ void main() {
     expect(await seed.addNote(titulo: 'Base', cuerpo: 'base'), isTrue);
     final file = File('${tempDir.path}/voice_notes.json');
     final prefs = await SharedPreferences.getInstance();
+    var fileWrites = 0;
+    var failFileWrites = false;
+    final service = NotesService(
+      fileWriter: (target, encoded) async {
+        fileWrites += 1;
+        if (failFileWrites) return false;
+        final tmp = File('${target.path}.fixture.tmp');
+        tmp.writeAsStringSync(encoded, flush: true);
+        tmp.renameSync(target.path);
+        return target.existsSync() && target.readAsStringSync() == encoded;
+      },
+    );
+    expect(await service.load(), isTrue);
     final previousPrefs = prefs.getString(NotesService.notesKey);
     final previousFile = file.readAsStringSync();
-    final service = NotesService(
-      fileWriter: (_, __) async => false,
-    );
+    failFileWrites = true;
 
     expect(await service.addNote(titulo: 'Otra', cuerpo: 'otra'), isFalse);
+    expect(fileWrites, 2);
     expect(file.readAsStringSync(), previousFile);
     expect(prefs.getString(NotesService.notesKey), previousPrefs);
     expect(service.notes.single.titulo, 'Base');
@@ -293,16 +305,22 @@ void main() {
     expect(await seed.addNote(titulo: 'Base', cuerpo: 'base'), isTrue);
     final file = File('${tempDir.path}/voice_notes.json');
     final prefs = await SharedPreferences.getInstance();
-    final previousPrefs = prefs.getString(NotesService.notesKey);
-    final previousFile = file.readAsStringSync();
+    var prefsWrites = 0;
+    var failPrefsWrites = false;
     final service = NotesService(
       prefsWriter: (preferences, key, value) async {
+        prefsWrites += 1;
         await preferences.setString(key, value);
-        return false;
+        return !failPrefsWrites;
       },
     );
+    expect(await service.load(), isTrue);
+    final previousPrefs = prefs.getString(NotesService.notesKey);
+    final previousFile = file.readAsStringSync();
+    failPrefsWrites = true;
 
     expect(await service.addNote(titulo: 'Otra', cuerpo: 'otra'), isFalse);
+    expect(prefsWrites, 2);
     expect(file.readAsStringSync(), previousFile);
     expect(prefs.getString(NotesService.notesKey), previousPrefs);
     expect(service.notes.single.titulo, 'Base');
