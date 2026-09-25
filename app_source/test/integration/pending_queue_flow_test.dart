@@ -186,6 +186,13 @@ void main() {
     }
   }
 
+  Future<void> pumpUntilGone(WidgetTester tester, Finder finder) async {
+    for (var i = 0; i < 40; i++) {
+      if (finder.evaluate().isEmpty) return;
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+  }
+
   Future<void> pumpNotes(
     WidgetTester tester,
     TranscriptionService service,
@@ -261,8 +268,7 @@ void main() {
     expect(btn, findsOneWidget);
     // Dejar caducar el SnackBar de encolado (4s) para no interferir con
     // el resto del flujo (el estado funcional es la aserción de éxito).
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pumpAndSettle();
+    await pumpUntilGone(tester, find.textContaining('audio guardado en Notas'));
     expect(find.textContaining('audio guardado en Notas'), findsNothing);
 
     await tester.tap(btn);
