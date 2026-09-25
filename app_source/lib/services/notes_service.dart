@@ -30,6 +30,12 @@ class _NotesReadResult {
   final List<VoiceNote> notes;
   final bool complete;
   final bool writable;
+
+  _NotesReadState get state => complete && writable
+      ? notes.isEmpty
+          ? _NotesReadState.empty
+          : _NotesReadState.valid
+      : _NotesReadState.unavailable;
 }
 
 /// Servicio de notas independientes (50 max) — no toca historial 20.

@@ -335,7 +335,9 @@ class PendingNoteQueue {
       for (final entity in directory.listSync()) {
         if (entity is! File || !entity.path.endsWith('.wav')) continue;
         final file = entity;
-        final claim = File(file.parent.path, '.${file.uri.pathSegments.last}.pending');
+        final claim = File(
+          '${file.parent.path}/.${file.uri.pathSegments.last}.pending',
+        );
         if (!read.authoritative) {
           claimsReady = _registerSweepClaim(claim) && claimsReady;
           continue;
@@ -368,11 +370,11 @@ class PendingNoteQueue {
 
   bool _registerSweepClaim(File claim) {
     try {
-      if (claim.isFile) return true;
+      if (FileSystemEntity.isFileSync(claim.path)) return true;
       if (claim.existsSync()) return false;
       claim.writeAsStringSync('1', flush: true);
       claim.setLastModifiedSync(DateTime.now());
-      return claim.isFile;
+      return FileSystemEntity.isFileSync(claim.path);
     } catch (_) {
       return false;
     }
@@ -420,7 +422,7 @@ class PendingNoteQueue {
       final id =
           '${DateTime.now().microsecondsSinceEpoch}-${_items.length}';
       final destPath = '${dir.path}/$id.wav';
-      final claim = File(dir.path, '.${id}.wav.pending');
+      final claim = File('${dir.path}/.${id}.wav.pending');
       var committed = false;
       try {
         claim.writeAsStringSync('1', flush: true);
@@ -470,7 +472,7 @@ class PendingNoteQueue {
     } catch (_) {
       final directory = file.parent;
       _registerSweepClaim(
-        File(directory.path, '.${file.uri.pathSegments.last}.pending'),
+        File('${directory.path}/.${file.uri.pathSegments.last}.pending'),
       );
       return false;
     }
