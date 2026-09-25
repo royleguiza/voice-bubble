@@ -225,6 +225,10 @@ void main() {
     // Grabar y detener → fallo de red → encolar.
     await tester.tap(find.byKey(const ValueKey('notesMicFab')));
     await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Detener'), findsOneWidget,
+        reason: 'el primer toque debe abrir la captura');
+    expect(recorder.startCount, 1,
+        reason: 'el claim C-05 debe dejar pasar el start al recorder');
     await tester.tap(find.byKey(const ValueKey('notesMicFab')));
     await pumpUntilFound(tester, find.textContaining('audio guardado en Notas'));
 
@@ -295,6 +299,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('notesMicFab')));
     await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Detener'), findsOneWidget,
+        reason: 'el primer toque debe abrir la captura');
+    expect(recorder.startCount, 1,
+        reason: 'el claim C-05 debe dejar pasar el start al recorder');
     await tester.tap(find.byKey(const ValueKey('notesMicFab')));
     await pumpUntilFound(tester, find.textContaining('Error:'));
 
