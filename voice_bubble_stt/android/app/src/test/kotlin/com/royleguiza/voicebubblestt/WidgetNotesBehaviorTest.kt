@@ -354,8 +354,8 @@ class WidgetNotesBehaviorTest {
             assertEquals(NoteStore.MAX_PENDING, recovered.length())
             assertEquals("pending-15", recovered.getJSONObject(0).getString("id"))
             assertEquals(firstTimestamp + 15, recovered.getJSONObject(0).getLong("createdAtMs"))
-            assertEquals("pending-1", recovered.getJSONObject(1).getString("id"))
-            assertEquals(firstTimestamp + 1, recovered.getJSONObject(1).getLong("createdAtMs"))
+            assertEquals("pending-14", recovered.getJSONObject(1).getString("id"))
+            assertEquals(firstTimestamp + 14, recovered.getJSONObject(1).getLong("createdAtMs"))
             assertFalse((0 until recovered.length()).any {
                 recovered.getJSONObject(it).optString("id") == oldest.name.removeSuffix(".wav")
             })
