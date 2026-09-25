@@ -1691,17 +1691,17 @@ class StorageService {
     final preparation = await _prepareCredentialState();
     if (preparation == null) {
       final current = await _readCredentialIndex();
-      return current?.value ?? const <VbCredential>[];
+      return current.value ?? const <VbCredential>[];
     }
     final swept = await _sweepCredentialState(preparation);
     if (!swept) {
       final current = await _readCredentialIndex();
-      return current?.value ??
+      return current.value ??
           preparation.after.index.value ??
           const <VbCredential>[];
     }
     final current = await _readCredentialIndex();
-    return current?.value ??
+    return current.value ??
         preparation.after.index.value ??
         const <VbCredential>[];
   }
