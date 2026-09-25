@@ -136,7 +136,7 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  TranscriptionService buildService(_SharedMicGate gate, _OrderRecorder rec) {
+  TranscriptionService buildService(_SharedMicGate gate, AudioRecorder rec) {
     return TranscriptionService(
       cloudService: const CloudSttService(apiKey: 'k'),
       storageService: StorageService(),

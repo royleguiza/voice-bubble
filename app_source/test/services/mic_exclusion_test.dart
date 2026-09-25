@@ -11,7 +11,7 @@ import '../helpers/mock_channels.dart';
 /// Gate compartido por todos los entrypoints (imita `BackgroundWork`: CAS con
 /// token; 0 = microfono ocupado; un token obsoleto no libera el actual).
 class _FakeMicGate {
-  _FakeMicGate([this.order = <String>[]]);
+  _FakeMicGate([List<String>? order]) : order = order ?? <String>[];
   final List<String> order;
   int _owner = 0;
   int _sequence = 0;
