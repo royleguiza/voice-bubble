@@ -59,10 +59,6 @@ class _TrackedStorageService extends StorageService {
   }
 
   @override
-  Future<bool> loadKeyboardCredentialsKeyVisible() =>
-      super.loadKeyboardCredentialsKeyVisible();
-
-  @override
   Future<bool> deleteCredential(String id) {
     final previousLength = _credentials.length;
     _credentials.removeWhere((credential) => credential.id == id);
