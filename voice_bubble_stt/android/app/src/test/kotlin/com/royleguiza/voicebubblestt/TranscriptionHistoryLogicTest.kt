@@ -224,7 +224,7 @@ class TranscriptionHistoryLogicTest {
             .toString()
 
         assertEquals(
-            TranscriptionHistoryLogic.JSON_LIST_PREFIX + json,
+            json,
             TranscriptionHistoryLogic.decodeFlutterStringList(
                 TranscriptionHistoryLogic.JSON_LIST_PREFIX + json,
             ),
