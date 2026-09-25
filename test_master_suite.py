@@ -8,6 +8,7 @@ exige consistencia del MISMO valor entre ambos pubspec (el bump futuro
 no debe romper master).
 """
 
+import base64
 import os
 import re
 import subprocess
@@ -83,22 +84,206 @@ def test_contract_keys():
         "Discrepancia tabla Dart vs contrato:\nEsperado:\n" + expected + "\nObtenido:\n" + "\n".join(sorted(table))
     )
 
+def test_c02_history_contract():
+    kt_repo = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/TranscriptionHistoryRepository.kt"
+    kt_logic = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/TranscriptionHistoryLogic.kt"
+    kt_test = "voice_bubble_stt/android/app/src/test/kotlin/com/royleguiza/voicebubblestt/TranscriptionHistoryLogicTest.kt"
+    kt_build = "voice_bubble_stt/android/app/build.gradle.kts"
+    wrapper = "voice_bubble_stt/android/gradle/wrapper/gradle-wrapper.properties"
+    dart_store = "app_source/lib/services/storage_service.dart"
+    dart_test = "app_source/test/services/history_bridge_contract_test.dart"
+    pubspec = "app_source/pubspec.yaml"
+    workflow = ".github/workflows/android.yml"
+    main = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/MainActivity.kt"
+    paths = [kt_repo, kt_logic, kt_test, kt_build, wrapper, dart_store, dart_test, pubspec, workflow, main]
+    contents = {}
+    for path in paths:
+        assert os.path.isfile(path), f"Falta archivo C-02: {path}"
+        with open(path, "r", encoding="utf-8") as f:
+            contents[path] = f.read()
+
+    kt = contents[kt_repo]
+    logic = contents[kt_logic]
+    dart = contents[dart_store]
+    native_test = contents[kt_test]
+    build = contents[kt_build]
+    wrapper_content = contents[wrapper]
+    pubspec_content = contents[pubspec]
+    dart_test_content = contents[dart_test]
+    ci = contents[workflow]
+    main_content = contents[main]
+    prefix = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu!"
+    assert base64.b64decode(prefix[:-1] + "===") == b"This is the prefix for a list."
+    assert 'SHARED_HISTORY_KEY = "flutter.transcriptions"' in kt
+    assert "readFlutterStringList()" in kt and ".getString(" in kt
+    assert prefix in logic
+    assert "JSON_LIST_PREFIX" in logic
+    assert "raw.startsWith(JSON_LIST_PREFIX)" in logic
+    assert "raw.trim()" not in logic
+    assert "shared_preferences_android: 2.4.15" not in pubspec_content
+    assert "shared_preferences:" in pubspec_content
+    assert "TranscriptionHistoryLogic.mergeRecords(" in kt
+    assert (
+        "getStringSet" not in kt + logic
+        and "android.util.Xml" not in kt + logic
+        and "XmlPullParser" not in kt + logic
+        and "migrateFromLegacySources" not in kt + logic
+        and "Base64" not in kt + logic
+    )
+    assert "getStringList(_key)" in dart and "setStringList(_key" in dart
+    assert "_parseHistoryTimestamp" in dart and "_legacyHistoryTimestampPattern" in dart
+    assert "DateTime.tryParse(raw)" not in dart
+    assert "ResolverStyle.STRICT" in logic and "truncatedTo(ChronoUnit.MICROS)" in logic
+    assert "@Test" in native_test and "TranscriptionHistoryLogicTest" in native_test
+
+    add_start = kt.index("fun addTranscription")
+    lock_start = kt.index("withTranscriptionHistoryFileLock", add_start)
+    load_start = kt.index("loadRecords()", lock_start)
+    normalize_start = kt.index("TranscriptionHistoryLogic.normalize", lock_start)
+    save_start = kt.index("saveAtomic", lock_start)
+    assert "acquireTranscriptionHistoryLock" in kt
+    assert "HISTORY_LOCK_TIMEOUT_MS" in kt and "HISTORY_LOCK_STALE_MS" in kt
+    assert "Files.createFile(" in kt and "FileAlreadyExistsException" in kt
+    assert "getLastModifiedTime" in kt
+    assert "synchronized(historyProcessLock)" not in kt
+    assert "RandomAccessFile(lockFile" not in kt and "channel.lock()" not in kt
+    assert 'LOCK_FILE_NAME = "$FILE_NAME.lock"' in kt
+    assert lock_start < load_start < normalize_start < save_start
+    assert "loadRecords()" not in kt[add_start:lock_start]
+    assert "withTranscriptionHistoryFileLock" in kt[kt.index("fun loadHistory()"):]
+    assert "Files.move(" in kt and "Files.createTempFile(" in kt
+    assert "StandardCopyOption.ATOMIC_MOVE" in kt
+    assert "StandardCopyOption.REPLACE_EXISTING" in kt and "copyTo(" not in kt
+    assert "TranscriptionHistoryReadResult.Missing" in kt
+    assert "TranscriptionHistoryReadResult.Content" in kt
+    assert "TranscriptionHistoryReadResult.Corrupt" in kt
+    assert "TranscriptionHistoryReadResult.Error" in kt
+    assert "canonicalObject(text, instant)" in kt
+    assert "Future<bool> _saveHistoryFile() async" in dart
+    assert "bool publishHistoryFileAtomically" in dart
+    assert "Random.secure()" in dart
+    assert "tmpFile.renameSync(file.path);" in dart
+    assert "historyLockTimeoutMs" in dart and "historyLockStaleMs" in dart
+    assert "createSync(exclusive: true)" in dart and "lastModifiedSync" in dart
+    assert "FileLock.exclusive" not in dart and "lockHandle.unlock" not in dart
+    assert "historyLockFileName = 'transcription_history.json.lock'" in dart
+    assert "copySync(" not in dart and "return false" in dart
+    assert "if (merged == null) return false;" in dart
+    assert "legacyOffsetMinutes" in dart and "legacyOffsetMinutes == null) return null" in dart
+    assert "DateTime.utc(" in dart and "_validHistoryYear(instant)" in dart
+    assert ".addTranscription(text, timestamp)" in main_content
+
+    for case in (
+        "mergesFileAndStringListEntries",
+        "keepsDifferentTextsAtTheSameInstant",
+        "collapsesDuplicateAcrossTimezoneAndSubMicrosecondPrecision",
+        "rejectsNonCanonicalAndInvalidTimestamps",
+        "validatesLegacyOverflowAfterUtcConversionInBothOffsetDirections",
+        "appliesFifoAfterMergeAndDeduplication",
+        "repositoryReadsRealFileAndFlutterPayloadThroughProductionParsers",
+        "repositoryCanonicalizesPayloadBeforeReturningAndPublishing",
+        "repositoryAddReadsFileAndPreferencesBeforePublishing",
+        "repositoryAddRejectsEmptyTextWithoutChangingPublishedFile",
+        "repositoryReportsAtomicWriteFailureAndKeepsPublishedFile",
+        "repositoryDoesNotPublishWhenExistingFileReadFails",
+        "productionStorageReportsReadErrorForExistingUnreadablePath",
+        "repositoryAddCollapsesDuplicateBeforeFifoCut",
+        "repositoryAddMergesMemoryFilePreferencesWithThirtyThreeTiedEntries",
+        "normalizesThirtyThreeTiedEntriesAcrossAllSources",
+        "concurrentAddsFromSeparateRepositoriesKeepBothEntries",
+        "productionPublisherUsesAtomicMoveAndCleansTemporaryFiles",
+        "productionPublisherReportsRealMoveFailure",
+        "concurrentReaderNeverSeesPartialJson",
+        "repositoryParsesLegacyLocalTimestampsInExplicitNonUtcZone",
+        "repositoryAppliesFifoToThirtyThreeTiedEntries",
+        "usesTheSameUnicodeBlankRuleAsDart",
+    ):
+        assert case in native_test, f"Falta caso Kotlin: {case}"
+    assert native_test.count("addTranscription(") >= 4
+    assert "FileTranscriptionHistoryStorage" in native_test
+    assert "TemporaryHistoryStorage" not in native_test
+    assert "CyclicBarrier" in native_test and "Executors" in native_test
+    assert "CountDownLatch" in native_test
+    assert "TranscriptionHistorySource.MEMORY" in native_test
+    assert "TranscriptionHistorySource.FILE" in native_test
+    assert "TranscriptionHistorySource.PREFERENCES" in native_test
+    assert "Thread.sleep" not in native_test
+    assert "ZoneId.of(\"America/Argentina/Buenos_Aires\")" in native_test
+    assert "ZoneId.of(\"+02:00\")" in native_test
+    assert "ZoneId.of(\"-02:00\")" in native_test
+    assert "ZoneId.systemDefault()" not in native_test
+    assert "2026-02-30T10:00:00Z" in dart_test_content
+    assert "2026-08-23T10:00:00.123" in dart_test_content
+    assert "si falla la sustitucion atomica conserva el archivo publicado" in dart_test_content
+    assert "historyLegacyOffsetMinutes: 120" in dart_test_content
+    assert "historyLegacyOffsetMinutes: -120" in dart_test_content
+    assert "+14:00" in native_test and "+14:01" in native_test
+    assert "Europe/Berlin" in native_test
+    assert "lockStaleIsRecovered" in native_test and "lockTimeoutIsFailClosed" in native_test
+    assert "stale" in dart_test_content.lower() and "timeout" in dart_test_content.lower()
+    assert "100%" not in native_test
+    assert "testDebugUnitTest" in ci and "--tests" in ci
+    assert ci.index("Pub get") < ci.index("Preparar local.properties") < ci.index("testDebugUnitTest")
+    assert ci.index("testDebugUnitTest") < ci.index("flutter build apk")
+    assert ci.index("testDebugUnitTest") < ci.index("Upload APK arm64")
+    assert "FLUTTER_ROOT" in ci and "flutter.sdk=" in ci and "sdk.dir=" in ci
+    assert "voice_bubble_stt/android/local.properties" in ci
+    assert "gradle/actions/setup-gradle" in ci and "gradle-version: '9.3.1'" in ci
+    assert ci.count("gradle/actions/setup-gradle") == 1
+    assert "cache: gradle" not in ci
+    assert "gradle-9.3.1-all.zip" in wrapper_content
+    assert "gradle --no-daemon :app:testDebugUnitTest" in ci
+    assert 'testImplementation("junit:junit:4.13.2")' in build
+    assert 'testImplementation("org.json:json:20240303")' in build
+    assert "--init-script" not in ci and "command -v gradle" not in ci
+
+
 def test_clean_logs():
     kt_dir = "voice_bubble_stt/android/app/src/main/kotlin"
-    cmd = f"grep -rniE 'Log\\.[a-z]+\\(.*\\b(texto|contenido|api_?key|token|password|contraseña|passwd|otp|tecleado|coordenada)\\b' '{kt_dir}' || true"
-    out = subprocess.check_output(cmd, shell=True, text=True).strip()
-    assert not out, f"Filtración de contenido detectada en Logs:\n{out}"
+    pattern = re.compile(
+        r"Log\.[a-z]+\(.*\b(texto|contenido|api_?key|token|password|"
+        r"contraseña|passwd|otp|tecleado|coordenada)\b",
+        re.IGNORECASE,
+    )
+    hits = []
+    for root, _, files in os.walk(kt_dir):
+        for name in files:
+            if not name.endswith(".kt"):
+                continue
+            path = os.path.join(root, name)
+            with open(path, "r", encoding="utf-8") as f:
+                for line_no, line in enumerate(f, 1):
+                    if pattern.search(line):
+                        hits.append(f"{path}:{line_no}: {line.strip()}")
+    assert not hits, "Filtración de contenido detectada en Logs:\n" + "\n".join(hits)
 
 def test_no_versioned_secrets():
     """SPK-01: ningún PAT ni archivo de secretos versionado (mirror del guard CI)."""
-    cmd = "git grep -nE 'github_pat_[A-Za-z0-9_]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}' -- . || true"
-    out = subprocess.check_output(cmd, shell=True, text=True).strip()
-    # El propio test nombra los patrones: filtrar su propia línea.
-    lines = [l for l in out.splitlines() if "test_master_suite.py" not in l]
-    assert not lines, f"Posible secreto versionado SPK-01:\n" + "\n".join(lines)
-    cmd2 = "git ls-files | grep -xE '\\.github_token|\\.agents/secrets\\.env' || true"
-    out2 = subprocess.check_output(cmd2, shell=True, text=True).strip()
-    assert not out2, f"Archivo de secretos trackeado SPK-01:\n{out2}"
+    result = subprocess.run(
+        [
+            "git", "grep", "-nE",
+            r"github_pat_[A-Za-z0-9_]{10,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}",
+            "--", ".",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=False,
+    )
+    lines = [line for line in result.stdout.splitlines() if "test_master_suite.py" not in line]
+    assert not lines, "Posible secreto versionado SPK-01:\n" + "\n".join(lines)
+    tracked = subprocess.run(
+        ["git", "ls-files"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    forbidden = {".github_token", ".agents/secrets.env"}
+    assert not forbidden.intersection(tracked), (
+        "Archivo de secretos trackeado SPK-01:\n"
+        + "\n".join(sorted(forbidden.intersection(tracked)))
+    )
 
 def test_secrets_vault():
     """SPK-02: secretos solo en bóveda cifrada, jamás en prefs planas ni backup."""
@@ -191,6 +376,7 @@ def main():
     print("=" * 70)
     tests = [
         ("CI Guard: Paridad de Claves de Contrato", test_contract_keys),
+        ("C-02: Guard de StringList, parser y test nativo", test_c02_history_contract),
         ("CI Guard: Ausencia de Filtraciones en Logs", test_clean_logs),
         ("CI Guard: Sin secretos versionados (SPK-01)", test_no_versioned_secrets),
         ("Seguridad: Bóveda cifrada de secretos (SPK-02)", test_secrets_vault),
@@ -210,7 +396,7 @@ def main():
     print("=" * 70)
 
     if passed == len(tests):
-        print("✨ TODOS LOS REQUERIMIENTOS FUERON EJECUTADOS Y VALIDADOS AL 100%.")
+        print("✨ guardas locales pasan; native/Flutter pendientes de CI.")
         sys.exit(0)
     else:
         print("⚠️ ALGUNOS MÓDULOS PRESENTARON FALLOS.")

@@ -1,228 +1,466 @@
 package com.royleguiza.voicebubblestt
 
 import android.content.Context
-import android.util.Xml
 import org.json.JSONArray
 import org.json.JSONObject
-import org.xmlpull.v1.XmlPullParser
 import java.io.File
-import java.io.FileInputStream
-import java.io.InputStreamReader
+import java.io.IOException
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.NoSuchFileException
+import java.nio.file.Path
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.BasicFileAttributes
 import java.time.Instant
-import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.UUID
 
-/**
- * Historial FIFO-20 en JSON atómico, compartido Flutter↔Kotlin.
- * Identidad por timestamp exacto (SPK-04); I/O fuera del lock (SPK-17).
- */
-class TranscriptionHistoryRepository(private val context: Context) {
+internal sealed class TranscriptionHistoryReadResult {
+    data object Missing : TranscriptionHistoryReadResult()
+    data class Content(val value: String) : TranscriptionHistoryReadResult()
+    data object Corrupt : TranscriptionHistoryReadResult()
+    data class Error(val cause: Throwable) : TranscriptionHistoryReadResult()
+}
+
+internal interface TranscriptionHistoryStorage {
+    val historyDirectory: File
+    fun readHistoryFile(): TranscriptionHistoryReadResult
+    fun readFlutterStringList(): TranscriptionHistoryReadResult
+    fun writeHistoryFileAtomically(contents: String)
+}
+
+internal const val HISTORY_LOCK_TIMEOUT_MS = 5000L
+internal const val HISTORY_LOCK_STALE_MS = 10000L
+internal const val HISTORY_LOCK_POLL_MS = 50L
+
+internal fun acquireTranscriptionHistoryLock(
+    directory: File,
+    timeoutMs: Long = HISTORY_LOCK_TIMEOUT_MS,
+    staleMs: Long = HISTORY_LOCK_STALE_MS,
+): String? {
+    try {
+        directory.mkdirs()
+    } catch (_: Exception) {}
+    val lockFile = File(directory, TranscriptionHistoryRepository.LOCK_FILE_NAME)
+    val token = "${System.currentTimeMillis()}_${System.nanoTime()}_${UUID.randomUUID()}"
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+        try {
+            Files.createFile(lockFile.toPath())
+            try {
+                Files.write(
+                    lockFile.toPath(),
+                    "$token\n${System.currentTimeMillis()}\n".toByteArray(Charsets.UTF_8),
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                )
+            } catch (_: Exception) {
+                try {
+                    Files.deleteIfExists(lockFile.toPath())
+                } catch (_: Exception) {}
+                throw IOException("lock write failed")
+            }
+            return token
+        } catch (_: FileAlreadyExistsException) {
+            var stale = false
+            try {
+                if (!lockFile.exists()) continue
+                val age = try {
+                    System.currentTimeMillis() -
+                        Files.getLastModifiedTime(lockFile.toPath()).toMillis()
+                } catch (_: Exception) {
+                    0L
+                }
+                var contentAge = age
+                try {
+                    val lines = Files.readAllLines(lockFile.toPath(), Charsets.UTF_8)
+                    if (lines.size >= 2) {
+                        val stamped = lines[1].trim().toLongOrNull()
+                        if (stamped != null) {
+                            contentAge = System.currentTimeMillis() - stamped
+                        }
+                    }
+                } catch (_: Exception) {}
+                if (age > staleMs || contentAge > staleMs) {
+                    stale = true
+                }
+            } catch (_: Exception) {}
+            if (stale) {
+                try {
+                    Files.deleteIfExists(lockFile.toPath())
+                } catch (_: Exception) {}
+                continue
+            }
+            try {
+                Thread.sleep(HISTORY_LOCK_POLL_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return null
+            }
+        } catch (_: NoSuchFileException) {
+            try {
+                directory.mkdirs()
+            } catch (_: Exception) {}
+            try {
+                Thread.sleep(HISTORY_LOCK_POLL_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return null
+            }
+        } catch (_: Exception) {
+            try {
+                Thread.sleep(HISTORY_LOCK_POLL_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return null
+            }
+        }
+    }
+    return null
+}
+
+internal fun releaseTranscriptionHistoryLock(directory: File, token: String) {
+    try {
+        val lockFile = File(directory, TranscriptionHistoryRepository.LOCK_FILE_NAME)
+        if (!lockFile.exists()) return
+        val current = try {
+            lockFile.readText(Charsets.UTF_8)
+        } catch (_: Exception) {
+            return
+        }
+        if (current.startsWith(token)) {
+            try {
+                Files.deleteIfExists(lockFile.toPath())
+            } catch (_: Exception) {}
+        }
+    } catch (_: Exception) {}
+}
+
+internal fun <T> withTranscriptionHistoryFileLock(
+    directory: File,
+    timeoutMs: Long = HISTORY_LOCK_TIMEOUT_MS,
+    staleMs: Long = HISTORY_LOCK_STALE_MS,
+    block: () -> T,
+): T {
+    val token = acquireTranscriptionHistoryLock(directory, timeoutMs, staleMs)
+        ?: throw IOException("timeout acquiring history lock")
+    try {
+        return block()
+    } finally {
+        releaseTranscriptionHistoryLock(directory, token)
+    }
+}
+
+internal class FileTranscriptionHistoryStorage(
+    private val directory: File,
+    private val preferencesReader: () -> TranscriptionHistoryReadResult = {
+        TranscriptionHistoryReadResult.Missing
+    },
+) : TranscriptionHistoryStorage {
+    override val historyDirectory: File
+        get() = directory
+
+    private val targetFile: File
+        get() = File(directory, TranscriptionHistoryRepository.FILE_NAME)
+
+    override fun readHistoryFile(): TranscriptionHistoryReadResult {
+        val path = targetFile.toPath()
+        return try {
+            try {
+                Files.readAttributes(path, BasicFileAttributes::class.java)
+            } catch (error: NoSuchFileException) {
+                return TranscriptionHistoryReadResult.Missing
+            }
+            TranscriptionHistoryReadResult.Content(
+                String(Files.readAllBytes(path), Charsets.UTF_8),
+            )
+        } catch (error: Exception) {
+            TranscriptionHistoryReadResult.Error(error)
+        }
+    }
+
+    override fun readFlutterStringList(): TranscriptionHistoryReadResult =
+        preferencesReader()
+
+    override fun writeHistoryFileAtomically(contents: String) {
+        try {
+            directory.mkdirs()
+        } catch (_: Exception) {}
+        val target = targetFile.toPath()
+        var temporaryPath: Path? = null
+        try {
+            val path = Files.createTempFile(
+                directory.toPath(),
+                "${TranscriptionHistoryRepository.FILE_NAME}.",
+                ".tmp",
+            )
+            temporaryPath = path
+            Files.write(
+                path,
+                contents.toByteArray(Charsets.UTF_8),
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+            )
+            Files.move(
+                path,
+                target,
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } catch (error: Exception) {
+            throw IOException("No se pudo publicar el historial atómicamente", error)
+        } finally {
+            val path = temporaryPath
+            if (path != null) {
+                try {
+                    Files.deleteIfExists(path)
+                } catch (_: Exception) {}
+            }
+        }
+    }
+}
+
+private class AndroidTranscriptionHistoryStorage(
+    private val context: Context,
+) : TranscriptionHistoryStorage {
+    private val fileStorage = FileTranscriptionHistoryStorage(
+        directory = context.filesDir,
+        preferencesReader = {
+            try {
+                val value = context.getSharedPreferences(
+                    TranscriptionHistoryRepository.PREFS_NAME,
+                    Context.MODE_PRIVATE,
+                ).getString(
+                    TranscriptionHistoryRepository.SHARED_HISTORY_KEY,
+                    null,
+                )
+                if (value == null) {
+                    TranscriptionHistoryReadResult.Missing
+                } else {
+                    TranscriptionHistoryReadResult.Content(value)
+                }
+            } catch (error: Exception) {
+                TranscriptionHistoryReadResult.Error(error)
+            }
+        },
+    )
+
+    override val historyDirectory: File
+        get() = fileStorage.historyDirectory
+
+    override fun readHistoryFile(): TranscriptionHistoryReadResult =
+        fileStorage.readHistoryFile()
+
+    override fun readFlutterStringList(): TranscriptionHistoryReadResult =
+        fileStorage.readFlutterStringList()
+
+    override fun writeHistoryFileAtomically(contents: String) {
+        fileStorage.writeHistoryFileAtomically(contents)
+    }
+}
+
+class TranscriptionHistoryRepository internal constructor(
+    private val storage: TranscriptionHistoryStorage,
+    private val legacyZone: ZoneId = ZoneId.systemDefault(),
+) {
+    constructor(context: Context) : this(
+        AndroidTranscriptionHistoryStorage(context),
+        ZoneId.systemDefault(),
+    )
 
     companion object {
         const val FILE_NAME = "transcription_history.json"
+        const val LOCK_FILE_NAME = "$FILE_NAME.lock"
         const val MAX_ITEMS = 20
-        private const val SHARED_HISTORY_KEY = "flutter.transcriptions"
-        private val lock = Any()
+        const val SHARED_HISTORY_KEY = "flutter.transcriptions"
+        const val PREFS_NAME = "FlutterSharedPreferences"
     }
 
-    private val targetFile: File
-        get() = File(context.filesDir, FILE_NAME)
+    private sealed class RecordsResult {
+        data class Success(
+            val records: List<TranscriptionHistoryRecord<JSONObject>>,
+        ) : RecordsResult()
 
-    /**
-     * Carga el historial ordenado por timestamp descendente (más reciente primero),
-     * con deduplicación segura por timestamp y tope estricto de MAX_ITEMS (20).
-     */
-    fun loadHistory(): List<JSONObject> {
-        // SPK-17: I/O fuera del lock (el archivo se escribe atómico
-        // tmp+rename, así que leer sin lock ve un snapshot completo).
-        val file = targetFile
-        if (!file.exists()) {
-            val migrated = migrateFromLegacySources()
-            if (migrated.isNotEmpty()) {
-                synchronized(lock) { saveAtomic(migrated) }
-            }
-            return migrated
-        }
-
-        return try {
-            val text = file.readText(Charsets.UTF_8).trim()
-            if (text.isEmpty()) return emptyList()
-            val array = JSONArray(text)
-            val list = ArrayList<JSONObject>(array.length())
-            for (i in 0 until array.length()) {
-                val obj = array.optJSONObject(i)
-                if (obj != null && obj.has("text")) {
-                    list.add(obj)
-                }
-            }
-            dedupAndSort(list)
-        } catch (_: Exception) {
-            migrateFromLegacySources()
-        }
+        data class Failure(val cause: Throwable) : RecordsResult()
     }
 
-    // SPK-22: purgas dormidas eliminadas (historial persistente FIFO-20
-    // con retención; cero llamadores). Si la retención importa, un test
-    // afirma que `load` no purga.
+    fun loadHistory(): List<JSONObject> = try {
+        withTranscriptionHistoryFileLock(
+            storage.historyDirectory,
+        ) {
+            when (val result = loadRecords()) {
+                is RecordsResult.Success -> result.records.map { it.value }
+                is RecordsResult.Failure -> emptyList()
+            }
+        }
+    } catch (_: Exception) {
+        emptyList()
+    }
 
-    /** Agrega un dictado con su timestamp (SPK-04); ver docs/contrato-stt.md. */
-    fun addTranscription(text: String, timestampIso: String? = null) {
-        if (text.isBlank()) return
-        // SPK-17: construir fuera del lock; el lock solo cubre el write
-        // atómico (exclusión mutua burbuja↔teclado: sin escritores concurrentes).
-        val instant = try {
-            if (!timestampIso.isNullOrBlank()) Instant.parse(timestampIso) else Instant.now()
-        } catch (_: Exception) {
+    fun addTranscription(text: String, timestampIso: String? = null): Boolean {
+        if (TranscriptionHistoryLogic.isBlankText(text)) return false
+        val instant = if (timestampIso == null) {
             Instant.now()
+        } else {
+            TranscriptionHistoryLogic.parseTimestamp(timestampIso) ?: return false
         }
         val newEntry = JSONObject()
             .put("text", text)
-            .put("timestamp", instant.toString())
-        val current = loadHistory().toMutableList()
-        current.add(0, newEntry)
-        val out = dedupAndSort(current)
-        synchronized(lock) { saveAtomic(out) }
-    }
-
-    private fun dedupAndSort(items: List<JSONObject>): List<JSONObject> {
-        val sorted = items.sortedByDescending { parseInstant(it) }
-        val seen = HashSet<Instant>()
-        val out = ArrayList<JSONObject>(MAX_ITEMS)
-        for (obj in sorted) {
-            val ts = parseInstant(obj)
-            if (ts != Instant.EPOCH && !seen.add(ts)) {
-                continue
-            }
-            out.add(obj)
-            if (out.size >= MAX_ITEMS) break
-        }
-        return out
-    }
-
-    private fun saveAtomic(items: List<JSONObject>) {
-        try {
-            val array = JSONArray()
-            for (item in items) {
-                array.put(item)
-            }
-            val tmp = File(context.filesDir, "$FILE_NAME.tmp")
-            tmp.writeText(array.toString(), Charsets.UTF_8)
-            if (!tmp.renameTo(targetFile)) {
-                tmp.copyTo(targetFile, overwrite = true)
-                try { tmp.delete() } catch (_: Exception) {}
-            }
-        } catch (_: Exception) {}
-    }
-
-    /** Migración solo-lectura del legado prefs→archivo (SPK-04). */
-    private fun migrateFromLegacySources(): List<JSONObject> {
-        val results = ArrayList<JSONObject>()
-
-        // 1. Intentar getStringSet en SharedPreferences de Android
-        try {
-            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            prefs.getStringSet(SHARED_HISTORY_KEY, null)?.let { set ->
-                for (raw in set) {
-                    try {
-                        results.add(JSONObject(raw))
-                    } catch (_: Exception) {}
-                }
-            }
-        } catch (_: Exception) {}
-
-        // 2. Si no hubo resultados, leer directamente del XML en disco desmontando cualquier prefijo de Flutter
-        if (results.isEmpty()) {
-            try {
-                val xmlFile = File(context.applicationInfo.dataDir, "shared_prefs/FlutterSharedPreferences.xml")
-                if (xmlFile.exists()) {
-                    val rawCandidates = readRawCandidatesFromXml(xmlFile)
-                    for (raw in rawCandidates) {
-                        try {
-                            results.add(JSONObject(raw))
-                        } catch (_: Exception) {}
-                    }
-                }
-            } catch (_: Exception) {}
-        }
-
-        return dedupAndSort(results)
-    }
-
-    private fun readRawCandidatesFromXml(file: File): List<String> {
-        val out = ArrayList<String>()
-        val parser = Xml.newPullParser()
-        InputStreamReader(FileInputStream(file), Charsets.UTF_8).use { reader ->
-            parser.setInput(reader)
-            val chunk = StringBuilder()
-            var capture = false
-            var event = parser.eventType
-            while (event != XmlPullParser.END_DOCUMENT) {
-                when (event) {
-                    XmlPullParser.START_TAG -> {
-                        if (chunk.isNotEmpty()) {
-                            processChunk(chunk.toString(), out)
-                            chunk.setLength(0)
-                        }
-                        if (parser.getAttributeValue(null, "name") == SHARED_HISTORY_KEY) {
-                            capture = true
-                        }
-                    }
-                    XmlPullParser.TEXT -> if (capture) {
-                        chunk.append(parser.text)
-                    }
-                    XmlPullParser.END_TAG -> {
-                        if (capture) {
-                            processChunk(chunk.toString(), out)
-                            chunk.setLength(0)
-                            if (parser.name == "set" || parser.name == "string") {
-                                capture = false
+            .put("timestamp", TranscriptionHistoryLogic.canonicalTimestamp(instant))
+        val newRecord = recordFromJson(
+            newEntry,
+            TranscriptionHistorySource.MEMORY,
+            0,
+        ) ?: return false
+        return try {
+            withTranscriptionHistoryFileLock(storage.historyDirectory) {
+                when (val result = loadRecords()) {
+                    is RecordsResult.Failure -> false
+                    is RecordsResult.Success -> {
+                        val current = result.records.map { record ->
+                            if (record.source == TranscriptionHistorySource.MEMORY) {
+                                record.copy(sourceIndex = record.sourceIndex + 1)
+                            } else {
+                                record
                             }
                         }
+                        val out = TranscriptionHistoryLogic.normalize(
+                            listOf(newRecord) + current,
+                        )
+                        saveAtomic(out)
                     }
                 }
-                event = parser.next()
             }
-            if (chunk.isNotEmpty()) {
-                processChunk(chunk.toString(), out)
-            }
-        }
-        return out
-    }
-
-    private fun processChunk(raw: String, out: MutableList<String>) {
-        val trimmed = raw.trim()
-        if (trimmed.isBlank()) return
-
-        // Desempaquetar prefijos de Flutter (ej. VGhpcy...["{...}"])
-        val jsonArrayStart = trimmed.indexOf('[')
-        val jsonArrayEnd = trimmed.lastIndexOf(']')
-        if (jsonArrayStart in 0 until jsonArrayEnd) {
-            val jsonArrayStr = trimmed.substring(jsonArrayStart, jsonArrayEnd + 1)
-            try {
-                val arr = JSONArray(jsonArrayStr)
-                for (i in 0 until arr.length()) {
-                    val item = arr.optString(i)
-                    if (!item.isNullOrBlank()) out.add(item)
-                }
-                return
-            } catch (_: Exception) {}
-        }
-
-        // String individual
-        out.add(trimmed)
-    }
-
-    private fun parseInstant(obj: JSONObject): Instant {
-        val ts = obj.optString("timestamp", "")
-        if (ts.isBlank()) return Instant.EPOCH
-        return try {
-            Instant.parse(ts)
         } catch (_: Exception) {
-            try {
-                LocalDateTime.parse(ts).atZone(ZoneId.systemDefault()).toInstant()
-            } catch (_: Exception) {
-                Instant.EPOCH
+            false
+        }
+    }
+
+    private fun loadRecords(): RecordsResult {
+        val fileEntries = readFileEntries()
+        if (fileEntries is RecordsResult.Failure) return fileEntries
+        val preferencesEntries = readPreferencesEntries()
+        if (preferencesEntries is RecordsResult.Failure) return preferencesEntries
+        return RecordsResult.Success(
+            TranscriptionHistoryLogic.mergeRecords(
+                (fileEntries as RecordsResult.Success).records,
+                (preferencesEntries as RecordsResult.Success).records,
+            ),
+        )
+    }
+
+    private fun readFileEntries(): RecordsResult {
+        return when (val read = storage.readHistoryFile()) {
+            TranscriptionHistoryReadResult.Missing ->
+                RecordsResult.Success(emptyList())
+            TranscriptionHistoryReadResult.Corrupt ->
+                RecordsResult.Failure(IOException("historial corrupto"))
+            is TranscriptionHistoryReadResult.Error ->
+                RecordsResult.Failure(read.cause)
+            is TranscriptionHistoryReadResult.Content ->
+                parseObjectArray(read.value)
+        }
+    }
+
+    private fun readPreferencesEntries(): RecordsResult {
+        return when (val read = storage.readFlutterStringList()) {
+            TranscriptionHistoryReadResult.Missing ->
+                RecordsResult.Success(emptyList())
+            TranscriptionHistoryReadResult.Corrupt ->
+                RecordsResult.Failure(IOException("prefs corruptas"))
+            is TranscriptionHistoryReadResult.Error ->
+                RecordsResult.Failure(read.cause)
+            is TranscriptionHistoryReadResult.Content -> {
+                val json = TranscriptionHistoryLogic.decodeFlutterStringList(read.value)
+                if (json == null) {
+                    RecordsResult.Success(emptyList())
+                } else {
+                    parseStringList(json)
+                }
             }
+        }
+    }
+
+    private fun parseObjectArray(raw: String): RecordsResult {
+        if (raw.trim().isEmpty()) return RecordsResult.Success(emptyList())
+        return try {
+            val array = JSONArray(raw)
+            val out = ArrayList<TranscriptionHistoryRecord<JSONObject>>(array.length())
+            for (index in 0 until array.length()) {
+                val obj = array.optJSONObject(index) ?: continue
+                val record = recordFromJson(
+                    obj,
+                    TranscriptionHistorySource.FILE,
+                    index,
+                ) ?: continue
+                out.add(record)
+            }
+            RecordsResult.Success(out)
+        } catch (error: Exception) {
+            RecordsResult.Failure(IOException("historial corrupto", error))
+        }
+    }
+
+    private fun parseStringList(raw: String): RecordsResult {
+        if (raw.trim().isEmpty()) return RecordsResult.Success(emptyList())
+        return try {
+            val array = JSONArray(raw)
+            val out = ArrayList<TranscriptionHistoryRecord<JSONObject>>(array.length())
+            for (index in 0 until array.length()) {
+                val item = array.opt(index)
+                if (item !is String) continue
+                val obj = try {
+                    JSONObject(item)
+                } catch (_: Exception) {
+                    null
+                } ?: continue
+                val record = recordFromJson(
+                    obj,
+                    TranscriptionHistorySource.PREFERENCES,
+                    index,
+                ) ?: continue
+                out.add(record)
+            }
+            RecordsResult.Success(out)
+        } catch (error: Exception) {
+            RecordsResult.Failure(IOException("prefs corruptas", error))
+        }
+    }
+
+    private fun recordFromJson(
+        obj: JSONObject,
+        source: TranscriptionHistorySource,
+        sourceIndex: Int,
+    ): TranscriptionHistoryRecord<JSONObject>? {
+        val text = obj.opt("text") as? String ?: return null
+        if (TranscriptionHistoryLogic.isBlankText(text)) return null
+        val timestamp = obj.opt("timestamp") as? String ?: return null
+        val instant = TranscriptionHistoryLogic.parseHistoryTimestamp(timestamp, legacyZone)
+            ?: return null
+        val canonical = canonicalObject(text, instant)
+        return TranscriptionHistoryRecord(canonical, text, instant, source, sourceIndex)
+    }
+
+    private fun canonicalObject(text: String, instant: Instant): JSONObject =
+        JSONObject()
+            .put("text", text)
+            .put("timestamp", TranscriptionHistoryLogic.canonicalTimestamp(instant))
+
+    private fun saveAtomic(items: List<JSONObject>): Boolean {
+        return try {
+            val array = JSONArray()
+            for (item in items) {
+                val text = item.opt("text") as? String ?: return false
+                val timestamp = item.opt("timestamp") as? String ?: return false
+                val instant = TranscriptionHistoryLogic.parseTimestamp(timestamp)
+                    ?: return false
+                array.put(canonicalObject(text, instant))
+            }
+            storage.writeHistoryFileAtomically(array.toString())
+            true
+        } catch (_: Exception) {
+            false
         }
     }
 }

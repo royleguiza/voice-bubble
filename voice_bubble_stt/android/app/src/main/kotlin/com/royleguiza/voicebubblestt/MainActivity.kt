@@ -107,7 +107,6 @@ class MainActivity : FlutterActivity() {
                                 try {
                                     TranscriptionHistoryRepository(this@MainActivity)
                                         .addTranscription(text, timestamp)
-                                    true
                                 } catch (_: Exception) {
                                     false
                                 }

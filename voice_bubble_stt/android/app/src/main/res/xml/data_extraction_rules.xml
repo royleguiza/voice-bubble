@@ -3,13 +3,20 @@
      efectivo viene de flutter.targetSdkVersion, >=31 en Flutter actual, por lo
       que esta es la regla vigente en Android 12+; backup_rules.xml queda para
       compatibilidad en API <31). Mismas exclusiones en cloud y en
-      transferencia dispositivo-a-dispositivo: historial de dictados, historial
-      de portapapeles e imágenes; el resto se respalda/migra con normalidad.
+      transferencia dispositivo-a-dispositivo: historial de dictados, notas de
+      voz (índice + audios + cola pendiente), historial de portapapeles e
+      imágenes. Los ajustes (todo FlutterSharedPreferences, incluidos snippets
+      y puentes del teclado) y los secretos están excluidos y NO se
+      restauran/migran: tras restaurar hay que reconfigurar la app.
       SPK-02: secretos excluidos en ambas direcciones (ver backup_rules.xml). -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="transcription_history.json" />
         <exclude domain="file" path="transcription_history.json.tmp" />
+        <exclude domain="file" path="voice_notes.json" />
+        <exclude domain="file" path="voice_notes.json.tmp" />
+        <exclude domain="file" path="notes_audio" />
+        <exclude domain="file" path="pending_notes" />
         <exclude domain="file" path="clipboard_history.json" />
         <exclude domain="file" path="clipboard_history.json.tmp" />
         <exclude domain="file" path="clipboard_media" />
@@ -19,6 +26,10 @@
     <device-transfer>
         <exclude domain="file" path="transcription_history.json" />
         <exclude domain="file" path="transcription_history.json.tmp" />
+        <exclude domain="file" path="voice_notes.json" />
+        <exclude domain="file" path="voice_notes.json.tmp" />
+        <exclude domain="file" path="notes_audio" />
+        <exclude domain="file" path="pending_notes" />
         <exclude domain="file" path="clipboard_history.json" />
         <exclude domain="file" path="clipboard_history.json.tmp" />
         <exclude domain="file" path="clipboard_media" />

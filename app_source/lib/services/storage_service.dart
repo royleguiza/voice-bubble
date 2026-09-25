@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
@@ -8,6 +9,45 @@ import '../models/credential.dart';
 import '../models/snippet.dart';
 import '../models/transcription.dart';
 import 'cloud_stt_service.dart';
+
+class _HistoryEntry {
+  const _HistoryEntry({
+    required this.transcription,
+    required this.source,
+    required this.index,
+  });
+
+  final Transcription transcription;
+  final int source;
+  final int index;
+
+  _HistoryEntry copyWith({int? source, int? index}) => _HistoryEntry(
+        transcription: transcription,
+        source: source ?? this.source,
+        index: index ?? this.index,
+      );
+}
+
+enum _HistoryReadStatus { missing, content, corrupt, error }
+
+class _HistoryReadResult {
+  const _HistoryReadResult._(this.status, this.value);
+
+  const _HistoryReadResult.missing()
+      : this._(_HistoryReadStatus.missing, null);
+
+  const _HistoryReadResult.content(String value)
+      : this._(_HistoryReadStatus.content, value);
+
+  const _HistoryReadResult.corrupt()
+      : this._(_HistoryReadStatus.corrupt, null);
+
+  const _HistoryReadResult.error()
+      : this._(_HistoryReadStatus.error, null);
+
+  final _HistoryReadStatus status;
+  final String? value;
+}
 
 class StorageService {
   static const String _key = 'transcriptions';
@@ -33,6 +73,7 @@ class StorageService {
       v.clamp(minTrackpadSensitivity, maxTrackpadSensitivity);
 
   final FlutterSecureStorage _secureStorage;
+  final int? _historyLegacyOffsetMinutes;
 
   /// Bóveda única (SPK-02): flutter_secure_storage con ESP activado. El IME
   /// nativo lee el MISMO archivo vía SecureStore.kt (APIs públicas AndroidX);
@@ -41,8 +82,11 @@ class StorageService {
   static const espOptions = AndroidOptions(encryptedSharedPreferences: true);
   static const espSecureStorage = FlutterSecureStorage(aOptions: espOptions);
 
-  StorageService({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? espSecureStorage;
+  StorageService({
+    FlutterSecureStorage? secureStorage,
+    int? historyLegacyOffsetMinutes,
+  }) : _secureStorage = secureStorage ?? espSecureStorage,
+       _historyLegacyOffsetMinutes = historyLegacyOffsetMinutes;
 
   Future<SharedPreferences> _prefs() async {
     return await SharedPreferences.getInstance();
@@ -904,86 +948,255 @@ class StorageService {
   ];
 
   static const String historyFileName = 'transcription_history.json';
+  static const String historyLockFileName = 'transcription_history.json.lock';
   static const String _historyTmpSuffix = '.tmp';
+  static int _historyTempCounter = 0;
+  static const int historyLockTimeoutMs = 5000;
+  static const int historyLockStaleMs = 10000;
+  static const int historyLockPollMs = 50;
+  static const int _historySourceMemory = 0;
+  static const int _historySourceFile = 1;
+  static const int _historySourcePreferences = 2;
+  static final RegExp _historyTimestampPattern = RegExp(
+    r'^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?:\.([0-9]+))?(Z|[+-][0-9]{2}:[0-9]{2})$',
+  );
+  static final RegExp _legacyHistoryTimestampPattern = RegExp(
+    r'^([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?:\.([0-9]+))?$',
+  );
 
-  Future<File?> _getHistoryFile() async {
-    try {
-      final dir = await getApplicationSupportDirectory();
-      return File('${dir.path}/$historyFileName');
-    } catch (_) {
+  Future<File> _getHistoryFile() async {
+    final dir = await getApplicationSupportDirectory();
+    return File('${dir.path}/$historyFileName');
+  }
+
+  static DateTime? _parseHistoryTimestamp(
+    Object? raw, {
+    int? legacyOffsetMinutes,
+  }) {
+    if (raw is! String) return null;
+    final zoned = _historyTimestampPattern.firstMatch(raw);
+    if (zoned != null && zoned.group(0) == raw) {
+      final local = _historyDateParts(
+        zoned.group(1)!,
+        zoned.group(2),
+        isUtc: true,
+      );
+      if (local == null) return null;
+      final zone = zoned.group(3)!;
+      final offsetMinutes = _historyOffsetMinutes(zone);
+      if (offsetMinutes == null) return null;
+      final instant = local.subtract(Duration(minutes: offsetMinutes));
+      return _validHistoryYear(instant) ? instant : null;
+    }
+    final legacy = _legacyHistoryTimestampPattern.firstMatch(raw);
+    if (legacy == null || legacy.group(0) != raw) return null;
+    if (legacyOffsetMinutes == null) return null;
+    if (legacyOffsetMinutes < -840 ||
+        legacyOffsetMinutes > 840 ||
+        legacyOffsetMinutes % 1 != 0) {
       return null;
     }
+    final local = _historyDateParts(
+      legacy.group(1)!,
+      legacy.group(2),
+      isUtc: false,
+    );
+    if (local == null) return null;
+    final instant = DateTime.utc(
+      local.year,
+      local.month,
+      local.day,
+      local.hour,
+      local.minute,
+      local.second,
+      local.millisecond,
+      local.microsecond,
+    ).subtract(Duration(minutes: legacyOffsetMinutes));
+    return _validHistoryYear(instant) ? instant : null;
   }
 
-  /// Lee el archivo compartido sin lanzar. Entradas con `timestamp`
-  /// presente-pero-ilegible se omiten para no contaminar con `now`
-  /// (ver contrato tolerante de `Transcription.fromJson`).
-  Future<List<Transcription>> _readHistoryFileEntries() async {
-    try {
-      final file = await _getHistoryFile();
-      if (file == null) return const [];
-      if (!file.existsSync()) return const [];
-      final content = file.readAsStringSync().trim();
-      if (content.isEmpty) return const [];
-      final decoded = jsonDecode(content);
-      if (decoded is! List<dynamic>) return const [];
-      final out = <Transcription>[];
-      for (final item in decoded) {
-        if (item is! Map<dynamic, dynamic>) continue;
-        final map = <String, dynamic>{};
-        for (final e in item.entries) {
-          final k = e.key;
-          if (k is String) map[k] = e.value;
+  static DateTime? _historyDateParts(
+    String date,
+    String? rawFraction, {
+    required bool isUtc,
+  }) {
+    final fraction = (rawFraction ?? '').padRight(6, '0');
+    final micros = fraction.substring(0, 6);
+    final millis = int.parse(micros.substring(0, 3));
+    final micro = int.parse(micros.substring(3, 6));
+    final year = int.parse(date.substring(0, 4));
+    final month = int.parse(date.substring(5, 7));
+    final day = int.parse(date.substring(8, 10));
+    final hour = int.parse(date.substring(11, 13));
+    final minute = int.parse(date.substring(14, 16));
+    final second = int.parse(date.substring(17, 19));
+    if (!_isValidHistoryDate(year, month, day) ||
+        hour > 23 ||
+        minute > 59 ||
+        second > 59) {
+      return null;
+    }
+    return isUtc
+        ? DateTime.utc(year, month, day, hour, minute, second, millis, micro)
+        : DateTime(year, month, day, hour, minute, second, millis, micro);
+  }
+
+  static int? _historyOffsetMinutes(String zone) {
+    if (zone == 'Z') return 0;
+    final hours = int.tryParse(zone.substring(1, 3));
+    final minutes = int.tryParse(zone.substring(4, 6));
+    if (hours == null ||
+        minutes == null ||
+        hours > 14 ||
+        minutes > 59 ||
+        (hours == 14 && minutes != 0)) {
+      return null;
+    }
+    final sign = zone[0] == '-' ? -1 : 1;
+    return sign * (hours * 60 + minutes);
+  }
+
+  static bool _validHistoryYear(DateTime timestamp) =>
+      timestamp.year >= 0 && timestamp.year <= 9999;
+
+  static bool _isValidHistoryDate(int year, int month, int day) {
+    if (month < 1 || month > 12 || day < 1) return false;
+    final leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    final days = <int>[31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return day <= days[month - 1];
+  }
+
+  static bool _isBlankHistoryText(String value) =>
+      value.runes.every(_isBlankHistoryCodePoint);
+
+  static bool _isBlankHistoryCodePoint(int codePoint) {
+    return (codePoint >= 0x0009 && codePoint <= 0x000D) ||
+        (codePoint >= 0x001C && codePoint <= 0x001F) ||
+        codePoint == 0x0020 ||
+        codePoint == 0x0085 ||
+        codePoint == 0x00A0 ||
+        codePoint == 0x1680 ||
+        (codePoint >= 0x2000 && codePoint <= 0x200A) ||
+        codePoint == 0x2028 ||
+        codePoint == 0x2029 ||
+        codePoint == 0x202F ||
+        codePoint == 0x205F ||
+        codePoint == 0x3000 ||
+        codePoint == 0xFEFF;
+  }
+
+  static Transcription? _parseHistoryEntry(
+    Map<String, dynamic> map, {
+    int? legacyOffsetMinutes,
+  }) {
+    final rawText = map['text'];
+    final timestamp = _parseHistoryTimestamp(
+      map['timestamp'],
+      legacyOffsetMinutes: legacyOffsetMinutes,
+    );
+    if (rawText is! String || _isBlankHistoryText(rawText) || timestamp == null) return null;
+    return Transcription(text: rawText, timestamp: timestamp.toLocal());
+  }
+
+  Future<List<_HistoryEntry>?> _readHistoryFileEntries() async {
+    final read = await _readHistoryFile();
+    switch (read.status) {
+      case _HistoryReadStatus.missing:
+        return const [];
+      case _HistoryReadStatus.error:
+        return null;
+      case _HistoryReadStatus.corrupt:
+        return null;
+      case _HistoryReadStatus.content:
+        final content = read.value!;
+        if (content.trim().isEmpty) return const [];
+        try {
+          final decoded = jsonDecode(content);
+          if (decoded is! List<dynamic>) return null;
+          final out = <_HistoryEntry>[];
+          for (var index = 0; index < decoded.length; index++) {
+            final item = decoded[index];
+            if (item is! Map<dynamic, dynamic>) continue;
+            final map = <String, dynamic>{};
+            for (final e in item.entries) {
+              final k = e.key;
+              if (k is String) map[k] = e.value;
+            }
+            final parsed = _parseHistoryEntry(
+              map,
+              legacyOffsetMinutes: _historyLegacyOffsetMinutes,
+            );
+            if (parsed != null) {
+              out.add(_HistoryEntry(
+                transcription: parsed,
+                source: _historySourceFile,
+                index: index,
+              ));
+            }
+          }
+          return out;
+        } catch (_) {
+          return null;
         }
-        if (_isPresentButUnparseableTimestamp(map['timestamp'])) continue;
-        out.add(Transcription.fromJson(map));
-      }
-      return out;
-    } catch (_) {
-      return const [];
     }
   }
 
-  Future<List<Transcription>> _readPrefsEntries() async {
+  Future<List<_HistoryEntry>?> _readPrefsEntries() async {
     try {
       final prefs = await _prefs();
-      try {
-        await prefs.reload();
-      } catch (_) {}
-      final jsonList = prefs.getStringList(_key) ?? const <String>[];
-      final out = <Transcription>[];
-      for (final raw in jsonList) {
+      await prefs.reload();
+      final jsonList = prefs.getStringList(_key);
+      if (jsonList == null) return const [];
+      final out = <_HistoryEntry>[];
+      for (var index = 0; index < jsonList.length; index++) {
         try {
-          final decoded = jsonDecode(raw);
+          final decoded = jsonDecode(jsonList[index]);
           if (decoded is! Map<dynamic, dynamic>) continue;
           final map = <String, dynamic>{};
           for (final e in decoded.entries) {
             final k = e.key;
             if (k is String) map[k] = e.value;
           }
-          if (_isPresentButUnparseableTimestamp(map['timestamp'])) continue;
-          out.add(Transcription.fromJson(map));
-        } catch (_) {
-          // Ignorar entrada corrupta
-        }
+          final parsed = _parseHistoryEntry(
+            map,
+            legacyOffsetMinutes: _historyLegacyOffsetMinutes,
+          );
+          if (parsed != null) {
+            out.add(_HistoryEntry(
+              transcription: parsed,
+              source: _historySourcePreferences,
+              index: index,
+            ));
+          }
+        } catch (_) {}
       }
       return out;
     } catch (_) {
-      return const [];
+      return null;
     }
   }
 
-  /// true solo cuando hay `timestamp` String no vacío que no parsea:
-  /// es basura de disco y debe omitirse (no caer a `now`).
-  /// `null`/ausente/`int`/`DateTime`/ISO válido → false (se acepta).
-  static bool _isPresentButUnparseableTimestamp(Object? raw) {
-    if (raw is! String) return false;
-    if (raw.isEmpty) return false;
-    return DateTime.tryParse(raw) == null;
+  Future<_HistoryReadResult> _readHistoryFile() async {
+    try {
+      final file = await _getHistoryFile();
+      if (!file.existsSync()) return const _HistoryReadResult.missing();
+      return _HistoryReadResult.content(file.readAsStringSync());
+    } catch (_) {
+      return const _HistoryReadResult.error();
+    }
+  }
+
+  static String _canonicalHistoryTimestamp(DateTime timestamp) {
+    final iso = timestamp.toUtc().toIso8601String();
+    final base = iso.endsWith('Z') ? iso.substring(0, iso.length - 1) : iso;
+    final dot = base.indexOf('.');
+    if (dot == -1) return '$base.000000Z';
+    final fraction = base.substring(dot + 1).padRight(6, '0');
+    return '${base.substring(0, dot)}.$fractionZ';
   }
 
   static String _historyIdentity(Transcription t) =>
-      '${t.timestamp.microsecondsSinceEpoch}|${t.text}';
+      '${_canonicalHistoryTimestamp(t.timestamp)}|${t.text}';
 
   static bool _sameHistory(
       List<Transcription> a, List<Transcription> b) {
@@ -994,54 +1207,212 @@ class StorageService {
     return true;
   }
 
-  /// Carga y fusiona sin escribir (para [load]/[add] sin triple escritura).
-  Future<List<Transcription>> _loadMergedWithoutPersist() async {
-    // Origen definitivo: archivo atómico + prefs (tests/migración).
-    // Lecturas secuenciales (sin paralelismo real): el orden no importa
-    // porque se reordena por timestamp descendente tras fusionar.
+  static Map<String, dynamic> _historyJson(Transcription transcription) => {
+        'text': transcription.text,
+        'timestamp': _canonicalHistoryTimestamp(transcription.timestamp),
+      };
+
+  Future<List<_HistoryEntry>?> _loadMergedEntriesWithoutPersist() async {
     final fileEntries = await _readHistoryFileEntries();
+    if (fileEntries == null) return null;
     final prefsEntries = await _readPrefsEntries();
-    final loaded = [...fileEntries, ...prefsEntries]
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-    // Merge conservador: la entrada en memoria que falta en disco
-    // sobrevive (no pisar dictado recién añadido en un resume).
-    // Dedup por identidad; ante colisión gana lo recién leído del disco.
-    final byIdentity = <String, Transcription>{};
-    for (final t in loaded) {
-      byIdentity.putIfAbsent(_historyIdentity(t), () => t);
-    }
-    for (final t in _transcriptions) {
-      byIdentity.putIfAbsent(_historyIdentity(t), () => t);
-    }
-    final merged = byIdentity.values.toList()
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-    return merged.length > maxItems ? merged.sublist(0, maxItems) : merged;
+    if (prefsEntries == null) return null;
+    final memoryEntries = <_HistoryEntry>[
+      for (var index = 0; index < _transcriptions.length; index++)
+        _HistoryEntry(
+          transcription: _transcriptions[index],
+          source: _historySourceMemory,
+          index: index,
+        ),
+    ];
+    return _normalizeHistoryEntries(<_HistoryEntry>[
+      ...memoryEntries,
+      ...fileEntries,
+      ...prefsEntries,
+    ]);
   }
 
-  Future<void> load() async {
-    final merged = await _loadMergedWithoutPersist();
-    if (_sameHistory(_transcriptions, merged)) return;
-    _transcriptions = merged;
-    // Solo se reescribe cuando algo cambió.
-    await _persist();
-  }
-
-  Future<void> add(Transcription transcription) async {
-    final merged = await _loadMergedWithoutPersist();
-    _transcriptions = merged;
-    _transcriptions.insert(0, transcription);
-    if (_transcriptions.length > maxItems) {
-      _transcriptions = _transcriptions.sublist(0, maxItems);
+  static List<_HistoryEntry> _normalizeHistoryEntries(
+    List<_HistoryEntry> entries) {
+    final sorted = List<_HistoryEntry>.from(entries)
+      ..sort(_compareHistoryEntries);
+    final byIdentity = <String, _HistoryEntry>{};
+    for (final entry in sorted) {
+      byIdentity.putIfAbsent(
+        _historyIdentity(entry.transcription),
+        () => entry,
+      );
     }
-    // Una sola persistencia atómica (prefs + archivo tmp+rename).
-    await _persist();
+    final normalized = byIdentity.values.toList();
+    return normalized.length > maxItems
+        ? normalized.sublist(0, maxItems)
+        : normalized;
   }
 
-  /// Una sola escritura lógica: prefs + archivo atómico.
-  Future<void> _persist() async {
-    await _save();
-    await _saveHistoryFile();
+  static int _compareHistoryEntries(_HistoryEntry a, _HistoryEntry b) {
+    final byInstant =
+        b.transcription.timestamp.compareTo(a.transcription.timestamp);
+    if (byInstant != 0) return byInstant;
+    final bySource = a.source.compareTo(b.source);
+    if (bySource != 0) return bySource;
+    return a.index.compareTo(b.index);
+  }
+
+  /// Carga y fusiona sin escribir (para [load]/[add] sin triple escritura).
+  Future<List<Transcription>?> _loadMergedWithoutPersist() async {
+    final merged = await _loadMergedEntriesWithoutPersist();
+    if (merged == null) return null;
+    return merged.map((entry) => entry.transcription).toList(growable: false);
+  }
+
+  Future<T> withTranscriptionHistoryFileLock<T>(
+    File historyFile,
+    Future<T> Function() action, {
+    int timeoutMs = historyLockTimeoutMs,
+    int staleMs = historyLockStaleMs,
+  }) async {
+    final directory = historyFile.parent;
+    try {
+      directory.createSync(recursive: true);
+    } catch (_) {}
+    final lockFile = File(
+      '${directory.path}/$historyLockFileName',
+    );
+    final token =
+        '${pid}_${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}_${_historyTempCounter++}';
+    final deadline =
+        DateTime.now().millisecondsSinceEpoch + timeoutMs;
+    String? acquired;
+    while (DateTime.now().millisecondsSinceEpoch < deadline) {
+      try {
+        lockFile.createSync(exclusive: true);
+        try {
+          lockFile.writeAsStringSync(
+            '$token\n${DateTime.now().millisecondsSinceEpoch}\n',
+            flush: true,
+          );
+        } catch (_) {
+          try {
+            lockFile.deleteSync();
+          } catch (_) {}
+          rethrow;
+        }
+        acquired = token;
+        break;
+      } catch (_) {
+        bool isStale = false;
+        try {
+          if (!lockFile.existsSync()) continue;
+          final ageMs = DateTime.now().millisecondsSinceEpoch -
+              lockFile.lastModifiedSync().millisecondsSinceEpoch;
+          int contentAgeMs = ageMs;
+          try {
+            final lines = lockFile.readAsStringSync().split('\n');
+            if (lines.length >= 2) {
+              final stamped = int.tryParse(lines[1].trim());
+              if (stamped != null) {
+                contentAgeMs =
+                    DateTime.now().millisecondsSinceEpoch - stamped;
+              }
+            }
+          } catch (_) {}
+          if (ageMs > staleMs || contentAgeMs > staleMs) {
+            isStale = true;
+          }
+        } catch (_) {}
+        if (isStale) {
+          try {
+            lockFile.deleteSync();
+          } catch (_) {}
+          continue;
+        }
+        await Future.delayed(Duration(milliseconds: historyLockPollMs));
+      }
+    }
+    if (acquired == null) {
+      throw StateError('timeout acquiring history lock');
+    }
+    try {
+      return await action();
+    } finally {
+      try {
+        if (lockFile.existsSync()) {
+          final current = lockFile.readAsStringSync();
+          if (current.startsWith(token)) {
+            lockFile.deleteSync();
+          }
+        }
+      } catch (_) {}
+    }
+  }
+
+  Future<bool> load() async {
+    try {
+      final file = await _getHistoryFile();
+      return await withTranscriptionHistoryFileLock(file, () async {
+        final merged = await _loadMergedWithoutPersist();
+        if (merged == null) return false;
+        if (_sameHistory(_transcriptions, merged)) return true;
+        final previous = List<Transcription>.from(_transcriptions);
+        _transcriptions = merged;
+        final saved = await _persist();
+        if (!saved) _transcriptions = previous;
+        return saved;
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> add(Transcription transcription) async {
+    if (_isBlankHistoryText(transcription.text)) return false;
+    final canonical = _canonicalHistoryTimestamp(transcription.timestamp);
+    if (_parseHistoryTimestamp(
+      canonical,
+      legacyOffsetMinutes: _historyLegacyOffsetMinutes,
+    ) == null) {
+      return false;
+    }
+    try {
+      final file = await _getHistoryFile();
+      return await withTranscriptionHistoryFileLock(file, () async {
+        final merged = await _loadMergedEntriesWithoutPersist();
+        if (merged == null) return false;
+        final candidates = <_HistoryEntry>[
+          _HistoryEntry(
+            transcription: transcription,
+            source: _historySourceMemory,
+            index: 0,
+          ),
+          for (final entry in merged)
+            if (entry.source == _historySourceMemory)
+              entry.copyWith(index: entry.index + 1)
+            else
+              entry,
+        ];
+        final normalized = _normalizeHistoryEntries(candidates);
+        final previous = List<Transcription>.from(_transcriptions);
+        _transcriptions = normalized
+            .map((entry) => entry.transcription)
+            .toList(growable: false);
+        final saved = await _persist();
+        if (!saved) _transcriptions = previous;
+        return saved;
+      });
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Una sola escritura lógica: archivo atómico primero, prefs después.
+  /// Si el archivo falla, no se escriben prefs (fail-closed, sin parcial).
+  /// Si prefs falla tras un archivo exitoso, el próximo `load` fusiona
+  /// archivo+prefs+memoria y re-publica, curando prefs.
+  Future<bool> _persist() async {
+    final fileSaved = await _saveHistoryFile();
+    if (!fileSaved) return false;
+    final prefsSaved = await _save();
+    return prefsSaved;
   }
 
   // --- Credenciales para relleno desde el teclado ---
@@ -1190,31 +1561,47 @@ class StorageService {
     await prefs.setBool(credShowUserKey, value);
   }
 
-  Future<void> _save() async {
+  Future<bool> _save() async {
     try {
       final prefs = await _prefs();
-      final jsonList =
-          _transcriptions.map((t) => jsonEncode(t.toJson())).toList();
-      await prefs.setStringList(_key, jsonList);
-    } catch (_) {}
+      final jsonList = _transcriptions
+          .map((t) => jsonEncode(_historyJson(t)))
+          .toList();
+      return await prefs.setStringList(_key, jsonList);
+    } catch (_) {
+      return false;
+    }
   }
 
-  Future<void> _saveHistoryFile() async {
+  Future<bool> _saveHistoryFile() async {
     try {
       final file = await _getHistoryFile();
-      if (file == null) return;
-      final tmpFile = File('${file.path}$_historyTmpSuffix');
-      final list = _transcriptions.map((t) => t.toJson()).toList();
-      tmpFile.writeAsStringSync(jsonEncode(list), flush: true);
-      if (tmpFile.existsSync()) {
-        try {
-          tmpFile.renameSync(file.path);
-        } catch (_) {
-          tmpFile.copySync(file.path);
-          try {
-            tmpFile.deleteSync();
-          } catch (_) {}
-        }
+      return publishHistoryFileAtomically(
+        file,
+        jsonEncode(_transcriptions.map(_historyJson).toList()),
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+}
+
+@visibleForTesting
+bool publishHistoryFileAtomically(File file, String contents) {
+  File? tmpFile;
+  try {
+    final token = '${pid}_${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}_${StorageService._historyTempCounter++}';
+    tmpFile = File('${file.path}.$token$_historyTmpSuffix');
+    tmpFile.writeAsStringSync(contents, flush: true);
+    if (!tmpFile.existsSync()) return false;
+    tmpFile.renameSync(file.path);
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    try {
+      if (tmpFile != null && tmpFile.existsSync()) {
+        tmpFile.deleteSync();
       }
     } catch (_) {}
   }

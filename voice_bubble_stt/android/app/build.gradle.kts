@@ -94,4 +94,6 @@ dependencies {
     // transitivamente flutter_secure_storage v9: sin cambio de conducta,
     // solo pin explícito para que el import compile aunque cambie el árbol.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

@@ -89,7 +89,8 @@ class TranscriptionService {
     final result = await _cloudService.transcribe(audioPath);
 
     if (result.text.isNotEmpty) {
-      await _storageService.add(result);
+      final saved = await _storageService.add(result);
+      if (!saved) return result;
     }
 
     // IO sincrona segura: los futures de dart:io no corren bajo fakeAsync (tests).
