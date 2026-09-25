@@ -93,6 +93,10 @@ class DictationController(
     private var focusRequest: AudioFocusRequest? = null
     private var pulseAnimators: List<ObjectAnimator> = emptyList()
     private var dictationStartPending = false
+    @Volatile
+    private var microphoneClaimToken = 0L
+    @Volatile
+    private var audioFocusLost = false
 
     /**
      * K5-T5: recreacion de vista (ej. rotacion) nunca debe dejar una
@@ -415,7 +419,20 @@ class DictationController(
         FloatingBubbleService.isRunning && FloatingBubbleService.lastVisualState != "idle"
 
     private fun startDictation() {
+        if (dictationStartPending || micState == MicState.RECORDING || micState == MicState.PROCESSING) {
+            return
+        }
+        if (!gainAudioFocus()) {
+            micState = MicState.IDLE
+            refreshMicVisual()
+            host.showNotice(
+                if (host.isSpanish()) "No se pudo obtener el foco de audio."
+                else "Could not obtain audio focus.",
+            )
+            return
+        }
         if (bubbleBusy()) {
+            abandonAudioFocus()
             micState = MicState.BUSY
             refreshMicVisual()
             host.showNotice(if (host.isSpanish()) "Ocupado: la burbuja está grabando." else "Busy: the bubble is recording.")
@@ -423,6 +440,7 @@ class DictationController(
         }
         val config = sttClient.loadConfig()
         if (config.apiKey.isBlank()) {
+            abandonAudioFocus()
             micState = MicState.IDLE
             refreshMicVisual()
             host.showNotice(
@@ -433,6 +451,7 @@ class DictationController(
             return
         }
         if (!sttClient.hasMicPermission()) {
+            abandonAudioFocus()
             host.showNotice(
                 if (host.isSpanish()) "Permiso de micrófono denegado. Concedelo desde Ajustes."
                 else "Microphone permission denied. Allow it from Settings.",
@@ -440,14 +459,21 @@ class DictationController(
             )
             return
         }
-        // Segundo tap mientras el arranque sigue en vuelo: ignorar en vez de
-        // duplicar la captura (el primero resolverá por callback).
-        if (dictationStartPending || micState == MicState.RECORDING || micState == MicState.PROCESSING) {
+        val claimToken = BackgroundWork.tryClaimMicrophone()
+        if (claimToken == 0L) {
+            abandonAudioFocus()
+            micState = MicState.BUSY
+            refreshMicVisual()
+            host.showNotice(if (host.isSpanish()) "Ocupado: el micrófono está en uso." else "Busy: the microphone is in use.")
             return
         }
+        microphoneClaimToken = claimToken
         dictationStartPending = true
         host.setRecordingActive(true)
-        gainAudioFocus()
+        if (audioFocusLost) {
+            cancelDictation()
+            return
+        }
         // El setup de AudioRecord bloquea (contrato SpeechToTextClient):
         // jamás en el main. El resultado vuelve por callback al main.
         val startGeneration = transcriptionGeneration
@@ -458,7 +484,7 @@ class DictationController(
                 false
             }
             BackgroundWork.postMain {
-                onDictationStartResult(started, startGeneration)
+                onDictationStartResult(started, startGeneration, claimToken)
             }
         }
     }
@@ -469,33 +495,30 @@ class DictationController(
      * la captura que haya llegado a arrancar se aborta en fondo: sin
      * grabación fantasma ni píldora zombi.
      */
-    private fun onDictationStartResult(started: Boolean, startGeneration: Int) {
-        dictationStartPending = false
-        if (!host.isServiceAlive()) {
-            host.setRecordingActive(false)
+    private fun onDictationStartResult(started: Boolean, startGeneration: Int, claimToken: Long) {
+        val isCurrentStart = startGeneration == transcriptionGeneration
+        val ownsClaim = BackgroundWork.isMicrophoneClaimedBy(claimToken)
+        val serviceAlive = host.isServiceAlive()
+        if (isCurrentStart) dictationStartPending = false
+        if (!serviceAlive || !started || !isCurrentStart || !ownsClaim) {
+            if (isCurrentStart) host.setRecordingActive(false)
             if (started) {
                 BackgroundWork.execute {
+                    var cancelled = false
                     try {
                         sttClient.cancelRecording()
+                        cancelled = true
                     } catch (_: Exception) {}
+                    if (cancelled) BackgroundWork.postMain { host.setRecordingActive(false) }
                     abandonAudioFocus()
-                }
-            }
-            return
-        }
-        if (!started || startGeneration != transcriptionGeneration) {
-            host.setRecordingActive(false)
-            if (started) {
-                BackgroundWork.execute {
-                    try {
-                        sttClient.cancelRecording()
-                    } catch (_: Exception) {}
-                    abandonAudioFocus()
+                    releaseMicrophoneClaim(claimToken)
                 }
             } else {
                 abandonAudioFocus()
+                releaseMicrophoneClaim(claimToken)
             }
-            if (!started && startGeneration == transcriptionGeneration && micState == MicState.IDLE) {
+            if (!serviceAlive) return
+            if (!started && isCurrentStart && micState == MicState.IDLE) {
                 host.showNotice(if (host.isSpanish()) "No se pudo iniciar la grabación." else "Could not start recording.")
             } else {
                 refreshMicVisual()
@@ -526,10 +549,15 @@ class DictationController(
         // AT-A1: los callbacks capturan la generacion vigente; si una
         // cancelacion la avanza mientras transcribiamos, se abortan solos.
         val generation = transcriptionGeneration
+        val claimToken = microphoneClaimToken
         BackgroundWork.execute {
-            val wav = sttClient.stopRecording()
-            abandonAudioFocus()
-            host.setRecordingActive(false)
+            val wav = try {
+                sttClient.stopRecording()
+            } finally {
+                abandonAudioFocus()
+                releaseMicrophoneClaim(claimToken)
+                host.setRecordingActive(false)
+            }
             if (sttClient.isEmptyCapture(wav)) {
                 runOnMain {
                     if (generation != transcriptionGeneration) return@runOnMain
@@ -581,12 +609,19 @@ class DictationController(
         if (announce) micEvent(MicEvent.CANCEL)
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = null
+        dictationStartPending = false
+        transcriptionGeneration++
         micState = MicState.IDLE
         refreshMicVisual()
+        val claimToken = microphoneClaimToken
         BackgroundWork.execute {
-            sttClient.cancelRecording()
-            abandonAudioFocus()
-            host.setRecordingActive(false)
+            try {
+                sttClient.cancelRecording()
+            } finally {
+                abandonAudioFocus()
+                releaseMicrophoneClaim(claimToken)
+                host.setRecordingActive(false)
+            }
         }
     }
 
@@ -599,21 +634,35 @@ class DictationController(
      */
     fun cancelDictationIfActive() {
         stopRecordingTimer()
-        if (micState == MicState.IDLE && !host.isRecordingActive()) return
+        if (micState == MicState.IDLE && !dictationStartPending && microphoneClaimToken == 0L && !host.isRecordingActive()) return
         val client = if (::sttClient.isInitialized) sttClient else null
-        host.setRecordingActive(false)
+        val claimToken = microphoneClaimToken
         timeoutRunnable?.let { handler.removeCallbacks(it) }
         timeoutRunnable = null
+        dictationStartPending = false
         transcriptionGeneration++
         micIdle()
         if (client != null) {
             BackgroundWork.execute {
                 try {
                     client.cancelRecording()
-                } catch (_: Exception) {}
-                abandonAudioFocus()
+                } catch (_: Exception) {
+                } finally {
+                    abandonAudioFocus()
+                    host.setRecordingActive(false)
+                    releaseMicrophoneClaim(claimToken)
+                }
             }
+        } else {
+            abandonAudioFocus()
+            host.setRecordingActive(false)
+            releaseMicrophoneClaim(claimToken)
         }
+    }
+
+    private fun releaseMicrophoneClaim(claimToken: Long) {
+        BackgroundWork.releaseMicrophone(claimToken)
+        if (microphoneClaimToken == claimToken) microphoneClaimToken = 0L
     }
 
     private fun micIdle() {
@@ -804,7 +853,7 @@ class DictationController(
         }
     }
 
-    private fun gainAudioFocus() {
+    private fun gainAudioFocus(): Boolean {
         try {
             val am = service.getSystemService(Context.AUDIO_SERVICE) as AudioManager
             val request = AudioFocusRequest.Builder(
@@ -821,14 +870,19 @@ class DictationController(
                 if (change == AudioManager.AUDIOFOCUS_LOSS ||
                     change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
                 ) {
-                    if (micState == MicState.RECORDING) {
+                    audioFocusLost = true
+                    if (micState == MicState.RECORDING || dictationStartPending) {
                         cancelDictation()
                     }
                 }
             }.build()
-            am.requestAudioFocus(request)
-            focusRequest = request
-        } catch (_: Exception) {}
+            audioFocusLost = false
+            val granted = am.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            if (granted) focusRequest = request
+            return granted
+        } catch (_: Exception) {
+            return false
+        }
     }
 
     private fun abandonAudioFocus() {
@@ -839,6 +893,7 @@ class DictationController(
             }
         } catch (_: Exception) {}
         focusRequest = null
+        audioFocusLost = false
     }
 
     /**

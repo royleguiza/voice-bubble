@@ -200,10 +200,14 @@ void main() {
       );
     }
 
-    // Exclusion mutua K3: teclado libre.
+    // Exclusion mutua C-05: teclado libre y claim concede microfono.
     messenger.setMockMethodCallHandler(
       const MethodChannel('com.royleguiza.voicebubblestt/keyboard'),
-      (MethodCall call) async => false,
+      (MethodCall call) async {
+        if (call.method == 'claimMicrophone') return 1;
+        if (call.method == 'releaseMicrophone') return true;
+        return false;
+      },
     );
 
     // getTemporaryDirectory() apunta al tmp UNICO del test.

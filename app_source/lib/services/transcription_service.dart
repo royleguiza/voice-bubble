@@ -6,34 +6,51 @@ import 'cloud_stt_service.dart';
 import 'keyboard_service.dart';
 import 'storage_service.dart';
 
-/// Sonda de ocupacion del microfono del teclado (exclusion mutua K3).
-/// Inyectable para tests; por defecto consulta el canal nativo.
-typedef MicBlockedProbe = Future<bool> Function();
+/// Exclusion mutua del microfono (C-05): el claim atomico vive en nativo
+/// (`BackgroundWork`) y lo comparten TODOS los entrypoints (teclado, widget,
+/// burbuja y Notas). Inyectable para tests; 0 = microfono ocupado.
+typedef MicClaimer = Future<int> Function();
+typedef MicClaimReleaser = Future<void> Function(int claim);
 
-Future<bool> _defaultMicBlockedProbe() async {
+Future<int> _defaultMicClaimer() async {
   try {
     const channel = MethodChannel(KeyboardService.channelName);
-    return await channel.invokeMethod<bool>('isKeyboardRecording') ?? false;
+    return await channel.invokeMethod<int>('claimMicrophone') ?? 0;
   } catch (_) {
-    return false;
+    return 0;
   }
+}
+
+Future<void> _defaultMicClaimReleaser(int claim) async {
+  if (claim == 0) return;
+  try {
+    const channel = MethodChannel(KeyboardService.channelName);
+    await channel.invokeMethod<bool>(
+      'releaseMicrophone',
+      <String, Object?>{'claim': claim},
+    );
+  } catch (_) {}
 }
 
 class TranscriptionService {
   CloudSttService _cloudService;
   final StorageService _storageService;
   final AudioRecorder _recorder;
-  final MicBlockedProbe _isMicBlocked;
+  final MicClaimer _claimMicrophone;
+  final MicClaimReleaser _releaseMicrophone;
+  int _activeClaim = 0;
 
   TranscriptionService({
     required CloudSttService cloudService,
     required StorageService storageService,
     AudioRecorder? recorder,
-    MicBlockedProbe? isMicBlocked,
+    MicClaimer? claimMicrophone,
+    MicClaimReleaser? releaseMicrophone,
   })  : _cloudService = cloudService,
         _storageService = storageService,
         _recorder = recorder ?? AudioRecorder(),
-        _isMicBlocked = isMicBlocked ?? _defaultMicBlockedProbe;
+        _claimMicrophone = claimMicrophone ?? _defaultMicClaimer,
+        _releaseMicrophone = releaseMicrophone ?? _defaultMicClaimReleaser;
 
   StorageService get storageService => _storageService;
 
@@ -54,32 +71,52 @@ class TranscriptionService {
   }
 
   Future<void> startRecording(String path) async {
-    // Exclusion mutua burbuja<->teclado: si el teclado esta grabando, la
-    // burbuja no inicia (y viceversa, el teclado chequea el estado burbuja).
-    if (await _isMicBlocked()) {
+    if (!await _recorder.hasPermission()) {
+      throw const TranscriptionException('Permiso de micrófono denegado.');
+    }
+    final claim = await _claimMicrophone();
+    if (claim == 0) {
       throw const TranscriptionException(
         'El micrófono está siendo usado por el teclado.',
       );
     }
-    if (!await _recorder.hasPermission()) {
-      throw const TranscriptionException('Permiso de micrófono denegado.');
+    _activeClaim = claim;
+    try {
+      await _recorder.start(
+        RecordConfig(
+          sampleRate: 16000,
+          numChannels: 1,
+          // AudioEncoder.wav = PCM 16 bits CON cabecera RIFF (WaveContainer).
+          // pcm16bits escribe PCM crudo sin cabecera y Groq lo rechaza con 400.
+          encoder: AudioEncoder.wav,
+        ),
+        path: path,
+      );
+    } catch (_) {
+      await releaseMicrophoneClaim();
+      rethrow;
     }
-
-    await _recorder.start(
-      RecordConfig(
-        sampleRate: 16000,
-        numChannels: 1,
-        // AudioEncoder.wav = PCM 16 bits CON cabecera RIFF (WaveContainer).
-        // pcm16bits escribe PCM crudo sin cabecera y Groq lo rechaza con 400.
-        encoder: AudioEncoder.wav,
-      ),
-      path: path,
-    );
   }
 
   Future<String?> stopRecording() async {
-    return await _recorder.stop();
+    final claim = _activeClaim;
+    _activeClaim = 0;
+    try {
+      return await _recorder.stop();
+    } finally {
+      await _releaseMicrophone(claim);
+    }
   }
+
+  /// Libera el claim sin cerrar el recorder (canceles y teardown de UI).
+  Future<void> releaseMicrophoneClaim() async {
+    final claim = _activeClaim;
+    _activeClaim = 0;
+    await _releaseMicrophone(claim);
+  }
+
+  /// Claim vivo de este servicio (false = microfono libre para los demas).
+  bool get hasMicrophoneClaim => _activeClaim != 0;
 
   /// Transcribe el audio en [audioPath] con el motor cloud.
   ///

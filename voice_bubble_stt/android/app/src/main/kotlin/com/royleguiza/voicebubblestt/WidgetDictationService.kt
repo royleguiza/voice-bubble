@@ -29,6 +29,12 @@ internal enum class PendingEnqueueResult {
     FAILED,
 }
 
+internal enum class WidgetToggleOutcome {
+    START,
+    STOP,
+    IGNORED,
+}
+
 private enum class EvictionCleanupResult {
     DELETED,
     REGISTERED,
@@ -56,7 +62,12 @@ class WidgetDictationService(
         val sweepClaim: File?,
     )
 
+    @Volatile
     private var isRecording = false
+
+    @Volatile
+    private var isBusy = false
+
     private var client: SpeechToTextClient? = null
     private val mainHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
     private val persistenceLock = Any()
@@ -91,6 +102,7 @@ class WidgetDictationService(
         savedResetRunnable = null
         pendingResetRunnable = null
         isRecording = false
+        releaseMicrophone()
         releaseMicSounds()
         super.onDestroy()
     }
@@ -183,15 +195,21 @@ class WidgetDictationService(
 
         when (action) {
             ACTION_TOGGLE -> {
-                if (isRecording) {
-                    stopAndTranscribe()
-                } else {
-                    startRecording(widgetId)
+                when (handleToggle()) {
+                    WidgetToggleOutcome.STOP -> stopAndTranscribe()
+                    WidgetToggleOutcome.START -> startRecording(widgetId)
+                    WidgetToggleOutcome.IGNORED -> {}
                 }
             }
             ACTION_CANCEL -> cancelRecording()
         }
         return START_NOT_STICKY
+    }
+
+    internal fun handleToggle(): WidgetToggleOutcome {
+        if (isBusy) return WidgetToggleOutcome.IGNORED
+        isBusy = true
+        return if (isRecording) WidgetToggleOutcome.STOP else WidgetToggleOutcome.START
     }
 
     private fun cancelRecording() {
@@ -203,6 +221,7 @@ class WidgetDictationService(
             client?.cancelRecording()
         } catch (_: Exception) {}
         client = null
+        releaseMicrophone()
         updateWidgetsState("idle")
         try {
             stopForeground(true)
@@ -210,10 +229,38 @@ class WidgetDictationService(
         stopSelf()
     }
 
+    @Volatile
+    internal var microphoneClaim: Long = 0L
+        private set
+
+    internal fun claimMicrophoneForDictation(): Long {
+        if (isRecording) return microphoneClaim
+        val claim = BackgroundWork.tryClaimMicrophone()
+        microphoneClaim = claim
+        return claim
+    }
+
+    internal fun releaseMicrophone() {
+        val claim = microphoneClaim
+        microphoneClaim = 0L
+        BackgroundWork.releaseMicrophone(claim)
+    }
+
     private fun startRecording(widgetId: Int) {
+        if (isRecording) return
+        updateWidgetsState("recording")
+        if (claimMicrophoneForDictation() == 0L) {
+            updateWidgetsState("error")
+            mainHandler.postDelayed({
+                updateWidgetsState("idle")
+            }, 1600)
+            stopSelf()
+            return
+        }
         val speechClient = SpeechToTextClient(this)
         client = speechClient
         if (!speechClient.hasMicPermission()) {
+            releaseMicrophone()
             updateWidgetsState("error")
             mainHandler.postDelayed({
                 updateWidgetsState("idle")
@@ -229,12 +276,17 @@ class WidgetDictationService(
         }
         isRecording = true
         playMicSound("start")
-        updateWidgetsState("recording")
         BackgroundWork.execute {
-            val ok = speechClient.startRecording()
+            val ok = try {
+                speechClient.startRecording()
+            } catch (_: Exception) {
+                false
+            }
             if (!ok) {
                 BackgroundWork.postMain {
                     isRecording = false
+                    isBusy = false
+                    releaseMicrophone()
                     updateWidgetsState("idle")
                     stopForeground(true)
                     stopSelf()
@@ -254,9 +306,17 @@ class WidgetDictationService(
         isRecording = false
         playMicSound("stop")
         updateWidgetsState("transcribing")
-        val speechClient = client ?: return
+        val speechClient = client ?: run {
+            isBusy = false
+            releaseMicrophone()
+            return
+        }
         BackgroundWork.execute {
-            val wav = speechClient.stopRecording()
+            val wav = try {
+                speechClient.stopRecording()
+            } finally {
+                releaseMicrophone()
+            }
             if (speechClient.isEmptyCapture(wav)) {
                 BackgroundWork.postMain {
                     updateWidgetsState("idle")
@@ -538,6 +598,7 @@ class WidgetDictationService(
     }
 
     private fun updateWidgetsState(state: String) {
+        if (state != "recording" && state != "transcribing") isBusy = false
         try {
             refreshWidgets(state)
         } catch (_: Exception) {}

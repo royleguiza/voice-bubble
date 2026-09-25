@@ -43,6 +43,8 @@ void main() {
         cloudService: const CloudSttService(apiKey: 'test'),
         storageService: StorageService(),
         recorder: mockRecorder,
+        claimMicrophone: () async => 1,
+        releaseMicrophone: (int claim) async {},
       );
 
       await service.startRecording('/tmp/test_recording.wav');

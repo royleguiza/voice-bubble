@@ -51,8 +51,6 @@ class MockAudioRecorder implements AudioRecorder {
 }
 
 void main() {
-  // Determinismo ante la sonda de micrófono del teclado: con binding
-  // inicializado la sonda recibe MissingPluginException -> false controlado.
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('TranscriptionService - Permisos', () {
@@ -65,6 +63,8 @@ void main() {
         cloudService: const CloudSttService(apiKey: ''),
         storageService: StorageService(),
         recorder: mockRecorder,
+        claimMicrophone: () async => 1,
+        releaseMicrophone: (int claim) async {},
       );
     });
 

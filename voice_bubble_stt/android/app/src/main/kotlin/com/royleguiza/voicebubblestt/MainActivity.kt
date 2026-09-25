@@ -149,7 +149,14 @@ class MainActivity : FlutterActivity() {
                     result.success(true)
                 }
                 "isKeyboardRecording" -> {
-                    result.success(VoiceKeyboardService.keyboardRecordingActive)
+                    result.success(BackgroundWork.isMicrophoneClaimed())
+                }
+                "claimMicrophone" -> {
+                    result.success(BackgroundWork.tryClaimMicrophone())
+                }
+                "releaseMicrophone" -> {
+                    val claim = call.argument<Number>("claim")?.toLong() ?: 0L
+                    result.success(BackgroundWork.releaseMicrophone(claim))
                 }
                 "commitText" -> {
                     val text = call.argument<String>("text") ?: ""

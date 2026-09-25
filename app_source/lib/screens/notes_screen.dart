@@ -8,6 +8,7 @@ import '../services/transcription_service.dart';
 import '../services/cloud_stt_service.dart';
 import '../services/storage_service.dart';
 import '../services/widget_service.dart';
+import '../services/floating_bubble_service.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
@@ -20,12 +21,14 @@ class NotesScreen extends StatefulWidget {
   final NotesService? notesService;
   final TranscriptionService? transcriptionService;
   final PendingNoteQueue? pendingQueue;
+  final FloatingBubbleService? floatingBubbleService;
 
   const NotesScreen({
     super.key,
     this.notesService,
     this.transcriptionService,
     this.pendingQueue,
+    this.floatingBubbleService,
   });
 
   @override
@@ -37,6 +40,7 @@ class _NotesScreenState extends State<NotesScreen>
   late final NotesService _notesService;
   late final TranscriptionService _transcriptionService;
   late final PendingNoteQueue _pendingQueue;
+  late final FloatingBubbleService _floatingBubbleService;
   final _searchCtrl = TextEditingController();
   String _query = '';
   bool _isRecording = false;
@@ -59,6 +63,8 @@ class _NotesScreenState extends State<NotesScreen>
           storageService: StorageService(),
         );
     _pendingQueue = widget.pendingQueue ?? PendingNoteQueue();
+    _floatingBubbleService =
+        widget.floatingBubbleService ?? FloatingBubbleService();
     _load();
   }
 
@@ -103,6 +109,12 @@ class _NotesScreenState extends State<NotesScreen>
 
   List<VoiceNote> get _filtered => _notesService.search(_query);
 
+  Future<void> _publishBubbleState(BubbleVisualState state) async {
+    try {
+      await _floatingBubbleService.updateBubbleState(state);
+    } catch (_) {}
+  }
+
   Future<void> _dictateNew() async {
     if (_isRecording || _isTranscribing) return;
     setState(() => _isRecording = true);
@@ -111,12 +123,18 @@ class _NotesScreenState extends State<NotesScreen>
       final dir = await getTemporaryDirectory();
       final path =
           '${dir.path}/note_${DateTime.now().millisecondsSinceEpoch}.wav';
+      await _publishBubbleState(BubbleVisualState.recording);
+      if (!mounted) {
+        await _publishBubbleState(BubbleVisualState.idle);
+        return;
+      }
       await _transcriptionService.startRecording(path);
       // Espera a que el usuario suelte: simulamos grabación corta controlada
       // por el botón de la pantalla. Aquí el flujo es tap→grabar→tap detener.
       // Para widget: tap único. Aquí usamos toggle.
     } catch (_) {
-      setState(() => _isRecording = false);
+      await _publishBubbleState(BubbleVisualState.idle);
+      if (mounted) setState(() => _isRecording = false);
     }
   }
 
@@ -195,6 +213,8 @@ class _NotesScreenState extends State<NotesScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
+    } finally {
+      await _publishBubbleState(BubbleVisualState.idle);
     }
   }
 
@@ -348,8 +368,19 @@ class _NotesScreenState extends State<NotesScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    unawaited(_releaseMicrophoneOnTeardown());
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _releaseMicrophoneOnTeardown() async {
+    try {
+      if (!_transcriptionService.hasMicrophoneClaim) return;
+      if (_isRecording) {
+        await _transcriptionService.stopRecording();
+      }
+      await _transcriptionService.releaseMicrophoneClaim();
+    } catch (_) {}
   }
 
   @override

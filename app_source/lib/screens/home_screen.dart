@@ -244,9 +244,13 @@ class _HomeScreenState extends State<HomeScreen>
       // Encoder wav (PCM 16 bits + cabecera RIFF): Groq rechaza PCM crudo.
       final path =
           '${dir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.wav';
-      await _transcriptionService.startRecording(path);
       await _floatingBubbleService
           .updateBubbleState(BubbleVisualState.recording);
+      if (!mounted) {
+        await _floatingBubbleService.updateBubbleState(BubbleVisualState.idle);
+        return;
+      }
+      await _transcriptionService.startRecording(path);
       if (mounted) {
         setState(() {
           _isStartingRecording = false;
@@ -695,8 +699,19 @@ class _HomeScreenState extends State<HomeScreen>
     WidgetsBinding.instance.removeObserver(this);
     _floatingBubbleService.onBubbleTap = null;
     _floatingBubbleService.onBubbleClose = null;
+    unawaited(_releaseMicrophoneOnTeardown());
     _popupCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _releaseMicrophoneOnTeardown() async {
+    try {
+      if (!_transcriptionService.hasMicrophoneClaim) return;
+      if (_isRecording || _isStartingRecording) {
+        await _transcriptionService.stopRecording();
+      }
+      await _transcriptionService.releaseMicrophoneClaim();
+    } catch (_) {}
   }
 
   /// Abre Configuración y, al volver, recarga clave y modo (la app los

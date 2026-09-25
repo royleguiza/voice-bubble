@@ -110,7 +110,11 @@ void main() {
 
     messenger.setMockMethodCallHandler(
       const MethodChannel('com.royleguiza.voicebubblestt/keyboard'),
-      (MethodCall call) async => false,
+      (MethodCall call) async {
+        if (call.method == 'claimMicrophone') return 1;
+        if (call.method == 'releaseMicrophone') return true;
+        return false;
+      },
     );
 
     for (final channel in [

@@ -102,11 +102,21 @@ void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
     (MethodCall call) async => true,
   );
 
-  // Exclusion mutua K3: teclado libre en estos flujos.
+  // Exclusion mutua C-05: microfono libre en estos flujos (claim 1).
   messenger.setMockMethodCallHandler(
     const MethodChannel(_keyboardChannel),
-    (MethodCall call) async =>
-        call.method == 'isKeyboardRecording' ? false : true,
+    (MethodCall call) async {
+      switch (call.method) {
+        case 'isKeyboardRecording':
+          return false;
+        case 'claimMicrophone':
+          return 1;
+        case 'releaseMicrophone':
+          return true;
+        default:
+          return true;
+      }
+    },
   );
 }
 

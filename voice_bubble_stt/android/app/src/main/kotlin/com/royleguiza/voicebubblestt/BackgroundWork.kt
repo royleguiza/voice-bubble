@@ -3,6 +3,7 @@ package com.royleguiza.voicebubblestt
 import android.os.Handler
 import android.os.Looper
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Puerta única de ejecución en segundo plano para el código nativo.
@@ -26,6 +27,27 @@ object BackgroundWork {
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val microphoneOwner = AtomicLong(0L)
+    private val nextMicrophoneClaim = AtomicLong(0L)
+
+    fun tryClaimMicrophone(): Long {
+        while (true) {
+            val actual = microphoneOwner.get()
+            if (actual != 0L) return 0L
+            val claim = nextMicrophoneClaim.incrementAndGet()
+            if (microphoneOwner.compareAndSet(actual, claim)) return claim
+        }
+    }
+
+    fun releaseMicrophone(claim: Long): Boolean {
+        if (claim <= 0L) return false
+        return microphoneOwner.compareAndSet(claim, 0L)
+    }
+
+    fun isMicrophoneClaimed(): Boolean = microphoneOwner.get() != 0L
+
+    fun isMicrophoneClaimedBy(claim: Long): Boolean =
+        claim > 0L && microphoneOwner.get() == claim
 
     /** Ejecuta [block] en un hilo de trabajo, sin resultado. */
     fun execute(block: () -> Unit) {
