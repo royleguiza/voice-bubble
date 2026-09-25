@@ -55,11 +55,11 @@ void main() {
         'transcriptions': [
           jsonEncode({
             'text': t1.text,
-            'timestamp': t1.toUtc().toIso8601String(),
+            'timestamp': t1.timestamp.toUtc().toIso8601String(),
           }),
           jsonEncode({
             'text': t2.text,
-            'timestamp': t2.toUtc().toIso8601String(),
+            'timestamp': t2.timestamp.toUtc().toIso8601String(),
           }),
         ],
       });
@@ -81,7 +81,7 @@ void main() {
         'transcriptions': [
           jsonEncode({
             'text': t1.text,
-            'timestamp': t1.toUtc().toIso8601String(),
+            'timestamp': t1.timestamp.toUtc().toIso8601String(),
           }),
           'not valid json',
           '{invalid json}',
