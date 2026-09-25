@@ -1192,7 +1192,7 @@ class StorageService {
     final dot = base.indexOf('.');
     if (dot == -1) return '$base.000000Z';
     final fraction = base.substring(dot + 1).padRight(6, '0');
-    return '${base.substring(0, dot)}.$fractionZ';
+    return '${base.substring(0, dot)}.${fraction}Z';
   }
 
   static String _historyIdentity(Transcription t) =>
@@ -1591,7 +1591,7 @@ bool publishHistoryFileAtomically(File file, String contents) {
   File? tmpFile;
   try {
     final token = '${pid}_${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}_${StorageService._historyTempCounter++}';
-    tmpFile = File('${file.path}.$token$_historyTmpSuffix');
+    tmpFile = File('${file.path}.${token}${StorageService._historyTmpSuffix}');
     tmpFile.writeAsStringSync(contents, flush: true);
     if (!tmpFile.existsSync()) return false;
     tmpFile.renameSync(file.path);
