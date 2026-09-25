@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -49,6 +50,218 @@ class _HistoryReadResult {
   final String? value;
 }
 
+enum _CredentialVaultReadStatus { missing, valid, corrupt, error }
+
+class _CredentialVaultReadResult {
+  const _CredentialVaultReadResult._(this.status, this.raw, this.value);
+
+  const _CredentialVaultReadResult.missing()
+      : this._(_CredentialVaultReadStatus.missing, null, null);
+
+  _CredentialVaultReadResult.valid(
+    String raw,
+    Map<String, String> value,
+  ) : this._(
+          _CredentialVaultReadStatus.valid,
+          raw,
+          Map<String, String>.unmodifiable(value),
+        );
+
+  const _CredentialVaultReadResult.corrupt()
+      : this._(_CredentialVaultReadStatus.corrupt, null, null);
+
+  const _CredentialVaultReadResult.error()
+      : this._(_CredentialVaultReadStatus.error, null, null);
+
+  final _CredentialVaultReadStatus status;
+  final String? raw;
+  final Map<String, String>? value;
+
+  bool get canMutate =>
+      status == _CredentialVaultReadStatus.missing ||
+      status == _CredentialVaultReadStatus.valid;
+}
+
+enum _CredentialIndexReadStatus { missing, valid, corrupt, error }
+
+class _CredentialIndexReadResult {
+  const _CredentialIndexReadResult._(this.status, this.raw, this.value);
+
+  const _CredentialIndexReadResult.missing()
+      : this._(_CredentialIndexReadStatus.missing, null, null);
+
+  _CredentialIndexReadResult.valid(
+    String raw,
+    List<VbCredential> value,
+  ) : this._(
+          _CredentialIndexReadStatus.valid,
+          raw,
+          List<VbCredential>.unmodifiable(value),
+        );
+
+  const _CredentialIndexReadResult.corrupt()
+      : this._(_CredentialIndexReadStatus.corrupt, null, null);
+
+  const _CredentialIndexReadResult.error()
+      : this._(_CredentialIndexReadStatus.error, null, null);
+
+  final _CredentialIndexReadStatus status;
+  final String? raw;
+  final List<VbCredential>? value;
+
+  bool get canMutate =>
+      status == _CredentialIndexReadStatus.missing ||
+      status == _CredentialIndexReadStatus.valid;
+}
+
+abstract interface class CredentialIndexStore {
+  Future<Object?> read();
+
+  Future<bool> write(String value);
+
+  Future<bool> verify(String? expected);
+
+  Future<bool> remove();
+
+  Future<bool> compareAndSet({
+    required String? expectedRaw,
+    required String? nextRaw,
+  });
+}
+
+abstract interface class CredentialVaultStore {
+  Future<String?> read();
+
+  Future<void> write(String value);
+
+  Future<void> delete();
+
+  Future<bool> compareAndSet({
+    required String? expectedRaw,
+    required String? nextRaw,
+  });
+}
+
+class _SharedPreferencesCredentialIndexStore
+    implements CredentialIndexStore {
+  const _SharedPreferencesCredentialIndexStore(this.key);
+
+  final String key;
+  static Future<void> _compareAndSetTail = Future<void>.value();
+
+  Future<SharedPreferences> _preferences() async =>
+      SharedPreferences.getInstance();
+
+  @override
+  Future<Object?> read() async {
+    final prefs = await _preferences();
+    await prefs.reload();
+    return prefs.get(key);
+  }
+
+  @override
+  Future<bool> write(String value) async {
+    final prefs = await _preferences();
+    return prefs.setString(key, value);
+  }
+
+  @override
+  Future<bool> verify(String? expected) async => (await read()) == expected;
+
+  @override
+  Future<bool> remove() async {
+    final prefs = await _preferences();
+    return prefs.remove(key);
+  }
+
+  @override
+  Future<bool> compareAndSet({
+    required String? expectedRaw,
+    required String? nextRaw,
+  }) {
+    final previous = _compareAndSetTail;
+    final release = Completer<void>();
+    _compareAndSetTail = release.future;
+    return () async {
+      await previous;
+      try {
+        final prefs = await _preferences();
+        await prefs.reload();
+        if (prefs.get(key) != expectedRaw) return false;
+        if (nextRaw == null) {
+          if (!await prefs.remove(key)) return false;
+        } else if (!await prefs.setString(key, nextRaw)) {
+          return false;
+        }
+        await prefs.reload();
+        return prefs.get(key) == nextRaw;
+      } finally {
+        release.complete();
+      }
+    }();
+  }
+}
+
+class _FlutterSecureCredentialVaultStore
+    implements CredentialVaultStore {
+  const _FlutterSecureCredentialVaultStore(this.storage);
+
+  final FlutterSecureStorage storage;
+  static Future<void> _compareAndSetTail = Future<void>.value();
+
+  @override
+  Future<String?> read() => storage.read(key: StorageService.credPassKey);
+
+  @override
+  Future<void> write(String value) =>
+      storage.write(key: StorageService.credPassKey, value: value);
+
+  @override
+  Future<void> delete() => storage.delete(key: StorageService.credPassKey);
+
+  @override
+  Future<bool> compareAndSet({
+    required String? expectedRaw,
+    required String? nextRaw,
+  }) {
+    final previous = _compareAndSetTail;
+    final release = Completer<void>();
+    _compareAndSetTail = release.future;
+    return () async {
+      await previous;
+      try {
+        final current = await read();
+        if (current != expectedRaw) return false;
+        if (nextRaw == null) {
+          await delete();
+          return await read() == null;
+        }
+        await write(nextRaw);
+        return await read() == nextRaw;
+      } finally {
+        release.complete();
+      }
+    }();
+  }
+}
+
+class _CredentialStateSnapshots {
+  const _CredentialStateSnapshots(this.index, this.vault);
+
+  final _CredentialIndexReadResult index;
+  final _CredentialVaultReadResult vault;
+}
+
+class _CredentialPreparation {
+  const _CredentialPreparation({
+    required this.after,
+    required this.legacy,
+  });
+
+  final _CredentialStateSnapshots after;
+  final _CredentialVaultReadResult legacy;
+}
+
 class StorageService {
   static const String _key = 'transcriptions';
   static const String _recordModeKey = 'recording_mode';
@@ -74,6 +287,8 @@ class StorageService {
 
   final FlutterSecureStorage _secureStorage;
   final int? _historyLegacyOffsetMinutes;
+  final CredentialIndexStore _credentialIndexStore;
+  final CredentialVaultStore _credentialVaultStore;
 
   /// Bóveda única (SPK-02): flutter_secure_storage con ESP activado. El IME
   /// nativo lee el MISMO archivo vía SecureStore.kt (APIs públicas AndroidX);
@@ -85,8 +300,14 @@ class StorageService {
   StorageService({
     FlutterSecureStorage? secureStorage,
     int? historyLegacyOffsetMinutes,
+    CredentialIndexStore? credentialIndexStore,
+    CredentialVaultStore? credentialVaultStore,
   }) : _secureStorage = secureStorage ?? espSecureStorage,
-       _historyLegacyOffsetMinutes = historyLegacyOffsetMinutes;
+       _historyLegacyOffsetMinutes = historyLegacyOffsetMinutes,
+       _credentialIndexStore = credentialIndexStore ??
+           _SharedPreferencesCredentialIndexStore(credentialsKey),
+       _credentialVaultStore = credentialVaultStore ??
+           _FlutterSecureCredentialVaultStore(secureStorage ?? espSecureStorage);
 
   Future<SharedPreferences> _prefs() async {
     return await SharedPreferences.getInstance();
@@ -1359,9 +1580,10 @@ class StorageService {
   }
 
   Future<bool> load() async {
+    var loaded = false;
     try {
       final file = await _getHistoryFile();
-      return await withTranscriptionHistoryFileLock(file, () async {
+      loaded = await withTranscriptionHistoryFileLock(file, () async {
         final merged = await _loadMergedWithoutPersist();
         if (merged == null) return false;
         if (_sameHistory(_transcriptions, merged)) return true;
@@ -1371,9 +1593,9 @@ class StorageService {
         if (!saved) _transcriptions = previous;
         return saved;
       });
-    } catch (_) {
-      return false;
-    }
+    } catch (_) {}
+    await sweepCredentialOrphans();
+    return loaded;
   }
 
   Future<bool> add(Transcription transcription) async {
@@ -1440,36 +1662,88 @@ class StorageService {
   static const String credPassKey = 'vb_cred_pass_v1';
   static const String credShowUserKey = 'vb_cred_show_user';
 
-  int _credentialIdCounter = 0;
+  static Future<void> _credentialOperationTail = Future<void>.value();
+  static int _credentialIdCounter = 0;
+
+  Future<T> _withCredentialOperationLock<T>(
+    Future<T> Function() action,
+  ) async {
+    final previous = _credentialOperationTail;
+    final release = Completer<void>();
+    _credentialOperationTail = release.future;
+    try {
+      await previous;
+      return await action();
+    } finally {
+      release.complete();
+    }
+  }
 
   String _nextCredentialId() {
     _credentialIdCounter += 1;
     return '${DateTime.now().microsecondsSinceEpoch}-$_credentialIdCounter';
   }
 
-  Future<List<VbCredential>> loadCredentials() async =>
-      await _readCredentials() ?? const [];
+  Future<List<VbCredential>> loadCredentials() =>
+      _withCredentialOperationLock(_loadCredentialsLocked);
 
-  Future<List<VbCredential>?> _readCredentials() async {
+  Future<List<VbCredential>> _loadCredentialsLocked() async {
+    final preparation = await _prepareCredentialState();
+    if (preparation == null) {
+      final current = await _readCredentialIndex();
+      return current?.value ?? const <VbCredential>[];
+    }
+    final swept = await _sweepCredentialState(preparation);
+    if (!swept) {
+      final current = await _readCredentialIndex();
+      return current?.value ??
+          preparation.after.index.value ??
+          const <VbCredential>[];
+    }
+    final current = await _readCredentialIndex();
+    return current?.value ??
+        preparation.after.index.value ??
+        const <VbCredential>[];
+  }
+
+  Future<_CredentialIndexReadResult> _readCredentialIndex() async {
+    Object? raw;
     try {
-      final prefs = await _prefs();
-      await prefs.reload();
-      final raw = prefs.getString(credentialsKey);
-      if (raw == null || raw.isEmpty) return const [];
+      raw = await _credentialIndexStore.read();
+    } catch (_) {
+      return const _CredentialIndexReadResult.error();
+    }
+    if (raw == null) return const _CredentialIndexReadResult.missing();
+    if (raw is! String) return const _CredentialIndexReadResult.corrupt();
+    if (raw.isEmpty) return const _CredentialIndexReadResult.corrupt();
+    final decoded = _decodeCredentialIndex(raw);
+    if (decoded == null) return const _CredentialIndexReadResult.corrupt();
+    return _CredentialIndexReadResult.valid(raw, decoded);
+  }
+
+  static List<VbCredential>? _decodeCredentialIndex(String raw) {
+    try {
       final decoded = jsonDecode(raw);
       if (decoded is! List<dynamic>) return null;
       final loaded = <VbCredential>[];
       final seenIds = <String>{};
       for (final item in decoded) {
-        if (item is Map<dynamic, dynamic>) {
-          var cred =
-              VbCredential.fromJson(Map<String, dynamic>.from(item));
-          if (cred.id.isEmpty || seenIds.contains(cred.id)) {
-            cred = cred.copyWith(id: _nextCredentialId());
-          }
-          seenIds.add(cred.id);
-          loaded.add(cred);
+        if (item is! Map<dynamic, dynamic>) return null;
+        final map = <String, dynamic>{};
+        for (final entry in item.entries) {
+          final key = entry.key;
+          if (key is! String) return null;
+          map[key] = entry.value;
         }
+        final id = map['id'];
+        final nombre = map['nombre'];
+        final usuario = map['usuario'];
+        if (id is! String || nombre is! String || usuario is! String) {
+          return null;
+        }
+        if (id.isEmpty || seenIds.contains(id)) return null;
+        seenIds.add(id);
+        loaded.add(VbCredential(id: id, nombre: nombre, usuario: usuario));
       }
       return loaded;
     } catch (_) {
@@ -1477,42 +1751,225 @@ class StorageService {
     }
   }
 
-  Future<Map<String, String>> _readPassMap() async {
-    try {
-      var raw = await _secureStorage.read(key: credPassKey);
-      if (raw == null || raw.isEmpty) {
-        raw = await _migratePlainPassMap();
-      }
-      if (raw == null || raw.isEmpty) return {};
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map<dynamic, dynamic>) return {};
-      return {
-        for (final e in decoded.entries)
-          if (e.key is String && e.value is String) e.key as String: e.value as String,
-      };
-    } catch (_) {
-      return {};
-    }
-  }
+  static String _encodeCredentialIndex(List<VbCredential> credentials) =>
+      jsonEncode(credentials.map((credential) => credential.toJson()).toList());
 
-  /// Migración única pre-SPK-02: mapa plano → bóveda. Idempotente: si no
-  /// hay legado devuelve null y el llamador opera sobre la bóveda vacía.
-  Future<String?> _migratePlainPassMap() async {
+  static Map<String, String>? _decodeCredentialMap(String raw) {
     try {
-      final prefs = await _prefs();
-      final raw = prefs.getString(credPassKey);
-      if (raw == null || raw.isEmpty) return null;
-      await _secureStorage.write(key: credPassKey, value: raw);
-      await prefs.remove(credPassKey);
-      return raw;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map<dynamic, dynamic>) return null;
+      final parsed = <String, String>{};
+      for (final entry in decoded.entries) {
+        final key = entry.key;
+        final value = entry.value;
+        if (key is! String || value is! String) return null;
+        parsed[key] = value;
+      }
+      return parsed;
     } catch (_) {
       return null;
     }
   }
 
-  /// Guarda nombre+usuario+contraseña. La contraseña solo se escribe:
-  /// no existe lectura de vuelta en la UI. Devuelve false si viola
-  /// límites o la lectura está ilegible (no pisa datos).
+  Future<_CredentialVaultReadResult> _readCredentialVault() async {
+    String? raw;
+    try {
+      raw = await _credentialVaultStore.read();
+    } catch (_) {
+      return const _CredentialVaultReadResult.error();
+    }
+    if (raw == null) return const _CredentialVaultReadResult.missing();
+    if (raw.isEmpty) return const _CredentialVaultReadResult.corrupt();
+    final parsed = _decodeCredentialMap(raw);
+    if (parsed == null) return const _CredentialVaultReadResult.corrupt();
+    return _CredentialVaultReadResult.valid(raw, parsed);
+  }
+
+  Future<bool> _compareAndSetCredentialVault(
+    String? expectedRaw,
+    String? nextRaw,
+  ) async {
+    try {
+      return await _credentialVaultStore.compareAndSet(
+        expectedRaw: expectedRaw,
+        nextRaw: nextRaw,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _compareAndSetCredentialIndex(
+    String? expectedRaw,
+    String? nextRaw,
+  ) async {
+    try {
+      return await _credentialIndexStore.compareAndSet(
+        expectedRaw: expectedRaw,
+        nextRaw: nextRaw,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<_CredentialVaultReadResult> _readLegacyCredentialMap() async {
+    Object? raw;
+    try {
+      final prefs = await _prefs();
+      await prefs.reload();
+      raw = prefs.get(credPassKey);
+    } catch (_) {
+      return const _CredentialVaultReadResult.error();
+    }
+    if (raw == null) return const _CredentialVaultReadResult.missing();
+    if (raw is! String) return const _CredentialVaultReadResult.corrupt();
+    if (raw.isEmpty) return const _CredentialVaultReadResult.corrupt();
+    final parsed = _decodeCredentialMap(raw);
+    if (parsed == null) return const _CredentialVaultReadResult.corrupt();
+    return _CredentialVaultReadResult.valid(raw, parsed);
+  }
+
+  Future<bool> _migratePlainPassMap() async {
+    final legacy = await _readLegacyCredentialMap();
+    final vault = await _readCredentialVault();
+    if (legacy.status != _CredentialVaultReadStatus.valid ||
+        !vault.canMutate) {
+      return false;
+    }
+    final merged = Map<String, String>.from(
+      vault.value ?? const <String, String>{},
+    );
+    for (final entry
+        in (legacy.value ?? const <String, String>{}).entries) {
+      merged.putIfAbsent(entry.key, () => entry.value);
+    }
+    final mergedRaw = jsonEncode(merged);
+    if (mergedRaw != vault.raw &&
+        !await _compareAndSetCredentialVault(vault.raw, mergedRaw)) {
+      final current = await _readCredentialVault();
+      if (current.status == _CredentialVaultReadStatus.valid &&
+          current.raw == mergedRaw) {
+        if (!await _restoreCredentialVault(mergedRaw, vault.raw)) {
+          return false;
+        }
+      }
+      return false;
+    }
+    final currentVault = await _readCredentialVault();
+    if (currentVault.status != _CredentialVaultReadStatus.valid) {
+      return false;
+    }
+    if (_containsCredentialMap(currentVault.value, legacy.value)) {
+      return _compareAndSetLegacyCredential(legacy.raw, null);
+    }
+    return true;
+  }
+
+  Future<bool> _compareAndSetLegacyCredential(
+    String? expectedRaw,
+    String? nextRaw,
+  ) async {
+    try {
+      final prefs = await _prefs();
+      await prefs.reload();
+      if (prefs.get(credPassKey) != expectedRaw) return false;
+      if (nextRaw != null) return false;
+      if (!await prefs.remove(credPassKey)) return false;
+      await prefs.reload();
+      return prefs.get(credPassKey) == null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _restoreCredentialVault(
+    String? attemptedRaw,
+    String? restoredRaw,
+  ) async {
+    if (attemptedRaw == restoredRaw) return true;
+    try {
+      if (await _compareAndSetCredentialVault(attemptedRaw, restoredRaw)) {
+        return await _credentialVaultStore.read() == restoredRaw;
+      }
+      return await _credentialVaultStore.read() == restoredRaw;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _restoreCredentialIndex(
+    String? attemptedRaw,
+    String? restoredRaw,
+  ) async {
+    if (attemptedRaw == restoredRaw) return true;
+    try {
+      if (await _compareAndSetCredentialIndex(attemptedRaw, restoredRaw)) {
+        return await _credentialIndexStore.read() == restoredRaw;
+      }
+      return await _credentialIndexStore.read() == restoredRaw;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _rollbackCredentialPreparation(
+    _CredentialPreparation preparation, {
+    String? expectedIndexRaw,
+    String? expectedVaultRaw,
+    bool indexAttempted = false,
+    bool vaultAttempted = false,
+  }) async {
+    var indexRestored = true;
+    var vaultRestored = true;
+    if (vaultAttempted) {
+      vaultRestored = await _restoreCredentialVault(
+        expectedVaultRaw,
+        preparation.after.vault.raw,
+      );
+    }
+    if (indexAttempted) {
+      indexRestored = await _restoreCredentialIndex(
+        expectedIndexRaw,
+        preparation.after.index.raw,
+      );
+    }
+    return indexRestored && vaultRestored;
+  }
+
+  Future<_CredentialPreparation?> _prepareCredentialState() async {
+    final beforeIndex = await _readCredentialIndex();
+    if (!beforeIndex.canMutate) return null;
+    final beforeVault = await _readCredentialVault();
+    if (!beforeVault.canMutate) return null;
+    final legacy = await _readLegacyCredentialMap();
+    if (legacy.status == _CredentialVaultReadStatus.error) return null;
+
+    if (legacy.status == _CredentialVaultReadStatus.valid &&
+        !await _migratePlainPassMap()) {
+      return null;
+    }
+
+    final currentIndex = await _readCredentialIndex();
+    final currentVault = await _readCredentialVault();
+    if (!currentIndex.canMutate || !currentVault.canMutate) return null;
+    return _CredentialPreparation(
+      after: _CredentialStateSnapshots(currentIndex, currentVault),
+      legacy: legacy,
+    );
+  }
+
+  static bool _containsCredentialMap(
+    Map<String, String>? current,
+    Map<String, String>? required,
+  ) {
+    if (current == null || required == null) return false;
+    for (final entry in required.entries) {
+      if (current[entry.key] != entry.value) return false;
+    }
+    return true;
+  }
+
   Future<bool> addCredential({
     required String nombre,
     required String usuario,
@@ -1526,40 +1983,150 @@ class StorageService {
         password.length > maxCredentialPassLength) {
       return false;
     }
-    final current = await _readCredentials();
-    if (current == null) return false;
-    if (current.length >= maxCredentials) return false;
-    final id = _nextCredentialId();
-    final prefs = await _prefs();
-    await prefs.setString(
-      credentialsKey,
-      jsonEncode([
-        ...current.map((c) => c.toJson()),
-        VbCredential(id: id, nombre: nombre, usuario: usuario).toJson(),
-      ]),
-    );
-    final passes = await _readPassMap();
-    passes[id] = password;
-    await _secureStorage.write(key: credPassKey, value: jsonEncode(passes));
-    return true;
+    return _withCredentialOperationLock(() async {
+      final preparation = await _prepareCredentialState();
+      if (preparation == null) return false;
+      final state = preparation.after;
+      if (state.vault.status == _CredentialVaultReadStatus.missing &&
+          preparation.legacy.status == _CredentialVaultReadStatus.corrupt) {
+        return false;
+      }
+      final current = state.index.value ?? const <VbCredential>[];
+      if (current.length >= maxCredentials) return false;
+      final passes = Map<String, String>.from(
+        state.vault.value ?? const <String, String>{},
+      );
+      final id = _nextCredentialId();
+      passes[id] = password;
+      final nextVaultRaw = jsonEncode(passes);
+      final nextIndexRaw = _encodeCredentialIndex([
+        ...current,
+        VbCredential(id: id, nombre: nombre, usuario: usuario),
+      ]);
+      final vaultSaved = await _compareAndSetCredentialVault(
+        state.vault.raw,
+        nextVaultRaw,
+      );
+      if (!vaultSaved) {
+        if (!await _rollbackCredentialPreparation(
+          preparation,
+          expectedVaultRaw: nextVaultRaw,
+          vaultAttempted: true,
+        )) {
+          return false;
+        }
+        return false;
+      }
+      final indexSaved = await _compareAndSetCredentialIndex(
+        state.index.raw,
+        nextIndexRaw,
+      );
+      if (!indexSaved) {
+        if (!await _rollbackCredentialPreparation(
+          preparation,
+          expectedIndexRaw: nextIndexRaw,
+          expectedVaultRaw: nextVaultRaw,
+          indexAttempted: true,
+          vaultAttempted: true,
+        )) {
+          return false;
+        }
+        return false;
+      }
+      return true;
+    });
   }
 
-  /// Borra por id el índice Y su contraseña. Sin edición: ante un error
-  /// se borra y se crea de nuevo.
-  Future<bool> deleteCredential(String id) async {
-    final current = await _readCredentials();
-    if (current == null) return false;
-    final remaining =
-        current.where((c) => c.id != id).toList(growable: false);
-    if (remaining.length == current.length) return false;
-    final prefs = await _prefs();
-    await prefs.setString(
-      credentialsKey,
-      jsonEncode(remaining.map((c) => c.toJson()).toList()),
+  Future<bool> deleteCredential(String id) =>
+      _withCredentialOperationLock(() async {
+        final preparation = await _prepareCredentialState();
+        if (preparation == null) return false;
+        final state = preparation.after;
+        if (state.vault.status == _CredentialVaultReadStatus.missing) {
+          return false;
+        }
+        final current = state.index.value ?? const <VbCredential>[];
+        final remaining = current
+            .where((credential) => credential.id != id)
+            .toList(growable: false);
+        if (remaining.length == current.length) return false;
+        final nextIndexRaw = _encodeCredentialIndex(remaining);
+        final passes = Map<String, String>.from(
+          state.vault.value ?? const <String, String>{},
+        );
+        passes.remove(id);
+        final nextVaultRaw = jsonEncode(passes);
+        final indexSaved = await _compareAndSetCredentialIndex(
+          state.index.raw,
+          nextIndexRaw,
+        );
+        if (!indexSaved) {
+          if (!await _rollbackCredentialPreparation(
+            preparation,
+            expectedIndexRaw: nextIndexRaw,
+            indexAttempted: true,
+          )) {
+            return false;
+          }
+          return false;
+        }
+        final vaultSaved = await _compareAndSetCredentialVault(
+          state.vault.raw,
+          nextVaultRaw,
+        );
+        if (!vaultSaved) {
+          if (!await _rollbackCredentialPreparation(
+            preparation,
+            expectedIndexRaw: nextIndexRaw,
+            expectedVaultRaw: nextVaultRaw,
+            indexAttempted: true,
+            vaultAttempted: true,
+          )) {
+            return false;
+          }
+          return false;
+        }
+        return true;
+      });
+
+  Future<void> sweepCredentialOrphans() async {
+    await _withCredentialOperationLock(() async {
+      final preparation = await _prepareCredentialState();
+      if (preparation == null) return;
+      await _sweepCredentialState(preparation);
+    });
+  }
+
+  Future<bool> _sweepCredentialState(
+    _CredentialPreparation preparation,
+  ) async {
+    final state = preparation.after;
+    if (state.index.status == _CredentialIndexReadStatus.missing) {
+      return true;
+    }
+    if (state.vault.status == _CredentialVaultReadStatus.missing &&
+        preparation.legacy.status == _CredentialVaultReadStatus.corrupt) {
+      return true;
+    }
+    final index = state.index.value!;
+    final vaultIds =
+        (state.vault.value ?? const <String, String>{}).keys.toSet();
+    final keptIndex = index
+        .where((credential) => vaultIds.contains(credential.id))
+        .toList(growable: false);
+    if (listEquals(index, keptIndex)) return true;
+
+    final nextIndexRaw = _encodeCredentialIndex(keptIndex);
+    final indexSaved = await _compareAndSetCredentialIndex(
+      state.index.raw,
+      nextIndexRaw,
     );
-    final passes = await _readPassMap();
-    passes.remove(id);
-    await _secureStorage.write(key: credPassKey, value: jsonEncode(passes));
+    if (!indexSaved) {
+      if (!await _restoreCredentialIndex(nextIndexRaw, state.index.raw)) {
+        return false;
+      }
+      return false;
+    }
     return true;
   }
 
