@@ -197,7 +197,7 @@ class MicrophoneClaimTest {
             pool.shutdownNow()
         }
 
-        assertTrue(fallos.isEmpty(), "carrera con releases duplicados: ${fallos.toList()}")
+        assertTrue("carrera con releases duplicados: ${fallos.toList()}", fallos.isEmpty())
         assertEquals(1L, maxHolders.get().toLong())
         assertFalse(BackgroundWork.isMicrophoneClaimed())
     }
