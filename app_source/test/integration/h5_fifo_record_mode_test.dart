@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
+
+import '../helpers/mock_channels.dart';
 
 /// Matriz H5-T5 (Lane A): persistencia a nivel servicio.
 ///
@@ -12,6 +15,21 @@ import 'package:voice_bubble_stt/services/storage_service.dart';
 /// Punto 4: FIFO-20 exacto sobre un historial sembrado en prefs.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  late Directory tempDir;
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    tempDir = Directory.systemTemp.createTempSync('h5_fifo_');
+    registerAppChannelMocks(temporaryDirectory: tempDir.path);
+  });
+
+  tearDown(() {
+    unregisterAppChannelMocks();
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
+    }
+  });
 
   group('Punto 3 - modo toque/mantener persiste entre instancias', () {
     test('default tap cuando nunca se guardo', () async {

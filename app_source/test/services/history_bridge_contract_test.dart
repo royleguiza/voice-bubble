@@ -45,6 +45,21 @@ void main() {
   });
 
   group('Contrato historial - FIFO 20 con entradas del teclado', () {
+    late Directory tempDir;
+
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      tempDir = Directory.systemTemp.createTempSync('history_bridge_');
+      registerAppChannelMocks(temporaryDirectory: tempDir.path);
+    });
+
+    tearDown(() {
+      unregisterAppChannelMocks();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
     test('carga el lote del teclado en orden mas-nuevo-primero', () async {
       SharedPreferences.setMockInitialValues({
         'transcriptions': [
@@ -82,6 +97,21 @@ void main() {
   });
 
   group('Contrato historial - tolerancia ante datos rotos', () {
+    late Directory tempDir;
+
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      tempDir = Directory.systemTemp.createTempSync('history_bridge_');
+      registerAppChannelMocks(temporaryDirectory: tempDir.path);
+    });
+
+    tearDown(() {
+      unregisterAppChannelMocks();
+      if (tempDir.existsSync()) {
+        tempDir.deleteSync(recursive: true);
+      }
+    });
+
     test('entrada con JSON roto se ignora sin crashear la carga', () async {
       SharedPreferences.setMockInitialValues({
         'transcriptions': [

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -6,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
+
+import '../helpers/mock_channels.dart';
 
 Transcription _makeTranscription(String text) {
   return Transcription(
@@ -17,8 +20,19 @@ Transcription _makeTranscription(String text) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late Directory tempDir;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    tempDir = Directory.systemTemp.createTempSync('storage_service_');
+    registerAppChannelMocks(temporaryDirectory: tempDir.path);
+  });
+
+  tearDown(() {
+    unregisterAppChannelMocks();
+    if (tempDir.existsSync()) {
+      tempDir.deleteSync(recursive: true);
+    }
   });
 
   group('StorageService', () {
@@ -34,10 +48,19 @@ void main() {
           text: 'hello', timestamp: DateTime.utc(2026, 8, 23, 9).toLocal());
       final t2 = Transcription(
           text: 'world', timestamp: DateTime.utc(2026, 8, 23, 10).toLocal());
+      // Contrato C-02: el parser estricto exige zona explícita (Z u offset);
+      // se siembra el mismo instante en canónico UTC con Z para que la
+      // lectura lo acepte; lo verificado (orden desc) no cambia.
       SharedPreferences.setMockInitialValues({
         'transcriptions': [
-          jsonEncode(t1.toJson()),
-          jsonEncode(t2.toJson()),
+          jsonEncode({
+            'text': t1.text,
+            'timestamp': t1.toUtc().toIso8601String(),
+          }),
+          jsonEncode({
+            'text': t2.text,
+            'timestamp': t2.toUtc().toIso8601String(),
+          }),
         ],
       });
 
@@ -52,9 +75,14 @@ void main() {
 
     test('load() gracefully ignores corrupt JSON entries', () async {
       final t1 = _makeTranscription('valid');
+      // Contrato C-02: siembra canónica con Z (mismo instante que t1);
+      // lo verificado (1 válida + 2 corruptas ignoradas) no cambia.
       SharedPreferences.setMockInitialValues({
         'transcriptions': [
-          jsonEncode(t1.toJson()),
+          jsonEncode({
+            'text': t1.text,
+            'timestamp': t1.toUtc().toIso8601String(),
+          }),
           'not valid json',
           '{invalid json}',
         ],
