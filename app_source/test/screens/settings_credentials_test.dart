@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +10,40 @@ import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
+class _TrackedStorageService extends StorageService {
+  final Completer<bool> addCompleted = Completer<bool>();
+  final Completer<void> showUserSaved = Completer<void>();
+  final Completer<bool> deleteCompleted = Completer<bool>();
+
+  @override
+  Future<bool> addCredential({
+    required String nombre,
+    required String usuario,
+    required String password,
+  }) async {
+    final result = await super.addCredential(
+      nombre: nombre,
+      usuario: usuario,
+      password: password,
+    );
+    if (!addCompleted.isCompleted) addCompleted.complete(result);
+    return result;
+  }
+
+  @override
+  Future<void> saveCredShowUser(bool value) async {
+    await super.saveCredShowUser(value);
+    if (!showUserSaved.isCompleted) showUserSaved.complete();
+  }
+
+  @override
+  Future<bool> deleteCredential(String id) async {
+    final result = await super.deleteCredential(id);
+    if (!deleteCompleted.isCompleted) deleteCompleted.complete(result);
+    return result;
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
@@ -15,12 +51,12 @@ void main() {
   const channel = MethodChannel(FloatingBubbleService.channelName);
   const keyboardChannel = MethodChannel(KeyboardService.channelName);
 
-  late StorageService storageService;
+  late _TrackedStorageService storageService;
 
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({});
     SharedPreferences.setMockInitialValues({});
-    storageService = StorageService();
+    storageService = _TrackedStorageService();
 
     messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
       switch (call.method) {
@@ -76,6 +112,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('tab-credenciales')));
     await tester.pumpAndSettle();
+  }
+
+  Future<void> pumpUntilReady(
+    WidgetTester tester,
+    bool Function() ready,
+    String description,
+  ) async {
+    for (var attempt = 0; attempt < 200; attempt++) {
+      if (ready()) return;
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    throw TestFailure(description);
   }
 
   group('SettingsScreen - tab Claves (credenciales)', () {
@@ -134,8 +182,16 @@ void main() {
         's3creta',
       );
       await tester.tap(find.byKey(const ValueKey('credenciales-add-button')));
-      await storageService.loadCredentials();
-      await tester.pumpAndSettle();
+      await pumpUntilReady(
+        tester,
+        () => storageService.addCompleted.isCompleted,
+        'La credencial no terminó de guardarse',
+      );
+      await pumpUntilReady(
+        tester,
+        () => find.text('Banco').evaluate().isNotEmpty,
+        'La credencial guardada no apareció en la pantalla',
+      );
 
       expect(find.text('Banco'), findsOneWidget);
       // Sin showUser: el usuario no se muestra y la pass jamás aparece.
@@ -160,15 +216,41 @@ void main() {
         's3creta',
       );
       await tester.tap(find.byKey(const ValueKey('credenciales-add-button')));
-      await storageService.loadCredentials();
-      await tester.pumpAndSettle();
+      await pumpUntilReady(
+        tester,
+        () => storageService.addCompleted.isCompleted,
+        'La credencial no terminó de guardarse',
+      );
+      await pumpUntilReady(
+        tester,
+        () => find.text('Banco').evaluate().isNotEmpty,
+        'La credencial guardada no apareció en la pantalla',
+      );
 
       await tester.tap(find.byKey(const ValueKey('credenciales-show-user')));
-      await tester.pumpAndSettle();
+      await pumpUntilReady(
+        tester,
+        () => storageService.showUserSaved.isCompleted,
+        'La visibilidad del usuario no terminó de guardarse',
+      );
+      await pumpUntilReady(
+        tester,
+        () => find.text('juan@mail.com').evaluate().isNotEmpty,
+        'El usuario no apareció al activar el switch',
+      );
       expect(find.text('juan@mail.com'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.delete_outline).first);
-      await tester.pumpAndSettle();
+      await pumpUntilReady(
+        tester,
+        () => storageService.deleteCompleted.isCompleted,
+        'La credencial no terminó de borrarse',
+      );
+      await pumpUntilReady(
+        tester,
+        () => find.text('Banco').evaluate().isEmpty,
+        'La credencial borrada siguió visible',
+      );
       expect(find.text('Banco'), findsNothing);
     });
 

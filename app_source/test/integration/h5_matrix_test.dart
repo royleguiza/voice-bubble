@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -91,10 +92,23 @@ class _FrozenCloudTranscriptionService extends TranscriptionService {
   void updateApiKey(String apiKey) {}
 }
 
+class _ReadyStorageService extends StorageService {
+  final Completer<void> recordModeRead = Completer<void>();
+  String? loadedMode;
+
+  @override
+  Future<String> loadRecordMode() async {
+    final mode = await super.loadRecordMode();
+    loadedMode = mode;
+    if (!recordModeRead.isCompleted) recordModeRead.complete();
+    return mode;
+  }
+}
+
 class _Bundle {
   final _FakeRecorder recorder;
   final _ScriptedCloudSttService cloud;
-  final StorageService storage;
+  final _ReadyStorageService storage;
   final TranscriptionService service;
 
   _Bundle(this.recorder, this.cloud, this.storage, this.service);
@@ -200,18 +214,21 @@ void main() {
 
   Future<void> pumpUntilRecordMode(
     WidgetTester tester,
+    _ReadyStorageService storage,
     String mode,
   ) async {
     final finder = find.byKey(const ValueKey('recordButton'));
     final expectsHold = mode == StorageService.recordModeHold;
-    for (var attempt = 0; attempt < 20; attempt++) {
+    for (var attempt = 0; attempt < 200; attempt++) {
       final button = tester.widget<RecordButton>(finder);
-      if ((button.onPressed == null) == expectsHold &&
+      if (storage.recordModeRead.isCompleted &&
+          storage.loadedMode == mode &&
+          (button.onPressed == null) == expectsHold &&
           (button.onHoldStart != null) == expectsHold &&
           (button.onHoldEnd != null) == expectsHold) {
         return;
       }
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 10));
     }
     throw TestFailure('El modo $mode no llegó al botón de grabación');
   }
@@ -219,7 +236,7 @@ void main() {
   _Bundle makeBundle(List<Object> outcomes) {
     final recorder = _FakeRecorder();
     final cloud = _ScriptedCloudSttService(outcomes);
-    final storage = StorageService();
+    final storage = _ReadyStorageService();
     final service = _FrozenCloudTranscriptionService(
       cloudService: cloud,
       storageService: storage,
@@ -378,7 +395,11 @@ void main() {
       // --- Fase A: primera pantalla (StorageService nuevo lee 'hold').
       final bundleA = makeBundle(<Object>[]);
       await pumpHome(tester, bundleA.service, bundleA.storage);
-      await pumpUntilRecordMode(tester, StorageService.recordModeHold);
+      await pumpUntilRecordMode(
+        tester,
+        bundleA.storage,
+        StorageService.recordModeHold,
+      );
       expect(await bundleA.storage.loadRecordMode(), 'hold');
 
       // En hold, onTap esta deshabilitado: tocar NO inicia grabacion.
@@ -411,7 +432,11 @@ void main() {
       // --- Fase B: pantalla recreada con INSTANCIA nueva de almacenamiento.
       final bundleB = makeBundle(<Object>[]);
       await pumpHome(tester, bundleB.service, bundleB.storage);
-      await pumpUntilRecordMode(tester, StorageService.recordModeHold);
+      await pumpUntilRecordMode(
+        tester,
+        bundleB.storage,
+        StorageService.recordModeHold,
+      );
       await tester.tap(button);
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
@@ -427,7 +452,11 @@ void main() {
         ),
       ]);
       await pumpHome(tester, bundleC.service, bundleC.storage);
-      await pumpUntilRecordMode(tester, StorageService.defaultRecordMode);
+      await pumpUntilRecordMode(
+        tester,
+        bundleC.storage,
+        StorageService.defaultRecordMode,
+      );
 
       await tester.tap(button);
       await tester.pump(const Duration(milliseconds: 400));
