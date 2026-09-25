@@ -117,6 +117,14 @@ void main() {
       },
     );
 
+    // La pantalla publica el estado visual de la burbuja ANTES de tomar el
+    // claim (contrato C-05). Sin este mock el canal no responde nunca en un
+    // widget test y la grabacion no arranca.
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('com.royleguiza.voicebubblestt/floating_bubble'),
+      (MethodCall call) async => true,
+    );
+
     for (final channel in [
       'plugins.flutter.io/path_provider',
       'plugins.flutter.io/path_provider_android',
@@ -149,6 +157,7 @@ void main() {
       'com.llfbandit.record',
       'com.llfbandit.record/messages',
       'com.royleguiza.voicebubblestt/keyboard',
+      'com.royleguiza.voicebubblestt/floating_bubble',
       'com.royleguiza.voicebubblestt/widget',
       'plugins.flutter.io/path_provider',
       'plugins.flutter.io/path_provider_android',
