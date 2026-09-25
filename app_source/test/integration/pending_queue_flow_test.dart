@@ -84,10 +84,13 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({
       'notes_deferred_queue_enabled': true,
+      'voice_notes_v1': '[]',
+      'voice_notes_pending_v1': '[]',
     });
     FlutterSecureStorage.setMockInitialValues({});
 
     tempDir = Directory.systemTemp.createTempSync('pending_flow_');
+    File('${tempDir.path}/voice_notes.json').writeAsStringSync('[]');
 
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -287,6 +290,30 @@ void main() {
     expect(find.byKey(const ValueKey('pendingNotesList')), findsNothing);
     expect(queue.items, isEmpty);
     expect(find.textContaining('Error:'), findsOneWidget);
+  });
+
+  testWidgets('UI no presenta estado vacío cuando la lectura es corrupta',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'notes_deferred_queue_enabled': true,
+      'voice_notes_v1': '{bad',
+      'voice_notes_pending_v1': '{bad',
+    });
+    File('${tempDir.path}/voice_notes.json').writeAsStringSync('{bad');
+    final recorder = _FakeRecorder();
+    final cloud = _ScriptedCloudSttService([]);
+    final service = _FrozenCloudTranscriptionService(
+      cloudService: cloud,
+      storageService: StorageService(),
+      recorder: recorder,
+    );
+    final queue = PendingNoteQueue();
+    await pumpNotes(tester, service, queue);
+
+    expect(find.byKey(const ValueKey('notesStatus')), findsOneWidget);
+    expect(find.text('Notas no disponibles'), findsOneWidget);
+    expect(find.text('Sin notas'), findsNothing);
+    expect(find.text('0 / 50'), findsNothing);
   });
 
   testWidgets('auth no encola aunque el flag esté ON', (tester) async {

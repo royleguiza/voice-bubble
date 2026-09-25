@@ -45,6 +45,8 @@ MASTER = "test_master_suite.py"
 check("pending_note_queue.dart existe", os.path.isfile(os.path.join(WORKSPACE, QUEUE)))
 q = read(QUEUE)
 check("Clave Dart-only voice_notes_pending_v1", "voice_notes_pending_v1" in q)
+check("Lock pendiente compartido con Kotlin",
+      "flutter.voice_notes_pending_v1.lock" in q)
 check("Cap maxPending = 15", "maxPending = 15" in q)
 check("Dir pending_notes bajo appSupport", "pending_dir_name = 'pending_notes'" in q or "pendingDirName" in q)
 check("Sin HTTP / http package en el servicio",
@@ -55,6 +57,14 @@ check("discardAll limpia todo", "discardAll" in q)
 check("JSON keys id/audioPath/createdAtMs",
       all(k in q for k in ["'id'", "'audioPath'", "'createdAtMs'"]))
 check("Prune FIFO al superar cap", "_pruneOldest" in q)
+check("Load de la cola barre notas y pendientes con locks compartidos",
+      "_reconcileNotesAudioLocked" in q
+      and "_reconcilePendingAudioLocked" in q
+      and "notesLockFileName" in q
+      and "lockFileName" in q)
+check("Eviction fallida queda reclamada para preservation",
+      "_registerSweepClaim" in q
+      and "_deleteAudio" in q)
 
 # --- 2. Hook notes_screen ---
 check("notes_screen.dart importa cola", "pending_note_queue" in read(NOTES))

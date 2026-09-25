@@ -6,6 +6,57 @@ import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import androidx.core.content.ContextCompat
+import java.io.File
+import org.json.JSONArray
+
+internal data class WidgetPendingSnapshot(
+    val items: List<VbPending>,
+    val state: NoteIndexState,
+) {
+    val available: Boolean
+        get() = state == NoteIndexState.EMPTY || state == NoteIndexState.VALID
+}
+
+internal fun loadWidgetPendingSnapshot(context: Context): WidgetPendingSnapshot {
+    val raw = try {
+        context.getSharedPreferences(NoteStore.PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(NoteStore.PENDING_KEY, null)
+    } catch (_: Exception) {
+        return WidgetPendingSnapshot(emptyList(), NoteIndexState.UNAVAILABLE)
+    }
+    if (raw == null) return WidgetPendingSnapshot(emptyList(), NoteIndexState.MISSING)
+    if (raw.isBlank()) return WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)
+    return try {
+        val array = JSONArray(raw)
+        val items = ArrayList<VbPending>(array.length())
+        for (index in 0 until array.length()) {
+            val item = array.optJSONObject(index)
+                ?: return WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)
+            val id = item.opt("id") as? String
+            val path = item.opt("audioPath") as? String
+            val created = item.opt("createdAtMs") as? Number
+            if (id.isNullOrBlank() || path.isNullOrBlank() ||
+                created == null || created.toLong() <= 0L) {
+                return WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)
+            }
+            val audio = File(path)
+            if (!audio.exists() || !audio.isFile) {
+                return WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)
+            }
+            items.add(VbPending(id, path, created.toLong()))
+        }
+        WidgetPendingSnapshot(
+            items.sortedByDescending { it.createdAtMs },
+            if (array.length() == 0) NoteIndexState.EMPTY else NoteIndexState.VALID,
+        )
+    } catch (_: Exception) {
+        WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)
+    }
+}
+
+private fun isAuthoritativeWidgetState(state: NoteIndexState): Boolean {
+    return isAuthoritativeNoteState(state)
+}
 
 /**
  * Colección con scroll del widget de notas: pendientes offline arriba
@@ -30,8 +81,16 @@ private class WidgetNotesFactory(
     override fun onCreate() {}
 
     override fun onDataSetChanged() {
-        pendings = WidgetPendingStore.load(context)
-        notes = NoteStore(context).load()
+        val snapshot = NoteStore(context).loadSnapshot()
+        val pendingSnapshot = loadWidgetPendingSnapshot(context)
+        if (!isAuthoritativeWidgetState(snapshot.fileState) ||
+            !isAuthoritativeWidgetState(snapshot.prefsState) ||
+            !isAuthoritativeWidgetState(pendingSnapshot.state)
+        ) {
+            return
+        }
+        pendings = pendingSnapshot.items
+        notes = snapshot.notes
     }
 
     override fun onDestroy() {

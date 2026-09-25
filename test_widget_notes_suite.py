@@ -11,9 +11,12 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 RES = ROOT / "voice_bubble_stt/android/app/src/main/res"
 KT = ROOT / "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+NATIVE_TEST = ROOT / "voice_bubble_stt/android/app/src/test/kotlin/com/royleguiza/voicebubblestt/WidgetNotesBehaviorTest.kt"
+WORKFLOW = ROOT / ".github/workflows/android.yml"
 LAYOUT = RES / "layout/widget_notes.xml"
 PROVIDER = KT / "WidgetNotesProvider.kt"
 SERVICE = KT / "WidgetDictationService.kt"
+NOTE_STORE = KT / "NoteStore.kt"
 
 ALLOWED_REMOTEVIEWS = {
     "FrameLayout", "LinearLayout", "RelativeLayout", "GridLayout",
@@ -150,13 +153,46 @@ add_block = prov.split('Add (+)')[1].split('val openIntent')[0] if 'Add (+)' in 
 check("+ abre overlay, no MainActivity",
       'R.id.widget_notes_add, addPi' in prov and 'WidgetNoteEditActivity' in add_block
       and 'widget_action' not in add_block and 'MainActivity' not in add_block)
-check("Fallback usa vista vacía (sin IDs fijos viejos)",
-      'widget_notes_empty' in prov.split('Fallback')[1]
-      and 'widget_note_0' not in prov and 'widget_note_title_0' not in prov
-      if 'Fallback' in prov else False)
+_provider_update = prov.split('fun updateOneWithState', 1)[1].split('/** La ListView', 1)[0]
+check("Provider conserva la vista cuando el índice no está disponible",
+      'Fallback' not in _provider_update
+      and 'widget_notes_empty' not in _provider_update
+      and 'BackgroundWork.execute' in _provider_update)
+check("Provider muestra estado no autoritativo inicial sin falso vacío",
+      'showUnavailable' in prov
+      and 'No disponible' in prov
+      and 'Estado no disponible' in prov
+      and 'hasInitializedState' in prov)
 check("Sin swap de fondo en barra (píldora propia)", 'setBackgroundResource' not in prov)
 
 svc = SERVICE.read_text()
+store = NOTE_STORE.read_text()
+save_block = svc.split("fun saveUntitledNote", 1)[1].split("private fun isDeferredQueueEnabled", 1)[0]
+pending_block = svc.split("fun enqueuePendingWav", 1)[1].split("private fun updateWidgetsState", 1)[0]
+check("Dictado serializa la escritura completa bajo una cola",
+      "val durableSaved = synchronized(persistenceLock)" in svc
+      and "saveUntitledNote(text.trim(), wav)" in svc)
+check("Dictado solo informa éxito tras WAV durable y commit de nota",
+      "writeWavFile(" in save_block and "?: return false" in save_block
+      and "result != NoteSaveResult.SAVED" in save_block
+      and 'updateWidgetsState(if (durableSaved) "saved" else "idle")' in svc)
+check("Dictado borra la protección sweep solo después del commit verificado",
+      save_block.index("result != NoteSaveResult.SAVED")
+      < save_block.index("stored.sweepClaim?.delete()"))
+check("Pendientes usan lock cooperativo, commit verificado y RMW bajo lock",
+      "synchronized(persistenceLock)" in pending_block
+      and "NoteStore.withCooperativeFileLock" in pending_block
+      and "enqueuePendingWavLocked(wav)" in pending_block
+      and ".commit() && prefs.getString(NoteStore.PENDING_KEY, null) == json" in pending_block)
+check("Pendientes no limpian WAV si falla commit y limpian victims después",
+      "if (!saved) return PendingEnqueueResult.FAILED" in pending_block
+      and pending_block.index("if (!saved) return PendingEnqueueResult.FAILED") < pending_block.index("old.drop"))
+check("Eviction fallida queda registrada y reportada sin perder WAV",
+      "COMMITTED_WITH_CLEANUP_FAILURE" in pending_block
+      and "deleteOrRegisterEvicted" in pending_block
+      and "EvictionCleanupResult.REGISTERED" in pending_block
+      and ".${file.name}.pending" in pending_block)
+
 check("Tope de grabación = MAX_SECONDS (300s, como teclado)",
       'SpeechToTextClient.MAX_SECONDS * 1000L' in svc and '60000' not in svc)
 check("Sonido al iniciar (start)", 'playMicSound("start")' in svc)
@@ -165,6 +201,43 @@ check("Sonido al cancelar (cancel)", 'playMicSound("cancel")' in svc)
 check("Sonidos opt-in como teclado", 'flutter.kb_mic_sounds_enabled' in svc)
 check("Estilos inicio/fin del teclado", 'flutter.kb_mic_start_style' in svc and 'flutter.kb_mic_stop_style' in svc)
 check("Libera SoundPool", 'releaseMicSounds()' in svc and 'soundPool?.release()' in svc)
+_service_start = svc.split("override fun onStartCommand", 1)[1].split("private fun cancelRecording", 1)[0]
+check("Servicio barre audios huérfanos en cada comando de lifecycle",
+      'reconcileDurableAudio()' in _service_start
+      and 'reconcileOrphanedAudio()' in svc
+      and 'reconcilePendingAudio()' in svc)
+reconcile_block = store.split("fun reconcileOrphanedAudio", 1)[1].split("private fun <T> withStoreLock", 1)[0]
+check("Barrido protegido por lock, estados fail-safe, claim y gracia",
+      'withStoreLock' in reconcile_block
+      and 'val authoritative = isAuthoritative(snapshot.fileState)' in reconcile_block
+      and 'isAuthoritative(snapshot.prefsState)' in reconcile_block
+      and 'if (!authoritative)' in reconcile_block
+      and '".${file.name}.pending"' in reconcile_block
+      and 'ensureSweepClaim(claim)' in reconcile_block
+      and 'age < AUDIO_SWEEP_GRACE_MS' in reconcile_block
+      and 'deleteSweepFile(file)' in reconcile_block)
+check("El alta de nota devuelve éxito real de commit verificado",
+      'fun saveUntitledNote(text: String, wav: ByteArray): Boolean' in svc
+      and 'NoteStore(storageContextOrSelf()).addUntitledNote(text, stored.path)' in svc
+      and 'result != NoteSaveResult.SAVED' in svc)
+check("Fallo del índice pendiente conserva el WAV recién escrito",
+      'writeWavFile("pending_notes", "$id.wav", wav, true)' in pending_block
+      and 'if (!saved) return PendingEnqueueResult.FAILED' in pending_block
+      and 'File(stored.path).delete' not in pending_block
+      and pending_block.index('if (!saved) return PendingEnqueueResult.FAILED') < pending_block.index('old.drop'))
+
+check("Topes de notas usan una sola constante Kotlin",
+      store.count('const val MAX_NOTES = 50') == 1
+      and 'NoteStore.MAX_NOTES' in act
+      and 'NoteStore.MAX_NOTES' in prov
+      and 'Límite de 50 notas' not in act
+      and 'notes.size >= 50' not in svc)
+check("Tope de pendientes usa una sola constante Kotlin",
+      store.count('const val MAX_PENDING = 15') == 1
+      and 'old.take(NoteStore.MAX_PENDING - 1)' in svc
+      and 'old.drop(NoteStore.MAX_PENDING - 1)' in svc
+      and 'take(14)' not in svc
+      and 'drop(14)' not in svc)
 
 # Colección con scroll: pendientes arriba + notas debajo, sin tope visual
 _manifest_early = (ROOT / "voice_bubble_stt/android/app/src/main/AndroidManifest.xml").read_text()
@@ -176,8 +249,13 @@ check("Vista vacía cableada",
 check("Servicio de colección declarado (BIND_REMOTEVIEWS)",
       'WidgetNotesListService' in _manifest_early and 'BIND_REMOTEVIEWS' in _manifest_early)
 check("Fábrica: pendientes arriba + notas debajo",
-      'WidgetPendingStore.load' in factory and 'NoteStore(context).load()' in factory
+      'loadWidgetPendingSnapshot' in factory and 'NoteStore(context).loadSnapshot()' in factory
+      and 'NoteIndexState.UNAVAILABLE' in factory
+      and '!isAuthoritativeWidgetState(pendingSnapshot.state)' in factory
       and 'pendings.size + notes.size' in factory)
+check("Fábrica no convierte WAV pendiente ausente en estado VALID",
+      'return WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)' in factory
+      and 'created.toLong() <= 0L' in factory)
 check("Fábrica con 2 tipos de fila (pendiente + nota)",
       'getViewTypeCount' in factory and 'setOnClickFillInIntent' in factory)
 check("Filas abren la modal directo (un toque)",
@@ -231,17 +309,81 @@ STORE = KT / "NoteStore.kt"
 store = STORE.read_text()
 check("NoteStore fusiona archivo+prefs (paridad con Dart)",
       'NOTES_FILE' in store and 'voice_notes.json' in store
-      and 'merge(fileRaw, prefsRaw)' in store)
+      and 'merge(fileIndex.notes, prefsIndex.notes, true)' in store)
 check("NoteStore dedup por id con newest-wins (como Dart)",
-      'byId' in store and 'parseEpoch(n.updatedAt) > parseEpoch(cur.updatedAt)' in store)
+      'byId' in store and 'parseEpoch(note.updatedAt) > parseEpoch(current.updatedAt)' in store)
 check("NoteStore tope 50 (como Dart maxNotes)",
       'MAX_NOTES = 50' in store and 'out.size > MAX_NOTES' in store)
+check("NoteStore distingue ausente, corrupto, vacío y no disponible",
+      all(state in store for state in ("MISSING", "CORRUPT", "EMPTY", "VALID", "UNAVAILABLE"))
+      and 'RawIndexRead(null, false)' in store
+      and 'raw.isBlank()' in store
+      and 'arr.length() == 0' in store)
+check("NoteStore sweep exige lock, estados no autoritativos, notas y claim",
+      'withStoreLock' in reconcile_block
+      and 'val authoritative = isAuthoritative(snapshot.fileState)' in reconcile_block
+      and 'isAuthoritative(snapshot.prefsState)' in reconcile_block
+      and 'if (!authoritative)' in reconcile_block
+      and 'ensureSweepClaim(claim)' in reconcile_block
+      and '".${file.name}.pending"' in reconcile_block)
+check("NoteStore barre pendientes con lock, claim, edad y estados fail-safe",
+      'fun reconcilePendingAudio' in store
+      and 'withPendingLock' in store
+      and 'parsePendingIndex' in store
+      and '".${file.name}.pending"' in store
+      and 'isAuthoritative(snapshot.state)' in store)
+check("NoteStore RMW mantiene lectura, mutación y publish bajo un único lock",
+      all(f'fun {name}' in store for name in ('addUntitledNote', 'saveNote', 'deleteNote'))
+      and all(store.count('return withStoreLock {') >= 3 for _ in [0])
+      and 'loadSnapshotLocked()' in store
+      and 'persistLocked(' in store
+      and 'loadForWrite' not in store)
+check("NoteStore persistencia devuelve archivo atómico y commit verificados",
+      'fun persistLocked(notes: List<VbNote>): NoteMirrorWriteState' in store
+      and 'val fileWritten = try' in store
+      and 'fileMirrorWriter?.invoke(context, jsonArray)' in store
+      and 'if (!fileWritten)' in store
+      and 'restorePrefsMirror' in store
+      and 'restoreFileMirror' in store
+      and '.commit()' in store
+      and 'prefs.getString(KEY_DATA, null) == jsonArray' in store)
+check("Espejo usa temporal único, fsync, move atómico y verify",
+      'private fun writeFileMirror(context: Context, jsonArray: String): Boolean' in store
+      and 'Files.createTempFile(' in store
+      and '"${target.name}."' in store
+      and '".tmp"' in store
+      and 'output.fd.sync()' in store
+      and 'syncDirectory(directory)' in store
+      and 'StandardCopyOption.ATOMIC_MOVE' in store
+      and 'target.readText(StandardCharsets.UTF_8) == jsonArray' in store
+      and 'File(target.parentFile, "${target.name}.tmp")' not in store)
+check("Lock cooperativo tiene token, timeout, stale y release por propietario",
+      'Files.createFile(lockFile.toPath())' in store
+      and 'UUID.randomUUID()' in store
+      and 'LOCK_TIMEOUT_MS' in store
+      and 'LOCK_STALE_MS' in store
+      and 'current.startsWith(token)' in store
+      and 'finally {' in store)
 check("NoteStore ignora ids vacios (como Dart)",
-      'if (n.id.isEmpty()) continue' in store)
+      'id.isNullOrBlank()' in store
+      and 'requiredString(obj, "id", false)' in store)
+check("NoteStore valida estructura y timestamps completos",
+      'requiredString(obj, "id", false)' in store
+      and 'requiredString(obj, "createdAt", false)' in store
+      and 'parseTimestamp(createdAt)' in store
+      and 'updated < created' in store)
+check("NoteStore adopta espejo ausente y ambos ausentes iniciales",
+      'snapshot.fileState == NoteIndexState.MISSING' in store
+      and 'snapshot.prefsState == NoteIndexState.MISSING' in store
+      and 'isAuthoritativeNoteState(snapshot.prefsState)' in store
+      and 'isAuthoritativeNoteState(snapshot.fileState)' in store)
 check("NoteStore preserva audioPath (texto + audio)",
-      'audioPath' in store and 'optString("audioPath")' in store)
+      'audioPath' in store and 'requiredString(obj, "audioPath", false)' in store)
 check("Widget conserva audio al transcribir (texto + audio)",
-      'writeWavFile("notes_audio"' in svc and '"audioPath", audioPath' in svc)
+      'writeWavFile(' in save_block
+      and '"notes_audio"' in save_block
+      and 'NoteStore(storageContextOrSelf()).addUntitledNote(text, stored.path)' in save_block
+      and 'stored.sweepClaim?.delete()' in save_block)
 check("Widget encola offline con flag ON (sin auth)",
       'enqueuePendingWav' in svc and 'notes_deferred_queue_enabled' in svc
       and 'pending_notes' in svc and 'voice_notes_pending_v1' in svc)
@@ -250,10 +392,12 @@ check("Widget no encola fallos de API key",
 check("Enqueue avisa 'Audio guardado' y luego vuelve a idle",
       'updateWidgetsState("pending")' in svc
       and 'pendingResetRunnable' in svc
-      and 'mainHandler.postDelayed(pr, 2000)' in svc)
-check("Enqueue devuelve si guardó (solo avisa en éxito)",
+      and 'mainHandler.postDelayed(runnable, 2000)' in svc)
+check("Enqueue devuelve commit real y serializa toda la RMW",
       'fun enqueuePendingWav(wav: ByteArray): Boolean' in svc
-      and 'val enqueued = ' in svc)
+      and 'synchronized(persistenceLock)' in pending_block
+      and 'enqueuePendingWavResult' in pending_block
+      and 'enqueueResult != PendingEnqueueResult.FAILED' in svc)
 check("Píldora visible también en pendiente",
       'state == "pending"' in prov)
 check("Label 'Audio guardado' en pendiente",
@@ -261,7 +405,8 @@ check("Label 'Audio guardado' en pendiente",
 check("Contador de pendientes en header (ID cableado)",
       '@+id/widget_pending_count' in xml
       and 'R.id.widget_pending_count' in prov
-      and 'WidgetPendingStore.load' in prov
+      and 'loadWidgetPendingSnapshot' in prov
+      and 'pendingSnapshot.items.size' in prov
       and 'pendiente' in prov)
 check("Marca de audio por nota en la fila (paridad con la app)",
       'widget_item_audio' in NOTE_ITEM
@@ -272,16 +417,27 @@ check("Drawable widget_ic_audio.xml existe",
 check("Nota con audio muestra la marca (paridad con la app)",
       'Nota con audio original' in factory)
 check("IDs Kotlin con UUID (sin colision de millis)",
-      'UUID.randomUUID().toString()' in (KT / "WidgetDictationService.kt").read_text()
-      and 'UUID.randomUUID().toString()' in act
-      and '.put("id", "${System.currentTimeMillis()}")' not in (KT / "WidgetDictationService.kt").read_text()
-      and '"${System.currentTimeMillis()}"' not in act)
-check("Overlay escribe espejo en archivo (write-through)",
-      'writeFileMirror' in act)
-check("Dictado escribe espejo en archivo (write-through)",
-      'writeFileMirror' in svc)
-check("Overlay respeta tope 50 en nota nueva (como Dart addNote)",
-      'Límite de 50 notas' in act)
+      'UUID.randomUUID().toString()' in svc
+      and 'id = UUID.randomUUID().toString()' in store
+      and '.put("id", "${System.currentTimeMillis()}")' not in svc
+      and 'System.currentTimeMillis()' not in act)
+check("Overlay serializa save/delete con NoteStore fuera del main",
+      'BackgroundWork.executeWithResult' in act
+      and 'NoteStore(this).saveNote(editingId, titulo, cuerpo)' in act
+      and 'NoteStore(this).deleteNote(id)' in act
+      and 'mutationInProgress.compareAndSet(false, true)' in act)
+check("Dictado usa transacción RMW durable compartida",
+      'NoteStore(storageContextOrSelf()).addUntitledNote(text, stored.path)' in svc
+      and 'synchronized(persistenceLock)' in svc)
+check("Contador UI usa MAX_NOTES sin literal 50",
+      '"$count / ${NoteStore.MAX_NOTES}"' in prov and '"$count / 50"' not in prov)
+check("Overlay respeta tope compartido en nota nueva (como Dart addNote)",
+      'Límite de ${NoteStore.MAX_NOTES} notas' in act)
+check("CI ejecuta el JUnit real C-04 sin reemplazar C-02",
+
+      'TranscriptionHistoryLogicTest' in WORKFLOW.read_text()
+      and 'WidgetNotesBehaviorTest' in WORKFLOW.read_text()
+      and WORKFLOW.read_text().count(':app:testDebugUnitTest') >= 2)
 
 # Lista sin recortes: aire en bordes + separacion real + difuminado
 _list_block = xml.split('@+id/widget_notes_list')[1].split('/>')[0] if '@+id/widget_notes_list' in xml else ""
@@ -302,9 +458,6 @@ check("Plantilla de tap MUTABLE (fill-in note_id/pending_id llega)",
       'FLAG_MUTABLE' in _prov_tpl and 'WidgetNoteEditActivity' in prov)
 check("PIs directos siguen IMMUTABLE (solo la plantilla es mutable)",
       prov.count('FLAG_IMMUTABLE') >= 4 and 'FLAG_MUTABLE' in prov)
-check("Modal avisa si la nota ya no existe (nunca vacia en silencio)",
-      'La nota ya no existe' in act and 'noteId != null && note == null' in act)
-
 # Tacho en la modal: junto a la X, solo editando, con confirmacion
 _del_btn = over.split('@+id/btn_delete"')[1].split('</FrameLayout>')[0] if '@+id/btn_delete"' in over else ""
 check("Tacho junto a la X (48dp, fondo campo, icono propio)",
@@ -327,14 +480,21 @@ _t_del = (RES / "drawable/widget_ic_delete.xml").read_text()
 _m_del = re.search(r'strokeWidth="([\d.]+)"', _t_del)
 check("Trazo grueso widget_ic_delete", _m_del is not None and float(_m_del.group(1)) >= 3.0, _t_del[:120])
 check("Tacho solo en edicion (nota nueva y pendiente sin borrar)",
-      'R.id.btn_delete' in act and 'note != null' in act)
+      'R.id.btn_delete' in act
+      and 'setOnClickListener { confirmDelete() }' in act
+      and 'deletable = false' in act
+      and 'deletable = true' in act)
 check("Borrado con confirmacion estilo glass (sin cartel negro generico)",
-      '¿Eliminar nota?' in act and 'confirmDelete' in act and 'deleteCurrentNote' in act
+      '¿Eliminar nota?' in act and 'confirmDelete' in act and 'requestDelete' in act
       and 'AlertDialog' not in act and 'widget_glass_inner' in act
       and 'kb_key_danger' in act)
-check("Borrado con paridad Dart (espejo + refresco + WAV sin huerfanos)",
-      'writeFileMirror' in act and 'requestListRefresh' in act
-      and 'audioToDelete' in act and 'Nota eliminada' in act)
+check("Borrado solo limpia WAV tras commit NoteStore verificado",
+      'when (val result = NoteStore(this).deleteNote(id))' in act
+      and 'is NoteDeleteResult.Deleted ->' in act
+      and 'for (path in result.audioPaths)' in act
+      and 'BackgroundWork.execute { refreshNoteWidgets() }' in act
+      and 'Nota eliminada' in act
+      and 'se conservó el audio' in act)
 
 # Contrato de claves intacto (CI lo exige exacto)
 import subprocess
@@ -342,7 +502,19 @@ out = subprocess.check_output(
     f"grep -rvhE '^[[:space:]]*import ' '{KT}' | grep -ohE 'flutter\\.[a-z_0-9]+' | sed 's/^flutter\\.//' | sort -u",
     shell=True, text=True).strip()
 contract = (ROOT / "docs/contract-keys.txt").read_text().strip()
-check("Contrato de claves Kotlin==Dart intacto", out == contract)
+check("Suite tiene JUnit nativo de rutas productivas C-04",
+      NATIVE_TEST.exists()
+      and "RobolectricTestRunner" in NATIVE_TEST.read_text()
+      and "ContextWrapper(base)" in NATIVE_TEST.read_text()
+      and "registerOnSharedPreferenceChangeListener" in NATIVE_TEST.read_text()
+      and "failedPreferenceCommitDoesNotMutateTheStore" in NATIVE_TEST.read_text()
+      and "NoteStore(TestContext" in NATIVE_TEST.read_text()
+      and "reconcileOrphanedAudio" in NATIVE_TEST.read_text()
+      and "withCooperativeFileLock" in NATIVE_TEST.read_text()
+      and "writeWavFile(" in NATIVE_TEST.read_text()
+      and "enqueuePendingWav(" in NATIVE_TEST.read_text()
+      and "WidgetNotesProvider.resolveState" in NATIVE_TEST.read_text()
+      and "WidgetNoteEditActivity.resolveExistingNoteState" in NATIVE_TEST.read_text())
 
 print(f"\nRESULTADO SUITE WIDGET-NOTES: {len(passed)} pasados, {len(failed)} fallidos.")
 sys.exit(1 if failed else 0)

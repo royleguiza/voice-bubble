@@ -44,6 +44,9 @@ class _NotesScreenState extends State<NotesScreen>
   bool _deferredQueueEnabled = false;
   bool _isTranscribingPending = false;
   bool _queueLoaded = false;
+  bool _queueAvailable = false;
+  bool _notesAvailable = false;
+  bool _loading = true;
 
   @override
   void initState() {
@@ -69,25 +72,32 @@ class _NotesScreenState extends State<NotesScreen>
   }
 
   Future<void> _refreshFromWidget() async {
-    await _notesService.load();
+    final notesLoaded = await _notesService.load();
     try {
       _deferredQueueEnabled =
           await StorageService().loadNotesDeferredQueueEnabled();
     } catch (_) {}
-    await _pendingQueue.load();
+    final queueLoaded = await _pendingQueue.load();
+    _notesAvailable = notesLoaded;
+    _queueAvailable = queueLoaded;
+    _queueLoaded = true;
+    _loading = false;
     if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
-    await _notesService.load();
+    final notesLoaded = await _notesService.load();
     try {
       _deferredQueueEnabled =
           await StorageService().loadNotesDeferredQueueEnabled();
     } catch (_) {
       _deferredQueueEnabled = false;
     }
-    await _pendingQueue.load();
+    final queueLoaded = await _pendingQueue.load();
+    _notesAvailable = notesLoaded;
+    _queueAvailable = queueLoaded;
     _queueLoaded = true;
+    _loading = false;
     if (mounted) setState(() {});
   }
 
@@ -125,16 +135,26 @@ class _NotesScreenState extends State<NotesScreen>
         setState(() => _isTranscribing = false);
         return;
       }
-      // Conservar audio: copia durable ANTES de transcribir (transcribe
-      // borra el temporal en éxito). La nota queda con texto + audio.
       keptPath = await _pendingQueue.keepCopyForNote(path);
-      final file = await _transcriptionService.transcribe(path);
+      if (keptPath == null) {
+        if (mounted) {
+          setState(() => _isTranscribing = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se pudo conservar el audio')),
+          );
+        }
+        return;
+      }
+      final file = await _transcriptionService.transcribe(
+        path,
+        deleteAudioOnSuccess: false,
+      );
       final ok = await _notesService.addFromTranscription(
         file.text,
         audioPath: keptPath,
       );
-      if (!ok) {
-        _pendingQueue.deleteKeptAudio(keptPath);
+      if (ok) {
+        await _transcriptionService.cleanupTempFile(path);
       }
       if (!mounted) return;
       setState(() => _isTranscribing = false);
@@ -145,6 +165,10 @@ class _NotesScreenState extends State<NotesScreen>
           const SnackBar(content: Text('Nota guardada')),
         );
         setState(() {});
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nota no guardada; el audio se conserva')),
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -155,12 +179,10 @@ class _NotesScreenState extends State<NotesScreen>
           e is TranscriptionException && e.isRetryable && path != null;
       if (retryable && _deferredQueueEnabled) {
         final item = await _pendingQueue.enqueueFromTemp(path);
-        // El pendiente ya guarda su propio WAV: el copiado previo a
-        // notes_audio queda huérfano y se limpia.
-        _pendingQueue.deleteKeptAudio(keptPath);
         if (!mounted) return;
         setState(() {});
         if (item != null) {
+          _pendingQueue.deleteKeptAudio(keptPath);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Sin conexión · audio guardado en Notas'),
@@ -168,8 +190,6 @@ class _NotesScreenState extends State<NotesScreen>
           );
           return;
         }
-      } else {
-        _pendingQueue.deleteKeptAudio(keptPath);
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -181,39 +201,54 @@ class _NotesScreenState extends State<NotesScreen>
   Future<void> _transcribePending(PendingNote item) async {
     if (_isTranscribingPending) return;
     setState(() => _isTranscribingPending = true);
-    // Copia durable a notes_audio ANTES de transcribir: si el envío
-    // tiene éxito, la nota queda con texto + audio original.
     final keptPath = await _pendingQueue.promoteToKept(item);
+    if (keptPath == null) {
+      if (mounted) {
+        setState(() => _isTranscribingPending = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo conservar el audio')),
+        );
+      }
+      return;
+    }
+    var noteCommitted = false;
     try {
       final key = await StorageService.espSecureStorage
               .read(key: 'groq_api_key') ??
           '';
       _transcriptionService.updateApiKey(key);
-      final file = await _transcriptionService.transcribe(item.audioPath);
+      final file = await _transcriptionService.transcribe(
+        item.audioPath,
+        deleteAudioOnSuccess: false,
+      );
       final ok = await _notesService.addFromTranscription(
         file.text,
         audioPath: keptPath,
       );
       if (!ok) {
-        _pendingQueue.deleteKeptAudio(keptPath);
+        if (mounted) {
+          setState(() => _isTranscribingPending = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nota no guardada; el audio se conserva')),
+          );
+        }
+        return;
       }
-      // transcribe() ya borró el WAV pendiente en éxito; quitamos el índice.
-      await _pendingQueue.remove(item.id, deleteAudio: false);
+      noteCommitted = true;
+      final removed = await _pendingQueue.remove(item.id, deleteAudio: true);
       await WidgetService().updateWidgets();
       if (!mounted) return;
       setState(() => _isTranscribingPending = false);
-      if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nota guardada')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nota no guardada (límite o vacío)')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            removed ? 'Nota guardada' : 'Nota guardada; el audio queda pendiente',
+          ),
+        ),
+      );
       setState(() {});
     } on TranscriptionException catch (e) {
-      _pendingQueue.deleteKeptAudio(keptPath);
+      if (!noteCommitted) _pendingQueue.deleteKeptAudio(keptPath);
       if (!mounted) return;
       setState(() => _isTranscribingPending = false);
       final msg = e.kind == TranscriptionErrorKind.auth
@@ -225,7 +260,7 @@ class _NotesScreenState extends State<NotesScreen>
         SnackBar(content: Text(msg)),
       );
     } catch (e) {
-      _pendingQueue.deleteKeptAudio(keptPath);
+      if (!noteCommitted) _pendingQueue.deleteKeptAudio(keptPath);
       if (!mounted) return;
       setState(() => _isTranscribingPending = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -383,7 +418,10 @@ class _NotesScreenState extends State<NotesScreen>
             child: Row(
               children: [
                 Text(
-                  '${_filtered.length} / ${NotesService.maxNotes}',
+                  !_notesAvailable
+                      ? (_loading ? 'Cargando…' : 'Notas no disponibles')
+                      : '${_filtered.length} / ${NotesService.maxNotes}',
+                  key: const ValueKey('notesStatus'),
                   style: kTextCaption.copyWith(
                     color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
                   ),
@@ -414,9 +452,10 @@ class _NotesScreenState extends State<NotesScreen>
             ),
           ),
           const SizedBox(height: 8),
-          if (_deferredQueueEnabled &&
-              _queueLoaded &&
-              _pendingQueue.items.isNotEmpty) ...[
+           if (_deferredQueueEnabled &&
+               _queueLoaded &&
+               _queueAvailable &&
+               _pendingQueue.items.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
@@ -456,17 +495,42 @@ class _NotesScreenState extends State<NotesScreen>
               ),
             ),
           ],
-          Expanded(
-            child: _filtered.isEmpty
-                ? Center(
-                    child: Text(
-                      _query.isEmpty ? 'Sin notas' : 'Sin resultados',
-                      style: kTextFootnote.copyWith(
-                        color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
-                      ),
-                    ),
-                  )
-                : ListView.separated(
+           if (_queueLoaded && !_queueAvailable)
+             Padding(
+               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+               child: Text(
+                 'Cola no disponible',
+                 key: const ValueKey('pendingQueueUnavailable'),
+                 style: kTextCaption.copyWith(
+                   color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
+                 ),
+               ),
+             ),
+           Expanded(
+             child: !_notesAvailable
+                 ? Center(
+                     child: Text(
+                       _loading
+                           ? 'Cargando notas…'
+                           : 'No se pudo leer el estado de las notas',
+                       key: const ValueKey('notesUnavailable'),
+                       style: kTextFootnote.copyWith(
+                         color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
+                       ),
+                     ),
+                   )
+                 : _filtered.isEmpty
+                     ? Center(
+                         child: Text(
+                           _query.isEmpty ? 'Sin notas' : 'Sin resultados',
+                           style: kTextFootnote.copyWith(
+                             color: isDark
+                                 ? kLabelSecondaryDark
+                                 : kLabelSecondaryLight,
+                           ),
+                         ),
+                       )
+                     : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                     itemCount: _filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),

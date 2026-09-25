@@ -10,10 +10,14 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Directory tempDir;
+  var pathProviderAvailable = true;
 
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({
+      PendingNoteQueue.pendingKey: '[]',
+    });
     tempDir = Directory.systemTemp.createTempSync('pending_queue_');
+    pathProviderAvailable = true;
 
     final messenger =
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -27,7 +31,12 @@ void main() {
     ]) {
       messenger.setMockMethodCallHandler(
         MethodChannel(channel),
-        (MethodCall call) async => tempDir.path,
+        (MethodCall call) async {
+          if (!pathProviderAvailable) {
+            throw PlatformException(code: 'unavailable');
+          }
+          return tempDir.path;
+        },
       );
     }
   });
@@ -59,6 +68,8 @@ void main() {
   group('PendingNoteQueue - contrato', () {
     test('claves canonicas', () {
       expect(PendingNoteQueue.pendingKey, 'voice_notes_pending_v1');
+      expect(PendingNoteQueue.lockFileName,
+          'flutter.voice_notes_pending_v1.lock');
       expect(PendingNoteQueue.maxPending, 15);
       expect(PendingNoteQueue.pendingDirName, 'pending_notes');
     });
@@ -78,10 +89,77 @@ void main() {
           isTrue);
     });
 
-    test('fromJson tolera campos ausentes', () {
-      final p = PendingNote.fromJson(const {});
-      expect(p.id, '');
-      expect(p.audioPath, '');
+    test('primera instalación permite encolar el primer pendiente', () async {
+      SharedPreferences.setMockInitialValues({});
+      final queue = PendingNoteQueue();
+      expect(await queue.load(), isTrue);
+      final item = await queue.enqueueFromTemp(makeTempWav('first.wav'));
+      expect(item, isNotNull);
+      expect(queue.items.single.id, item!.id);
+      expect(File(item.audioPath).existsSync(), isTrue);
+    });
+
+    test('load barre WAV huérfanos antiguos de ambas carpetas', () async {
+      SharedPreferences.setMockInitialValues({
+        PendingNoteQueue.pendingKey: '[]',
+        PendingNoteQueue.notesKey: '[]',
+      });
+      File('${tempDir.path}/${PendingNoteQueue.notesFileName}')
+          .writeAsStringSync('[]');
+      Directory(
+              '${tempDir.path}/${PendingNoteQueue.pendingDirName}')
+          .createSync();
+      Directory(
+              '${tempDir.path}/${PendingNoteQueue.notesAudioDirName}')
+          .createSync();
+      final pending = File(
+          '${tempDir.path}/${PendingNoteQueue.pendingDirName}/pending-orphan.wav')
+        ..writeAsBytesSync([1, 2, 3]);
+      final kept = File(
+          '${tempDir.path}/${PendingNoteQueue.notesAudioDirName}/notes-orphan.wav')
+        ..writeAsBytesSync([4, 5, 6]);
+      final old = DateTime.now()
+          .subtract(const Duration(milliseconds: 86400001));
+      pending.setLastModifiedSync(old);
+      kept.setLastModifiedSync(old);
+
+      expect(await PendingNoteQueue().load(), isTrue);
+      expect(pending.existsSync(), isFalse);
+      expect(kept.existsSync(), isFalse);
+    });
+
+    test('load registra y preserva huérfanos con índice no autoritativo',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      Directory(
+              '${tempDir.path}/${PendingNoteQueue.pendingDirName}')
+          .createSync();
+      Directory(
+              '${tempDir.path}/${PendingNoteQueue.notesAudioDirName}')
+          .createSync();
+      final pending = File(
+          '${tempDir.path}/${PendingNoteQueue.pendingDirName}/pending-orphan.wav')
+        ..writeAsBytesSync([1, 2, 3]);
+      final kept = File(
+          '${tempDir.path}/${PendingNoteQueue.notesAudioDirName}/notes-orphan.wav')
+        ..writeAsBytesSync([4, 5, 6]);
+
+      expect(await PendingNoteQueue().load(), isFalse);
+      final pendingClaim = File(
+          '${pending.parent.path}/.${pending.uri.pathSegments.last}.pending');
+      final keptClaim = File(
+          '${kept.parent.path}/.${kept.uri.pathSegments.last}.pending');
+      expect(pending.existsSync(), isTrue);
+      expect(pendingClaim.existsSync(), isTrue);
+      expect(kept.existsSync(), isTrue);
+      expect(keptClaim.existsSync(), isTrue);
+    });
+
+    test('fromJson rechaza campos obligatorios ausentes', () {
+      expect(
+        () => PendingNote.fromJson(const {}),
+        throwsA(isA<FormatException>()),
+      );
     });
   });
 
@@ -196,6 +274,79 @@ void main() {
     });
   });
 
+  test('missing queue blocks mutation and preserves the last snapshot', () async {
+    final queue = PendingNoteQueue();
+    await queue.load();
+    final item = await queue.enqueueFromTemp(makeTempWav('kept.wav'));
+    expect(item, isNotNull);
+    SharedPreferences.setMockInitialValues({});
+    final source = makeTempWav('new.wav');
+
+    expect(await queue.load(), isFalse);
+    expect(await queue.enqueueFromTemp(source), isNull);
+    expect(await queue.remove(item!.id), isFalse);
+    expect(await queue.discardAll(), isFalse);
+    expect(queue.items.single.id, item.id);
+    expect(File(source).existsSync(), isTrue);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(PendingNoteQueue.pendingKey), isNull);
+  });
+
+  test('corrupt queue blocks mutation and preserves stored data', () async {
+    final queue = PendingNoteQueue();
+    await queue.load();
+    final item = await queue.enqueueFromTemp(makeTempWav('kept.wav'));
+    expect(item, isNotNull);
+    SharedPreferences.setMockInitialValues({
+      PendingNoteQueue.pendingKey: '{bad',
+    });
+    final source = makeTempWav('new.wav');
+
+    expect(await queue.load(), isFalse);
+    expect(await queue.enqueueFromTemp(source), isNull);
+    expect(await queue.remove(item!.id), isFalse);
+    expect(await queue.discardAll(), isFalse);
+    expect(queue.items.single.id, item.id);
+    expect(File(source).existsSync(), isTrue);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(PendingNoteQueue.pendingKey), '{bad');
+  });
+
+  test('índice pendiente sin WAV queda corrupto y bloquea mutaciones',
+      () async {
+    final queue = PendingNoteQueue();
+    await queue.load();
+    final item = await queue.enqueueFromTemp(makeTempWav('missing.wav'));
+    expect(item, isNotNull);
+    File(item!.audioPath).deleteSync();
+    final source = makeTempWav('new.wav');
+
+    final reloaded = PendingNoteQueue();
+    expect(await reloaded.load(), isFalse);
+    expect(await reloaded.enqueueFromTemp(source), isNull);
+    expect(reloaded.items, isEmpty);
+    expect(File(source).existsSync(), isTrue);
+    final prefs = await SharedPreferences.getInstance();
+    final stored = jsonDecode(prefs.getString(PendingNoteQueue.pendingKey)!) as List;
+    expect(stored, hasLength(1));
+  });
+
+  test('unavailable queue blocks mutation and preserves the last snapshot', () async {
+    final queue = PendingNoteQueue();
+    await queue.load();
+    final item = await queue.enqueueFromTemp(makeTempWav('kept.wav'));
+    expect(item, isNotNull);
+    pathProviderAvailable = false;
+    final source = makeTempWav('new.wav');
+
+    expect(await queue.load(), isFalse);
+    expect(await queue.enqueueFromTemp(source), isNull);
+    expect(await queue.remove(item!.id), isFalse);
+    expect(await queue.discardAll(), isFalse);
+    expect(queue.items.single.id, item.id);
+    expect(File(source).existsSync(), isTrue);
+  });
+
   group('PendingNoteQueue - audio conservado (texto + audio)', () {
     test('keepCopyForNote copia a notes_audio sin tocar el original',
         () async {
@@ -236,19 +387,19 @@ void main() {
   });
 
   group('PendingNoteQueue - tolerancia', () {
-    test('JSON invalido devuelve vacio', () async {
+    test('JSON invalido no carga una lista vacia', () async {
       SharedPreferences.setMockInitialValues(
           {'voice_notes_pending_v1': '{bad'});
       final q = PendingNoteQueue();
-      await q.load();
+      expect(await q.load(), isFalse);
       expect(q.items, isEmpty);
     });
 
-    test('tipo incorrecto devuelve vacio', () async {
+    test('tipo incorrecto no carga una lista vacia', () async {
       SharedPreferences.setMockInitialValues(
           {'voice_notes_pending_v1': '"solo"'});
       final q = PendingNoteQueue();
-      await q.load();
+      expect(await q.load(), isFalse);
       expect(q.items, isEmpty);
     });
   });

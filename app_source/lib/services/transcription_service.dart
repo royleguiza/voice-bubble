@@ -83,9 +83,12 @@ class TranscriptionService {
 
   /// Transcribe el audio en [audioPath] con el motor cloud.
   ///
-  /// En éxito borra el archivo temporal. En fallo lo CONSERVA para permitir
-  /// reintento sin regrabar (la UI decide cuándo limpiarlo).
-  Future<Transcription> transcribe(String audioPath) async {
+  /// En éxito el llamador decide si borra el archivo temporal. En fallo lo
+  /// conserva para permitir reintento sin regrabar.
+  Future<Transcription> transcribe(
+    String audioPath, {
+    bool deleteAudioOnSuccess = true,
+  }) async {
     final result = await _cloudService.transcribe(audioPath);
 
     if (result.text.isNotEmpty) {
@@ -93,13 +96,14 @@ class TranscriptionService {
       if (!saved) return result;
     }
 
-    // IO sincrona segura: los futures de dart:io no corren bajo fakeAsync (tests).
-    try {
-      final file = File(audioPath);
-      if (file.existsSync()) {
-        file.deleteSync();
-      }
-    } catch (_) {}
+    if (deleteAudioOnSuccess) {
+      try {
+        final file = File(audioPath);
+        if (file.existsSync()) {
+          file.deleteSync();
+        }
+      } catch (_) {}
+    }
 
     return result;
   }

@@ -13,12 +13,35 @@ import android.media.AudioAttributes
 import android.media.SoundPool
 import android.os.Build
 import android.os.IBinder
-import android.widget.RemoteViews
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.channels.FileChannel
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 
-class WidgetDictationService : Service() {
+internal enum class PendingEnqueueResult {
+    COMMITTED,
+    COMMITTED_WITH_CLEANUP_FAILURE,
+    FAILED,
+}
+
+private enum class EvictionCleanupResult {
+    DELETED,
+    REGISTERED,
+    FAILED,
+}
+
+class WidgetDictationService(
+    private val storageContext: Context? = null,
+    private val deleteFile: (File) -> Boolean = { file ->
+        Files.deleteIfExists(file.toPath())
+        !file.exists()
+    },
+) : Service() {
 
     companion object {
         const val ACTION_TOGGLE = "com.royleguiza.voicebubblestt.WIDGET_TOGGLE"
@@ -28,9 +51,15 @@ class WidgetDictationService : Service() {
         private const val NOTIF_ID = 2002
     }
 
+    internal data class StoredWav(
+        val path: String,
+        val sweepClaim: File?,
+    )
+
     private var isRecording = false
     private var client: SpeechToTextClient? = null
-    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val mainHandler by lazy { android.os.Handler(android.os.Looper.getMainLooper()) }
+    private val persistenceLock = Any()
     private var autoStopRunnable: Runnable? = null
     private var savedResetRunnable: Runnable? = null
     private var pendingResetRunnable: Runnable? = null
@@ -39,7 +68,15 @@ class WidgetDictationService : Service() {
     private var soundStop = 0
     private var soundCancel = 0
 
+    private fun storageContextOrSelf(): Context = storageContext ?: this
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    internal fun reconcileDurableAudio() {
+        val noteStore = NoteStore(storageContextOrSelf())
+        noteStore.reconcileOrphanedAudio()
+        noteStore.reconcilePendingAudio()
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -115,23 +152,23 @@ class WidgetDictationService : Service() {
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(
+            val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Widget dictado",
                 NotificationManager.IMPORTANCE_LOW
             ).apply { description = "Grabacion desde widget" }
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(ch)
+                .createNotificationChannel(channel)
         }
     }
 
     private fun notif(text: String): Notification {
-        val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, CHANNEL_ID)
         } else {
             @Suppress("DEPRECATION") Notification.Builder(this)
         }
-        return b.setContentTitle("VoiceBubble")
+        return builder.setContentTitle("VoiceBubble")
             .setContentText(text)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
@@ -140,6 +177,7 @@ class WidgetDictationService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        BackgroundWork.execute { reconcileDurableAudio() }
         val action = intent?.action
         val widgetId = intent?.getIntExtra(EXTRA_WIDGET_ID, -1) ?: -1
 
@@ -173,9 +211,9 @@ class WidgetDictationService : Service() {
     }
 
     private fun startRecording(widgetId: Int) {
-        val c = SpeechToTextClient(this)
-        client = c
-        if (!c.hasMicPermission()) {
+        val speechClient = SpeechToTextClient(this)
+        client = speechClient
+        if (!speechClient.hasMicPermission()) {
             updateWidgetsState("error")
             mainHandler.postDelayed({
                 updateWidgetsState("idle")
@@ -193,7 +231,7 @@ class WidgetDictationService : Service() {
         playMicSound("start")
         updateWidgetsState("recording")
         BackgroundWork.execute {
-            val ok = c.startRecording()
+            val ok = speechClient.startRecording()
             if (!ok) {
                 BackgroundWork.postMain {
                     isRecording = false
@@ -206,9 +244,9 @@ class WidgetDictationService : Service() {
         // Tope igual que el teclado: MAX_SECONDS (300s). Solo corta si el
         // usuario no pausó antes; el envío lo dispara siempre el usuario.
         autoStopRunnable?.let { mainHandler.removeCallbacks(it) }
-        val r = Runnable { if (isRecording) stopAndTranscribe() }
-        autoStopRunnable = r
-        mainHandler.postDelayed(r, SpeechToTextClient.MAX_SECONDS * 1000L)
+        val runnable = Runnable { if (isRecording) stopAndTranscribe() }
+        autoStopRunnable = runnable
+        mainHandler.postDelayed(runnable, SpeechToTextClient.MAX_SECONDS * 1000L)
     }
 
     private fun stopAndTranscribe() {
@@ -216,10 +254,10 @@ class WidgetDictationService : Service() {
         isRecording = false
         playMicSound("stop")
         updateWidgetsState("transcribing")
-        val c = client ?: return
+        val speechClient = client ?: return
         BackgroundWork.execute {
-            val wav = c.stopRecording()
-            if (c.isEmptyCapture(wav)) {
+            val wav = speechClient.stopRecording()
+            if (speechClient.isEmptyCapture(wav)) {
                 BackgroundWork.postMain {
                     updateWidgetsState("idle")
                     stopForeground(true)
@@ -227,8 +265,8 @@ class WidgetDictationService : Service() {
                 }
                 return@execute
             }
-            val cfg = c.loadConfig()
-            if (cfg.apiKey.isBlank()) {
+            val config = speechClient.loadConfig()
+            if (config.apiKey.isBlank()) {
                 BackgroundWork.postMain {
                     updateWidgetsState("idle")
                     stopForeground(true)
@@ -236,83 +274,73 @@ class WidgetDictationService : Service() {
                 }
                 return@execute
             }
-            c.transcribe(wav, cfg, onDone = { text ->
-                BackgroundWork.postMain {
-                    if (text != null && text.isNotBlank()) {
-                        // Texto + audio: el WAV original se conserva junto a
-                        // la nota (pedido del dueño 2026-09-23).
-                        val kept = writeWavFile("notes_audio", "${UUID.randomUUID()}.wav", wav)
-                        saveUntitledNote(text.trim(), kept)
+            speechClient.transcribe(wav, config, onDone = { text ->
+                val durableSaved = synchronized(persistenceLock) {
+                    if (text == null || text.isBlank()) {
+                        false
+                    } else {
+                        saveUntitledNote(text.trim(), wav)
                     }
-                    updateWidgetsState("idle")
-                    // Notifica save breve
-                    updateWidgetsState("saved")
+                }
+                BackgroundWork.postMain {
+                    updateWidgetsState(if (durableSaved) "saved" else "idle")
                     savedResetRunnable?.let { mainHandler.removeCallbacks(it) }
-                    val sr = Runnable {
+                    val runnable = Runnable {
                         updateWidgetsState("idle")
                         stopForeground(true)
                         stopSelf()
                     }
-                    savedResetRunnable = sr
-                    mainHandler.postDelayed(sr, 1200)
+                    savedResetRunnable = runnable
+                    mainHandler.postDelayed(runnable, 1200)
                 }
-            }, onError = { msg ->
-                // Sin red / fallo reintentable: con el flag ON el audio se
-                // encola en pending_notes para transcribirlo desde la app
-                // ("Transcribir con nube"). Auth (sin/ mala key) no encola.
-                // El widget avisa con la píldora "Audio guardado" para que
-                // lo grabado se vea también acá, no solo en la app.
-                val enqueued = isDeferredQueueEnabled() && !isAuthError(msg) &&
-                    enqueuePendingWav(wav)
-                BackgroundWork.postMain {
-                    if (enqueued) {
-                        updateWidgetsState("pending")
-                        pendingResetRunnable?.let { mainHandler.removeCallbacks(it) }
-                        val pr = Runnable {
+            }, onError = { message ->
+                BackgroundWork.execute {
+                    val enqueueResult = if (isDeferredQueueEnabled() && !isAuthError(message)) {
+                        enqueuePendingWavResult(wav)
+                    } else {
+                        PendingEnqueueResult.FAILED
+                    }
+                    val enqueued = enqueueResult != PendingEnqueueResult.FAILED
+                    BackgroundWork.postMain {
+                        if (enqueued) {
+                            updateWidgetsState("pending")
+                            pendingResetRunnable?.let { mainHandler.removeCallbacks(it) }
+                            val runnable = Runnable {
+                                updateWidgetsState("idle")
+                                stopForeground(true)
+                                stopSelf()
+                            }
+                            pendingResetRunnable = runnable
+                            mainHandler.postDelayed(runnable, 2000)
+                        } else {
                             updateWidgetsState("idle")
                             stopForeground(true)
                             stopSelf()
                         }
-                        pendingResetRunnable = pr
-                        mainHandler.postDelayed(pr, 2000)
-                    } else {
-                        updateWidgetsState("idle")
-                        stopForeground(true)
-                        stopSelf()
                     }
                 }
             })
         }
     }
 
-    private fun saveUntitledNote(text: String, audioPath: String? = null) {
+    private fun saveUntitledNote(text: String, wav: ByteArray): Boolean {
+        val stored = writeWavFile(
+            "notes_audio",
+            "${UUID.randomUUID()}.wav",
+            wav,
+            true,
+        ) ?: return false
+        val result = NoteStore(storageContextOrSelf()).addUntitledNote(text, stored.path)
+        if (result != NoteSaveResult.SAVED) {
+            try {
+                stored.sweepClaim?.delete()
+            } catch (_: Exception) {}
+            return false
+        }
         try {
-            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val raw = prefs.getString("flutter.voice_notes_v1", null)
-            val arr = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
-            val now = java.time.Instant.now().toString()
-            val obj = JSONObject()
-                .put("id", UUID.randomUUID().toString())
-                .put("titulo", "")
-                .put("cuerpo", text)
-                .put("createdAt", now)
-                .put("updatedAt", now)
-            if (!audioPath.isNullOrBlank()) {
-                obj.put("audioPath", audioPath)
-            }
-            // Insertar al inicio
-            val newArr = JSONArray()
-            newArr.put(obj)
-            for (i in 0 until arr.length()) {
-                if (newArr.length() >= 50) break
-                newArr.put(arr.getJSONObject(i))
-            }
-            val finalJson = newArr.toString()
-            prefs.edit().putString("flutter.voice_notes_v1", finalJson).apply()
-            // Espejo en archivo (ver NoteStore): Dart y widget leen lo mismo.
-            NoteStore.writeFileMirror(this, finalJson)
-            refreshWidgets()
+            stored.sweepClaim?.delete()
         } catch (_: Exception) {}
+        return true
     }
 
     /**
@@ -324,63 +352,188 @@ class WidgetDictationService : Service() {
      * Solo con el flag `flutter.notes_deferred_queue_enabled` en ON.
      */
     private fun isDeferredQueueEnabled(): Boolean = try {
-        getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        storageContextOrSelf()
+            .getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             .getBoolean("flutter.notes_deferred_queue_enabled", false)
     } catch (_: Exception) {
         false
     }
 
-    private fun isAuthError(msg: String): Boolean =
-        msg.contains("API key", ignoreCase = true)
+    private fun isAuthError(message: String): Boolean =
+        message.contains("API key", ignoreCase = true)
 
-    private fun writeWavFile(dirName: String, fileName: String, wav: ByteArray): String? {
-        return try {
-            val dir = java.io.File(filesDir, dirName)
-            if (!dir.exists()) dir.mkdirs()
-            val dest = java.io.File(dir, fileName)
-            dest.writeBytes(wav)
-            dest.absolutePath
-        } catch (_: Exception) {
-            null
+    private fun syncDirectory(directory: File) {
+        FileChannel.open(directory.toPath(), StandardOpenOption.READ).use { channel ->
+            channel.force(true)
         }
     }
 
-    private fun enqueuePendingWav(wav: ByteArray): Boolean {
-        try {
+    internal fun writeWavFile(
+        dirName: String,
+        fileName: String,
+        wav: ByteArray,
+        protectFromSweep: Boolean,
+    ): StoredWav? {
+        val directory = File(storageContextOrSelf().filesDir, dirName)
+        var temporary: File? = null
+        var claim: File? = null
+        var published = false
+        return try {
+            if (!directory.isDirectory && !directory.mkdirs() && !directory.isDirectory) return null
+            if (protectFromSweep) {
+                val claimFile = File(directory, ".${fileName}.pending")
+                claim = claimFile
+                FileOutputStream(claimFile, false).use { output ->
+                    output.write(1)
+                    output.fd.sync()
+                }
+                syncDirectory(directory)
+            }
+            val temporaryPath = Files.createTempFile(
+                directory.toPath(),
+                ".$fileName.",
+                ".tmp",
+            )
+            val temporaryFile = temporaryPath.toFile()
+            temporary = temporaryFile
+            FileOutputStream(temporaryFile, false).use { output ->
+                output.write(wav)
+                output.fd.sync()
+            }
+            val destination = File(directory, fileName)
+            Files.move(
+                temporaryFile.toPath(),
+                destination.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+            syncDirectory(directory)
+            if (!destination.isFile || !destination.readBytes().contentEquals(wav)) return null
+            published = true
+            StoredWav(destination.absolutePath, claim)
+        } catch (_: Exception) {
+            null
+        } finally {
+            val path = temporary
+            if (path != null) {
+                try {
+                    Files.deleteIfExists(path.toPath())
+                } catch (_: Exception) {}
+            }
+            if (!published) {
+                val path = claim
+                if (path != null) {
+                    try {
+                        Files.deleteIfExists(path.toPath())
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+    }
+
+    internal fun enqueuePendingWav(wav: ByteArray): Boolean =
+        enqueuePendingWavResult(wav) != PendingEnqueueResult.FAILED
+
+    internal fun enqueuePendingWavResult(wav: ByteArray): PendingEnqueueResult {
+        return synchronized(persistenceLock) {
+            try {
+                NoteStore.withCooperativeFileLock(
+                    File(storageContextOrSelf().filesDir, NoteStore.PENDING_LOCK_FILE_NAME),
+                ) {
+                    enqueuePendingWavLocked(wav)
+                } ?: PendingEnqueueResult.FAILED
+            } catch (_: Exception) {
+                PendingEnqueueResult.FAILED
+            }
+        }
+    }
+
+    private fun hasPendingWav(): Boolean {
+        return try {
+            File(storageContextOrSelf().filesDir, "pending_notes")
+                .listFiles()
+                ?.any { it.isFile && it.name.endsWith(".wav") } == true
+        } catch (_: Exception) {
+            true
+        }
+    }
+
+    private fun enqueuePendingWavLocked(wav: ByteArray): PendingEnqueueResult {
+        return try {
+            val prefs = storageContextOrSelf()
+                .getSharedPreferences(NoteStore.PREFS_NAME, Context.MODE_PRIVATE)
+            val raw = prefs.getString(NoteStore.PENDING_KEY, null)
+            if (raw == null && hasPendingWav()) return PendingEnqueueResult.FAILED
             val id = UUID.randomUUID().toString()
-            val path = writeWavFile("pending_notes", "$id.wav", wav) ?: return false
-            val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            val raw = prefs.getString("flutter.voice_notes_pending_v1", null)
-            val arr = if (raw.isNullOrBlank()) JSONArray() else JSONArray(raw)
+            val stored = writeWavFile("pending_notes", "$id.wav", wav, true)
+                ?: return PendingEnqueueResult.FAILED
+            val arr = if (raw == null) JSONArray() else JSONArray(raw)
             val nowMs = System.currentTimeMillis()
             val obj = JSONObject()
                 .put("id", id)
-                .put("audioPath", path)
+                .put("audioPath", stored.path)
                 .put("createdAtMs", nowMs)
             val old = ArrayList<JSONObject>()
             for (i in 0 until arr.length()) {
-                val o = arr.optJSONObject(i) ?: continue
-                if (o.optString("id").isBlank() || o.optString("audioPath").isBlank()) continue
-                old.add(o)
+                val item = arr.optJSONObject(i) ?: return PendingEnqueueResult.FAILED
+                val id = item.opt("id") as? String
+                val path = item.opt("audioPath") as? String
+                val created = item.opt("createdAtMs") as? Number
+                if (id.isNullOrBlank() || path.isNullOrBlank() ||
+                    created == null || created.toLong() <= 0L ||
+                    !File(path).isFile) {
+                    return PendingEnqueueResult.FAILED
+                }
+                old.add(item)
             }
             val merged = JSONArray()
             merged.put(obj)
-            for (o in old.take(14)) merged.put(o)
-            // FIFO: lo que no entró (más viejo) se descarta con su WAV.
-            for (o in old.drop(14)) {
-                try {
-                    val victimPath = o.optString("audioPath")
-                    if (victimPath.isNotBlank()) {
-                        val f = java.io.File(victimPath)
-                        if (f.exists()) f.delete()
-                    }
-                } catch (_: Exception) {}
+            for (item in old.take(NoteStore.MAX_PENDING - 1)) merged.put(item)
+            val json = merged.toString()
+            val saved = prefs.edit()
+                .putString(NoteStore.PENDING_KEY, json)
+                .commit() && prefs.getString(NoteStore.PENDING_KEY, null) == json
+            if (!saved) return PendingEnqueueResult.FAILED
+            var cleanupComplete = true
+            for (item in old.drop(NoteStore.MAX_PENDING - 1)) {
+                val victimPath = item.optString("audioPath")
+                if (victimPath.isNotBlank()) {
+                    val cleanup = deleteOrRegisterEvicted(File(victimPath))
+                    cleanupComplete = cleanup == EvictionCleanupResult.DELETED && cleanupComplete
+                }
             }
-            prefs.edit().putString("flutter.voice_notes_pending_v1", merged.toString()).apply()
+            try {
+                stored.sweepClaim?.delete()
+            } catch (_: Exception) {}
             refreshWidgets()
-            return true
+            if (cleanupComplete) {
+                PendingEnqueueResult.COMMITTED
+            } else {
+                PendingEnqueueResult.COMMITTED_WITH_CLEANUP_FAILURE
+            }
         } catch (_: Exception) {
-            return false
+            PendingEnqueueResult.FAILED
+        }
+    }
+
+    private fun deleteOrRegisterEvicted(file: File): EvictionCleanupResult {
+        if (!file.exists()) return EvictionCleanupResult.DELETED
+        try {
+            deleteFile(file)
+        } catch (_: Exception) {}
+        if (!file.exists()) return EvictionCleanupResult.DELETED
+        val directory = file.parentFile ?: return EvictionCleanupResult.FAILED
+        val claim = File(directory, ".${file.name}.pending")
+        return try {
+            FileOutputStream(claim, false).use { output ->
+                output.write(1)
+                output.fd.sync()
+            }
+            claim.setLastModified(System.currentTimeMillis())
+            syncDirectory(directory)
+            EvictionCleanupResult.REGISTERED
+        } catch (_: Exception) {
+            EvictionCleanupResult.FAILED
         }
     }
 
@@ -392,9 +545,13 @@ class WidgetDictationService : Service() {
 
     private fun refreshWidgets(state: String = "idle") {
         try {
-            val awm = AppWidgetManager.getInstance(this)
-            val notesIds = awm.getAppWidgetIds(ComponentName(this, WidgetNotesProvider::class.java))
-            for (id in notesIds) WidgetNotesProvider.updateOneWithState(this, awm, id, state)
+            val appWidgetManager = AppWidgetManager.getInstance(this)
+            val noteIds = appWidgetManager.getAppWidgetIds(
+                ComponentName(this, WidgetNotesProvider::class.java),
+            )
+            for (id in noteIds) {
+                WidgetNotesProvider.updateOneWithState(this, appWidgetManager, id, state)
+            }
         } catch (_: Exception) {}
     }
 }

@@ -10,6 +10,12 @@ import android.view.View
 import android.widget.RemoteViews
 import androidx.core.content.ContextCompat
 
+internal enum class WidgetNotesUiState {
+    AVAILABLE,
+    SHOW_UNAVAILABLE,
+    PRESERVE,
+}
+
 class WidgetNotesProvider : AppWidgetProvider() {
 
     override fun onUpdate(
@@ -17,8 +23,10 @@ class WidgetNotesProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray,
     ) {
-        for (id in appWidgetIds) {
-            updateOne(context, appWidgetManager, id)
+        BackgroundWork.execute {
+            for (id in appWidgetIds) {
+                updateOne(context, appWidgetManager, id)
+            }
         }
     }
 
@@ -28,7 +36,9 @@ class WidgetNotesProvider : AppWidgetProvider() {
         appWidgetId: Int,
         newOptions: android.os.Bundle?,
     ) {
-        updateOne(context, appWidgetManager, appWidgetId)
+        BackgroundWork.execute {
+            updateOne(context, appWidgetManager, appWidgetId)
+        }
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
     }
 
@@ -45,29 +55,12 @@ class WidgetNotesProvider : AppWidgetProvider() {
             appWidgetId: Int,
             state: String,
         ) {
-            try {
-                // La colección re-consulta sus datos (notas + pendientes).
-                requestListRefresh(context, appWidgetManager)
-                updateRemoteViews(context, appWidgetManager, appWidgetId, state)
-            } catch (_: Exception) {
-                // Fallback mínimo: jamás dejar al launcher sin vista válida
-                // ("No se puede mostrar"). Sin contenido de notas en el fallback.
+            BackgroundWork.execute {
                 try {
-                    val fallback = RemoteViews(context.packageName, R.layout.widget_notes)
-                    fallback.setTextViewText(R.id.widget_notes_title, "Notas")
-                    fallback.setTextViewText(R.id.widget_notes_count, "")
-                    fallback.setViewVisibility(R.id.widget_pending_count, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_notes_list, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_notes_empty, View.VISIBLE)
-                    fallback.setTextViewText(R.id.widget_notes_empty, "Toca Dictar para crear una nota")
-                    fallback.setViewVisibility(R.id.widget_rec_pill, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_bottom_spacer, View.VISIBLE)
-                    fallback.setViewVisibility(R.id.widget_notes_add, View.VISIBLE)
-                    fallback.setViewVisibility(R.id.widget_notes_add_right, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_notes_mic_left, View.GONE)
-                    fallback.setViewVisibility(R.id.widget_notes_mic, View.VISIBLE)
-                    appWidgetManager.updateAppWidget(appWidgetId, fallback)
-                } catch (_: Exception) { }
+                    if (updateRemoteViews(context, appWidgetManager, appWidgetId, state)) {
+                        requestListRefresh(context, appWidgetManager)
+                    }
+                } catch (_: Exception) {}
             }
         }
 
@@ -83,15 +76,81 @@ class WidgetNotesProvider : AppWidgetProvider() {
             } catch (_: Exception) {}
         }
 
+        private const val INITIALIZED_KEY = "voice_notes_widget_initialized"
+
+        internal fun resolveState(
+            snapshot: NoteStoreLoad,
+            pendingSnapshot: WidgetPendingSnapshot,
+            initialized: Boolean,
+        ): WidgetNotesUiState {
+            val available = isAuthoritativeNoteSnapshot(snapshot) &&
+                pendingSnapshot.available
+            return when {
+                available -> WidgetNotesUiState.AVAILABLE
+                initialized -> WidgetNotesUiState.PRESERVE
+                else -> WidgetNotesUiState.SHOW_UNAVAILABLE
+            }
+        }
+
+        private fun hasInitializedState(context: Context): Boolean {
+            return try {
+                context.getSharedPreferences(NoteStore.PREFS_NAME, Context.MODE_PRIVATE)
+                    .getBoolean(INITIALIZED_KEY, false)
+            } catch (_: Exception) {
+                false
+            }
+        }
+
+        private fun markInitializedState(context: Context) {
+            try {
+                context.getSharedPreferences(NoteStore.PREFS_NAME, Context.MODE_PRIVATE)
+                    .edit()
+                    .putBoolean(INITIALIZED_KEY, true)
+                    .commit()
+            } catch (_: Exception) {}
+        }
+
+        private fun showUnavailable(
+            context: Context,
+            appWidgetManager: AppWidgetManager,
+            appWidgetId: Int,
+        ): Boolean {
+            return try {
+                val views = RemoteViews(context.packageName, R.layout.widget_notes)
+                views.setTextViewText(R.id.widget_notes_count, "No disponible")
+                views.setViewVisibility(R.id.widget_notes_list, View.GONE)
+                views.setViewVisibility(R.id.widget_notes_empty, View.VISIBLE)
+                views.setTextViewText(R.id.widget_notes_empty, "Estado no disponible")
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+
         private fun updateRemoteViews(
             context: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int,
             state: String,
-        ) {
+        ): Boolean {
+            val snapshot = NoteStore(context).loadSnapshot()
+            val pendingSnapshot = loadWidgetPendingSnapshot(context)
+            when (
+                resolveState(
+                    snapshot,
+                    pendingSnapshot,
+                    hasInitializedState(context),
+                )
+            ) {
+                WidgetNotesUiState.SHOW_UNAVAILABLE -> {
+                    return showUnavailable(context, appWidgetManager, appWidgetId)
+                }
+                WidgetNotesUiState.PRESERVE -> return false
+                WidgetNotesUiState.AVAILABLE -> Unit
+            }
             val views = RemoteViews(context.packageName, R.layout.widget_notes)
-            val notes = NoteStore(context).load()
-            val count = notes.size
+            val count = snapshot.notes.size
 
             // Colores adaptativos claro/oscuro desde la fuente unica
             // (res/values + values-night): el cambio automatico por horario
@@ -99,16 +158,14 @@ class WidgetNotesProvider : AppWidgetProvider() {
             val primary = ContextCompat.getColor(context, R.color.kb_label)
             val secondary = ContextCompat.getColor(context, R.color.kb_label_secondary)
 
-            views.setTextViewText(R.id.widget_notes_count, "$count / 50")
+            views.setTextViewText(R.id.widget_notes_count, "$count / ${NoteStore.MAX_NOTES}")
             views.setTextColor(R.id.widget_notes_title, primary)
             views.setTextColor(R.id.widget_notes_count, secondary)
             views.setTextColor(R.id.widget_pending_count, secondary)
             views.setTextColor(R.id.widget_chrono, primary)
             views.setTextColor(R.id.widget_rec_label, primary)
 
-            // Pendientes offline (cola Dart + widget): el audio grabado sin
-            // red se ve también en el widget, no solo en la app.
-            val pending = WidgetPendingStore.load(context).size
+            val pending = pendingSnapshot.items.size
             if (pending > 0) {
                 views.setViewVisibility(R.id.widget_pending_count, View.VISIBLE)
                 views.setTextViewText(
@@ -124,6 +181,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
             // tope visual (la altura del widget solo cambia cuánto se ve
             // sin desplazar). Los taps van directo a la modal del widget
             // (un toque abre: nota → ver/editar, pendiente → ver/escuchar).
+            views.setViewVisibility(R.id.widget_notes_list, View.VISIBLE)
             val listIntent = Intent(context, WidgetNotesListService::class.java)
             views.setRemoteAdapter(R.id.widget_notes_list, listIntent)
             views.setEmptyView(R.id.widget_notes_list, R.id.widget_notes_empty)
@@ -251,6 +309,8 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_notes_title, openPi)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+            markInitializedState(context)
+            return true
         }
     }
 }

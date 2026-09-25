@@ -35,27 +35,38 @@ class VoiceNote {
     final createdAt = json['createdAt'];
     final updatedAt = json['updatedAt'];
     final audioPath = json['audioPath'];
+    if (id is! String || id.trim().isEmpty ||
+        titulo is! String ||
+        cuerpo is! String ||
+        createdAt == null ||
+        updatedAt == null) {
+      throw const FormatException('Nota incompleta');
+    }
+    final created = _parse(createdAt);
+    final updated = _parse(updatedAt);
+    if (updated.isBefore(created)) {
+      throw const FormatException('Fechas de nota inválidas');
+    }
+    if (audioPath != null &&
+        (audioPath is! String || audioPath.trim().isEmpty)) {
+      throw const FormatException('Audio de nota inválido');
+    }
     return VoiceNote(
-      id: id is String ? id : '',
-      titulo: titulo is String ? titulo : '',
-      cuerpo: cuerpo is String ? cuerpo : '',
-      createdAt: _parse(createdAt),
-      updatedAt: _parse(updatedAt),
-      audioPath: audioPath is String && audioPath.isNotEmpty ? audioPath : null,
+      id: id,
+      titulo: titulo,
+      cuerpo: cuerpo,
+      createdAt: created,
+      updatedAt: updated,
+      audioPath: audioPath as String?,
     );
   }
 
   static DateTime _parse(Object? raw) {
-    if (raw is String && raw.isNotEmpty) {
-      final p = DateTime.tryParse(raw);
-      if (p != null) return p.toLocal();
+    if (raw is String && raw.contains('T')) {
+      final parsed = DateTime.tryParse(raw);
+      if (parsed != null) return parsed.toLocal();
     }
-    if (raw is int) {
-      try {
-        return DateTime.fromMillisecondsSinceEpoch(raw).toLocal();
-      } catch (_) {}
-    }
-    return DateTime.now();
+    throw const FormatException('Timestamp de nota inválido');
   }
 
   Map<String, dynamic> toJson() {
