@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/voice_note.dart';
 
-enum _NotesReadState { missing, empty, valid, corrupt, unavailable }
+enum _NotesReadState { missing, empty, valid, unavailable }
 enum _NotesPersistState { saved, failed, rollbackFailed }
 enum _PrefsWriteState { saved, failed, rollbackFailed }
 

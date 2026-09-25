@@ -422,7 +422,7 @@ class PendingNoteQueue {
       final id =
           '${DateTime.now().microsecondsSinceEpoch}-${_items.length}';
       final destPath = '${dir.path}/$id.wav';
-      final claim = File('${dir.path}/.${id}.wav.pending');
+      final claim = File('${dir.path}/.$id.wav.pending');
       var committed = false;
       try {
         claim.writeAsStringSync('1', flush: true);
