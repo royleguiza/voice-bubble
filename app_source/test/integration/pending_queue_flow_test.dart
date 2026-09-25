@@ -166,6 +166,17 @@ void main() {
     }
   });
 
+  /// El claim C-05 mete dos saltos async mas en el flujo de grabar (claim al
+  /// arrancar, release al cerrar), asi que el presupuesto fijo de pumps de
+  /// esta suite dejo de alcanzar. Se bombea hasta que el estado aparezca
+  /// (tope amplio): si el flujo no llega, el expect de abajo sigue fallando.
+  Future<void> pumpUntilFound(WidgetTester tester, Finder finder) async {
+    for (var i = 0; i < 40; i++) {
+      if (finder.evaluate().isNotEmpty) return;
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+  }
+
   Future<void> pumpNotes(
     WidgetTester tester,
     TranscriptionService service,
@@ -215,9 +226,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('notesMicFab')));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.byKey(const ValueKey('notesMicFab')));
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-    }
+    await pumpUntilFound(tester, find.textContaining('audio guardado en Notas'));
 
     expect(
       find.textContaining('audio guardado en Notas'),
@@ -287,9 +296,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('notesMicFab')));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.byKey(const ValueKey('notesMicFab')));
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 150));
-    }
+    await pumpUntilFound(tester, find.textContaining('Error:'));
 
     expect(find.byKey(const ValueKey('pendingNotesList')), findsNothing);
     expect(queue.items, isEmpty);

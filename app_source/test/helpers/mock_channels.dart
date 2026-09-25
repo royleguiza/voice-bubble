@@ -70,13 +70,38 @@ final List<String> appMockedChannels = [
   _keyboardChannel,
 ];
 
-void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
+/// Directorio efímero del registro actual, cuando el test no pasó el suyo.
+/// Aislar el directorio por registro evita que dos archivos de test (que
+/// corren en isolates paralelos) compartan `transcription_history.json` y su
+/// lock: con el /tmp fijo, la contención hace que `load()` espere en el poll
+/// de 50 ms y el test widget termine con un Timer pendiente.
+String? _autoTemporaryDirectory;
+
+String _claimAutoTemporaryDirectory() {
+  releaseAutoTemporaryDirectory();
+  final path = Directory.systemTemp.createTempSync('vb_mocks_').path;
+  _autoTemporaryDirectory = path;
+  return path;
+}
+
+void releaseAutoTemporaryDirectory() {
+  final path = _autoTemporaryDirectory;
+  _autoTemporaryDirectory = null;
+  if (path == null) return;
   try {
-    final file = File('$temporaryDirectory/transcription_history.json');
+    final dir = Directory(path);
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  } catch (_) {}
+}
+
+void registerAppChannelMocks({String? temporaryDirectory}) {
+  final root = temporaryDirectory ?? _claimAutoTemporaryDirectory();
+  try {
+    final file = File('$root/transcription_history.json');
     // Sync a propósito: setup de tests con archivos reales (la regla
     // avoid_slow_async_io solo observa métodos async, no estos).
     if (file.existsSync()) file.deleteSync();
-    final tmp = File('$temporaryDirectory/transcription_history.json.tmp');
+    final tmp = File('$root/transcription_history.json.tmp');
     if (tmp.existsSync()) tmp.deleteSync();
   } catch (_) {}
 
@@ -86,14 +111,14 @@ void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
   for (final channel in _recordChannels) {
     messenger.setMockMethodCallHandler(
       MethodChannel(channel),
-      (MethodCall call) => _recordHandler(temporaryDirectory, call),
+      (MethodCall call) => _recordHandler(root, call),
     );
   }
 
   for (final channel in _pathProviderChannels) {
     messenger.setMockMethodCallHandler(
       MethodChannel(channel),
-      (MethodCall call) async => temporaryDirectory,
+      (MethodCall call) async => root,
     );
   }
 
@@ -121,6 +146,7 @@ void registerAppChannelMocks({String temporaryDirectory = '/tmp'}) {
 }
 
 void unregisterAppChannelMocks() {
+  releaseAutoTemporaryDirectory();
   try {
     final file = File('/tmp/transcription_history.json');
     // Sync a propósito en teardown (ver arriba).
