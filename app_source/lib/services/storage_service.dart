@@ -1180,7 +1180,19 @@ class StorageService {
     try {
       final file = await _getHistoryFile();
       if (!file.existsSync()) return const _HistoryReadResult.missing();
-      return _HistoryReadResult.content(file.readAsStringSync());
+      final content = file.readAsStringSync();
+      if (content.trim().isEmpty) {
+        return _HistoryReadResult.content(content);
+      }
+      try {
+        final decoded = jsonDecode(content);
+        if (decoded is! List<dynamic>) {
+          return const _HistoryReadResult.corrupt();
+        }
+      } catch (_) {
+        return const _HistoryReadResult.corrupt();
+      }
+      return _HistoryReadResult.content(content);
     } catch (_) {
       return const _HistoryReadResult.error();
     }
@@ -1591,7 +1603,7 @@ bool publishHistoryFileAtomically(File file, String contents) {
   File? tmpFile;
   try {
     final token = '${pid}_${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}_${StorageService._historyTempCounter++}';
-    tmpFile = File('${file.path}.${token}${StorageService._historyTmpSuffix}');
+    tmpFile = File('${file.path}.$token${StorageService._historyTmpSuffix}');
     tmpFile.writeAsStringSync(contents, flush: true);
     if (!tmpFile.existsSync()) return false;
     tmpFile.renameSync(file.path);
