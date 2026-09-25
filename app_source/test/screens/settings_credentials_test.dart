@@ -268,15 +268,15 @@ void main() {
         find.byKey(const ValueKey('credenciales-add-password')),
         's3creta',
       );
-      final credentialsReloaded =
-          storageService.expectNextCredentialsLoad();
-      final showUserReloaded = storageService.expectNextShowUserLoad();
+      Future<void> reloadCompleted;
+      reloadCompleted = Future.wait(<Future<void>>[
+        storageService.expectNextCredentialsLoad(),
+        storageService.expectNextShowUserLoad(),
+      ]);
       await tester.tap(find.byKey(const ValueKey('credenciales-add-button')));
       await tester.runAsync(() => storageService.addCompleted.future);
       await tester.pump();
-      await tester.runAsync(() => credentialsReloaded);
-      await tester.pump();
-      await tester.runAsync(() => showUserReloaded);
+      await tester.runAsync(() => reloadCompleted);
       await tester.pump();
       expect(storageService.credentialsLoadCount, 2);
       expect(storageService.showUserLoadCount, 2);
@@ -286,15 +286,14 @@ void main() {
       await tester.pump();
       expect(find.text('juan@mail.com'), findsOneWidget);
 
-      final credentialsReloaded =
-          storageService.expectNextCredentialsLoad();
-      final showUserReloaded = storageService.expectNextShowUserLoad();
+      reloadCompleted = Future.wait(<Future<void>>[
+        storageService.expectNextCredentialsLoad(),
+        storageService.expectNextShowUserLoad(),
+      ]);
       await tester.tap(find.byIcon(Icons.delete_outline).first);
       await tester.runAsync(() => storageService.deleteCompleted.future);
       await tester.pump();
-      await tester.runAsync(() => credentialsReloaded);
-      await tester.pump();
-      await tester.runAsync(() => showUserReloaded);
+      await tester.runAsync(() => reloadCompleted);
       await tester.pump();
       expect(storageService.credentialsLoadCount, 3);
       expect(storageService.showUserLoadCount, 3);
