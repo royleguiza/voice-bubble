@@ -351,15 +351,10 @@ void main() {
       final persisted = jsonDecode(file.readAsStringSync()) as List<dynamic>;
       expect(
         persisted.every(
-          (item) => (item as Map<String, dynamic>)['timestamp'].toString().endsWith('Z'),
-        ),
-        isTrue,
-      );
-      expect(
-        persisted.every(
-          (item) => (item as Map<String, dynamic>)['timestamp']
-              .toString()
-              .contains('.000000Z'),
+          (item) => RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$')
+              .hasMatch(
+            (item as Map<String, dynamic>)['timestamp'].toString(),
+          ),
         ),
         isTrue,
       );
