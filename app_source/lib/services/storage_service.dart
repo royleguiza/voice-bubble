@@ -1860,7 +1860,11 @@ class StorageService {
     if (currentVault.status != _CredentialVaultReadStatus.valid) {
       return false;
     }
-    if (_containsCredentialMap(currentVault.value, legacy.value)) {
+    final currentValues = currentVault.value;
+    final legacyValues = legacy.value;
+    if (currentValues != null &&
+        legacyValues != null &&
+        currentValues.keys.toSet().containsAll(legacyValues.keys)) {
       return _compareAndSetLegacyCredential(legacy.raw, null);
     }
     return true;
@@ -1957,17 +1961,6 @@ class StorageService {
       after: _CredentialStateSnapshots(currentIndex, currentVault),
       legacy: legacy,
     );
-  }
-
-  static bool _containsCredentialMap(
-    Map<String, String>? current,
-    Map<String, String>? required,
-  ) {
-    if (current == null || required == null) return false;
-    for (final entry in required.entries) {
-      if (current[entry.key] != entry.value) return false;
-    }
-    return true;
   }
 
   Future<bool> addCredential({

@@ -134,6 +134,7 @@ void main() {
         's3creta',
       );
       await tester.tap(find.byKey(const ValueKey('credenciales-add-button')));
+      await storageService.loadCredentials();
       await tester.pumpAndSettle();
 
       expect(find.text('Banco'), findsOneWidget);
@@ -159,6 +160,7 @@ void main() {
         's3creta',
       );
       await tester.tap(find.byKey(const ValueKey('credenciales-add-button')));
+      await storageService.loadCredentials();
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('credenciales-show-user')));

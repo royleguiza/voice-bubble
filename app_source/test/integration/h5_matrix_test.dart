@@ -11,6 +11,7 @@ import 'package:voice_bubble_stt/screens/home_screen.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
+import 'package:voice_bubble_stt/widgets/record_button.dart';
 
 /// Matriz H5-T5 (Lane A): integracion widget-level de los flujos de
 /// grabacion de HomeScreen contra servicios instrumentados.
@@ -197,6 +198,24 @@ void main() {
     }
   });
 
+  Future<void> pumpUntilRecordMode(
+    WidgetTester tester,
+    String mode,
+  ) async {
+    final finder = find.byKey(const ValueKey('recordButton'));
+    final expectsHold = mode == StorageService.recordModeHold;
+    for (var attempt = 0; attempt < 20; attempt++) {
+      final button = tester.widget<RecordButton>(finder);
+      if ((button.onPressed == null) == expectsHold &&
+          (button.onHoldStart != null) == expectsHold &&
+          (button.onHoldEnd != null) == expectsHold) {
+        return;
+      }
+      await tester.pump();
+    }
+    throw TestFailure('El modo $mode no llegó al botón de grabación');
+  }
+
   _Bundle makeBundle(List<Object> outcomes) {
     final recorder = _FakeRecorder();
     final cloud = _ScriptedCloudSttService(outcomes);
@@ -359,6 +378,7 @@ void main() {
       // --- Fase A: primera pantalla (StorageService nuevo lee 'hold').
       final bundleA = makeBundle(<Object>[]);
       await pumpHome(tester, bundleA.service, bundleA.storage);
+      await pumpUntilRecordMode(tester, StorageService.recordModeHold);
       expect(await bundleA.storage.loadRecordMode(), 'hold');
 
       // En hold, onTap esta deshabilitado: tocar NO inicia grabacion.
@@ -391,6 +411,7 @@ void main() {
       // --- Fase B: pantalla recreada con INSTANCIA nueva de almacenamiento.
       final bundleB = makeBundle(<Object>[]);
       await pumpHome(tester, bundleB.service, bundleB.storage);
+      await pumpUntilRecordMode(tester, StorageService.recordModeHold);
       await tester.tap(button);
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
@@ -406,6 +427,7 @@ void main() {
         ),
       ]);
       await pumpHome(tester, bundleC.service, bundleC.storage);
+      await pumpUntilRecordMode(tester, StorageService.defaultRecordMode);
 
       await tester.tap(button);
       await tester.pump(const Duration(milliseconds: 400));
