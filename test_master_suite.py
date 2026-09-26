@@ -33,6 +33,7 @@ SUITES = [
     ("Micrófono: hápticas y sonidos por evento", "test_mic_feedback_suite.py"),
     ("Notas: cola diferida cloud offline (C1-C7)", "test_pending_notes_suite.py"),
     ("Conexión: blindaje del teclado ante conexión muerta (C-06)", "test_c06_dead_connection_suite.py"),
+    ("Claves: relleno de claves seguro (C-07)", "test_c07_credentials_safe_fill_suite.py"),
 ]
 
 def run_test(name, func):
@@ -2738,6 +2739,43 @@ def test_c06_dead_connection_contract():
         hist = f.read()
     assert "if (commitOrWarn(text)) {" in hist and "host.dismissPopups()" in hist, "C-06: HistoryLayer cierra popups ante commit fallido"
 
+def test_c07_credentials_safe_fill_contract():
+    """
+    Guarda C-07: Relleno de claves seguro [S].
+    Verifica:
+    1. Captura de editor y conexión iniciales antes del TAB en CredentialsLayer.kt.
+    2. Envío de TAB protegido contra excepciones de IPC.
+    3. En el diferido (250 ms):
+       - Aborto si el TAB no avanzó (misma conexión o mismo fieldId).
+       - Aborto si el paquete de la aplicación cambió.
+       - Aborto si el nuevo campo de destino no es de contraseña (!isPasswordInput / !isPasswordField).
+       - Pegado de contraseña mediante commitOrWarn sin fugas de texto.
+    4. Cero llamadas a Log.* en CredentialsLayer.kt.
+    """
+    creds_path = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/CredentialsLayer.kt"
+    assert os.path.isfile(creds_path), f"Falta archivo C-07: {creds_path}"
+    with open(creds_path, "r", encoding="utf-8") as f:
+        creds = f.read()
+
+    fill_fn = creds[creds.find("private fun fill(entry: VbCredentialEntry)") :]
+    assert "val initialEditor = service.currentInputEditorInfo" in fill_fn, "C-07: no captura initialEditor antes del TAB"
+    assert "val initialIc = service.currentInputConnection" in fill_fn, "C-07: no captura initialIc antes del TAB"
+    assert fill_fn.find("val initialEditor =") < fill_fn.find("KEYCODE_TAB"), "C-07: captura no ocurre antes de TAB"
+    assert "if (initialEditor == null || initialIc == null) return" in fill_fn, "C-07: falta null check de initialEditor/initialIc"
+
+    assert "service.sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB)" in fill_fn and "catch (_: DeadObjectException)" in fill_fn, "C-07: TAB no protegido contra IPC"
+
+    deferred = fill_fn[fill_fn.find("handler.postDelayed") : fill_fn.find("host.showLayer(origin)")]
+    assert "!host.isServiceAlive()" in deferred, "C-07: falta check isServiceAlive en diferido"
+    assert "currentIc === initialIc" in deferred, "C-07: falta check de conexión sin avance"
+    assert "didNotAdvance" in deferred and "return@postDelayed" in deferred, "C-07: no aborta si TAB no avanzó"
+    assert "currentEditor.packageName != initialEditor.packageName" in deferred, "C-07: falta check de cambio de paquete"
+    assert "!isPasswordInput(currentEditor)" in deferred, "C-07: falta check isPasswordInput en diferido"
+    assert "!host.isPasswordField()" in deferred, "C-07: falta check host.isPasswordField en diferido"
+    assert "commitOrWarn(password)" in deferred, "C-07: no usa commitOrWarn para pegar contraseña"
+
+    assert "Log." not in creds, "C-07: filtración de seguridad: Log.* presente en CredentialsLayer"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -2757,6 +2795,7 @@ def main():
         ("Dictado: tope 5min + timeouts (fuente única)", test_dictation_contract),
         ("C-05: exclusión mutua del micrófono", test_c05_mic_exclusion_contract),
         ("C-06: blindaje del teclado ante conexión muerta", test_c06_dead_connection_contract),
+        ("C-07: relleno de claves seguro", test_c07_credentials_safe_fill_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

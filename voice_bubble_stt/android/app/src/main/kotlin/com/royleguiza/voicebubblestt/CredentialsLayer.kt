@@ -2,13 +2,16 @@ package com.royleguiza.voicebubblestt
 
 import android.graphics.Typeface
 import android.inputmethodservice.InputMethodService
+import android.os.DeadObjectException
 import android.os.Handler
+import android.os.RemoteException
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -167,26 +170,80 @@ class CredentialsLayer(
         return row
     }
 
+    private fun commitOrWarn(text: CharSequence): Boolean {
+        return com.royleguiza.voicebubblestt.commitOrWarn(service, text, host.isSpanish()) {
+            warnDeadConnection(service, host.isSpanish())
+        }
+    }
+
     /**
-     * Relleno usuario+contraseña ante el toque explicito (unico uso de la
+     * Relleno usuario+contraseña ante el toque explícito (único uso de la
      * password en memoria: nunca se muestra, nunca se loguea).
-     * - Foco en campo de contraseña: solo la clave.
-     * - Otro foco (usuario): usuario, TAB al siguiente campo y clave
-     *   diferida 250 ms (patron de navegadores y apps de login).
+     *
+     * Seguridad C-07 (Relleno de claves seguro):
+     * 1. Foco ya en campo de contraseña: solo pega la clave directamente.
+     * 2. Foco en otro campo (usuario):
+     *    - Captura editor y conexión iniciales antes del TAB.
+     *    - Comitea el usuario con [commitOrWarn].
+     *    - Envía TAB para avanzar el foco al siguiente campo.
+     *    - En el callback diferido (250 ms):
+     *      * Verifica que el servicio siga vivo.
+     *      * Compara conexión y editor actuales contra los iniciales.
+     *      * Si el TAB no avanzó (misma conexión o mismo fieldId), ABORTA
+     *        para no pegar la contraseña en el campo de texto visible.
+     *      * Si el paquete de la app cambió, ABORTA para evitar inyección en otra app.
+     *      * Si el nuevo campo de destino no es un campo de contraseña
+     *        ([isPasswordInput] == false o [host.isPasswordField] == false),
+     *        significa que el usuario tocó otro campo visible durante la espera
+     *        o la app cambió de contexto: ABORTA inmediatamente sin pegar nada.
+     *    - Cero registro de logs y cero filtración de secretos.
      */
     private fun fill(entry: VbCredentialEntry) {
         host.tapFeedback()
         val password = store.getPassword(entry.id)
         if (password.isNullOrEmpty()) return
         if (host.isPasswordField()) {
-            service.currentInputConnection?.commitText(password, 1)
+            commitOrWarn(password)
         } else {
-            service.currentInputConnection?.commitText(entry.usuario, 1)
-            service.sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB)
+            val initialEditor = service.currentInputEditorInfo
+            val initialIc = service.currentInputConnection
+            if (initialEditor == null || initialIc == null) return
+
+            if (!commitOrWarn(entry.usuario)) return
+
+            try {
+                service.sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB)
+            } catch (_: DeadObjectException) {
+                warnDeadConnection(service, host.isSpanish())
+                return
+            } catch (_: RemoteException) {
+                warnDeadConnection(service, host.isSpanish())
+                return
+            } catch (_: IllegalStateException) {
+                warnDeadConnection(service, host.isSpanish())
+                return
+            } catch (_: Exception) {
+                warnDeadConnection(service, host.isSpanish())
+                return
+            }
+
             handler.postDelayed({
-                if (host.isServiceAlive()) {
-                    service.currentInputConnection?.commitText(password, 1)
-                }
+                if (!host.isServiceAlive()) return@postDelayed
+                val currentEditor = service.currentInputEditorInfo ?: return@postDelayed
+                val currentIc = service.currentInputConnection ?: return@postDelayed
+
+                // C-07: Si el TAB no avanzó (sigue en la misma conexión o mismo fieldId), abortar
+                val didNotAdvance = (currentIc === initialIc) ||
+                    (initialEditor.fieldId != View.NO_ID && currentEditor.fieldId == initialEditor.fieldId && currentEditor.inputType == initialEditor.inputType)
+                if (didNotAdvance) return@postDelayed
+
+                // C-07: Si cambió de aplicación o paquete en el diferido, abortar
+                if (currentEditor.packageName != initialEditor.packageName) return@postDelayed
+
+                // C-07: Si cambió de campo en el diferido hacia un campo no-password, abortar
+                if (!isPasswordInput(currentEditor) || !host.isPasswordField()) return@postDelayed
+
+                commitOrWarn(password)
             }, 250L)
         }
         host.showLayer(origin)
