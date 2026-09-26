@@ -316,8 +316,8 @@ class EditEngine(
     private fun insertTextToActiveEditor(text: String): Boolean =
         snippets()?.insertToEditor(text) == true
 
-    private fun backspaceActiveEditor(): Boolean =
-        snippets()?.backspaceEditor() == true
+    private fun backspaceActiveEditor(count: Int = 1): Boolean =
+        snippets()?.backspaceEditor(count) == true
 
     fun commitLetter(base: Char) {
         // C-17: Una sola vibración por tecla gestionada en la capa de gestos (KeyFactory en ACTION_DOWN).
@@ -466,9 +466,14 @@ class EditEngine(
     }
 
     fun handleBackspace() {
+        handleBackspace(1)
+    }
+
+    fun handleBackspace(count: Int = 1) {
+        val safeCount = count.coerceAtLeast(1)
         // C-17: Una sola vibración por tecla gestionada en la capa de gestos (KeyFactory: longPress/backspaceGestures).
-        if (backspaceActiveEditor()) return
-        if (snippets()?.backspaceQuery() == true) return
+        if (backspaceActiveEditor(safeCount)) return
+        if (snippets()?.backspaceQuery(safeCount) == true) return
         val ic = service.currentInputConnection ?: run {
             warnDeadConnection()
             return
@@ -492,8 +497,10 @@ class EditEngine(
             return
         }
         // AT-A5: mismo criterio sobre el documento via InputConnection.
+        // C-18: ventana de lookback para los caracteres solicitados considerando pares sustitutos
+        val lookback = (safeCount * 2).coerceAtLeast(2)
         val before = try {
-            ic.getTextBeforeCursor(2, 0)
+            ic.getTextBeforeCursor(lookback, 0)
         } catch (_: DeadObjectException) {
             warnDeadConnection()
             null
@@ -506,14 +513,24 @@ class EditEngine(
         } catch (_: Exception) {
             null
         }
-        val count = if (
-            before != null && before.length == 2 &&
-            Character.isSurrogatePair(before[0], before[1])
-        ) {
-            2
-        } else {
-            1
+
+        var toDeleteUnits = 0
+        if (!before.isNullOrEmpty()) {
+            var charsFound = 0
+            var i = before.length - 1
+            while (i >= 0 && charsFound < safeCount) {
+                if (i > 0 && Character.isSurrogatePair(before[i - 1], before[i])) {
+                    toDeleteUnits += 2
+                    i -= 2
+                } else {
+                    toDeleteUnits += 1
+                    i -= 1
+                }
+                charsFound++
+            }
         }
+        val count = if (toDeleteUnits > 0) toDeleteUnits else safeCount
+
         val deleted = try {
             ic.deleteSurroundingText(count, 0)
         } catch (_: DeadObjectException) {
@@ -529,16 +546,22 @@ class EditEngine(
             false
         }
         if (!deleted) {
-            try {
-                service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
-            } catch (_: DeadObjectException) {
-                warnDeadConnection()
-            } catch (_: RemoteException) {
-                warnDeadConnection()
-            } catch (_: IllegalStateException) {
-                warnDeadConnection()
-            } catch (_: Exception) {
-                warnDeadConnection()
+            for (k in 0 until safeCount) {
+                try {
+                    service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                } catch (_: DeadObjectException) {
+                    warnDeadConnection()
+                    break
+                } catch (_: RemoteException) {
+                    warnDeadConnection()
+                    break
+                } catch (_: IllegalStateException) {
+                    warnDeadConnection()
+                    break
+                } catch (_: Exception) {
+                    warnDeadConnection()
+                    break
+                }
             }
         }
     }

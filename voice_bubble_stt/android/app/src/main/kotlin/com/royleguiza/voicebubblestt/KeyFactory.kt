@@ -55,6 +55,7 @@ class KeyFactory(
         fun commitText(text: String)
         fun sendCode(code: Int)
         fun deleteBackward()
+        fun deleteBackward(count: Int)
         fun deleteWord()
         fun trackLetterKey(key: TextView, base: Char)
         fun trackShiftKey(key: ImageView)
@@ -80,23 +81,46 @@ class KeyFactory(
     }
 
     fun fastTap(key: View, onClick: () -> Unit) {
+        val touchSlopPx = ViewConfiguration.get(key.context).scaledTouchSlop
+        var downX = 0f
+        var downY = 0f
+        var slopExceeded = false
+
         key.setOnTouchListener { v, ev ->
             when (ev.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    downX = ev.rawX
+                    downY = ev.rawY
+                    slopExceeded = false
                     host.haptic(v)
                     v.isPressed = true
                     pressPop(v, true)
                     true
                 }
+                MotionEvent.ACTION_MOVE -> {
+                    if (!slopExceeded) {
+                        val dx = ev.rawX - downX
+                        val dy = ev.rawY - downY
+                        if (dx * dx + dy * dy > touchSlopPx * touchSlopPx) {
+                            slopExceeded = true
+                            v.isPressed = false
+                            pressPop(v, false)
+                        }
+                    }
+                    true
+                }
                 MotionEvent.ACTION_UP -> {
                     if (v.isPressed) {
-                        onClick()
+                        if (!slopExceeded) {
+                            onClick()
+                        }
                     }
                     v.isPressed = false
                     pressPop(v, false)
                     true
                 }
                 MotionEvent.ACTION_CANCEL -> {
+                    slopExceeded = true
                     v.isPressed = false
                     pressPop(v, false)
                     true
@@ -152,6 +176,9 @@ class KeyFactory(
         var longPressFired = false
         var swipeMode = false
         var swipeAnchorX = 0f
+        var downX = 0f
+        var downY = 0f
+        var slopExceeded = false
         val touchSlopPx = ViewConfiguration.get(key.context).scaledTouchSlop
         val swipeStepPx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, SWIPE_DELETE_STEP_DP, service.resources.displayMetrics,
@@ -176,6 +203,9 @@ class KeyFactory(
                 MotionEvent.ACTION_DOWN -> {
                     longPressFired = false
                     swipeMode = false
+                    slopExceeded = false
+                    downX = ev.rawX
+                    downY = ev.rawY
                     swipeAnchorX = ev.rawX
                     host.haptic(v)
                     v.isPressed = true
@@ -211,6 +241,9 @@ class KeyFactory(
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
+                    val dx = ev.rawX - downX
+                    val dy = ev.rawY - downY
+                    val distSq = dx * dx + dy * dy
                     if (onSwipeStep != null) {
                         if (!swipeMode && abs(ev.rawX - swipeAnchorX) > touchSlopPx) {
                             // Deslizamiento confirmado: ya no es ni tap ni
@@ -218,12 +251,27 @@ class KeyFactory(
                             cancelPending()
                             cancelRepeating()
                             swipeMode = true
+                        } else if (!swipeMode && distSq > touchSlopPx * touchSlopPx) {
+                            // Movimiento que supera el slop pero no es swipe horizontal de palabra
+                            cancelPending()
+                            cancelRepeating()
+                            slopExceeded = true
+                            v.isPressed = false
+                            pressPop(v, false)
                         }
                         if (swipeMode) {
                             while (ev.rawX <= swipeAnchorX - swipeStepPx) {
                                 swipeAnchorX -= swipeStepPx
                                 onSwipeStep?.invoke()
                             }
+                        }
+                    } else {
+                        if (!slopExceeded && distSq > touchSlopPx * touchSlopPx) {
+                            cancelPending()
+                            cancelRepeating()
+                            slopExceeded = true
+                            v.isPressed = false
+                            pressPop(v, false)
                         }
                     }
                     true
@@ -232,7 +280,9 @@ class KeyFactory(
                     cancelPending()
                     cancelRepeating()
                     if (!longPressFired && !swipeMode) {
-                        onTapUp()
+                        if (!slopExceeded) {
+                            onTapUp()
+                        }
                     }
                     v.isPressed = false
                     pressPop(v, false)
@@ -241,6 +291,7 @@ class KeyFactory(
                 MotionEvent.ACTION_CANCEL -> {
                     cancelPending()
                     cancelRepeating()
+                    slopExceeded = true
                     v.isPressed = false
                     pressPop(v, false)
                     true
@@ -254,14 +305,26 @@ class KeyFactory(
      *  continuo acelerado con haptic único, deslizar a la izquierda =
      *  borrar palabra por umbral de distancia. */
     fun backspaceGestures(key: View, action: () -> Unit) {
+        var repeatCycle = 0
         longPress(
             key,
             onLongPress = {
+                repeatCycle = 0
                 host.haptic(key)
                 action()
             },
             onTapUp = action,
-            onRepeat = action,
+            onRepeat = {
+                repeatCycle++
+                // Acumulación gradual para acelerar el borrado continuo tras sostener la tecla:
+                // borrado por lotes ejecutando un solo deleteSurroundingText por tick.
+                val batch = if (repeatCycle > 12) 3 else if (repeatCycle > 6) 2 else 1
+                if (batch > 1) {
+                    host.deleteBackward(batch)
+                } else {
+                    action()
+                }
+            },
             onSwipeStep = { host.deleteWord() },
         )
     }
@@ -306,25 +369,48 @@ class KeyFactory(
      * Filas gap-tolerantes (precisión de escritura): la fila captura los
      * toques que caen en gaps/márgenes (ningún hijo los consume: antes no
      * escribían nada) y los resuelve a la tecla hija más cercana,
-     * disparando su commit de tap (guardado en `tag`). Los toques sobre
-     * teclas siguen su ruta original intacta; las filas mixtas (shift/⌫)
-     * quedan fuera a propósito (gestos propios).
+     * disparando su commit de tap (guardado en `tag`).
+     * C-18: expandido a row3 y subcapas, con detección de touch slop
+     * en ACTION_MOVE para que un deslizamiento fuera de la fila no confirme
+     * un commit erróneo.
      */
-    private fun makeGapTolerant(row: LinearLayout) {
+    fun makeGapTolerant(row: LinearLayout) {
+        var downX = 0f
+        var downY = 0f
+        var slopExceeded = false
+        val touchSlopPx = ViewConfiguration.get(row.context).scaledTouchSlop
+
         row.setOnTouchListener { _, ev ->
             when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> true
-                MotionEvent.ACTION_UP -> {
-                    nearestChild(row, ev.x, ev.y)?.let { child ->
-                        host.haptic(child)
-                        child.isPressed = true
-                        handler.postDelayed({ child.isPressed = false }, 80L)
-                        @Suppress("UNCHECKED_CAST")
-                        (child.tag as? () -> Unit)?.invoke()
+                MotionEvent.ACTION_DOWN -> true.also {
+                    downX = ev.x
+                    downY = ev.y
+                    slopExceeded = false
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = ev.x - downX
+                    val dy = ev.y - downY
+                    if (dx * dx + dy * dy > touchSlopPx * touchSlopPx) {
+                        slopExceeded = true
                     }
                     true
                 }
-                MotionEvent.ACTION_CANCEL -> true
+                MotionEvent.ACTION_UP -> {
+                    if (!slopExceeded) {
+                        nearestChild(row, ev.x, ev.y)?.let { child ->
+                            host.haptic(child)
+                            child.isPressed = true
+                            handler.postDelayed({ child.isPressed = false }, 80L)
+                            @Suppress("UNCHECKED_CAST")
+                            (child.tag as? () -> Unit)?.invoke()
+                        }
+                    }
+                    true
+                }
+                MotionEvent.ACTION_CANCEL -> {
+                    slopExceeded = true
+                    true
+                }
                 else -> false
             }
         }
@@ -448,6 +534,7 @@ class KeyFactory(
         if (description != null) {
             key.contentDescription = description
         }
+        key.tag = onClick
         host.attachTap(key, onClick)
         return key
     }
@@ -478,11 +565,13 @@ class KeyFactory(
         val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, 0, m, 0)
         key.layoutParams = lp
+        key.tag = onClick
         host.attachTap(key, onClick)
         return key
     }
 
     fun makeBackspaceKey(heightPx: Int? = null): ImageView {
+        val action: () -> Unit = { host.deleteBackward() }
         val key = makeActionIconKey(
             R.drawable.ic_backspace,
             R.drawable.kb_key_alt,
@@ -490,12 +579,10 @@ class KeyFactory(
             if (host.isSpanish()) "borrar" else "delete",
             tintColorRes = R.color.kb_label,
             heightPx = heightPx,
-        ) {
-            host.deleteBackward()
-        }
-        host.attachBackspaceKey(key) {
-            host.deleteBackward()
-        }
+            onClick = action,
+        )
+        key.tag = action
+        host.attachBackspaceKey(key, action)
         return key
     }
 
@@ -535,6 +622,7 @@ class KeyFactory(
             lp.setMargins(m, m, m, m)
         }
         key.layoutParams = lp
+        key.tag = onClick
 
         host.attachTap(key, onClick)
         return key

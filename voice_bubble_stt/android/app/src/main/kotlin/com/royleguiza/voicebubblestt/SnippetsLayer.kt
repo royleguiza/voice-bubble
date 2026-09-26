@@ -85,6 +85,7 @@ class SnippetsLayer(
         fun showAccentsPopup(anchor: View, base: Char)
         fun deleteBackward()
         fun attachBackspaceKey(key: View, action: () -> Unit)
+        fun makeGapTolerant(row: LinearLayout)
     }
 
     private lateinit var store: SnippetStore
@@ -263,8 +264,14 @@ class SnippetsLayer(
      * Misma conducta que la capa letras del teclado.
      */
     fun buildLetterRows() {
-        host.addContentRow(letterRow("qwertyuiop"))
-        host.addContentRow(letterRow(if (host.isSpanish()) "asdfghjklñ" else "asdfghjkl;"))
+        val r1 = letterRow("qwertyuiop")
+        host.makeGapTolerant(r1)
+        host.addContentRow(r1)
+
+        val r2 = letterRow(if (host.isSpanish()) "asdfghjklñ" else "asdfghjkl;")
+        host.makeGapTolerant(r2)
+        host.addContentRow(r2)
+
         val row3 = host.horizontalRow()
         val shiftKey = host.makeIconKey(
             R.drawable.ic_shift_off,
@@ -276,12 +283,15 @@ class SnippetsLayer(
         ) {
             host.toggleShiftKey()
         }
+        val shiftAction: () -> Unit = { host.toggleShiftKey() }
+        shiftKey.tag = shiftAction
         host.trackShiftKey(shiftKey)
         row3.addView(shiftKey)
         for (c in "zxcvbnm") {
             row3.addView(makeLetterKey(c))
         }
         row3.addView(makeBackspaceKey())
+        host.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
@@ -302,8 +312,10 @@ class SnippetsLayer(
             R.color.kb_label,
             host.dimenPx(R.dimen.kb_key_text_size),
         )
+        val commit: () -> Unit = { commitLetter(base) }
+        key.tag = commit
         if (accentsFor(base).isEmpty()) {
-            host.attachTap(key) { commitLetter(base) }
+            host.attachTap(key, commit)
         } else {
             host.attachPress(
                 key,
@@ -312,7 +324,7 @@ class SnippetsLayer(
                     ensureSearchMode()
                     host.showAccentsPopup(key, base)
                 },
-                onTapUp = { commitLetter(base) },
+                onTapUp = commit,
             )
         }
         host.trackLetterKey(key, base)
@@ -321,6 +333,10 @@ class SnippetsLayer(
 
     /** Backspace: borra del query, del editor activo o del documento. */
     private fun makeBackspaceKey(): ImageView {
+        val action: () -> Unit = {
+            ensureSearchMode()
+            host.deleteBackward()
+        }
         val key = host.makeIconKey(
             R.drawable.ic_backspace,
             R.drawable.kb_key_alt,
@@ -328,14 +344,10 @@ class SnippetsLayer(
             if (host.isSpanish()) "borrar" else "delete",
             tintColorRes = R.color.kb_label,
             useKeyHeight = true,
-        ) {
-            ensureSearchMode()
-            host.deleteBackward()
-        }
-        host.attachBackspaceKey(key) {
-            ensureSearchMode()
-            host.deleteBackward()
-        }
+            onClick = action,
+        )
+        key.tag = action
+        host.attachBackspaceKey(key, action)
         return key
     }
 
@@ -1052,24 +1064,26 @@ class SnippetsLayer(
         return true
     }
 
-    fun backspaceEditor(): Boolean {
+    fun backspaceEditor(count: Int = 1): Boolean {
         if (!isEditorOpen) return false
         val et = activeField ?: etNameField ?: return false
-        val start = et.selectionStart.coerceAtLeast(0)
-        val end = et.selectionEnd.coerceAtLeast(0)
-        if (start != end) {
-            val min = minOf(start, end)
-            val max = maxOf(start, end)
-            et.text.delete(min, max)
-            et.setSelection(min)
-            return true
-        }
-        if (start > 0) {
-            val text = et.text
-            val count = if (start >= 2 && Character.isSurrogatePair(text[start - 2], text[start - 1])) 2 else 1
-            text.delete(start - count, start)
-            et.setSelection(start - count)
-            return true
+        val safeCount = count.coerceAtLeast(1)
+        for (step in 0 until safeCount) {
+            val start = et.selectionStart.coerceAtLeast(0)
+            val end = et.selectionEnd.coerceAtLeast(0)
+            if (start != end) {
+                val min = minOf(start, end)
+                val max = maxOf(start, end)
+                et.text.delete(min, max)
+                et.setSelection(min)
+            } else if (start > 0) {
+                val text = et.text
+                val c = if (start >= 2 && Character.isSurrogatePair(text[start - 2], text[start - 1])) 2 else 1
+                text.delete(start - c, start)
+                et.setSelection(start - c)
+            } else {
+                break
+            }
         }
         return true
     }
@@ -1097,21 +1111,25 @@ class SnippetsLayer(
         return true
     }
 
-    fun backspaceQuery(): Boolean {
+    fun backspaceQuery(count: Int = 1): Boolean {
         if (host.currentLayer() != Layer.SNIPPETS || !searchActive) return false
         val et = searchField ?: return false
         val text = et.text
         if (!text.isNullOrEmpty()) {
-            // AT-A5: un par surrogate (emoji) se borra entero, no de a medio.
-            val count = if (
-                text.length >= 2 &&
-                Character.isSurrogatePair(text[text.length - 2], text[text.length - 1])
-            ) {
-                2
-            } else {
-                1
+            val safeCount = count.coerceAtLeast(1)
+            for (step in 0 until safeCount) {
+                if (text.isEmpty()) break
+                // AT-A5: un par surrogate (emoji) se borra entero, no de a medio.
+                val c = if (
+                    text.length >= 2 &&
+                    Character.isSurrogatePair(text[text.length - 2], text[text.length - 1])
+                ) {
+                    2
+                } else {
+                    1
+                }
+                text.delete(text.length - c, text.length)
             }
-            text.delete(text.length - count, text.length)
             et.setSelection(text.length)
             refreshGrid()
         }

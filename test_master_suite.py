@@ -44,6 +44,7 @@ SUITES = [
     ("Snippets: borrador a salvo ante rebuild (C-15)", "test_c15_snippet_draft_safe_suite.py"),
     ("Spacebar: sin fantasmas y retardo de usuario (C-16)", "test_c16_spacebar_no_ghosts_suite.py"),
     ("Teclado: una sola vibración por tecla (C-17)", "test_c17_single_vibration_suite.py"),
+    ("Teclado: precisión de toque y borrado por lotes (C-18)", "test_c18_touch_precision_and_batch_backspace_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3217,8 +3218,76 @@ def test_c17_single_vibration_contract():
     long_press_chunk = kf[kf.find("fun longPress("):kf.find("fun backspaceGestures(")]
     assert "host.haptic(v)" in long_press_chunk, "C-17: longPress no vibra en ACTION_DOWN"
 
-    gap_chunk = kf[kf.find("private fun makeGapTolerant("):kf.find("private fun nearestChild(")]
+    gap_chunk = kf[kf.find("fun makeGapTolerant("):kf.find("private fun nearestChild(")]
     assert "host.haptic(child)" in gap_chunk, "C-17: makeGapTolerant no vibra al resolver tecla"
+
+def test_c18_touch_precision_contract():
+    base = os.path.dirname(os.path.abspath(__file__))
+    kt_dir = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt")
+
+    kf_path = os.path.join(kt_dir, "KeyFactory.kt")
+    ll_path = os.path.join(kt_dir, "LayoutLayer.kt")
+    sl_path = os.path.join(kt_dir, "SnippetsLayer.kt")
+    vks_path = os.path.join(kt_dir, "VoiceKeyboardService.kt")
+    ee_path = os.path.join(kt_dir, "EditEngine.kt")
+
+    with open(kf_path, "r", encoding="utf-8") as f:
+        kf = f.read()
+    with open(ll_path, "r", encoding="utf-8") as f:
+        ll = f.read()
+    with open(sl_path, "r", encoding="utf-8") as f:
+        sl = f.read()
+    with open(vks_path, "r", encoding="utf-8") as f:
+        vks = f.read()
+    with open(ee_path, "r", encoding="utf-8") as f:
+        ee = f.read()
+
+    # 1. KeyFactory: touch slop handling
+    assert "scaledTouchSlop" in kf, "C-18: KeyFactory no consulta scaledTouchSlop"
+    assert "slopExceeded = true" in kf, "C-18: KeyFactory no marca slopExceeded"
+
+    # fastTap
+    fast_tap_chunk = kf[kf.find("fun fastTap("):kf.find("fun longPress(")]
+    assert ("dx * dx + dy * dy" in fast_tap_chunk or "hypot" in fast_tap_chunk) and "touchSlopPx" in fast_tap_chunk, "C-18: fastTap no evalúa touchSlopPx con distancia"
+    assert "!slopExceeded" in fast_tap_chunk, "C-18: fastTap no protege onClick con !slopExceeded"
+
+    # longPress
+    long_press_chunk = kf[kf.find("fun longPress("):kf.find("fun backspaceGestures(")]
+    assert ("dx * dx + dy * dy" in long_press_chunk or "hypot" in long_press_chunk) and "touchSlopPx" in long_press_chunk, "C-18: longPress no evalúa touchSlopPx"
+    assert "!slopExceeded" in long_press_chunk, "C-18: longPress no protege onTapUp con !slopExceeded"
+
+    # makeGapTolerant
+    assert "fun makeGapTolerant(" in kf, "C-18: makeGapTolerant debe ser accesible a otras capas"
+    gap_chunk = kf[kf.find("fun makeGapTolerant("):kf.find("private fun nearestChild(")]
+    assert "!slopExceeded" in gap_chunk, "C-18: makeGapTolerant no protege resolución con !slopExceeded"
+
+    # key.tag assignments for gap resolution
+    assert "key.tag = onClick" in kf, "C-18: KeyFactory no asigna key.tag en makeSpecialKey o makeActionIconKey"
+    assert "key.tag = action" in kf, "C-18: KeyFactory no asigna key.tag en makeBackspaceKey"
+
+    # backspaceGestures batching
+    backspace_chunk = kf[kf.find("fun backspaceGestures("):kf.find("fun makeLetterKey(")]
+    assert "repeatCycle" in backspace_chunk, "C-18: backspaceGestures no lleva ciclo de repetición"
+    assert "deleteBackward(batch)" in backspace_chunk, "C-18: backspaceGestures no delega a deleteBackward(batch)"
+
+    # 2. LayoutLayer: gap tolerance en row3
+    assert "keys.makeGapTolerant(row3)" in ll, "C-18: LayoutLayer no aplica makeGapTolerant a row3"
+    assert "shiftKey.tag = shiftAction" in ll, "C-18: shiftKey no tiene tag para gap tolerance"
+
+    # 3. SnippetsLayer: gap tolerance y batching
+    assert "host.makeGapTolerant(row3)" in sl, "C-18: SnippetsLayer no aplica makeGapTolerant a row3"
+    assert "fun backspaceEditor(count: Int = 1)" in sl, "C-18: backspaceEditor no admite count para lotes"
+    assert "fun backspaceQuery(count: Int = 1)" in sl, "C-18: backspaceQuery no admite count para lotes"
+
+    # 4. VoiceKeyboardService: delegaciones
+    assert "override fun makeGapTolerant(row: LinearLayout)" in vks, "C-18: VKS no implementa makeGapTolerant"
+    assert "override fun deleteBackward(count: Int)" in vks, "C-18: VKS no implementa deleteBackward(count: Int)"
+
+    # 5. EditEngine: batch backspace con un único deleteSurroundingText
+    ee_bs_chunk = ee[ee.find("fun handleBackspace("):ee.find("fun deleteWordBeforeCursor(")]
+    assert "count: Int = 1" in ee_bs_chunk or "count: Int" in ee_bs_chunk, "C-18: handleBackspace no acepta count"
+    assert "Character.isSurrogatePair" in ee_bs_chunk, "C-18: handleBackspace no maneja surrogate pairs"
+    assert ee_bs_chunk.count("ic.deleteSurroundingText") == 1, "C-18: handleBackspace debe invocar deleteSurroundingText exactamente 1 vez por lote"
 
 def _delegate(script):
     def run():
@@ -3250,6 +3319,7 @@ def main():
         ("C-15: borrador de snippet a salvo", test_c15_snippet_draft_safe_contract),
         ("C-16: spacebar sin fantasmas", test_c16_spacebar_no_ghosts_contract),
         ("C-17: una sola vibración por tecla", test_c17_single_vibration_contract),
+        ("C-18: precisión de toques y borrado por lotes", test_c18_touch_precision_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

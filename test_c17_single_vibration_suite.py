@@ -118,7 +118,7 @@ check(
     "backspaceGestures debe vibrar al activar repetición"
 )
 
-gap_chunk = kf_code[kf_code.find("private fun makeGapTolerant("):kf_code.find("private fun nearestChild(")]
+gap_chunk = kf_code[kf_code.find("fun makeGapTolerant("):kf_code.find("private fun nearestChild(")]
 check(
     "KeyFactory.makeGapTolerant vibra al resolver nearestChild",
     "nearestChild(row, ev.x, ev.y)?.let { child ->" in gap_chunk and "host.haptic(child)" in gap_chunk,

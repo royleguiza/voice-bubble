@@ -56,21 +56,23 @@ class LayoutLayer(
         host.addContentRow(keys.letterRow(if (host.isSpanish()) "asdfghjklñ" else "asdfghjkl;"))
 
         val row3 = keys.horizontalRow()
+        val shiftAction: () -> Unit = { host.toggleShiftKey() }
         val shiftKey = keys.makeActionIconKey(
             R.drawable.ic_shift_off,
             R.drawable.kb_key_alt,
             1.3f,
             if (host.isSpanish()) "mayúsculas" else "shift",
             tintColorRes = R.color.kb_label,
-        ) {
-            host.toggleShiftKey()
-        }
+            onClick = shiftAction,
+        )
+        shiftKey.tag = shiftAction
         host.trackShiftKey(shiftKey)
         row3.addView(shiftKey)
         for (c in "zxcvbnm") {
             row3.addView(keys.makeLetterKey(c))
         }
         row3.addView(keys.makeBackspaceKey())
+        keys.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
@@ -83,6 +85,7 @@ class LayoutLayer(
             row3.addView(keys.makeSymbolKey(c.toString()))
         }
         row3.addView(keys.makeBackspaceKey())
+        keys.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
@@ -96,6 +99,7 @@ class LayoutLayer(
             row3.addView(keys.makeCodeKey(c))
         }
         row3.addView(keys.makeBackspaceKey())
+        keys.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
