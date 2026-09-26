@@ -222,6 +222,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // ------------------------------------------------------------------
 
     override fun rebuild() {
+        // C-15: Si el editor de snippets está abierto, salvaguardar el borrador
+        // (nombre, contenido, campo activo y cursor) antes de destruir las vistas.
+        if (::snippets.isInitialized && snippets.isEditorOpen) {
+            snippets.saveDraftState()
+        }
         dismissPopup()
         if (::status.isInitialized) status.hide()
         dictation.onViewsDiscarded()

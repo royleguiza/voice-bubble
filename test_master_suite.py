@@ -41,6 +41,7 @@ SUITES = [
     ("Rendimiento: sin trabajo pesado en hilo principal (C-12)", "test_c12_no_main_thread_heavy_work_suite.py"),
     ("Widget: distingue sin internet de sin clave (C-13)", "test_c13_widget_auth_vs_network_suite.py"),
     ("Seguridad: portapapeles fuera de contraseñas (C-14)", "test_c14_clipboard_out_of_passwords_suite.py"),
+    ("Snippets: borrador a salvo ante rebuild (C-15)", "test_c15_snippet_draft_safe_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3103,6 +3104,43 @@ def test_c14_clipboard_out_of_passwords_contract():
     on_start_chunk = vks[vks.find("override fun onStartInputView("):vks.find("override fun onFinishInputView(")]
     assert "if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS || layer == Layer.CLIPBOARD))" in on_start_chunk, "C-14: onStartInputView no resetea CLIPBOARD en password"
 
+def test_c15_snippet_draft_safe_contract():
+    kt_dir = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    vks_path = os.path.join(kt_dir, "VoiceKeyboardService.kt")
+    snippets_path = os.path.join(kt_dir, "SnippetsLayer.kt")
+
+    with open(vks_path, "r", encoding="utf-8") as f:
+        vks = f.read()
+    with open(snippets_path, "r", encoding="utf-8") as f:
+        snippets = f.read()
+
+    # 1. SnippetsLayer: exposición de isEditorOpen y método saveDraftState
+    assert "var isEditorOpen = false" in snippets or "val isEditorOpen" in snippets, "C-15: SnippetsLayer no expone isEditorOpen"
+    assert "fun saveDraftState()" in snippets, "C-15: SnippetsLayer no expone saveDraftState()"
+    assert "private fun saveDraftState()" not in snippets, "C-15: saveDraftState() no debe ser privado"
+
+    # Preservación de variables y lógica de guardado
+    assert "private var draftName = \"\"" in snippets, "C-15: falta variable draftName en SnippetsLayer"
+    assert "private var draftContent = \"\"" in snippets, "C-15: falta variable draftContent en SnippetsLayer"
+    assert "private var draftActiveIsContent = false" in snippets, "C-15: falta draftActiveIsContent"
+    assert "private var draftCursor = 0" in snippets, "C-15: falta draftCursor"
+
+    # 2. VoiceKeyboardService: rebuild salvaguarda borrador al inicio
+    rebuild_idx = vks.find("override fun rebuild()")
+    assert rebuild_idx != -1, "C-15: override fun rebuild() no encontrado en VoiceKeyboardService"
+    rebuild_chunk = vks[rebuild_idx:rebuild_idx + 2500]
+
+    assert "if (::snippets.isInitialized && snippets.isEditorOpen)" in rebuild_chunk, "C-15: rebuild no verifica snippets.isInitialized && snippets.isEditorOpen"
+    assert "snippets.saveDraftState()" in rebuild_chunk, "C-15: rebuild no invoca snippets.saveDraftState()"
+
+    # Orden estricto: saveDraftState antes de dismissPopup y root.removeAllViews()
+    save_idx = rebuild_chunk.find("snippets.saveDraftState()")
+    dismiss_idx = rebuild_chunk.find("dismissPopup()")
+    remove_views_idx = rebuild_chunk.find("root.removeAllViews()")
+    assert save_idx != -1 and dismiss_idx != -1 and remove_views_idx != -1, "C-15: llamadas clave en rebuild no encontradas"
+    assert save_idx < dismiss_idx, "C-15: saveDraftState debe llamarse antes de dismissPopup()"
+    assert save_idx < remove_views_idx, "C-15: saveDraftState debe llamarse antes de root.removeAllViews()"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3130,6 +3168,7 @@ def main():
         ("C-12: sin trabajo pesado en el hilo principal", test_c12_no_main_thread_heavy_work_contract),
         ("C-13: el widget distingue sin internet de sin clave", test_c13_widget_auth_vs_network_contract),
         ("C-14: portapapeles fuera de contraseñas [S]", test_c14_clipboard_out_of_passwords_contract),
+        ("C-15: borrador de snippet a salvo", test_c15_snippet_draft_safe_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:
