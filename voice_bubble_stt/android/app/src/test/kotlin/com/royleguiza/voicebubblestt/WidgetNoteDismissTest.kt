@@ -31,7 +31,7 @@ import org.robolectric.shadows.ShadowToast
  * rama de nota nueva (sin extras: sin E/S en segundo plano).
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [28])
+@Config(sdk = [28], manifest = "src/main/AndroidManifest.xml")
 class WidgetNoteDismissTest {
 
     private fun buildNewNote(): WidgetNoteEditActivity {
