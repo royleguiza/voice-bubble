@@ -334,15 +334,123 @@ def test_dictation_contract():
         "Literal duplicado del tope en el controlador"
     )
 
+_WORKFLOW = {}
+
+
+def _workflow_jobs():
+    """Jobs REALES del workflow (YAML parseado, no busqueda de strings).
+
+    Se cachea el documento: `_workflow_steps` y las comprobaciones de NIVEL JOB
+    tienen que hablar de los MISMOS objetos, o un step no se puede localizar
+    dentro del job que lo contiene.
+    """
+    if "jobs" not in _WORKFLOW:
+        import yaml
+        with open(".github/workflows/android.yml", "r", encoding="utf-8") as f:
+            _WORKFLOW["jobs"] = yaml.safe_load(f)["jobs"]
+    return _WORKFLOW["jobs"]
+
+
 def _workflow_steps():
-    """Steps REALES del workflow (YAML parseado, no busqueda de strings)."""
-    import yaml
-    with open(".github/workflows/android.yml", "r", encoding="utf-8") as f:
-        workflow = yaml.safe_load(f)
+    """Steps REALES del workflow."""
     steps = []
-    for job in workflow["jobs"].values():
+    for job in _workflow_jobs().values():
         steps.extend(job.get("steps", []))
     return steps
+
+
+# El job que corre la prueba nativa tiene hoy 40 min. Un timeout de job por
+# debajo de este piso mata el run antes de que el step llegue a gradle, con el
+# job en rojo pero la prueba sin ejecutar: el invariante es que la prueba
+# bloqueante de C-05 CORRA, no que el job dure lo que dure.
+TIMEOUT_MINIMO_JOB_C05 = 30
+
+
+def _patron_de_firma(signature):
+    """Regex de una firma, insensible a los NOMBRES de sus parametros.
+
+    La identidad de un miembro es su nombre y su alcance, no el texto de su
+    lista de parametros: anclar el guard a `startRecording(widgetId: Int)`
+    convertia un renombre inocuo (`widgetId` -> `idWidget`) en rojo. Solo el
+    grupo de parentesis de la firma se vuelve permisivo; el resto del texto se
+    escapa literal para que un nombre con regex no se lea como patron.
+    """
+    abre = signature.find("(")
+    if signature.endswith(")") and abre != -1:
+        nivel, j = 0, abre
+        while j < len(signature):
+            if signature[j] == "(":
+                nivel += 1
+            elif signature[j] == ")":
+                nivel -= 1
+                if nivel == 0:
+                    return (
+                        re.escape(signature[:abre])
+                        + r"\((?:[^()]|\([^()]*\))*\)"
+                        + re.escape(signature[j + 1 :])
+                    )
+            j += 1
+    return re.escape(signature)
+
+
+def _ancla(source, signature, que):
+    """(inicio, fin) de una firma: mensaje de contrato, no un ValueError a pelo.
+
+    Morir con `substring not found` deja la suite roja igual, pero el mensaje
+    apunta al helper y no al invariante: quien lo lea no sabe que firma de C-05
+    desaparecio.
+    """
+    m = re.search(_patron_de_firma(signature), source)
+    if not m:
+        raise AssertionError(
+            f"{que}: la firma {signature!r} no existe ya en el archivo. El guard "
+            "esta anclado a esa firma: si se renombro o se movio, el invariante "
+            "de C-05 que se vigilaba cambio de sitio"
+        )
+    return m.start(), m.end()
+
+
+# Desactivar una carrera no es fallarla. Las cuatro formas que el runner
+# entiende como "este caso no cuenta" y que dejan el step bloqueante en verde
+# sin ejecutar nada: la anotacion, el `skip:` del test de Dart, el `Assume` que
+# se salta a si mismo y el `onPlatform` que no corre en el runner de CI.
+DESACTIVADORES = (
+    (r"@Ignore\b|@Disabled\b", "anotacion de desactivacion"),
+    (r"\bskip\s*:\s*(?:true|['\"])", "skip: (Dart)"),
+    (r"\bassumeTrue\b|\bAssume\.|\b@Skip\b", "Assume / @Skip"),
+    (r"\bonPlatform\b", "onPlatform: no corre en el runner"),
+)
+
+
+def _prohibe_desactivar_tests(*directorios):
+    """Ningun archivo de test del repo puede desactivarse.
+
+    El guard solo certifica los cuerpos de las carreras que nombra, asi que una
+    carrera nueva en un archivo vecino se podia desactivar con `@Ignore` y el
+    contrato seguia en verde. Se recorre el arbol ENTERO, nativo y Dart.
+    """
+    for directorio in directorios:
+        for root, _, files in os.walk(directorio):
+            for name in sorted(files):
+                if not name.endswith((".kt", ".dart")):
+                    continue
+                ruta = os.path.join(root, name)
+                with open(ruta, "r", encoding="utf-8") as f:
+                    # Sin comentarios pero CON literales: el `skip: 'flaky'` de
+                    # Dart es justamente un valor de cadena, y enmascarar las
+                    # cadenas hacia desaparecer la prueba desactivada.
+                    codigo = _sin_comentarios(f.read())
+                for patron, que in DESACTIVADORES:
+                    m = re.search(patron, codigo)
+                    assert not m, (
+                        f"{ruta}:{codigo[: m.start()].count(chr(10)) + 1}: "
+                        f"{que} en un archivo de test ('{m.group(0)}'). Un caso "
+                        "desactivado no falla: no se ejecuta, el step bloqueante "
+                        "de C-05 queda en verde y la carrera de exclusion mutua "
+                        "del microfono deja de estar cubierta. Se exige por "
+                        "nombre en TODO el arbol de tests, no solo en el archivo "
+                        "que el guard lee"
+                    )
 
 
 def _body_after(source, signature):
@@ -352,9 +460,28 @@ def _body_after(source, signature):
     cuelga despues de su unico llamador, asi que el nombre siempre aparece en
     el slice y un metodo muerto pasa por vivo. Emparejando llaves, el slice
     cubre solo lo que el metodo ejecuta.
+
+    El cuerpo vuelve SIN comentarios: un `// val ownsClaim = ...` comentado no
+    es codigo y, contado como sentencia, satisfacia asserts que describen
+    invariantes de ejecucion (la idempotencia del widget, el release en un
+    terminal, el corte por claim 0).
+
+    Un cuerpo de EXPRESION (`fun f(): Boolean = celda.get() != 0L`,
+    `Future<void> f() => x`) no abre bloque: emparejar llaves desde la firma se
+    comia la funcion SIGUIENTE y todo lo que se afirmaba de un cuerpo se
+    comprobaba sobre el metodo de al lado. Se muere aqui, con el mensaje del
+    invariante, igual que hace `_celdas_fun`.
     """
-    start = source.index(signature)
-    open_brace = source.index("{", start)
+    inicio, fin = _ancla(source, signature, "Cuerpo de metodo")
+    cola = source[fin : source.index("{", inicio)]
+    assert "=" not in cola, (
+        f"{signature!r} es un cuerpo de EXPRESION (`{cola.strip()}`), no un "
+        "bloque: no abre llave propia y emparejar llaves desde su firma "
+        "cortaria el cuerpo de la funcion SIGUIENTE, con lo que todo lo que el "
+        "guard afirma del metodo se comprobaria sobre el metodo de al lado. El "
+        "invariante que se vigilaba cambio de forma"
+    )
+    open_brace = source.index("{", inicio)
     depth = 0
     for i in range(open_brace, len(source)):
         if source[i] == "{":
@@ -362,12 +489,17 @@ def _body_after(source, signature):
         elif source[i] == "}":
             depth -= 1
             if depth == 0:
-                return source[open_brace : i + 1]
+                return _strip_dart_comments(source[open_brace : i + 1])
     raise AssertionError(f"Llava sin cerrar en {signature!r}")
 
 
 def _strip_dart_comments(source):
-    """Cuerpo Dart sin comentarios: una llamada comentada no es una sentencia."""
+    """Cuerpo sin comentarios: una llamada comentada no es una sentencia.
+
+    Los comentarios de Kotlin tienen la misma forma que los de Dart (`//` y
+    `/* */`) y ningun archivo de este contrato usa raw strings ni escapes
+    raros, asi que el mismo limpiador sirve para las tres lenguas.
+    """
     out = []
     i = 0
     n = len(source)
@@ -402,18 +534,75 @@ def _strip_dart_comments(source):
     return "".join(out)
 
 
+def _mascara_cadenas(source):
+    """Indices que estan DENTRO de un comentario o de un literal de cadena.
+
+    El codigo de las tres lenguas mezcla llaves, `return` y `;` con literales:
+    `val marca = "{"` desincroniza cualquier contador de llaves, y `${...}` en
+    una cadena de Kotlin rompe el texto de una sentencia a la mitad. Ningun
+    archivo de este contrato usa escapes raros, asi que la mascara sirve para
+    las tres.
+    """
+    dentro = [False] * len(source)
+    i, n = 0, len(source)
+    while i < n:
+        ch = source[i]
+        if ch == "/" and i + 1 < n and source[i + 1] in "/*":
+            if source[i + 1] == "/":
+                fin = source.find("\n", i)
+                fin = n if fin == -1 else fin
+            else:
+                fin = source.find("*/", i + 2)
+                fin = n if fin == -1 else fin + 2
+            for k in range(i, fin):
+                dentro[k] = True
+            i = fin
+            continue
+        if ch in "\"'":
+            comilla = source[i : i + 3] if source[i : i + 3] in ('"""', "'''") else ch
+            j = i + len(comilla)
+            while j < n:
+                if source[j] == "\\" and len(comilla) == 1:
+                    j += 2
+                    continue
+                if source.startswith(comilla, j):
+                    j += len(comilla)
+                    break
+                j += 1
+            else:
+                j = n
+            for k in range(i, min(j, n)):
+                dentro[k] = True
+            i = j
+            continue
+        i += 1
+    return dentro
+
+
+def _sin_cadenas(source, mascara):
+    """El MISMO texto con el contenido de cadenas y comentarios en blanco.
+
+    Conserva longitudes y posiciones, asi que un `finditer` sobre el resultado
+    sigue apuntando al original.
+    """
+    return "".join(" " if mascara[i] else ch for i, ch in enumerate(source))
+
+
 def _statements_at_depth(body, depth):
     """Sentencias de un cuerpo que viven en la profundidad de llaves indicada.
 
     Lo que queda mas adentro (dentro de un if, de un try o de un bloque) es
     condicional: puede no ejecutarse nunca. Exigir la sentencia en la
-    profundidad pedida es lo que separa un release real de uno nominal.
+    profundidad pedida es lo que separa un release real de uno nominal. Del
+    texto solo se ignoran los delimitadores que caen dentro de una cadena: una
+    interpolacion `"...${x}..."` no parte la sentencia en dos.
     """
+    mascara = _mascara_cadenas(body)
     out = []
     buf = []
     d = 0
-    for ch in body:
-        if ch in "{};\n":
+    for i, ch in enumerate(body):
+        if not mascara[i] and ch in "{};\n":
             if d == depth:
                 text = "".join(buf).strip()
                 if text:
@@ -429,10 +618,134 @@ def _statements_at_depth(body, depth):
     return out
 
 
+def _cuerpo_del_bloque(cuerpo, palabra, donde):
+    """Cuerpo de la llave que abre el PRIMER bloque `palabra` de `cuerpo`.
+
+    `palabra` se busca solo a PROFUNDIDAD 1: un `finally` anidado en otro `try`
+    no es el que cierra la captura, y tomar el equivocado deja el release real
+    fuera de lo verificado. Si no hay ninguno, el invariante que se vigilaba
+    cambio de sitio y el mensaje lo dice.
+    """
+    limpio = _strip_dart_comments(cuerpo)
+    mascara = _mascara_cadenas(limpio)
+    n = len(limpio)
+    profundidad = [0] * n
+    nivel = 0
+    for i, ch in enumerate(limpio):
+        if mascara[i]:
+            continue
+        if ch == "{":
+            nivel += 1
+        elif ch == "}":
+            nivel -= 1
+        profundidad[i] = nivel
+    for m in re.finditer(rf"\b{palabra}\b", limpio):
+        if mascara[m.start()] or profundidad[m.start()] != 1:
+            continue
+        j = limpio.find("{", m.end())
+        if j == -1:
+            continue
+        nivel = 0
+        for k in range(j, n):
+            if mascara[k]:
+                continue
+            if limpio[k] == "{":
+                nivel += 1
+            elif limpio[k] == "}":
+                nivel -= 1
+                if nivel == 0:
+                    return limpio[j : k + 1]
+        raise AssertionError(f"Llava sin cerrar en el bloque {palabra!r}")
+    raise AssertionError(
+        f"{donde}: no hay ningun bloque '{palabra}' a PRIMER NIVEL del cuerpo. "
+        "El invariante que se vigilaba cambio de sitio (o se elimino el bloque)"
+    )
+
+
+def _niveles_de_llaves(limpio, mascara):
+    """Nivel de llaves en cada posicion: 1 = sentencia de PRIMER NIVEL del cuerpo.
+
+    El contenido de un comentario o de un literal no cuenta. Es la misma
+    convencion que `_statements_at_depth`, para que "primer nivel" signifique
+    exactamente lo mismo en los dos helpers.
+    """
+    niveles = [0] * len(limpio)
+    nivel = 0
+    for i, ch in enumerate(limpio):
+        if mascara[i]:
+            continue
+        if ch == "{":
+            nivel += 1
+        elif ch == "}":
+            nivel -= 1
+        niveles[i] = nivel
+    return niveles
+
+
+def _bloque_de_if(cuerpo, condicion, donde):
+    """(inicio, cuerpo) del PRIMER `if (<condicion>)` a PRIMER NIVEL del cuerpo.
+
+    Una rama de ABORTE solo protege el contrato si CORTA. Mirar que el `if` esta
+    donde toca (o que existe) deja pasar un cuerpo que solo registra y sigue:
+    el `if (claim == 0) { logSilencioso(); }` de Dart y el
+    `if (audioFocusLost) { micState = MicState.IDLE }` del teclado dejan pasar
+    la firma y ejecutan el resto igual, asi que el `AudioRecord` arranca con el
+    microfono ya tomado por el rival.
+
+    Se acepta el `if` con y sin llaves: reescribir la rama a una sola linea es
+    un refactor inocuo y no puede volverse rojo. Lo que no se negocia es que la
+    rama exista a PRIMER NIVEL y corte con `throw` o `return`.
+    """
+    limpio = _strip_dart_comments(cuerpo)
+    mascara = _mascara_cadenas(limpio)
+    n = len(limpio)
+    profundidad = _niveles_de_llaves(limpio, mascara)
+    patron = re.compile(r"\bif\s*\(\s*(?:" + condicion + r")\s*\)")
+    for m in patron.finditer(limpio):
+        if mascara[m.start()] or profundidad[m.start()] != 1:
+            continue
+        k = m.end()
+        while k < n and limpio[k] in " \t\n\r":
+            k += 1
+        if k < n and limpio[k] == "{":
+            nivel = 0
+            for j in range(k, n):
+                if mascara[j]:
+                    continue
+                if limpio[j] == "{":
+                    nivel += 1
+                elif limpio[j] == "}":
+                    nivel -= 1
+                    if nivel == 0:
+                        return m.start(), limpio[k : j + 1]
+            raise AssertionError(f"{donde}: llave sin cerrar en la rama {m.group(0)!r}")
+        # Sin llaves: la rama es la sentencia que sigue al `if`.
+        fin = k
+        nivel = 0
+        while fin < n:
+            if mascara[fin]:
+                fin += 1
+                continue
+            ch = limpio[fin]
+            if ch in "([":
+                nivel += 1
+            elif ch in ")]":
+                nivel -= 1
+            elif (ch == ";" and nivel == 0) or (ch == "\n" and nivel == 0):
+                break
+            fin += 1
+        return m.start(), "{" + limpio[k:fin] + "}"
+    raise AssertionError(
+        f"{donde}: no hay ninguna rama `if ({condicion})` a PRIMER NIVEL del "
+        "cuerpo. El invariante que se vigilaba cambio de sitio (o se elimino la "
+        "rama de corte)"
+    )
+
+
 def _dart_test_body(source, name):
     """Cuerpo real de un test Dart (emparejando llaves desde su nombre)."""
-    start = source.index(f"'{name}'")
-    open_brace = source.index("{", start)
+    inicio, _ = _ancla(source, f"'{name}'", f"Test Dart {name!r}")
+    open_brace = source.index("{", inicio)
     depth = 0
     for i in range(open_brace, len(source)):
         if source[i] == "{":
@@ -440,17 +753,672 @@ def _dart_test_body(source, name):
         elif source[i] == "}":
             depth -= 1
             if depth == 0:
-                return source[open_brace : i + 1]
+                return _strip_dart_comments(source[open_brace : i + 1])
     raise AssertionError(f"Llava sin cerrar en el test {name!r}")
 
 
 def _expr_body(source, signature):
     """Cuerpo de expresion (sin llaves): getter de Dart o = de Kotlin."""
-    tail = source[source.index(signature):]
+    inicio, _ = _ancla(source, signature, f"Expresion {signature!r}")
+    tail = source[inicio:]
+    if ";" not in tail:
+        raise AssertionError(f"La expresion {signature!r} no termina en ';'")
     return tail[: tail.index(";") + 1]
 
 
+def _sin_comentarios(source):
+    """El mismo texto sin comentarios (los literales se conservan)."""
+    return _strip_dart_comments(source)
+
+
+def _codigo(source):
+    """Codigo real: sin comentarios y con el contenido de los literales en blanco.
+
+    Conserva longitudes y posiciones, asi que un `finditer` sobre el resultado
+    sigue apuntando al original. Un assert de presencia que mira texto crudo lo
+    satisfacen un `//` o una cadena: la rama terminal que nunca cancela, el
+    `idle` del catch que solo existe comentado y el nombre de una constante
+    renombrada con sufifo se colaban asi.
+    """
+    limpio = _strip_dart_comments(source)
+    return _sin_cadenas(limpio, _mascara_cadenas(limpio))
+
+
+ASERCION_KOTLIN = re.compile(r"\bassert[A-Za-z]*\s*\(")
+ASERCION_DART = re.compile(r"\b(?:expect[A-Za-z]*|fail)\s*\(")
+
+# Palabras que abren un BLOQUE de control o de alcance. Todo lo demas que abre
+# una llave es una lambda o el cuerpo de una funcion, y ahi un `return` es
+# legitimo. Las cinco funciones de alcance (`run { }` y Cia) se cuentan como
+# bloque y no como lambda porque son INLINE: un `return` desnudo dentro de
+# ellas sale del `fun` que las contiene, y de un test eso aborta el caso.
+PALABRAS_BLOQUE = {
+    "if", "while", "for", "when", "switch", "catch", "do", "try", "finally",
+    "synchronized", "else", "run", "let", "also", "apply", "with",
+}
+
+
+def _abre_lambda(texto, i):
+    """La llave de la posicion i abre una lambda o un bloque de control."""
+    j = i - 1
+    while j >= 0 and texto[j] in " \t\n\r":
+        j -= 1
+    if j >= 0 and texto[j] == ")":
+        k, nivel = j, 0
+        while k >= 0:
+            if texto[k] == ")":
+                nivel += 1
+            elif texto[k] == "(":
+                nivel -= 1
+                if nivel == 0:
+                    break
+            k -= 1
+        m = k - 1
+        while m >= 0 and texto[m] in " \t\n\r":
+            m -= 1
+        while m >= 0 and (texto[m].isalnum() or texto[m] in "_."):
+            m -= 1
+        return texto[m + 1 : k].strip().split(".")[-1] not in PALABRAS_BLOQUE
+    k = j
+    while k >= 0 and (texto[k].isalnum() or texto[k] == "_"):
+        k -= 1
+    return texto[k + 1 : j + 1] not in PALABRAS_BLOQUE
+
+
+def _retornos_del_test(cuerpo):
+    """`return` que cuelgan del propio cuerpo del test, no de una lambda.
+
+    Un `return` de primer nivel - da igual si desnudo, en `if (...) return` o
+    en `if (...) { return }` - aborta el caso: compila, no falla y deja el step
+    bloqueante de CI en verde sin comprobar nada. El de dentro de una lambda
+    (el handler de un MethodChannel, el cuerpo de un pool.execute) devuelve de
+    ESA lambda y es legitimo. El contenido de las cadenas va en blanco: un
+    `return` de un literal no es codigo y una llave desbalanceada dentro de una
+    cadena desincronizaba la pila y enmascaraba todos los `return` posteriores.
+    """
+    limpio = _strip_dart_comments(cuerpo)
+    codigo = _sin_cadenas(limpio, _mascara_cadenas(limpio))
+    pila = []
+    salida = []
+    for i, ch in enumerate(codigo):
+        if i == 0 and ch == "{":
+            # La llave del propio test no es una lambda: es el cuerpo que
+            # estamos certificando, asi que no cuenta como nivel.
+            pila.append(False)
+        elif ch == "{":
+            pila.append(_abre_lambda(codigo, i))
+        elif ch == "}" and pila:
+            pila.pop()
+        salida.append(sum(pila))
+    return [m.start() for m in re.finditer(r"\breturn\b", codigo) if salida[m.start()] == 0]
+
+
+def _certifica_test(cuerpo, nombre, asercion, idioma):
+    """Certifica un test de carrera por su CUERPO, no por su nombre.
+
+    Un test que existe, se llama como los otros y no comprueba nada deja el
+    step bloqueante de CI en verde. Prohibir `Assume` por nombre no alcanza:
+    la via generica es un `return` que aborta el caso antes de terminar sus
+    aserciones, o una asercion que no llega a ejecutarse porque la metieron en
+    un `if (false) { }`, en una iteracion que no dispara o en una `fun` local
+    que nadie invoca. Por eso la asercion se exige como sentencia de PRIMER
+    NIVEL del cuerpo del test, en las tres lenguas.
+
+    Devuelve esas sentencias de primer nivel: cada asercion raiz se exige
+    dentro de una de ellas.
+    """
+    limpio = _strip_dart_comments(cuerpo)
+    raiz = _statements_at_depth(limpio, 1)
+    # `await` delante si: en Dart la asercion de una promesa sigue siendo la
+    # sentencia que abre el caso (`await expectLater(...)`).
+    abre = re.compile(r"(?:await\s+|unawaited\s+)*(?:" + asercion.pattern + ")")
+    assert any(abre.match(sentencia) for sentencia in raiz), (
+        f"El test '{nombre}' debe ASERTAR su invariante ({idioma}) con una "
+        "sentencia de PRIMER NIVEL de su cuerpo, y la asercion tiene que ABRIR "
+        "esa sentencia: sin comprobar nada, o con las aserciones metidas en un "
+        "`if (false) { }`, en una iteracion que no dispara o en una `fun` local "
+        "que nadie invoca, el caso compila, no falla y deja el step bloqueante "
+        "de CI en verde sin ejecutar la carrera. Un `if (false) assertEquals(...)` "
+        "sin llaves tampoco cuenta: la asercion queda detrás de una condicion"
+    )
+    assert not _retornos_del_test(cuerpo), (
+        f"El test '{nombre}' tiene un `return` de primer nivel: se salta a si "
+        "mismo, no ejecuta el resto de sus aserciones y deja el step "
+        "bloqueante de CI en verde"
+    )
+    return raiz
+
+
+def _exige_raices(sentencias, raices, donde):
+    """Cada asercion raiz, DENTRO del test que la nombra y a PRIMER NIVEL.
+
+    Exigir el literal a nivel de archivo deja pasar el test que lo importa si
+    el mismo literal sobrevive en otro test del archivo; exigirlo en el archivo
+    entero, ademas, lo daria por vivo aunque estuviera dentro de un bloque que
+    no se ejecuta.
+    """
+    for test, afirmaciones in raices.items():
+        assert test in sentencias, f"{donde}: falta la prueba '{test}'"
+        for afirmacion in afirmaciones:
+            raiz = afirmacion.strip().rstrip(";")
+            assert any(sentencia.strip().startswith(raiz) for sentencia in sentencias[test]), (
+                f"{donde}: la prueba '{test}' debe asertar {afirmacion} en una "
+                "sentencia de PRIMER NIVEL de su cuerpo, y la asercion tiene que "
+                "ABRIR esa sentencia. Exigirla a nivel de archivo deja pasar el "
+                "test que la importa si el mismo literal sobrevive en otro test; "
+                "exigirla dentro del cuerpo la deja viva en un `if (false)`, en "
+                "una iteracion que no dispara o en una `fun` que nadie invoca"
+            )
+
+
+# `val celda = microphoneOwner`, `val celda: AtomicLong = microphoneOwner`,
+# `private val celda: AtomicLong get() = microphoneOwner` y
+# `private val celda: AtomicLong by lazy { microphoneOwner }` son el MISMO
+# alias: sin la anotacion de tipo, sin la property `get()` o con la
+# delegacion `by lazy`, la prohibicion de las escrituras no-CAS se esquivaba
+# por una puerta que el punto 7 del feedback 8.0 daba por cerrada (y la escrita
+# en dos pasos del 7.0 volvia por ahi).
+ANCLA_ALIAS = r"\s*(?::[^=;{}]*?)?(?:get\(\)\s*)?(?:=\s*|by\s+lazy\s*\{\s*)"
+
+
+def _alias_del_cliente(cuerpo, origen, donde):
+    """Nombre local que recibe el cliente de dictado, resuelto por la ASIGNACION.
+
+    Atar el guard a `speechClient` era atarlo a un nombre: renombrar el local
+    tumbaba el guard sin cambiar el comportamiento. Se resuelve por la firma de
+    la asignacion (`val mic = SpeechToTextClient(this)`) y se trabaja sobre ese
+    alias, igual que con la celda del arbitro.
+    """
+    m = re.search(
+        r"\bval\s+(\w+)\s*=\s*" + re.escape(origen),
+        _strip_dart_comments(cuerpo),
+    )
+    assert m, (
+        f"{donde}: no se encontro la asignacion `val <alias> = {origen}` en el "
+        "cuerpo. Se vigila que el cliente se cree, no el nombre que se le dio"
+    )
+    return m.group(1)
+
+
+def _alias_de_la_celda(source, celda="microphoneOwner"):
+    """Nombres que apuntan a la celda del arbitro: la celda y sus alias, en cadena.
+
+    Sirve para las DOS cosas que hay que afirmar de la celda: que solo se
+    escribe con `compareAndSet` y que el CAS de toma y el de release actuan
+    sobre ella. Un alias -con o sin tipo, como `val` local o como property
+    `get()` - es la MISMA celda: tratarlo distinto en la prohibicion y en el
+    permiso seria incoherente.
+    """
+    conocidos = {celda}
+    while True:
+        destinos = "|".join(re.escape(n) for n in sorted(conocidos))
+        nuevos = {
+            m.group(1)
+            for m in re.finditer(rf"\b(?:val|var)\s+(\w+){ANCLA_ALIAS}(?:{destinos})\b", source)
+        } - conocidos
+        if not nuevos:
+            return conocidos
+        conocidos |= nuevos
+
+
+# Sitios de captura del ARBOL KOTLIN, separados por lo que hacen:
+#   - APERTURA: construyen un AudioRecord o abren la grabacion. Son los que
+#     crean el segundo microfono si el arbitro no esta de por medio.
+#   - RECLAMO: toman el claim del arbitro. Claiman y NO abren nada.
+# La distincion importa para que "N sitios de captura" signicie lo que dice:
+# antes de separar, siete de los siete contados eran de los dos tipos, tres de
+# ellos nada mas reclamaban, y "abrir un microfono" sonaba a siete sitios.
+# Los patrones son ANCHOS a proposito: `AudioRecord.Builder(...).build()` sin
+# `.startRecording()` y una llamada partida por un comentario
+# (`AudioRecord /* */ (`) son la misma apertura, y las dos se colaban.
+PATRONES_APERTURA = (r"\bAudioRecord\s*(?:\.\s*Builder)?\s*\(", r"\.startRecording\s*\(\s*\)")
+PATRONES_RECLAMO = (r"\btryClaimMicrophone\s*\(",)
+
+# `MediaRecorder` solo puede aparecer como CONSTANTE de fuente
+# (`MediaRecorder.AudioSource.MIC`): construirlo o arrancarlo es otra apertura
+# de microfono que ni el claim ni el barrido de AudioRecord venian.
+PATRONES_MEDIA_RECORDER = (
+    r"\bMediaRecorder\s*\(",
+    r"\bMediaRecorder\s*\.\s*(?:start|prepare|stop|reset|release|setAudioSource)\b",
+)
+
+# La celda del ARBITRO no captura: decide. Es el unico sitio de `tryClaim`
+# que no puede exigir un claim previo (es el claim), asi que se exime por
+# nombre y se cuenta aparte.
+CELDA_ARBITRO = ("BackgroundWork.kt", "fun tryClaimMicrophone(): Long")
+
+# (archivo, FIRMA SIN NOMBRES DE PARAMETRO) -> (aperturas, reclamos, claim que
+# la celda debe llevar DENTRO de su cuerpo). `None` como claim = la celda es la
+# FABRICA primitiva (el AudioRecord en si), que por definicion no puede exigir
+# un claim previo: quien la reclama son sus dos llamadores, celdas de esta misma
+# tabla.
+CELDAS_CAPTURA = {
+    ("SpeechToTextClient.kt", "fun startRecording(): Boolean"): (2, 0, None),
+    ("DictationController.kt", "private fun startDictation()"): (1, 1, "tryClaimMicrophone"),
+    ("WidgetDictationService.kt", "private fun startRecording()"): (
+        1,
+        0,
+        "claimMicrophoneForDictation",
+    ),
+    ("WidgetDictationService.kt", "internal fun claimMicrophoneForDictation(): Long"): (
+        0,
+        1,
+        "tryClaimMicrophone",
+    ),
+    (
+        "MainActivity.kt",
+        "override fun configureFlutterEngine()",
+    ): (0, 1, "tryClaimMicrophone"),
+}
+
+# SITIOS DE CAPTURA DEL LADO DART (app_source/lib). El barrido de Kotlin no
+# llega a la burbuja ni a Notas: son superficies Dart, y un servicio Dart NUEVO
+# con `AudioRecorder()` + `.start(...)` sin claim abria microfono con el
+# teclado como dueno y el guard seguia en verde. Mismo esquema que el lado
+# Kotlin: celda = clase, tabla con conteos congelados y claim exigido dentro
+# del cuerpo.
+#   - APERTURA: construir el recorder (`AudioRecorder()`) o abrir la grabacion
+#     (`.start(`). Un `.start(` es apertura por construccion del paquete: solo
+#     el recorder tiene `start`, y sin construirlo no se puede grabar.
+#   - RECLAMO: pedir el claim por el canal o por el inyectable de
+#     TranscriptionService.
+PATRONES_APERTURA_DART = (r"\bAudioRecorder\s*\(\s*\)", r"\.\s*start\s*\(")
+PATRONES_RECLAMO_DART = (
+    r"invokeMethod(?:<[^>]*>)?\(\s*'claimMicrophone'",
+    r"\b_?claimMicrophone\s*\(",
+)
+
+# (ruta relativa a app_source/lib, celda) -> (aperturas, reclamos, claim).
+# Dos celdas van SIN claim y por motivos distintos: la de Ajustes solo PIDE
+# PERMISO (construye el recorder para preguntar y lo suelta) y el claimer por
+# defecto ES el claim del lado Dart (el gemelo de la celda del arbitro). El
+# guard las distingue exigiendo que su cuerpo no abra la grabacion.
+CELDAS_CAPTURA_DART = {
+    ("services/transcription_service.dart", "TranscriptionService"): (
+        2,
+        1,
+        "await _claimMicrophone()",
+    ),
+    ("services/transcription_service.dart", "_defaultMicClaimer"): (0, 1, None),
+    ("screens/settings_screen.dart", "_SettingsScreenState"): (1, 0, None),
+}
+
+
+# Modificadores que preceden a `fun` y que forman parte de la identidad de la
+# celda: dos metodos homonimos de un archivo se distinguen por su alcance.
+MODIFICADORES = {
+    "private", "internal", "protected", "public", "override", "open", "final",
+    "suspend", "abstract", "inline", "operator", "tailrec", "external",
+    "const", "lateinit", "actual", "expect", "inner", "companion",
+}
+
+
+def _celdas_fun(limpio, mascara):
+    """(firma normalizada, desde, hasta, cuerpo) de cada `fun` del archivo.
+
+    La celda va de la FIRMA al cierre: el sitio que da nombre a la funcion
+    (`fun tryClaimMicrophone()`) es tan suyo como su cuerpo. La firma se
+    resuelve emparejando el parentesis de los parametros: una funcion de cuerpo
+    de EXPRESION (`fun f(): Boolean = celda.get() != 0L`) no abre bloque, y
+    tomarla como celda correria los limites de la celda real.
+    """
+    celdas = []
+    for m in re.finditer(r"\bfun\b", limpio):
+        if mascara[m.start()]:
+            continue
+        prefijo, k = "", m.start() - 1
+        while k >= 0 and limpio[k] in " \t\n\r":
+            k -= 1
+        while k >= 0:
+            fin_palabra = k + 1
+            while k >= 0 and (limpio[k].isalnum() or limpio[k] == "_"):
+                k -= 1
+            palabra = limpio[k + 1 : fin_palabra]
+            if palabra.lower() not in MODIFICADORES:
+                break
+            prefijo = palabra + " " + prefijo
+            while k >= 0 and limpio[k] in " \t\n\r":
+                k -= 1
+        par = limpio.find("(", m.start())
+        if par == -1:
+            continue
+        nivel, fin = 0, None
+        for k in range(par, len(limpio)):
+            if mascara[k]:
+                continue
+            if limpio[k] == "(":
+                nivel += 1
+            elif limpio[k] == ")":
+                nivel -= 1
+                if nivel == 0:
+                    fin = k
+                    break
+        if fin is None:
+            continue
+        j = limpio.find("{", fin)
+        if j == -1 or re.search(r"[{};=]", limpio[fin + 1 : j]):
+            continue
+        nivel = 0
+        for k in range(j, len(limpio)):
+            if mascara[k]:
+                continue
+            if limpio[k] == "{":
+                nivel += 1
+            elif limpio[k] == "}":
+                nivel -= 1
+                if nivel == 0:
+                    firma = re.sub(
+                        r"\s+", " ", prefijo + _sin_cadenas(limpio[m.start() : j], mascara)
+                    ).strip()
+                    celdas.append((firma, m.start(), k, limpio[j : k + 1]))
+                    break
+    return celdas
+
+
+def _firma_sin_parametros(firma):
+    """La MISMA firma con la lista de parametros vaciada.
+
+    La celda de `CELDAS_CAPTURA` se identifica por su nombre y su alcance, no
+    por el texto de sus parametros: indexarla con la firma completa convertia
+    un renombre inocuo (`widgetId` -> `idWidget`) en "celda DESCONOCIDA", que
+    es un rojo de contrato falso.
+    """
+    abre = firma.find("(")
+    if abre == -1:
+        return firma
+    nivel, j = 0, abre
+    while j < len(firma):
+        if firma[j] == "(":
+            nivel += 1
+        elif firma[j] == ")":
+            nivel -= 1
+            if nivel == 0:
+                return firma[:abre] + "()" + firma[j + 1 :]
+        j += 1
+    return firma
+
+
+def _celda_de(celdas, posicion):
+    """Celda mas interna que cubre la posicion, o None si no hay ninguna."""
+    return min(
+        (c for c in celdas if c[1] <= posicion <= c[2]),
+        key=lambda c: c[2] - c[1],
+        default=None,
+    )
+
+
+def _sitios_de_captura(kt_dir):
+    """Celda (archivo, firma) de cada sitio de captura, con su conteo y su cuerpo.
+
+    Se separa APERTURA (construir el AudioRecord / abrir la grabacion) de
+    RECLAMO (tomar el claim del arbitro): son contratos distintos y la celda
+    tiene que cumplir los dos con nombres distintos. Las firmas se comparan ya
+    normalizadas y sin nombres de parametro para que un refactor de formato o
+    un renombre de parametro no se lean como un sitio nuevo ni como una celda
+    desconocida.
+    """
+    celdas = {}
+    for root, _, files in os.walk(os.path.dirname(kt_dir)):
+        for name in sorted(files):
+            if not name.endswith(".kt"):
+                continue
+            with open(os.path.join(root, name), "r", encoding="utf-8") as f:
+                limpio = _strip_dart_comments(f.read())
+            mascara = _mascara_cadenas(limpio)
+            for patron in PATRONES_MEDIA_RECORDER:
+                assert not re.search(patron, limpio), (
+                    f"{name}: 'MediaRecorder' solo puede aparecer como CONSTANTE "
+                    "de fuente (MediaRecorder.AudioSource.MIC). Construirlo o "
+                    "arrancarlo ("
+                    + patron
+                    + ") es otra apertura de microfono que ni el barrido de "
+                    "AudioRecord ni el claim del arbitro venian: dos "
+                    "AudioRecord a la vez"
+                )
+            cuerpos = _celdas_fun(limpio, mascara)
+            for tipo, patrones in (
+                ("apertura", PATRONES_APERTURA),
+                ("reclamo", PATRONES_RECLAMO),
+            ):
+                for patron in patrones:
+                    for m in re.finditer(patron, limpio):
+                        if mascara[m.start()]:
+                            continue
+                        dona = _celda_de(cuerpos, m.start())
+                        assert dona, (
+                            f"{name}: el sitio de {tipo} {m.group(0)!r} esta "
+                            "fuera de toda funcion (pegado a una variable de "
+                            "archivo o al inicializador de un objeto): sin celda "
+                            "no se puede exigir que pase por el arbitro"
+                        )
+                        clave = (name, _firma_sin_parametros(dona[0]))
+                        previo = celdas.get(clave)
+                        celdas[clave] = (
+                            (previo[0] if previo else 0) + int(tipo == "apertura"),
+                            (previo[1] if previo else 0) + int(tipo == "reclamo"),
+                            previo[2] if previo else dona[3],
+                        )
+            # Sin imports con ALIAS: `import android.media.AudioRecord as AR`
+            # + `AR()` es una apertura de microfono que ni el nombre de la clase
+            # ni ningun patron de este barrido ven. Nada del arbol usa alias, asi
+            # que prohibirlos no cuesta un refactor.
+            assert not re.search(r"(?m)^\s*import\s+.*\bas\s+\w+", limpio), (
+                f"{name}: import con alias. Un `import ... as X` esconde el "
+                "nombre real de la clase (por ejemplo `AudioRecord`) y abre una "
+                "puerta que el barrido de sitios de captura no puede cerrar"
+            )
+    return {clave: (valor[0], valor[1], _codigo(valor[2])) for clave, valor in celdas.items()}
+
+
+def _verifica_celdas_de_captura(celdas, tabla, donde, aperturas, reclamos):
+    """Toda celda de captura esta DECLARADA, con su conteo congelado y su claim.
+
+    `celdas` viene del barrido ((clave) -> (aperturas, reclamos, cuerpo sin
+    literales)); `tabla` es la de CELDAS_CAPTURA/_DART del lado que se vigila.
+    Los conteos van con NOMBRE (apertura = abre microfono, reclamo = pide el
+    arbitro): antes iban en un unico numero, y "siete sitios de captura" sonaba
+    a siete microfonos abiertos cuando tres de esos siete solo reclamaban.
+    """
+    for celda in sorted(set(celdas) | set(tabla)):
+        apertura, reclamo, cuerpo = celdas.get(celda, (0, 0, ""))
+        esperados = tabla.get(celda)
+        assert esperados is not None, (
+            f"{donde}: sitio de captura en celda DESCONOCIDA "
+            f"{celda[0]}::{celda[1]} ({apertura} apertura/s, {reclamo} "
+            "reclamo/s). Toda clase que construye un AudioRecord, abre la "
+            "grabacion o toma el claim tiene que pasar por el arbitro y figurar "
+            "en la tabla con su conteo: un sitio que no esta en la tabla abre el "
+            "microfono sin exclusion mutua y el guard no lo veia"
+        )
+        assert (apertura, reclamo) == (esperados[0], esperados[1]), (
+            f"{donde}: {celda[0]}::{celda[1]}: se esperaban {esperados[0]} "
+            f"apertura(s) y {esperados[1]} reclamo(s) de captura y hay "
+            f"{apertura} y {reclamo}. Un sitio nuevo o duplicado en una celda de "
+            "captura cambia el contrato: declaralo en la tabla y justificarlo"
+        )
+        claim = esperados[2]
+        assert claim is None or claim in cuerpo, (
+            f"{donde}: {celda[0]}::{celda[1]}: la celda de captura debe llevar "
+            f"el claim '{claim}' DENTRO de su cuerpo. Capturar desde ahi sin "
+            "arbitro deja dos AudioRecords abiertos a la vez, que es justo el "
+            "defecto que este contrato existe para cerrar"
+        )
+    total_apertura = sum(v[0] for v in celdas.values())
+    total_reclamo = sum(v[1] for v in celdas.values())
+    assert (total_apertura, total_reclamo) == (aperturas, reclamos), (
+        f"{donde}: el conjunto debe tener {aperturas} APERTURA/s (construir el "
+        f"AudioRecord o abrir la grabacion) y {reclamos} RECLAMO/s (pedir el "
+        f"claim), y tiene {total_apertura} y {total_reclamo}. Los conteos estan "
+        "congelados a proposito, para que abrir un microfono nuevo sea un cambio "
+        "de contrato visible"
+    )
+
+
+def _celdas_dart(limpio, mascara):
+    """(celda, desde, hasta, cuerpo) de cada clase y cada funcion de ARCHIVO.
+
+    En Dart la celda de captura es la CLASE: el paquete `record` se construye
+    por clase, asi que una clase nueva con `AudioRecorder()` + `.start(...)` es
+    un sitio de captura nuevo aunque no tenga ningun metodo con nombre propio.
+
+    Las funciones de NIVEL DE ARCHIVO tambien son celda, con el papel que el
+    arbitro tiene del lado Kotlin: el claimer por defecto (`claimMicrophone`
+    por el canal) vive ahi, es EL claim y por definicion no puede exigir un
+    claim previo. Sin esto, un claim pedido desde una funcion suelta quedaria
+    fuera de toda celda y sin declarar.
+    """
+    celdas = []
+    for m in re.finditer(r"\bclass\b", limpio):
+        if mascara[m.start()]:
+            continue
+        j = limpio.find("{", m.end())
+        if j == -1:
+            continue
+        nombre = re.search(r"\bclass\s+(\w+)", limpio[m.start() : j])
+        nivel = 0
+        for k in range(j, len(limpio)):
+            if mascara[k]:
+                continue
+            if limpio[k] == "{":
+                nivel += 1
+            elif limpio[k] == "}":
+                nivel -= 1
+                if nivel == 0:
+                    celdas.append(
+                        (
+                            nombre.group(1) if nombre else "?",
+                            m.start(),
+                            k,
+                            limpio[j : k + 1],
+                        )
+                    )
+                    break
+    for m in re.finditer(
+        r"(?m)^(?!\s)(?!import|export|part|library|typedef|@)[^\n=;{}]*?\b([A-Za-z_]\w*)\s*"
+        r"\([^()]*\)\s*(?:async\s*|sync\*\s*)?\{",
+        limpio,
+    ):
+        if mascara[m.start()] or any(c[1] <= m.start() <= c[2] for c in celdas):
+            continue
+        nivel = 0
+        for k in range(m.end() - 1, len(limpio)):
+            if mascara[k]:
+                continue
+            if limpio[k] == "{":
+                nivel += 1
+            elif limpio[k] == "}":
+                nivel -= 1
+                if nivel == 0:
+                    celdas.append((m.group(1), m.start(), k, limpio[m.end() - 1 : k + 1]))
+                    break
+    return celdas
+
+
+def _sitios_de_captura_dart(lib_dir):
+    """Celda (ruta relativa, clase) de cada sitio de captura del lado Dart."""
+    celdas = {}
+    for root, _, files in os.walk(lib_dir):
+        for name in sorted(files):
+            if not name.endswith(".dart"):
+                continue
+            ruta = os.path.relpath(os.path.join(root, name), lib_dir)
+            with open(os.path.join(root, name), "r", encoding="utf-8") as f:
+                limpio = _strip_dart_comments(f.read())
+            mascara = _mascara_cadenas(limpio)
+            cuerpos = _celdas_dart(limpio, mascara)
+            for tipo, patrones in (
+                ("apertura", PATRONES_APERTURA_DART),
+                ("reclamo", PATRONES_RECLAMO_DART),
+            ):
+                for patron in patrones:
+                    for m in re.finditer(patron, limpio):
+                        if mascara[m.start()]:
+                            continue
+                        dona = _celda_de(cuerpos, m.start())
+                        assert dona, (
+                            f"{ruta}: el sitio de {tipo} {m.group(0)!r} esta "
+                            "fuera de toda clase (funcion de archivo, extension "
+                            "o mixin): sin celda no se puede exigir que pase por "
+                            "el claim"
+                        )
+                        clave = (ruta, dona[0])
+                        previo = celdas.get(clave)
+                        celdas[clave] = (
+                            (previo[0] if previo else 0) + int(tipo == "apertura"),
+                            (previo[1] if previo else 0) + int(tipo == "reclamo"),
+                            previo[2] if previo else dona[3],
+                        )
+    return {clave: (valor[0], valor[1], _codigo(valor[2])) for clave, valor in celdas.items()}
+
+
+def _filtro_tests(step):
+    """Valor EXACTO del `--tests` de un step (o None si no filtra).
+
+    Buscar la clase por subcadena deja pasar `--tests ...MicrophoneClaimTestX`:
+    el filtro tiene que anclar la clase completa, no una prolongacion suya.
+    """
+    m = re.search(r"--tests[= ]+(\S+)", str(step.get("run", "")))
+    return m.group(1) if m else None
+
+
+def _condicion_de_step(step):
+    """La `if` del step, o None si no la tiene.
+
+    Con el filtro exacto, el nombre del step y el `working-directory` en su
+    lugar, un paso de test con `if` sigue pareciendo el paso bueno y la prueba
+    nativa deja de correr en CI. Enumerar las constantes conocidas (`false`,
+    `!true`, `1 == 2`, ...) es una lista sin fin y cada constante nueva es una
+    puerta: un paso de test bloqueante no necesita condicion, asi que la regla
+    es mas simple y mas fuerte que cualquier constante: no hay `if`.
+    """
+    return step.get("if")
+
+
+def _escrituras_is_busy(cuerpo, condiciones_admitidas=()):
+    """Valores que el cuerpo escribe en isBusy, en orden, a PRIMER NIVEL.
+
+    Un reset anidado en un `if`, un `try` o una lambda puede no ejecutarse: en
+    la rama de arranque fallido del widget la sentencia anterior ya dejo
+    `isRecording = false`, de modo que `if (isRecording) isBusy = false` es
+    codigo muerto y el re-tap se queda IGNORED para siempre.
+    `_statements_at_depth(cuerpo, 1)` es lo que separa el reset real del
+    nominal, y el cuerpo llega sin comentarios para que un `// isBusy = true`
+    comentado no se cuente como escritura.
+
+    Se mira TODA sentencia de primer nivel que TOQUE `isBusy =`, no solo la que
+    hace fullmatch con el prefijo admitido: lo que no matchea no se descarta en
+    silencio (un `if (state == "saved") isBusy = true` es precisamente el reset
+    que vuelve a SUBIR el flag). Las escrituras que no son el reset admitido se
+    devuelven tal cual, con su texto, para que las callers las rechazen.
+
+    `condiciones_admitidas` son las unicas condiciones que pueden preceder a un
+    reset sin llaves (la de `updateWidgetsState` la fija el assert de al lado):
+    cualquier otra puede no cumplirse nunca.
+    """
+    limpio = _strip_dart_comments(cuerpo)
+    prefijos = [r""] + [re.escape(condicion) + r"\s+" for condicion in condiciones_admitidas]
+    patron = re.compile(r"(?:" + "|".join(prefijos) + r")isBusy\s*=\s*(true|false)\b")
+    valores = []
+    for sentencia in _statements_at_depth(limpio, 1):
+        if not re.search(r"\bisBusy\s*=", sentencia):
+            continue
+        m = patron.fullmatch(sentencia)
+        valores.append(m.group(1) if m else sentencia)
+    return valores
+
+
 def test_c05_mic_exclusion_contract():
+    try:
+        _contrato_c05()
+    except ValueError as error:
+        raise AssertionError(
+            "C-05: el guard esta anclado a una firma o a un literal que ya no "
+            f"existe ({error}). Un ValueError a pelo solo dice 'substring not "
+            "found': no dice que invariante se dejo de vigilar ni donde"
+        ) from error
+
+
+def _contrato_c05():
     kt_dir = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
     with open(f"{kt_dir}/DictationController.kt", "r", encoding="utf-8") as f:
         dic = f.read()
@@ -479,16 +1447,48 @@ def test_c05_mic_exclusion_contract():
     ) as f:
         ui_test = f.read()
 
+    # Los invariantes de ESTE contrato se afirman sobre CODIGO, no sobre texto
+    # crudo: sin comentarios ni literales, una rama terminal que solo existe
+    # comentada, un `idle` en el catch de Home/Notas que solo esta en un `//` y
+    # el nombre de una constante renombrada con sufijo dejaban el guard en
+    # verde. Los patrones que SI llevan literales (llamadas de canal) se
+    # comprueban sobre `_sin_comentarios`, que conserva las cadenas.
+    codigo_dic = _codigo(dic)
+    codigo_background = _codigo(background)
+    codigo_widget = _codigo(widget)
+    codigo_dart = _codigo(dart)
+
     # 0) CI EJECUTA la prueba nativa (step real del workflow, no strings).
-    mic_steps = [
-        step for step in _workflow_steps()
-        if "com.royleguiza.voicebubblestt.MicrophoneClaimTest" in str(step.get("run", ""))
-    ]
-    assert len(mic_steps) == 1, (
-        "El workflow debe ejecutar :app:testDebugUnitTest --tests "
-        "com.royleguiza.voicebubblestt.MicrophoneClaimTest exactamente una vez"
-    )
+    # El filtro se ancla a la clase EXACTA: por subcadena, un
+    # `--tests ...MicrophoneClaimTestX` de otro paquete cuela como si fuera el
+    # paso bueno (y el nombre del step tampoco se miraba).
+    clases_kotlin = {
+        "C-02": "com.royleguiza.voicebubblestt.TranscriptionHistoryLogicTest",
+        "C-04": "com.royleguiza.voicebubblestt.WidgetNotesBehaviorTest",
+        "C-05": "com.royleguiza.voicebubblestt.MicrophoneClaimTest",
+    }
+    steps_kotlin = {clave: [s for s in _workflow_steps() if _filtro_tests(s) == clase]
+                    for clave, clase in clases_kotlin.items()}
+    for clave, clase in clases_kotlin.items():
+        assert len(steps_kotlin[clave]) == 1, (
+            f"El workflow debe ejecutar :app:testDebugUnitTest --tests {clase} "
+            f"exactamente una vez ({clave}), y el filtro debe ser la clase "
+            "exacta: por subcadena una prolongacion ajena pasa por el paso bueno"
+        )
+        assert _condicion_de_step(steps_kotlin[clave][0]) is None, (
+            f"El paso de {clave} no puede llevar condicion "
+            f"({_condicion_de_step(steps_kotlin[clave][0])!r}): con el filtro "
+            "exacto, el nombre y el working-directory en su lugar, el paso sigue "
+            "pareciendo el bueno y la prueba nativa deja de correr en CI. Un "
+            "paso de test bloqueante no la necesita, y enumerar constantes "
+            "(`false`, `!true`, `1 == 2`, ...) deja siempre una puerta nueva"
+        )
+    mic_steps = steps_kotlin["C-05"]
     mic_step = mic_steps[0]
+    assert "C-05" in str(mic_step.get("name", "")), (
+        "El paso de MicrophoneClaimTest debe nombrarse como el de C-05 en el "
+        "workflow: sin nombre no se distingue de un paso de otra tarjeta"
+    )
     assert "gradle --no-daemon :app:testDebugUnitTest" in mic_step["run"], (
         "El paso de MicrophoneClaimTest debe usar gradle --no-daemon :app:testDebugUnitTest"
     )
@@ -498,30 +1498,92 @@ def test_c05_mic_exclusion_contract():
     assert not mic_step.get("continue-on-error"), (
         "El paso de MicrophoneClaimTest no puede ser continue-on-error"
     )
-    for neutered in ("|| true", "|| echo", "exit 0", "continue-on-error"):
-        assert neutered not in mic_step["run"], f"Paso de test nativo neutralizado: {neutered}"
-    kotlin_test_runs = [
-        step["run"] for step in _workflow_steps()
-        if ":app:testDebugUnitTest" in str(step.get("run", ""))
+    # FORMA del `run`, no lista de palabras prohibidas: el exit code de un step
+    # es el de su ULTIMA orden, asi que un `true`, un `echo "ok"`, un `|| true`
+    # o un `--tests` de otra clase pegado al final dejan la prueba sin correr con
+    # el job en verde. Una deny-list de neutradores es una lista sin fin (cada
+    # forma nueva es una puerta); la forma no lo es: un solo comando que
+    # EMPIEZA por el gradle de la prueba y TERMINA en su filtro, sin nada
+    # detras. Las variables de entorno van en `env:` del step, no en lineas
+    # previas del `run`.
+    run_mic = str(mic_step["run"])
+    lineas_run = [
+        linea.strip()
+        for linea in run_mic.splitlines()
+        if linea.strip() and not linea.strip().startswith("#")
     ]
-    for suite in ("TranscriptionHistoryLogicTest", "WidgetNotesBehaviorTest"):
-        assert any(f"--tests com.royleguiza.voicebubblestt.{suite}" in run for run in kotlin_test_runs), (
-            f"Regresion: el workflow dejo de correr {suite}"
-        )
+    assert len(lineas_run) == 1, (
+        "El `run` del paso de C-05 debe ser UN SOLO comando, sin lineas antes ni "
+        f"despues (lineas: {lineas_run}). El exit code del step es el de su "
+        "ultima orden: un `true` o un `echo \"ok\"` al final dejan el paso en "
+        "verde sin que la prueba se haya ejecutado, y lo que precede al gradle "
+        "puede fallar antes de llegar a el. Las variables van en `env:` del step"
+    )
+    assert lineas_run[0].startswith("gradle --no-daemon :app:testDebugUnitTest"), (
+        "El paso de C-05 debe usar gradle --no-daemon :app:testDebugUnitTest "
+        f"como unico comando ({lineas_run[0]!r})"
+    )
+    assert run_mic.count("--tests") == 1, (
+        f"El paso de C-05 debe llevar UN solo `--tests` ({run_mic!r}): con dos, "
+        "el segundo filtra la corrida y la prueba de C-05 puede no ejecutarse "
+        "mientras el filtro del primer valor sigue diciendo lo correcto"
+    )
+    assert lineas_run[0].endswith(f"--tests {clases_kotlin['C-05']}"), (
+        "El comando del paso de C-05 debe TERMINAR en su `--tests`: nada puede "
+        f"quedar despues ({lineas_run[0]!r})"
+    )
+    # NIVEL JOB: con el paso sano, un job entero puede seguir sin bloquear.
+    job_de_c05 = [nombre for nombre, job in _workflow_jobs().items()
+                  if any(step is mic_step for step in job.get("steps", []))]
+    assert len(job_de_c05) == 1, (
+        f"El paso de C-05 debe vivir en UN solo job (esta en: {job_de_c05})"
+    )
+    job_c05 = _workflow_jobs()[job_de_c05[0]]
+    assert not job_c05.get("continue-on-error"), (
+        f"El job '{job_de_c05[0]}' no puede ser continue-on-error: aunque el paso "
+        "de C-05 corra y falle, el job saldria verde y la exclusion mutua del "
+        "microfono dejaria de bloquear"
+    )
+    assert not job_c05.get("if"), (
+        f"El job '{job_de_c05[0]}' no puede llevar condicion "
+        f"({job_c05.get('if')!r}): con el paso sano y sin condicion propia, el job "
+        "puede no arrancar y la exclusion mutua del microfono deja de bloquear"
+    )
+    timeout_job = job_c05.get("timeout-minutes")
+    assert timeout_job is None or timeout_job >= TIMEOUT_MINIMO_JOB_C05, (
+        f"El job '{job_de_c05[0]}' no puede tener timeout-minutes "
+        f"({timeout_job}) por debajo de {TIMEOUT_MINIMO_JOB_C05}: el run se "
+        "cancelaria antes de que el step llegue a gradle, con la prueba sin "
+        "ejecutar. Este es el paso mas lento y bloqueante del job"
+    )
 
     # 1) Un UNICO AtomicLong es el arbitro (punto unico de atomicidad).
-    assert background.count("= AtomicLong(") == 2, (
+    assert codigo_background.count("= AtomicLong(") == 2, (
         "Solo la celda de dueno y el contador de tokens pueden ser AtomicLong"
     )
-    assert "AtomicBoolean" not in background and "AtomicInteger" not in background, (
-        "Ningun otro atómico: el arbitro del microfono es UNA celda"
-    )
+    assert "AtomicBoolean" not in codigo_background and (
+        "AtomicInteger" not in codigo_background
+    ), "Ningun otro atómico: el arbitro del microfono es UNA celda"
+    # La celda y TODOS sus alias (con o sin tipo, como `val` local o como
+    # property `get()`): un alias es la misma celda, asi que se le exige lo
+    # mismo en la prohibicion de escrituras y en el permiso del CAS.
+    celdas = _alias_de_la_celda(_sin_comentarios(background))
     claim_body = _body_after(background, "fun tryClaimMicrophone(): Long")
     assert "while (true)" in claim_body, "tryClaimMicrophone debe reintentar con CAS en loop"
     assert claim_body.count("compareAndSet") == 1, (
         "tryClaimMicrophone solo puede hacer CAS sobre la celda de dueno"
     )
-    assert "microphoneOwner.compareAndSet(actual, claim)" in claim_body
+    cas_claim = re.search(r"if \(([\w.]+)\.compareAndSet\(([^,]+), ([^)]+)\)\)", claim_body)
+    assert cas_claim, "tryClaimMicrophone debe hacer el CAS dentro de un if"
+    assert cas_claim.group(1) in celdas, (
+        f"El CAS de tryClaimMicrophone debe actuar sobre la celda del arbitro "
+        f"o sobre un alias suyo, no sobre '{cas_claim.group(1)}'"
+    )
+    assert cas_claim.group(2).strip() == "actual" and cas_claim.group(3).strip() == "claim", (
+        f"El CAS de tryClaimMicrophone debe ser (actual, claim), no "
+        f"({cas_claim.group(2).strip()}, {cas_claim.group(3).strip()}): con otro "
+        "par de valores el perdedor pisa al dueno"
+    )
     assert "nextMicrophoneClaim.incrementAndGet()" in claim_body, (
         "Cada intento debe tomar un token nuevo: nunca se reutiliza"
     )
@@ -538,24 +1600,41 @@ def test_c05_mic_exclusion_contract():
     assert release_body.count("compareAndSet") == 1, (
         "releaseMicrophone debe ser un unico CAS(token, 0)"
     )
-    assert "microphoneOwner.compareAndSet(claim, 0L)" in release_body
-    assert "fun releaseMicrophone(claim: Long): Boolean" in background, (
+    assert "fun releaseMicrophone(claim: Long): Boolean" in codigo_background, (
         "El release debe reportar si libero de verdad (puente MethodChannel)"
     )
-    assert re.search(r"if \(claim <= 0L\) return false", release_body)
+    assert re.search(r"if \(claim <= 0L\) return false", release_body), (
+        "La rama de token vacio debe devolver false ANTES del CAS: con un claim <= 0 la "
+        "celda no se libera y el dueno real sigue con el microfono tomado"
+    )
     assert release_body.count("return") == 2, (
         "releaseMicrophone solo puede retornar 'false' por el token vacio o el "
         "resultado del CAS: un 'return true' antes del CAS reporta exito sin "
         "liberar la celda del arbitro"
     )
-    assert re.search(
-        r"return microphoneOwner\.compareAndSet\(claim, 0L\)\s*\}\s*$", release_body
-    ), "El CAS(token, 0) debe ser la ultima sentencia de releaseMicrophone"
-    assert "fun isMicrophoneClaimed(): Boolean = microphoneOwner.get() != 0L" in background, (
+    cas_release = re.search(
+        r"return ([\w.]+)\.compareAndSet\(([^,]+), ([^)]+)\)\s*\}\s*$",
+        re.sub(r"\s+", " ", release_body),
+    )
+    assert cas_release, (
+        "El CAS(token, 0) debe ser la ultima sentencia de releaseMicrophone "
+        "(devuelta, sin nada despues): cualquier sentencia posterior puede no "
+        "ejecutarse y deja al dueno nuevo con un microfono tomado"
+    )
+    assert cas_release.group(1) in celdas, (
+        f"El CAS de releaseMicrophone debe actuar sobre la celda del arbitro o "
+        f"sobre un alias suyo, no sobre '{cas_release.group(1)}'"
+    )
+    assert cas_release.group(2).strip() == "claim" and cas_release.group(3).strip() == "0L", (
+        f"El CAS de releaseMicrophone debe ser (claim, 0L), no "
+        f"({cas_release.group(2).strip()}, {cas_release.group(3).strip()}): con "
+        "otro par de valores libera al dueno equivocado"
+    )
+    assert "fun isMicrophoneClaimed(): Boolean = microphoneOwner.get() != 0L" in codigo_background, (
         "isMicrophoneClaimed debe leer la MISMA celda del arbitro"
     )
     by_claim = re.search(
-        r"fun isMicrophoneClaimedBy\(claim: Long\): Boolean\s*=\s*([^\n;]+)", background
+        r"fun isMicrophoneClaimedBy\(claim: Long\): Boolean\s*=\s*([^\n;]+)", codigo_background
     )
     assert by_claim, "isMicrophoneClaimedBy debe seguir siendo legible como cuerpo"
     expresion = re.sub(r"\s+", " ", by_claim.group(1)).strip()
@@ -564,26 +1643,42 @@ def test_c05_mic_exclusion_contract():
         f"tenga; '{expresion}' devuelve la respuesta que espera el teclado sin "
         "mirar la celda, y ownsClaim queda siempre cierto"
     )
-    for api in ("set", "getAndSet", "lazySet", "andUpdate", "accumulateAndGet", "updateAndGet"):
-        assert not re.search(rf"microphoneOwner\.{api}\b", background), (
-            f"La celda del arbitro jamas se escribe con microphoneOwner.{api}"
-            ": en dos pasos puede pisar al dueno nuevo que ya tomo el claim. "
-            "La unica escritura admisible es compareAndSet. Ojo: andUpdate y "
-            "updateAndGet son lambdas y en Kotlin no llevan parentesis, por eso "
-            "el nombre se busca sin exigir '(' (si no, la mutacion pasa)."
+    escrituras_ilegales = ("set", "getAndSet", "lazySet", "andUpdate", "accumulateAndGet", "updateAndGet")
+    for api in escrituras_ilegales:
+        for celda in sorted(celdas):
+            assert not re.search(rf"\b{celda}\.{api}\b", background), (
+                f"La celda del arbitro jamas se escribe con {celda}.{api}: en dos "
+                "pasos puede pisar al dueno nuevo que ya tomo el claim. La unica "
+                "escritura admisible es compareAndSet. Ojo: andUpdate y "
+                "updateAndGet son lambdas y en Kotlin no llevan parentesis, por eso "
+                "el nombre se busca sin exigir '(' (si no, la mutacion pasa). Y el "
+                "alias se busca con tipo y como property get(): un "
+                "'val celda: AtomicLong = microphoneOwner' o un "
+                "'private val celda: AtomicLong get() = microphoneOwner' son la "
+                "misma celda, no una puerta trasera."
+            )
+    celda_ops = set()
+    for celda in sorted(celdas):
+        celda_ops |= set(
+            re.findall(r"\b" + re.escape(celda) + r"\.(\w+)\s*[({\[]", background)
         )
-    celda_ops = set(re.findall(r"microphoneOwner\.(\w+)\s*[({]", background))
     assert celda_ops <= {"get", "compareAndSet"}, (
-        f"Operaciones inesperadas sobre la celda del arbitro: {sorted(celda_ops)}"
+        f"Operaciones inesperadas sobre la celda del arbitro (alias incluidos): "
+        f"{sorted(celda_ops)}"
     )
-    assert "keyboardRecordingActive" not in background, (
+    assert "keyboardRecordingActive" not in codigo_background, (
         "El claim no debe re-publicar el flag mutable del teclado"
     )
-    assert "result.success(BackgroundWork.isMicrophoneClaimed())" in main
-    assert '"claimMicrophone" ->' in main and "BackgroundWork.tryClaimMicrophone()" in main
+    assert "result.success(BackgroundWork.isMicrophoneClaimed())" in _codigo(main)
+    assert '"claimMicrophone" ->' in _sin_comentarios(main) and (
+        "BackgroundWork.tryClaimMicrophone()" in _codigo(main)
+    ), (
+        "MainActivity debe mapear 'claimMicrophone' al arbitro: sin el puente, "
+        "Dart no puede competir por el microfono y cada surface graba sola"
+    )
     assert (
         '"releaseMicrophone" ->' in main
-        and "result.success(BackgroundWork.releaseMicrophone(claim))" in main
+        and "result.success(BackgroundWork.releaseMicrophone(claim))" in _codigo(main)
     ), "El puente debe devolver el resultado real del CAS, no un true fijo"
     isKeyboardRecording_callers = []
     for root, _, files in os.walk("app_source/lib"):
@@ -601,17 +1696,82 @@ def test_c05_mic_exclusion_contract():
     assert "invokeMethod<int>('claimMicrophone')" in dart
     assert "'claim': claim" in dart, "Dart y Kotlin deben compartir la clave del token"
 
+    # 1b) BARRIDO de los dos arboles: todo sitio de captura cae en una celda
+    # declarada, con su conteo congelado y su claim dentro del cuerpo. El guard
+    # leia cinco archivos fijos de Kotlin, asi que un cuarto sitio de captura (en
+    # la burbuja, en el fondo o en un archivo que se agregue manana) abria
+    # microfono sin pasar por el arbitro y la exclusion mutua seguia verde; y no
+    # barrieraba NADA del lado Dart, donde viven la burbuja y Notas: un servicio
+    # Dart nuevo con `AudioRecorder()` + `.start(...)` sin claim, o una clase
+    # nueva dentro del propio TranscriptionService, pasaban los dos.
+    celdas_captura = _sitios_de_captura(kt_dir)
+    arbitro = celdas_captura.pop(CELDA_ARBITRO, (0, 0, ""))
+    assert arbitro[0] == 0 and arbitro[1] == 1, (
+        f"El arbitro ({CELDA_ARBITRO[1]}) debe tener UN solo sitio de captura, y "
+        "ese es su RECLAMO: arbitra, no abre microfono. No puede abrir ninguno, o "
+        "el unico CAS que decide la exclusion mutua estaria dentro de una celda "
+        "que ya tomo el microfono"
+    )
+    # Kotlin: 4 APERTURAS (2 en la fabrica del AudioRecord, 1 en el arranque del
+    # teclado y 1 en el del widget) y 3 RECLAMOS (teclado, widget y puente).
+    # Dart: 3 APERTURAS (el recorder de TranscriptionService y su `start`, mas el
+    # recorder de sondeo de permiso de Ajustes) y 2 RECLAMOS (el claimer inyectado
+    # y el claimer por defecto, que es la fabrica).
+    _verifica_celdas_de_captura(
+        celdas_captura, CELDAS_CAPTURA, "arbol Kotlin", 4, 3
+    )
+    celdas_dart = _sitios_de_captura_dart("app_source/lib")
+    _verifica_celdas_de_captura(
+        celdas_dart, CELDAS_CAPTURA_DART, "app_source/lib", 3, 2
+    )
+    for celda, (_, _, cuerpo) in sorted(celdas_dart.items()):
+        if CELDAS_CAPTURA_DART[celda][2] is not None:
+            continue
+        assert not re.search(r"\.\s*start\s*\(", cuerpo), (
+            f"{celda[0]}::{celda[1]} va sin claim declarado por una de dos "
+            "razones: PIDE PERMISO solamente (construye el recorder, pregunta y "
+            "lo suelta) o ES la fabrica del claim (el `claimMicrophone` del "
+            "canal, el gemelo Dart de la celda del arbitro). Ninguna de las dos "
+            "puede abrir la grabacion: si su cuerpo llama a `.start(`, necesita "
+            "el claim como cualquier otra apertura, o dos AudioRecords a la vez"
+        )
+
     # 2) Teclado: foco -> chequeos -> claim atomico -> pending -> AudioRecord.
-    start = dic[dic.index("private fun startDictation()"):dic.index("private fun onDictationStartResult")]
+    # El cuerpo entero de startDictation, sin comentarios: el orden de las
+    # puertas y el corte de cada rama se afirman sobre codigo, no sobre texto.
+    start = _codigo(_body_after(dic, "private fun startDictation()"))
     focus = start.index("if (!gainAudioFocus())")
     bubble = start.index("if (bubbleBusy())")
     permission = start.index("if (!sttClient.hasMicPermission())")
     claim = start.index("BackgroundWork.tryClaimMicrophone()")
     pending = start.index("dictationStartPending = true")
+    inicio_foco_perdido, cuerpo_foco_perdido = _bloque_de_if(
+        start, r"audioFocusLost", "startDictation"
+    )
     focus_lost = start.index("if (audioFocusLost)")
-    audio_record = start.index("sttClient.startRecording()")
+    audio_record = start.index("startRecording()")
     assert focus < bubble < permission < claim < pending < focus_lost < audio_record, (
         "El claim atomico debe ser la ultima puerta antes del AudioRecord"
+    )
+    # La perdida de foco se comprueba por CUERPO. Saber que el `if` esta donde
+    # toca no dice que corte: `if (audioFocusLost) { micState = MicState.IDLE }`
+    # compila, respeta el orden y arranca el AudioRecord con el foco ya
+    # perdido, con el microfono tomado para todo el proceso.
+    sentencias_foco = _statements_at_depth(cuerpo_foco_perdido, 1)
+    assert "cancelDictation()" in sentencias_foco, (
+        "La rama de foco perdido debe CANCELAR de verdad (cancelDictation()) "
+        f"como sentencia de PRIMER NIVEL (sentencias: {sentencias_foco}). Con "
+        "solo `micState = MicState.IDLE` el claim tomado, el token propio y el "
+        "foco se quedan vivos: el microfono queda tomado para todo el proceso y "
+        "burbuja, Notas y widget lo ven en uso"
+    )
+    assert any(s == "return" or s.startswith("return ") for s in sentencias_foco), (
+        "La rama de foco perdido debe ABORTAR de verdad (return) y no solo "
+        "ajustar el estado: sin return se sigue hacia sttClient.startRecording() "
+        "con el microfono ya tomado"
+    )
+    assert inicio_foco_perdido < audio_record, (
+        "La rama de foco perdido debe estar antes de arrancar el AudioRecord"
     )
     abort = _body_after(start, "if (claimToken == 0L) {")
     assert "abandonAudioFocus()" in abort and "MicState.BUSY" in abort, (
@@ -625,40 +1785,161 @@ def test_c05_mic_exclusion_contract():
     assert "startRecording" not in abort, (
         "Ningun arranque de captura dentro de la rama de claim tomado"
     )
-    assert "AUDIOFOCUS_REQUEST_GRANTED" in dic
-    assert "audioFocusLost = true" in dic
-    assert "micState == MicState.RECORDING || dictationStartPending" in dic
-    assert "val ownsClaim = BackgroundWork.isMicrophoneClaimedBy(claimToken)" in dic
-    assert "if (!serviceAlive || !started || !isCurrentStart || !ownsClaim)" in dic, (
+    # El gemelo del widget, que el punto 7.5 dejo sin guarda: el arranque del
+    # TECLADO tambien va en try/catch -> false y publica el cierre por postMain.
+    # Sin esto vuelve, del lado del teclado, el P0 del punto 1 del feedback 7.5:
+    # BackgroundWork.execute se traga la excepcion, el postMain no corre,
+    # onDictationStartResult nunca corre y quedan dictationStartPending y
+    # microphoneClaimToken vivos con el claim tomado y el foco sin abandonar.
+    # Con micState en IDLE, el siguiente toque muere en la primera linea de
+    # startDictation y burbuja, Notas y widget ven microfono en uso hasta que
+    # otro app robe el foco de audio.
+    d_fondo = _body_after(start, "BackgroundWork.execute {")
+    d_fondo_plano = re.sub(r"\s+", " ", d_fondo)
+    assert re.search(
+        r"val started = try \{[^}]*startRecording\(\)[^}]*\} "
+        r"catch \([^)]*\b(?:Exception|Throwable)\b[^)]*\) \{[^}]*false[^}]*\}",
+        d_fondo_plano,
+    ), (
+        "El arranque del AudioRecord del teclado va en try/catch (Exception o "
+        "Throwable) -> false, igual que el widget: angostarlo a "
+        "IllegalStateException deja escapar el SecurityException del permiso "
+        "revocado en vuelo, y sin try/catch entero BackgroundWork.execute se "
+        "traga la excepcion y el claim se queda tomado con el microfono "
+        "bloqueado para todo el proceso"
+    )
+    assert d_fondo.count("onDictationStartResult(") == 1, (
+        "El cierre del arranque se entrega UNA sola vez"
+    )
+    assert re.search(
+        r"BackgroundWork\.postMain \{[^}]*"
+        r"onDictationStartResult\(started, startGeneration, claimToken\)[^}]*\}",
+        d_fondo_plano,
+    ), (
+        "El cierre del arranque del teclado debe publicarse por "
+        "BackgroundWork.postMain: onDictationStartResult toca "
+        "host.setRecordingActive y micIdle() -> refreshMicVisual(), o sea "
+        "trabajo de vistas desde el hilo de trabajo"
+    )
+    # Constante ANCLADA por palabra completa y usada en la comparacion que
+    # decide el foco: por subcadena, `AUDIOFOCUS_REQUEST_GRANTED_V2` (o el
+    # nombre viejo solo en un comentario) satisfacia el assert.
+    assert re.search(r"==\s*AudioManager\.AUDIOFOCUS_REQUEST_GRANTED\b", codigo_dic), (
+        "El foco concedido debe decidirse comparando con "
+        "AudioManager.AUDIOFOCUS_REQUEST_GRANTED: por subcadena, un nombre con "
+        "sufijo (o el viejo solo comentado) pasaba el assert y el teclado podia "
+        "tratar como concedido un foco que se le nego"
+    )
+    assert "audioFocusLost = true" in codigo_dic, (
+        "Perder el foco de audio debe marcar audioFocusLost: sin ese flag, la "
+        "rama deAbort que se verifica mas arriba no llega a ejecutarse y el "
+        "teclado sigue grabando sin foco"
+    )
+    assert "micState == MicState.RECORDING || dictationStartPending" in codigo_dic, (
+        "El corte por teardown debe reconocer los dos estados vivos (grabando y "
+        "arranque en vuelo): sin cualquiera de los dos, un corte con el arranque "
+        "en vuelo deja el microfono tomado"
+    )
+    assert "val ownsClaim = BackgroundWork.isMicrophoneClaimedBy(claimToken)" in codigo_dic, (
+        "onDictationStartResult debe MIRAR si el claim sigue siendo propio. "
+        "Solo en un comentario, la rama terminal comparaba con una variable no "
+        "definida por el camino real y nunca liberaba: el texto crudo del "
+        "archivo daba el assert por bueno"
+    )
+    assert "if (!serviceAlive || !started || !isCurrentStart || !ownsClaim)" in codigo_dic, (
         "El cierre del arranque debe ser un solo camino terminal: duplicarlo fue "
         "lo que llamaba dos veces a host.setRecordingActive(false) en el main"
     )
-    assert "releaseMicrophoneClaim(claimToken)" in dic
+    # El terminal de EXITO del teclado, POR CUERPO. A nivel de archivo el
+    # literal lo satisfacia cualquier otra rama: vaciar el `finally` de
+    # finishDictation, sacar el release de ahi o borrar el de cualquiera de las
+    # dos ramas de onDictationStartResult dejaba el claim tomado para siempre
+    # tras un dictado exitoso (y con el foco de audio sin abandonar).
+    finish = _body_after(dic, "private fun finishDictation()")
+    fin_finally = _statements_at_depth(
+        _cuerpo_del_bloque(
+            _body_after(finish, "BackgroundWork.execute {"),
+            "finally",
+            "finishDictation",
+        ),
+        1,
+    )
+    arranque = _body_after(dic, "private fun onDictationStartResult(")
+    rama_arrancada = _statements_at_depth(
+        _body_after(_body_after(arranque, "if (started) {"), "BackgroundWork.execute {"),
+        1,
+    )
+    sin_arrancar = _statements_at_depth(_body_after(arranque, "else {"), 1)
+    # Los dos terminales del apagado defensivo: el `finally` del corte de
+    # cancelacion y la rama CON cliente de cancelDictationIfActive. Exigian el
+    # release del claim por otras vias, pero no el `abandonAudioFocus()`: con el
+    # foco de audio retenido, el siguiente rival (burbuja, Notas, widget) pide
+    # foco, no lo obtiene y se queda en "ocupado" con el microfono libre.
+    teardown = _codigo(_body_after(dic, "fun cancelDictationIfActive()"))
+    corte_cancel = _statements_at_depth(
+        _cuerpo_del_bloque(
+            _body_after(
+                _body_after(dic, "private fun cancelDictation(announce: Boolean = false)"),
+                "BackgroundWork.execute {",
+            ),
+            "finally",
+            "cancelDictation",
+        ),
+        1,
+    )
+    corte_con_cliente = _statements_at_depth(
+        _cuerpo_del_bloque(
+            _body_after(_body_after(teardown, "if (client != null) {"), "BackgroundWork.execute {"),
+            "finally",
+            "cancelDictationIfActive (rama con cliente)",
+        ),
+        1,
+    )
+    for donde, sentencias in (
+        ("finishDictation (finally del corte)", fin_finally),
+        ("onDictationStartResult rama 'started'", rama_arrancada),
+        ("onDictationStartResult rama '!started'", sin_arrancar),
+        ("cancelDictation (finally del corte)", corte_cancel),
+        ("cancelDictationIfActive (finally con cliente)", corte_con_cliente),
+    ):
+        for sentencia in ("abandonAudioFocus()", "releaseMicrophoneClaim(claimToken)"):
+            assert sentencia in sentencias, (
+                f"{donde}: '{sentencia}' debe ser sentencia de PRIMER NIVEL de "
+                f"su cuerpo (sentencias: {sentencias}). A primer nivel no puede "
+                "quedarse sin ejecutar: metida en un if, un try o una lambda, un "
+                "dictado exitoso deja el claim tomado para siempre y el microfono "
+                "bloqueado para todo el proceso (el siguiente toque muere en la "
+                "primera linea y burbuja, Notas y widget ven microfono en uso)"
+            )
     # El flag del teclado SI es @Volatile (preexistente, fuera de este diff):
     # por eso las escrituras directas desde hilos de fondo son seguras y la
     # premisa de que postMain las arreglaba era falsa. Se fija el hecho.
     with open(f"{kt_dir}/VoiceKeyboardService.kt", "r", encoding="utf-8") as f:
         vks = f.read()
     assert re.search(
-        r"@Volatile\s+(\n\s+)?var keyboardRecordingActive", vks
+        r"@Volatile\s+(\n\s+)?var keyboardRecordingActive", _sin_comentarios(vks)
     ), "keyboardRecordingActive debe seguir siendo @Volatile: se escribe desde hilos de fondo"
     # El camino de fondo del CIERRE DEL ARRANQUE publica por postMain, y lo
     # hace UNA sola vez. El assert acota su invariante a ese camino (las
     # escrituras directas de finish/cancel van por el campo volatil).
-    cierre = dic[dic.index("private fun onDictationStartResult"):dic.index("private fun finishDictation")]
+    cierre = _codigo(
+        dic[dic.index("private fun onDictationStartResult"):dic.index("private fun finishDictation")]
+    )
     fondo_cierre = cierre[cierre.index("BackgroundWork.execute {"):cierre.index("if (!serviceAlive) return")]
     assert fondo_cierre.count("host.setRecordingActive(false)") == 1, (
-        "El cierre del arranque se publica UNA vez desde el hilo de fondo"
+        "El cierre del arranque se publica UNA vez desde el hilo de fondo: dos "
+        "veces, el main recibe dos bajas de estado para un mismo arranque"
     )
     assert "BackgroundWork.postMain { host.setRecordingActive(false) }" in fondo_cierre, (
-        "La baja de estado del host en el cierre del arranque debe pasar por postMain"
+        "La baja de estado del host en el cierre del arranque debe pasar por "
+        "postMain: ese es el unico camino que corre en el main"
     )
     assert cierre.count("host.setRecordingActive(false)") == 2, (
         "setRecordingActive(false) se baja una sola vez por camino terminal: "
         "con !started se llamaba dos veces en el mismo main"
     )
     # Cancele/fallos liberan SIEMPRE (el release por token obsoleto es no-op).
-    cancel = _body_after(dic, "private fun cancelDictation(announce: Boolean = false)")
+    cancel = _codigo(_body_after(dic, "private fun cancelDictation(announce: Boolean = false)"))
     assert "if (!wasPending)" not in cancel, (
         "Cancelar con start pendiente tambi\u00e9n debe liberar el claim"
     )
@@ -671,7 +1952,7 @@ def test_c05_mic_exclusion_contract():
         r"finally \{[^}]*releaseMicrophoneClaim\(claimToken\)",
         _body_after(cancel, "BackgroundWork.execute {"),
     ), "El release de cancelDictation va en el finally del corte de captura"
-    teardown_teclado = _body_after(dic, "fun cancelDictationIfActive()")
+    teardown_teclado = teardown
     normalizado = re.sub(r"\s+", " ", teardown_teclado)
     assert (
         "if (micState == MicState.IDLE && !dictationStartPending && "
@@ -693,10 +1974,72 @@ def test_c05_mic_exclusion_contract():
     assert "releaseMicrophoneClaim(claimToken)" in _body_after(
         teardown_teclado, "else {"
     ), "El camino sin cliente tambien libera el claim"
+    # Liberar en el ARBITRO no basta: si el token propio sobrevive, el
+    # siguiente arranque cree tener el microfono tomado y cancelDictationIfActive
+    # se apaga con un claim fantasma. La guarda se exige por FORMA (mismo
+    # nombre en la comparacion y en la asignacion), no por el nombre del campo.
+    cuerpo_release = _codigo(_body_after(dic, "private fun releaseMicrophoneClaim(claimToken: Long)"))
+    release_claim = _statements_at_depth(cuerpo_release, 1)
+    # Se acepta CUALQUIERA de las dos formas semanticamente identicas
+    # (`if (token == claimToken) token = 0L` o `if (token != claimToken) return`
+    # seguido de `token = 0L`): exigir la sintaxis literal tumbaba un refactor
+    # que no cambia el comportamiento. Lo que no se negocia es el invariante:
+    # EXACTAMENTE una sentencia de primer nivel que baje el token a 0L, y solo
+    # si el token propio coincide.
+    BAJA_GUARDADA = re.compile(
+        r"if\s*\(\s*(\w+)\s*==\s*claimToken\s*\)\s*(?:\{\s*)?\1\s*=\s*0L\s*;?\s*\}?"
+    )
+    BAJA_SUELTA = re.compile(r"(\w+)\s*=\s*0L")
+    GUARDA_INVERSA = re.compile(r"if\s*\(\s*(\w+)\s*!=\s*claimToken\s*\)\s*return\b")
+    niveles = _niveles_de_llaves(cuerpo_release, _mascara_cadenas(cuerpo_release))
+    # Bajar el token PROPIO y solo el propio, a PRIMER NIVEL. Se aceptan las
+    # tres formas semanticamente identicas - con o sin llaves, o con el `return`
+    # temprano -: exigir la sintaxis literal tumbaba refactores que no cambian
+    # el comportamiento. Lo que no se negocia es el invariante.
+    guardadas = [
+        m.group(1)
+        for m in BAJA_GUARDADA.finditer(cuerpo_release)
+        if niveles[m.start()] == 1
+    ]
+    sueltas = [
+        m.group(1)
+        for sentencia in release_claim
+        if (m := BAJA_SUELTA.fullmatch(sentencia))
+    ]
+    bajas = guardadas + sueltas
+    assert len(bajas) == 1, (
+        f"releaseMicrophoneClaim debe tener EXACTAMENTE una sentencia de PRIMER "
+        f"NIVEL que baje su token a 0L, y tiene {len(bajas)} ({release_claim}). "
+        "Sin ella el token propio queda vivo: el siguiente arranque cree tener el "
+        "microfono tomado y el apagado defensivo cancelDictationIfActive se "
+        "retira por un claim fantasma"
+    )
+    token_propio = bajas[0]
+    con_guarda = token_propio in guardadas or any(
+        (m := GUARDA_INVERSA.fullmatch(sentencia)) and m.group(1) == token_propio
+        for sentencia in release_claim
+    )
+    assert con_guarda, (
+        f"La baja de '{token_propio} = 0L' debe ir GUIADA por el token propio, "
+        "como sentencia de PRIMER NIVEL: 'if (token == claimToken) token = 0L', la "
+        "misma con llaves, o 'if (token != claimToken) return' seguido de la baja. "
+        "Sin la guarda, un "
+        "release por token obsoleto baja el token del dueno NUEVO y deja al "
+        f"propio con un microfono tomado que no puede liberar (sentencias: "
+        f"{release_claim})"
+    )
 
     # 3) Widget: mismo claim antes de su AudioRecord y release en cada salida.
-    w_start = widget[widget.index("private fun startRecording(widgetId: Int)"):widget.index("private fun stopAndTranscribe")]
-    assert w_start.index("claimMicrophoneForDictation() == 0L") < w_start.index("SpeechToTextClient(this)")
+    w_start = _sin_comentarios(
+        widget[widget.index("private fun startRecording"):widget.index("private fun stopAndTranscribe")]
+    )
+    codigo_w_start = _codigo(w_start)
+    assert codigo_w_start.index("claimMicrophoneForDictation() == 0L") < codigo_w_start.index(
+        "SpeechToTextClient(this)"
+    ), (
+        "El widget debe comprobar el claim ANTES de construir su cliente de "
+        "dictado: al reves, el AudioRecord se abre sin ser dueno"
+    )
     w_visual = re.findall(r'updateWidgetsState\("recording"\)', w_start)
     assert len(w_visual) == 1, (
         f"El widget debe publicar el estado visual exactamente una vez, no {len(w_visual)}"
@@ -707,7 +2050,7 @@ def test_c05_mic_exclusion_contract():
         "El widget debe publicar el estado visual antes o en el mismo claim "
         "(mismo contrato que burbuja y Notas)"
     )
-    w_start_body = _body_after(widget, "private fun startRecording(widgetId: Int)")
+    w_start_body = _body_after(widget, "private fun startRecording")
     assert _statements_at_depth(w_start_body, 1)[0] == "if (isRecording) return", (
         "startRecording del widget debe ser idempotente: es la unica barrera "
         "si un re-tap llega mientras isBusy todavia no esta puesto"
@@ -716,44 +2059,80 @@ def test_c05_mic_exclusion_contract():
         "if (!isRecording) return"
     ), "cancelRecording solo puede actuar sobre una captura viva"
     w_fondo = _body_after(w_start_body, "BackgroundWork.execute {")
-    assert "val ok = try { speechClient.startRecording() } catch (_: Exception) { false }" in re.sub(
-        r"\s+", " ", w_fondo
+    assert re.search(
+        r"val ok = try \{[^}]*startRecording\(\)[^}]*\} "
+        r"catch \([^)]*\b(?:Exception|Throwable)\b[^)]*\) \{[^}]*false[^}]*\}",
+        re.sub(r"\s+", " ", w_fondo),
     ), (
-        "El arranque del AudioRecord del widget va en try/catch -> false: "
-        "BackgroundWork.execute se traga la excepcion, asi que un "
-        "IllegalStateException de rec.startRecording() o un SecurityException "
-        "con el permiso revocado en vuelo dejan el claim tomado, isRecording e "
-        "isBusy colgados y sin stopSelf() (el microfono queda bloqueado para "
-        "todo el proceso)"
+        "El arranque del AudioRecord del widget va en try/catch (Exception o "
+        "Throwable) -> false: BackgroundWork.execute se traga la excepcion, "
+        "asi que un IllegalStateException de rec.startRecording() o un "
+        "SecurityException con el permiso revocado en vuelo dejan el claim "
+        "tomado, isRecording e isBusy colgados y sin stopSelf() (el microfono "
+        "queda bloqueado para todo el proceso)"
     )
     arranque_fallido = _body_after(w_fondo, "if (!ok) {")
-    assert "BackgroundWork.postMain" in arranque_fallido, (
-        "La recuperacion del arranque fallido debe ir por postMain"
-    )
+    # La recuperacion va por postMain y el reset se exige DENTRO de ese bloque:
+    # es el unico que corre en el main, y es donde `_statements_at_depth(., 1)`
+    # puede separar el reset real de uno metido en un if/try/lambda. Cortar por
+    # la rama de fondo no serviria: ahi el reset vive dentro del postMain.
+    recuperacion = _codigo(_body_after(arranque_fallido, "BackgroundWork.postMain {"))
     for piece in ("isRecording = false", "isBusy = false", "releaseMicrophone()", "stopSelf()"):
-        assert piece in arranque_fallido, (
-            f"El arranque fallido del widget debe hacer '{piece}': sin el "
-            "reset de flags el re-tap queda IGNORED para siempre"
+        assert piece in recuperacion, (
+            f"El arranque fallido del widget debe hacer '{piece}' en el postMain: "
+            "sin el reset de flags el re-tap queda IGNORED para siempre. Se "
+            "comprueba sobre codigo, no sobre texto: comentado, el guard lo daba "
+            "por vivo"
         )
+    # La rama de CLAIM TOMADO del widget tampoco puede quedarse con el service
+    # en pie: `isBusy` ya quedo en true (lo subio handleToggle) y el claim es del
+    # rival. Sin stopSelf() y sin return, el widget queda vivo esperando un
+    # resultado que nunca llega.
+    _, rama_claim_tomado = _bloque_de_if(
+        w_start_body, r"claimMicrophoneForDictation\s*\(\s*\)\s*==\s*0L", "widget startRecording"
+    )
+    sentencias_claim_tomado = _statements_at_depth(rama_claim_tomado, 1)
+    assert "stopSelf()" in sentencias_claim_tomado, (
+        "La rama de claim tomado del widget debe hacer stopSelf() como sentencia "
+        f"de PRIMER NIVEL (sentencias: {sentencias_claim_tomado}): con el service "
+        "en pie y isBusy en true, el re-tap del widget queda IGNORED para siempre"
+    )
+    assert any(
+        s == "return" or s.startswith("return ") for s in sentencias_claim_tomado
+    ), (
+        "La rama de claim tomado del widget debe ABORTAR (return): sin return, el "
+        "widget sigue hacia el cliente de dictado con el microfono tomado por el "
+        f"rival (sentencias: {sentencias_claim_tomado})"
+    )
     w_stop_body = _body_after(widget, "private fun stopAndTranscribe()")
     sin_client = _body_after(w_stop_body, "client ?: run")
+    # El cliente se localiza por su ASIGNACION, no por el nombre del local:
+    # renombrar `speechClient` no puede tumbar el guard.
+    mic_w = _alias_del_cliente(w_start_body, "SpeechToTextClient(", "widget startRecording")
+    mic_t = _alias_del_cliente(w_stop_body, "client ?:", "widget stopAndTranscribe")
     for nombre, cuerpo in (
-        ("cancelRecording", _body_after(widget, "private fun cancelRecording()")),
+        ("cancelRecording", _codigo(_body_after(widget, "private fun cancelRecording()"))),
         (
             "arranque sin permiso",
-            _body_after(w_start_body, "if (!speechClient.hasMicPermission()) {"),
+            _codigo(_body_after(w_start_body, f"if (!{mic_w}.hasMicPermission()) {{")),
         ),
-        ("arranque fallido", arranque_fallido),
-        ("onDestroy", _body_after(widget, "override fun onDestroy()")),
-        ("stopAndTranscribe", w_stop_body),
-        ("stopAndTranscribe con client nulo", sin_client),
+        ("arranque fallido", _codigo(arranque_fallido)),
+        ("onDestroy", _codigo(_body_after(widget, "override fun onDestroy()"))),
+        ("stopAndTranscribe", _codigo(w_stop_body)),
+        ("stopAndTranscribe con client nulo", _codigo(sin_client)),
     ):
         assert "releaseMicrophone()" in cuerpo, (
             f"Sin releaseMicrophone() en el terminal '{nombre}': exigirlo por "
             "ventana de texto lo satisfacia la propia definicion del metodo o "
-            "un release posterior"
+            "un release posterior. Se exige sobre codigo (sin comentarios ni "
+            "literales) para que un release comentado o citado en una cadena no "
+            "lo haga pasar"
         )
-    assert "speechClient.stopRecording()" in w_stop_body
+    assert f"{mic_t}.stopRecording()" in w_stop_body, (
+        f"El corte de captura del widget debe pasar por el cliente resuelto "
+        f"({mic_t}.stopRecording()): si la rama lo evita, el AudioRecord queda "
+        "abierto con el claim liberado y otro entrypoint puede tomar el microfono"
+    )
     assert re.search(r"finally \{[^}]*releaseMicrophone\(\)", w_stop_body), (
         "El widget debe liberar el claim al cerrar su AudioRecord"
     )
@@ -764,11 +2143,13 @@ def test_c05_mic_exclusion_contract():
     )
     toggle = _body_after(widget, "internal fun handleToggle(): WidgetToggleOutcome")
     assert re.search(r"if \(isBusy\) return WidgetToggleOutcome\.IGNORED", toggle)
-    assert "isBusy = true" in toggle, (
-        "Sin isBusy = true el IGNORED del re-tap queda inerte y el widget puede "
-        "abrir un segundo AudioRecord durante stopAndTranscribe"
+    assert "isBusy = true" in _statements_at_depth(toggle, 1), (
+        "isBusy = true debe ser una sentencia de PRIMER NIVEL de handleToggle: "
+        "dentro de un if puede no ejecutarse, el IGNORED del re-tap queda "
+        "inerte y el widget puede abrir un segundo AudioRecord durante "
+        "stopAndTranscribe"
     )
-    estados = _body_after(widget, "private fun updateWidgetsState(state: String)")
+    estados = _body_after(widget, "private fun updateWidgetsState")
     assert re.search(
         r'if \(state != "recording" && state != "transcribing"\) isBusy = false', estados
     ), (
@@ -776,53 +2157,139 @@ def test_c05_mic_exclusion_contract():
         "IGNORED para siempre (la fuga de la rama client == null, reabierta "
         "por la otra puerta)"
     )
+    # El reset se exige por ORDEN y a PRIMER NIVEL, no por presencia: un
+    # `isBusy = true` puesto DESPUES devuelve el IGNORED eterno aunque el
+    # `= false` siga ahi, y un `if (isRecording) isBusy = false` anidado es
+    # codigo muerto en la rama de arranque fallido (la sentencia anterior ya
+    # dejo `isRecording = false`).
+    for nombre, cuerpo, condiciones in (
+        ("updateWidgetsState", estados, ('if (state != "recording" && state != "transcribing")',)),
+        ("stopAndTranscribe con client nulo", sin_client, ()),
+        ("arranque fallido", recuperacion, ()),
+    ):
+        escrituras = _escrituras_is_busy(cuerpo, condiciones)
+        assert escrituras, (
+            f"{nombre} debe BAJAR isBusy con una sentencia de PRIMER NIVEL de su "
+            f"cuerpo (escrituras: {escrituras}): metido en un if, un try, un when "
+            "o una lambda el reset puede no ejecutarse nunca, y entonces el "
+            "re-tap del widget queda IGNORED para siempre"
+        )
+        assert all(valor in ("true", "false") for valor in escrituras), (
+            f"{nombre} escribe isBusy fuera del reset admitido ({escrituras}): "
+            "toda escritura de primer nivel se mira, no solo la que hace "
+            "fullmatch con la condicion admitida. Un `if (state == \"saved\") "
+            "isBusy = true` que no matchea no es inocuo: es el flag de ocupado "
+            "vuelto a subir, y despues del reset deja el re-tap IGNORED para "
+            "siempre (el IGNORED eterno que denunciaba el punto 7 del feedback 7.5)"
+        )
+        assert "true" not in escrituras, (
+            f"{nombre} vuelve a SUBIR isBusy ({escrituras}): despues del reset "
+            "el re-tap del widget queda IGNORED para siempre, que es el IGNORED "
+            "eterno que denunciaba el punto 7 del feedback 7.5"
+        )
+        assert escrituras[-1] == "false", (
+            f"{nombre}: la ultima escritura a isBusy debe ser el reset "
+            f"({escrituras})"
+        )
+    assert _escrituras_is_busy(toggle) == ["true"], (
+        f"handleToggle solo puede SUBIR isBusy, nunca bajarlo ({_escrituras_is_busy(toggle)}): "
+        "si lo baja, el re-tap que debe quedar IGNORED abre un segundo AudioRecord"
+    )
     # main y fondo tocan estos flags: sin @Volatile son una celda partida.
     for field in ("isRecording", "isBusy", "microphoneClaim"):
-        assert re.search(rf"@Volatile\s+(\n\s+)?(private|internal) var {field}", widget), (
+        assert re.search(
+            rf"@Volatile\s+(\n\s+)?(private|internal) var {field}", _sin_comentarios(widget)
+        ), (
             f"{field} del widget se escribe desde main y desde el hilo de fondo: "
             "necesita @Volatile"
         )
-    assert "WidgetToggleOutcome.IGNORED -> {}" in widget, (
+    assert "WidgetToggleOutcome.IGNORED -> {}" in _sin_comentarios(widget), (
         "Un re-tap durante stopAndTranscribe debe ignorarse, no mostrar error"
     )
 
     # 4) Dart: claim atomico (no sonda) inmediatamente antes de recorder.start.
-    assert "_isMicBlocked" not in dart, "La sonda TOCTOU debe quedar eliminada"
-    assert "'claimMicrophone'" in dart and "'releaseMicrophone'" in dart
+    assert "_isMicBlocked" not in _sin_comentarios(dart), (
+        "La sonda TOCTOU debe quedar eliminada: preguntar si el microfono esta "
+        "libre y despues grabar deja la ventana entre la pregunta y el start"
+    )
+    assert "'claimMicrophone'" in _sin_comentarios(dart) and (
+        "'releaseMicrophone'" in _sin_comentarios(dart)
+    ), "Dart debe pedir y devolver el claim por el canal, no decidir por su cuenta"
     for dead in ("_kLocalClaim", "_localClaim", "_claimLocalMicrophone", "_releaseLocalMicrophone"):
-        assert dead not in dart, (
+        assert dead not in _sin_comentarios(dart), (
             f"{dead} es un segundo arbitro que no excluye al teclado nativo (falla abierto)"
         )
-    claimer = dart[dart.index("Future<int> _defaultMicClaimer()"):dart.index("Future<void> _defaultMicClaimReleaser")]
+    claimer = _codigo(
+        dart[dart.index("Future<int> _defaultMicClaimer()"):dart.index("Future<void> _defaultMicClaimReleaser")]
+    )
     assert "} catch (_) {\n    return 0;\n  }" in claimer, (
         "Sin canal nativo el claim debe fallar CERRADO (0), nunca devolver un "
         "claim local que no compite con el teclado"
     )
-    assert "?? 0" in claimer
-    releaser = dart[dart.index("Future<void> _defaultMicClaimReleaser"):dart.index("class TranscriptionService")]
+    assert "?? 0" in claimer, (
+        "Un `invokeMethod<int>('claimMicrophone')` que devuelve null debe ser 0, "
+        "no un claim: null no es dueno de nada"
+    )
+    releaser = _codigo(
+        dart[dart.index("Future<void> _defaultMicClaimReleaser"):dart.index("class TranscriptionService")]
+    )
     assert "if (claim == 0) return;" in releaser, (
         "El releaser solo debe ignorar el token 0 (nada tomado)"
     )
     assert "claim <= 0" not in releaser, (
         "Descartar claim <= 0 mata la liberacion de cualquier token no nativo"
     )
-    d_start = dart[dart.index("Future<void> startRecording"):dart.index("Future<String?> stopRecording")]
+    d_start = _codigo(
+        dart[dart.index("Future<void> startRecording"):dart.index("Future<String?> stopRecording")]
+    )
     d_permission = d_start.index("if (!await _recorder.hasPermission())")
     d_claim = d_start.index("await _claimMicrophone()")
     recorder_start = d_start.index("await _recorder.start(")
-    assert d_permission < d_claim < recorder_start
+    assert d_permission < d_claim < recorder_start, (
+        "El claim se pide DESPUES del permiso y ANTES de abrir la grabacion: al "
+        "reves se abre microfono sin arbitro o se pide un claim que ya no protege"
+    )
     d_publish = d_start.index("_activeClaim = claim;")
     assert d_claim < d_publish < recorder_start, (
         "El claim debe publicarse ANTES de await _recorder.start: durante el "
         "arranque el microfono ya esta tomado en nativo y hasMicrophoneClaim "
         "debe ser cierto, o el teardown y el stop no pueden liberarlo"
     )
+    # P1-1: el claim 0 tiene que ABORTAR, no solo comprobarse. El orden
+    # (claim < publish < start) lo cumplo un `if (claim == 0) { log(); }` igual:
+    # con el teclado como dueno, burbuja y Notas llegarian a
+    # `await _recorder.start(...)` sin ser dueñas y quedarían dos AudioRecord a
+    # la vez. Se exige el CUERPO de la rama, a primer nivel, entre pedir el
+    # claim y publicarlo, y que CORTA con throw o return.
+    cuerpo_inicio_dart = _codigo(_body_after(dart, "Future<void> startRecording"))
+    pos_corte, rama_corte = _bloque_de_if(
+        cuerpo_inicio_dart, r"claim\s*==\s*0|0\s*==\s*claim", "TranscriptionService.startRecording"
+    )
+    assert cuerpo_inicio_dart.index("await _claimMicrophone()") < pos_corte < cuerpo_inicio_dart.index(
+        "_activeClaim = claim;"
+    ), (
+        "La rama `if (claim == 0)` debe caer entre pedir el claim y publicarlo: "
+        "antes no conoce el token, despues ya lo publico como propio"
+    )
+    sentencias_corte = _statements_at_depth(rama_corte, 1)
+    assert any(
+        s == "throw" or s.startswith("throw ") or s == "return" or s.startswith("return ")
+        for s in sentencias_corte
+    ), (
+        "La rama de claim tomado debe CORTE (throw o return) como sentencia de "
+        f"PRIMER NIVEL (sentencias: {sentencias_corte}). Un `logSilencioso()` o "
+        "un aviso sin corte dejan seguir hacia `await _recorder.start(...)` con "
+        "el microfono ya tomado por el rival: dos AudioRecord a la vez"
+    )
     assert "await releaseMicrophoneClaim();" in d_start, (
         "Si recorder.start falla hay que liberar por releaseMicrophoneClaim "
         "(pone 0 y libera), no con _releaseMicrophone(claim) a secas"
     )
-    d_stop = _body_after(dart, "Future<String?> stopRecording()")
-    assert "await _releaseMicrophone(claim)" in d_stop
+    d_stop = _codigo(_body_after(dart, "Future<String?> stopRecording()"))
+    assert "await _releaseMicrophone(claim)" in d_stop, (
+        "stopRecording debe liberar el token que USO para tomar el microfono: "
+        "sin esta liberacion, cada parada deja el claim tomado en nativo"
+    )
     assert any(
         s == "_activeClaim = 0" for s in _statements_at_depth(d_stop, 1)
     ), (
@@ -831,30 +2298,32 @@ def test_c05_mic_exclusion_contract():
         "hasMicrophoneClaim sigue mintiendo y un teardown posterior libera un "
         "claim ya liberado"
     )
-    assert "Future<void> releaseMicrophoneClaim()" in dart
+    assert "Future<void> releaseMicrophoneClaim()" in _sin_comentarios(dart)
     assert any(
         s == "_activeClaim = 0" for s in _statements_at_depth(
-            _body_after(dart, "Future<void> releaseMicrophoneClaim()"), 1
+            _codigo(_body_after(dart, "Future<void> releaseMicrophoneClaim()")), 1
         )
     ), "releaseMicrophoneClaim debe bajar el token como sentencia directa"
-    getter = re.sub(r"\s+", " ", _expr_body(dart, "bool get hasMicrophoneClaim")).strip()
+    getter = re.sub(
+        r"\s+", " ", _expr_body(_sin_comentarios(dart), "bool get hasMicrophoneClaim")
+    ).strip()
     assert getter == "bool get hasMicrophoneClaim => _activeClaim != 0;", (
         "hasMicrophoneClaim debe LEER la celda del claim: con '=> false' (o con "
         "'=> _activeClaim == 0') el teardown de Home/Notas corta antes de "
         "liberar y el microfono queda tomado para todo el proceso"
     )
     for source, name in ((home, "home_screen"), (notes, "notes_screen")):
-        assert "releaseMicrophoneClaim()" in source, (
+        assert "releaseMicrophoneClaim()" in _sin_comentarios(source), (
             f"{name} debe liberar el claim en su teardown (metodo sin llamadores)"
         )
-        dispose = _strip_dart_comments(_body_after(source, "void dispose()"))
+        dispose = _codigo(_body_after(source, "void dispose()"))
         assert "unawaited(_releaseMicrophoneOnTeardown())" in _statements_at_depth(dispose, 1), (
             f"{name}: dispose() debe INVOCAR al teardown como sentencia de "
             "primer nivel: comentado o metido en un if que no se cumple nunca, "
             "el guard lo daba por vivo y el microfono quedaba tomado para "
             "todo el proceso"
         )
-        teardown = _strip_dart_comments(
+        teardown = _codigo(
             _body_after(source, "Future<void> _releaseMicrophoneOnTeardown()")
         )
         sentencias = _statements_at_depth(teardown, 2)
@@ -889,28 +2358,67 @@ def test_c05_mic_exclusion_contract():
         )
 
     # 5) Estado visual publicado antes o en el mismo claim (nada obsoleto).
-    h_start = home[home.index("Future<void> _startRecording"):home.index("Future<void> _cancelHoldIfTooShort")]
+    # Todo sobre CODIGO: el `BubbleVisualState.idle` del catch estaba como
+    # `in` sobre texto crudo y lo satisfacia una linea comentada, con la burbuja
+    # encendida para siempre despues de un arranque rechazado por el claim.
+    h_start = _codigo(
+        home[home.index("Future<void> _startRecording"):home.index("Future<void> _cancelHoldIfTooShort")]
+    )
     assert h_start.index("updateBubbleState(BubbleVisualState.recording)") < h_start.index(
         "_transcriptionService.startRecording(path)"
+    ), (
+        "Home debe publicar el estado visual ANTES de pedir el microfono: si "
+        "publica despues, el rejection del claim llega con la burbuja en su "
+        "estado anterior y el usuario ve 'grabando' sin que se grabe"
     )
-    assert "BubbleVisualState.idle" in h_start[h_start.index("} catch (e) {"):]
+    catch_home = _cuerpo_del_bloque(h_start, "catch", "home_screen._startRecording")
+    assert "BubbleVisualState.idle" in catch_home, (
+        "El catch del arranque de Home debe volver a idle: sin el, un rechazo "
+        "por microfono ocupado deja la burbuja en 'grabando' para siempre (con "
+        "el claim tomado por el rival, no hay nada que corte). Se exige DENTRO "
+        "del catch, no en el resto del metodo: publicado solo en la rama de "
+        "pantalla destruida, el catch compila vacio y el guard lo daba por vivo"
+    )
     assert h_start.index("if (!mounted)") < h_start.index("_transcriptionService.startRecording(path)"), (
         "Una pantalla destruida no puede tomar el microfono"
     )
-    n_dictate = notes[notes.index("Future<void> _dictateNew"):notes.index("Future<void> _stopAndSave")]
+    n_dictate = _codigo(
+        notes[notes.index("Future<void> _dictateNew"):notes.index("Future<void> _stopAndSave")]
+    )
     assert n_dictate.index("_publishBubbleState(BubbleVisualState.recording)") < n_dictate.index(
         "_transcriptionService.startRecording(path)"
+    ), (
+        "Notas debe publicar el estado visual ANTES de pedir el microfono, por "
+        "el mismo contrato que la burbuja"
     )
-    assert "BubbleVisualState.idle" in n_dictate
+    catch_notas = _cuerpo_del_bloque(n_dictate, "catch", "notes_screen._dictateNew")
+    assert "BubbleVisualState.idle" in catch_notas, (
+        "Notas debe volver a idle cuando el arranque no succeeds: con el "
+        "rechazo del claim, la pantalla se queda en 'grabando' sin grabar. Se "
+        "exige DENTRO del catch, no en el resto del metodo: publicado solo en "
+        "la rama de pantalla destruida, el catch compila vacio y el guard lo "
+        "daba por vivo"
+    )
     assert n_dictate.index("if (!mounted)") < n_dictate.index(
         "_transcriptionService.startRecording(path)"
     ), "Una pantalla destruida no puede tomar el microfono"
-    n_stop = notes[notes.index("Future<void> _stopAndSave"):notes.index("Future<void> _transcribePending")]
-    assert "finally {" in n_stop and "_publishBubbleState(BubbleVisualState.idle)" in n_stop
-    assert "floatingBubbleService" in notes
+    n_stop = _codigo(
+        notes[notes.index("Future<void> _stopAndSave"):notes.index("Future<void> _transcribePending")]
+    )
+    assert "finally {" in n_stop and "_publishBubbleState(BubbleVisualState.idle)" in n_stop, (
+        "El corte de Notas debe publicar idle en su finally: con el estado "
+        "visual colgado, el boton queda en 'grabando' y el segundo toque abre un "
+        "segundo AudioRecord"
+    )
+    assert "floatingBubbleService" in _codigo(notes), (
+        "Notas debe operar sobre la burbuja flotante"
+    )
 
-    # 6) Pruebas de carrera reales (no solo guard estatico).
-    for marker in (
+    # 6) Pruebas de carrera reales, certificadas por su CUERPO.
+    # Las tres listas se certifican igual: asercion real en el cuerpo y NINGUN
+    # `return` de primer nivel antes de ella (un `return` en la primera linea
+    # aborta el caso, no falla, y deja el step bloqueante de CI en verde).
+    carreras_kt = (
         "fun concurrentClaimsHaveExactlyOneWinner",
         "fun staleTokenDoesNotFreeTheCurrentClaim",
         "fun keyboardAndWidgetRaceHasASingleWinner",
@@ -918,27 +2426,69 @@ def test_c05_mic_exclusion_contract():
         "fun duplicateReleaseDuringTakeoverNeverStealsTheNewOwner",
         "fun concurrentClaimAndDuplicateReleaseNeverOverlapTwoOwners",
         "fun widgetReTapWhileBusyIsIgnoredInsteadOfClaimingAgain",
-    ):
-        assert marker in kt_test, f"Falta la carrera nativa {marker}"
-        cuerpo = _body_after(kt_test, f"{marker}(")
-        assert re.search(r"\bassert(?:True|False|Equals|Null|ArrayEquals)\(", cuerpo), (
-            f"La carrera nativa {marker} debe ASERTAR su invariante: con el "
-            "nombre y el cuerpo vacio el step bloqueante de CI queda verde por "
-            "no comprobar nada"
-        )
-    assert "assumeTrue" not in kt_test and "Assume." not in kt_test, (
-        "Un test nativo con Assume se salta a si mismo y el step bloqueante "
-        "queda verde por no ejecutar la carrera"
+        "fun releaseIsIdempotentAndIgnoresEmptyTokens",
+        "fun widgetDictationTakesTheClaimAndReleasesItInEveryTerminalPath",
     )
-    for afirmacion in (
-        "assertEquals(1L, maxHolders.get().toLong())",
-        "assertEquals(1, winners.get())",
-        "assertFalse(BackgroundWork.isMicrophoneClaimed())",
-        "assertEquals(0L, widget.microphoneClaim)",
-        "assertTrue(BackgroundWork.isMicrophoneClaimedBy(segundo))",
-    ):
-        assert afirmacion in kt_test, f"La prueba nativa debe asertar {afirmacion}"
-    for marker in (
+    cuerpos_kt = {}
+    for marker in carreras_kt:
+        assert marker in _sin_comentarios(kt_test), f"Falta la carrera nativa {marker}"
+        cuerpos_kt[marker[4:]] = _certifica_test(
+            _body_after(kt_test, marker), marker[4:], ASERCION_KOTLIN, "Kotlin"
+        )
+    # Desactivar la carrera no es fallarla: `@Ignore` / `@Disabled` (o un
+    # `Assume` que se salta a si mismo) dejan el step bloqueante en VERDE sin
+    # ejecutar nada. Se prohibe en TODO el arbol de tests, nativo y Dart, no
+    # solo en el archivo que el guard lee: una carrera nueva desactivada en un
+    # archivo vecino pasava igual.
+    _prohibe_desactivar_tests(
+        "voice_bubble_stt/android/app/src/test", "app_source/test"
+    )
+    # Las aserciones raiz van DENTRO del test que las nombra: exigirlas a nivel
+    # de archivo deja pasar el test que las importa si el mismo literal
+    # sobrevive en otro test del archivo.
+    _exige_raices(
+        cuerpos_kt,
+        {
+            "concurrentClaimsHaveExactlyOneWinner": (
+                "assertEquals(1, winners.get())",
+                "assertTrue(BackgroundWork.isMicrophoneClaimed())",
+            ),
+            "staleTokenDoesNotFreeTheCurrentClaim": (
+                "assertTrue(BackgroundWork.isMicrophoneClaimedBy(segundo))",
+                "assertFalse(BackgroundWork.isMicrophoneClaimedBy(primero))",
+                "assertFalse(BackgroundWork.isMicrophoneClaimed())",
+            ),
+            "concurrentClaimAndDuplicateReleaseNeverOverlapTwoOwners": (
+                "assertEquals(1L, maxHolders.get().toLong())",
+                "assertFalse(BackgroundWork.isMicrophoneClaimed())",
+            ),
+            "duplicateReleaseDuringTakeoverNeverStealsTheNewOwner": (
+                "assertFalse(BackgroundWork.isMicrophoneClaimed())",
+            ),
+            "keyboardAndWidgetRaceHasASingleWinner": (
+                "assertEquals(1, winners.get())",
+                "assertFalse(BackgroundWork.isMicrophoneClaimed())",
+            ),
+            "widgetReTapWhileBusyIsIgnoredInsteadOfClaimingAgain": (
+                "assertEquals(0L, widget.microphoneClaim)",
+            ),
+            "widgetDictationStaysOutWhenKeyboardHoldsTheClaim": (
+                "assertEquals(0L, widget.microphoneClaim)",
+            ),
+            "releaseIsIdempotentAndIgnoresEmptyTokens": (
+                "assertTrue(BackgroundWork.releaseMicrophone(claim))",
+                "assertFalse(BackgroundWork.releaseMicrophone(claim))",
+                "assertFalse(BackgroundWork.releaseMicrophone(0L))",
+            ),
+            "widgetDictationTakesTheClaimAndReleasesItInEveryTerminalPath": (
+                "assertEquals(claim, widget.microphoneClaim)",
+                "assertEquals(0L, BackgroundWork.tryClaimMicrophone())",
+                "assertFalse(BackgroundWork.isMicrophoneClaimed())",
+            ),
+        },
+        "MicrophoneClaimTest.kt",
+    )
+    carreras_dart = (
         "el claim se toma inmediatamente antes de recorder.start",
         "el claim propio ya excluye al rival en el instante del start",
         "carrera burbuja vs Notas: un solo ganador llega a recorder.start",
@@ -946,19 +2496,60 @@ def test_c05_mic_exclusion_contract():
         "un token obsoleto no libera el claim de otro",
         "sin canal nativo falla cerrado: la burbuja no puede grabar sola",
         "un canal que lanza no deja un microfono irrecuperable",
-    ):
-        assert marker in dart_test, f"Falta la carrera Dart {marker}"
-        assert re.search(
-            r"\bexpect[A-Za-z]*\(", _dart_test_body(dart_test, marker)
-        ), f"La carrera Dart '{marker}' debe asertar su invariante, no solo existir"
-    for afirmacion in (
-        "expect(recorder.startCount, 0);",
-        "expect(order, ['permission', 'claim', 'start']);",
-        "expect(gate.releases, 1);",
-        "expect(liberaciones, [7]);",
-    ):
-        assert afirmacion in dart_test, f"La prueba Dart debe asertar {afirmacion}"
-    for marker in (
+        "bloquea el inicio cuando el claim esta tomado",
+        "libera el claim al cancelar sin cerrar el recorder",
+        "claim por canal nativo y release con el mismo token",
+    )
+    cuerpos_dart = {}
+    for marker in carreras_dart:
+        assert marker in _sin_comentarios(dart_test), f"Falta la carrera Dart {marker}"
+        cuerpos_dart[marker] = _certifica_test(
+            _dart_test_body(dart_test, marker), marker, ASERCION_DART, "Dart"
+        )
+    _exige_raices(
+        cuerpos_dart,
+        {
+            "bloquea el inicio cuando el claim esta tomado": (
+                "expect(recorder.startCount, 0);",
+            ),
+            "el claim se toma inmediatamente antes de recorder.start": (
+                "expect(order, ['permission', 'claim', 'start']);",
+            ),
+            "el claim propio ya excluye al rival en el instante del start": (
+                "expect(roboEnElStart, 0);",
+                "expect(recorder.startCount, 1);",
+            ),
+            "carrera burbuja vs Notas: un solo ganador llega a recorder.start": (
+                "expect(recorder.startCount, 1);",
+                "expect(gate.isClaimed, isFalse);",
+            ),
+            "libera el claim si recorder.start lanza": (
+                "expect(gate.releases, 1);",
+                "expect(gate.isClaimed, isFalse);",
+            ),
+            "un token obsoleto no libera el claim de otro": (
+                "expect(segundo, isNot(0));",
+                "expect(gate.isClaimed, isTrue);",
+            ),
+            "sin canal nativo falla cerrado: la burbuja no puede grabar sola": (
+                "primero.startRecording('/tmp/local-1.wav')",
+                "segundo.startRecording('/tmp/local-2.wav')",
+            ),
+            "un canal que lanza no deja un microfono irrecuperable": (
+                "expect(liberaciones, [4]);",
+                "expect(service.hasMicrophoneClaim, isTrue);",
+            ),
+            "libera el claim al cancelar sin cerrar el recorder": (
+                "expect(service.hasMicrophoneClaim, isTrue);",
+                "expect(gate.isClaimed, isFalse);",
+            ),
+            "claim por canal nativo y release con el mismo token": (
+                "expect(liberaciones, [7]);",
+            ),
+        },
+        "mic_exclusion_test.dart",
+    )
+    pruebas_ui = (
         "Home publica el estado visual antes de tomar el claim",
         "Home no arranca con el microfono tomado y vuelve a idle",
         "Notas toma el claim tras publicar el estado visual",
@@ -969,35 +2560,85 @@ def test_c05_mic_exclusion_contract():
         "Home no toma el microfono si desaparece durante el arranque",
         "Home no deja el microfono tomado si desaparece con recorder.start en vuelo",
         "Notas libera el microfono si el segundo toque llega con recorder.start en vuelo",
-    ):
-        assert marker in ui_test, f"Falta la prueba de UI {marker}"
-        assert re.search(
-            r"\bexpect[A-Za-z]*\(", _dart_test_body(ui_test, marker)
-        ), f"La prueba de UI '{marker}' debe asertar su invariante, no solo existir"
-    ventana = _dart_test_body(
-        ui_test, "Home no deja el microfono tomado si desaparece con recorder.start en vuelo"
     )
-    for afirmacion in (
-        "expect(recorder.starts, 1);",
-        "expect(service.hasMicrophoneClaim, isTrue);",
-        "expect(gate.isClaimed, isFalse);",
-        "expect(gate.claim(), isNot(0));",
-    ):
-        assert afirmacion in ventana, (
-            "La prueba de la ventana de arranque debe asertar "
-            f"{afirmacion}: es la unica que prueba que el claim se publico "
-            "antes de await recorder.start"
+    cuerpos_ui = {}
+    cuerpos_ui_texto = {}
+    for marker in pruebas_ui:
+        assert marker in _sin_comentarios(ui_test), f"Falta la prueba de UI {marker}"
+        cuerpos_ui_texto[marker] = _codigo(_dart_test_body(ui_test, marker))
+        cuerpos_ui[marker] = _certifica_test(
+            _dart_test_body(ui_test, marker), marker, ASERCION_DART, "Dart"
         )
-    assert "class _HangingStartRecorder" in ui_test, (
+    _exige_raices(
+        cuerpos_ui,
+        {
+            "Home publica el estado visual antes de tomar el claim": (
+                "expect(order, ['bubble:recording', 'claim', 'start']);",
+            ),
+            "Home no arranca con el microfono tomado y vuelve a idle": (
+                "expect(order, isNot(contains('start')));",
+                "expect(order.last, 'bubble:idle');",
+            ),
+            "Notas toma el claim tras publicar el estado visual": (
+                "expect(order, ['bubble:recording', 'claim', 'start']);",
+                # Estado real de captura y localizacion por Key (§9.2-12): atar
+                # la raiz al copy del boton ("Detener") hacia al guard una
+                # violation de la regla y lo tumbaba un renombre legitimo.
+                "expect(gate.isClaimed, isTrue);",
+                "await tester.tap(find.byKey(const ValueKey('notesMicFab')));",
+            ),
+            "Notas no arranca con el microfono tomado": (
+                "expect(order, isNot(contains('start')));",
+                "expect(order.last, 'bubble:idle');",
+                "expect(gate.isClaimed, isTrue);",
+                "await tester.tap(find.byKey(const ValueKey('notesMicFab')));",
+            ),
+            "Home libera el microfono si desaparece grabando": (
+                "expect(order, contains('stop'));",
+                "expect(service.hasMicrophoneClaim, isFalse);",
+            ),
+            "Home libera el claim aunque el recorder no pueda cerrar": (
+                "expect(gate.isClaimed, isFalse);",
+            ),
+            "Notas libera el microfono si desaparece grabando": (
+                "expect(order, contains('stop'));",
+            ),
+            "Home no toma el microfono si desaparece durante el arranque": (
+                "expect(order, ['bubble:recording', 'bubble:idle']);",
+            ),
+            "Home no deja el microfono tomado si desaparece con recorder.start en vuelo": (
+                "expect(recorder.starts, 1);",
+                "expect(service.hasMicrophoneClaim, isTrue);",
+                "expect(gate.isClaimed, isFalse);",
+                "expect(gate.claim(), isNot(0));",
+            ),
+            "Notas libera el microfono si el segundo toque llega con recorder.start en vuelo": (
+                "expect(recorder.starts, 1);",
+                "expect(gate.claim(), isNot(0));",
+            ),
+        },
+        "mic_exclusion_flow_test.dart",
+    )
+    # La clase por PALABRA COMPLETA y ademas USADA: por subcadena,
+    # `_HangingStartRecorderV2` satisfacia el `in`, y una clase declarada y
+    # nunca instanciada deja a los teardown en vuelo sin la ventana peligrosa
+    # que Puebla.
+    assert re.search(r"class\s+_HangingStartRecorder\b", _sin_comentarios(ui_test)), (
         "La prueba de teardown durante el arranque necesita un recorder cuyo "
         "start() no resuelve (los tres de teardown anteriores esperan a que el "
         "arranque termine y ninguno entra en la ventana peligrosa)"
     )
-    assert "Robolectric.buildService(" in kt_test, (
+    assert any("_HangingStartRecorder(" in cuerpo for cuerpo in cuerpos_ui_texto.values()), (
+        "_HangingStartRecorder debe INSTANCIARSE dentro de al menos una de las "
+        "pruebas de arranque en vuelo: declararla sin usarla deja a esas "
+        "pruebas esperando un arranque que si resuelve, que es exactamente la "
+        "ventana que tiene que quedar cubierta"
+    )
+    assert "Robolectric.buildService(" in _sin_comentarios(kt_test), (
         "MicrophoneClaimTest debe crear el Service con el harness de Robolectric "
         "(buildService(...).create()), no con el constructor"
     )
-    assert "WidgetDictationService()" not in kt_test, (
+    assert "WidgetDictationService()" not in _sin_comentarios(kt_test), (
         "MicrophoneClaimTest no debe instanciar el Service directo: el ctor de "
         "android.app.Service toca ActivityManager.getService()"
     )
