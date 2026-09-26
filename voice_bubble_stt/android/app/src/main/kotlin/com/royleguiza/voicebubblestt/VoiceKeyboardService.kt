@@ -236,6 +236,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (layer != Layer.SNIPPETS && ::snippets.isInitialized) {
             snippets.resetState()
         }
+        // C-14 [S]: En contraseñas jamás se renderiza la cinta de portapapeles, snippets ni trackpad.
+        if (currentIsPasswordField && (layer == Layer.CLIPBOARD || layer == Layer.SNIPPETS || layer == Layer.TRACKPAD)) {
+            layer = Layer.LETTERS
+        }
         root.removeAllViews()
 
         // K2.1: fila terminal ocultable desde Ajustes de la app (default visible).
@@ -575,6 +579,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // --- CredentialsLayer.UiHost (SPK-05 módulo 3): 9 delegaciones de una línea. ---
     override fun currentLayer(): Layer = layer
     override fun showLayer(next: Layer) {
+        if (currentIsPasswordField && next == Layer.CLIPBOARD) return
         layer = next
         rebuild()
     }

@@ -40,6 +40,7 @@ SUITES = [
     ("Red: tiempos de red parejos (C-11)", "test_c11_even_network_timeouts_suite.py"),
     ("Rendimiento: sin trabajo pesado en hilo principal (C-12)", "test_c12_no_main_thread_heavy_work_suite.py"),
     ("Widget: distingue sin internet de sin clave (C-13)", "test_c13_widget_auth_vs_network_suite.py"),
+    ("Seguridad: portapapeles fuera de contraseñas (C-14)", "test_c14_clipboard_out_of_passwords_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3063,6 +3064,45 @@ def test_c13_widget_auth_vs_network_contract():
     assert "code == null || code == 429 || code >= 500" in widget, "C-13: shouldEnqueuePending no restringe encolado a fallas de red/5xx/429"
     assert "if (shouldEnqueuePending(code, message))" in widget, "C-13: WidgetDictationService no evalúa shouldEnqueuePending antes de encolar"
 
+def test_c14_clipboard_out_of_passwords_contract():
+    """C-14 [S]: Portapapeles fuera de contraseñas."""
+    base_kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    toolbar_path = os.path.join(base_kt, "ToolbarLayer.kt")
+    clipboard_path = os.path.join(base_kt, "ClipboardLayer.kt")
+    vks_path = os.path.join(base_kt, "VoiceKeyboardService.kt")
+
+    with open(toolbar_path, "r", encoding="utf-8") as f:
+        toolbar = f.read()
+    with open(clipboard_path, "r", encoding="utf-8") as f:
+        clipboard = f.read()
+    with open(vks_path, "r", encoding="utf-8") as f:
+        vks = f.read()
+
+    # 1. ToolbarLayer: no crear btnPaste en password
+    assert "if (!host.isPasswordField())" in toolbar, "C-14: falta guarda de isPasswordField en ToolbarLayer"
+    tb_paste_idx = toolbar.find("val btnPaste")
+    assert tb_paste_idx != -1 and toolbar.rfind("if (!host.isPasswordField())", 0, tb_paste_idx) != -1, "C-14: btnPaste no está dentro de guarda isPasswordField"
+
+    # 2. ClipboardLayer: toggle, pasteLatestOrToggle y pasteClip protegidos
+    toggle_chunk = clipboard[clipboard.find("fun toggle()"):clipboard.find("fun buildRows()")]
+    assert "if (host.isPasswordField()) return" in toggle_chunk, "C-14: ClipboardLayer.toggle no aborta en password"
+
+    paste_latest_chunk = clipboard[clipboard.find("fun pasteLatestOrToggle()"):clipboard.find("private fun handlePrimaryClipChanged")]
+    assert "if (host.isPasswordField()) return" in paste_latest_chunk, "C-14: ClipboardLayer.pasteLatestOrToggle no aborta en password"
+
+    paste_clip_chunk = clipboard[clipboard.find("private fun pasteClip("):clipboard.find("private fun commitImageClip(")]
+    assert "if (host.isPasswordField()) return" in paste_clip_chunk, "C-14: ClipboardLayer.pasteClip no aborta en password"
+
+    # 3. VoiceKeyboardService: showLayer, toggles y reseteo al entrar
+    show_layer_chunk = vks[vks.find("override fun showLayer(next: Layer)"):vks.find("override fun tapFeedback()")]
+    assert "if (currentIsPasswordField && next == Layer.CLIPBOARD) return" in show_layer_chunk, "C-14: showLayer no bloquea CLIPBOARD en password"
+
+    cb_toggle_chunk = vks[vks.find("override fun clipboardToggle()"):vks.find("override fun trackpadToggle()")]
+    assert "override fun clipboardToggle() = clipboard.toggle()" in cb_toggle_chunk, "C-14: clipboardToggle no delega en clipboard"
+
+    on_start_chunk = vks[vks.find("override fun onStartInputView("):vks.find("override fun onFinishInputView(")]
+    assert "if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS || layer == Layer.CLIPBOARD))" in on_start_chunk, "C-14: onStartInputView no resetea CLIPBOARD en password"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3089,6 +3129,7 @@ def main():
         ("C-11: tiempos de red parejos", test_c11_even_network_timeouts_contract),
         ("C-12: sin trabajo pesado en el hilo principal", test_c12_no_main_thread_heavy_work_contract),
         ("C-13: el widget distingue sin internet de sin clave", test_c13_widget_auth_vs_network_contract),
+        ("C-14: portapapeles fuera de contraseñas [S]", test_c14_clipboard_out_of_passwords_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

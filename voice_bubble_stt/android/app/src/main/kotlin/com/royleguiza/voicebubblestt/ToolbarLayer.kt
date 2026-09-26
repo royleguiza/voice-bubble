@@ -158,24 +158,28 @@ class ToolbarLayer(
             items.add(btnTerminal)
         }
 
-        val btnPaste = host.makeIconKey(
-            R.drawable.ic_paste,
-            R.drawable.kb_key_alt,
-            1.0f,
-            if (host.isSpanish()) "portapapeles" else "clipboard",
-        ) {
-            host.clipboardToggle()
-        }
-        host.attachPress(
-            btnPaste,
-            onLongPress = {
-                host.clipboardPasteLatest()
-            },
-            onTapUp = {
+        // C-14 [S]: En campos de contraseña la cinta y el botón de pegar
+        // quedan completamente excluidos de la barra superior.
+        if (!host.isPasswordField()) {
+            val btnPaste = host.makeIconKey(
+                R.drawable.ic_paste,
+                R.drawable.kb_key_alt,
+                1.0f,
+                if (host.isSpanish()) "portapapeles" else "clipboard",
+            ) {
                 host.clipboardToggle()
-            },
-        )
-        items.add(btnPaste)
+            }
+            host.attachPress(
+                btnPaste,
+                onLongPress = {
+                    host.clipboardPasteLatest()
+                },
+                onTapUp = {
+                    host.clipboardToggle()
+                },
+            )
+            items.add(btnPaste)
+        }
 
         if (host.isCodeKeyPref()) {
             val btnCode = host.makeIconKey(

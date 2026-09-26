@@ -82,8 +82,10 @@ class ClipboardLayer(
      * Capa propia excluyente (como Claves): una sola sección visible a la
      * vez. El carrusel vive en el flujo donde estaba, reemplazando el
      * contenido en vez de apilarse: no empuja teclas ni esconde mitades.
+     * C-14 [S]: En campos de contraseña se prohíbe abrir o mostrar la cinta.
      */
     fun toggle() {
+        if (host.isPasswordField()) return
         if (host.currentLayer() == Layer.CLIPBOARD) {
             host.showLayer(origin)
             return
@@ -116,6 +118,7 @@ class ClipboardLayer(
 
     /** Long-press del botón pegar: pega lo último o abre la cinta. */
     fun pasteLatestOrToggle() {
+        if (host.isPasswordField()) return
         val latest = try {
             store.getLatestClip()
         } catch (_: Exception) {
@@ -253,6 +256,7 @@ class ClipboardLayer(
     }
 
     private fun pasteClip(clip: ClipboardItem, autoClose: Boolean = true) {
+        if (host.isPasswordField()) return
         host.haptic(host.rootView())
         when (clip.type) {
             ClipType.TEXT, ClipType.CODE, ClipType.MATH, ClipType.URL -> {
