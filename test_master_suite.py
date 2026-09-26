@@ -43,6 +43,7 @@ SUITES = [
     ("Seguridad: portapapeles fuera de contraseñas (C-14)", "test_c14_clipboard_out_of_passwords_suite.py"),
     ("Snippets: borrador a salvo ante rebuild (C-15)", "test_c15_snippet_draft_safe_suite.py"),
     ("Spacebar: sin fantasmas y retardo de usuario (C-16)", "test_c16_spacebar_no_ghosts_suite.py"),
+    ("Teclado: una sola vibración por tecla (C-17)", "test_c17_single_vibration_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3179,6 +3180,46 @@ def test_c16_spacebar_no_ghosts_contract():
     cancel_gestures_chunk = vks[vks.find("private fun cancelPendingKeyGestures()"):vks.find("override fun dismissPopup()")]
     assert "spacebar.cancelPending()" in cancel_gestures_chunk, "C-16: cancelPendingKeyGestures no invoca spacebar.cancelPending()"
 
+def test_c17_single_vibration_contract():
+    kt_dir = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    ee_path = os.path.join(kt_dir, "EditEngine.kt")
+    kf_path = os.path.join(kt_dir, "KeyFactory.kt")
+
+    with open(ee_path, "r", encoding="utf-8") as f:
+        ee = f.read()
+    with open(kf_path, "r", encoding="utf-8") as f:
+        kf = f.read()
+
+    # 1. EditEngine: CERO llamadas a host.haptic()
+    haptic_matches = re.findall(r"host\.haptic\(", ee)
+    assert len(haptic_matches) == 0, f"C-17: EditEngine tiene {len(haptic_matches)} llamadas a host.haptic: {haptic_matches}"
+
+    # Verificación por función en EditEngine
+    commit_letter_chunk = ee[ee.find("fun commitLetter("):ee.find("private fun releaseMomentaryShift")]
+    assert "host.haptic" not in commit_letter_chunk, "C-17: commitLetter vibra innecesariamente"
+
+    commit_symbol_chunk = ee[ee.find("fun commitSymbolText("):ee.find("fun commit(")]
+    assert "host.haptic" not in commit_symbol_chunk, "C-17: commitSymbolText vibra innecesariamente"
+
+    send_code_chunk = ee[ee.find("fun sendKeyCode("):ee.find("private fun isCursorKey")]
+    assert "host.haptic" not in send_code_chunk, "C-17: sendKeyCode vibra innecesariamente"
+
+    backspace_chunk = ee[ee.find("fun handleBackspace("):ee.find("fun deleteWordBeforeCursor")]
+    assert "host.haptic" not in backspace_chunk, "C-17: handleBackspace vibra innecesariamente"
+
+    enter_chunk = ee[ee.find("fun handleEnter("):]
+    assert "host.haptic" not in enter_chunk, "C-17: handleEnter vibra innecesariamente"
+
+    # 2. KeyFactory: punto único de vibración en la capa física de gestos
+    fast_tap_chunk = kf[kf.find("fun fastTap("):kf.find("fun longPress(")]
+    assert "host.haptic(v)" in fast_tap_chunk, "C-17: fastTap no vibra en ACTION_DOWN"
+
+    long_press_chunk = kf[kf.find("fun longPress("):kf.find("fun backspaceGestures(")]
+    assert "host.haptic(v)" in long_press_chunk, "C-17: longPress no vibra en ACTION_DOWN"
+
+    gap_chunk = kf[kf.find("private fun makeGapTolerant("):kf.find("private fun nearestChild(")]
+    assert "host.haptic(child)" in gap_chunk, "C-17: makeGapTolerant no vibra al resolver tecla"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3208,6 +3249,7 @@ def main():
         ("C-14: portapapeles fuera de contraseñas [S]", test_c14_clipboard_out_of_passwords_contract),
         ("C-15: borrador de snippet a salvo", test_c15_snippet_draft_safe_contract),
         ("C-16: spacebar sin fantasmas", test_c16_spacebar_no_ghosts_contract),
+        ("C-17: una sola vibración por tecla", test_c17_single_vibration_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

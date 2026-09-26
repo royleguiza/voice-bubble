@@ -320,7 +320,7 @@ class EditEngine(
         snippets()?.backspaceEditor() == true
 
     fun commitLetter(base: Char) {
-        host.haptic(host.rootView())
+        // C-17: Una sola vibración por tecla gestionada en la capa de gestos (KeyFactory en ACTION_DOWN).
         if (insertTextToActiveEditor(displayFor(base))) {
             releaseMomentaryShift()
             return
@@ -353,7 +353,7 @@ class EditEngine(
     }
 
     fun commitSymbolText(text: String) {
-        host.haptic(host.rootView())
+        // C-17: Una sola vibración por tecla gestionada en la capa de gestos (KeyFactory en ACTION_DOWN).
         if (insertTextToActiveEditor(text)) return
         // Simbolos de la barra inferior (, .) en snippets: al query siempre.
         if (host.currentLayer() == Layer.SNIPPETS) snippets()?.ensureSearchMode()
@@ -430,7 +430,7 @@ class EditEngine(
     }
 
     fun sendKeyCode(keyCode: Int) {
-        host.haptic(host.rootView())
+        // C-17: Una sola vibración por tecla gestionada en la capa de gestos.
         if (isCursorKey(keyCode)) {
             val s = snippets()
             if (s?.moveCursorInEditor(keyCode, false) == true) return
@@ -466,7 +466,7 @@ class EditEngine(
     }
 
     fun handleBackspace() {
-        host.haptic(host.rootView())
+        // C-17: Una sola vibración por tecla gestionada en la capa de gestos (KeyFactory: longPress/backspaceGestures).
         if (backspaceActiveEditor()) return
         if (snippets()?.backspaceQuery() == true) return
         val ic = service.currentInputConnection ?: run {
@@ -606,7 +606,7 @@ class EditEngine(
     }
 
     fun handleEnter() {
-        host.haptic(host.rootView())
+        // C-17: Una sola vibración por tecla gestionada en la capa de gestos (KeyFactory: fastTap en ACTION_DOWN).
         if (snippets()?.handleEnterInEditor() == true) return
         if (host.currentLayer() == Layer.SNIPPETS && snippets()?.isSearchActive == true) {
             snippets()?.exitSearchMode()

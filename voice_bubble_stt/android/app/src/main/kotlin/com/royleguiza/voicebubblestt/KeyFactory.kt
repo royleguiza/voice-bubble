@@ -316,6 +316,7 @@ class KeyFactory(
                 MotionEvent.ACTION_DOWN -> true
                 MotionEvent.ACTION_UP -> {
                     nearestChild(row, ev.x, ev.y)?.let { child ->
+                        host.haptic(child)
                         child.isPressed = true
                         handler.postDelayed({ child.isPressed = false }, 80L)
                         @Suppress("UNCHECKED_CAST")
