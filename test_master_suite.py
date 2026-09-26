@@ -56,6 +56,7 @@ SUITES = [
     ("Nada tapado + scroll que no salta (C-27)", "test_c27_nothing_obscured_and_scroll_suite.py"),
     ("Sheet con scroll + botones 44dp (C-28)", "test_c28_sheet_scroll_and_touch_targets_suite.py"),
     ("Burbuja siempre recuperable (C-29)", "test_c29_bubble_clamping_and_no_limits_suite.py"),
+    ("Contraste que se lee (C-30)", "test_c30_contrast_and_accessible_tokens_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3723,6 +3724,36 @@ def test_c29_bubble_clamping_contract():
     assert "displayCutout" in src, "C-29: FloatingBubbleService no consulta WindowInsets.Type.displayCutout"
     assert "safeY" in src or "clampBubblePosition" in src, "C-29: snapToNearestEdge no ancla safeY"
 
+def test_c30_contrast_and_accessible_tokens_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    tokens_file = os.path.join(base_dir, "app_source", "lib", "ui", "design_tokens.dart")
+    settings_file = os.path.join(base_dir, "app_source", "lib", "widgets", "settings_v2.dart")
+    widget_file = os.path.join(
+        base_dir, "voice_bubble_stt", "android", "app", "src", "main", "res", "layout", "widget_notes.xml"
+    )
+
+    assert os.path.isfile(tokens_file), f"C-30: design_tokens.dart no existe en {tokens_file}"
+    assert os.path.isfile(settings_file), f"C-30: settings_v2.dart no existe en {settings_file}"
+    assert os.path.isfile(widget_file), f"C-30: widget_notes.xml no existe en {widget_file}"
+
+    with open(tokens_file, "r", encoding="utf-8") as f:
+        t_src = f.read()
+
+    assert "0xFF1A7A2E" in t_src, "C-30: kTileGreen no fue oscurecido a 0xFF1A7A2E"
+    assert "0xFF9A5B00" in t_src, "C-30: kTileOrange no fue oscurecido a 0xFF9A5B00"
+    assert "onPrimary: kLabelPrimaryDark" in t_src, "C-30: buildLightTheme no usa kLabelPrimaryDark en onPrimary"
+    assert "onPrimary: kLabelPrimaryLight" in t_src, "C-30: buildDarkTheme no usa kLabelPrimaryLight en onPrimary"
+
+    with open(settings_file, "r", encoding="utf-8") as f:
+        s_src = f.read()
+    assert "kLabelPrimaryDark" in s_src, "C-30: SettingIconTile no usa kLabelPrimaryDark"
+    assert "highContrast" in s_src, "C-30: SettingIconTile no soporta fallback de alto contraste"
+
+    with open(widget_file, "r", encoding="utf-8") as f:
+        w_src = f.read()
+    assert "#007AFF" not in w_src, "C-30: widget_notes.xml retiene #007AFF hardcodeado"
+    assert "@color/kb_key_bg_accent" in w_src, "C-30: widget_notes.xml no usa @color/kb_key_bg_accent"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3765,6 +3796,7 @@ def main():
         ("C-27: nada tapado y scroll que no salta", test_c27_nothing_obscured_and_scroll_contract),
         ("C-28: sheet con scroll y botones 44dp", test_c28_sheet_scroll_and_touch_targets_contract),
         ("C-29: burbuja siempre recuperable", test_c29_bubble_clamping_contract),
+        ("C-30: contraste que se lee", test_c30_contrast_and_accessible_tokens_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

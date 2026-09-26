@@ -101,7 +101,7 @@
                 android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_add"
-                android:tint="#007AFF" />
+                android:tint="@color/kb_key_bg_accent" />
         </FrameLayout>
 
         <FrameLayout
@@ -117,7 +117,7 @@
                 android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_mic"
-                android:tint="#007AFF" />
+                android:tint="@color/kb_key_bg_accent" />
         </FrameLayout>
 
         <LinearLayout
@@ -134,6 +134,7 @@
             android:paddingEnd="4dp"
             android:visibility="gone">
 
+            <!-- Elemento decorativo visual: el estado de grabación se anuncia en widget_rec_label -->
             <ImageView
                 android:id="@+id/widget_rec_dot"
                 android:layout_width="8dp"
@@ -184,7 +185,7 @@
                 android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_add"
-                android:tint="#007AFF" />
+                android:tint="@color/kb_key_bg_accent" />
         </FrameLayout>
 
         <LinearLayout
@@ -206,7 +207,7 @@
                 android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_mic"
-                android:tint="#007AFF" />
+                android:tint="@color/kb_key_bg_accent" />
         </FrameLayout>
     </LinearLayout>
 

@@ -225,17 +225,17 @@ ThemeData buildLightTheme() {
   final colorScheme = ColorScheme(
     brightness: Brightness.light,
     primary: kAccentLight,
-    onPrimary: Colors.white,
+    onPrimary: kLabelPrimaryDark,
     error: const Color(0xFFB3261E),
-    onError: Colors.white,
+    onError: kLabelPrimaryDark,
     primaryContainer: kAccentLight.withValues(alpha: 0.12),
     onPrimaryContainer: kAccentLight,
     secondary: kAccentLight,
-    onSecondary: Colors.white,
+    onSecondary: kLabelPrimaryDark,
     secondaryContainer: kAccentLight.withValues(alpha: 0.12),
     onSecondaryContainer: kAccentLight,
     tertiary: kRecording,
-    onTertiary: Colors.white,
+    onTertiary: kLabelPrimaryDark,
     tertiaryContainer: kRecording.withValues(alpha: 0.12),
     onTertiaryContainer: kRecording,
     surface: kBgBaseLight,
@@ -272,17 +272,17 @@ ThemeData buildDarkTheme() {
   final colorScheme = ColorScheme(
     brightness: Brightness.dark,
     primary: kAccentDark,
-    onPrimary: Colors.black,
+    onPrimary: kLabelPrimaryLight,
     error: const Color(0xFFF2B8B5),
     onError: const Color(0xFF601410),
     primaryContainer: kAccentDark.withValues(alpha: 0.15),
     onPrimaryContainer: kAccentDark,
     secondary: kAccentDark,
-    onSecondary: Colors.black,
+    onSecondary: kLabelPrimaryLight,
     secondaryContainer: kAccentDark.withValues(alpha: 0.15),
     onSecondaryContainer: kAccentDark,
     tertiary: kRecordingDark,
-    onTertiary: Colors.black,
+    onTertiary: kLabelPrimaryLight,
     tertiaryContainer: kRecordingDark.withValues(alpha: 0.15),
     onTertiaryContainer: kRecordingDark,
     surface: kBgBaseDark,
@@ -391,9 +391,10 @@ const double kSettingIconRadius = 8.0;
 const double kSettingIconGlyph = 16.0;
 
 /// Tintes de pastilla de icono (idénticos en claro/oscuro, como el lab).
+/// Ajustados a contraste >= 3:1 con glifo blanco (C-30).
 const Color kTileBlue = Color(0xFF0A84FF);
-const Color kTileGreen = Color(0xFF30D158);
-const Color kTileOrange = Color(0xFFFF9F0A);
+const Color kTileGreen = Color(0xFF1A7A2E);
+const Color kTileOrange = Color(0xFF9A5B00);
 const Color kTileRed = Color(0xFFFF453A);
 const Color kTilePurple = Color(0xFFBF5AF2);
 const Color kTileGray = Color(0xFF8E8E93);

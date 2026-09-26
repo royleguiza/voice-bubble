@@ -95,14 +95,25 @@ class SettingIconTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final highContrast = MediaQuery.highContrastOf(context);
+    final border = highContrast
+        ? Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+            width: 1.5,
+          )
+        : null;
+
     return Container(
       width: kSettingIconSize,
       height: kSettingIconSize,
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(kSettingIconRadius),
+        border: border,
       ),
-      child: Icon(icon, color: Colors.white, size: kSettingIconGlyph),
+      child: Icon(icon, color: kLabelPrimaryDark, size: kSettingIconGlyph),
     );
   }
 }
