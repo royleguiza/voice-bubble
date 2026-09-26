@@ -361,9 +361,9 @@ class WidgetDictationService(
                     savedResetRunnable = runnable
                     mainHandler.postDelayed(runnable, 1200)
                 }
-            }, onError = { message ->
+            }, onError = { code, message ->
                 BackgroundWork.execute {
-                    val enqueueResult = if (isDeferredQueueEnabled() && !isAuthError(message)) {
+                    val enqueueResult = if (shouldEnqueuePending(code, message)) {
                         enqueuePendingWavResult(wav)
                     } else {
                         PendingEnqueueResult.FAILED
@@ -427,8 +427,36 @@ class WidgetDictationService(
         false
     }
 
-    private fun isAuthError(message: String): Boolean =
-        message.contains("API key", ignoreCase = true)
+    /**
+     * C-13: Distingue errores de autenticación/credenciales de caídas de red o servidor.
+     * Códigos 401 (Unauthorized) y 403 (Forbidden) son fallos de autenticación definitivos
+     * independientemente del cuerpo o mensaje devuelto por el servidor.
+     */
+    internal fun isAuthError(code: Int?, message: String): Boolean =
+        code == 401 || code == 403 ||
+            message.contains("API key", ignoreCase = true) ||
+            message.contains("unauthorized", ignoreCase = true) ||
+            message.contains("forbidden", ignoreCase = true) ||
+            message.contains("invalid_api_key", ignoreCase = true)
+
+    internal fun isAuthError(message: String): Boolean =
+        isAuthError(null, message)
+
+    /**
+     * C-13: Solo encola en la cola diferida si el flag de cola está encendido
+     * y el fallo es reintentable (red caída: code == null, límite de cuota: code == 429,
+     * o fallo del servidor: code >= 500). Errores de credenciales (401/403) o peticiones
+     * mal formadas (400, 404, etc.) NUNCA se encolan porque jamás se resolverán reintentando.
+     */
+    internal fun shouldEnqueuePending(
+        code: Int?,
+        message: String,
+        queueEnabled: Boolean = isDeferredQueueEnabled(),
+    ): Boolean {
+        if (!queueEnabled) return false
+        if (isAuthError(code, message)) return false
+        return code == null || code == 429 || code >= 500
+    }
 
     private fun syncDirectory(directory: File) {
         FileChannel.open(directory.toPath(), StandardOpenOption.READ).use { channel ->

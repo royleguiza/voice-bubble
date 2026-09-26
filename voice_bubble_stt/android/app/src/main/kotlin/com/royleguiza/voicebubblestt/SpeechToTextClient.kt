@@ -262,15 +262,17 @@ class SpeechToTextClient(
      * en [BackgroundWork] (pool canónico único). Callbacks SIEMPRE desde un
      * hilo de fondo: quien llama debe publicar a UI. onDone(null) =
      * cancelacion.
+     * C-13: onError reporta el código HTTP (o null en errores de red/IO) junto con el mensaje.
      */
     fun transcribe(
         wav: ByteArray,
         config: Config,
         onDone: (String?) -> Unit,
-        onError: (String) -> Unit,
+        onError: (code: Int?, message: String) -> Unit,
     ) {
         if (wav.size > MAX_AUDIO_BYTES) {
             onError(
+                400,
                 if (spanishModeProvider()) "El audio supera el límite de 25 MB."
                 else "Audio exceeds 25 MB limit."
             )
@@ -397,7 +399,7 @@ class SpeechToTextClient(
                 if (code in 200..299) {
                     onDone(JSONObject(body).optString("text", ""))
                 } else {
-                    onError(errorDetail(code, body))
+                    onError(code, errorDetail(code, body))
                 }
             } catch (_: IOException) {
                 if (cancelRequested) {
@@ -405,6 +407,7 @@ class SpeechToTextClient(
                     return@execute
                 }
                 onError(
+                    null,
                     if (spanishModeProvider()) "Sin conexión a internet."
                     else "No internet connection."
                 )
@@ -414,6 +417,7 @@ class SpeechToTextClient(
                     return@execute
                 }
                 onError(
+                    null,
                     if (spanishModeProvider()) "No se pudo procesar la respuesta."
                     else "Could not process the response."
                 )
@@ -427,6 +431,18 @@ class SpeechToTextClient(
                 } catch (_: Exception) {}
             }
         }
+    }
+
+    /**
+     * Sobrecarga de compatibilidad: delega en [transcribe] descartando el código HTTP.
+     */
+    fun transcribe(
+        wav: ByteArray,
+        config: Config,
+        onDone: (String?) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        transcribe(wav, config, onDone) { _, message -> onError(message) }
     }
 
     private fun errorDetail(code: Int, body: String): String {

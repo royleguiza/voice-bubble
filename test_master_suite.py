@@ -39,6 +39,7 @@ SUITES = [
     ("Reintento: reintento sin regrabar (C-10)", "test_c10_retry_without_re_record_suite.py"),
     ("Red: tiempos de red parejos (C-11)", "test_c11_even_network_timeouts_suite.py"),
     ("Rendimiento: sin trabajo pesado en hilo principal (C-12)", "test_c12_no_main_thread_heavy_work_suite.py"),
+    ("Widget: distingue sin internet de sin clave (C-13)", "test_c13_widget_auth_vs_network_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3036,6 +3037,32 @@ def test_c12_no_main_thread_heavy_work_contract():
     on_siv = vks.split("override fun onStartInputView(info: EditorInfo?, restarting: Boolean)")[1].split("override fun onFinishInputView")[0]
     assert "getSharedPreferences" not in on_siv and "EncryptedSharedPreferences" not in on_siv, "C-12: onStartInputView contiene llamadas no permitidas a prefs"
 
+def test_c13_widget_auth_vs_network_contract():
+    """C-13: El widget distingue 'sin internet' de 'sin clave'."""
+    base_kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    stt_path = os.path.join(base_kt, "SpeechToTextClient.kt")
+    widget_path = os.path.join(base_kt, "WidgetDictationService.kt")
+
+    with open(stt_path, "r", encoding="utf-8") as f:
+        stt = f.read()
+    with open(widget_path, "r", encoding="utf-8") as f:
+        widget = f.read()
+
+    # 1. SpeechToTextClient propaga código HTTP en onError
+    assert "onError: (code: Int?, message: String) -> Unit" in stt, "C-13: transcribe no propaga (code, message) en onError"
+    assert "transcribe(wav, config, onDone) { _, message -> onError(message) }" in stt, "C-13: falta sobrecarga de compatibilidad en transcribe"
+    assert "onError(code, errorDetail(code, body))" in stt, "C-13: transcribe no propaga responseCode a onError"
+
+    # 2. WidgetDictationService recibe (code, message)
+    assert "onError = { code, message ->" in widget, "C-13: WidgetDictationService no recibe (code, message) en onError"
+
+    # 3. isAuthError y shouldEnqueuePending
+    assert "fun isAuthError(code: Int?, message: String): Boolean" in widget, "C-13: falta isAuthError con code en WidgetDictationService"
+    assert "code == 401 || code == 403" in widget, "C-13: isAuthError no verifica 401 y 403 directamente"
+    assert "fun shouldEnqueuePending" in widget, "C-13: falta shouldEnqueuePending en WidgetDictationService"
+    assert "code == null || code == 429 || code >= 500" in widget, "C-13: shouldEnqueuePending no restringe encolado a fallas de red/5xx/429"
+    assert "if (shouldEnqueuePending(code, message))" in widget, "C-13: WidgetDictationService no evalúa shouldEnqueuePending antes de encolar"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3061,6 +3088,7 @@ def main():
         ("C-10: reintento sin regrabar", test_c10_retry_without_re_record_contract),
         ("C-11: tiempos de red parejos", test_c11_even_network_timeouts_contract),
         ("C-12: sin trabajo pesado en el hilo principal", test_c12_no_main_thread_heavy_work_contract),
+        ("C-13: el widget distingue sin internet de sin clave", test_c13_widget_auth_vs_network_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:
