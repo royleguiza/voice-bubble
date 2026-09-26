@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/credential.dart';
 import '../models/snippet.dart';
 import '../models/transcription.dart';
+import '../helpers/uuid_helper.dart';
 import 'cloud_stt_service.dart';
 import 'pending_note_queue.dart';
 
@@ -1075,14 +1076,8 @@ class StorageService {
   static const String snippetsKey = 'voice_snippets_v1';
   static const String snippetsSeededKey = 'kb_snippets_seeded';
 
-  int _snippetIdCounter = 0;
-
-  /// ID unico sin dependencias externas: timestamp + contador monotono,
-  /// para que llamadas rapidas seguidas nunca colisionen.
-  String _nextSnippetId() {
-    _snippetIdCounter += 1;
-    return '${DateTime.now().microsecondsSinceEpoch}-$_snippetIdCounter';
-  }
+  /// ID único universal (UUID v4 RFC 4122) para snippets.
+  String _nextSnippetId() => generateUuidV4();
 
   /// Carga los snippets guardados para lecturas de UI. Ante JSON corrupto
   /// devuelve lista vacia para lecturas; las mutaciones usan _readSnippets
@@ -1717,45 +1712,56 @@ class StorageService {
     return loaded;
   }
 
-  Future<bool> add(Transcription transcription) async {
-    if (_isBlankHistoryText(transcription.text)) return false;
-    final canonical = _canonicalHistoryTimestamp(transcription.timestamp);
-    if (_parseHistoryTimestamp(
-      canonical,
-      legacyOffsetMinutes: _historyLegacyOffsetMinutes,
-    ) == null) {
-      return false;
-    }
-    try {
-      final file = await _getHistoryFile();
-      return await withTranscriptionHistoryFileLock(file, () async {
-        final merged = await _loadMergedEntriesWithoutPersist();
-        if (merged == null) return false;
-        final candidates = <_HistoryEntry>[
-          _HistoryEntry(
-            transcription: transcription,
-            source: _historySourceMemory,
-            index: 0,
-          ),
-          for (final entry in merged)
-            if (entry.source == _historySourceMemory)
-              entry.copyWith(index: entry.index + 1)
-            else
-              entry,
-        ];
-        final normalized = _normalizeHistoryEntries(candidates);
-        final previous = List<Transcription>.from(_transcriptions);
-        _transcriptions = normalized
-            .map((entry) => entry.transcription)
-            .toList(growable: false);
-        final saved = await _persist();
-        if (!saved) _transcriptions = previous;
-        return saved;
-      });
-    } catch (_) {
-      return false;
-    }
+  Future<void> _historyOpQueue = Future.value();
+
+  /// Encola secuencialmente las adiciones al historial para serializar
+  /// llamadas concurrentes en el mismo proceso antes de adquirir el lock de archivo.
+  Future<T> _serialHistoryQueue<T>(Future<T> Function() task) {
+    final next = _historyOpQueue.then((_) => task(), onError: (_) => task());
+    _historyOpQueue = next.then((_) {}, onError: (_) {});
+    return next;
   }
+
+  Future<bool> add(Transcription transcription) =>
+      _serialHistoryQueue(() async {
+        if (_isBlankHistoryText(transcription.text)) return false;
+        final canonical = _canonicalHistoryTimestamp(transcription.timestamp);
+        if (_parseHistoryTimestamp(
+          canonical,
+          legacyOffsetMinutes: _historyLegacyOffsetMinutes,
+        ) == null) {
+          return false;
+        }
+        try {
+          final file = await _getHistoryFile();
+          return await withTranscriptionHistoryFileLock(file, () async {
+            final merged = await _loadMergedEntriesWithoutPersist();
+            if (merged == null) return false;
+            final candidates = <_HistoryEntry>[
+              _HistoryEntry(
+                transcription: transcription,
+                source: _historySourceMemory,
+                index: 0,
+              ),
+              for (final entry in merged)
+                if (entry.source == _historySourceMemory)
+                  entry.copyWith(index: entry.index + 1)
+                else
+                  entry,
+            ];
+            final normalized = _normalizeHistoryEntries(candidates);
+            final previous = List<Transcription>.from(_transcriptions);
+            _transcriptions = normalized
+                .map((entry) => entry.transcription)
+                .toList(growable: false);
+            final saved = await _persist();
+            if (!saved) _transcriptions = previous;
+            return saved;
+          });
+        } catch (_) {
+          return false;
+        }
+      });
 
   /// Una sola escritura lógica: archivo atómico primero, prefs después.
   /// Si el archivo falla, no se escriben prefs (fail-closed, sin parcial).
@@ -1782,7 +1788,6 @@ class StorageService {
   static const String credShowUserKey = 'vb_cred_show_user';
 
   static Future<void> _credentialOperationTail = Future<void>.value();
-  static int _credentialIdCounter = 0;
 
   Future<T> _withCredentialOperationLock<T>(
     Future<T> Function() action,
@@ -1798,10 +1803,8 @@ class StorageService {
     }
   }
 
-  String _nextCredentialId() {
-    _credentialIdCounter += 1;
-    return '${DateTime.now().microsecondsSinceEpoch}-$_credentialIdCounter';
-  }
+  /// ID único universal (UUID v4 RFC 4122) para credenciales.
+  String _nextCredentialId() => generateUuidV4();
 
   Future<List<VbCredential>> loadCredentials() =>
       _withCredentialOperationLock(_loadCredentialsLocked);

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../helpers/uuid_helper.dart';
 
 enum _PendingIndexState { corrupt, valid }
 
@@ -419,8 +420,7 @@ class PendingNoteQueue {
       final dir = await _dir();
       if (dir == null) return null;
 
-      final id =
-          '${DateTime.now().microsecondsSinceEpoch}-${_items.length}';
+      final id = generateUuidV4();
       final destPath = '${dir.path}/$id.wav';
       final claim = File('${dir.path}/.$id.wav.pending');
       var committed = false;

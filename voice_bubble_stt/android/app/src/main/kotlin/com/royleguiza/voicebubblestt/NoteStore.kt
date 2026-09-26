@@ -96,6 +96,7 @@ class NoteStore(
         private const val LOCK_HEARTBEAT_MS = 5000L
         private const val LOCK_POLL_MS = 50L
         private const val AUDIO_SWEEP_GRACE_MS = 86400000L
+        private val STORE_MUTEX = Any()
 
         fun filesDirOf(context: Context): File = File(context.filesDir, NOTES_FILE)
 
@@ -679,10 +680,12 @@ class NoteStore(
     }
 
     private fun <T> withStoreLock(block: () -> T): T? {
-        return try {
-            withCooperativeFileLock(File(context.filesDir, LOCK_FILE_NAME), block = block)
-        } catch (_: Exception) {
-            null
+        return synchronized(STORE_MUTEX) {
+            try {
+                withCooperativeFileLock(File(context.filesDir, LOCK_FILE_NAME), block = block)
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
@@ -892,6 +895,11 @@ class NoteStore(
         return isAuthoritativeNoteState(state)
     }
 
+    /**
+     * Fusión de notas aplicando la regla Last-Writer-Wins (LWW):
+     * Si dos notas comparten el mismo ID, prevalece la versión con [updatedAt]
+     * más reciente (comparando sus épocas milisegundos).
+     */
     private fun merge(
         fileNotes: List<VbNote>,
         prefsNotes: List<VbNote>,

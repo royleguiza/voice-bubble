@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/voice_note.dart';
+import '../helpers/uuid_helper.dart';
 
 enum _NotesReadState { missing, empty, valid, unavailable }
 enum _NotesPersistState { saved, failed, rollbackFailed }
@@ -79,11 +80,20 @@ class NotesService {
         _lockWriter = lockWriter,
         _prefsRawReader = prefsRawReader;
 
-  int _idCounter = 0;
-  String _nextId() {
-    _idCounter += 1;
-    return '${DateTime.now().microsecondsSinceEpoch}-$_idCounter';
+  Future<void> _opQueue = Future.value();
+
+  /// Encola las operaciones de mutación y carga de forma estrictamente
+  /// secuencial (FIFO) para evitar condiciones de carrera y pisadas entre
+  /// operaciones asíncronas concurrentes en el mismo proceso.
+  Future<T> _serialQueue<T>(Future<T> Function() task) {
+    final next = _opQueue.then((_) => task(), onError: (_) => task());
+    _opQueue = next.then((_) {}, onError: (_) {});
+    return next;
   }
+
+  /// Genera un identificador único e irrepetible para nuevas notas
+  /// utilizando UUID v4 (RFC 4122).
+  String _nextId() => generateUuidV4();
 
   Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -100,6 +110,10 @@ class NotesService {
 
   List<VoiceNote> get notes => List.unmodifiable(_notes);
 
+  /// Fusión de notas de archivo y SharedPreferences aplicando la regla
+  /// Last-Writer-Wins (LWW): si existe la misma nota (mismo [id]) en ambas
+  /// fuentes, prevalece la que tenga la fecha [updatedAt] más reciente.
+  /// En caso de notas con id único, se conservan ordenadas por [updatedAt] descendente.
   Future<_NotesReadResult> _loadMerged() async {
     final prefs = await _readPrefs();
     final file = await _readFile();
@@ -232,7 +246,7 @@ class NotesService {
     }
   }
 
-  Future<bool> load() async {
+  Future<bool> load() => _serialQueue(() async {
     final result = await _withFileLock<bool>(lockFileName, () async {
       final merged = await _loadMerged();
       if (!merged.complete) return false;
@@ -245,7 +259,7 @@ class NotesService {
       return true;
     });
     return result ?? false;
-  }
+  });
 
   Future<_NotesPersistState> _persist() async {
     final file = await _getFile();
@@ -368,112 +382,115 @@ class NotesService {
     }
   }
 
-  Future<bool> addFromTranscription(String text, {String? audioPath}) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return false;
-    if (trimmed.length > maxCuerpoLength) return false;
-    final result = await _withFileLock<bool>(lockFileName, () async {
-      final read = await _loadMerged();
-      if (!read.writable) return false;
-      final previous = List<VoiceNote>.from(_notes);
-      _notes = read.notes;
-      if (_notes.length >= maxNotes) return false;
-      final now = DateTime.now();
-      final note = VoiceNote(
-        id: _nextId(),
-        titulo: '',
-        cuerpo: trimmed,
-        createdAt: now,
-        updatedAt: now,
-        audioPath: audioPath,
-      );
-      _notes.insert(0, note);
-      if (_notes.length > maxNotes) {
-        _notes = _notes.sublist(0, maxNotes);
-      }
-      if (await _persist() != _NotesPersistState.saved) {
-        _notes = previous;
-        return false;
-      }
-      return true;
-    });
-    return result ?? false;
-  }
+  Future<bool> addFromTranscription(String text, {String? audioPath}) =>
+      _serialQueue(() async {
+        final trimmed = text.trim();
+        if (trimmed.isEmpty) return false;
+        if (trimmed.length > maxCuerpoLength) return false;
+        final result = await _withFileLock<bool>(lockFileName, () async {
+          final read = await _loadMerged();
+          if (!read.writable) return false;
+          final previous = List<VoiceNote>.from(_notes);
+          _notes = read.notes;
+          if (_notes.length >= maxNotes) return false;
+          final now = DateTime.now();
+          final note = VoiceNote(
+            id: _nextId(),
+            titulo: '',
+            cuerpo: trimmed,
+            createdAt: now,
+            updatedAt: now,
+            audioPath: audioPath,
+          );
+          _notes.insert(0, note);
+          if (_notes.length > maxNotes) {
+            _notes = _notes.sublist(0, maxNotes);
+          }
+          if (await _persist() != _NotesPersistState.saved) {
+            _notes = previous;
+            return false;
+          }
+          return true;
+        });
+        return result ?? false;
+      });
 
   Future<bool> addNote({
     required String titulo,
     required String cuerpo,
-  }) async {
-    final t = titulo.trim();
-    final c = cuerpo.trim();
-    if (c.isEmpty) return false;
-    if (t.length > maxTituloLength || c.length > maxCuerpoLength) {
-      return false;
-    }
-    final result = await _withFileLock<bool>(lockFileName, () async {
-      final read = await _loadMerged();
-      if (!read.writable) return false;
-      final previous = List<VoiceNote>.from(_notes);
-      _notes = read.notes;
-      if (_notes.length >= maxNotes) return false;
-      final now = DateTime.now();
-      final note = VoiceNote(
-        id: _nextId(),
-        titulo: t,
-        cuerpo: c,
-        createdAt: now,
-        updatedAt: now,
-      );
-      _notes.insert(0, note);
-      if (await _persist() != _NotesPersistState.saved) {
-        _notes = previous;
-        return false;
-      }
-      return true;
-    });
-    return result ?? false;
-  }
+  }) =>
+      _serialQueue(() async {
+        final t = titulo.trim();
+        final c = cuerpo.trim();
+        if (c.isEmpty) return false;
+        if (t.length > maxTituloLength || c.length > maxCuerpoLength) {
+          return false;
+        }
+        final result = await _withFileLock<bool>(lockFileName, () async {
+          final read = await _loadMerged();
+          if (!read.writable) return false;
+          final previous = List<VoiceNote>.from(_notes);
+          _notes = read.notes;
+          if (_notes.length >= maxNotes) return false;
+          final now = DateTime.now();
+          final note = VoiceNote(
+            id: _nextId(),
+            titulo: t,
+            cuerpo: c,
+            createdAt: now,
+            updatedAt: now,
+          );
+          _notes.insert(0, note);
+          if (await _persist() != _NotesPersistState.saved) {
+            _notes = previous;
+            return false;
+          }
+          return true;
+        });
+        return result ?? false;
+      });
 
   Future<bool> updateNote(
     String id, {
     String? titulo,
     String? cuerpo,
     bool clearAudioPath = false,
-  }) async {
-    if (titulo != null && titulo.length > maxTituloLength) {
-      return false;
-    }
-    if (cuerpo != null &&
-        (cuerpo.trim().isEmpty || cuerpo.length > maxCuerpoLength)) {
-      return false;
-    }
-    final result = await _withFileLock<bool>(lockFileName, () async {
-      final read = await _loadMerged();
-      if (!read.writable) return false;
-      final previous = List<VoiceNote>.from(_notes);
-      _notes = read.notes;
-      final idx = _notes.indexWhere((n) => n.id == id);
-      if (idx == -1) return false;
-      final now = DateTime.now();
-      final prevAudio = _notes[idx].audioPath;
-      _notes[idx] = _notes[idx].copyWith(
-        titulo: titulo?.trim(),
-        cuerpo: cuerpo?.trim(),
-        updatedAt: now,
-        clearAudioPath: clearAudioPath,
-      );
-      _notes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      if (await _persist() != _NotesPersistState.saved) {
-        _notes = previous;
-        return false;
-      }
-      if (clearAudioPath) _deleteAudioFile(prevAudio);
-      return true;
-    });
-    return result ?? false;
-  }
+  }) =>
+      _serialQueue(() async {
+        if (titulo != null && titulo.length > maxTituloLength) {
+          return false;
+        }
+        if (cuerpo != null &&
+            (cuerpo.trim().isEmpty || cuerpo.length > maxCuerpoLength)) {
+          return false;
+        }
+        final result = await _withFileLock<bool>(lockFileName, () async {
+          final read = await _loadMerged();
+          if (!read.writable) return false;
+          final previous = List<VoiceNote>.from(_notes);
+          _notes = read.notes;
+          final idx = _notes.indexWhere((n) => n.id == id);
+          if (idx == -1) return false;
+          final now = DateTime.now();
+          final prevAudio = _notes[idx].audioPath;
+          _notes[idx] = _notes[idx].copyWith(
+            titulo: titulo?.trim(),
+            cuerpo: cuerpo?.trim(),
+            updatedAt: now,
+            clearAudioPath: clearAudioPath,
+          );
+          _notes.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+          if (await _persist() != _NotesPersistState.saved) {
+            _notes = previous;
+            return false;
+          }
+          if (clearAudioPath) _deleteAudioFile(prevAudio);
+          return true;
+        });
+        return result ?? false;
+      });
 
-  Future<bool> deleteNote(String id) async {
+  Future<bool> deleteNote(String id) => _serialQueue(() async {
     final result = await _withFileLock<bool>(lockFileName, () async {
       final read = await _loadMerged();
       if (!read.writable) return false;
@@ -494,7 +511,7 @@ class NotesService {
       return true;
     });
     return result ?? false;
-  }
+  });
 
   /// Borra el WAV conservado de una nota (nunca lanza; IO síncrona para
   /// no colgar bajo fakeAsync en tests).

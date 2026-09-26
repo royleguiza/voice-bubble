@@ -55,6 +55,7 @@ class WidgetDictationService(
         const val EXTRA_WIDGET_ID = "widgetId"
         private const val CHANNEL_ID = "widget_dictation_channel"
         private const val NOTIF_ID = 2002
+        private val WIDGET_SAVE_MUTEX = Any()
     }
 
     internal data class StoredWav(
@@ -392,23 +393,25 @@ class WidgetDictationService(
     }
 
     private fun saveUntitledNote(text: String, wav: ByteArray): Boolean {
-        val stored = writeWavFile(
-            "notes_audio",
-            "${UUID.randomUUID()}.wav",
-            wav,
-            true,
-        ) ?: return false
-        val result = NoteStore(storageContextOrSelf()).addUntitledNote(text, stored.path)
-        if (result != NoteSaveResult.SAVED) {
+        return synchronized(WIDGET_SAVE_MUTEX) {
+            val stored = writeWavFile(
+                "notes_audio",
+                "${UUID.randomUUID()}.wav",
+                wav,
+                true,
+            ) ?: return false
+            val result = NoteStore(storageContextOrSelf()).addUntitledNote(text, stored.path)
+            if (result != NoteSaveResult.SAVED) {
+                try {
+                    stored.sweepClaim?.delete()
+                } catch (_: Exception) {}
+                return false
+            }
             try {
                 stored.sweepClaim?.delete()
             } catch (_: Exception) {}
-            return false
+            true
         }
-        try {
-            stored.sweepClaim?.delete()
-        } catch (_: Exception) {}
-        return true
     }
 
     /**

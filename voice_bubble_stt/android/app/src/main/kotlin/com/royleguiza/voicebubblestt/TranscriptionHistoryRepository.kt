@@ -275,6 +275,7 @@ class TranscriptionHistoryRepository internal constructor(
         const val MAX_ITEMS = 20
         const val SHARED_HISTORY_KEY = "flutter.transcriptions"
         const val PREFS_NAME = "FlutterSharedPreferences"
+        private val REPO_MUTEX = Any()
     }
 
     private sealed class RecordsResult {
@@ -299,41 +300,43 @@ class TranscriptionHistoryRepository internal constructor(
     }
 
     fun addTranscription(text: String, timestampIso: String? = null): Boolean {
-        if (TranscriptionHistoryLogic.isBlankText(text)) return false
-        val instant = if (timestampIso == null) {
-            Instant.now()
-        } else {
-            TranscriptionHistoryLogic.parseTimestamp(timestampIso) ?: return false
-        }
-        val newEntry = JSONObject()
-            .put("text", text)
-            .put("timestamp", TranscriptionHistoryLogic.canonicalTimestamp(instant))
-        val newRecord = recordFromJson(
-            newEntry,
-            TranscriptionHistorySource.MEMORY,
-            0,
-        ) ?: return false
-        return try {
-            withTranscriptionHistoryFileLock(storage.historyDirectory) {
-                when (val result = loadRecords()) {
-                    is RecordsResult.Failure -> false
-                    is RecordsResult.Success -> {
-                        val current = result.records.map { record ->
-                            if (record.source == TranscriptionHistorySource.MEMORY) {
-                                record.copy(sourceIndex = record.sourceIndex + 1)
-                            } else {
-                                record
+        return synchronized(REPO_MUTEX) {
+            if (TranscriptionHistoryLogic.isBlankText(text)) return false
+            val instant = if (timestampIso == null) {
+                Instant.now()
+            } else {
+                TranscriptionHistoryLogic.parseTimestamp(timestampIso) ?: return false
+            }
+            val newEntry = JSONObject()
+                .put("text", text)
+                .put("timestamp", TranscriptionHistoryLogic.canonicalTimestamp(instant))
+            val newRecord = recordFromJson(
+                newEntry,
+                TranscriptionHistorySource.MEMORY,
+                0,
+            ) ?: return false
+            try {
+                withTranscriptionHistoryFileLock(storage.historyDirectory) {
+                    when (val result = loadRecords()) {
+                        is RecordsResult.Failure -> false
+                        is RecordsResult.Success -> {
+                            val current = result.records.map { record ->
+                                if (record.source == TranscriptionHistorySource.MEMORY) {
+                                    record.copy(sourceIndex = record.sourceIndex + 1)
+                                } else {
+                                    record
+                                }
                             }
+                            val out = TranscriptionHistoryLogic.normalize(
+                                listOf(newRecord) + current,
+                            )
+                            saveAtomic(out)
                         }
-                        val out = TranscriptionHistoryLogic.normalize(
-                            listOf(newRecord) + current,
-                        )
-                        saveAtomic(out)
                     }
                 }
+            } catch (_: Exception) {
+                false
             }
-        } catch (_: Exception) {
-            false
         }
     }
 

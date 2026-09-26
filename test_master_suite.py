@@ -49,6 +49,7 @@ SUITES = [
     ("Teclado: detalles y mayúsculas en turco (C-20)", "test_c20_keyboard_details_suite.py"),
     ("Datos: fechas rotas no contaminan (C-21)", "test_c21_broken_dates_suite.py"),
     ("Datos: espejos que no mienten (C-22)", "test_c22_honest_mirrors_suite.py"),
+    ("Concurrencia: escritura sin pisadas y UUID v4 único (C-23)", "test_c23_concurrent_writes_and_unique_ids_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3437,6 +3438,57 @@ def test_c22_honest_mirrors_contract():
     assert "if (!ok)" in scr_content, "C-22: settings_screen no valida if (!ok)"
     assert "No se pudo guardar la API key" in scr_content, "C-22: settings_screen falta SnackBar de error"
 
+def test_c23_concurrent_writes_contract():
+    base = os.path.dirname(os.path.abspath(__file__))
+    uuid_file = os.path.join(base, "app_source", "lib", "helpers", "uuid_helper.dart")
+    ns_file = os.path.join(base, "app_source", "lib", "services", "notes_service.dart")
+    pn_file = os.path.join(base, "app_source", "lib", "services", "pending_note_queue.dart")
+    ss_file = os.path.join(base, "app_source", "lib", "services", "storage_service.dart")
+    nstore_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "NoteStore.kt")
+    wdict_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "WidgetDictationService.kt")
+    repo_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "TranscriptionHistoryRepository.kt")
+
+    assert os.path.isfile(uuid_file), "C-23: uuid_helper.dart no existe"
+    with open(uuid_file, "r", encoding="utf-8") as f:
+        uuid_content = f.read()
+    assert "String generateUuidV4(" in uuid_content, "C-23: generateUuidV4 no declarada en uuid_helper"
+    assert "0x40" in uuid_content and "0x80" in uuid_content, "C-23: uuid_helper no aplica RFC 4122 v4"
+
+    with open(ns_file, "r", encoding="utf-8") as f:
+        ns_content = f.read()
+    assert "generateUuidV4()" in ns_content, "C-23: NotesService no usa generateUuidV4()"
+    assert "Future<T> _serialQueue<T>(" in ns_content, "C-23: NotesService no declara _serialQueue"
+    assert "Future<bool> load() => _serialQueue(" in ns_content, "C-23: NotesService.load no usa _serialQueue"
+    assert "Future<bool> deleteNote(String id) => _serialQueue(" in ns_content, "C-23: NotesService.deleteNote no usa _serialQueue"
+    assert "n.updatedAt.isAfter(existing.updatedAt)" in ns_content, "C-23: NotesService no implementa LWW"
+
+    with open(pn_file, "r", encoding="utf-8") as f:
+        pn_content = f.read()
+    assert "final id = generateUuidV4();" in pn_content, "C-23: PendingNoteQueue no usa generateUuidV4()"
+
+    with open(ss_file, "r", encoding="utf-8") as f:
+        ss_content = f.read()
+    assert "String _nextSnippetId() => generateUuidV4();" in ss_content, "C-23: StorageService snippet ID no usa UUID v4"
+    assert "String _nextCredentialId() => generateUuidV4();" in ss_content, "C-23: StorageService credential ID no usa UUID v4"
+    assert "Future<T> _serialHistoryQueue<T>(" in ss_content, "C-23: StorageService no declara _serialHistoryQueue"
+    assert "_serialHistoryQueue" in ss_content and "Future<bool> add(Transcription transcription) =>" in ss_content, "C-23: StorageService.add no usa _serialHistoryQueue"
+
+    with open(nstore_file, "r", encoding="utf-8") as f:
+        nstore_content = f.read()
+    assert "private val STORE_MUTEX = Any()" in nstore_content, "C-23: NoteStore no declara STORE_MUTEX"
+    assert "synchronized(STORE_MUTEX)" in nstore_content, "C-23: NoteStore withStoreLock no usa synchronized(STORE_MUTEX)"
+    assert "parseEpoch(note.updatedAt) > parseEpoch(current.updatedAt)" in nstore_content, "C-23: NoteStore merge no aplica LWW"
+
+    with open(wdict_file, "r", encoding="utf-8") as f:
+        wdict_content = f.read()
+    assert "private val WIDGET_SAVE_MUTEX = Any()" in wdict_content, "C-23: WidgetDictationService no declara WIDGET_SAVE_MUTEX"
+    assert "synchronized(WIDGET_SAVE_MUTEX)" in wdict_content, "C-23: WidgetDictationService saveUntitledNote no usa synchronized(WIDGET_SAVE_MUTEX)"
+
+    with open(repo_file, "r", encoding="utf-8") as f:
+        repo_content = f.read()
+    assert "private val REPO_MUTEX = Any()" in repo_content, "C-23: TranscriptionHistoryRepository no declara REPO_MUTEX"
+    assert "synchronized(REPO_MUTEX)" in repo_content, "C-23: TranscriptionHistoryRepository addTranscription no usa synchronized(REPO_MUTEX)"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3472,6 +3524,7 @@ def main():
         ("C-20: detalles del teclado y mayúsculas", test_c20_keyboard_details_contract),
         ("C-21: fechas rotas no contaminan", test_c21_broken_dates_contract),
         ("C-22: espejos que no mienten", test_c22_honest_mirrors_contract),
+        ("C-23: escritura sin pisadas y UUID v4 único", test_c23_concurrent_writes_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:
