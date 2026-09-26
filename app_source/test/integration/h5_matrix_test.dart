@@ -281,8 +281,9 @@ void main() {
     final expectsHold = mode == StorageService.recordModeHold;
     for (var i = 0; i < 20; i++) {
       final button = tester.widget<RecordButton>(finder);
+      // C-26: en hold onPressed existe (anuncio TalkBack) pero no graba;
+      // lo que distingue modos es onHoldStart/onHoldEnd.
       if (storage.loadedMode == mode &&
-          (button.onPressed == null) == expectsHold &&
           (button.onHoldStart != null) == expectsHold &&
           (button.onHoldEnd != null) == expectsHold) {
         return;
@@ -291,7 +292,6 @@ void main() {
     }
     final button = tester.widget<RecordButton>(finder);
     expect(storage.loadedMode, mode);
-    expect((button.onPressed == null), expectsHold);
     expect((button.onHoldStart != null), expectsHold);
     expect((button.onHoldEnd != null), expectsHold);
   }
