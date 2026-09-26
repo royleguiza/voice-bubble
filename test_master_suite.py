@@ -61,6 +61,7 @@ SUITES = [
     ("Semántica correcta + teclado físico (C-32)", "test_c32_semantics_and_physical_keyboard_suite.py"),
     ("Settings y Home sin rebuilds + keys (C-33)", "test_c33_no_rebuilds_and_keys_suite.py"),
     ("Firma, lockfile y https (C-34)", "test_c34_signing_lockfile_and_https_suite.py"),
+    ("Logs, borrado, widget y errores (C-35)", "test_c35_logs_deletion_widget_errors_suite.py"),
 ]
 
 def run_test(name, func):
@@ -276,8 +277,9 @@ def test_c02_history_contract():
 def test_clean_logs():
     kt_dir = "voice_bubble_stt/android/app/src/main/kotlin"
     pattern = re.compile(
-        r"Log\.[a-z]+\(.*\b(texto|contenido|api_?key|token|password|"
-        r"contraseña|passwd|otp|tecleado|coordenada)\b",
+        r"Log\.[a-z]+\(.*\b(texto|text|contenido|content|password|contrase|"
+        r"snippet|clip|transcri|credential|cred|user|usuario|wav|audio|"
+        r"key|token|groq|bearer|passwd|otp|tecleado|coordenada)\b",
         re.IGNORECASE,
     )
     hits = []
@@ -3888,6 +3890,48 @@ def test_c34_signing_lockfile_and_https_contract():
     assert "--enforce-lockfile" in wf, "C-34: android.yml sin --enforce-lockfile"
     assert "app_source/pubspec.lock" in wf, "C-34: android.yml no sincroniza lockfile"
 
+def test_c35_logs_deletion_widget_errors_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    speech_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "SpeechToTextClient.kt")
+    cloud_file = os.path.join(base_dir, "app_source", "lib", "services", "cloud_stt_service.dart")
+    tx_file = os.path.join(base_dir, "app_source", "lib", "services", "transcription_service.dart")
+    notes_file = os.path.join(base_dir, "app_source", "lib", "services", "notes_service.dart")
+    queue_file = os.path.join(base_dir, "app_source", "lib", "services", "pending_note_queue.dart")
+    edit_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "WidgetNoteEditActivity.kt")
+    list_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "WidgetNotesListService.kt")
+    dict_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "WidgetDictationService.kt")
+    bubble_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "FloatingBubbleService.kt")
+
+    with open(speech_file, "r", encoding="utf-8") as f:
+        speech = f.read()
+    assert "pcm.fill(0)" in speech and "wav.fill(0)" in speech, "C-35: SpeechToTextClient sin fill(0)"
+    assert "take(200)" in speech, "C-35: SpeechToTextClient sin take(200)"
+
+    for p, name in [(tx_file, "transcription_service"), (notes_file, "notes_service"), (queue_file, "pending_note_queue")]:
+        with open(p, "r", encoding="utf-8") as f:
+            c = f.read()
+        assert "_secureDeleteSync" in c and "writeFromSync" in c, f"C-35: {name} sin _secureDeleteSync"
+
+    with open(cloud_file, "r", encoding="utf-8") as f:
+        cloud = f.read()
+    assert "take(200)" in cloud or "substring(0, 200)" in cloud, "C-35: cloud_stt_service sin límite 200"
+
+    with open(edit_file, "r", encoding="utf-8") as f:
+        edit = f.read()
+    assert "isValidUuid" in edit, "C-35: WidgetNoteEditActivity sin isValidUuid"
+
+    with open(list_file, "r", encoding="utf-8") as f:
+        wl = f.read()
+    assert "isDiscreteMode" in wl and "discreteMode" in wl, "C-35: WidgetNotesListService sin modo discreto"
+
+    with open(dict_file, "r", encoding="utf-8") as f:
+        wd = f.read()
+    assert "hasNotificationPermission" in wd and "POST_NOTIFICATIONS" in wd, "C-35: WidgetDictationService sin pre-check notificaciones"
+
+    with open(bubble_file, "r", encoding="utf-8") as f:
+        bubble = f.read()
+    assert "Color.WHITE" not in bubble and "R.color.kb_label_on_accent" in bubble, "C-35: FloatingBubbleService con Color.WHITE o sin token"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3935,6 +3979,7 @@ def main():
         ("C-32: semántica correcta + teclado físico", test_c32_semantics_and_physical_keyboard_contract),
         ("C-33: settings y home sin rebuilds + keys", test_c33_no_rebuilds_and_keys_contract),
         ("C-34: firma, lockfile y https", test_c34_signing_lockfile_and_https_contract),
+        ("C-35: logs, borrado seguro, widget discreto y errores acotados", test_c35_logs_deletion_widget_errors_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

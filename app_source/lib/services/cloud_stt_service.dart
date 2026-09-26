@@ -296,7 +296,10 @@ class CloudSttService {
         final message =
             error is Map<dynamic, dynamic> ? error['message'] : null;
         if (message is String && message.isNotEmpty) {
-          return 'Error $statusCode de Groq: $message';
+          final sanitized = message.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
+          final truncated =
+              sanitized.length > 200 ? '${sanitized.substring(0, 200)}…' : sanitized;
+          return 'Error $statusCode de Groq: $truncated';
         }
       }
     } catch (_) {}

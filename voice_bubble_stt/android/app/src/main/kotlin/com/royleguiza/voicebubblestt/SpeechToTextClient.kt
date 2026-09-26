@@ -240,7 +240,9 @@ class SpeechToTextClient(
                 pcmBuffer.reset()
                 bytes
             }
-            return buildWav(pcm)
+            val wav = buildWav(pcm)
+            pcm.fill(0)
+            return wav
         }
     }
 
@@ -452,6 +454,8 @@ class SpeechToTextClient(
                     else "Could not process the response."
                 )
             } finally {
+                // C-35: Limpieza de buffers en memoria para evitar retención forense de audio.
+                wav.fill(0)
                 // La conexión se libera en TODOS los caminos (éxito, error,
                 // cancelación a mitad de vuelo y fallo de setup): sin esto el
                 // pool de conexiones retiene sockets hasta el GC finalizer.
@@ -477,7 +481,8 @@ class SpeechToTextClient(
 
     private fun errorDetail(code: Int, body: String): String {
         val remoteMessage = try {
-            JSONObject(body).optJSONObject("error")?.optString("message") ?: ""
+            val raw = JSONObject(body).optJSONObject("error")?.optString("message") ?: ""
+            raw.replace(Regex("[\\r\\n]+"), " ").trim().take(200)
         } catch (_: Exception) { "" }
         val es = spanishModeProvider()
         return when {

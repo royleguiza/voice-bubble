@@ -22,6 +22,13 @@ import org.json.JSONArray
 class WidgetNoteEditActivity : Activity() {
 
     companion object {
+        private val UUID_REGEX =
+            Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+        internal fun isValidUuid(raw: String?): Boolean {
+            return raw != null && UUID_REGEX.matches(raw)
+        }
+
         internal fun resolveExistingNoteState(
             snapshot: NoteStoreLoad,
             id: String,
@@ -70,8 +77,18 @@ class WidgetNoteEditActivity : Activity() {
             setFinishOnTouchOutside(true)
         } catch (_: Exception) {}
 
-        noteId = intent.getStringExtra("note_id")
-        pendingId = intent.getStringExtra("pending_id")
+        val rawNoteId = intent.getStringExtra("note_id")
+        val rawPendingId = intent.getStringExtra("pending_id")
+        if (rawNoteId != null && !isValidUuid(rawNoteId)) {
+            finish()
+            return
+        }
+        if (rawPendingId != null && !isValidUuid(rawPendingId)) {
+            finish()
+            return
+        }
+        noteId = rawNoteId
+        pendingId = rawPendingId
 
         findViewById<View>(R.id.btn_cancel).setOnClickListener { finish() }
 

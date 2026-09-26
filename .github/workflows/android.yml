@@ -47,7 +47,7 @@ jobs:
 
       - name: Sin contenido en Logs
         run: |
-          if grep -rniE 'Log\.[a-z]+\(.*\b(texto|contenido|api_?key|token)\b' voice_bubble_stt/android/app/src/main/kotlin; then
+          if grep -rniE 'Log\.[a-z]+\(.*\b(texto|text|contenido|content|password|contrase|snippet|clip|transcri|credential|cred|user|usuario|wav|audio|key|token|groq|bearer)\b' voice_bubble_stt/android/app/src/main/kotlin; then
             echo '::error::posible filtracion de contenido en Log'
             exit 1
           fi

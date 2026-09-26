@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../helpers/uuid_helper.dart';
@@ -464,10 +465,36 @@ class PendingNoteQueue {
     return victims;
   }
 
+  /// Sobreescribe con ceros antes de borrar (C-35) para mitigar recuperación forense.
+  static void _secureDeleteSync(File file) {
+    try {
+      if (file.existsSync()) {
+        final length = file.lengthSync();
+        if (length > 0) {
+          final zeros = Uint8List(length < 65536 ? length : 65536);
+          final raf = file.openSync(mode: FileMode.write);
+          var remaining = length;
+          while (remaining > 0) {
+            final toWrite = remaining < zeros.length ? remaining : zeros.length;
+            raf.writeFromSync(zeros, 0, toWrite);
+            remaining -= toWrite;
+          }
+          raf.flushSync();
+          raf.closeSync();
+        }
+        file.deleteSync();
+      }
+    } catch (_) {
+      try {
+        if (file.existsSync()) file.deleteSync();
+      } catch (_) {}
+    }
+  }
+
   Future<bool> _deleteAudio(PendingNote item) async {
     final file = File(item.audioPath);
     try {
-      if (file.existsSync()) file.deleteSync();
+      if (file.existsSync()) _secureDeleteSync(file);
       return !file.existsSync();
     } catch (_) {
       final directory = file.parent;
@@ -558,13 +585,13 @@ class PendingNoteQueue {
   }
 
   /// Borra un WAV conservado en `notes_audio/` (al borrar la nota o al
-  /// limpiar un huérfano tras un fallo). Nunca lanza.
+  /// limpiar un huérfano tras un fallo). Sobreescribe antes de borrar (C-35).
   void deleteKeptAudio(String? path) {
     if (path == null || path.isEmpty) return;
     try {
       final f = File(path);
       if (f.existsSync()) {
-        f.deleteSync();
+        _secureDeleteSync(f);
       }
     } catch (_) {}
   }

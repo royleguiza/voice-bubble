@@ -463,6 +463,7 @@ class FloatingBubbleService : Service() {
     class BubbleCanvasView(context: Context) : View(context) {
         // Paleta via tokens R.color (claro/noche); resolver UNA vez, no por frame.
         private val accentColor = ContextCompat.getColor(context, R.color.kb_key_bg_accent)
+        private val iconColor = ContextCompat.getColor(context, R.color.kb_label_on_accent)
         private val recordingColor = ContextCompat.getColor(context, R.color.kb_recording)
         private val recordingBgColor = ContextCompat.getColor(context, R.color.bubble_recording_bg)
         private val transcribingBgColor = ContextCompat.getColor(context, R.color.bubble_transcribing_bg)
@@ -483,13 +484,13 @@ class FloatingBubbleService : Service() {
         }
         private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
-            color = Color.WHITE
+            color = iconColor
         }
         private val spinnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 3.5f * resources.displayMetrics.density
             strokeCap = Paint.Cap.ROUND
-            color = Color.WHITE
+            color = iconColor
         }
         private val pulsePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -536,7 +537,7 @@ class FloatingBubbleService : Service() {
 
                     val stopSize = radius * 0.45f
                     val stopRect = RectF(cx - stopSize, cy - stopSize, cx + stopSize, cy + stopSize)
-                    iconPaint.color = Color.WHITE
+                    iconPaint.color = iconColor
                     canvas.drawRoundRect(stopRect, 4f * resources.displayMetrics.density, 4f * resources.displayMetrics.density, iconPaint)
                     postInvalidateOnAnimation()
                 }

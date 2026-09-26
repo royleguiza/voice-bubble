@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/voice_note.dart';
@@ -513,14 +514,40 @@ class NotesService {
     return result ?? false;
   });
 
+  /// Sobreescribe con ceros antes de borrar (C-35) para mitigar recuperación forense.
+  static void _secureDeleteSync(File file) {
+    try {
+      if (file.existsSync()) {
+        final length = file.lengthSync();
+        if (length > 0) {
+          final zeros = Uint8List(length < 65536 ? length : 65536);
+          final raf = file.openSync(mode: FileMode.write);
+          var remaining = length;
+          while (remaining > 0) {
+            final toWrite = remaining < zeros.length ? remaining : zeros.length;
+            raf.writeFromSync(zeros, 0, toWrite);
+            remaining -= toWrite;
+          }
+          raf.flushSync();
+          raf.closeSync();
+        }
+        file.deleteSync();
+      }
+    } catch (_) {
+      try {
+        if (file.existsSync()) file.deleteSync();
+      } catch (_) {}
+    }
+  }
+
   /// Borra el WAV conservado de una nota (nunca lanza; IO síncrona para
-  /// no colgar bajo fakeAsync en tests).
+  /// no colgar bajo fakeAsync en tests). Sobreescribe antes de borrar (C-35).
   void _deleteAudioFile(String? path) {
     if (path == null || path.isEmpty) return;
     try {
       final f = File(path);
       if (f.existsSync()) {
-        f.deleteSync();
+        _secureDeleteSync(f);
       }
     } catch (_) {}
   }

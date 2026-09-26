@@ -67,6 +67,17 @@ private fun isAuthoritativeWidgetState(state: NoteIndexState): Boolean {
  * se ve sin desplazar. Sin logs de contenido jamás.
  */
 class WidgetNotesListService : RemoteViewsService() {
+    companion object {
+        internal fun isDiscreteMode(context: Context): Boolean {
+            return try {
+                context.getSharedPreferences(NoteStore.PREFS_NAME, Context.MODE_PRIVATE)
+                    .getBoolean("widget_discrete_mode", false)
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
         WidgetNotesFactory(applicationContext)
 }
@@ -77,6 +88,7 @@ private class WidgetNotesFactory(
 
     private var pendings: List<VbPending> = emptyList()
     private var notes: List<VbNote> = emptyList()
+    private var discreteMode: Boolean = false
 
     override fun onCreate() {}
 
@@ -91,6 +103,7 @@ private class WidgetNotesFactory(
         }
         pendings = pendingSnapshot.items
         notes = snapshot.notes
+        discreteMode = WidgetNotesListService.isDiscreteMode(context)
     }
 
     override fun onDestroy() {
@@ -151,7 +164,14 @@ private class WidgetNotesFactory(
             R.id.widget_item_title,
             n.titulo.ifBlank { "Sin título" },
         )
-        views.setTextViewText(R.id.widget_item_body, n.cuerpo)
+        // C-35: Si el modo discreto está activo, ocultar cuerpo (solo títulos).
+        // En caso contrario, colapsar saltos de línea a 1 línea limpia para evitar fugas visuales.
+        val bodyText = if (discreteMode) "" else n.cuerpo.replace(Regex("[\\r\\n]+"), " ").trim()
+        views.setTextViewText(R.id.widget_item_body, bodyText)
+        views.setViewVisibility(
+            R.id.widget_item_body,
+            if (bodyText.isNotEmpty()) View.VISIBLE else View.GONE,
+        )
         views.setTextViewText(R.id.widget_item_time, formatTime(n.updatedAt))
         views.setContentDescription(
             R.id.widget_item_root,

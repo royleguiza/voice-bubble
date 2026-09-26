@@ -144,7 +144,7 @@ class TranscriptionService {
       try {
         final file = File(audioPath);
         if (file.existsSync()) {
-          file.deleteSync();
+          _secureDeleteSync(file);
         }
       } catch (_) {}
     }
@@ -152,12 +152,38 @@ class TranscriptionService {
     return result;
   }
 
+  /// Sobreescribe con ceros antes de borrar (C-35) para mitigar recuperación forense.
+  static void _secureDeleteSync(File file) {
+    try {
+      if (file.existsSync()) {
+        final length = file.lengthSync();
+        if (length > 0) {
+          final zeros = Uint8List(length < 65536 ? length : 65536);
+          final raf = file.openSync(mode: FileMode.write);
+          var remaining = length;
+          while (remaining > 0) {
+            final toWrite = remaining < zeros.length ? remaining : zeros.length;
+            raf.writeFromSync(zeros, 0, toWrite);
+            remaining -= toWrite;
+          }
+          raf.flushSync();
+          raf.closeSync();
+        }
+        file.deleteSync();
+      }
+    } catch (_) {
+      try {
+        if (file.existsSync()) file.deleteSync();
+      } catch (_) {}
+    }
+  }
+
   Future<void> cleanupTempFile(String path) async {
     // IO sincrona segura: los futures de dart:io no corren bajo fakeAsync (tests).
     try {
       final file = File(path);
       if (file.existsSync()) {
-        file.deleteSync();
+        _secureDeleteSync(file);
       }
     } catch (_) {}
   }

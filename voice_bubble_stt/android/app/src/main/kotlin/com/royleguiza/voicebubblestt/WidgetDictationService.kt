@@ -8,7 +8,9 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import androidx.core.content.ContextCompat
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.os.Build
@@ -247,6 +249,17 @@ class WidgetDictationService(
         BackgroundWork.releaseMicrophone(claim)
     }
 
+    internal fun hasNotificationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
     private fun startRecording(widgetId: Int) {
         if (isRecording) return
         updateWidgetsState("recording")
@@ -269,11 +282,23 @@ class WidgetDictationService(
             stopSelf()
             return
         }
+        // Pre-check POST_NOTIFICATIONS (C-35).
+        hasNotificationPermission()
         // Foreground requerido para mic en background (Android 14+).
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIF_ID, notif("Grabando..."), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-        } else {
-            startForeground(NOTIF_ID, notif("Grabando..."))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIF_ID, notif("Grabando..."), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else {
+                startForeground(NOTIF_ID, notif("Grabando..."))
+            }
+        } catch (_: Exception) {
+            releaseMicrophone()
+            updateWidgetsState("error")
+            mainHandler.postDelayed({
+                updateWidgetsState("idle")
+            }, 1600)
+            stopSelf()
+            return
         }
         isRecording = true
         playMicSound("start")
