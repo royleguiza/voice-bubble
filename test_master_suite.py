@@ -60,6 +60,7 @@ SUITES = [
     ("Transparencia del sistema + tokens (C-31)", "test_c31_system_transparency_and_tokens_suite.py"),
     ("Semántica correcta + teclado físico (C-32)", "test_c32_semantics_and_physical_keyboard_suite.py"),
     ("Settings y Home sin rebuilds + keys (C-33)", "test_c33_no_rebuilds_and_keys_suite.py"),
+    ("Firma, lockfile y https (C-34)", "test_c34_signing_lockfile_and_https_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3856,6 +3857,37 @@ def test_c33_no_rebuilds_and_keys_contract():
     assert "class RecordingController extends ChangeNotifier" in rc, "C-33: RecordingController debe ser ChangeNotifier"
     assert "static const int minAudioBytes = 8000;" in rc, "C-33: RecordingController debe declarar minAudioBytes = 8000"
 
+def test_c34_signing_lockfile_and_https_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    doc_file = os.path.join(base_dir, "INSTALL.md")
+    client_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "SpeechToTextClient.kt")
+    net_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "res", "xml", "network_security_config.xml")
+    manifest_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "AndroidManifest.xml")
+    workflow_file = os.path.join(base_dir, ".github", "workflows", "android.yml")
+
+    with open(doc_file, "r", encoding="utf-8") as f:
+        doc = f.read()
+    assert "apksigner verify --print-certs" in doc, "C-34: INSTALL.md sin apksigner verify"
+    assert "8C:1C:C5:5D:74:87:4F:35:98:99:DB:93:0E:53:47:9D:A0:4C:68:AF:88:14:43:F6:E8:F2:B5:DA:33:C0:3E:C3" in doc, "C-34: INSTALL.md sin SHA-256 fingerprint"
+    assert "VIBRATE" in doc and "FileProvider" in doc and "BIND_INPUT_METHOD" in doc, "C-34: INSTALL.md §4 incompleto"
+
+    with open(client_file, "r", encoding="utf-8") as f:
+        client = f.read()
+    assert "resolveUrl(" in client and "https://" in client, "C-34: SpeechToTextClient sin validación HTTPS"
+
+    with open(net_file, "r", encoding="utf-8") as f:
+        net = f.read()
+    assert 'cleartextTrafficPermitted="false"' in net, "C-34: network_security_config sin cleartextTrafficPermitted=false"
+
+    with open(manifest_file, "r", encoding="utf-8") as f:
+        manifest = f.read()
+    assert 'android:networkSecurityConfig="@xml/network_security_config"' in manifest, "C-34: AndroidManifest sin networkSecurityConfig"
+
+    with open(workflow_file, "r", encoding="utf-8") as f:
+        wf = f.read()
+    assert "--enforce-lockfile" in wf, "C-34: android.yml sin --enforce-lockfile"
+    assert "app_source/pubspec.lock" in wf, "C-34: android.yml no sincroniza lockfile"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3902,6 +3934,7 @@ def main():
         ("C-31: transparencia del sistema + tokens", test_c31_system_transparency_and_tokens_contract),
         ("C-32: semántica correcta + teclado físico", test_c32_semantics_and_physical_keyboard_contract),
         ("C-33: settings y home sin rebuilds + keys", test_c33_no_rebuilds_and_keys_contract),
+        ("C-34: firma, lockfile y https", test_c34_signing_lockfile_and_https_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

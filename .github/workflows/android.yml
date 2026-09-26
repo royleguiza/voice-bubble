@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Contrato de claves del puente
         run: |
@@ -53,13 +53,13 @@ jobs:
           fi
 
       - name: Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@8df103947385d03edb50ec18f5fb00ac12b10a80 # v4.3.0
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Gradle 9.3.1 reproducible
-        uses: gradle/actions/setup-gradle@v6.1.1
+        uses: gradle/actions/setup-gradle@d156388eb19633375bd071661dca3773950b441a # v6.1.1
         with:
           gradle-version: '9.3.1'
 
@@ -67,21 +67,21 @@ jobs:
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       - name: Flutter (stable + cache pub)
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@44ac965b96f18d999802d4b807e3256d5a3f9fa1 # v2.18.0
         with:
           channel: stable
           cache: true
 
       - name: Sincronizar fuente (app_source -> voice_bubble_stt)
         run: |
-          cp app_source/pubspec.yaml app_source/analysis_options.yaml voice_bubble_stt/
+          cp app_source/pubspec.yaml app_source/pubspec.lock app_source/analysis_options.yaml voice_bubble_stt/
           rm -rf voice_bubble_stt/lib voice_bubble_stt/test
           cp -r app_source/lib voice_bubble_stt/
           cp -r app_source/test voice_bubble_stt/
 
       - name: Pub get
         working-directory: voice_bubble_stt
-        run: flutter pub get
+        run: flutter pub get --enforce-lockfile
 
       - name: Preparar local.properties para Gradle
         run: |
@@ -131,7 +131,7 @@ jobs:
         run: flutter build apk --debug --split-per-abi --build-number=${{ github.run_number }}
 
       - name: Upload APK arm64
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
         with:
           name: voice-bubble-arm64-debug-apk-r${{ github.run_number }}
           path: voice_bubble_stt/build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk

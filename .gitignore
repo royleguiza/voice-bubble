@@ -17,7 +17,7 @@
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
-pubspec.lock
+# pubspec.lock versionado a propósito (C-34): reproducible builds con flutter pub get --enforce-lockfile
 
 # IDE
 .vscode/

@@ -41,6 +41,7 @@ class SpeechToTextClient(
         const val TIMEOUT_MAX_SECONDS = 600
         const val TIMEOUT_READ_SECONDS = 60
         const val MAX_AUDIO_BYTES = 25 * 1024 * 1024 // 25 MB
+        const val DEFAULT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 
         fun timeoutForBytes(bytes: Int): Int {
             val seconds = TIMEOUT_BASE_SECONDS + (bytes / TIMEOUT_BYTES_PER_SECOND)
@@ -54,6 +55,17 @@ class SpeechToTextClient(
         val model: String,
         val language: String,
     )
+
+    /** C-34: Validación estricta de HTTPS. Cualquier URL en claro (http://)
+     *  o inválida cae de inmediato al endpoint seguro por defecto (Groq HTTPS). */
+    private fun resolveUrl(raw: String?): String {
+        val trimmed = raw?.trim().orEmpty()
+        return if (trimmed.startsWith("https://", ignoreCase = true)) {
+            trimmed
+        } else {
+            DEFAULT_URL
+        }
+    }
 
     /** Modelo vigente: Turbo (rápido, misma calidad). Las prefs escritas
      *  por versiones viejas traen `whisper-large-v3`: se migran en lectura
@@ -96,10 +108,12 @@ class SpeechToTextClient(
             "FlutterSharedPreferences", Context.MODE_PRIVATE,
         )
         val loaded = Config(
-            url = prefs.getString(
-                "flutter.kb_stt_url",
-                "https://api.groq.com/openai/v1/audio/transcriptions",
-            ) ?: "https://api.groq.com/openai/v1/audio/transcriptions",
+            url = resolveUrl(
+                prefs.getString(
+                    "flutter.kb_stt_url",
+                    DEFAULT_URL,
+                )
+            ),
             apiKey = SecureStore.read(context, SecureStore.STT_API_KEY)
                 ?: migrateLegacyMirror(prefs).orEmpty(),
             model = resolveModel(prefs.getString("flutter.kb_stt_model", "whisper-large-v3-turbo")),

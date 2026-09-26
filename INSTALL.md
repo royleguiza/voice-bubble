@@ -25,6 +25,20 @@ Cada APK del CI sale con un número de versión superior al anterior y la misma 
 
 > ⚠️ **No desinstales la app antes**: desinstalar borra todos los datos (notas, snippets, clipboard, historial, ajustes). Si Android rechaza la instalación con "App no instalada", avisa con captura: indicaría firma o versión inesperada en ese run.
 
+### Verificación de integridad y firma del APK
+
+Para verificar que el APK descargado no ha sido alterado y fue firmado con la clave del repositorio:
+
+```bash
+apksigner verify --print-certs app-arm64-v8a-debug.apk
+```
+
+El certificado debe coincidir con el fingerprint de la clave debug versionada del proyecto:
+- **SHA-256**: `8C:1C:C5:5D:74:87:4F:35:98:99:DB:93:0E:53:47:9D:A0:4C:68:AF:88:14:43:F6:E8:F2:B5:DA:33:C0:3E:C3`
+- **SHA-1**: `F8:EA:32:A5:FB:8E:95:B8:DB:3A:A4:F0:B0:49:44:39:83:94:A3:C3`
+
+*(Nota: En builds de release para distribución oficial o tiendas, la firma se inyectará mediante secrets protegidos de GitHub Actions y variables de entorno `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, sin versionar contraseñas de producción en el repositorio).*
+
 ## 2. Activación de la burbuja flotante
 
 La burbuja requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW**, "Mostrar sobre otras apps"): Android no lo concede automáticamente.
@@ -61,6 +75,11 @@ La burbuja requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW
 | `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MICROPHONE` | Automático (declarados en el manifest) | Mantener la grabación viva como servicio en primer plano, siempre visible vía notificación. |
 | `POST_NOTIFICATIONS` | Android 13+ | Mostrar la notificación del servicio mientras graba. |
 | `INTERNET` | Automático (declarado en el manifest) | Enviar el audio al motor de transcripción (Groq) únicamente cuando inicias una transcripción. |
+| `VIBRATE` | Al escribir o interactuar con el trackpad/píldora | Permiso normal para respuesta háptica física en pulsaciones y gestos, sin impacto en privacidad ni advertencias en Play Protect. |
+
+**Notas sobre componentes del sistema y proveedores internos**:
+- `androidx.core.content.FileProvider` (`${applicationId}.clipboardfileprovider`): configurado con `exported="false"` y `grantUriPermissions="true"` para compartir audio o clips del portapapeles de manera acotada y segura hacia aplicaciones receptoras, sin exponer el sistema de archivos general del dispositivo.
+- `BIND_INPUT_METHOD`: permiso a nivel de sistema que asegura que el servicio `VoiceKeyboardService` solo pueda ser enlazado por el framework de entrada de Android como IME. Ninguna aplicación de terceros puede conectarse ni invocar directamente el teclado.
 
 Fuera de estos, no hay otros permisos: cero analytics, cero telemetría, y el teclado jamás registra lo tecleado.
 
