@@ -887,7 +887,16 @@ class _HomeScreenState extends State<HomeScreen>
                       onPressed:
                           _recordMode == StorageService.defaultRecordMode
                               ? _toggleRecording
-                              : null,
+                              : () async {
+                                  if (_isRecording || _isStartingRecording) {
+                                    await _stopRecording();
+                                  } else {
+                                    SemanticsService.announce(
+                                      'Mantené para grabar',
+                                      TextDirection.ltr,
+                                    );
+                                  }
+                                },
                       onHoldStart: _recordMode == StorageService.recordModeHold
                           ? () {
                               _holdStartedAt = DateTime.now();

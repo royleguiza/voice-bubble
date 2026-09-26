@@ -52,6 +52,7 @@ SUITES = [
     ("Concurrencia: escritura sin pisadas y UUID v4 único (C-23)", "test_c23_concurrent_writes_and_unique_ids_suite.py"),
     ("Errores que se ven y reporte honesto (C-24)", "test_c24_visible_errors_suite.py"),
     ("Adiós god-object + merges únicos (C-25)", "test_c25_god_object_split_and_merges_suite.py"),
+    ("TalkBack graba en Mantener (C-26)", "test_c26_talkback_hold_recording_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3599,6 +3600,35 @@ def test_c25_god_object_split_contract():
                     ksrc = kf.read()
                 assert "Color.parseColor" not in ksrc, f"C-25: Color.parseColor detectado en {fname}"
 
+def test_c26_talkback_hold_recording_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    rb_file = os.path.join(base_dir, "app_source", "lib", "widgets", "record_button.dart")
+    hs_file = os.path.join(base_dir, "app_source", "lib", "screens", "home_screen.dart")
+    rb_test = os.path.join(base_dir, "app_source", "test", "widgets", "record_button_test.dart")
+
+    assert os.path.isfile(rb_file), "C-26: record_button.dart no existe"
+    assert os.path.isfile(hs_file), "C-26: home_screen.dart no existe"
+    assert os.path.isfile(rb_test), "C-26: record_button_test.dart no existe"
+
+    with open(rb_file, "r", encoding="utf-8") as f:
+        rb_src = f.read()
+    assert "Mantené para grabar" in rb_src, "C-26: RecordButton sin label 'Mantené para grabar'"
+    assert "Detener grabación" in rb_src, "C-26: RecordButton sin label 'Detener grabación'"
+    assert "onLongPress:" in rb_src, "C-26: Semantics sin acción onLongPress"
+    assert "widget.onHoldStart" in rb_src, "C-26: onLongPress sin onHoldStart"
+    assert "widget.onHoldEnd" in rb_src, "C-26: onLongPress sin onHoldEnd"
+
+    with open(hs_file, "r", encoding="utf-8") as f:
+        hs_src = f.read()
+    assert "SemanticsService.announce" in hs_src, "C-26: home_screen sin SemanticsService.announce"
+    assert "Mantené para grabar" in hs_src, "C-26: home_screen sin anuncio 'Mantené para grabar'"
+    assert "_recordMode == StorageService.recordModeHold" in hs_src, "C-26: home_screen sin check de recordModeHold"
+
+    with open(rb_test, "r", encoding="utf-8") as f:
+        t_src = f.read()
+    assert "Mantené para grabar" in t_src, "C-26: record_button_test sin aserción 'Mantené para grabar'"
+    assert "SemanticsAction.longPress" in t_src, "C-26: record_button_test sin check SemanticsAction.longPress"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3637,6 +3667,7 @@ def main():
         ("C-23: escritura sin pisadas y UUID v4 único", test_c23_concurrent_writes_contract),
         ("C-24: errores que se ven y reporte honesto", test_c24_visible_errors_contract),
         ("C-25: adiós god-object y merges únicos", test_c25_god_object_split_contract),
+        ("C-26: TalkBack graba en Mantener", test_c26_talkback_hold_recording_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

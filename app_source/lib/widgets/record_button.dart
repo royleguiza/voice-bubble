@@ -103,10 +103,18 @@ class _RecordButtonState extends State<RecordButton>
         : (isDark ? Colors.black : Colors.white)
             .withValues(alpha: isDark ? kGlassOpacityDark : kGlassOpacityLight);
     final glyphColor = isRecording ? Colors.white : accent;
+    final isHoldMode = widget.onHoldStart != null;
+    final semanticLabel = isRecording
+        ? 'Detener grabación'
+        : (isHoldMode ? 'Mantené para grabar' : 'Iniciar grabación');
 
     return Semantics(
       button: true,
-      label: isRecording ? 'Detener grabación' : 'Iniciar grabación',
+      label: semanticLabel,
+      onTap: _enabled ? widget.onPressed : null,
+      onLongPress: (_enabled && isHoldMode)
+          ? (isRecording ? widget.onHoldEnd : widget.onHoldStart)
+          : null,
       child: SizedBox(
         width: kRecordButtonSize,
         height: kRecordButtonSize,

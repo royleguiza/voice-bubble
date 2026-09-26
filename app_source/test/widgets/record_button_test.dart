@@ -103,5 +103,56 @@ void main() {
       expect(size.width, 104.0);
       expect(size.height, 104.0);
     });
+
+    testWidgets('C-26: Semantics en modo idle hold tiene label Mantené para grabar y accion longPress',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      var started = 0;
+      var ended = 0;
+      var pressed = 0;
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: RecordButton(
+            key: const ValueKey('recordButton'),
+            state: RecordButtonState.idle,
+            onHoldStart: () => started++,
+            onHoldEnd: () => ended++,
+            onPressed: () => pressed++,
+          ),
+        ),
+      ));
+
+      final semantics = tester.getSemantics(find.byKey(const ValueKey('recordButton')));
+      expect(semantics.label, 'Mantené para grabar');
+      expect(semantics.hasAction(SemanticsAction.longPress), isTrue);
+      expect(semantics.hasAction(SemanticsAction.tap), isTrue);
+
+      handle.dispose();
+    });
+
+    testWidgets('C-26: Semantics en modo recording hold tiene label Detener grabación',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: RecordButton(
+            key: const ValueKey('recordButton'),
+            state: RecordButtonState.recording,
+            onHoldStart: () {},
+            onHoldEnd: () {},
+            onPressed: () {},
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      final semantics = tester.getSemantics(find.byKey(const ValueKey('recordButton')));
+      expect(semantics.label, 'Detener grabación');
+      expect(semantics.hasAction(SemanticsAction.longPress), isTrue);
+      expect(semantics.hasAction(SemanticsAction.tap), isTrue);
+
+      handle.dispose();
+    });
   });
 }
