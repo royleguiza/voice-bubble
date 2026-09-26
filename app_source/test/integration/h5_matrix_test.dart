@@ -473,11 +473,14 @@ void main() {
     testWidgets(
         "'hold' sembrado en prefs gobierna pantallas recreadas con servicios nuevos",
         (tester) async {
-      // Semilla directa de la clave compartida que lee loadRecordMode.
-      SharedPreferences.setMockInitialValues({'recording_mode': 'hold'});
+      // Semilla por la vía real de guardado: setMockInitialValues no
+      // invalida la instancia cacheada de SharedPreferences.getInstance
+      // entre tests del mismo archivo (la Fase C ya usa este patrón).
+      SharedPreferences.setMockInitialValues({});
 
       // --- Fase A: primera pantalla (StorageService nuevo lee 'hold').
       final bundleA = makeBundle(<Object>[]);
+      await bundleA.storage.saveRecordMode(StorageService.recordModeHold);
       await pumpHome(
         tester,
         bundleA.service,
