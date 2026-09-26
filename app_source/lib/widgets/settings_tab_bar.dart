@@ -156,6 +156,7 @@ class SettingsTabBar extends StatelessWidget {
             ),
           ),
         ),
+        ),
       ),
     );
   }
