@@ -45,7 +45,7 @@ class WidgetNoteDismissTest {
     fun tapOutsideCardFinishesLikeX() {
         val activity = buildNewNote()
         activity.findViewById<View>(R.id.overlay_root).performClick()
-        assertTrue(shadowOf(activity).isFinishing)
+        assertTrue(activity.isFinishing)
     }
 
     @Test
@@ -64,7 +64,7 @@ class WidgetNoteDismissTest {
             KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK),
         )
         assertTrue(consumed)
-        assertTrue(shadowOf(activity).isFinishing)
+        assertTrue(activity.isFinishing)
     }
 
     @Test
@@ -75,7 +75,7 @@ class WidgetNoteDismissTest {
             KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_A),
         )
         assertFalse(consumed)
-        assertFalse(shadowOf(activity).isFinishing)
+        assertFalse(activity.isFinishing)
     }
 
     /**
@@ -144,7 +144,7 @@ class WidgetNoteDismissTest {
             Thread.sleep(50)
         }
         assertTrue(toasted)
-        assertFalse(shadowOf(activity).isFinishing)
+        assertFalse(activity.isFinishing)
         val raw = activity.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             .getString("flutter.voice_notes_pending_v1", null)
         assertNotNull(raw)
