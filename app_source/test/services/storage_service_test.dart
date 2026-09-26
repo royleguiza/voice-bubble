@@ -575,6 +575,32 @@ void main() {
       expect(prefs.getString('kb_stt_language'), CloudSttService.language);
     });
 
+    test('saveSttMirror y repairSttMirror respetan URL custom (C-22)', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({
+        'kb_stt_url': 'http://custom-whisper.local:8080/v1',
+      });
+      final service = StorageService();
+      final ok = await service.saveSttMirror(apiKey: 'gsk_custom_url_test');
+      expect(ok, isTrue);
+
+      final prefs = await SharedPreferences.getInstance();
+      // C-22: jamás pisar URL custom con el endpoint default de Groq
+      expect(prefs.getString('kb_stt_url'), 'http://custom-whisper.local:8080/v1');
+      expect(await service.getSttUrl(), 'http://custom-whisper.local:8080/v1');
+
+      // repairSttMirror tampoco pisa la URL custom
+      final repaired = await service.repairSttMirror();
+      expect(repaired, isTrue);
+      expect(prefs.getString('kb_stt_url'), 'http://custom-whisper.local:8080/v1');
+    });
+
+    test('saveSttMirror con key vacía retorna false (C-22)', () async {
+      final service = StorageService();
+      final ok = await service.saveSttMirror(apiKey: '   ');
+      expect(ok, isFalse);
+    });
+
     test('repairSttMirror republica presencia y limpia el legado', () async {
       FlutterSecureStorage.setMockInitialValues({});
       SharedPreferences.setMockInitialValues(

@@ -941,48 +941,105 @@ class StorageService {
 
   /// Publica presencia + url/model/language desde la bóveda (fuente de
   /// verdad) y borra el espejo plano legado si sobrevive. Idempotente.
-  /// Nunca pisa la bóveda (solo la lee). Devuelve true si hay key.
+  /// Nunca pisa la bóveda (solo la lee). Devuelve éxito real (hasKey && published) (C-22).
+  /// Respeta URL custom si ya está configurada en SharedPreferences.
   Future<bool> repairSttMirror() async {
     try {
-      final secure = await _secureStorage.read(key: secureSttApiKey);
-      final hasKey = secure != null && secure.trim().isNotEmpty;
-      final prefs = await _prefs();
+      var secure = await _secureStorage.read(key: secureSttApiKey);
+      var hasKey = secure != null && secure.trim().isNotEmpty;
+      if (!hasKey) {
+        // Un reintento por si el keystore tuvo un fallo transitorio
+        try {
+          secure = await _secureStorage.read(key: secureSttApiKey);
+          hasKey = secure != null && secure.trim().isNotEmpty;
+        } catch (_) {}
+      }
+
+      var published = false;
       try {
-        await prefs.setBool(sttKeyConfiguredKey, hasKey);
-        await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
-        await prefs.setString(_sttModelKey, CloudSttService.model);
-        await prefs.setString(_sttLanguageKey, CloudSttService.language);
-        await prefs.remove(sttApiKeyMirrorKey);
-      } catch (_) {}
-      return hasKey;
+        final prefs = await _prefs();
+        final okPresence = await prefs.setBool(sttKeyConfiguredKey, hasKey);
+
+        // C-22: No pisar URL custom si ya está configurada
+        final currentUrl = prefs.getString(_sttUrlKey);
+        final okUrl = (currentUrl != null && currentUrl.trim().isNotEmpty)
+            ? true
+            : await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
+
+        final okModel = await prefs.setString(_sttModelKey, CloudSttService.model);
+        final okLang = await prefs.setString(_sttLanguageKey, CloudSttService.language);
+
+        try {
+          await prefs.remove(sttApiKeyMirrorKey);
+        } catch (_) {}
+
+        published = okPresence && okUrl && okModel && okLang;
+      } catch (_) {
+        published = false;
+      }
+
+      return hasKey && published;
     } catch (_) {
       return false;
     }
   }
 
   /// Guarda la key en la bóveda (fuente única para app e IME), más la
-  /// config no sensible y la presencia. Si viene vacía, solo limpia el
-  /// legado plano (el borrado explícito va en [clearSttMirror]).
-  Future<void> saveSttMirror({required String apiKey}) async {
+  /// config no sensible y la presencia. Si viene vacía, limpia la bóveda
+  /// y el espejo (el borrado explícito va en [clearSttMirror]).
+  /// Contrato C-22: retorna éxito real (hasKey && published) tras un reintento
+  /// si secure_storage falla, y respeta cualquier URL custom preexistente.
+  Future<bool> saveSttMirror({required String apiKey}) async {
     final trimmed = apiKey.trim();
-    if (trimmed.isNotEmpty) {
+    if (trimmed.isEmpty) {
+      await clearSttMirror();
+      return false;
+    }
+
+    var hasKey = false;
+    for (var attempt = 0; attempt < 2; attempt++) {
       try {
         await _secureStorage.write(key: secureSttApiKey, value: trimmed);
+        final readBack = await _secureStorage.read(key: secureSttApiKey);
+        if (readBack != null && readBack.trim().isNotEmpty) {
+          hasKey = true;
+          break;
+        }
       } catch (_) {
-        // Frontera del keystore: no crashear Ajustes; presencia dirá la
-        // verdad abajo (fail-fast honesto en el teclado).
-        debugPrint('StorageService.saveSttMirror: secure write fallido');
+        if (attempt == 1) {
+          debugPrint('StorageService.saveSttMirror: secure write fallido tras reintento');
+        }
       }
     }
-    final prefs = await _prefs();
-    await prefs.setBool(sttKeyConfiguredKey, await _hasSecureSttKey());
-    await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
-    await prefs.setString(_sttModelKey, CloudSttService.model);
-    await prefs.setString(_sttLanguageKey, CloudSttService.language);
+
+    var published = false;
     try {
-      await prefs.remove(sttApiKeyMirrorKey);
-    } catch (_) {}
+      final prefs = await _prefs();
+      final okPresence = await prefs.setBool(sttKeyConfiguredKey, hasKey);
+
+      // C-22: No pisar URL custom si ya está configurada
+      final currentUrl = prefs.getString(_sttUrlKey);
+      final okUrl = (currentUrl != null && currentUrl.trim().isNotEmpty)
+          ? true
+          : await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
+
+      final okModel = await prefs.setString(_sttModelKey, CloudSttService.model);
+      final okLang = await prefs.setString(_sttLanguageKey, CloudSttService.language);
+
+      try {
+        await prefs.remove(sttApiKeyMirrorKey);
+      } catch (_) {}
+
+      published = okPresence && okUrl && okModel && okLang;
+    } catch (_) {
+      published = false;
+    }
+
+    return hasKey && published;
   }
+
+  Future<String> getSttUrl() => _getString(_sttUrlKey, CloudSttService.endpoint);
+  Future<void> setSttUrl(String url) => _setString(_sttUrlKey, url);
 
   /// true si hay una key no vacía legible en secure_storage. Nunca lanza:
   /// ante keystore bloqueado se informa ausencia (el teclado avisará a

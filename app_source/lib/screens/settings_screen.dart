@@ -836,10 +836,15 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
     try {
       await _secureStorage.write(key: 'groq_api_key', value: key);
+      final bool ok;
       if (key.isNotEmpty) {
-        await _storageService.saveSttMirror(apiKey: key);
+        ok = await _storageService.saveSttMirror(apiKey: key);
       } else {
         await _storageService.clearSttMirror();
+        ok = true;
+      }
+      if (!ok) {
+        throw StateError('Fallo al guardar espejo STT');
       }
     } catch (_) {
       // Keystore bloqueado / prefs caído: SnackBar, nunca pantalla roja.

@@ -48,6 +48,7 @@ SUITES = [
     ("Ajustes: puente de claves sano y límites (C-19)", "test_c19_bridge_keys_and_limits_suite.py"),
     ("Teclado: detalles y mayúsculas en turco (C-20)", "test_c20_keyboard_details_suite.py"),
     ("Datos: fechas rotas no contaminan (C-21)", "test_c21_broken_dates_suite.py"),
+    ("Datos: espejos que no mienten (C-22)", "test_c22_honest_mirrors_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3414,6 +3415,28 @@ def test_c21_broken_dates_contract():
     # 4. NotesService.dart: loadMerged compara n.updatedAt.isAfter(existing.updatedAt)
     assert "n.updatedAt.isAfter(existing.updatedAt)" in ns_content, "C-21: NotesService loadMerged no compara n.updatedAt.isAfter(existing.updatedAt)"
 
+def test_c22_honest_mirrors_contract():
+    base = os.path.dirname(os.path.abspath(__file__))
+    ss_file = os.path.join(base, "app_source", "lib", "services", "storage_service.dart")
+    scr_file = os.path.join(base, "app_source", "lib", "screens", "settings_screen.dart")
+
+    with open(ss_file, "r", encoding="utf-8") as f:
+        ss_content = f.read()
+    with open(scr_file, "r", encoding="utf-8") as f:
+        scr_content = f.read()
+
+    # 1. storage_service.dart: saveSttMirror devuelve Future<bool> y hasKey && published
+    assert "Future<bool> saveSttMirror({required String apiKey})" in ss_content, "C-22: saveSttMirror no retorna Future<bool>"
+    assert "return hasKey && published;" in ss_content, "C-22: saveSttMirror no retorna hasKey && published"
+    assert "for (var attempt = 0; attempt < 2; attempt++)" in ss_content, "C-22: saveSttMirror falta reintento"
+    assert "currentUrl != null && currentUrl.trim().isNotEmpty" in ss_content, "C-22: saveSttMirror no valida URL custom"
+    assert "Future<bool> repairSttMirror() async" in ss_content, "C-22: repairSttMirror no retorna Future<bool>"
+
+    # 2. settings_screen.dart: valida booleano ok y muestra SnackBar existente de error
+    assert "ok = await _storageService.saveSttMirror" in scr_content or "final bool ok;" in scr_content, "C-22: settings_screen no captura ok de saveSttMirror"
+    assert "if (!ok)" in scr_content, "C-22: settings_screen no valida if (!ok)"
+    assert "No se pudo guardar la API key" in scr_content, "C-22: settings_screen falta SnackBar de error"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3448,6 +3471,7 @@ def main():
         ("C-19: puente de claves sano y límites", test_c19_bridge_keys_contract),
         ("C-20: detalles del teclado y mayúsculas", test_c20_keyboard_details_contract),
         ("C-21: fechas rotas no contaminan", test_c21_broken_dates_contract),
+        ("C-22: espejos que no mienten", test_c22_honest_mirrors_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:
