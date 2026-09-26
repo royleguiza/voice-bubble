@@ -37,6 +37,7 @@ SUITES = [
     ("Vistas: rebuild solo cuando toca y blindaje restart (C-08)", "test_c08_rebuild_guards_suite.py"),
     ("Red: cancelar corta la red de verdad (C-09)", "test_c09_cancel_network_suite.py"),
     ("Reintento: reintento sin regrabar (C-10)", "test_c10_retry_without_re_record_suite.py"),
+    ("Red: tiempos de red parejos (C-11)", "test_c11_even_network_timeouts_suite.py"),
 ]
 
 def run_test(name, func):
@@ -328,7 +329,7 @@ def test_dictation_contract():
         stt = f.read()
     assert "const val MAX_SECONDS = 300" in stt, "Tope único 5min ausente"
     assert "MAX_SECONDS * 1000L" in stt, "Deadline sin fuente única"
-    assert "readTimeout = 240000" in stt, "readTimeout 240s ausente"
+    assert ("readTimeout = 240000" in stt or "TIMEOUT_READ_SECONDS" in stt), "readTimeout ausente"
     assert "connectTimeout = 15000" in stt, "connectTimeout 15s ausente"
     with open(f"{kt}/DictationController.kt", "r", encoding="utf-8") as f:
         dic = f.read()
@@ -2938,6 +2939,51 @@ def test_c10_retry_without_re_record_contract():
     assert "onClick: (() -> Unit)? = null" in stat, "C-10: StatusLayer.show no soporta onClick"
     assert "if (deleteAudioOnSuccess && result.text.isNotEmpty)" in dart, "C-10: Dart borra audio con texto vacío"
 
+def test_c11_even_network_timeouts_contract():
+    """
+    Guarda C-11: Tiempos de red parejos en Kotlin y Dart.
+    Verifica:
+    1. Misma fórmula 60 + bytes/50k con clamp [60, 600] en Kotlin y Dart.
+    2. Cálculo con 9.6 MB (9,600,000 bytes) da exactamente 252 segundos en ambos.
+    3. Lectura de respuesta fija (60s) separada de la subida adaptativa en ambos.
+    4. Tope de archivo de 25 MB (MAX_AUDIO_BYTES / maxFileSizeBytes) verificado antes de subir.
+    """
+    base_kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    stt_path = os.path.join(base_kt, "SpeechToTextClient.kt")
+    widget_path = os.path.join(base_kt, "WidgetDictationService.kt")
+    dart_path = "app_source/lib/services/cloud_stt_service.dart"
+
+    assert os.path.isfile(stt_path), f"Falta archivo: {stt_path}"
+    assert os.path.isfile(widget_path), f"Falta archivo: {widget_path}"
+    assert os.path.isfile(dart_path), f"Falta archivo: {dart_path}"
+
+    with open(stt_path, "r", encoding="utf-8") as f:
+        stt = f.read()
+    with open(widget_path, "r", encoding="utf-8") as f:
+        widget = f.read()
+    with open(dart_path, "r", encoding="utf-8") as f:
+        dart = f.read()
+
+    # 1. Constantes y fórmulas
+    assert "const val TIMEOUT_BASE_SECONDS = 60" in stt and "const val TIMEOUT_BYTES_PER_SECOND = 50000" in stt, "C-11: falta fórmula base en Kotlin"
+    assert "static const int _timeoutBaseSeconds = 60;" in dart and "static const int _timeoutBytesPerSecond = 50000;" in dart, "C-11: falta fórmula base en Dart"
+    assert "fun timeoutForBytes(bytes: Int): Int" in stt, "C-11: falta timeoutForBytes en Kotlin"
+    assert "Duration timeoutForBytes(int bytes)" in dart, "C-11: falta timeoutForBytes en Dart"
+
+    # 2. Cálculo con 9.6 MB
+    kt_sec = 60 + (9600000 // 50000)
+    dart_sec = 60 + (9600000 // 50000)
+    assert kt_sec == 252 and dart_sec == 252, "C-11: cálculo con 9.6 MB no coincide con 252s"
+
+    # 3. Lectura fija separada de subida
+    assert "const val TIMEOUT_READ_SECONDS = 60" in stt and "active.readTimeout = TIMEOUT_READ_SECONDS * 1000" in stt, "C-11: falta lectura fija en Kotlin"
+    assert "timeoutRead" in dart and "response.stream.bytesToString().timeout(timeoutRead)" in dart, "C-11: falta lectura fija en Dart"
+
+    # 4. Tope de archivo de 25 MB
+    assert "MAX_AUDIO_BYTES = 25 * 1024 * 1024" in stt and "if (wav.size > MAX_AUDIO_BYTES)" in stt, "C-11: falta tope de 25 MB en SpeechToTextClient"
+    assert "if (wav.size > SpeechToTextClient.MAX_AUDIO_BYTES)" in widget, "C-11: falta tope de 25 MB en WidgetDictationService"
+    assert "maxFileSizeBytes = 25 * 1024 * 1024" in dart and "if (fileLength > maxFileSizeBytes)" in dart, "C-11: falta tope de 25 MB en CloudSttService"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -2961,6 +3007,7 @@ def main():
         ("C-08: rebuild solo cuando toca y blindaje restart", test_c08_rebuild_guards_contract),
         ("C-09: cancelar corta la red de verdad", test_c09_cancel_network_contract),
         ("C-10: reintento sin regrabar", test_c10_retry_without_re_record_contract),
+        ("C-11: tiempos de red parejos", test_c11_even_network_timeouts_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

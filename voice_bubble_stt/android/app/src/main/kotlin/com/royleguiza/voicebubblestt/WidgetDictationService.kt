@@ -325,6 +325,14 @@ class WidgetDictationService(
                 }
                 return@execute
             }
+            if (wav.size > SpeechToTextClient.MAX_AUDIO_BYTES) {
+                BackgroundWork.postMain {
+                    updateWidgetsState("idle")
+                    stopForeground(true)
+                    stopSelf()
+                }
+                return@execute
+            }
             val config = speechClient.loadConfig()
             if (config.apiKey.isBlank()) {
                 BackgroundWork.postMain {

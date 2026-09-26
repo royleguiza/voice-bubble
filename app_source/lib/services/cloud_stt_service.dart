@@ -58,6 +58,11 @@ class CloudSttService {
   static const int _timeoutBytesPerSecond = 50000; // ~50 KB/s efectivos
   static const int _timeoutMinSeconds = 60;
   static const int _timeoutMaxSeconds = 600;
+  static const int _timeoutReadSeconds = 60; // Lectura fija separada de subida
+  static const Duration timeoutRead = Duration(seconds: _timeoutReadSeconds);
+
+  /// Tope máximo de audio para la API Whisper (25 MB).
+  static const int maxFileSizeBytes = 25 * 1024 * 1024;
 
   // Status HTTP clasificados.
   static const int _httpOk = 200;
@@ -109,6 +114,12 @@ class CloudSttService {
     }
 
     final fileLength = await file.length();
+    if (fileLength > maxFileSizeBytes) {
+      throw const TranscriptionException(
+        'El archivo de audio supera el límite de 25 MB.',
+        kind: TranscriptionErrorKind.badRequest,
+      );
+    }
     final timeout = timeoutForBytes(fileLength);
 
     final request = http.MultipartRequest('POST', Uri.parse(_endpoint));
@@ -145,7 +156,7 @@ class CloudSttService {
     });
 
     final body = await _guardNetworkCall(() {
-      return response.stream.bytesToString().timeout(timeout);
+      return response.stream.bytesToString().timeout(timeoutRead);
     });
 
     if (response.statusCode == _httpOk) {

@@ -14,6 +14,8 @@ import java.net.URL
 import java.util.concurrent.atomic.AtomicReference
 import java.io.DataOutputStream
 import java.io.IOException
+import java.net.SocketTimeoutException
+import android.os.SystemClock
 
 /**
  * Cliente STT del teclado (K3): WAV PCM16 16kHz + cloud Groq/OpenAI.
@@ -31,6 +33,19 @@ class SpeechToTextClient(
         const val MAX_SECONDS = 300
 
         private const val WAV_HEADER_BYTES = 44
+
+        /** C-11: Tiempos de red parejos con la app (fórmula 60 + bytes/50k con tope 600). */
+        const val TIMEOUT_BASE_SECONDS = 60
+        const val TIMEOUT_BYTES_PER_SECOND = 50000
+        const val TIMEOUT_MIN_SECONDS = 60
+        const val TIMEOUT_MAX_SECONDS = 600
+        const val TIMEOUT_READ_SECONDS = 60
+        const val MAX_AUDIO_BYTES = 25 * 1024 * 1024 // 25 MB
+
+        fun timeoutForBytes(bytes: Int): Int {
+            val seconds = TIMEOUT_BASE_SECONDS + (bytes / TIMEOUT_BYTES_PER_SECOND)
+            return seconds.coerceIn(TIMEOUT_MIN_SECONDS, TIMEOUT_MAX_SECONDS)
+        }
     }
 
     data class Config(
@@ -225,6 +240,13 @@ class SpeechToTextClient(
         onDone: (String?) -> Unit,
         onError: (String) -> Unit,
     ) {
+        if (wav.size > MAX_AUDIO_BYTES) {
+            onError(
+                if (spanishModeProvider()) "El audio supera el límite de 25 MB."
+                else "Audio exceeds 25 MB limit."
+            )
+            return
+        }
         BackgroundWork.execute {
             if (cancelRequested) {
                 onDone(null)
@@ -244,10 +266,11 @@ class SpeechToTextClient(
                     return@execute
                 }
 
+                val uploadTimeoutSeconds = timeoutForBytes(wav.size)
                 active.requestMethod = "POST"
                 active.doOutput = true
                 active.connectTimeout = 15000
-                active.readTimeout = 240000
+                active.readTimeout = TIMEOUT_READ_SECONDS * 1000
                 active.setRequestProperty("Authorization", "Bearer ${config.apiKey}")
                 active.setRequestProperty(
                     "Content-Type", "multipart/form-data; boundary=$boundary",
@@ -277,12 +300,19 @@ class SpeechToTextClient(
                     // C-09: escritura por tramos comprobando cancelación
                     val chunk = 4096
                     var offset = 0
+                    val uploadDeadline = SystemClock.elapsedRealtime() + uploadTimeoutSeconds * 1000L
                     while (offset < wav.size) {
                         if (cancelRequested) {
                             active.disconnect()
                             activeConnection.compareAndSet(active, null)
                             onDone(null)
                             return@execute
+                        }
+                        if (SystemClock.elapsedRealtime() > uploadDeadline) {
+                            throw SocketTimeoutException(
+                                if (spanishModeProvider()) "Tiempo de subida agotado."
+                                else "Upload timed out."
+                            )
                         }
                         val len = minOf(chunk, wav.size - offset)
                         d.write(wav, offset, len)
