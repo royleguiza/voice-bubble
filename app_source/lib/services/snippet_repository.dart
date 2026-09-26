@@ -3,10 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../helpers/uuid_helper.dart';
 import '../models/snippet.dart';
 
-/**
- * SnippetRepository - Repositorio modular de snippets / plantillas (C-25).
- * Extraído de StorageService para desacoplar el god-object de persistencia.
- */
+/// SnippetRepository - Repositorio modular de snippets / plantillas (C-25).
+/// Extraído de StorageService para desacoplar el god-object de persistencia.
 class SnippetRepository {
   static const String snippetsKey = 'voice_snippets_v1';
   static const String snippetsSeededKey = 'kb_snippets_seeded';

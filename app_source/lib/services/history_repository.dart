@@ -1,16 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/transcription.dart';
 
-/**
- * HistoryRepository - Repositorio modular de historial de transcripciones (C-25).
- * Extraído de StorageService para desacoplar el god-object de persistencia.
- */
+/// HistoryRepository - Repositorio modular de historial de transcripciones (C-25).
+/// Extraído de StorageService para desacoplar el god-object de persistencia.
 class HistoryRepository {
   static const String key = 'transcriptions';
   static const String historyFileName = 'voice_notes.json';
@@ -19,9 +13,6 @@ class HistoryRepository {
   static const String historyTmpSuffix = '.tmp';
 
   static int _historyTempCounter = 0;
-
-  Future<SharedPreferences> _prefs() async =>
-      await SharedPreferences.getInstance();
 
   Future<File> getHistoryFile() async {
     final dir = await getApplicationDocumentsDirectory();
@@ -37,7 +28,7 @@ class HistoryRepository {
     File? tmpFile;
     try {
       final token = '${pid}_${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}_${_historyTempCounter++}';
-      tmpFile = File('${file.path}.${token}$historyTmpSuffix');
+      tmpFile = File('${file.path}.$token$historyTmpSuffix');
       tmpFile.writeAsStringSync(contents, flush: true);
       if (!tmpFile.existsSync()) return false;
       tmpFile.renameSync(file.path);

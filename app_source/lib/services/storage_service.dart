@@ -320,8 +320,7 @@ class StorageService {
 
   late final PrefsBridge bridge = PrefsBridge();
   late final SnippetRepository snippetRepo = SnippetRepository();
-  late final CredentialRepository credentialRepo =
-      CredentialRepository(secureStorage: _secureStorage);
+  late final CredentialRepository credentialRepo = CredentialRepository();
   late final HistoryRepository historyRepo = HistoryRepository();
   late final SttConfigStore sttStore =
       SttConfigStore(secureStorage: _secureStorage);
@@ -410,7 +409,7 @@ class StorageService {
     try {
       final p = await _prefs();
       final raw = p.get(key);
-      final val = raw is String ? raw : (raw != null ? raw.toString() : null);
+      final val = raw is String ? raw : raw?.toString();
       return (val != null && valid.contains(val)) ? val : def;
     } catch (_) {
       return def;
@@ -1054,18 +1053,6 @@ class StorageService {
 
   Future<String> getSttUrl() => _getString(_sttUrlKey, CloudSttService.endpoint);
   Future<void> setSttUrl(String url) => _setString(_sttUrlKey, url);
-
-  /// true si hay una key no vacía legible en secure_storage. Nunca lanza:
-  /// ante keystore bloqueado se informa ausencia (el teclado avisará a
-  /// Ajustes en vez de intentar un 401).
-  Future<bool> _hasSecureSttKey() async {
-    try {
-      final current = await _secureStorage.read(key: secureSttApiKey);
-      return current != null && current.trim().isNotEmpty;
-    } catch (_) {
-      return false;
-    }
-  }
 
   Future<void> clearSttMirror() async {
     try {
@@ -2301,7 +2288,7 @@ bool publishHistoryFileAtomically(File file, String contents) {
   File? tmpFile;
   try {
     final token = '${pid}_${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}_${StorageService._historyTempCounter++}';
-    tmpFile = File('${file.path}.${token}${StorageService._historyTmpSuffix}');
+    tmpFile = File('${file.path}.$token${StorageService._historyTmpSuffix}');
     tmpFile.writeAsStringSync(contents, flush: true);
     if (!tmpFile.existsSync()) return false;
     tmpFile.renameSync(file.path);

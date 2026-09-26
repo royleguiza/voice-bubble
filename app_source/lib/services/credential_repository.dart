@@ -1,14 +1,9 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/credential.dart';
 import '../helpers/uuid_helper.dart';
 
-/**
- * CredentialRepository - Repositorio modular de credenciales (C-25).
- * Separa el almacenamiento seguro (bóveda cifrada) y el índice público de StorageService.
- */
+/// CredentialRepository - Repositorio modular de credenciales (C-25).
+/// Separa el almacenamiento seguro (bóveda cifrada) y el índice público de StorageService.
 class CredentialRepository {
   static const String credentialsKey = 'vb_credentials_v1';
   static const String credPassKey = 'vb_cred_pass_v1';
@@ -22,10 +17,7 @@ class CredentialRepository {
   static const espOptions = AndroidOptions(encryptedSharedPreferences: true);
   static const espSecureStorage = FlutterSecureStorage(aOptions: espOptions);
 
-  final FlutterSecureStorage _secureStorage;
-
-  CredentialRepository({FlutterSecureStorage? secureStorage})
-      : _secureStorage = secureStorage ?? espSecureStorage;
+  CredentialRepository();
 
   Future<SharedPreferences> _prefs() async =>
       await SharedPreferences.getInstance();

@@ -79,12 +79,6 @@ class VoiceNote {
     return null;
   }
 
-  static DateTime _parse(Object? raw) {
-    final parsed = tryParseDateTime(raw);
-    if (parsed != null) return parsed;
-    throw const FormatException('Timestamp de nota inválido');
-  }
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,

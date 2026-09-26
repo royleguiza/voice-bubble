@@ -121,15 +121,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     // explícita de usar el mic (activar la burbuja, ver _toggleBubble).
   }
 
-  /// Persistencia diferida de sliders: crea o reutiliza un Debouncer por
-  /// clave para no cancelar guardados de sliders distintos entre sí.
-  void _persistSliderDebounced(
-      String key, Future<void> Function() persist) {
-    final debouncer =
-        _sliderDebouncers.putIfAbsent(key, () => Debouncer());
-    debouncer.run(persist);
-  }
-
   /// Carga inicial de toda la pantalla: las lecturas corren en paralelo y
   /// aplican UN único setState al terminar (antes: ~10 encadenados al abrir
   /// Ajustes). Cada lectura captura su propio fallo de frontera de canal y

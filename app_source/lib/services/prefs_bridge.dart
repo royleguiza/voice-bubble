@@ -1,11 +1,8 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'pending_note_queue.dart';
 
-/**
- * PrefsBridge - Servicio modular para acceso tipado a SharedPreferences (C-25).
- * Centraliza las primitivas de lectura/escritura, validaciones de dominio y
- * la tabla de claves de contrato para el puente con Kotlin.
- */
+/// PrefsBridge - Servicio modular para acceso tipado a SharedPreferences (C-25).
+/// Centraliza las primitivas de lectura/escritura, validaciones de dominio y
+/// la tabla de claves de contrato para el puente con Kotlin.
 class PrefsBridge {
   Future<SharedPreferences> prefs() async =>
       await SharedPreferences.getInstance();
@@ -86,7 +83,7 @@ class PrefsBridge {
     try {
       final p = await prefs();
       final raw = p.get(key);
-      final val = raw is String ? raw : (raw != null ? raw.toString() : null);
+      final val = raw is String ? raw : raw?.toString();
       return (val != null && valid.contains(val)) ? val : def;
     } catch (_) {
       return def;

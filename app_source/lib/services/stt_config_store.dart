@@ -3,10 +3,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cloud_stt_service.dart';
 
-/**
- * SttConfigStore - Almacén y sincronización modular de configuración STT (C-25).
- * Extraído de StorageService para aislar claves de API, endpoints y boveda segura.
- */
+/// SttConfigStore - Almacén y sincronización modular de configuración STT (C-25).
+/// Extraído de StorageService para aislar claves de API, endpoints y boveda segura.
 class SttConfigStore {
   static const String sttApiKeyKey = 'stt_api_key';
   static const String sttProviderKey = 'stt_provider';

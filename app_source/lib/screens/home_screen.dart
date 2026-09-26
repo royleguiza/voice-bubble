@@ -908,9 +908,12 @@ class _HomeScreenState extends State<HomeScreen>
                                   if (_isRecording || _isStartingRecording) {
                                     await _stopRecording();
                                   } else {
-                                    SemanticsService.announce(
-                                      'Mantené para grabar',
-                                      TextDirection.ltr,
+                                    unawaited(
+                                      SemanticsService.sendAnnouncement(
+                                        View.of(context),
+                                        'Mantené para grabar',
+                                        TextDirection.ltr,
+                                      ),
                                     );
                                   }
                                 },
