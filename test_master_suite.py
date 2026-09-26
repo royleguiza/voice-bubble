@@ -54,6 +54,7 @@ SUITES = [
     ("Adiós god-object + merges únicos (C-25)", "test_c25_god_object_split_and_merges_suite.py"),
     ("TalkBack graba en Mantener (C-26)", "test_c26_talkback_hold_recording_suite.py"),
     ("Nada tapado + scroll que no salta (C-27)", "test_c27_nothing_obscured_and_scroll_suite.py"),
+    ("Sheet con scroll + botones 44dp (C-28)", "test_c28_sheet_scroll_and_touch_targets_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3660,6 +3661,41 @@ def test_c27_nothing_obscured_and_scroll_contract():
     assert "GlassContainer" not in n_src, "C-27: notes_screen contiene GlassContainer inútil sobre FAB"
     assert "floatingActionButton: FloatingActionButton.extended(" in n_src, "C-27: notes_screen no expone FAB directo"
 
+def test_c28_sheet_scroll_and_touch_targets_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    snippets_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "snippets_tab.dart")
+    popup_file = os.path.join(base_dir, "app_source", "lib", "widgets", "transcription_popup.dart")
+    audio_file = os.path.join(base_dir, "app_source", "lib", "widgets", "note_audio_row.dart")
+
+    assert os.path.isfile(snippets_file), "C-28: snippets_tab.dart no existe"
+    assert os.path.isfile(popup_file), "C-28: transcription_popup.dart no existe"
+    assert os.path.isfile(audio_file), "C-28: note_audio_row.dart no existe"
+
+    with open(snippets_file, "r", encoding="utf-8") as f:
+        s_src = f.read()
+    assert "ConstrainedBox" in s_src, "C-28: snippets_tab sin ConstrainedBox"
+    assert "MediaQuery.sizeOf(context).height * 0.90" in s_src or "sizeOf(context).height * 0.9" in s_src, (
+        "C-28: snippets_tab sin max height 90%"
+    )
+    assert "SingleChildScrollView" in s_src, "C-28: snippets_tab sin SingleChildScrollView"
+    assert "width: 44" in s_src and "height: 44" in s_src, "C-28: _ColorSwatch no mide 44x44dp"
+    assert "customBorder: const CircleBorder()" in s_src or "customBorder: CircleBorder()" in s_src, (
+        "C-28: _ColorSwatch sin CircleBorder en InkWell"
+    )
+
+    with open(popup_file, "r", encoding="utf-8") as f:
+        p_src = f.read()
+    assert "minHeight: 44" in p_src, "C-28: transcription_popup sin minHeight 44"
+    assert "minWidth: 44" in p_src, "C-28: transcription_popup botón copiar sin minWidth 44"
+    assert "height: 36" not in p_src, "C-28: transcription_popup retiene height 36"
+
+    with open(audio_file, "r", encoding="utf-8") as f:
+        a_src = f.read()
+    assert "TextButton" in a_src, "C-28: note_audio_row 'Borrar audio' no es TextButton"
+    assert "minimumSize: const Size(44, 44)" in a_src or "minimumSize: Size(44, 44)" in a_src, (
+        "C-28: note_audio_row 'Borrar audio' sin minimumSize 44x44"
+    )
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3700,6 +3736,7 @@ def main():
         ("C-25: adiós god-object y merges únicos", test_c25_god_object_split_contract),
         ("C-26: TalkBack graba en Mantener", test_c26_talkback_hold_recording_contract),
         ("C-27: nada tapado y scroll que no salta", test_c27_nothing_obscured_and_scroll_contract),
+        ("C-28: sheet con scroll y botones 44dp", test_c28_sheet_scroll_and_touch_targets_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

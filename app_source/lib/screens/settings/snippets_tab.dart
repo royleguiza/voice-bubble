@@ -487,132 +487,139 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
     return Padding(
       padding:
           EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: GlassContainer(
-        borderRadius: kBorderRadiusSheet,
-        crystal: true,
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 38,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).dividerColor,
-                  borderRadius: BorderRadius.circular(100),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              _isEditing ? 'Editar snippet' : 'Nuevo snippet',
-              style: kTextTitle.copyWith(
-                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              key: const ValueKey('snippet-name-field'),
-              controller: _nombreController,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: 'Nombre',
-                border: const OutlineInputBorder(),
-                errorText: _nombreError,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const ValueKey('snippet-content-field'),
-              controller: _contenidoController,
-              keyboardType: TextInputType.multiline,
-              minLines: 3,
-              maxLines: 6,
-              decoration: InputDecoration(
-                labelText: 'Contenido',
-                alignLabelWithHint: true,
-                border: const OutlineInputBorder(),
-                errorText: _contenidoError,
-              ),
-              onChanged: (value) {
-                _contentLength.value = value.length;
-              },
-            ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerRight,
-              child: ValueListenableBuilder<int>(
-                valueListenable: _contentLength,
-                builder: (_, length, __) {
-                  final overLimit = length > widget.maxContentLength;
-                  return Text(
-                    '$length / ${widget.maxContentLength}',
-                    style: kTextCaption.copyWith(
-                      color: overLimit
-                          ? Theme.of(context).colorScheme.error
-                          : labelSecondary,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.90,
+        ),
+        child: GlassContainer(
+          borderRadius: kBorderRadiusSheet,
+          crystal: true,
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 38,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).dividerColor,
+                      borderRadius: BorderRadius.circular(100),
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Color',
-              style: kSettingsGroupTitle.copyWith(color: labelSecondary),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              children: [
-                _ColorSwatch(
-                  key: const ValueKey('snippet-color-none'),
-                  selected: _color == null,
-                  base: null,
-                  label: 'Sin color',
-                  onTap: () => setState(() => _color = null),
-                ),
-                for (final id in kSnippetColorIds)
-                  _ColorSwatch(
-                    key: ValueKey('snippet-color-$id'),
-                    selected: _color == id,
-                    base: snippetPaletteBase(id, isDark: isDark),
-                    label: id,
-                    onTap: () => setState(() => _color = id),
                   ),
-              ],
-            ),
-            if (_generalError != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _generalError!,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _isEditing ? 'Editar snippet' : 'Nuevo snippet',
+                  style: kTextTitle.copyWith(
+                    color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  key: const ValueKey('snippet-name-field'),
+                  controller: _nombreController,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'Nombre',
+                    border: const OutlineInputBorder(),
+                    errorText: _nombreError,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  key: const ValueKey('snippet-content-field'),
+                  controller: _contenidoController,
+                  keyboardType: TextInputType.multiline,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    labelText: 'Contenido',
+                    alignLabelWithHint: true,
+                    border: const OutlineInputBorder(),
+                    errorText: _contenidoError,
+                  ),
+                  onChanged: (value) {
+                    _contentLength.value = value.length;
+                  },
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ValueListenableBuilder<int>(
+                    valueListenable: _contentLength,
+                    builder: (_, length, __) {
+                      final overLimit = length > widget.maxContentLength;
+                      return Text(
+                        '$length / ${widget.maxContentLength}',
+                        style: kTextCaption.copyWith(
+                          color: overLimit
+                              ? Theme.of(context).colorScheme.error
+                              : labelSecondary,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Color',
+                  style: kSettingsGroupTitle.copyWith(color: labelSecondary),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: [
+                    _ColorSwatch(
+                      key: const ValueKey('snippet-color-none'),
+                      selected: _color == null,
+                      base: null,
+                      label: 'Sin color',
+                      onTap: () => setState(() => _color = null),
+                    ),
+                    for (final id in kSnippetColorIds)
+                      _ColorSwatch(
+                        key: ValueKey('snippet-color-$id'),
+                        selected: _color == id,
+                        base: snippetPaletteBase(id, isDark: isDark),
+                        label: id,
+                        onTap: () => setState(() => _color = id),
                       ),
+                  ],
                 ),
-              ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  // Deshabilitado mientras se guarda para evitar
-                  // dobles submits con read-modify-write concurrentes.
-                  onPressed: _submitting ? null : _submit,
-                  child: Text(_isEditing ? 'Guardar cambios' : 'Guardar'),
+                if (_generalError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      _generalError!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancelar'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      // Deshabilitado mientras se guarda para evitar
+                      // dobles submits con read-modify-write concurrentes.
+                      onPressed: _submitting ? null : _submit,
+                      child: Text(_isEditing ? 'Guardar cambios' : 'Guardar'),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -648,22 +655,26 @@ class _ColorSwatch extends StatelessWidget {
         button: true,
         selected: selected,
         label: label,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: fill,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: stroke,
-                width: selected ? 2.5 : 1.25,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: fill,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: stroke,
+                  width: selected ? 2.5 : 1.25,
+                ),
               ),
+              child: selected && base != null
+                  ? Icon(Icons.check_rounded, size: 18, color: base)
+                  : null,
             ),
-            child: selected && base != null
-                ? Icon(Icons.check_rounded, size: 18, color: base)
-                : null,
           ),
         ),
       ),

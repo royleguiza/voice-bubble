@@ -115,19 +115,19 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
             constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           ),
         if (widget.onDeleteAudio != null)
-          InkWell(
+          TextButton(
             key: ValueKey('noteDeleteAudio-${widget.noteId}'),
-            onTap: widget.onDeleteAudio,
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                'Borrar audio',
-                style: kTextCaption.copyWith(
-                  color: secondary,
-                  decoration: TextDecoration.underline,
-                ),
+            onPressed: widget.onDeleteAudio,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(44, 44),
+              tapTargetSize: MaterialTapTargetSize.padded,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              foregroundColor: secondary,
+              textStyle: kTextCaption.copyWith(
+                decoration: TextDecoration.underline,
               ),
             ),
+            child: const Text('Borrar audio'),
           ),
       ],
     );

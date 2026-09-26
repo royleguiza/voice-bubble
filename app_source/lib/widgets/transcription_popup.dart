@@ -78,8 +78,8 @@ class TranscriptionPopup extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 36,
+              ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -105,25 +105,31 @@ class TranscriptionPopup extends StatelessWidget {
                         button: true,
                         label: copyTooltipMessage,
                         excludeSemantics: true,
-                        child: InkWell(
-                          onTap: onCopy,
-                          borderRadius:
-                              BorderRadius.circular(kBorderRadiusCapsule),
-                          child: GlassContainer(
-                            borderRadius: kBorderRadiusCapsule,
-                            small: true,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 6),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.copy_rounded,
-                                    size: 18, color: accent),
-                                const SizedBox(width: 6),
-                                Text(copyButtonLabel,
-                                    style:
-                                        kTextCallout.copyWith(color: accent)),
-                              ],
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minWidth: 44,
+                            minHeight: 44,
+                          ),
+                          child: InkWell(
+                            onTap: onCopy,
+                            borderRadius:
+                                BorderRadius.circular(kBorderRadiusCapsule),
+                            child: GlassContainer(
+                              borderRadius: kBorderRadiusCapsule,
+                              small: true,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.copy_rounded,
+                                      size: 18, color: accent),
+                                  const SizedBox(width: 6),
+                                  Text(copyButtonLabel,
+                                      style:
+                                          kTextCallout.copyWith(color: accent)),
+                                ],
+                              ),
                             ),
                           ),
                         ),
