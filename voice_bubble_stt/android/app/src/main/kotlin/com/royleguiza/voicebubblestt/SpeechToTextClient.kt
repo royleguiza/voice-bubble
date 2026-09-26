@@ -105,8 +105,24 @@ class SpeechToTextClient(
             model = resolveModel(prefs.getString("flutter.kb_stt_model", "whisper-large-v3-turbo")),
             language = prefs.getString("flutter.kb_stt_language", "es") ?: "es",
         )
+        // C-19: Lectura de presencia de clave configurada en prefs planas
+        try {
+            prefs.getBoolean("flutter.kb_stt_key_configured", false)
+        } catch (_: Exception) {
+            false
+        }
         cachedConfig = loaded
         return loaded
+    }
+
+    /** C-19: Comprobación rápida de presencia de clave según el contrato STT. */
+    fun isKeyConfigured(context: Context): Boolean {
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        return try {
+            prefs.getBoolean("flutter.kb_stt_key_configured", false)
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /** Traslada el espejo plano a la bóveda y lo borra. Solo legado. */

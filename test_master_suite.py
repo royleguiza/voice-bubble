@@ -45,6 +45,7 @@ SUITES = [
     ("Spacebar: sin fantasmas y retardo de usuario (C-16)", "test_c16_spacebar_no_ghosts_suite.py"),
     ("Teclado: una sola vibración por tecla (C-17)", "test_c17_single_vibration_suite.py"),
     ("Teclado: precisión de toque y borrado por lotes (C-18)", "test_c18_touch_precision_and_batch_backspace_suite.py"),
+    ("Ajustes: puente de claves sano y límites (C-19)", "test_c19_bridge_keys_and_limits_suite.py"),
 ]
 
 def run_test(name, func):
@@ -87,6 +88,12 @@ def test_contract_keys():
     with open("app_source/lib/services/storage_service.dart", "r", encoding="utf-8") as f:
         dart = f.read()
     const_vals = dict(re.findall(r"static const String (\w+)\s*=\s*'([a-z_0-9]+)';", dart))
+    for ref_match in re.finditer(r"static const String (\w+)\s*=\s*PendingNoteQueue\.pendingKey;", dart):
+        with open("app_source/lib/services/pending_note_queue.dart", "r", encoding="utf-8") as pf:
+            pnq_content = pf.read()
+            pnq_val = re.search(r"static const String pendingKey\s*=\s*'([a-z_0-9]+)';", pnq_content)
+            if pnq_val:
+                const_vals[ref_match.group(1)] = pnq_val.group(1)
     m = re.search(r"static const List<String> bridgeKeys = \[(.*?)\];", dart, re.DOTALL)
     assert m, "Falta StorageService.bridgeKeys (SPK-07)"
     table = []
@@ -3289,6 +3296,59 @@ def test_c18_touch_precision_contract():
     assert "Character.isSurrogatePair" in ee_bs_chunk, "C-18: handleBackspace no maneja surrogate pairs"
     assert ee_bs_chunk.count("ic.deleteSurroundingText") == 1, "C-18: handleBackspace debe invocar deleteSurroundingText exactamente 1 vez por lote"
 
+def test_c19_bridge_keys_contract():
+    base = os.path.dirname(os.path.abspath(__file__))
+    keys_file = os.path.join(base, "docs", "contract-keys.txt")
+    limits_file = os.path.join(base, "docs", "contract-limits.md")
+    dart_file = os.path.join(base, "app_source", "lib", "services", "storage_service.dart")
+    pnq_file = os.path.join(base, "app_source", "lib", "services", "pending_note_queue.dart")
+    kp_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "KeyboardPrefs.kt")
+    ll_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "LayoutLayer.kt")
+    cs_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "CredentialStore.kt")
+
+    with open(keys_file, "r", encoding="utf-8") as f:
+        keys_content = f.read().strip().splitlines()
+    with open(limits_file, "r", encoding="utf-8") as f:
+        limits_content = f.read()
+    with open(dart_file, "r", encoding="utf-8") as f:
+        dart_content = f.read()
+    with open(pnq_file, "r", encoding="utf-8") as f:
+        pnq_content = f.read()
+    with open(kp_file, "r", encoding="utf-8") as f:
+        kp_content = f.read()
+    with open(ll_file, "r", encoding="utf-8") as f:
+        ll_content = f.read()
+    with open(cs_file, "r", encoding="utf-8") as f:
+        cs_content = f.read()
+
+    # 1. Claves y límites
+    assert len(keys_content) == 51, f"C-19: contract-keys.txt debe tener 51 claves, tiene {len(keys_content)}"
+    assert "kb_stt_key_configured" in keys_content, "C-19: contract-keys.txt debe incluir kb_stt_key_configured"
+    assert "20" in limits_content and "50" in limits_content and "15" in limits_content and "25" in limits_content, "C-19: contract-limits.md debe documentar 20/50/15/25"
+
+    # 2. StorageService.dart
+    assert "sttKeyConfiguredKey," in dart_content, "C-19: StorageService.bridgeKeys no incluye sttKeyConfiguredKey"
+    assert "static const String notesPendingKey = PendingNoteQueue.pendingKey;" in dart_content, "C-19: notesPendingKey debe referenciar PendingNoteQueue.pendingKey"
+    assert "static const int maxItems = 20;" in dart_content, "C-19: StorageService.maxItems debe ser 20"
+    assert "static const int maxCredentials = 50;" in dart_content, "C-19: StorageService.maxCredentials debe ser 50"
+    assert "static const int maxPendingNotes = PendingNoteQueue.maxPending;" in dart_content, "C-19: StorageService.maxPendingNotes debe ser PendingNoteQueue.maxPending"
+    assert "static const int maxClips = 25;" in dart_content, "C-19: StorageService.maxClips debe ser 25"
+    assert ".clamp(0, 64)" in dart_content and "getBottomElevationDp" in dart_content, "C-19: getBottomElevationDp no aplica clamp(0, 64)"
+    assert "dp.clamp(0, 64)" in dart_content, "C-19: setBottomElevationDp no aplica clamp(0, 64)"
+
+    # 3. KeyboardPrefs.kt
+    assert "flutter.kb_stt_key_configured" in kp_content, "C-19: KeyboardPrefs no lee flutter.kb_stt_key_configured"
+    assert ".coerceIn(0, 64)" in kp_content and "bottomElevationDp = try" in kp_content, "C-19: KeyboardPrefs no aplica coerceIn(0, 64) a bottomElevationDp"
+    assert 'listOf("top", "wings")' in kp_content, "C-19: KeyboardPrefs no valida trackpadButtonLayout"
+    assert 'listOf("right", "left", "disabled")' in kp_content, "C-19: KeyboardPrefs no valida trackpadScrollPosition"
+    assert ".coerceIn(0.5f, 2.5f)" in kp_content, "C-19: KeyboardPrefs no acota trackpadSensitivity"
+    assert 'listOf("dynamic", "linear", "precision")' in kp_content, "C-19: KeyboardPrefs no valida trackpadAccelCurve"
+    assert 'listOf("left", "center", "right")' in kp_content, "C-19: KeyboardPrefs no valida spacebarAlignment"
+
+    # 4. LayoutLayer.kt y CredentialStore.kt
+    assert "host.bottomElevationDp().coerceIn(0, 64)" in ll_content, "C-19: LayoutLayer no aplica coerceIn(0, 64)"
+    assert "const val MAX_CREDENTIALS = 50" in cs_content, "C-19: CredentialStore no define MAX_CREDENTIALS = 50"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3320,6 +3380,7 @@ def main():
         ("C-16: spacebar sin fantasmas", test_c16_spacebar_no_ghosts_contract),
         ("C-17: una sola vibración por tecla", test_c17_single_vibration_contract),
         ("C-18: precisión de toques y borrado por lotes", test_c18_touch_precision_contract),
+        ("C-19: puente de claves sano y límites", test_c19_bridge_keys_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

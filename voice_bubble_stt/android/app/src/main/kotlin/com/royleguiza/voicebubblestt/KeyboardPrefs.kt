@@ -21,6 +21,7 @@ class KeyboardPrefs(private val context: Context) {
     var invertToolbar = false
     var spacebarAlignment = "center"
     var spacebarTrackpadMode = "ios_2d" // MEJ-25: "ios_2d" o "gboard_horizontal"
+    var sttKeyConfigured = false
 
     // AT-A8: cache de visibilidad; rebuild jamas consulta SharedPreferences.
     var terminalRowVisiblePref = true
@@ -194,9 +195,22 @@ class KeyboardPrefs(private val context: Context) {
         micStartStyle = readStyle("flutter.kb_mic_start_style")
         micStopStyle = readStyle("flutter.kb_mic_stop_style")
         bottomElevationDp = try {
-            p.getLong("flutter.kb_bottom_elevation_dp", 24L).toInt()
+            val raw = p.all["flutter.kb_bottom_elevation_dp"]
+            val v = when (raw) {
+                is Long -> raw.toInt()
+                is Int -> raw
+                is Number -> raw.toInt()
+                is String -> raw.toIntOrNull() ?: 24
+                else -> 24
+            }
+            v.coerceIn(0, 64)
         } catch (_: Exception) {
             24
+        }
+        sttKeyConfigured = try {
+            p.getBoolean("flutter.kb_stt_key_configured", false)
+        } catch (_: Exception) {
+            false
         }
         invertToolbar = try {
             p.getBoolean("flutter.kb_invert_toolbar", false)
@@ -204,12 +218,14 @@ class KeyboardPrefs(private val context: Context) {
             false
         }
         spacebarAlignment = try {
-            p.getString("flutter.kb_spacebar_alignment", "center") ?: "center"
+            val v = p.getString("flutter.kb_spacebar_alignment", "center") ?: "center"
+            if (v in listOf("left", "center", "right")) v else "center"
         } catch (_: Exception) {
             "center"
         }
         spacebarTrackpadMode = try {
-            p.getString("flutter.kb_spacebar_trackpad_mode", "ios_2d") ?: "ios_2d"
+            val v = p.getString("flutter.kb_spacebar_trackpad_mode", "ios_2d") ?: "ios_2d"
+            if (v in listOf("ios_2d", "gboard_horizontal")) v else "ios_2d"
         } catch (_: Exception) {
             "ios_2d"
         }
@@ -243,9 +259,10 @@ class KeyboardPrefs(private val context: Context) {
             HAPTIC_STYLE_NITIDO
         }
 
-        // MEJ-09: lectura de preferencias del trackpad
+        // MEJ-09: lectura de preferencias del trackpad con whitelists y clamps de contrato (C-19)
         trackpadButtonLayout = try {
-            p.getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
+            val v = p.getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
+            if (v in listOf("top", "wings")) v else "top"
         } catch (_: Exception) {
             "top"
         }
@@ -260,24 +277,27 @@ class KeyboardPrefs(private val context: Context) {
             false
         }
         trackpadScrollPosition = try {
-            p.getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
+            val v = p.getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
+            if (v in listOf("right", "left", "disabled")) v else "right"
         } catch (_: Exception) {
             "right"
         }
         trackpadSensitivity = try {
             val raw = p.all["flutter.kb_trackpad_sensitivity"]
-            when (raw) {
+            val v = when (raw) {
                 is Float -> raw
                 is Double -> raw.toFloat()
                 is Number -> raw.toFloat()
                 is String -> raw.toFloatOrNull() ?: 1.2f
                 else -> 1.2f
             }
+            v.coerceIn(0.5f, 2.5f)
         } catch (_: Exception) {
             1.2f
         }
         trackpadAccelCurve = try {
-            p.getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
+            val v = p.getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
+            if (v in listOf("dynamic", "linear", "precision")) v else "dynamic"
         } catch (_: Exception) {
             "dynamic"
         }
@@ -287,32 +307,37 @@ class KeyboardPrefs(private val context: Context) {
             true
         }
         trackpadSecondaryClick = try {
-            p.getString("flutter.kb_trackpad_secondary_click", "2fingers") ?: "2fingers"
+            val v = p.getString("flutter.kb_trackpad_secondary_click", "2fingers") ?: "2fingers"
+            if (v in listOf("2fingers", "button", "hold")) v else "2fingers"
         } catch (_: Exception) {
             "2fingers"
         }
         trackpadScrollDirection = try {
-            p.getString("flutter.kb_trackpad_scroll_direction", "natural") ?: "natural"
+            val v = p.getString("flutter.kb_trackpad_scroll_direction", "natural") ?: "natural"
+            if (v in listOf("natural", "standard")) v else "natural"
         } catch (_: Exception) {
             "natural"
         }
         trackpadHaptic = try {
-            p.getString("flutter.kb_trackpad_haptic", "subtle") ?: "subtle"
+            val v = p.getString("flutter.kb_trackpad_haptic", "subtle") ?: "subtle"
+            if (v in listOf("subtle", "none", "firm")) v else "subtle"
         } catch (_: Exception) {
             "subtle"
         }
         trackpadPointerStyle = try {
-            p.getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
+            val v = p.getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
+            if (v in listOf("arrow", "dot", "cross")) v else "arrow"
         } catch (_: Exception) {
             "arrow"
         }
         trackpadAutoReturn = try {
             val raw = p.all["flutter.kb_trackpad_auto_return"]
-            when (raw) {
+            val v = when (raw) {
                 is Number -> raw.toInt()
                 is String -> raw.toIntOrNull() ?: 0
                 else -> 0
             }
+            if (v in listOf(0, 5, 15, 30)) v else 0
         } catch (_: Exception) {
             0
         }

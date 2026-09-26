@@ -699,6 +699,7 @@ void main() {
       'kb_spacebar_alignment',
       'kb_spacebar_trackpad_mode',
       'kb_stt_api_key',
+      'kb_stt_key_configured',
       'kb_stt_language',
       'kb_stt_model',
       'kb_stt_url',
@@ -724,8 +725,8 @@ void main() {
       'widget_mic_position',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (50 claves)', () {
-      expect(StorageService.bridgeKeys.length, 50);
+    test('bridgeKeys cubre exactamente el contrato (51 claves)', () {
+      expect(StorageService.bridgeKeys.length, 51);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
     });
 

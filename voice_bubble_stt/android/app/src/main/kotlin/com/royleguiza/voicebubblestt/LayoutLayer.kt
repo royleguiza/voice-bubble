@@ -247,7 +247,7 @@ class LayoutLayer(
             }
             val elevationPx = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
-                host.bottomElevationDp().toFloat(),
+                host.bottomElevationDp().coerceIn(0, 64).toFloat(),
                 host.rootView().resources.displayMetrics,
             ).toInt()
             view.setPadding(padH, padV, padH, padV + bottom + elevationPx)

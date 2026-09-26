@@ -45,6 +45,9 @@ class CredentialStore(private val context: Context) {
         const val KEY_INDEX = "flutter.vb_credentials_v1"
         const val KEY_PASS = "flutter.vb_cred_pass_v1"
         const val KEY_SHOW_USER = "flutter.vb_cred_show_user"
+
+        /** Límite de contrato C-19: paridad con StorageService.maxCredentials (50). */
+        const val MAX_CREDENTIALS = 50
     }
 
     private val cacheLock = Any()
@@ -146,9 +149,11 @@ class CredentialStore(private val context: Context) {
         if (raw.isNullOrBlank()) return emptyList()
         return try {
             val arr = JSONArray(raw)
-            val out = ArrayList<VbCredentialEntry>(arr.length())
+            val max = minOf(arr.length(), MAX_CREDENTIALS)
+            val out = ArrayList<VbCredentialEntry>(max)
             val seen = HashSet<String>()
             for (i in 0 until arr.length()) {
+                if (out.size >= MAX_CREDENTIALS) break
                 val obj = arr.optJSONObject(i)
                 if (obj == null) {
                     Log.w(TAG, "entrada ignorada en indice $i")

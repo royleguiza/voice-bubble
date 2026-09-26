@@ -23,6 +23,7 @@ kb_snippets_seeded
 kb_spacebar_alignment
 kb_spacebar_trackpad_mode
 kb_stt_api_key
+kb_stt_key_configured
 kb_stt_language
 kb_stt_model
 kb_stt_url

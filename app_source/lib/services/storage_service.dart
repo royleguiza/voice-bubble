@@ -10,6 +10,7 @@ import '../models/credential.dart';
 import '../models/snippet.dart';
 import '../models/transcription.dart';
 import 'cloud_stt_service.dart';
+import 'pending_note_queue.dart';
 
 class _HistoryEntry {
   const _HistoryEntry({
@@ -276,6 +277,8 @@ class StorageService {
   static const int maxCredentialNameLength = 80;
   static const int maxCredentialUserLength = 120;
   static const int maxCredentialPassLength = 256;
+  static const int maxPendingNotes = PendingNoteQueue.maxPending;
+  static const int maxClips = 25;
   static const String recordModeHold = 'hold';
 
   // --- Rangos centralizados (única fuente; la UI no re-clampea) ---
@@ -316,26 +319,72 @@ class StorageService {
   // --- Puente tipado SPK-07: 4 primitivas + validadas (única vía de
   // acceso a prefs planas; cada clave nueva usa estas y entra en
   // [bridgeKeys], que el master verifica contra contract-keys.txt) ---
-  Future<bool> _getBool(String key, bool def) async =>
-      (await _prefs()).getBool(key) ?? def;
+  Future<bool> _getBool(String key, bool def) async {
+    try {
+      final p = await _prefs();
+      final val = p.get(key);
+      if (val is bool) return val;
+      if (val is String) {
+        final lower = val.trim().toLowerCase();
+        if (lower == 'true') return true;
+        if (lower == 'false') return false;
+      }
+      return def;
+    } catch (_) {
+      return def;
+    }
+  }
+
   Future<void> _setBool(String key, bool value) async {
     await (await _prefs()).setBool(key, value);
   }
 
-  Future<String> _getString(String key, String def) async =>
-      (await _prefs()).getString(key) ?? def;
+  Future<String> _getString(String key, String def) async {
+    try {
+      final p = await _prefs();
+      final val = p.get(key);
+      if (val is String) return val;
+      if (val != null) return val.toString();
+      return def;
+    } catch (_) {
+      return def;
+    }
+  }
+
   Future<void> _setString(String key, String value) async {
     await (await _prefs()).setString(key, value);
   }
 
-  Future<int> _getInt(String key, int def) async =>
-      (await _prefs()).getInt(key) ?? def;
+  Future<int> _getInt(String key, int def) async {
+    try {
+      final p = await _prefs();
+      final val = p.get(key);
+      if (val is int) return val;
+      if (val is num) return val.toInt();
+      if (val is String) return int.tryParse(val) ?? def;
+      return def;
+    } catch (_) {
+      return def;
+    }
+  }
+
   Future<void> _setInt(String key, int value) async {
     await (await _prefs()).setInt(key, value);
   }
 
-  Future<double> _getDouble(String key, double def) async =>
-      (await _prefs()).getDouble(key) ?? def;
+  Future<double> _getDouble(String key, double def) async {
+    try {
+      final p = await _prefs();
+      final val = p.get(key);
+      if (val is double) return val;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val) ?? def;
+      return def;
+    } catch (_) {
+      return def;
+    }
+  }
+
   Future<void> _setDouble(String key, double value) async {
     await (await _prefs()).setDouble(key, value);
   }
@@ -344,8 +393,14 @@ class StorageService {
   /// default (nunca null, nunca basura en el IME).
   Future<String> _getValidatedString(
           String key, List<String> valid, String def) async {
-    final val = (await _prefs()).getString(key);
-    return valid.contains(val) ? val! : def;
+    try {
+      final p = await _prefs();
+      final raw = p.get(key);
+      final val = raw is String ? raw : (raw != null ? raw.toString() : null);
+      return (val != null && valid.contains(val)) ? val : def;
+    } catch (_) {
+      return def;
+    }
   }
 
   Future<void> _setValidatedString(
@@ -355,8 +410,12 @@ class StorageService {
   }
 
   Future<int> _getValidatedInt(String key, List<int> valid, int def) async {
-    final val = (await _prefs()).getInt(key);
-    return valid.contains(val) ? val! : def;
+    try {
+      final val = await _getInt(key, def);
+      return valid.contains(val) ? val : def;
+    } catch (_) {
+      return def;
+    }
   }
 
   Future<void> _setValidatedInt(
@@ -480,7 +539,7 @@ class StorageService {
   /// como const para entrar a [bridgeKeys] (el master exige que cada
   /// ident del puente exista en este archivo). La escribe Dart
   /// (PendingNoteQueue) y el widget Kotlin; nadie la lee en el IME.
-  static const String notesPendingKey = 'voice_notes_pending_v1';
+  static const String notesPendingKey = PendingNoteQueue.pendingKey;
 
   static const String kbHeightProfileKey = 'kb_height_profile';
   static const String kbHapticsEnabledKey = 'kb_haptics_enabled';
@@ -489,11 +548,13 @@ class StorageService {
 
   static const int defaultBottomElevationDp = 24;
 
-  Future<int> getBottomElevationDp() =>
-      _getInt(kbBottomElevationDpKey, defaultBottomElevationDp);
+  Future<int> getBottomElevationDp() async {
+    final v = await _getInt(kbBottomElevationDpKey, defaultBottomElevationDp);
+    return v.clamp(0, 64);
+  }
 
   Future<void> setBottomElevationDp(int dp) =>
-      _setInt(kbBottomElevationDpKey, dp);
+      _setInt(kbBottomElevationDpKey, dp.clamp(0, 64));
 
   Future<bool> getInvertToolbar() => _getBool(kbInvertToolbarKey, false);
 
@@ -831,6 +892,7 @@ class StorageService {
     kbSpacebarAlignmentKey,
     kbSpacebarTrackpadModeKey,
     sttApiKeyMirrorKey,
+    sttKeyConfiguredKey,
     _sttLanguageKey,
     _sttModelKey,
     _sttUrlKey,
