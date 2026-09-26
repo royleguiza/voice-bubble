@@ -8,6 +8,7 @@ import 'settings/general_tab.dart';
 import 'settings/snippets_tab.dart';
 import 'settings/teclado_tab.dart';
 import 'settings/trackpad_tab.dart';
+import '../services/channel_guard.dart';
 import '../services/storage_service.dart';
 import '../services/widget_service.dart';
 import '../ui/theme_mode.dart';
@@ -638,6 +639,24 @@ class _SettingsScreenState extends State<SettingsScreen>
                   Text(
                     'El teclado jamás registra ni guarda lo que escribes. '
                     'Sin dictado ni snippets en campos de contraseña.',
+                    style: Theme.of(modalContext)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(
+                          color: Theme.of(modalContext)
+                              .colorScheme
+                              .onSurfaceVariant,
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Diagnóstico',
+                    style:
+                        Theme.of(modalContext).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Errores de fondo/canal: $channelErrorCount',
                     style: Theme.of(modalContext)
                         .textTheme
                         .bodySmall

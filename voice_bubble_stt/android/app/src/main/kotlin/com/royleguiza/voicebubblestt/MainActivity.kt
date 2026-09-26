@@ -266,6 +266,7 @@ class MainActivity : FlutterActivity() {
                     val map = HashMap<String, String?>()
                     map["action"] = pendingWidgetAction
                     map["noteId"] = pendingWidgetNoteId
+                    map["note_id"] = pendingWidgetNoteId
                     // Consumir una vez
                     pendingWidgetAction = null
                     pendingWidgetNoteId = null

@@ -36,6 +36,7 @@ class FloatingTrackpadService : Service() {
     companion object {
         const val ACTION_STOP = "com.royleguiza.voicebubblestt.ACTION_STOP_TRACKPAD"
         const val ACTION_SHOW_DOCK = "com.royleguiza.voicebubblestt.ACTION_SHOW_DOCK"
+        const val ACTION_SHOW_MINIPAD = "com.royleguiza.voicebubblestt.ACTION_SHOW_MINIPAD"
 
         @Volatile
         var isRunning: Boolean = false
@@ -100,6 +101,7 @@ class FloatingTrackpadService : Service() {
         }
         when (intent?.action) {
             ACTION_SHOW_DOCK -> expandToDock()
+            ACTION_SHOW_MINIPAD -> expandToMiniPad()
         }
         // START_NOT_STICKY: servicio de UI bajo demanda, sin foreground ni
         // estado que rescatar. Si el proceso muere, el sistema NO lo resucita

@@ -94,8 +94,11 @@ void releaseAutoTemporaryDirectory() {
   } catch (_) {}
 }
 
+String? _activeMockRootDirectory;
+
 void registerAppChannelMocks({String? temporaryDirectory}) {
   final root = temporaryDirectory ?? _claimAutoTemporaryDirectory();
+  _activeMockRootDirectory = root;
   try {
     final file = File('$root/transcription_history.json');
     // Sync a propósito: setup de tests con archivos reales (la regla
@@ -146,7 +149,17 @@ void registerAppChannelMocks({String? temporaryDirectory}) {
 }
 
 void unregisterAppChannelMocks() {
+  final root = _activeMockRootDirectory;
+  _activeMockRootDirectory = null;
   releaseAutoTemporaryDirectory();
+  if (root != null) {
+    try {
+      final file = File('$root/transcription_history.json');
+      if (file.existsSync()) file.deleteSync();
+      final tmp = File('$root/transcription_history.json.tmp');
+      if (tmp.existsSync()) tmp.deleteSync();
+    } catch (_) {}
+  }
   try {
     final file = File('/tmp/transcription_history.json');
     // Sync a propósito en teardown (ver arriba).

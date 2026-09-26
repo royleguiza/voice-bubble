@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
@@ -119,5 +120,29 @@ void main() {
         expect(mockRecorder.lastStartedPath, '/tmp/test.wav');
       },
     );
+  });
+
+  group('ClipboardStore & StorageService - kb_clipboard_images_enabled (C-36)', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('flag kb_clipboard_images_enabled es false por defecto (texto primero)', () async {
+      final storage = StorageService();
+      expect(await storage.getClipboardImagesEnabled(), isFalse);
+    });
+
+    test('activar y desactivar kb_clipboard_images_enabled persiste valor', () async {
+      final storage = StorageService();
+      await storage.setClipboardImagesEnabled(true);
+      expect(await storage.getClipboardImagesEnabled(), isTrue);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool(StorageService.kbClipboardImagesEnabledKey), isTrue);
+
+      await storage.setClipboardImagesEnabled(false);
+      expect(await storage.getClipboardImagesEnabled(), isFalse);
+      expect(prefs.getBool(StorageService.kbClipboardImagesEnabledKey), isFalse);
+    });
   });
 }

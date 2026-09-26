@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen>
     try {
       final action = await WidgetService().getInitialAction();
       final act = action['action'];
-      final noteId = action['noteId'];
+      final noteId = action['noteId'] ?? action['note_id'];
       if (!mounted) return;
       if (act == 'open_notes') {
         if (!mounted) return;

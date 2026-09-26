@@ -180,7 +180,12 @@ class TrackpadBridge(
         return created
     }
 
-    private fun dispatchTap(x: Float, y: Float) {
+    /**
+     * Fallback DPAD vigente (C-36): si Accesibilidad no está activa,
+     * despacha KEYCODE_DPAD_CENTER mediante InputConnection.
+     */
+    @androidx.annotation.VisibleForTesting
+    internal fun dispatchTap(x: Float, y: Float) {
         if (VoiceBubbleAccessibilityService.isConnected()) {
             VoiceBubbleAccessibilityService.dispatchTap(x, y)
             return
@@ -189,7 +194,12 @@ class TrackpadBridge(
         service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)
     }
 
-    private fun dispatchLongPress(x: Float, y: Float) {
+    /**
+     * Fallback DPAD vigente (C-36): si Accesibilidad no está activa,
+     * despacha KEYCODE_MENU mediante InputConnection.
+     */
+    @androidx.annotation.VisibleForTesting
+    internal fun dispatchLongPress(x: Float, y: Float) {
         if (VoiceBubbleAccessibilityService.isConnected()) {
             VoiceBubbleAccessibilityService.dispatchLongPress(x, y)
             return
@@ -198,7 +208,12 @@ class TrackpadBridge(
         service.sendDownUpKeyEvents(KeyEvent.KEYCODE_MENU)
     }
 
-    private fun dispatchScroll(x: Float, y: Float, deltaY: Float) {
+    /**
+     * Fallback DPAD vigente (C-36): si Accesibilidad no está activa,
+     * despacha KEYCODE_DPAD_DOWN / KEYCODE_DPAD_UP mediante InputConnection.
+     */
+    @androidx.annotation.VisibleForTesting
+    internal fun dispatchScroll(x: Float, y: Float, deltaY: Float) {
         if (VoiceBubbleAccessibilityService.isConnected()) {
             VoiceBubbleAccessibilityService.dispatchScroll(x, y, deltaY)
             return

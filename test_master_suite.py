@@ -62,6 +62,7 @@ SUITES = [
     ("Settings y Home sin rebuilds + keys (C-33)", "test_c33_no_rebuilds_and_keys_suite.py"),
     ("Firma, lockfile y https (C-34)", "test_c34_signing_lockfile_and_https_suite.py"),
     ("Logs, borrado, widget y errores (C-35)", "test_c35_logs_deletion_widget_errors_suite.py"),
+    ("Muertos sincerados (C-36)", "test_c36_sincerar_muertos_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3932,6 +3933,49 @@ def test_c35_logs_deletion_widget_errors_contract():
         bubble = f.read()
     assert "Color.WHITE" not in bubble and "R.color.kb_label_on_accent" in bubble, "C-35: FloatingBubbleService con Color.WHITE o sin token"
 
+def test_c36_sincerar_muertos_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    tb_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "TrackpadBridge.kt")
+    ftp_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "FloatingTrackpadService.kt")
+    settings_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings_screen.dart")
+    main_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "MainActivity.kt")
+    home_file = os.path.join(base_dir, "app_source", "lib", "screens", "home_screen.dart")
+    history_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "TranscriptionHistoryRepository.kt")
+    mocks_file = os.path.join(base_dir, "app_source", "test", "helpers", "mock_channels.dart")
+    clip_file = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "ClipboardStore.kt")
+
+    with open(tb_file, "r", encoding="utf-8") as f:
+        tb = f.read()
+    assert "VisibleForTesting" in tb and "KEYCODE_DPAD_CENTER" in tb, "C-36: TrackpadBridge sin VisibleForTesting o DPAD fallback"
+
+    with open(ftp_file, "r", encoding="utf-8") as f:
+        ftp = f.read()
+    assert "ACTION_SHOW_MINIPAD" in ftp and "expandToMiniPad()" in ftp, "C-36: FloatingTrackpadService sin ACTION_SHOW_MINIPAD"
+
+    with open(settings_file, "r", encoding="utf-8") as f:
+        settings = f.read()
+    assert "channelErrorCount" in settings and "channel_guard.dart" in settings, "C-36: settings_screen sin channelErrorCount en Diagnóstico"
+
+    with open(main_file, "r", encoding="utf-8") as f:
+        main_kt = f.read()
+    assert 'map["note_id"] = pendingWidgetNoteId' in main_kt, "C-36: MainActivity no puebla note_id"
+
+    with open(home_file, "r", encoding="utf-8") as f:
+        home = f.read()
+    assert "action['noteId'] ?? action['note_id']" in home or "action['note_id']" in home, "C-36: home_screen no soporta note_id"
+
+    with open(history_file, "r", encoding="utf-8") as f:
+        hist = f.read()
+    assert "StringSet" not in hist, "C-36: TranscriptionHistoryRepository con migración muerta StringSet"
+
+    with open(mocks_file, "r", encoding="utf-8") as f:
+        mocks = f.read()
+    assert "_activeMockRootDirectory" in mocks, "C-36: mock_channels no rastrea directorio real de mock"
+
+    with open(clip_file, "r", encoding="utf-8") as f:
+        clip = f.read()
+    assert "imagesEnabled()" in clip and "!imagesEnabled()" in clip, "C-36: ClipboardStore sin gate imagesEnabled"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3980,6 +4024,7 @@ def main():
         ("C-33: settings y home sin rebuilds + keys", test_c33_no_rebuilds_and_keys_contract),
         ("C-34: firma, lockfile y https", test_c34_signing_lockfile_and_https_contract),
         ("C-35: logs, borrado seguro, widget discreto y errores acotados", test_c35_logs_deletion_widget_errors_contract),
+        ("C-36: muertos sincerados", test_c36_sincerar_muertos_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:
