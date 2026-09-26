@@ -269,14 +269,27 @@ void main() {
     }
   });
 
-  void pumpUntilRecordMode(
+  // _init de HomeScreen carga el modo en async post-frame: sondear hasta
+  // 2s antes de afirmar (la pantalla recreada de la Fase B puede llegar
+  // con el setState todavía en vuelo tras el pumpAndSettle).
+  Future<void> pumpUntilRecordMode(
     WidgetTester tester,
     _ReadyStorageService storage,
     String mode,
-  ) {
+  ) async {
     final finder = find.byKey(const ValueKey('recordButton'));
-    final button = tester.widget<RecordButton>(finder);
     final expectsHold = mode == StorageService.recordModeHold;
+    for (var i = 0; i < 20; i++) {
+      final button = tester.widget<RecordButton>(finder);
+      if (storage.loadedMode == mode &&
+          (button.onPressed == null) == expectsHold &&
+          (button.onHoldStart != null) == expectsHold &&
+          (button.onHoldEnd != null) == expectsHold) {
+        return;
+      }
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    final button = tester.widget<RecordButton>(finder);
     expect(storage.loadedMode, mode);
     expect((button.onPressed == null), expectsHold);
     expect((button.onHoldStart != null), expectsHold);
@@ -488,7 +501,7 @@ void main() {
         bundleA.bubble,
         bundleA.recorder,
       );
-      pumpUntilRecordMode(
+      await pumpUntilRecordMode(
         tester,
         bundleA.storage,
         StorageService.recordModeHold,
@@ -533,7 +546,7 @@ void main() {
         bundleB.bubble,
         bundleB.recorder,
       );
-      pumpUntilRecordMode(
+      await pumpUntilRecordMode(
         tester,
         bundleB.storage,
         StorageService.recordModeHold,
@@ -560,7 +573,7 @@ void main() {
         bundleC.bubble,
         bundleC.recorder,
       );
-      pumpUntilRecordMode(
+      await pumpUntilRecordMode(
         tester,
         bundleC.storage,
         StorageService.defaultRecordMode,
