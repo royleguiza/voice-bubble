@@ -11,6 +11,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.atomic.AtomicReference
 import java.io.DataOutputStream
 import java.io.IOException
 
@@ -169,7 +170,10 @@ class SpeechToTextClient(
         }
     }
 
-    /** Cancela sin transcribir: descarta el audio capturado.
+    /** Conexión HTTP activa en vuelo (C-09): AtomicReference para corte inmediato sin fugas. */
+    internal val activeConnection = AtomicReference<HttpURLConnection?>(null)
+
+    /** Cancela sin transcribir: descarta el audio capturado y corta la red de verdad (C-09).
      * Síncrono y BLOQUEANTE (join hasta 2.5 s): solo fuera del main;
      * desde el main envolver con `BackgroundWork.execute`. Idempotente. */
     fun cancelRecording() {
@@ -181,6 +185,9 @@ class SpeechToTextClient(
             audioRecord = null
             synchronized(pcmBuffer) { pcmBuffer.reset() }
         }
+        try {
+            activeConnection.getAndSet(null)?.disconnect()
+        } catch (_: Exception) {}
     }
 
     /** Cabecera RIFF valida (leccion 9.1-13: contenedor WAV real). */
@@ -228,6 +235,15 @@ class SpeechToTextClient(
                 val boundary = "vb${System.currentTimeMillis()}"
                 val active = URL(config.url).openConnection() as HttpURLConnection
                 conn = active
+                activeConnection.set(active)
+
+                if (cancelRequested) {
+                    active.disconnect()
+                    activeConnection.compareAndSet(active, null)
+                    onDone(null)
+                    return@execute
+                }
+
                 active.requestMethod = "POST"
                 active.doOutput = true
                 active.connectTimeout = 15000
@@ -236,6 +252,16 @@ class SpeechToTextClient(
                 active.setRequestProperty(
                     "Content-Type", "multipart/form-data; boundary=$boundary",
                 )
+
+                // C-09: chequear cancelRequested tras connect
+                active.connect()
+                if (cancelRequested) {
+                    active.disconnect()
+                    activeConnection.compareAndSet(active, null)
+                    onDone(null)
+                    return@execute
+                }
+
                 DataOutputStream(active.outputStream).use { d ->
                     fun field(name: String, value: String) {
                         d.writeBytes("--$boundary\r\n")
@@ -247,15 +273,64 @@ class SpeechToTextClient(
                     d.writeBytes("--$boundary\r\n")
                     d.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\n")
                     d.writeBytes("Content-Type: audio/wav\r\n\r\n")
-                    d.write(wav)
+
+                    // C-09: escritura por tramos comprobando cancelación
+                    val chunk = 4096
+                    var offset = 0
+                    while (offset < wav.size) {
+                        if (cancelRequested) {
+                            active.disconnect()
+                            activeConnection.compareAndSet(active, null)
+                            onDone(null)
+                            return@execute
+                        }
+                        val len = minOf(chunk, wav.size - offset)
+                        d.write(wav, offset, len)
+                        offset += len
+                    }
                     d.writeBytes("\r\n--$boundary--\r\n")
                     d.flush()
                 }
+
+                if (cancelRequested) {
+                    active.disconnect()
+                    activeConnection.compareAndSet(active, null)
+                    onDone(null)
+                    return@execute
+                }
+
                 val code = active.responseCode
-                val body = (if (code in 200..299) active.inputStream else active.errorStream)
-                    ?.bufferedReader()?.use { it.readText() } ?: ""
+
+                if (cancelRequested) {
+                    active.disconnect()
+                    activeConnection.compareAndSet(active, null)
+                    onDone(null)
+                    return@execute
+                }
+
+                // C-09: lectura por tramos comprobando cancelRequested en cada tramo
+                val stream = if (code in 200..299) active.inputStream else active.errorStream
+                val body = if (stream != null) {
+                    val reader = stream.bufferedReader()
+                    val sb = StringBuilder()
+                    val charBuf = CharArray(1024)
+                    var charsRead: Int
+                    while (reader.read(charBuf).also { charsRead = it } != -1) {
+                        if (cancelRequested) {
+                            active.disconnect()
+                            activeConnection.compareAndSet(active, null)
+                            onDone(null)
+                            return@execute
+                        }
+                        sb.append(charBuf, 0, charsRead)
+                    }
+                    sb.toString()
+                } else {
+                    ""
+                }
+
                 // La respuesta puede llegar despues de que el usuario cancelo:
-                // el upload siguio corriendo. onDone(null) senala cancelacion.
+                // onDone(null) senala cancelacion.
                 if (cancelRequested) {
                     onDone(null)
                     return@execute
@@ -266,11 +341,19 @@ class SpeechToTextClient(
                     onError(errorDetail(code, body))
                 }
             } catch (_: IOException) {
+                if (cancelRequested) {
+                    onDone(null)
+                    return@execute
+                }
                 onError(
                     if (spanishModeProvider()) "Sin conexión a internet."
                     else "No internet connection."
                 )
             } catch (_: Exception) {
+                if (cancelRequested) {
+                    onDone(null)
+                    return@execute
+                }
                 onError(
                     if (spanishModeProvider()) "No se pudo procesar la respuesta."
                     else "Could not process the response."
@@ -279,6 +362,7 @@ class SpeechToTextClient(
                 // La conexión se libera en TODOS los caminos (éxito, error,
                 // cancelación a mitad de vuelo y fallo de setup): sin esto el
                 // pool de conexiones retiene sockets hasta el GC finalizer.
+                activeConnection.compareAndSet(conn, null)
                 try {
                     conn?.disconnect()
                 } catch (_: Exception) {}
@@ -286,10 +370,6 @@ class SpeechToTextClient(
         }
     }
 
-    /**
-     * Espeja la clasificacion de errores de CloudSttService (Dart), con la
-     * variante es/en segun el idioma activo del teclado (K5-T4).
-     */
     private fun errorDetail(code: Int, body: String): String {
         val remoteMessage = try {
             JSONObject(body).optJSONObject("error")?.optString("message") ?: ""

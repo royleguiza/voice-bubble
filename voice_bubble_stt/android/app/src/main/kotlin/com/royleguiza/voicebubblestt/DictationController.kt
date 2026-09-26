@@ -172,7 +172,7 @@ class DictationController(
                 when (micState) {
                     MicState.RECORDING -> cancelDictation(announce = true)
                     MicState.IDLE, MicState.BUSY -> host.showHistoryPopup(container)
-                    MicState.PROCESSING -> { /* transcribiendo: ignorar */ }
+                    MicState.PROCESSING -> cancelDictation()
                 }
             },
             onTapUp = { handleMicTap() },
@@ -186,6 +186,10 @@ class DictationController(
         proc.setBackgroundResource(R.drawable.kb_key_alt)
         proc.isClickable = true
         proc.isFocusable = true
+        proc.setOnClickListener {
+            host.pressHaptic(proc)
+            cancelDictation()
+        }
         proc.layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -411,7 +415,7 @@ class DictationController(
         when (micState) {
             MicState.IDLE, MicState.BUSY -> startDictation()
             MicState.RECORDING -> finishDictation()
-            MicState.PROCESSING -> { /* en curso: ignorar toques */ }
+            MicState.PROCESSING -> cancelDictation()
         }
     }
 
@@ -566,10 +570,19 @@ class DictationController(
                 }
                 return@execute
             }
+            if (generation != transcriptionGeneration) return@execute
             sttClient.transcribe(
                 wav,
                 config,
                 onDone = { text ->
+                    // C-09: text == null indica cancelación inmediata
+                    if (text == null) {
+                        runOnMain {
+                            if (generation != transcriptionGeneration) return@runOnMain
+                            micIdle()
+                        }
+                        return@onDone
+                    }
                     // AT-A3: historial (lectura de disco + XML + prefs) en el
                     // hilo de fondo del cliente; sus callbacks jamas llegan
                     // por el hilo principal.

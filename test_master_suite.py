@@ -35,6 +35,7 @@ SUITES = [
     ("Conexión: blindaje del teclado ante conexión muerta (C-06)", "test_c06_dead_connection_suite.py"),
     ("Claves: relleno de claves seguro (C-07)", "test_c07_credentials_safe_fill_suite.py"),
     ("Vistas: rebuild solo cuando toca y blindaje restart (C-08)", "test_c08_rebuild_guards_suite.py"),
+    ("Red: cancelar corta la red de verdad (C-09)", "test_c09_cancel_network_suite.py"),
 ]
 
 def run_test(name, func):
@@ -2835,6 +2836,52 @@ def test_c08_rebuild_guards_contract():
     assert "cur != Layer.CLIPBOARD" in track, "C-08: TrackpadBridge.toggle no previene Layer.CLIPBOARD"
     assert "private var origin = Layer.LETTERS" in clip, "C-08: ClipboardLayer no tiene variable origin privada"
 
+def test_c09_cancel_network_contract():
+    """
+    Guarda C-09: Cancelar corta la red de verdad.
+    Verifica:
+    1. HttpURLConnection almacenada en AtomicReference en SpeechToTextClient.kt.
+    2. cancelRecording() invoca disconnect() sobre activeConnection.
+    3. active.connect() llamado explícitamente y chequeo de cancelRequested inmediatamente tras connect.
+    4. Transmisión y lectura por tramos comprobando cancelRequested en cada iteración.
+    5. DictationController permite cancelar dictado ante toque en vista proc o long-press en PROCESSING.
+    6. DictationController aborta antes de transcribe() si la generación cambió.
+    """
+    base_kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    stt_path = os.path.join(base_kt, "SpeechToTextClient.kt")
+    dict_path = os.path.join(base_kt, "DictationController.kt")
+
+    assert os.path.isfile(stt_path), f"Falta archivo: {stt_path}"
+    assert os.path.isfile(dict_path), f"Falta archivo: {dict_path}"
+
+    with open(stt_path, "r", encoding="utf-8") as f:
+        stt = f.read()
+    with open(dict_path, "r", encoding="utf-8") as f:
+        dic = f.read()
+
+    # 1. AtomicReference y disconnect en cancelRecording
+    assert "AtomicReference<HttpURLConnection?>" in stt, "C-09: falta AtomicReference para HttpURLConnection"
+    cancel_rec = stt[stt.find("fun cancelRecording()") : stt.find("private fun buildWav")]
+    assert "activeConnection.getAndSet(null)?.disconnect()" in cancel_rec, "C-09: cancelRecording no desconecta activeConnection"
+
+    # 2. transcribe() almacena activeConnection y verifica connect
+    transcribe_fn = stt[stt.find("fun transcribe(") : stt.find("private fun errorDetail")]
+    assert "activeConnection.set(active)" in transcribe_fn, "C-09: transcribe no registra activeConnection"
+    assert "active.connect()" in transcribe_fn, "C-09: transcribe no llama a active.connect()"
+
+    connect_pos = transcribe_fn.find("active.connect()")
+    cancel_after_connect = transcribe_fn.find("if (cancelRequested)", connect_pos)
+    assert connect_pos != -1 and cancel_after_connect != -1 and cancel_after_connect < transcribe_fn.find("DataOutputStream", connect_pos), "C-09: no verifica cancelRequested tras active.connect()"
+
+    # 3. Lectura por tramos y ausencia de readText monolítico
+    assert "while (reader.read(charBuf)" in transcribe_fn, "C-09: falta lectura por tramos"
+    assert "readText()" not in transcribe_fn, "C-09: lectura monolítica readText presente en transcribe"
+
+    # 4. DictationController controles de cancelación en PROCESSING
+    assert "proc.setOnClickListener {" in dic and "cancelDictation()" in dic, "C-09: proc view no cancela dictado"
+    assert "MicState.PROCESSING -> cancelDictation()" in dic, "C-09: handleMicTap no cancela en PROCESSING"
+    assert "if (generation != transcriptionGeneration) return@execute" in dic, "C-09: finishDictation no aborta antes de transcribe ante cambio de generación"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -2856,6 +2903,7 @@ def main():
         ("C-06: blindaje del teclado ante conexión muerta", test_c06_dead_connection_contract),
         ("C-07: relleno de claves seguro", test_c07_credentials_safe_fill_contract),
         ("C-08: rebuild solo cuando toca y blindaje restart", test_c08_rebuild_guards_contract),
+        ("C-09: cancelar corta la red de verdad", test_c09_cancel_network_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:
