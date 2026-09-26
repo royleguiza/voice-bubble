@@ -7,6 +7,8 @@ import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
 import android.os.Bundle
+import android.os.SystemClock
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
@@ -60,6 +62,16 @@ class WidgetNoteEditActivity : Activity() {
     private var noteReadyForSave = false
     private var deleteAvailable = false
     private var pendingMode = false
+    private val transcribeInProgress = AtomicBoolean(false)
+
+    // C-40: expansión del cuerpo por arrastre del tirador.
+    private var cachedBodyMinPx = 0
+    private var bodyMaxPx = 0
+    private var dragPointer = -1
+    private var dragStartY = 0f
+    private var dragStartH = 0
+    private var lastTapUp = 0L
+    private var lastTapY = 0f
 
     // singleTop: si llega otro tap con la modal abierta, se reutiliza en
     // vez de apilar instancias (evita las "5 ventanas" encadenadas).
@@ -75,6 +87,12 @@ class WidgetNoteEditActivity : Activity() {
         // Tocar fuera cierra sin guardar (igual que la X).
         try {
             setFinishOnTouchOutside(true)
+        } catch (_: Exception) {}
+        // La ventana es translúcida a pantalla completa: el toque "fuera"
+        // cae dentro de la ventana sobre overlay_root, así que se cierra
+        // a mano (la tarjeta interior lo consume con clickable=true).
+        try {
+            findViewById<View>(R.id.overlay_root).setOnClickListener { finish() }
         } catch (_: Exception) {}
 
         val rawNoteId = intent.getStringExtra("note_id")
@@ -115,6 +133,10 @@ class WidgetNoteEditActivity : Activity() {
         setupEditorWindow()
         val titleEt = findViewById<EditText>(R.id.edit_title)
         val bodyEt = findViewById<EditText>(R.id.edit_body)
+        // Un solo atrás cierra igual que la X aunque el teclado esté
+        // visible (onKeyPreIme corre antes de que el IME consuma el gesto).
+        (titleEt as? DismissEditText)?.onBackWhileEditing = { hideKeyboardAndFinish() }
+        (bodyEt as? DismissEditText)?.onBackWhileEditing = { hideKeyboardAndFinish() }
         findViewById<View>(R.id.btn_copy).setOnClickListener {
             val text = bodyEt.text.toString()
             if (text.isBlank()) {
@@ -185,9 +207,153 @@ class WidgetNoteEditActivity : Activity() {
                 @Suppress("DEPRECATION")
                 val imeBottom = insets.systemWindowInsetBottom
                 view.setPadding(side, view.paddingTop, side, imeBottom)
+                // El área visible cambió (teclado/rotación): re-clampear.
+                recomputeBodyMax()
                 insets
             }
         } catch (_: Exception) {}
+        setupExpandableBody()
+    }
+
+    /** Máximo del cuerpo: lo visible menos el cromo de la tarjeta. Puro. */
+    internal fun computeBodyMaxPx(
+        rootH: Int,
+        rootPadBottom: Int,
+        chromeH: Int,
+        marginPx: Int,
+        topPx: Int,
+        minPx: Int,
+    ): Int {
+        if (rootH <= 0 || chromeH < 0 || minPx <= 0) return minPx
+        return maxOf(minPx, rootH - rootPadBottom - chromeH - marginPx - topPx)
+    }
+
+    /** Clamp del alto deseado al rango vigente. Puro. */
+    internal fun clampBodyHeight(want: Int, minPx: Int, maxPx: Int): Int {
+        if (minPx <= 0) return want
+        return want.coerceIn(minPx, maxOf(minPx, maxPx))
+    }
+
+    private fun bodyMinPx(): Int {
+        if (cachedBodyMinPx > 0) return cachedBodyMinPx
+        val density = resources.displayMetrics.density
+        if (density <= 0) return 0
+        cachedBodyMinPx = (120 * density).toInt()
+        return cachedBodyMinPx
+    }
+
+    private fun recomputeBodyMax() {
+        try {
+            val density = resources.displayMetrics.density
+            if (density <= 0) return
+            val min = bodyMinPx()
+            if (min <= 0) return
+            val root = findViewById<View>(R.id.overlay_root) ?: return
+            val card = findViewById<View>(R.id.note_card) ?: return
+            val body = findViewById<View>(R.id.edit_body) ?: return
+            if (root.height <= 0 || card.height <= 0 || body.height <= 0) return
+            val margin = (12 * density).toInt()
+            bodyMaxPx = computeBodyMaxPx(
+                root.height, root.paddingBottom,
+                card.height - body.height, margin, margin, min,
+            )
+            val lp = body.layoutParams ?: return
+            if (lp.height > 0 && (lp.height < min || lp.height > bodyMaxPx)) {
+                lp.height = clampBodyHeight(lp.height, min, bodyMaxPx)
+                body.requestLayout()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    /**
+     * C-40: el tirador amplía SOLO el cuerpo (título y botonera fijos).
+     * Arrastrar sigue al dedo 1:1 con clamp; doble-tap alterna min/max.
+     * Multi-touch: se sigue únicamente el primer puntero.
+     */
+    private fun setupExpandableBody() {
+        val handle = try {
+            findViewById<View>(R.id.btn_expand_handle)
+        } catch (_: Exception) {
+            null
+        } ?: return
+        recomputeBodyMax()
+        handle.setOnTouchListener { _, event ->
+            try {
+                val body = findViewById<View>(R.id.edit_body) ?: return@setOnTouchListener false
+                val density = resources.displayMetrics.density
+                if (density <= 0) return@setOnTouchListener false
+                val min = bodyMinPx()
+                if (min <= 0) return@setOnTouchListener false
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        recomputeBodyMax()
+                        dragPointer = event.getPointerId(event.actionIndex)
+                        dragStartY = yOf(event, dragPointer)
+                        dragStartH = body.height
+                        true
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (dragPointer < 0) return@setOnTouchListener false
+                        val y = yOf(event, dragPointer)
+                        if (y.isNaN()) return@setOnTouchListener true
+                        val lp = body.layoutParams ?: return@setOnTouchListener false
+                        lp.height = clampBodyHeight(
+                            dragStartH + (dragStartY - y).toInt(), min, bodyMaxPx,
+                        )
+                        body.requestLayout()
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        val now = SystemClock.uptimeMillis()
+                        val tapH = 10 * density
+                        if (dragPointer >= 0 && now - lastTapUp < 300 &&
+                            kotlin.math.abs(event.rawY - lastTapY) < tapH
+                        ) {
+                            toggleBodyHeight()
+                            lastTapUp = 0L
+                        } else {
+                            lastTapUp = now
+                            lastTapY = event.rawY
+                        }
+                        dragPointer = -1
+                        true
+                    }
+                    MotionEvent.ACTION_CANCEL -> {
+                        dragPointer = -1
+                        true
+                    }
+                    MotionEvent.ACTION_POINTER_UP -> {
+                        if (event.getPointerId(event.actionIndex) == dragPointer) {
+                            dragPointer = -1
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
+    private fun yOf(event: MotionEvent, pointerId: Int): Float {
+        val idx = event.findPointerIndex(pointerId)
+        if (idx < 0) return Float.NaN
+        return event.getY(idx)
+    }
+
+    private fun toggleBodyHeight() {
+        try {
+            val body = findViewById<View>(R.id.edit_body) ?: return
+            val min = bodyMinPx()
+            if (min <= 0) return
+            recomputeBodyMax()
+            val lp = body.layoutParams ?: return
+            lp.height = if (body.height >= bodyMaxPx - 2) min else bodyMaxPx
+            body.requestLayout()
+        } catch (_: Exception) {
+        }
     }
 
     private fun focusEditor() {
@@ -197,6 +363,16 @@ class WidgetNoteEditActivity : Activity() {
             val input = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             input.showSoftInput(bodyEt, InputMethodManager.SHOW_IMPLICIT)
         } catch (_: Exception) {}
+    }
+
+    /** Cierra sin guardar igual que la X (toque fuera o atrás único). */
+    private fun hideKeyboardAndFinish() {
+        try {
+            val input = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            val view = currentFocus ?: findViewById(R.id.edit_body)
+            input.hideSoftInputFromWindow(view?.windowToken, 0)
+        } catch (_: Exception) {}
+        finish()
     }
 
     private fun loadExistingNote(id: String): ExistingNoteResult {
@@ -241,7 +417,128 @@ class WidgetNoteEditActivity : Activity() {
         findViewById<View>(R.id.slot_copy).visibility = View.GONE
         findViewById<View>(R.id.slot_play).visibility = View.VISIBLE
         findViewById<View>(R.id.btn_play).setOnClickListener { togglePlayback() }
+        // C-39: transcribir directo desde el widget con la red vigente
+        // (datos o Wi-Fi), sin pasar por Notas de la app.
+        findViewById<View>(R.id.slot_transcribe).visibility = View.VISIBLE
+        findViewById<View>(R.id.btn_transcribe).setOnClickListener { requestPendingTranscription() }
         setEditorState(writable = false, ready = false, deletable = false)
+    }
+
+    /**
+     * C-39: reintento de transcripción del pendiente desde la propia
+     * modal. En éxito guarda la nota (texto + audio promovido), retira
+     * el pendiente, refresca widgets y cierra; en fallo avisa y conserva
+     * el audio para reintentar. Corre fuera del main; la UI solo por post.
+     */
+    private fun requestPendingTranscription() {
+        val id = pendingId ?: return
+        val path = pendingAudioPath ?: return
+        if (!transcribeInProgress.compareAndSet(false, true)) return
+        setTranscribeBusy(true)
+        BackgroundWork.execute {
+            try {
+                val wav = try {
+                    File(path).readBytes()
+                } catch (_: Exception) {
+                    null
+                }
+                if (wav == null || wav.isEmpty()) {
+                    failPendingTranscription("Audio no disponible")
+                    return@execute
+                }
+                val client = try {
+                    SpeechToTextClient(this)
+                } catch (_: Exception) {
+                    null
+                }
+                val config = try {
+                    client?.loadConfig()
+                } catch (_: Exception) {
+                    null
+                }
+                if (client == null || config == null || config.apiKey.isBlank()) {
+                    failPendingTranscription("Configurá tu clave en la app")
+                    return@execute
+                }
+                client.transcribe(
+                    wav,
+                    config,
+                    onDone = { text ->
+                        if (text.isNullOrBlank()) {
+                            failPendingTranscription("No se pudo transcribir; el audio se conserva")
+                            return@transcribe
+                        }
+                        val keptPath = promotePendingWav(id, wav)
+                        val saved = keptPath != null &&
+                            NoteStore(this).addUntitledNote(text.trim(), keptPath) == NoteSaveResult.SAVED
+                        if (!saved) {
+                            if (keptPath != null) {
+                                try {
+                                    File(keptPath).delete()
+                                } catch (_: Exception) {
+                                }
+                            }
+                            failPendingTranscription("Nota no guardada; el audio se conserva")
+                            return@transcribe
+                        }
+                        NoteStore(this).removePending(id)
+                        try {
+                            File(path).delete()
+                        } catch (_: Exception) {
+                        }
+                        BackgroundWork.execute { refreshNoteWidgets() }
+                        transcribeInProgress.set(false)
+                        BackgroundWork.postMain {
+                            Toast.makeText(this, "Nota guardada", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+                    },
+                    onError = { _, message ->
+                        failPendingTranscription(message)
+                    },
+                )
+            } catch (_: Exception) {
+                failPendingTranscription("No se pudo transcribir; el audio se conserva")
+            }
+        }
+    }
+
+    private fun failPendingTranscription(message: String) {
+        transcribeInProgress.set(false)
+        BackgroundWork.postMain {
+            setTranscribeBusy(false)
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun setTranscribeBusy(busy: Boolean) {
+        try {
+            findViewById<View>(R.id.btn_transcribe).isEnabled = !busy
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Copia el WAV pendiente a notes_audio como audio conservado de nota. */
+    private fun promotePendingWav(id: String, wav: ByteArray): String? {
+        return try {
+            if (!isValidUuid(id)) return null
+            val dir = File(filesDir, "notes_audio")
+            if (!dir.isDirectory && !dir.mkdirs() && !dir.isDirectory) return null
+            val tmp = File.createTempFile("pending_", ".tmp", dir)
+            try {
+                java.io.FileOutputStream(tmp).use { it.write(wav) }
+                val dest = File(dir, "${java.util.UUID.randomUUID()}.wav")
+                if (!tmp.renameTo(dest)) return null
+                dest.path
+            } finally {
+                try {
+                    if (tmp.exists()) tmp.delete()
+                } catch (_: Exception) {
+                }
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun pendingInfoText(pending: VbPending): String {
@@ -253,9 +550,9 @@ class WidgetNoteEditActivity : Activity() {
             ""
         }
         return if (whenText.isBlank()) {
-            "Grabado en este teléfono. Se transcribe solo desde Notas de la app."
+            "Grabado en este teléfono. Transcribilo acá con tus datos o Wi-Fi."
         } else {
-            "Grabado el $whenText en este teléfono. Se transcribe solo desde Notas de la app."
+            "Grabado el $whenText en este teléfono. Transcribilo acá con tus datos o Wi-Fi."
         }
     }
 

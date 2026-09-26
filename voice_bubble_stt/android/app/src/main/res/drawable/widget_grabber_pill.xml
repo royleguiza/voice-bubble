@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- C-40: píldora del tirador para ampliar el cuerpo de la nota.
+     El color sale del token del sistema; la vista aplica alpha 0.4. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/kb_label_secondary" />
+    <corners android:radius="2dp" />
+</shape>

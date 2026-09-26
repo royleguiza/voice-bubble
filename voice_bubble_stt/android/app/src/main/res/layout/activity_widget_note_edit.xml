@@ -7,15 +7,37 @@
     android:paddingEnd="12dp"
     android:fitsSystemWindows="true">
 
+    <!-- La tarjeta consume sus toques para que no burbujeen al
+         overlay_root (que cierra igual que la X). -->
     <LinearLayout
+        android:id="@+id/note_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:layout_marginBottom="12dp"
         android:background="@drawable/widget_glass_inner"
+        android:clickable="true"
+        android:focusable="true"
         android:orientation="vertical"
         android:padding="14dp"
         android:elevation="16dp">
+
+        <!-- C-40: tirador para ampliar solo el cuerpo de la nota.
+             Zona táctil de 48dp; la píldora visual es sutil. -->
+        <FrameLayout
+            android:id="@+id/btn_expand_handle"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="-14dp"
+            android:contentDescription="Arrastrar para ampliar">
+
+            <View
+                android:layout_width="36dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center"
+                android:alpha="0.4"
+                android:background="@drawable/widget_grabber_pill" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/overlay_title"
@@ -33,7 +55,7 @@
             android:layout_marginTop="10dp"
             android:orientation="vertical">
 
-            <EditText
+            <com.royleguiza.voicebubblestt.DismissEditText
                 android:id="@+id/edit_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -47,7 +69,7 @@
                 android:inputType="text" />
         </LinearLayout>
 
-        <EditText
+        <com.royleguiza.voicebubblestt.DismissEditText
             android:id="@+id/edit_body"
             android:layout_width="match_parent"
             android:layout_height="120dp"
@@ -136,6 +158,29 @@
                         android:layout_height="22dp"
                         android:layout_gravity="center"
                         android:src="@drawable/widget_ic_play" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/slot_transcribe"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <FrameLayout
+                    android:id="@+id/btn_transcribe"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Transcribir ahora">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_audio" />
                 </FrameLayout>
             </LinearLayout>
 

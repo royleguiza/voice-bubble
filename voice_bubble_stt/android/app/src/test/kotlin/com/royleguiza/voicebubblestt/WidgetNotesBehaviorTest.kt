@@ -832,6 +832,52 @@ class WidgetNotesBehaviorTest {
         assertEquals(1, changes)
     }
 
+    @Test
+    fun removePendingDeletesOnlyTheTargetEntry() {
+        val root = Files.createTempDirectory("c39-rempend-").toFile()
+        try {
+            val preferences = MemoryPreferences()
+            val arr = JSONArray()
+                .put(JSONObject().put("id", "keep-1").put("audioPath", "/tmp/keep.wav").put("createdAtMs", 2))
+                .put(JSONObject().put("id", "drop-1").put("audioPath", "/tmp/drop.wav").put("createdAtMs", 1))
+            preferences.edit().putString(NoteStore.PENDING_KEY, arr.toString()).commit()
+            assertTrue(NoteStore(TestContext(root, preferences)).removePending("drop-1"))
+            val after = JSONArray(preferences.getString(NoteStore.PENDING_KEY, null)!!)
+            assertEquals(1, after.length())
+            assertEquals("keep-1", after.getJSONObject(0).getString("id"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun removePendingUnknownIdLeavesIndexUntouched() {
+        val root = Files.createTempDirectory("c39-rempend-unknown-").toFile()
+        try {
+            val preferences = MemoryPreferences()
+            val arr = JSONArray()
+                .put(JSONObject().put("id", "keep-1").put("audioPath", "/tmp/keep.wav").put("createdAtMs", 1))
+            preferences.edit().putString(NoteStore.PENDING_KEY, arr.toString()).commit()
+            val before = preferences.getString(NoteStore.PENDING_KEY, null)
+            assertFalse(NoteStore(TestContext(root, preferences)).removePending("missing-9"))
+            assertEquals(before, preferences.getString(NoteStore.PENDING_KEY, null))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun removePendingBlankOrMissingIndexFailsClosed() {
+        val root = Files.createTempDirectory("c39-rempend-closed-").toFile()
+        try {
+            val preferences = MemoryPreferences()
+            assertFalse(NoteStore(TestContext(root, preferences)).removePending("   "))
+            assertFalse(NoteStore(TestContext(root, preferences)).removePending("any-id"))
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     private fun pendingIndex(audioPath: String): String {
         return JSONArray().put(
             JSONObject()

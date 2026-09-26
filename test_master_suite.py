@@ -64,6 +64,9 @@ SUITES = [
     ("Logs, borrado, widget y errores (C-35)", "test_c35_logs_deletion_widget_errors_suite.py"),
     ("Muertos sincerados (C-36)", "test_c36_sincerar_muertos_suite.py"),
     ("Tests que no mienten (C-37)", "test_c37_honest_tests_suite.py"),
+    ("Widget cierra en un gesto (C-38)", "test_c38_widget_dismiss_suite.py"),
+    ("Widget transcribe el pendiente acá (C-39)", "test_c39_widget_pending_transcribe_suite.py"),
+    ("Cuerpo expandible con tirador (C-40)", "test_c40_expandable_note_body_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3632,7 +3635,9 @@ def test_c26_talkback_hold_recording_contract():
 
     with open(hs_file, "r", encoding="utf-8") as f:
         hs_src = f.read()
-    assert "SemanticsService.announce" in hs_src, "C-26: home_screen sin SemanticsService.announce"
+    assert ("SemanticsService.announce" in hs_src
+            or "SemanticsService.sendAnnouncement" in hs_src), \
+        "C-26: home_screen sin anuncio TalkBack (announce/sendAnnouncement)"
     assert "Mantené para grabar" in hs_src, "C-26: home_screen sin anuncio 'Mantené para grabar'"
     assert "_recordMode == StorageService.recordModeHold" in hs_src, "C-26: home_screen sin check de recordModeHold"
 

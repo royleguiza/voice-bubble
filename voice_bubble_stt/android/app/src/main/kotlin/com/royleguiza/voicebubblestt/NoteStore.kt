@@ -509,6 +509,48 @@ class NoteStore(
         } ?: false
     }
 
+    /**
+     * C-39: retira un pendiente ya transcripto del índice compartido con
+     * Dart (`flutter.voice_notes_pending_v1`). Solo filtra por id, no toca
+     * el resto; verifica con lectura posterior. El WAV lo borra el
+     * llamador tras promoverlo a nota.
+     */
+    fun removePending(id: String): Boolean {
+        if (id.isBlank()) return false
+        return withPendingLock {
+            val raw = try {
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    .getString(PENDING_KEY, null)
+            } catch (_: Exception) {
+                return@withPendingLock false
+            } ?: return@withPendingLock false
+            val arr = try {
+                JSONArray(raw)
+            } catch (_: Exception) {
+                return@withPendingLock false
+            }
+            val kept = JSONArray()
+            var removed = false
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i) ?: continue
+                if (!removed && item.optString("id") == id) {
+                    removed = true
+                    continue
+                }
+                kept.put(item)
+            }
+            if (!removed) return@withPendingLock false
+            val json = kept.toString()
+            try {
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.edit().putString(PENDING_KEY, json).commit() &&
+                    prefs.getString(PENDING_KEY, null) == json
+            } catch (_: Exception) {
+                false
+            }
+        } ?: false
+    }
+
     private fun recoverMissingPending(files: List<File>): Boolean {
         val candidates = ArrayList<PendingRecovery>()
         for (file in files) {

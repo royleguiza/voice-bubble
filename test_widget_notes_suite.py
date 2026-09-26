@@ -116,10 +116,11 @@ check("Overlay cancela con X", "ic_x" in over)
 check("Overlay anclado abajo (expansión)", 'layout_gravity="bottom"' in over)
 check("Título siempre visible en overlay (check legado retirado)",
       'android:id="@+id/edit_title_wrap"' in over)
-check("Overlay modo pendiente: ver + play/pausa sin transcribir",
+check("Overlay modo pendiente: ver + play/pausa + transcribir acá (C-39)",
       'pending_id' in act and 'setupPendingMode' in act
       and 'MediaPlayer' in act and 'togglePlayback' in act
-      and '.transcribe(' not in act and 'SpeechToTextClient' not in act)
+      and 'requestPendingTranscription' in act and 'SpeechToTextClient' in act
+      and 'R.id.slot_transcribe' in act and 'R.id.btn_transcribe' in act)
 check("Overlay pendiente avisa si el audio ya no está",
       'El audio ya no está pendiente' in act)
 check("Overlay pendiente oculta guardar/copiar y muestra play",

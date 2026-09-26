@@ -72,7 +72,9 @@ def test_home_screen_hold_mode_on_pressed():
 
     # En modo Hold, onPressed no debe ser null
     assert "_recordMode == StorageService.recordModeHold" in src, "home_screen no evalúa recordModeHold"
-    assert "SemanticsService.announce" in src, "home_screen no invoca SemanticsService.announce"
+    assert ("SemanticsService.announce" in src
+            or "SemanticsService.sendAnnouncement" in src), \
+        "home_screen no invoca anuncio TalkBack (announce/sendAnnouncement)"
     assert "Mantené para grabar" in src, "home_screen no anuncia 'Mantené para grabar'"
     assert "_stopRecording" in src, "home_screen no tiene _stopRecording"
 
@@ -80,7 +82,9 @@ def test_home_screen_hold_mode_on_pressed():
     sub = src[src.find("RecordButton("):src.find("onHoldStart:")]
     assert "onPressed:" in sub, "RecordButton en HomeScreen no tiene onPressed"
     assert "_isRecording" in sub or "_stopRecording" in sub, "onPressed en Hold no detiene la grabación activa"
-    assert "SemanticsService.announce" in sub, "onPressed en Hold no anuncia instrucción en idle"
+    assert ("SemanticsService.announce" in sub
+            or "SemanticsService.sendAnnouncement" in sub), \
+        "onPressed en Hold no anuncia instrucción en idle"
 
 def test_record_button_widget_tests():
     with open(RECORD_BUTTON_TEST, "r", encoding="utf-8") as f:
@@ -104,7 +108,10 @@ def test_negative_mutations():
     # 3. Poner onPressed: null en Hold en home_screen.dart
     with open(HOME_SCREEN_DART, "r", encoding="utf-8") as f:
         hs_src = f.read()
-    mutated_hs3 = hs_src.replace("SemanticsService.announce", "// SemanticsService.announce")
+    mutated_hs3 = hs_src.replace(
+        "SemanticsService.sendAnnouncement", "// SemanticsService.sendAnnouncement").replace(
+        "SemanticsService.announce", "// SemanticsService.announce")
+    assert "SemanticsService.sendAnnouncement" not in mutated_hs3 or "// SemanticsService.sendAnnouncement" in mutated_hs3
     assert "SemanticsService.announce" not in mutated_hs3 or "// SemanticsService.announce" in mutated_hs3
 
     # 4. Quitar detención de grabación en onPressed de Hold

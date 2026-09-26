@@ -132,7 +132,7 @@ def test_atomic_writes():
           "publishHistoryFileAtomically" in dart_save,
           "Dart debe publicar por el adaptador atómico real")
     check("Dart usa temporales únicos por escritor",
-          "${token}" in dart_publish and
+          ("$token" in dart_publish or "${token}" in dart_publish) and
           "StorageService._historyTmpSuffix" in dart_publish and
           "Random.secure()" in dart_publish and
           "${file.path}$_historyTmpSuffix" not in dart_publish,
