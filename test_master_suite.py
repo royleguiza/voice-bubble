@@ -36,6 +36,7 @@ SUITES = [
     ("Claves: relleno de claves seguro (C-07)", "test_c07_credentials_safe_fill_suite.py"),
     ("Vistas: rebuild solo cuando toca y blindaje restart (C-08)", "test_c08_rebuild_guards_suite.py"),
     ("Red: cancelar corta la red de verdad (C-09)", "test_c09_cancel_network_suite.py"),
+    ("Reintento: reintento sin regrabar (C-10)", "test_c10_retry_without_re_record_suite.py"),
 ]
 
 def run_test(name, func):
@@ -2882,6 +2883,61 @@ def test_c09_cancel_network_contract():
     assert "MicState.PROCESSING -> cancelDictation()" in dic, "C-09: handleMicTap no cancela en PROCESSING"
     assert "if (generation != transcriptionGeneration) return@execute" in dic, "C-09: finishDictation no aborta antes de transcribe ante cambio de generación"
 
+def test_c10_retry_without_re_record_contract():
+    """
+    Guarda C-10: Reintento sin regrabar con retención de WAV y aviso interactivo.
+    Verifica:
+    1. LastDictationSlot data class retiene wav y config.
+    2. isRetryableError clasifica red/5xx/429/timeout y excluye API key/inválida.
+    3. finishDictation asigna lastDictationSlot antes de transcribe y ofrece reintento con onClick.
+    4. retryLastDictation() reenvía slot.wav y slot.config sin regrabar.
+    5. StatusLayer.show soporta onClick opcional con listener y timeout extendido.
+    6. transcription_service.dart conserva audio temporal si el texto devuelto es vacío.
+    """
+    base_kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    dict_path = os.path.join(base_kt, "DictationController.kt")
+    status_path = os.path.join(base_kt, "StatusLayer.kt")
+    dart_path = "app_source/lib/services/transcription_service.dart"
+
+    assert os.path.isfile(dict_path), f"Falta archivo: {dict_path}"
+    assert os.path.isfile(status_path), f"Falta archivo: {status_path}"
+    assert os.path.isfile(dart_path), f"Falta archivo: {dart_path}"
+
+    with open(dict_path, "r", encoding="utf-8") as f:
+        dic = f.read()
+    with open(status_path, "r", encoding="utf-8") as f:
+        stat = f.read()
+    with open(dart_path, "r", encoding="utf-8") as f:
+        dart = f.read()
+
+    # 1. LastDictationSlot
+    assert (
+        "data class LastDictationSlot" in dic
+        and "val wav: ByteArray" in dic
+        and "val config: SpeechToTextClient.Config" in dic
+    ), "C-10: falta LastDictationSlot en DictationController"
+    assert "var lastDictationSlot: LastDictationSlot? = null" in dic, "C-10: falta lastDictationSlot en DictationController"
+
+    # 2. isRetryableError
+    assert "private fun isRetryableError(message: String): Boolean" in dic, "C-10: falta isRetryableError"
+    retry_fn = dic[dic.find("private fun isRetryableError") : dic.find("private fun isRetryableError") + 900]
+    assert 'message.contains("conexión"' in retry_fn and 'message.contains("API key"' in retry_fn, "C-10: clasificación de errores incompleta"
+
+    # 3. finishDictation
+    finish_fn = dic[dic.find("private fun finishDictation()") : dic.find("private fun commitOrWarn")]
+    assert "lastDictationSlot = LastDictationSlot(wav, config)" in finish_fn, "C-10: finishDictation no guarda LastDictationSlot"
+    assert "onClick = { retryLastDictation() }" in finish_fn, "C-10: finishDictation no ofrece reintento con onClick"
+
+    # 4. retryLastDictation
+    assert "fun retryLastDictation()" in dic, "C-10: falta retryLastDictation"
+    retry_body = dic[dic.find("fun retryLastDictation()") : dic.find("private fun cancelDictation")]
+    assert "val slot = lastDictationSlot ?: return" in retry_body, "C-10: retryLastDictation no usa lastDictationSlot"
+    assert "startRecording" not in retry_body and "tryClaimMicrophone" not in retry_body, "C-10: retryLastDictation regraba audio"
+
+    # 5. StatusLayer y Dart
+    assert "onClick: (() -> Unit)? = null" in stat, "C-10: StatusLayer.show no soporta onClick"
+    assert "if (deleteAudioOnSuccess && result.text.isNotEmpty)" in dart, "C-10: Dart borra audio con texto vacío"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -2904,6 +2960,7 @@ def main():
         ("C-07: relleno de claves seguro", test_c07_credentials_safe_fill_contract),
         ("C-08: rebuild solo cuando toca y blindaje restart", test_c08_rebuild_guards_contract),
         ("C-09: cancelar corta la red de verdad", test_c09_cancel_network_contract),
+        ("C-10: reintento sin regrabar", test_c10_retry_without_re_record_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

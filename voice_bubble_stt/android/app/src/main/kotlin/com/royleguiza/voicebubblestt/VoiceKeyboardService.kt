@@ -584,8 +584,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun attachPress(key: View, onLongPress: () -> Unit, onTapUp: () -> Unit) =
         keys.longPress(key, onLongPress = onLongPress, onTapUp = onTapUp)
     override fun standardKeyHeightPx(): Int = keyHeightPx()
-    override fun showNotice(message: String, openSettingsOnClick: Boolean) {
-        if (::status.isInitialized) status.show(message, openSettingsOnClick)
+    override fun showNotice(message: String, openSettingsOnClick: Boolean, onClick: (() -> Unit)?) {
+        if (::status.isInitialized) status.show(message, openSettingsOnClick, onClick)
     }
     override fun micFeedback(): MicFeedback = MicFeedback(
         hapticsEnabled = kbPrefs.micHapticsEnabled,

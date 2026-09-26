@@ -60,7 +60,7 @@ class DictationController(
         fun pressHaptic(view: View)
         fun attachPress(key: View, onLongPress: () -> Unit, onTapUp: () -> Unit)
         fun standardKeyHeightPx(): Int
-        fun showNotice(message: String, openSettingsOnClick: Boolean = false)
+        fun showNotice(message: String, openSettingsOnClick: Boolean = false, onClick: (() -> Unit)? = null)
         fun showHistoryPopup(anchor: View)
         fun isServiceAlive(): Boolean
         fun setRecordingActive(active: Boolean)
@@ -97,6 +97,32 @@ class DictationController(
     private var microphoneClaimToken = 0L
     @Volatile
     private var audioFocusLost = false
+
+    /** C-10: Retención de último WAV + config para reintento manual sin regrabar. */
+    data class LastDictationSlot(
+        val wav: ByteArray,
+        val config: SpeechToTextClient.Config,
+    )
+
+    internal var lastDictationSlot: LastDictationSlot? = null
+
+    private fun isRetryableError(message: String): Boolean {
+        if (message.contains("API key", ignoreCase = true) ||
+            message.contains("inválida", ignoreCase = true) ||
+            message.contains("invalid", ignoreCase = true)) {
+            return false
+        }
+        return message.contains("conexión", ignoreCase = true) ||
+            message.contains("connection", ignoreCase = true) ||
+            message.contains("servidor", ignoreCase = true) ||
+            message.contains("server", ignoreCase = true) ||
+            message.contains("500") || message.contains("502") ||
+            message.contains("503") || message.contains("504") ||
+            message.contains("429") || message.contains("límite", ignoreCase = true) ||
+            message.contains("limit", ignoreCase = true) ||
+            message.contains("timeout", ignoreCase = true) ||
+            message.contains("espera", ignoreCase = true)
+    }
 
     /**
      * K5-T5: recreacion de vista (ej. rotacion) nunca debe dejar una
@@ -426,6 +452,7 @@ class DictationController(
         if (dictationStartPending || micState == MicState.RECORDING || micState == MicState.PROCESSING) {
             return
         }
+        lastDictationSlot = null
         if (!gainAudioFocus()) {
             micState = MicState.IDLE
             refreshMicVisual()
@@ -570,6 +597,7 @@ class DictationController(
                 }
                 return@execute
             }
+            lastDictationSlot = LastDictationSlot(wav, config)
             if (generation != transcriptionGeneration) return@execute
             sttClient.transcribe(
                 wav,
@@ -583,6 +611,7 @@ class DictationController(
                         }
                         return@onDone
                     }
+                    lastDictationSlot = null
                     // AT-A3: historial (lectura de disco + XML + prefs) en el
                     // hilo de fondo del cliente; sus callbacks jamas llegan
                     // por el hilo principal.
@@ -605,7 +634,13 @@ class DictationController(
                     runOnMain {
                         if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
-                        host.showNotice(message)
+                        if (isRetryableError(message) && lastDictationSlot != null) {
+                            val retryMsg = if (host.isSpanish()) "$message Toca para reintentar." else "$message Tap to retry."
+                            host.showNotice(retryMsg, onClick = { retryLastDictation() })
+                        } else {
+                            lastDictationSlot = null
+                            host.showNotice(message)
+                        }
                     }
                 },
             )
@@ -615,6 +650,60 @@ class DictationController(
     private fun commitOrWarn(text: CharSequence): Boolean {
         return com.royleguiza.voicebubblestt.commitOrWarn(service, text, host.isSpanish()) {
             host.showNotice(if (host.isSpanish()) StatusLayer.NOTICE_DEAD_CONNECTION_ES else StatusLayer.NOTICE_DEAD_CONNECTION_EN)
+        }
+    }
+
+    /**
+     * C-10: Reintento manual del último dictado sin volver a grabar el audio.
+     * Utiliza el mismo buffer WAV y la misma configuración capturados en [lastDictationSlot].
+     */
+    fun retryLastDictation() {
+        val slot = lastDictationSlot ?: return
+        if (dictationStartPending || micState != MicState.IDLE) return
+        micState = MicState.PROCESSING
+        refreshMicVisual()
+        val generation = ++transcriptionGeneration
+        BackgroundWork.execute {
+            if (generation != transcriptionGeneration) return@execute
+            sttClient.transcribe(
+                slot.wav,
+                slot.config,
+                onDone = { text ->
+                    if (text == null) {
+                        runOnMain {
+                            if (generation != transcriptionGeneration) return@runOnMain
+                            micIdle()
+                        }
+                        return@onDone
+                    }
+                    lastDictationSlot = null
+                    if (!text.isNullOrBlank()) addToSharedHistory(text)
+                    runOnMain {
+                        if (generation != transcriptionGeneration) return@runOnMain
+                        micIdle()
+                        if (text.isNullOrBlank()) {
+                            host.showNotice(if (host.isSpanish()) "No se detectó voz." else "No voice detected.")
+                        } else {
+                            if (commitOrWarn(text)) {
+                                micEvent(MicEvent.PASTE)
+                            }
+                        }
+                    }
+                },
+                onError = { message ->
+                    runOnMain {
+                        if (generation != transcriptionGeneration) return@runOnMain
+                        micIdle()
+                        if (isRetryableError(message) && lastDictationSlot != null) {
+                            val retryMsg = if (host.isSpanish()) "$message Toca para reintentar." else "$message Tap to retry."
+                            host.showNotice(retryMsg, onClick = { retryLastDictation() })
+                        } else {
+                            lastDictationSlot = null
+                            host.showNotice(message)
+                        }
+                    }
+                },
+            )
         }
     }
 
@@ -631,6 +720,7 @@ class DictationController(
         timeoutRunnable = null
         dictationStartPending = false
         transcriptionGeneration++
+        lastDictationSlot = null
         micState = MicState.IDLE
         refreshMicVisual()
         val claimToken = microphoneClaimToken
@@ -661,6 +751,7 @@ class DictationController(
         timeoutRunnable = null
         dictationStartPending = false
         transcriptionGeneration++
+        lastDictationSlot = null
         micIdle()
         if (client != null) {
             BackgroundWork.execute {

@@ -133,7 +133,8 @@ class TranscriptionService {
       if (!saved) return result;
     }
 
-    if (deleteAudioOnSuccess) {
+    // C-10: no borrar temporal si el texto devuelto es vacío para permitir reintento
+    if (deleteAudioOnSuccess && result.text.isNotEmpty) {
       try {
         final file = File(audioPath);
         if (file.existsSync()) {

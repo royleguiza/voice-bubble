@@ -47,8 +47,8 @@ class StatusLayer(
     private var statusMessage: String? = null
     private var dismissStatusRunnable: Runnable? = null
 
-    /** Aviso inline no bloqueante; auto-descarta a los 3.5 s. */
-    fun show(message: String, openSettingsOnClick: Boolean = false) {
+    /** Aviso inline no bloqueante; auto-descarta a los 3.5 s (o 5 s con acción). */
+    fun show(message: String, openSettingsOnClick: Boolean = false, onClick: (() -> Unit)? = null) {
         val view = host.rootView()
         view.post {
             // AT-A9: identidad contra la vista vigente; una vista vieja ya
@@ -65,7 +65,13 @@ class StatusLayer(
             tv.setPadding(pad, pad, pad, pad)
             tv.setBackgroundResource(R.drawable.kb_popup_bg)
             tv.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
-            if (openSettingsOnClick) {
+            if (onClick != null) {
+                tv.isClickable = true
+                tv.setOnClickListener {
+                    hide()
+                    onClick()
+                }
+            } else if (openSettingsOnClick) {
                 tv.isClickable = true
                 tv.setOnClickListener { service.openAppUi() }
             }
@@ -79,7 +85,8 @@ class StatusLayer(
             view.addView(tv, 0, lp)
             val dismiss = Runnable { hide() }
             dismissStatusRunnable = dismiss
-            handler.postDelayed(dismiss, 3500L)
+            val timeout = if (onClick != null) 5000L else 3500L
+            handler.postDelayed(dismiss, timeout)
         }
     }
 
