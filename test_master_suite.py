@@ -47,6 +47,7 @@ SUITES = [
     ("Teclado: precisión de toque y borrado por lotes (C-18)", "test_c18_touch_precision_and_batch_backspace_suite.py"),
     ("Ajustes: puente de claves sano y límites (C-19)", "test_c19_bridge_keys_and_limits_suite.py"),
     ("Teclado: detalles y mayúsculas en turco (C-20)", "test_c20_keyboard_details_suite.py"),
+    ("Datos: fechas rotas no contaminan (C-21)", "test_c21_broken_dates_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3372,6 +3373,47 @@ def test_c20_keyboard_details_contract():
     assert "text == text.lowercase(Locale.ROOT)" in ee_content, "C-20: nextCase no compara con text.lowercase(Locale.ROOT)"
     assert "text == text.uppercase(Locale.ROOT)" in ee_content, "C-20: nextCase no compara con text.uppercase(Locale.ROOT)"
 
+def test_c21_broken_dates_contract():
+    base = os.path.dirname(os.path.abspath(__file__))
+    vn_file = os.path.join(base, "app_source", "lib", "models", "voice_note.dart")
+    tr_file = os.path.join(base, "app_source", "lib", "models", "transcription.dart")
+    ns_file = os.path.join(base, "app_source", "lib", "services", "notes_service.dart")
+    kt_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "NoteStore.kt")
+
+    with open(vn_file, "r", encoding="utf-8") as f:
+        vn_content = f.read()
+    with open(tr_file, "r", encoding="utf-8") as f:
+        tr_content = f.read()
+    with open(ns_file, "r", encoding="utf-8") as f:
+        ns_content = f.read()
+    with open(kt_file, "r", encoding="utf-8") as f:
+        kt_content = f.read()
+
+    # 1. VoiceNote: tryParse, tryFromJson, sin DateTime.now()
+    assert "static DateTime? tryParseDateTime(Object? raw)" in vn_content, "C-21: VoiceNote no declara tryParseDateTime"
+    assert "static VoiceNote? tryFromJson(Map<String, dynamic> json)" in vn_content, "C-21: VoiceNote no declara tryFromJson"
+    assert "updated.isBefore(created)" in vn_content, "C-21: VoiceNote no valida updated.isBefore(created)"
+    assert "throw const FormatException('Nota incompleta o con fechas inválidas');" in vn_content, "C-21: VoiceNote.fromJson no lanza FormatException"
+    vn_exec = "\n".join(l for l in vn_content.split("class VoiceNote")[1].splitlines() if not l.strip().startswith("//") and not l.strip().startswith("/*"))
+    assert "DateTime.now()" not in vn_exec, "C-21: VoiceNote tiene DateTime.now() en deserialización"
+
+    # 2. Transcription: tryParseTimestamp, tryFromJson, EPOCH (0), sin DateTime.now()
+    assert "static DateTime? tryParseTimestamp(Object? raw)" in tr_content, "C-21: Transcription no declara tryParseTimestamp"
+    assert "static Transcription? tryFromJson(Map<String, dynamic> json)" in tr_content, "C-21: Transcription no declara tryFromJson"
+    assert "DateTime.fromMillisecondsSinceEpoch(0)" in tr_content, "C-21: Transcription no usa EPOCH 0"
+    assert "throw const FormatException('Timestamp de transcripción inválido o corrupto');" in tr_content, "C-21: Transcription.fromJson no lanza FormatException"
+    tr_exec = "\n".join(l for l in tr_content.splitlines() if not l.strip().startswith("//") and not l.strip().startswith("/*"))
+    assert "DateTime.now()" not in tr_exec, "C-21: Transcription tiene DateTime.now() en deserialización"
+
+    # 3. NoteStore.kt: parseEpoch(iso) ?: 0L, merge con parseEpoch
+    assert "private fun parseTimestamp(iso: String): Long?" in kt_content, "C-21: NoteStore no declara parseTimestamp"
+    assert "parseTimestamp(iso) ?: 0L" in kt_content, "C-21: NoteStore parseEpoch no devuelve 0L ante error"
+    assert "if (updated < created)" in kt_content, "C-21: NoteStore parseIndex no valida updated < created"
+    assert "parseEpoch(note.updatedAt) > parseEpoch(current.updatedAt)" in kt_content, "C-21: NoteStore merge no compara parseEpoch(updatedAt)"
+
+    # 4. NotesService.dart: loadMerged compara n.updatedAt.isAfter(existing.updatedAt)
+    assert "n.updatedAt.isAfter(existing.updatedAt)" in ns_content, "C-21: NotesService loadMerged no compara n.updatedAt.isAfter(existing.updatedAt)"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3405,6 +3447,7 @@ def main():
         ("C-18: precisión de toques y borrado por lotes", test_c18_touch_precision_contract),
         ("C-19: puente de claves sano y límites", test_c19_bridge_keys_contract),
         ("C-20: detalles del teclado y mayúsculas", test_c20_keyboard_details_contract),
+        ("C-21: fechas rotas no contaminan", test_c21_broken_dates_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

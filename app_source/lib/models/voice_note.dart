@@ -29,6 +29,15 @@ class VoiceNote {
   });
 
   factory VoiceNote.fromJson(Map<String, dynamic> json) {
+    final note = tryFromJson(json);
+    if (note != null) return note;
+    throw const FormatException('Nota incompleta o con fechas inválidas');
+  }
+
+  /// Parsea una nota de un mapa JSON de forma segura.
+  /// Contrato C-21: devuelve `null` ante notas incompletas o fechas ilegibles /
+  /// inconsistentes (updatedAt < createdAt), evitando premiar datos corruptos.
+  static VoiceNote? tryFromJson(Map<String, dynamic> json) {
     final id = json['id'];
     final titulo = json['titulo'];
     final cuerpo = json['cuerpo'];
@@ -40,16 +49,16 @@ class VoiceNote {
         cuerpo is! String ||
         createdAt == null ||
         updatedAt == null) {
-      throw const FormatException('Nota incompleta');
+      return null;
     }
-    final created = _parse(createdAt);
-    final updated = _parse(updatedAt);
-    if (updated.isBefore(created)) {
-      throw const FormatException('Fechas de nota inválidas');
+    final created = tryParseDateTime(createdAt);
+    final updated = tryParseDateTime(updatedAt);
+    if (created == null || updated == null || updated.isBefore(created)) {
+      return null;
     }
     if (audioPath != null &&
         (audioPath is! String || audioPath.trim().isEmpty)) {
-      throw const FormatException('Audio de nota inválido');
+      return null;
     }
     return VoiceNote(
       id: id,
@@ -61,11 +70,18 @@ class VoiceNote {
     );
   }
 
-  static DateTime _parse(Object? raw) {
+  /// Parsea timestamp de nota en formato ISO con 'T'. Devuelve null si no es legible (C-21).
+  static DateTime? tryParseDateTime(Object? raw) {
     if (raw is String && raw.contains('T')) {
       final parsed = DateTime.tryParse(raw);
       if (parsed != null) return parsed.toLocal();
     }
+    return null;
+  }
+
+  static DateTime _parse(Object? raw) {
+    final parsed = tryParseDateTime(raw);
+    if (parsed != null) return parsed;
     throw const FormatException('Timestamp de nota inválido');
   }
 

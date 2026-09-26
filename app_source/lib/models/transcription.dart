@@ -1,17 +1,14 @@
 /// Transcripción de voz a texto con timestamp de creación.
 ///
-/// Formato canónico (contrato Flutter↔Kotlin K3):
+/// Formato canónico (contrato Flutter↔Kotlin K3 / C-21):
 /// - [toJson] produce `{'text': String, 'timestamp': String}` donde
 ///   `timestamp` es ISO-8601 según [DateTime.toIso8601String()]:
 ///   con sufijo `Z` cuando viene del teclado nativo (`Instant.now()` UTC),
-///   sin zona cuando viene de la app (`DateTime.now()` local).
-/// - [fromJson] acepta ese canónico y además tolera `timestamp` como
-///   `int` (epoch), `String` (ISO-8601), `null` o ausente, sin lanzar:
-///   `null`/ausente/ilegible cae a [DateTime.now()], `int` se interpreta
-///   como milisegundos (o segundos si es < 1e10) desde epoch, `String`
-///   se parsea con `tryParse` y cae a `now` si es ilegible. Todo timestamp
-///   válido se normaliza a hora local con `toLocal()` para que el
-///   historial muestre siempre la hora del usuario.
+///   sin zona cuando viene de la app local.
+/// - [fromJson] delega en [tryFromJson]: si el timestamp es ilegible o corrupto,
+///   lanza [FormatException] y JAMÁS inventa [DateTime.now()] (C-21: lo corrupto
+///   se descarta, nunca se premia para que no gane un merge).
+/// - [tryFromJson] devuelve `null` ante timestamp presente pero ilegible.
 class Transcription {
   final String text;
   final DateTime timestamp;
@@ -24,51 +21,57 @@ class Transcription {
   factory Transcription.fromJson(Map<String, dynamic> json) {
     final parsed = tryFromJson(json);
     if (parsed != null) return parsed;
-    // Compat: null/ausente cae a now solo cuando no hay timestamp
-    // presente-pero-ilegible (ese caso ya lo filtra tryFromJson -> null).
-    final rawText = json['text'];
-    return Transcription(
-      text: rawText is String ? rawText : '',
-      timestamp: DateTime.now(),
-    );
+    throw const FormatException('Timestamp de transcripción inválido o corrupto');
   }
 
-  /// SPK-18: no inventa tiempo para basura. Devuelve null si hay
-  /// `timestamp` presente-pero-ilegible; el llamador descarta.
+  /// SPK-18 / C-21: no inventa tiempo para basura. Devuelve null si hay
+  /// `timestamp` presente-pero-ilegible o corrupto; el llamador descarta.
   static Transcription? tryFromJson(Map<String, dynamic> json) {
     final raw = json['timestamp'];
-    if (raw is String && raw.isNotEmpty && DateTime.tryParse(raw) == null) {
+    if (raw is String && (raw.isEmpty || DateTime.tryParse(raw) == null)) {
+      return null;
+    }
+    if (raw is num && (raw.isNaN || raw.isInfinite)) {
       return null;
     }
     final rawText = json['text'];
     final text = rawText is String ? rawText : '';
+    final parsedTime = _parseTimestamp(raw);
     return Transcription(
       text: text,
-      timestamp: _parseTimestamp(raw),
+      timestamp: parsedTime,
     );
   }
 
-  /// Parsea `timestamp` sin lanzar nunca. Ver contrato en la clase.
-  static DateTime _parseTimestamp(Object? raw) {
-    if (raw == null) return DateTime.now();
+  /// Parsea `timestamp` de forma segura. Devuelve null ante entradas corruptas (C-21).
+  static DateTime? tryParseTimestamp(Object? raw) {
+    if (raw == null) return null;
     if (raw is DateTime) return raw.toLocal();
     if (raw is num) {
+      if (raw.isNaN || raw.isInfinite) return null;
       final millis = raw < 10000000000 ? (raw * 1000).toInt() : raw.toInt();
       try {
         return DateTime.fromMillisecondsSinceEpoch(millis).toLocal();
       } catch (_) {
-        return DateTime.now();
+        return null;
       }
     }
     if (raw is String) {
-      if (raw.isEmpty) return DateTime.now();
+      if (raw.isEmpty) return null;
       try {
-        return DateTime.parse(raw).toLocal();
+        final parsed = DateTime.tryParse(raw);
+        if (parsed != null) return parsed.toLocal();
+        return null;
       } catch (_) {
-        return DateTime.now();
+        return null;
       }
     }
-    return DateTime.now();
+    return null;
+  }
+
+  /// Parsea `timestamp` sin inventar `DateTime.now()`: ante null/ausente usa EPOCH (1970).
+  static DateTime _parseTimestamp(Object? raw) {
+    return tryParseTimestamp(raw) ?? DateTime.fromMillisecondsSinceEpoch(0).toLocal();
   }
 
   Map<String, dynamic> toJson() {
