@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/record_button.dart';
 
@@ -125,8 +126,8 @@ void main() {
 
       final semantics = tester.getSemantics(find.byKey(const ValueKey('recordButton')));
       expect(semantics.label, 'Mantené para grabar');
-      expect(semantics.hasAction(SemanticsAction.longPress), isTrue);
-      expect(semantics.hasAction(SemanticsAction.tap), isTrue);
+      expect(semantics.getSemanticsData().hasAction(SemanticsAction.longPress), isTrue);
+      expect(semantics.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
 
       handle.dispose();
     });
@@ -149,8 +150,8 @@ void main() {
 
       final semantics = tester.getSemantics(find.byKey(const ValueKey('recordButton')));
       expect(semantics.label, 'Detener grabación');
-      expect(semantics.hasAction(SemanticsAction.longPress), isTrue);
-      expect(semantics.hasAction(SemanticsAction.tap), isTrue);
+      expect(semantics.getSemanticsData().hasAction(SemanticsAction.longPress), isTrue);
+      expect(semantics.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
 
       handle.dispose();
     });

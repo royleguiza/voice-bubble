@@ -99,13 +99,13 @@ void main() {
     test('snippet palette stroke has 0.40 alpha per design.md §12', () {
       final stroke = snippetPaletteStroke('azul', isDark: false);
       expect(stroke, isNotNull);
-      expect(stroke!.opacity, closeTo(0.40, 0.01));
+      expect(stroke!.a, closeTo(0.40, 0.01));
     });
 
     test('snippet palette fill has 0.20 alpha per design.md §12', () {
       final fill = snippetPaletteFill('azul', isDark: false);
       expect(fill, isNotNull);
-      expect(fill!.opacity, closeTo(0.20, 0.01));
+      expect(fill!.a, closeTo(0.20, 0.01));
     });
   });
 
