@@ -374,13 +374,13 @@ class VirtualTrackpadView(
         val isGlass = (theme == "glass")
 
         val normalBgColor = if (isGlass) {
-            if (night) Color.parseColor("#B31C1D26") else Color.parseColor("#B3E2E6EF")
+            if (night) 0xB31C1D26.toInt() else 0xB3E2E6EF.toInt() // #B31C1D26 / #B3E2E6EF
         } else {
             ContextCompat.getColor(context, R.color.kb_key_bg)
         }
 
         val strokeColor = if (isGlass) {
-            if (night) Color.parseColor("#33FFFFFF") else Color.parseColor("#26000000")
+            if (night) 0x33FFFFFF.toInt() else 0x26000000.toInt() // #33FFFFFF / #26000000
         } else {
             ContextCompat.getColor(context, R.color.kb_key_stroke)
         }
@@ -393,17 +393,17 @@ class VirtualTrackpadView(
         val subtitleColor = if (isPrimary) {
             ContextCompat.getColor(context, R.color.kb_key_bg_accent)
         } else {
-            if (night) Color.parseColor("#FFEBEBF5") else Color.parseColor("#FF3C3C43")
+            if (night) 0xFFEBEBF5.toInt() else 0xFF3C3C43.toInt() // #FFEBEBF5 / #FF3C3C43
         }
 
         val strokeActiveColor = if (isPrimary) {
             ContextCompat.getColor(context, R.color.kb_key_bg_accent)
         } else {
-            if (night) Color.parseColor("#8E8E93") else Color.parseColor("#636366")
+            if (night) 0xFF8E8E93.toInt() else 0xFF636366.toInt() // #8E8E93 / #636366
         }
 
         val activeBgColor = if (isPrimary) {
-            if (night) Color.parseColor("#330A84FF") else Color.parseColor("#26007AFF")
+            if (night) 0x330A84FF.toInt() else 0x26007AFF.toInt() // #330A84FF / #26007AFF
         } else {
             pressedBgColor
         }
@@ -553,26 +553,26 @@ class VirtualTrackpadView(
 
         private val surfaceBgColor: Int
             get() = if (theme == "glass") {
-                if (isNight) Color.parseColor("#9910121A") else Color.parseColor("#B3F2F4F8")
+                if (isNight) 0x9910121A.toInt() else 0xB3F2F4F8.toInt() // #9910121A / #B3F2F4F8
             } else {
-                if (isNight) Color.parseColor("#140F172A") else Color.parseColor("#0F007AFF")
+                if (isNight) 0x140F172A.toInt() else 0x0F007AFF.toInt() // #140F172A / #0F007AFF
             }
 
         private val strokeNormalColor: Int
             get() = if (theme == "glass") {
-                if (isNight) Color.parseColor("#33FFFFFF") else Color.parseColor("#26000000")
+                if (isNight) 0x33FFFFFF.toInt() else 0x26000000.toInt() // #33FFFFFF / #26000000
             } else {
-                if (isNight) Color.parseColor("#4738BDF8") else Color.parseColor("#66007AFF")
+                if (isNight) 0x4738BDF8.toInt() else 0x66007AFF.toInt() // #4738BDF8 / #66007AFF
             }
 
         private val strokeActiveColor: Int
-            get() = if (isNight) Color.parseColor("#8038BDF8") else Color.parseColor("#CC007AFF")
+            get() = if (isNight) 0x8038BDF8.toInt() else 0xCC007AFF.toInt() // #8038BDF8 / #CC007AFF
 
         private val gridColor: Int
             get() = if (theme == "glass") {
-                if (isNight) Color.parseColor("#1AFFFFFF") else Color.parseColor("#1A000000")
+                if (isNight) 0x1AFFFFFF.toInt() else 0x1A000000.toInt() // #1AFFFFFF / #1A000000
             } else {
-                if (isNight) Color.parseColor("#0D38BDF8") else Color.parseColor("#26007AFF")
+                if (isNight) 0x0D38BDF8.toInt() else 0x26007AFF.toInt() // #0D38BDF8 / #26007AFF
             }
 
         private val surfaceBg = GradientDrawable().apply {
@@ -728,11 +728,11 @@ class VirtualTrackpadView(
             get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
         private val stripBgColor: Int
-            get() = if (isNight) Color.parseColor("#1A1C1C1E") else Color.parseColor("#14000000")
+            get() = if (isNight) 0x1A1C1C1E.toInt() else 0x14000000.toInt() // #1A1C1C1E / #14000000
         private val pressedBgColor: Int
-            get() = if (isNight) Color.parseColor("#330A84FF") else Color.parseColor("#26007AFF")
+            get() = if (isNight) 0x330A84FF.toInt() else 0x26007AFF.toInt() // #330A84FF / #26007AFF
         private val strokeColor: Int
-            get() = if (isNight) Color.parseColor("#33FFFFFF") else Color.parseColor("#26000000")
+            get() = if (isNight) 0x33FFFFFF.toInt() else 0x26000000.toInt() // #33FFFFFF / #26000000
         private val handleColor: Int
             get() = ContextCompat.getColor(context, R.color.kb_key_bg_accent)
 

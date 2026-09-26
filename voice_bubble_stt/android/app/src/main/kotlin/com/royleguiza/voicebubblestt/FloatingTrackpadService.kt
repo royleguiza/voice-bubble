@@ -142,8 +142,8 @@ class FloatingTrackpadService : Service() {
             val bg = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 val isNight = isNightMode()
-                setColor(if (isNight) Color.parseColor("#E61C1C1E") else Color.parseColor("#E6FFFFFF"))
-                setStroke((1.5f * density).toInt(), Color.parseColor("#38BDF8"))
+                setColor(if (isNight) 0xE61C1C1E.toInt() else 0xE6FFFFFF.toInt()) // #E61C1C1E / #E6FFFFFF
+                setStroke((1.5f * density).toInt(), 0xFF38BDF8.toInt()) // #38BDF8
             }
             background = bg
             elevation = 6f * density
@@ -278,13 +278,13 @@ class FloatingTrackpadService : Service() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val bg = GradientDrawable().apply {
-                setColor(if (isNight) Color.parseColor("#E6171A24") else Color.parseColor("#E6F2F4F8"))
+                setColor(if (isNight) 0xE6171A24.toInt() else 0xE6F2F4F8.toInt()) // #E6171A24 / #E6F2F4F8
                 cornerRadii = floatArrayOf(
                     18f * density, 18f * density,
                     18f * density, 18f * density,
                     0f, 0f, 0f, 0f
                 )
-                setStroke((1.2f * density).toInt(), if (isNight) Color.parseColor("#33FFFFFF") else Color.parseColor("#26000000"))
+                setStroke((1.2f * density).toInt(), if (isNight) 0x33FFFFFF.toInt() else 0x26000000.toInt()) // #33FFFFFF / #26000000
             }
             background = bg
             elevation = 12f * density
@@ -305,7 +305,7 @@ class FloatingTrackpadService : Service() {
                 background = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
                     cornerRadius = 3f * density
-                    setColor(if (isNight) Color.parseColor("#E6FFFFFF") else Color.parseColor("#CC1D1D1F"))
+                    setColor(if (isNight) 0xE6FFFFFF.toInt() else 0xCC1D1D1F.toInt()) // #E6FFFFFF / #CC1D1D1F
                 }
             }
             addView(rayita)

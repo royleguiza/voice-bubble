@@ -12,6 +12,11 @@ import '../models/transcription.dart';
 import '../helpers/uuid_helper.dart';
 import 'cloud_stt_service.dart';
 import 'pending_note_queue.dart';
+import 'prefs_bridge.dart';
+import 'snippet_repository.dart';
+import 'credential_repository.dart';
+import 'history_repository.dart';
+import 'stt_config_store.dart';
 
 class _HistoryEntry {
   const _HistoryEntry({
@@ -312,6 +317,14 @@ class StorageService {
            _SharedPreferencesCredentialIndexStore(credentialsKey),
        _credentialVaultStore = credentialVaultStore ??
            _FlutterSecureCredentialVaultStore(secureStorage ?? espSecureStorage);
+
+  late final PrefsBridge bridge = PrefsBridge();
+  late final SnippetRepository snippetRepo = SnippetRepository();
+  late final CredentialRepository credentialRepo =
+      CredentialRepository(secureStorage: _secureStorage);
+  late final HistoryRepository historyRepo = HistoryRepository();
+  late final SttConfigStore sttStore =
+      SttConfigStore(secureStorage: _secureStorage);
 
   Future<SharedPreferences> _prefs() async {
     return await SharedPreferences.getInstance();
@@ -2288,7 +2301,7 @@ bool publishHistoryFileAtomically(File file, String contents) {
   File? tmpFile;
   try {
     final token = '${pid}_${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}_${StorageService._historyTempCounter++}';
-    tmpFile = File('${file.path}.$token${StorageService._historyTmpSuffix}');
+    tmpFile = File('${file.path}.${token}${StorageService._historyTmpSuffix}');
     tmpFile.writeAsStringSync(contents, flush: true);
     if (!tmpFile.existsSync()) return false;
     tmpFile.renameSync(file.path);

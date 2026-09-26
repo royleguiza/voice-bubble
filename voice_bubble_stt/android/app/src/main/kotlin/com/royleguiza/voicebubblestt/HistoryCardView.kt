@@ -26,14 +26,14 @@ object HistoryCardView {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 12f * density
             if (selected) {
-                setColor(Color.parseColor("#FF238636"))
-                setStroke((1.5f * density).toInt(), Color.parseColor("#FF3FB950"))
+                setColor(0xFF238636.toInt()) // #FF238636
+                setStroke((1.5f * density).toInt(), 0xFF3FB950.toInt()) // #FF3FB950
             } else if (dark) {
-                setColor(Color.parseColor("#12FFFFFF"))
-                setStroke((1f * density).toInt(), Color.parseColor("#26FFFFFF"))
+                setColor(0x12FFFFFF.toInt()) // #12FFFFFF
+                setStroke((1f * density).toInt(), 0x26FFFFFF.toInt()) // #26FFFFFF
             } else {
-                setColor(Color.parseColor("#0F000000"))
-                setStroke((1f * density).toInt(), Color.parseColor("#1F000000"))
+                setColor(0x0F000000.toInt()) // #0F000000
+                setStroke((1f * density).toInt(), 0x1F000000.toInt()) // #1F000000
             }
         }
     }
@@ -43,11 +43,11 @@ object HistoryCardView {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 8f * density
             if (dark) {
-                setColor(Color.parseColor("#1FFFFFFF"))
-                setStroke((1f * density).toInt(), Color.parseColor("#26FFFFFF"))
+                setColor(0x1FFFFFFF.toInt()) // #1FFFFFFF
+                setStroke((1f * density).toInt(), 0x26FFFFFF.toInt()) // #26FFFFFF
             } else {
-                setColor(Color.parseColor("#0F000000"))
-                setStroke((1f * density).toInt(), Color.parseColor("#1F000000"))
+                setColor(0x0F000000.toInt()) // #0F000000
+                setStroke((1f * density).toInt(), 0x1F000000.toInt()) // #1F000000
             }
         }
     }
@@ -64,7 +64,7 @@ object HistoryCardView {
             setColorFilter(Color.WHITE)
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#FF30D158"))
+                setColor(0xFF30D158.toInt()) // #FF30D158
             }
             val s = (22 * density).toInt()
             layoutParams = FrameLayout.LayoutParams(s, s).apply {
@@ -77,7 +77,7 @@ object HistoryCardView {
     fun emptyView(context: Context, density: Float, dark: Boolean): TextView {
         return TextView(context).apply {
             text = "Sin transcripciones todavía."
-            setTextColor(if (dark) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
+            setTextColor(if (dark) 0xFFAEAEB2.toInt() else 0xFF6E6E73.toInt()) // #FFAEAEB2 / #FF6E6E73
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             gravity = Gravity.CENTER
             val pad = (16 * density).toInt()
@@ -117,7 +117,7 @@ object HistoryCardView {
         }
         val tv = TextView(context).apply {
             this.text = "\"$text\""
-            setTextColor(if (dark) Color.WHITE else Color.parseColor("#1C1C1E"))
+            setTextColor(if (dark) Color.WHITE else 0xFF1C1C1E.toInt()) // #1C1C1E
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
@@ -132,7 +132,7 @@ object HistoryCardView {
                     setImageResource(R.drawable.ic_copy)
                 } catch (_: Throwable) {}
             }
-            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
+            setColorFilter(if (dark) Color.WHITE else 0xFF3C3C43.toInt()) // #3C3C43
             background = copyBackground(density, dark)
             val pad = (7 * density).toInt()
             setPadding(pad, pad, pad, pad)

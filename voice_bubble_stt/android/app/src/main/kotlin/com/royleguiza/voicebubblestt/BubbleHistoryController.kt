@@ -397,9 +397,9 @@ class BubbleHistoryController(
                     setImageResource(R.drawable.ic_copy)
                 } catch (_: Throwable) {}
             }
-            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#1C1C1E"))
+            setColorFilter(if (dark) Color.WHITE else 0xFF1C1C1E.toInt()) // #1C1C1E
             background = circleBackground(
-                if (dark) Color.parseColor("#3A3A3C") else Color.parseColor("#E4E4E8")
+                if (dark) 0xFF3A3A3C.toInt() else 0xFFE4E4E8.toInt() // #3A3A3C / #E4E4E8
             )
             val pad = (13 * density).toInt()
             setPadding(pad, pad, pad, pad)
@@ -475,7 +475,7 @@ class BubbleHistoryController(
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 10f * density
-                setColor(if (dark) Color.parseColor("#FF8E8E93") else Color.parseColor("#FFAEAEB2"))
+                setColor(if (dark) 0xFF8E8E93.toInt() else 0xFFAEAEB2.toInt()) // #FF8E8E93 / #FFAEAEB2
             }
         }
         handleWrap.addView(handleBar)
@@ -483,7 +483,7 @@ class BubbleHistoryController(
         val darkNow = dark
         val sectionLabel = TextView(context).apply {
             text = "Historial"
-            setTextColor(if (darkNow) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
+            setTextColor(if (darkNow) 0xFFAEAEB2.toInt() else 0xFF6E6E73.toInt()) // #FFAEAEB2 / #FF6E6E73
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             typeface = Typeface.DEFAULT_BOLD
             isAllCaps = true
@@ -512,7 +512,7 @@ class BubbleHistoryController(
             }
             setColorFilter(ContextCompat.getColor(context, R.color.kb_recording))
             background = circleBackground(
-                if (dark) Color.parseColor("#3A3A3C") else Color.parseColor("#E4E4E8")
+                if (dark) 0xFF3A3A3C.toInt() else 0xFFE4E4E8.toInt() // #3A3A3C / #E4E4E8
             )
             val pad = (12 * density).toInt()
             setPadding(pad, pad, pad, pad)
@@ -778,117 +778,23 @@ class BubbleHistoryController(
         text: String,
         key: String,
         dark: Boolean,
-        // Pintado de selección inyectable: las tarjetas de historial usan el
-        // relleno cardBackground; las de snippet repintan su outlined.
         paintBackground: ((selected: Boolean) -> Unit)? = null
     ) {
-        val armPx = SWIPE_ARM_DP * density
-        val maxPx = SWIPE_MAX_DP * density
-        var longRunnable: Runnable? = null
-        var longFired = false
-        var downX = 0f
-        var downY = 0f
-        var swiping = false
-        var suppressTap = false
-        val paint: (Boolean) -> Unit =
-            paintBackground ?: { sel -> row.background = cardBackground(selected = sel, dark = dark) }
-
-        row.isClickable = true
-        row.isFocusable = true
-        row.setOnTouchListener { v, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    longFired = false
-                    swiping = false
-                    suppressTap = false
-                    downX = event.rawX
-                    downY = event.rawY
-                    row.animate().cancel()
-                    row.translationX = 0f
-                    val r = Runnable {
-                        longFired = true
-                        try {
-                            val expanded = tv.maxLines == Int.MAX_VALUE
-                            tv.maxLines = if (expanded) 2 else Int.MAX_VALUE
-                        } catch (_: Throwable) {}
-                    }
-                    longRunnable = r
-                    mainHandler.postDelayed(r, LONG_PRESS_MS)
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = event.rawX - downX
-                    val dy = event.rawY - downY
-                    if (longRunnable != null && Math.hypot(dx.toDouble(), dy.toDouble()) > 10 * density) {
-                        longRunnable?.let { mainHandler.removeCallbacks(it) }
-                        longRunnable = null
-                    }
-                    if (!swiping && abs(dx) > 14 * density && abs(dx) > abs(dy) * 1.4f) {
-                        swiping = true
-                    }
-                    if (swiping) {
-                        val clamped = dx.coerceIn(-maxPx, maxPx)
-                        row.translationX = clamped
-                        badge.visibility = if (abs(clamped) >= armPx || selected.contains(key)) {
-                            View.VISIBLE
-                        } else {
-                            View.GONE
-                        }
-                    }
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    longRunnable?.let { mainHandler.removeCallbacks(it) }
-                    longRunnable = null
-                    if (swiping) {
-                        swiping = false
-                        val armed = abs(row.translationX) >= armPx
-                        try {
-                            row.animate().translationX(0f).setDuration(220).start()
-                        } catch (_: Throwable) {
-                            row.translationX = 0f
-                        }
-                        suppressTap = true
-                        if (armed) {
-                            if (selected.contains(key)) {
-                                selected.remove(key)
-                                badge.visibility = View.GONE
-                                paint(false)
-                            } else {
-                                selected.add(key)
-                                badge.visibility = View.VISIBLE
-                                paint(true)
-                            }
-                            refreshCopyAll()
-                            try {
-                                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-                            } catch (_: Throwable) {}
-                        } else {
-                            badge.visibility = if (selected.contains(key)) View.VISIBLE else View.GONE
-                        }
-                    } else if (!longFired) {
-                        handleCardTap(tv = tv, text = text)
-                    }
-                    true
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    longRunnable?.let { mainHandler.removeCallbacks(it) }
-                    longRunnable = null
-                    if (swiping) {
-                        swiping = false
-                        try {
-                            row.animate().translationX(0f).setDuration(220).start()
-                        } catch (_: Throwable) {
-                            row.translationX = 0f
-                        }
-                        suppressTap = true
-                        badge.visibility = if (selected.contains(key)) View.VISIBLE else View.GONE
-                    }
-                    true
-                }
-                else -> false
-            }
-        }
+        BubbleHistoryInteractions.attachCardGestures(
+            row = row,
+            tv = tv,
+            badge = badge,
+            text = text,
+            key = key,
+            dark = dark,
+            density = density,
+            selected = selected,
+            mainHandler = mainHandler,
+            paintBackground = paintBackground,
+            defaultCardBackground = { sel, isDark -> cardBackground(selected = sel, dark = isDark) },
+            onTapAction = { tView, txt -> handleCardTap(tView, txt) },
+            onSelectionChanged = { refreshCopyAll() }
+        )
     }
 
     private fun handleCardTap(tv: TextView, text: String) {
@@ -949,7 +855,7 @@ class BubbleHistoryController(
             btn.setColorFilter(Color.WHITE)
             btn.background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#FF238636"))
+                setColor(0xFF238636.toInt()) // #FF238636
             }
             mainHandler.postDelayed({
                 try {
@@ -959,9 +865,9 @@ class BubbleHistoryController(
                         btn.setImageResource(R.drawable.ic_copy)
                     } catch (_: Throwable) {}
                 }
-                btn.setColorFilter(if (dark) Color.WHITE else Color.parseColor("#1C1C1E"))
+                btn.setColorFilter(if (dark) Color.WHITE else 0xFF1C1C1E.toInt()) // #1C1C1E
                 btn.background = circleBackground(
-                    if (dark) Color.parseColor("#3A3A3C") else Color.parseColor("#E4E4E8")
+                    if (dark) 0xFF3A3A3C.toInt() else 0xFFE4E4E8.toInt() // #3A3A3C / #E4E4E8
                 )
                 selected.clear()
                 resetCardSelections()
@@ -994,31 +900,14 @@ class BubbleHistoryController(
     }
 
     private fun showCopied(btn: ImageView, dark: Boolean) {
-        try {
-            btn.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_check))
-        } catch (_: Throwable) {
-            try {
-                btn.setImageResource(R.drawable.ic_check)
-            } catch (_: Throwable) {}
-        }
-        btn.setColorFilter(Color.WHITE)
-        btn.background = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 8f * density
-            setColor(Color.parseColor("#FF238636"))
-            setStroke((1f * density).toInt(), Color.parseColor("#FF3FB950"))
-        }
-        mainHandler.postDelayed({
-            try {
-                btn.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_copy))
-            } catch (_: Throwable) {
-                try {
-                    btn.setImageResource(R.drawable.ic_copy)
-                } catch (_: Throwable) {}
-            }
-            btn.setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
-            btn.background = copyBackgroundFor(dark)
-        }, 1200)
+        BubbleHistoryInteractions.showCopied(
+            btn = btn,
+            dark = dark,
+            density = density,
+            mainHandler = mainHandler,
+            context = context,
+            copyBackgroundFor = { isDark -> copyBackgroundFor(isDark) }
+        )
     }
 
     /**
@@ -1028,10 +917,6 @@ class BubbleHistoryController(
      * verde → icono copiar a los ~1100 ms) y la selección tras copiar-todo.
      */
     private fun copyToClipboard(text: String) {
-        try {
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-            val clip = ClipData.newPlainText("VoiceBubble STT", text)
-            clipboard?.setPrimaryClip(clip)
-        } catch (_: Throwable) {}
+        BubbleHistoryInteractions.copyToClipboard(context, text)
     }
 }

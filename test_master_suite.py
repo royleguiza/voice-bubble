@@ -51,6 +51,7 @@ SUITES = [
     ("Datos: espejos que no mienten (C-22)", "test_c22_honest_mirrors_suite.py"),
     ("Concurrencia: escritura sin pisadas y UUID v4 único (C-23)", "test_c23_concurrent_writes_and_unique_ids_suite.py"),
     ("Errores que se ven y reporte honesto (C-24)", "test_c24_visible_errors_suite.py"),
+    ("Adiós god-object + merges únicos (C-25)", "test_c25_god_object_split_and_merges_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3544,6 +3545,60 @@ def test_c24_visible_errors_contract():
         editor_src = f.read()
     assert "Limite alcanzado o error" in editor_src, "C-24: note_editor_screen no avisa fallo de guardado"
 
+def test_c25_god_object_split_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    merge_doc = os.path.join(base_dir, "docs", "contract-merge.md")
+    assert os.path.isfile(merge_doc), "C-25: docs/contract-merge.md no existe"
+    with open(merge_doc, "r", encoding="utf-8") as f:
+        doc_content = f.read()
+    assert "Especificación formal de reglas de combinación" in doc_content, "C-25: contract-merge.md falta spec"
+    assert "M(A, B) = M(B, A)" in doc_content, "C-25: contract-merge.md falta conmutatividad"
+    assert "M(A, A) = A" in doc_content, "C-25: contract-merge.md falta idempotencia"
+
+    # Dart modular services
+    services_dir = os.path.join(base_dir, "app_source", "lib", "services")
+    expected_dart = [
+        "prefs_bridge.dart",
+        "snippet_repository.dart",
+        "credential_repository.dart",
+        "history_repository.dart",
+        "stt_config_store.dart",
+    ]
+    for s in expected_dart:
+        p = os.path.join(services_dir, s)
+        assert os.path.isfile(p), f"C-25: Dart modular service falta: {s}"
+
+    # StorageService facade check
+    storage_path = os.path.join(services_dir, "storage_service.dart")
+    with open(storage_path, "r", encoding="utf-8") as f:
+        st_src = f.read()
+    assert "PrefsBridge" in st_src, "C-25: StorageService no integra PrefsBridge"
+    assert "SnippetRepository" in st_src, "C-25: StorageService no integra SnippetRepository"
+    assert "CredentialRepository" in st_src, "C-25: StorageService no integra CredentialRepository"
+    assert "HistoryRepository" in st_src, "C-25: StorageService no integra HistoryRepository"
+    assert "SttConfigStore" in st_src, "C-25: StorageService no integra SttConfigStore"
+
+    # Kotlin helper splits
+    kt_dir = os.path.join(base_dir, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt")
+    expected_kt = [
+        "FlutterPrefs.kt",
+        "GestureTuning.kt",
+        "BubbleHistoryInteractions.kt",
+        "FloatingTrackpadDock.kt",
+        "WidgetNoteEditHelper.kt",
+    ]
+    for k in expected_kt:
+        p = os.path.join(kt_dir, k)
+        assert os.path.isfile(p), f"C-25: Kotlin helper falta: {k}"
+
+    # Guard: Zero Color.parseColor across all Kotlin files
+    for root, _, files in os.walk(kt_dir):
+        for fname in files:
+            if fname.endswith(".kt"):
+                with open(os.path.join(root, fname), "r", encoding="utf-8") as kf:
+                    ksrc = kf.read()
+                assert "Color.parseColor" not in ksrc, f"C-25: Color.parseColor detectado en {fname}"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3581,6 +3636,7 @@ def main():
         ("C-22: espejos que no mienten", test_c22_honest_mirrors_contract),
         ("C-23: escritura sin pisadas y UUID v4 único", test_c23_concurrent_writes_contract),
         ("C-24: errores que se ven y reporte honesto", test_c24_visible_errors_contract),
+        ("C-25: adiós god-object y merges únicos", test_c25_god_object_split_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

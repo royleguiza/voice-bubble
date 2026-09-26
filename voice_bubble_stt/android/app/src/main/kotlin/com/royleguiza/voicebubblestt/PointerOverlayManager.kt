@@ -240,17 +240,17 @@ class PointerOverlayManager(private val context: Context) {
         private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = 2.2f * resources.displayMetrics.density
-            color = Color.parseColor("#1C1C1E") // Borde oscuro de contraste alto
+            color = 0xFF1C1C1E.toInt() // #1C1C1E Borde oscuro de contraste alto
             strokeJoin = Paint.Join.ROUND
             strokeCap = Paint.Cap.ROUND
         }
         private val accentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
-            color = Color.parseColor("#0A84FF") // Azul Apple
+            color = 0xFF0A84FF.toInt() // #0A84FF Azul Apple
         }
         private val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
-            color = Color.parseColor("#400A84FF")
+            color = 0x400A84FF.toInt() // #400A84FF
         }
 
         private val arrowPath = Path()

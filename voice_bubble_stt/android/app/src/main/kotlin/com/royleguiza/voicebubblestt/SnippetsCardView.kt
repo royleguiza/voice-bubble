@@ -34,8 +34,8 @@ object SnippetsCardView {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 12f * density
             if (selected) {
-                setColor(Color.parseColor("#FF238636"))
-                setStroke((1.5f * density).toInt(), Color.parseColor("#FF3FB950"))
+                setColor(0xFF238636.toInt()) // #FF238636
+                setStroke((1.5f * density).toInt(), 0xFF3FB950.toInt()) // #FF3FB950
             } else if (colorId != null && context != null && SnippetPalette.isValid(colorId)) {
                 setColor(ContextCompat.getColor(context, SnippetPalette.fillRes(colorId)))
                 setStroke(
@@ -46,9 +46,9 @@ object SnippetsCardView {
                 // Caja transparente: solo el borde sutil (el fondo lo pone la modal).
                 setColor(Color.TRANSPARENT)
                 if (dark) {
-                    setStroke((1f * density).toInt(), Color.parseColor("#26FFFFFF"))
+                    setStroke((1f * density).toInt(), 0x26FFFFFF.toInt()) // #26FFFFFF
                 } else {
-                    setStroke((1f * density).toInt(), Color.parseColor("#1F000000"))
+                    setStroke((1f * density).toInt(), 0x1F000000.toInt()) // #1F000000
                 }
             }
         }
@@ -57,7 +57,7 @@ object SnippetsCardView {
     fun emptyView(context: Context, density: Float, dark: Boolean): TextView {
         return TextView(context).apply {
             text = "Sin snippets todavía. Crealos en la app."
-            setTextColor(if (dark) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
+            setTextColor(if (dark) 0xFFAEAEB2.toInt() else 0xFF6E6E73.toInt()) // #FFAEAEB2 / #FF6E6E73
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             gravity = Gravity.CENTER
             val pad = (16 * density).toInt()
@@ -102,7 +102,7 @@ object SnippetsCardView {
         val tx = TextView(context).apply {
             text = snippet.contenido
             typeface = Typeface.MONOSPACE
-            setTextColor(if (dark) Color.WHITE else Color.parseColor("#1C1C1E"))
+            setTextColor(if (dark) Color.WHITE else 0xFF1C1C1E.toInt()) // #1C1C1E
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
@@ -130,7 +130,7 @@ object SnippetsCardView {
                     setImageResource(R.drawable.ic_edit)
                 } catch (_: Throwable) {}
             }
-            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
+            setColorFilter(if (dark) Color.WHITE else 0xFF3C3C43.toInt()) // #3C3C43
             background = HistoryCardView.copyBackground(density, dark)
             val pad = (7 * density).toInt()
             setPadding(pad, pad, pad, pad)
@@ -150,7 +150,7 @@ object SnippetsCardView {
                     setImageResource(R.drawable.ic_copy)
                 } catch (_: Throwable) {}
             }
-            setColorFilter(if (dark) Color.WHITE else Color.parseColor("#3C3C43"))
+            setColorFilter(if (dark) Color.WHITE else 0xFF3C3C43.toInt()) // #3C3C43
             background = HistoryCardView.copyBackground(density, dark)
             val pad = (7 * density).toInt()
             setPadding(pad, pad, pad, pad)
@@ -165,7 +165,7 @@ object SnippetsCardView {
         box.addView(ops)
         val legend = TextView(context).apply {
             text = snippet.nombre.ifBlank { "Snippet" }
-            setTextColor(if (dark) Color.parseColor("#FFAEAEB2") else Color.parseColor("#FF6E6E73"))
+            setTextColor(if (dark) 0xFFAEAEB2.toInt() else 0xFF6E6E73.toInt()) // #FFAEAEB2 / #FF6E6E73
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             typeface = Typeface.DEFAULT_BOLD
             maxLines = 1
