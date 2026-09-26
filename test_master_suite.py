@@ -42,6 +42,7 @@ SUITES = [
     ("Widget: distingue sin internet de sin clave (C-13)", "test_c13_widget_auth_vs_network_suite.py"),
     ("Seguridad: portapapeles fuera de contraseñas (C-14)", "test_c14_clipboard_out_of_passwords_suite.py"),
     ("Snippets: borrador a salvo ante rebuild (C-15)", "test_c15_snippet_draft_safe_suite.py"),
+    ("Spacebar: sin fantasmas y retardo de usuario (C-16)", "test_c16_spacebar_no_ghosts_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3141,6 +3142,43 @@ def test_c15_snippet_draft_safe_contract():
     assert save_idx < dismiss_idx, "C-15: saveDraftState debe llamarse antes de dismissPopup()"
     assert save_idx < remove_views_idx, "C-15: saveDraftState debe llamarse antes de root.removeAllViews()"
 
+def test_c16_spacebar_no_ghosts_contract():
+    kt_dir = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    vks_path = os.path.join(kt_dir, "VoiceKeyboardService.kt")
+    spacebar_path = os.path.join(kt_dir, "SpacebarLayer.kt")
+
+    with open(vks_path, "r", encoding="utf-8") as f:
+        vks = f.read()
+    with open(spacebar_path, "r", encoding="utf-8") as f:
+        spacebar = f.read()
+
+    # 1. SpacebarLayer: constructor recibe handler y UiHost define longPressDelayMs
+    assert "private val handler: Handler" in spacebar, "C-16: SpacebarLayer no recibe Handler en constructor"
+    assert "fun longPressDelayMs(): Long" in spacebar, "C-16: SpacebarLayer.UiHost no declara longPressDelayMs"
+
+    # 2. Uso de host.longPressDelayMs() y no literal 300L
+    assert "host.longPressDelayMs()" in spacebar, "C-16: SpacebarLayer no usa host.longPressDelayMs()"
+    post_delayed_matches = re.findall(r"postDelayed\([^)]+\)", spacebar)
+    assert all("300L" not in m for m in post_delayed_matches), "C-16: SpacebarLayer todavía tiene 300L hardcodeado"
+
+    # 3. cancelPending restaura alpha=1 inmediatamente
+    cancel_idx = spacebar.find("fun cancelPending()")
+    assert cancel_idx != -1, "C-16: cancelPending() no encontrado en SpacebarLayer"
+    cancel_chunk = spacebar[cancel_idx:cancel_idx + 600]
+    assert "handler.removeCallbacks" in cancel_chunk, "C-16: cancelPending no remueve callbacks del handler compartido"
+    assert "setTrackpadBlankOutMode(false" in cancel_chunk, "C-16: cancelPending no restaura blank out"
+    assert "immediate = true" in cancel_chunk, "C-16: cancelPending no restaura alpha inmediatamente"
+
+    # 4. VoiceKeyboardService: pasa handler y cancelPendingKeyGestures en rebuild y onDestroy
+    assert "spacebar = SpacebarLayer(this, handler, this)" in vks, "C-16: VKS no pasa handler compartido a SpacebarLayer"
+    assert "override fun longPressDelayMs(): Long" in vks, "C-16: VKS no implementa longPressDelayMs"
+
+    rebuild_chunk = vks[vks.find("override fun rebuild()"):vks.find("root.removeAllViews()")]
+    assert "cancelPendingKeyGestures()" in rebuild_chunk, "C-16: rebuild no cancela gestos pendientes antes de removeAllViews"
+
+    cancel_gestures_chunk = vks[vks.find("private fun cancelPendingKeyGestures()"):vks.find("override fun dismissPopup()")]
+    assert "spacebar.cancelPending()" in cancel_gestures_chunk, "C-16: cancelPendingKeyGestures no invoca spacebar.cancelPending()"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3169,6 +3207,7 @@ def main():
         ("C-13: el widget distingue sin internet de sin clave", test_c13_widget_auth_vs_network_contract),
         ("C-14: portapapeles fuera de contraseñas [S]", test_c14_clipboard_out_of_passwords_contract),
         ("C-15: borrador de snippet a salvo", test_c15_snippet_draft_safe_contract),
+        ("C-16: spacebar sin fantasmas", test_c16_spacebar_no_ghosts_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

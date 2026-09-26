@@ -21,8 +21,11 @@ import kotlin.math.abs
  */
 class SpacebarLayer(
     private val service: InputMethodService,
+    private val handler: Handler,
     private val host: UiHost,
 ) {
+    /** Constructor secundario para compatibilidad con llamadas sin handler explícito. */
+    constructor(service: InputMethodService, host: UiHost) : this(service, Handler(Looper.getMainLooper()), host)
 
     /** Lo mínimo que la espaciadora exige al teclado. */
     interface UiHost {
@@ -33,19 +36,18 @@ class SpacebarLayer(
         fun pressSpace()
         fun spacebarTrackpadMode(): String
         fun currentInputView(): View?
+        fun longPressDelayMs(): Long
     }
 
-    private var gestureHandler: Handler? = null
     private var longPressRunnable: Runnable? = null
 
     fun attachSpacebarGestures(space: View) {
-        // El listener anterior muere con su vista en rebuild: cancelar su
-        // long-press pendiente acá mismo además del barrido de rebuild().
+        // C-16: El listener anterior muere con su vista en rebuild: cancelar su
+        // long-press pendiente en el handler compartido antes de asociar el nuevo.
         try {
-            longPressRunnable?.let { gestureHandler?.removeCallbacks(it) }
+            longPressRunnable?.let { handler.removeCallbacks(it) }
         } catch (_: Exception) {}
-        val handler = Handler(Looper.getMainLooper())
-        gestureHandler = handler
+        longPressRunnable = null
         space.setOnTouchListener(object : View.OnTouchListener {
             private var startX = 0f
             private var startY = 0f
@@ -90,7 +92,8 @@ class SpacebarLayer(
                         isDragNavTriggered = false
                         isSelecting = false
                         v.isPressed = true
-                        handler.postDelayed(longPressTask, 300L)
+                        handler.removeCallbacks(longPressTask)
+                        handler.postDelayed(longPressTask, host.longPressDelayMs())
                         return true
                     }
                     MotionEvent.ACTION_POINTER_DOWN -> {
@@ -171,18 +174,25 @@ class SpacebarLayer(
 
     fun cancelPending() {
         try {
-            longPressRunnable?.let { gestureHandler?.removeCallbacks(it) }
+            longPressRunnable?.let { handler.removeCallbacks(it) }
         } catch (_: Exception) {}
         longPressRunnable = null
+        // C-16: Restaurar alpha=1 inmediatamente sobre las vistas del teclado
+        // para que un rebuild rápido no deje el teclado invisible ni con glifos apagados.
+        setTrackpadBlankOutMode(false, space = null, immediate = true)
     }
 
-    private fun setTrackpadBlankOutMode(enabled: Boolean, space: View) {
+    private fun setTrackpadBlankOutMode(enabled: Boolean, space: View? = null, immediate: Boolean = false) {
         val targetAlpha = if (enabled) 0.0f else 1.0f
         fun fadeGlyphs(view: View) {
-            if (view === space) return
-            if (view is TextView || (view is ImageView && view !== space)) {
+            if (space != null && view === space) return
+            if (view is TextView || (view is ImageView && (space == null || view !== space))) {
                 view.animate().cancel()
-                view.animate().alpha(targetAlpha).setDuration(120L).start()
+                if (immediate) {
+                    view.alpha = targetAlpha
+                } else {
+                    view.animate().alpha(targetAlpha).setDuration(120L).start()
+                }
             } else if (view is ViewGroup) {
                 for (i in 0 until view.childCount) {
                     fadeGlyphs(view.getChildAt(i))

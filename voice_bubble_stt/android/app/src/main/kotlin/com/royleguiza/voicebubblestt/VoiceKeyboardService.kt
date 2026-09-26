@@ -124,7 +124,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         toolbar = ToolbarLayer(this, this)
         keys = KeyFactory(this, handler, this)
         layout = LayoutLayer(keys, this)
-        spacebar = SpacebarLayer(this, this)
+        spacebar = SpacebarLayer(this, handler, this)
         editor = EditEngine(this, { if (::snippets.isInitialized) snippets else null }, this)
         root = LinearLayout(this)
         root.orientation = LinearLayout.VERTICAL
