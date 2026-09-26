@@ -81,7 +81,7 @@ jobs:
 
       - name: Pub get
         working-directory: voice_bubble_stt
-        run: flutter pub get --enforce-lockfile
+        run: flutter pub get
 
       - name: Preparar local.properties para Gradle
         run: |
