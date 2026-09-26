@@ -30,3 +30,22 @@ class DismissEditText @JvmOverloads constructor(
         return super.onKeyPreIme(keyCode, event)
     }
 }
+
+/** Máximo del cuerpo expandible: lo visible menos el cromo. Puro (C-40). */
+internal fun computeBodyMaxPx(
+    rootH: Int,
+    rootPadBottom: Int,
+    chromeH: Int,
+    marginPx: Int,
+    topPx: Int,
+    minPx: Int,
+): Int {
+    if (rootH <= 0 || chromeH < 0 || minPx <= 0) return minPx
+    return maxOf(minPx, rootH - rootPadBottom - chromeH - marginPx - topPx)
+}
+
+/** Clamp del alto deseado al rango vigente. Puro (C-40). */
+internal fun clampBodyHeight(want: Int, minPx: Int, maxPx: Int): Int {
+    if (minPx <= 0) return want
+    return want.coerceIn(minPx, maxOf(minPx, maxPx))
+}

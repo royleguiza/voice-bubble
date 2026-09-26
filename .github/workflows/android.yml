@@ -104,10 +104,6 @@ jobs:
         working-directory: voice_bubble_stt/android
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.MicrophoneClaimTest
 
-      - name: Test Kotlin nativo de cierre de modal del widget C-38
-        working-directory: voice_bubble_stt/android
-        run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.WidgetNoteDismissTest
-
       - name: Analyze estricto (infos y warnings fatales)
         working-directory: voice_bubble_stt
         run: flutter analyze

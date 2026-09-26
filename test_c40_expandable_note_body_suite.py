@@ -24,6 +24,7 @@ KT = os.path.join(
     "kotlin", "com", "royleguiza", "voicebubblestt",
 )
 ACTIVITY = os.path.join(KT, "WidgetNoteEditActivity.kt")
+DISMISS = os.path.join(KT, "DismissEditText.kt")
 LAYOUT = os.path.join(
     REPO_ROOT, "voice_bubble_stt", "android", "app", "src", "main",
     "res", "layout", "activity_widget_note_edit.xml",
@@ -63,12 +64,16 @@ class TestC40ExpandableNoteBodySuite(unittest.TestCase):
                       "El cuerpo arranca en 120dp como hoy")
 
     def test_02_helpers_puros_y_clamp(self):
-        act = read_file(ACTIVITY)
-        self.assertIn("internal fun clampBodyHeight(", act)
-        self.assertIn("coerceIn(minPx, maxOf(minPx, maxPx))", act,
+        pure = read_file(DISMISS)
+        self.assertIn("internal fun clampBodyHeight(", pure)
+        self.assertIn("coerceIn(minPx, maxOf(minPx, maxPx))", pure,
                       "Clamp con fallback si max < min")
-        self.assertIn("internal fun computeBodyMaxPx(", act)
-        self.assertIn("maxOf(minPx, rootH - rootPadBottom", act)
+        self.assertIn("internal fun computeBodyMaxPx(", pure)
+        self.assertIn("maxOf(minPx, rootH - rootPadBottom", pure)
+        act = read_file(ACTIVITY)
+        self.assertIn("clampBodyHeight(", act,
+                      "La activity usa el clamp compartido")
+        self.assertIn("computeBodyMaxPx(", act)
 
     def test_03_arrastre_un_puntero_y_dobletap(self):
         act = read_file(ACTIVITY)

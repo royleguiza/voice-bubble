@@ -215,25 +215,7 @@ class WidgetNoteEditActivity : Activity() {
         setupExpandableBody()
     }
 
-    /** Máximo del cuerpo: lo visible menos el cromo de la tarjeta. Puro. */
-    internal fun computeBodyMaxPx(
-        rootH: Int,
-        rootPadBottom: Int,
-        chromeH: Int,
-        marginPx: Int,
-        topPx: Int,
-        minPx: Int,
-    ): Int {
-        if (rootH <= 0 || chromeH < 0 || minPx <= 0) return minPx
-        return maxOf(minPx, rootH - rootPadBottom - chromeH - marginPx - topPx)
-    }
-
-    /** Clamp del alto deseado al rango vigente. Puro. */
-    internal fun clampBodyHeight(want: Int, minPx: Int, maxPx: Int): Int {
-        if (minPx <= 0) return want
-        return want.coerceIn(minPx, maxOf(minPx, maxPx))
-    }
-
+    /** Máximo del cuerpo: lo visible menos el cromo de la tarjeta. */
     private fun bodyMinPx(): Int {
         if (cachedBodyMinPx > 0) return cachedBodyMinPx
         val density = resources.displayMetrics.density

@@ -833,6 +833,21 @@ class WidgetNotesBehaviorTest {
     }
 
     @Test
+    fun clampBodyHeightKeepsInsideRange() {
+        assertEquals(100, clampBodyHeight(50, 100, 500))
+        assertEquals(500, clampBodyHeight(900, 100, 500))
+        assertEquals(300, clampBodyHeight(300, 100, 500))
+        assertEquals(100, clampBodyHeight(900, 100, 40))
+    }
+
+    @Test
+    fun computeBodyMaxPxFallsBackToMin() {
+        assertEquals(376, computeBodyMaxPx(800, 100, 300, 12, 12, 180))
+        assertEquals(180, computeBodyMaxPx(300, 50, 200, 12, 12, 180))
+        assertEquals(180, computeBodyMaxPx(0, 0, 0, 12, 12, 180))
+    }
+
+    @Test
     fun removePendingDeletesOnlyTheTargetEntry() {
         val root = Files.createTempDirectory("c39-rempend-").toFile()
         try {
@@ -867,8 +882,7 @@ class WidgetNotesBehaviorTest {
     }
 
     @Test
-    fun removePendingBlankOrMissingIndexFailsClosed() {
-        val root = Files.createTempDirectory("c39-rempend-closed-").toFile()
+    fun removePendingBlankOrMissingIndexFailsClosed() {        val root = Files.createTempDirectory("c39-rempend-closed-").toFile()
         try {
             val preferences = MemoryPreferences()
             assertFalse(NoteStore(TestContext(root, preferences)).removePending("   "))
