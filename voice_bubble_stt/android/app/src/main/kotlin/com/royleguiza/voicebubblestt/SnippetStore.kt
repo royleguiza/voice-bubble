@@ -167,8 +167,38 @@ class SnippetStore(private val context: Context) {
         }
     }
 
-    private fun prefs() =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    @Volatile
+    private var cachedPrefs: android.content.SharedPreferences? = null
+
+    private fun prefs(): android.content.SharedPreferences =
+        cachedPrefs ?: synchronized(this) {
+            cachedPrefs ?: run {
+                val p = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                cachedPrefs = p
+                p
+            }
+        }
+
+    /** C-12: Precarga en segundo plano fuera del hilo principal. */
+    fun preload() {
+        BackgroundWork.execute {
+            seedIfFirstOpen()
+            load()
+        }
+    }
+
+    /** C-12: Carga asíncrona fuera del hilo principal. */
+    fun loadAsync(onLoaded: ((List<VbSnippet>) -> Unit)? = null) {
+        BackgroundWork.executeWithResult(
+            block = {
+                seedIfFirstOpen()
+                load()
+            },
+            onResult = { res ->
+                onLoaded?.invoke(res ?: emptyList())
+            },
+        )
+    }
 
     /** Escritura atomica del array JSON completo bajo la misma clave. */
     fun writeAll(snippets: List<VbSnippet>) {

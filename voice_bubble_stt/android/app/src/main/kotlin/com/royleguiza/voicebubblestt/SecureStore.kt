@@ -47,20 +47,43 @@ object SecureStore {
 
     fun prefixed(key: String) = "${KEY_PREFIX}_$key"
 
-    private fun vault(context: Context): SharedPreferences? = try {
-        val masterKey = MasterKey.Builder(context, MasterKey.DEFAULT_MASTER_KEY_ALIAS)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context.applicationContext,
-            FILE,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
-    } catch (_: Exception) {
-        Log.w(TAG, "boveda no disponible")
-        null
+    @Volatile
+    private var cachedVault: SharedPreferences? = null
+    private val vaultLock = Any()
+
+    /** C-12: Inicialización en segundo plano de la bóveda antes del foco. */
+    fun warmUp(context: Context) {
+        if (cachedVault == null) {
+            BackgroundWork.execute {
+                vault(context)
+            }
+        }
+    }
+
+    fun isInitialized(): Boolean = cachedVault != null
+
+    private fun vault(context: Context): SharedPreferences? {
+        cachedVault?.let { return it }
+        return synchronized(vaultLock) {
+            cachedVault?.let { return@synchronized it }
+            try {
+                val masterKey = MasterKey.Builder(context, MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+                val esp = EncryptedSharedPreferences.create(
+                    context.applicationContext,
+                    FILE,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+                )
+                cachedVault = esp
+                esp
+            } catch (_: Exception) {
+                Log.w(TAG, "boveda no disponible")
+                null
+            }
+        }
     }
 
     fun read(context: Context, key: String): String? = try {

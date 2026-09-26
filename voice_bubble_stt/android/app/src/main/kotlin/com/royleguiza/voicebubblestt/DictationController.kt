@@ -131,7 +131,15 @@ class DictationController(
     fun onCreateInputView() {
         cancelDictationIfActive()
         sttClient = SpeechToTextClient(service) { host.isSpanish() }
-        initMicSounds()
+        preloadSttConfig()
+        BackgroundWork.execute {
+            initMicSounds()
+        }
+    }
+
+    /** C-12: Precalentamiento de la configuración STT y bóveda fuera del hilo principal. */
+    fun preloadSttConfig() {
+        sttClient.preloadConfig()
     }
 
     /** K5-T5: destruccion del servicio con dictado vivo = grabacion fantasma. */
@@ -469,7 +477,8 @@ class DictationController(
             host.showNotice(if (host.isSpanish()) "Ocupado: la burbuja está grabando." else "Busy: the bubble is recording.")
             return
         }
-        val config = sttClient.loadConfig()
+        // C-12: Configuración cacheada en memoria preparada en segundo plano
+        val config = sttClient.getConfig()
         if (config.apiKey.isBlank()) {
             abandonAudioFocus()
             micState = MicState.IDLE
@@ -576,7 +585,8 @@ class DictationController(
         timeoutRunnable = null
         micState = MicState.PROCESSING
         refreshMicVisual()
-        val config = sttClient.loadConfig()
+        // C-12: Configuración cacheada en memoria
+        val config = sttClient.getConfig()
         // AT-A1: los callbacks capturan la generacion vigente; si una
         // cancelacion la avanza mientras transcribiamos, se abortan solos.
         val generation = transcriptionGeneration

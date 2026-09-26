@@ -55,6 +55,40 @@ class CredentialStore(private val context: Context) {
     @Volatile
     private var passCache: Map<String, String>? = null
 
+    @Volatile
+    private var cachedPrefs: android.content.SharedPreferences? = null
+
+    private fun prefs(): android.content.SharedPreferences =
+        cachedPrefs ?: synchronized(this) {
+            cachedPrefs ?: run {
+                val p = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                cachedPrefs = p
+                p
+            }
+        }
+
+    /** C-12: Obtiene el índice cacheado en memoria si existe, o carga perezosa. */
+    fun getIndex(): List<VbCredentialEntry> {
+        synchronized(cacheLock) { indexCache?.let { return it } }
+        return loadIndex()
+    }
+
+    /** C-12: Precarga en segundo plano de índice y claves fuera del hilo principal. */
+    fun preload() {
+        BackgroundWork.execute {
+            loadIndex()
+            loadPasses()
+        }
+    }
+
+    /** C-12: Carga asíncrona del índice fuera del hilo principal. */
+    fun loadIndexAsync(onLoaded: ((List<VbCredentialEntry>) -> Unit)? = null) {
+        BackgroundWork.executeWithResult(
+            block = { loadIndex() },
+            onResult = { res -> onLoaded?.invoke(res ?: emptyList()) },
+        )
+    }
+
     /** Indice fresco de identificadores (sin passwords), en orden de alta. */
     fun loadIndex(): List<VbCredentialEntry> {
         val raw = try {
@@ -107,9 +141,6 @@ class CredentialStore(private val context: Context) {
         }
         return raw
     }
-
-    private fun prefs() =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private fun parseIndex(raw: String?): List<VbCredentialEntry> {
         if (raw.isNullOrBlank()) return emptyList()

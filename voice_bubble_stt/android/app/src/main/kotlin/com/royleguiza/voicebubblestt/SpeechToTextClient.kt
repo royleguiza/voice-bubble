@@ -63,12 +63,39 @@ class SpeechToTextClient(
         else if (raw.isNullOrBlank()) "whisper-large-v3-turbo"
         else raw
 
+    @Volatile
+    private var cachedConfig: Config? = null
+
+    /** C-12: Obtiene la configuración cacheada en memoria si está lista, o carga perezosa. */
+    fun getConfig(): Config = cachedConfig ?: loadConfig()
+
+    /** C-12: Precalentamiento de la configuración STT y bóveda en segundo plano antes del foco. */
+    fun preloadConfig() {
+        if (cachedConfig == null) {
+            BackgroundWork.execute {
+                loadConfig()
+            }
+        }
+    }
+
+    /** C-12: Recarga asíncrona de configuración fuera del hilo principal. */
+    fun refreshConfigAsync(onLoaded: ((Config) -> Unit)? = null) {
+        BackgroundWork.executeWithResult(
+            block = { loadConfig() },
+            onResult = { cfg ->
+                if (cfg != null) {
+                    onLoaded?.invoke(cfg)
+                }
+            },
+        )
+    }
+
     /** Config D7: ver docs/contrato-stt.md (bóveda + prefs planas). */
     fun loadConfig(): Config {
         val prefs = context.getSharedPreferences(
             "FlutterSharedPreferences", Context.MODE_PRIVATE,
         )
-        return Config(
+        val loaded = Config(
             url = prefs.getString(
                 "flutter.kb_stt_url",
                 "https://api.groq.com/openai/v1/audio/transcriptions",
@@ -78,6 +105,8 @@ class SpeechToTextClient(
             model = resolveModel(prefs.getString("flutter.kb_stt_model", "whisper-large-v3-turbo")),
             language = prefs.getString("flutter.kb_stt_language", "es") ?: "es",
         )
+        cachedConfig = loaded
+        return loaded
     }
 
     /** Traslada el espejo plano a la bóveda y lo borra. Solo legado. */

@@ -53,12 +53,16 @@ class CredentialsLayer(
             return
         }
         origin = host.currentLayer()
+        // C-12: Recarga viva en segundo plano de credenciales sin bloquear el hilo principal
+        BackgroundWork.execute {
+            store.preload()
+        }
         host.showLayer(Layer.CREDENTIALS)
     }
 
     /** Lista compacta de credenciales: avatar + nombre (+usuario) + pegar. */
     fun buildRows(parent: LinearLayout) {
-        val entries = store.loadIndex()
+        val entries = store.getIndex()
         val showUser = store.getShowUser()
         if (entries.isEmpty()) {
             val empty = TextView(service).apply {

@@ -72,14 +72,32 @@ class KeyboardPrefs(private val context: Context) {
     var longPressDelay = LONG_PRESS_DELAY_NORMAL
     var longPressDelayMs = LONG_PRESS_DELAY_NORMAL_MS
 
+    @Volatile
+    private var cachedPrefs: SharedPreferences? = null
+
+    /** C-12: Inicialización perezosa / warm-up de SharedPreferences fuera del hilo principal. */
+    fun warmUp() {
+        if (cachedPrefs == null) {
+            prefs()
+        }
+    }
+
+    private fun prefs(): SharedPreferences =
+        cachedPrefs ?: synchronized(this) {
+            cachedPrefs ?: run {
+                val p = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                cachedPrefs = p
+                p
+            }
+        }
+
     /**
      * Preferencia escrita por los Ajustes de la app (Flutter shared_preferences
      * guarda con prefijo "flutter." en el archivo FlutterSharedPreferences).
      * Parseo tolerante: ante cualquier error se muestra la fila (default true).
      */
     fun terminalRowVisible(): Boolean = try {
-        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getBoolean("flutter.kb_terminal_row_visible", true)
+        prefs().getBoolean("flutter.kb_terminal_row_visible", true)
     } catch (_: Exception) {
         true
     }
@@ -90,8 +108,7 @@ class KeyboardPrefs(private val context: Context) {
      * la tecla (default true).
      */
     fun codeKeyVisible(): Boolean = try {
-        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getBoolean("flutter.kb_code_key_visible", true)
+        prefs().getBoolean("flutter.kb_code_key_visible", true)
     } catch (_: Exception) {
         true
     }
@@ -102,8 +119,7 @@ class KeyboardPrefs(private val context: Context) {
      * la tecla (default true).
      */
     fun languageKeyVisible(): Boolean = try {
-        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getBoolean("flutter.kb_language_key_visible", true)
+        prefs().getBoolean("flutter.kb_language_key_visible", true)
     } catch (_: Exception) {
         true
     }
@@ -113,8 +129,7 @@ class KeyboardPrefs(private val context: Context) {
      * (Ajustes → Claves). Default true (visible, conducta histórica).
      */
     fun credentialsKeyVisible(): Boolean = try {
-        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getBoolean("flutter.kb_credentials_key_visible", true)
+        prefs().getBoolean("flutter.kb_credentials_key_visible", true)
     } catch (_: Exception) {
         true
     }
@@ -125,17 +140,21 @@ class KeyboardPrefs(private val context: Context) {
      * FlutterSharedPreferences, claves con prefijo "flutter."). Parseo
      * tolerante: valor desconocido o error cae al default.
      */
-    private fun readFlag(key: String, def: Boolean): Boolean = try {
-        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getBoolean(key, def)
+    private fun readFlag(key: String, def: Boolean): Boolean =
+        readFlag(prefs(), key, def)
+
+    private fun readFlag(p: SharedPreferences, key: String, def: Boolean): Boolean = try {
+        p.getBoolean(key, def)
     } catch (_: Exception) {
         def
     }
 
     /** Estilo '1'..'4' de sonido; cualquier otro valor cae a '3'. */
-    private fun readStyle(key: String): String = try {
-        context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-            .getString(key, "3")
+    private fun readStyle(key: String): String =
+        readStyle(prefs(), key)
+
+    private fun readStyle(p: SharedPreferences, key: String): String = try {
+        p.getString(key, "3")
             ?.takeIf { it == "1" || it == "2" || it == "3" || it == "4" }
             ?: "3"
     } catch (_: Exception) {
@@ -147,13 +166,12 @@ class KeyboardPrefs(private val context: Context) {
      * C-08: se ejecuta únicamente al cambiar de campo (onStartInputView con restarting=false
      * o cambio de paquete/campo). En restarts sobre el mismo campo se preserva la caché
      * en memoria para no golpear I/O ni reconstruir vistas.
+     * C-12: Abre y referencia SharedPreferences una única vez por llamada a load().
      */
     fun load() {
+        val p = prefs()
         heightFactor = try {
-            when (
-                context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                    .getString("flutter.kb_height_profile", HEIGHT_PROFILE_MEDIA)
-            ) {
+            when (p.getString("flutter.kb_height_profile", HEIGHT_PROFILE_MEDIA)) {
                 HEIGHT_PROFILE_BAJA -> HEIGHT_FACTOR_BAJA
                 HEIGHT_PROFILE_ALTA -> HEIGHT_FACTOR_ALTA
                 HEIGHT_PROFILE_MUY_ALTA -> HEIGHT_FACTOR_MUY_ALTA
@@ -163,8 +181,7 @@ class KeyboardPrefs(private val context: Context) {
             HEIGHT_FACTOR_MEDIA
         }
         hapticsEnabled = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_haptics_enabled", true)
+            p.getBoolean("flutter.kb_haptics_enabled", true)
         } catch (_: Exception) {
             true
         }
@@ -177,42 +194,36 @@ class KeyboardPrefs(private val context: Context) {
         micStartStyle = readStyle("flutter.kb_mic_start_style")
         micStopStyle = readStyle("flutter.kb_mic_stop_style")
         bottomElevationDp = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getLong("flutter.kb_bottom_elevation_dp", 24L).toInt()
+            p.getLong("flutter.kb_bottom_elevation_dp", 24L).toInt()
         } catch (_: Exception) {
             24
         }
         invertToolbar = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_invert_toolbar", false)
+            p.getBoolean("flutter.kb_invert_toolbar", false)
         } catch (_: Exception) {
             false
         }
         spacebarAlignment = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_spacebar_alignment", "center") ?: "center"
+            p.getString("flutter.kb_spacebar_alignment", "center") ?: "center"
         } catch (_: Exception) {
             "center"
         }
         spacebarTrackpadMode = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_spacebar_trackpad_mode", "ios_2d") ?: "ios_2d"
+            p.getString("flutter.kb_spacebar_trackpad_mode", "ios_2d") ?: "ios_2d"
         } catch (_: Exception) {
             "ios_2d"
         }
-        terminalRowVisiblePref = terminalRowVisible()
-        codeKeyVisiblePref = codeKeyVisible()
-        languageKeyVisiblePref = languageKeyVisible()
-        credentialsKeyVisiblePref = credentialsKeyVisible()
+        terminalRowVisiblePref = try { p.getBoolean("flutter.kb_terminal_row_visible", true) } catch (_: Exception) { true }
+        codeKeyVisiblePref = try { p.getBoolean("flutter.kb_code_key_visible", true) } catch (_: Exception) { true }
+        languageKeyVisiblePref = try { p.getBoolean("flutter.kb_language_key_visible", true) } catch (_: Exception) { true }
+        credentialsKeyVisiblePref = try { p.getBoolean("flutter.kb_credentials_key_visible", true) } catch (_: Exception) { true }
         clipboardImagesEnabled = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_clipboard_images_enabled", false)
+            p.getBoolean("flutter.kb_clipboard_images_enabled", false)
         } catch (_: Exception) {
             false
         }
         keySpacing = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_key_spacing", SPACING_PROFILE_NORMAL)
+            p.getString("flutter.kb_key_spacing", SPACING_PROFILE_NORMAL)
                 ?.takeIf { it == SPACING_PROFILE_COMPACTO || it == SPACING_PROFILE_NORMAL || it == SPACING_PROFILE_AMPLIO || it == SPACING_PROFILE_EXTRA }
                 ?: SPACING_PROFILE_NORMAL
         } catch (_: Exception) {
@@ -225,8 +236,7 @@ class KeyboardPrefs(private val context: Context) {
             else -> SPACING_FACTOR_NORMAL
         }
         hapticStyle = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_haptic_style", HAPTIC_STYLE_NITIDO)
+            p.getString("flutter.kb_haptic_style", HAPTIC_STYLE_NITIDO)
                 ?.takeIf { it == HAPTIC_STYLE_NITIDO || it == HAPTIC_STYLE_FIRME || it == HAPTIC_STYLE_SUAVE }
                 ?: HAPTIC_STYLE_NITIDO
         } catch (_: Exception) {
@@ -235,31 +245,26 @@ class KeyboardPrefs(private val context: Context) {
 
         // MEJ-09: lectura de preferencias del trackpad
         trackpadButtonLayout = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
+            p.getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
         } catch (_: Exception) {
             "top"
         }
         trackpadEnabled = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_trackpad_enabled", false)
+            p.getBoolean("flutter.kb_trackpad_enabled", false)
         } catch (_: Exception) {
             false
         }
         trackpadToolbarVisible = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_trackpad_toolbar_visible", false)
+            p.getBoolean("flutter.kb_trackpad_toolbar_visible", false)
         } catch (_: Exception) {
             false
         }
         trackpadScrollPosition = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
+            p.getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
         } catch (_: Exception) {
             "right"
         }
         trackpadSensitivity = try {
-            val p = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val raw = p.all["flutter.kb_trackpad_sensitivity"]
             when (raw) {
                 is Float -> raw
@@ -272,43 +277,36 @@ class KeyboardPrefs(private val context: Context) {
             1.2f
         }
         trackpadAccelCurve = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
+            p.getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
         } catch (_: Exception) {
             "dynamic"
         }
         trackpadTapToClick = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_trackpad_tap_to_click", true)
+            p.getBoolean("flutter.kb_trackpad_tap_to_click", true)
         } catch (_: Exception) {
             true
         }
         trackpadSecondaryClick = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_secondary_click", "2fingers") ?: "2fingers"
+            p.getString("flutter.kb_trackpad_secondary_click", "2fingers") ?: "2fingers"
         } catch (_: Exception) {
             "2fingers"
         }
         trackpadScrollDirection = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_scroll_direction", "natural") ?: "natural"
+            p.getString("flutter.kb_trackpad_scroll_direction", "natural") ?: "natural"
         } catch (_: Exception) {
             "natural"
         }
         trackpadHaptic = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_haptic", "subtle") ?: "subtle"
+            p.getString("flutter.kb_trackpad_haptic", "subtle") ?: "subtle"
         } catch (_: Exception) {
             "subtle"
         }
         trackpadPointerStyle = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
+            p.getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
         } catch (_: Exception) {
             "arrow"
         }
         trackpadAutoReturn = try {
-            val p = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             val raw = p.all["flutter.kb_trackpad_auto_return"]
             when (raw) {
                 is Number -> raw.toInt()
@@ -320,14 +318,12 @@ class KeyboardPrefs(private val context: Context) {
         }
         // MEJ-05: menús de pulsación larga + retardo (parseo tolerante).
         longPressSymbolsEnabled = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getBoolean("flutter.kb_long_press_symbols", true)
+            p.getBoolean("flutter.kb_long_press_symbols", true)
         } catch (_: Exception) {
             true
         }
         longPressDelay = try {
-            context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                .getString("flutter.kb_long_press_delay", LONG_PRESS_DELAY_NORMAL)
+            p.getString("flutter.kb_long_press_delay", LONG_PRESS_DELAY_NORMAL)
                 ?.takeIf { it == LONG_PRESS_DELAY_RAPIDO || it == LONG_PRESS_DELAY_NORMAL || it == LONG_PRESS_DELAY_RELAJADO }
                 ?: LONG_PRESS_DELAY_NORMAL
         } catch (_: Exception) {

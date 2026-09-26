@@ -119,6 +119,7 @@ class SnippetsLayer(
 
     fun onCreateInputView() {
         store = SnippetStore(service)
+        store.preload()
     }
 
     /**
@@ -126,6 +127,7 @@ class SnippetsLayer(
      * la primera apertura (idempotencia interna del store), recarga siempre
      * desde prefs (recarga viva: los cambios hechos en la app aparecen al
      * reabrir sin reiniciar nada) y recuerda la capa de origen para volver.
+     * C-12: Precarga en segundo plano y recarga viva sin bloquear el hilo principal.
      */
     fun toggle() {
         if (host.currentLayer() == Layer.SNIPPETS) {
@@ -139,13 +141,16 @@ class SnippetsLayer(
         origin = host.currentLayer()
         if (!seedAttempted) {
             seedAttempted = true
-            store.seedIfFirstOpen()
+            store.preload()
         }
-        store.load()
         query = ""
         subLayer = Layer.LETTERS
         host.setLayer(Layer.SNIPPETS)
         host.rebuild()
+        // C-12: Recarga viva en segundo plano para reflejar cambios de Flutter sin I/O en main
+        BackgroundWork.execute {
+            store.load()
+        }
     }
 
     /** Limpieza al salir de la capa (la invoca el rebuild del teclado). */

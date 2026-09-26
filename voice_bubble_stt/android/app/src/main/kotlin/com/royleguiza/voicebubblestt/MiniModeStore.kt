@@ -12,17 +12,32 @@ import android.content.Context
  */
 class MiniModeStore(private val context: Context) {
 
+    @Volatile
+    private var cachedPrefs: android.content.SharedPreferences? = null
+
+    /** C-12: Warm-up fuera del hilo principal. */
+    fun warmUp() {
+        if (cachedPrefs == null) prefs()
+    }
+
+    private fun prefs(): android.content.SharedPreferences =
+        cachedPrefs ?: synchronized(this) {
+            cachedPrefs ?: run {
+                val p = context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
+                cachedPrefs = p
+                p
+            }
+        }
+
     fun load(): Boolean = try {
-        context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-            .getBoolean(KEY_MINI_MODE, false)
+        prefs().getBoolean(KEY_MINI_MODE, false)
     } catch (_: Exception) {
         false
     }
 
     fun save(enabled: Boolean) {
         try {
-            context.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE)
-                .edit().putBoolean(KEY_MINI_MODE, enabled).apply()
+            prefs().edit().putBoolean(KEY_MINI_MODE, enabled).apply()
         } catch (_: Exception) {}
     }
 

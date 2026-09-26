@@ -38,6 +38,7 @@ SUITES = [
     ("Red: cancelar corta la red de verdad (C-09)", "test_c09_cancel_network_suite.py"),
     ("Reintento: reintento sin regrabar (C-10)", "test_c10_retry_without_re_record_suite.py"),
     ("Red: tiempos de red parejos (C-11)", "test_c11_even_network_timeouts_suite.py"),
+    ("Rendimiento: sin trabajo pesado en hilo principal (C-12)", "test_c12_no_main_thread_heavy_work_suite.py"),
 ]
 
 def run_test(name, func):
@@ -2984,6 +2985,57 @@ def test_c11_even_network_timeouts_contract():
     assert "if (wav.size > SpeechToTextClient.MAX_AUDIO_BYTES)" in widget, "C-11: falta tope de 25 MB en WidgetDictationService"
     assert "maxFileSizeBytes = 25 * 1024 * 1024" in dart and "if (fileLength > maxFileSizeBytes)" in dart, "C-11: falta tope de 25 MB en CloudSttService"
 
+def test_c12_no_main_thread_heavy_work_contract():
+    """C-12: Sin trabajo pesado en el hilo principal (bóveda, config y prefs cacheadas)."""
+    base_kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    sec_path = os.path.join(base_kt, "SecureStore.kt")
+    stt_path = os.path.join(base_kt, "SpeechToTextClient.kt")
+    dic_path = os.path.join(base_kt, "DictationController.kt")
+    prefs_path = os.path.join(base_kt, "KeyboardPrefs.kt")
+    vks_path = os.path.join(base_kt, "VoiceKeyboardService.kt")
+
+    with open(sec_path, "r", encoding="utf-8") as f:
+        sec = f.read()
+    with open(stt_path, "r", encoding="utf-8") as f:
+        stt = f.read()
+    with open(dic_path, "r", encoding="utf-8") as f:
+        dic = f.read()
+    with open(prefs_path, "r", encoding="utf-8") as f:
+        kp = f.read()
+    with open(vks_path, "r", encoding="utf-8") as f:
+        vks = f.read()
+
+    # 1. SecureStore: Caché de bóveda y warmUp
+    assert "var cachedVault: SharedPreferences? = null" in sec, "C-12: falta cachedVault en SecureStore"
+    assert "fun warmUp(context: Context)" in sec and "BackgroundWork.execute" in sec, "C-12: falta warmUp en SecureStore"
+    assert "cachedVault?.let { return it }" in sec, "C-12: SecureStore no reutiliza cachedVault"
+
+    # 2. SpeechToTextClient: Caché de config y preload
+    assert "var cachedConfig: Config? = null" in stt, "C-12: falta cachedConfig en SpeechToTextClient"
+    assert "fun getConfig(): Config = cachedConfig ?: loadConfig()" in stt, "C-12: falta getConfig en SpeechToTextClient"
+    assert "fun preloadConfig()" in stt and "BackgroundWork.execute" in stt, "C-12: falta preloadConfig en SpeechToTextClient"
+
+    # 3. DictationController: Toque de mic sin trabajo pesado
+    start_body = dic.split("private fun startDictation()")[1].split("private fun ")[0]
+    assert "sttClient.getConfig()" in start_body and "sttClient.loadConfig()" not in start_body, "C-12: startDictation no usa getConfig cacheado"
+    assert "preloadSttConfig()" in dic and "sttClient.preloadConfig()" in dic, "C-12: falta preloadSttConfig en DictationController"
+    create_view_body = dic.split("fun onCreateInputView()")[1].split("fun onDestroy()")[0]
+    assert "BackgroundWork.execute" in create_view_body and "initMicSounds()" in create_view_body, "C-12: initMicSounds debe correr en BackgroundWork"
+
+    # 4. KeyboardPrefs: Leer prefs una única vez por load()
+    assert "var cachedPrefs: SharedPreferences? = null" in kp, "C-12: falta cachedPrefs en KeyboardPrefs"
+    assert "fun warmUp()" in kp, "C-12: falta warmUp en KeyboardPrefs"
+    assert kp.count('context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)') == 1, "C-12: KeyboardPrefs debe tener una única apertura de prefs"
+    load_body = kp.split("fun load()")[1].split("fun longPressDelayMillis")[0]
+    assert "val p = prefs()" in load_body and "context.getSharedPreferences" not in load_body, "C-12: load() debe abrir prefs una sola vez"
+
+    # 5. VoiceKeyboardService: lifecycle fuera del main
+    assert "kbPrefs.warmUp()" in vks and "miniStore.warmUp()" in vks and "SecureStore.warmUp(this)" in vks, "C-12: falta warmUp en VKS.onCreate"
+    assert "credentialStore.preload()" in vks, "C-12: falta preload en VKS.onCreateInputView"
+    assert "dictation.preloadSttConfig()" in vks, "C-12: falta preloadSttConfig en VKS.onStartInputView"
+    on_siv = vks.split("override fun onStartInputView(info: EditorInfo?, restarting: Boolean)")[1].split("override fun onFinishInputView")[0]
+    assert "getSharedPreferences" not in on_siv and "EncryptedSharedPreferences" not in on_siv, "C-12: onStartInputView contiene llamadas no permitidas a prefs"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3008,6 +3060,7 @@ def main():
         ("C-09: cancelar corta la red de verdad", test_c09_cancel_network_contract),
         ("C-10: reintento sin regrabar", test_c10_retry_without_re_record_contract),
         ("C-11: tiempos de red parejos", test_c11_even_network_timeouts_contract),
+        ("C-12: sin trabajo pesado en el hilo principal", test_c12_no_main_thread_heavy_work_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

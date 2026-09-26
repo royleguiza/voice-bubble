@@ -99,6 +99,12 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         dictation = DictationController(this, handler, this)
         // Historial persistente FIFO-20: sin purga (borraba lo dictado con
         // la píldora/la app cada vez que el IME se recreaba).
+        // C-12: Warm-up en segundo plano de bóveda cifrada, preferencias y almacenamiento
+        BackgroundWork.execute {
+            kbPrefs.warmUp()
+            miniStore.warmUp()
+            SecureStore.warmUp(this)
+        }
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
@@ -110,6 +116,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         snippets = SnippetsLayer(this, this)
         snippets.onCreateInputView()
         credentialStore = CredentialStore(this)
+        credentialStore.preload()
         credentials = CredentialsLayer(this, credentialStore, handler, this)
         history = HistoryLayer(this, this)
         status = StatusLayer(this, handler, this)
@@ -153,6 +160,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
         // K5-T5: defensa extra; nunca arrancar un campo con dictado vivo.
         dictation.cancelDictationIfActive()
+        // C-12: Precalentamiento de configuración STT en segundo plano antes del foco y toques de usuario
+        dictation.preloadSttConfig()
         kbPrefs.load()
         if (::miniStore.isInitialized) miniMode = miniStore.load()
         if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS || layer == Layer.CLIPBOARD)) {
