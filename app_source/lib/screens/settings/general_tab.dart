@@ -66,7 +66,13 @@ class GeneralTab extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final successColor = isDark ? kSuccessDark : kSuccessLight;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+      key: const PageStorageKey<String>('general_tab_scroll'),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        96 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         const SettingsPageTitle('General'),
         ApiKeyCard(

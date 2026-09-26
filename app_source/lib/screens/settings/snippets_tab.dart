@@ -157,7 +157,13 @@ class _SnippetsTabState extends State<SnippetsTab> {
                 s.contenido.toLowerCase().contains(q))
             .toList();
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+      key: const PageStorageKey<String>('snippets_tab_scroll'),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        96 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         const SettingsPageTitle('Snippets'),
         Row(

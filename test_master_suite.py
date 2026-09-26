@@ -53,6 +53,7 @@ SUITES = [
     ("Errores que se ven y reporte honesto (C-24)", "test_c24_visible_errors_suite.py"),
     ("Adiós god-object + merges únicos (C-25)", "test_c25_god_object_split_and_merges_suite.py"),
     ("TalkBack graba en Mantener (C-26)", "test_c26_talkback_hold_recording_suite.py"),
+    ("Nada tapado + scroll que no salta (C-27)", "test_c27_nothing_obscured_and_scroll_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3629,6 +3630,36 @@ def test_c26_talkback_hold_recording_contract():
     assert "Mantené para grabar" in t_src, "C-26: record_button_test sin aserción 'Mantené para grabar'"
     assert "SemanticsAction.longPress" in t_src, "C-26: record_button_test sin check SemanticsAction.longPress"
 
+def test_c27_nothing_obscured_and_scroll_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    settings_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings_screen.dart")
+    notes_file = os.path.join(base_dir, "app_source", "lib", "screens", "notes_screen.dart")
+
+    tabs = [
+        os.path.join(base_dir, "app_source", "lib", "screens", "settings", "general_tab.dart"),
+        os.path.join(base_dir, "app_source", "lib", "screens", "settings", "teclado_tab.dart"),
+        os.path.join(base_dir, "app_source", "lib", "screens", "settings", "trackpad_tab.dart"),
+        os.path.join(base_dir, "app_source", "lib", "screens", "settings", "snippets_tab.dart"),
+        os.path.join(base_dir, "app_source", "lib", "screens", "credentials_screen.dart"),
+        notes_file,
+    ]
+    for tab_path in tabs:
+        assert os.path.isfile(tab_path), f"C-27: archivo no existe: {tab_path}"
+        with open(tab_path, "r", encoding="utf-8") as f:
+            src = f.read()
+        assert "96 + MediaQuery.paddingOf(context).bottom" in src, f"C-27: falta padding 96 + paddingOf en {tab_path}"
+        assert "PageStorageKey" in src, f"C-27: falta PageStorageKey en {tab_path}"
+
+    with open(settings_file, "r", encoding="utf-8") as f:
+        s_src = f.read()
+    for k in ["general_tab", "teclado_tab", "trackpad_tab", "snippets_tab", "credentials_tab"]:
+        assert f"PageStorageKey<String>('{k}')" in s_src, f"C-27: settings_screen falta PageStorageKey para {k}"
+
+    with open(notes_file, "r", encoding="utf-8") as f:
+        n_src = f.read()
+    assert "GlassContainer" not in n_src, "C-27: notes_screen contiene GlassContainer inútil sobre FAB"
+    assert "floatingActionButton: FloatingActionButton.extended(" in n_src, "C-27: notes_screen no expone FAB directo"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3668,6 +3699,7 @@ def main():
         ("C-24: errores que se ven y reporte honesto", test_c24_visible_errors_contract),
         ("C-25: adiós god-object y merges únicos", test_c25_god_object_split_contract),
         ("C-26: TalkBack graba en Mantener", test_c26_talkback_hold_recording_contract),
+        ("C-27: nada tapado y scroll que no salta", test_c27_nothing_obscured_and_scroll_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

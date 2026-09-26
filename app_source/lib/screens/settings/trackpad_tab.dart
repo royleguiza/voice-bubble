@@ -84,7 +84,13 @@ class TrackpadTab extends StatelessWidget {
     final variantColor = theme.colorScheme.onSurfaceVariant;
     final isDark = theme.brightness == Brightness.dark;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+      key: const PageStorageKey<String>('trackpad_tab_scroll'),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        96 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         const SettingsPageTitle('Trackpad'),
         Text(

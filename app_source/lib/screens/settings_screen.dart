@@ -967,6 +967,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     : const SizedBox.shrink(),
                 _builtTabs.contains(4)
                     ? CredentialsScreen(
+                        key: const PageStorageKey<String>('credentials_tab'),
                         storageService: _storageService,
                         onSelectTab: _selectTab,
                         showCredentialsKey: _showCredentialsKey,
@@ -995,6 +996,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   /// acerca. Fusiona Inicio y Burbuja en una superficie agrupada.
   Widget _buildGeneralTab(BuildContext context) {
     return GeneralTab(
+      key: const PageStorageKey<String>('general_tab'),
       hasApiKey: _hasApiKey,
       isEditingApiKey: _isEditingApiKey,
       apiKeyController: _apiKeyController,
@@ -1028,6 +1030,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Widget _buildKeyboardTab(BuildContext context) {
     return TecladoTab(
+      key: const PageStorageKey<String>('teclado_tab'),
       keyboardStatusText: _keyboardStatusText,
       onLoadKeyboardStatus: _loadKeyboardStatus,
       showTerminalRow: _showTerminalRow,
@@ -1088,6 +1091,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Widget _buildTrackpadTab(BuildContext context) {
     return TrackpadTab(
+      key: const PageStorageKey<String>('trackpad_tab'),
       trackpadEnabled: _trackpadEnabled,
       onToggleTrackpadEnabled: _toggleTrackpadEnabled,
       trackpadToolbarVisible: _trackpadToolbarVisible,
@@ -1116,7 +1120,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Widget _buildSnippetsTab(BuildContext context) {
-    return SnippetsTab(storageService: _storageService);
+    return SnippetsTab(
+      key: const PageStorageKey<String>('snippets_tab'),
+      storageService: _storageService,
+    );
   }
 
   // Acerca v2: ya no es tab. Vive como sheet desde General vía

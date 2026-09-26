@@ -10,7 +10,6 @@ import '../services/storage_service.dart';
 import '../services/widget_service.dart';
 import '../services/floating_bubble_service.dart';
 import '../ui/design_tokens.dart';
-import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
 import '../widgets/note_card.dart';
 import '../widgets/pending_note_tile.dart';
@@ -562,8 +561,14 @@ class _NotesScreenState extends State<NotesScreen>
                          ),
                        )
                      : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
-                    itemCount: _filtered.length,
+                          key: const PageStorageKey<String>('notes_list_scroll'),
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            0,
+                            16,
+                            96 + MediaQuery.paddingOf(context).bottom,
+                          ),
+                          itemCount: _filtered.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) {
                       final n = _filtered[i];
@@ -596,22 +601,18 @@ class _NotesScreenState extends State<NotesScreen>
           ),
         ],
       ),
-      floatingActionButton: GlassContainer(
-        borderRadius: kBorderRadiusCapsule,
-        small: true,
-        child: FloatingActionButton.extended(
-          key: const ValueKey('notesMicFab'),
-          heroTag: 'notesMic',
-          elevation: 0,
-          backgroundColor: _isRecording ? kRecording : kAccentLight,
-          foregroundColor: Colors.white,
-          onPressed: _isTranscribing ? null : _toggleRecord,
-          icon: Icon(
-            _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
-            size: 22,
-          ),
-          label: Text(_isRecording ? 'Detener' : 'Dictar'),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const ValueKey('notesMicFab'),
+        heroTag: 'notesMic',
+        elevation: 0,
+        backgroundColor: _isRecording ? kRecording : kAccentLight,
+        foregroundColor: Colors.white,
+        onPressed: _isTranscribing ? null : _toggleRecord,
+        icon: Icon(
+          _isRecording ? Icons.stop_rounded : Icons.mic_rounded,
+          size: 22,
         ),
+        label: Text(_isRecording ? 'Detener' : 'Dictar'),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );

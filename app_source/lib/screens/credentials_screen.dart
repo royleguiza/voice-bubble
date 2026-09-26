@@ -103,7 +103,13 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+      key: const PageStorageKey<String>('credentials_tab_scroll'),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        96 + MediaQuery.paddingOf(context).bottom,
+      ),
       children: [
         const SettingsPageTitle('Claves y Datos'),
         const SettingsGroupTitle('Acceso a Snippets'),
