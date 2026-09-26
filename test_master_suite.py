@@ -58,6 +58,7 @@ SUITES = [
     ("Burbuja siempre recuperable (C-29)", "test_c29_bubble_clamping_and_no_limits_suite.py"),
     ("Contraste que se lee (C-30)", "test_c30_contrast_and_accessible_tokens_suite.py"),
     ("Transparencia del sistema + tokens (C-31)", "test_c31_system_transparency_and_tokens_suite.py"),
+    ("Semántica correcta + teclado físico (C-32)", "test_c32_semantics_and_physical_keyboard_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3784,6 +3785,39 @@ def test_c31_system_transparency_and_tokens_contract():
     assert "borderRadius: 32," not in tb_src, "C-31: settings_tab_bar.dart contiene radio 32 hardcodeado"
     assert "kBorderRadiusDock" in tb_src or "kBorderRadiusSheetLarge" in tb_src, "C-31: settings_tab_bar.dart no usa token dock/sheet para radio"
 
+def test_c32_semantics_and_physical_keyboard_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    nc_file = os.path.join(base_dir, "app_source", "lib", "widgets", "note_card.dart")
+    pnt_file = os.path.join(base_dir, "app_source", "lib", "widgets", "pending_note_tile.dart")
+    stb_file = os.path.join(base_dir, "app_source", "lib", "widgets", "settings_tab_bar.dart")
+    hl_file = os.path.join(base_dir, "app_source", "lib", "widgets", "history_list.dart")
+    tt_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "teclado_tab.dart")
+    cs_file = os.path.join(base_dir, "app_source", "lib", "screens", "credentials_screen.dart")
+
+    with open(nc_file, "r", encoding="utf-8") as f:
+        nc = f.read()
+    assert "container: true" in nc and not re.search(r"Semantics\s*\([^)]*button:\s*true", nc), "C-32: NoteCard debe usar container: true y no button: true"
+
+    with open(pnt_file, "r", encoding="utf-8") as f:
+        pnt = f.read()
+    assert "container: true" in pnt and not re.search(r"Semantics\s*\([^)]*button:\s*true", pnt), "C-32: PendingNoteTile debe usar container: true y no button: true"
+
+    with open(stb_file, "r", encoding="utf-8") as f:
+        stb = f.read()
+    assert "pestaña $index de $total" in stb and "excludeFromSemantics: true" in stb, "C-32: SettingsTabBar debe anunciar pestañas y excluir tooltip duplicado"
+
+    with open(hl_file, "r", encoding="utf-8") as f:
+        hl = f.read()
+    assert "SelectableText(" in hl, "C-32: HistoryList debe usar SelectableText"
+
+    with open(tt_file, "r", encoding="utf-8") as f:
+        tt = f.read()
+    assert re.search(r"Semantics\s*\([^)]*button:\s*true[^)]*selected:\s*isSelected", tt) and "InkWell(" in tt, "C-32: teclado_tab debe tener Semantics(button, selected) e InkWell"
+
+    with open(cs_file, "r", encoding="utf-8") as f:
+        cs = f.read()
+    assert "CallbackShortcuts(" in cs and "AutofillHints.username" in cs and "AutofillHints.password" in cs, "C-32: credentials_screen debe tener CallbackShortcuts y autofillHints"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3828,6 +3862,7 @@ def main():
         ("C-29: burbuja siempre recuperable", test_c29_bubble_clamping_contract),
         ("C-30: contraste que se lee", test_c30_contrast_and_accessible_tokens_contract),
         ("C-31: transparencia del sistema + tokens", test_c31_system_transparency_and_tokens_contract),
+        ("C-32: semántica correcta + teclado físico", test_c32_semantics_and_physical_keyboard_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

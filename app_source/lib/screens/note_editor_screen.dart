@@ -73,7 +73,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Scaffold(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            Navigator.of(context).maybePop(),
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(widget.note == null ? 'Nueva nota' : 'Editar nota'),
         centerTitle: true,
@@ -195,6 +200,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

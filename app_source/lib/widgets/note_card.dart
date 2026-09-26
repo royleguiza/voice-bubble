@@ -34,8 +34,8 @@ class NoteCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     return Semantics(
-      button: true,
-      label: 'Abrir nota ${note.titulo.isEmpty ? 'Sin título' : note.titulo}',
+      container: true,
+      label: 'Nota: ${note.titulo.isEmpty ? 'Sin título' : note.titulo}',
       child: Material(
         color: isDark ? kBgSecondaryDark : kBgSecondaryLight,
         borderRadius: BorderRadius.circular(kBorderRadiusCard),

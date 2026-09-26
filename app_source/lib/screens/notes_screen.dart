@@ -291,20 +291,26 @@ class _NotesScreenState extends State<NotesScreen>
   Future<void> _discardPending(PendingNote item) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Descartar audio'),
-        content: const Text(
-            'Se borrará el audio sin transcribir. Esta acción no se puede deshacer.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Descartar'),
-          ),
-        ],
+      builder: (ctx) => CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.escape): () =>
+              Navigator.of(ctx).pop(false),
+        },
+        child: AlertDialog(
+          title: const Text('Descartar audio'),
+          content: const Text(
+              'Se borrará el audio sin transcribir. Esta acción no se puede deshacer.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Descartar'),
+            ),
+          ],
+        ),
       ),
     );
     if (confirm != true) return;
@@ -316,20 +322,26 @@ class _NotesScreenState extends State<NotesScreen>
   Future<void> _deleteNoteAudio(VoiceNote note) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Borrar audio'),
-        content: const Text(
-            'Se borrará el audio original. La transcripción queda.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Borrar audio'),
-          ),
-        ],
+      builder: (ctx) => CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.escape): () =>
+              Navigator.of(ctx).pop(false),
+        },
+        child: AlertDialog(
+          title: const Text('Borrar audio'),
+          content: const Text(
+              'Se borrará el audio original. La transcripción queda.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Borrar audio'),
+            ),
+          ],
+        ),
       ),
     );
     if (confirm != true) return;

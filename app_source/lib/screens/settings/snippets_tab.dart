@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../models/snippet.dart';
 import '../../services/storage_service.dart';
@@ -484,9 +485,14 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final labelSecondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
 
-    return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            Navigator.of(context).maybePop(),
+      },
+      child: Padding(
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(context).height * 0.90,
@@ -622,8 +628,9 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 /// Swatch circular de la paleta de snippets (6 ids + sin color).
@@ -651,6 +658,7 @@ class _ColorSwatch extends StatelessWidget {
         : base!.withValues(alpha: selected ? 1.0 : 0.55);
     return Tooltip(
       message: label,
+      excludeFromSemantics: true,
       child: Semantics(
         button: true,
         selected: selected,

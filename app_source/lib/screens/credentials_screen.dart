@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/credential.dart';
 import '../services/storage_service.dart';
 import '../ui/design_tokens.dart';
@@ -102,7 +103,12 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    return ListView(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.escape): () =>
+            Navigator.of(context).maybePop(),
+      },
+      child: ListView(
       key: const PageStorageKey<String>('credentials_tab_scroll'),
       padding: EdgeInsets.fromLTRB(
         16,
@@ -180,6 +186,7 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
                   TextField(
                     key: const ValueKey('credenciales-add-nombre'),
                     controller: _nameController,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Nombre (ej. Banco)',
                       border: OutlineInputBorder(),
@@ -189,6 +196,8 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
                   TextField(
                     key: const ValueKey('credenciales-add-usuario'),
                     controller: _userController,
+                    textInputAction: TextInputAction.next,
+                    autofillHints: const [AutofillHints.username],
                     autocorrect: false,
                     decoration: const InputDecoration(
                       labelText: 'Usuario',
@@ -199,6 +208,9 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
                   TextField(
                     key: const ValueKey('credenciales-add-password'),
                     controller: _passController,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    onSubmitted: (_) => _save(),
                     obscureText: true,
                     autocorrect: false,
                     enableSuggestions: false,
@@ -261,8 +273,9 @@ class _CredentialsScreenState extends State<CredentialsScreen> {
               ),
             ),
       ],
-    );
-  }
+    ),
+  );
+}
 }
 
 /// Fila de credencial con avatar + borrar (extraída para el restyle v2).

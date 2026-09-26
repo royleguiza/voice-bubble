@@ -65,6 +65,8 @@ class SettingsTabBar extends StatelessWidget {
                   _buildTabItem(
                     context: context,
                     data: _tabs[i],
+                    index: i + 1,
+                    total: _tabs.length,
                     isSelected: selectedIndex == i,
                     onTap: () => onTabSelected(i),
                     isDark: isDark,
@@ -81,6 +83,8 @@ class SettingsTabBar extends StatelessWidget {
   Widget _buildTabItem({
     required BuildContext context,
     required _TabItemData data,
+    required int index,
+    required int total,
     required bool isSelected,
     required VoidCallback onTap,
     required bool isDark,
@@ -93,13 +97,18 @@ class SettingsTabBar extends StatelessWidget {
         reducedMotion ? Duration.zero : const Duration(milliseconds: 200);
 
     return Expanded(
-      child: Tooltip(
-        message: data.label,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            key: data.key,
-            onTap: onTap,
+      child: Semantics(
+        selected: isSelected,
+        button: true,
+        label: '${data.label}, pestaña $index de $total',
+        child: Tooltip(
+          message: data.label,
+          excludeFromSemantics: true,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              key: data.key,
+              onTap: onTap,
             borderRadius: BorderRadius.circular(kBorderRadiusCardLarge),
             child: AnimatedContainer(
               duration: duration,

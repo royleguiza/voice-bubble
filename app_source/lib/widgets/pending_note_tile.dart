@@ -33,7 +33,7 @@ class PendingNoteTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     return Semantics(
-      button: true,
+      container: true,
       label: 'Audio sin transcribir, ${_format(item.createdAt)}',
       child: Material(
         color: isDark ? kBgSecondaryDark : kBgSecondaryLight,

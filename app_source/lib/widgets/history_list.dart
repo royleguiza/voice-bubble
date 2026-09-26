@@ -56,10 +56,9 @@ class HistoryList extends StatelessWidget {
             size: AppIcons.medium,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-          title: Text(
+          title: SelectableText(
             t.text,
             maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
           subtitle: Text(
             formatTranscriptionTimestamp(t.timestamp),

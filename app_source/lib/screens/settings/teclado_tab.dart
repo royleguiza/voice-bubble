@@ -769,9 +769,16 @@ class _SpacebarVisualCards extends StatelessWidget {
       BuildContext context, ColorScheme scheme, String id, String label) {
     final isSelected = current == id;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: () => onSelect(id),
-      child: Column(
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: 'Alineación $label',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(kBorderRadiusSmall),
+          onTap: () => onSelect(id),
+          child: Column(
         children: [
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -830,7 +837,9 @@ class _SpacebarVisualCards extends StatelessWidget {
                       isSelected ? scheme.primary : scheme.onSurface,
                 ),
           ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
