@@ -46,6 +46,7 @@ SUITES = [
     ("Teclado: una sola vibración por tecla (C-17)", "test_c17_single_vibration_suite.py"),
     ("Teclado: precisión de toque y borrado por lotes (C-18)", "test_c18_touch_precision_and_batch_backspace_suite.py"),
     ("Ajustes: puente de claves sano y límites (C-19)", "test_c19_bridge_keys_and_limits_suite.py"),
+    ("Teclado: detalles y mayúsculas en turco (C-20)", "test_c20_keyboard_details_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3349,6 +3350,28 @@ def test_c19_bridge_keys_contract():
     assert "host.bottomElevationDp().coerceIn(0, 64)" in ll_content, "C-19: LayoutLayer no aplica coerceIn(0, 64)"
     assert "const val MAX_CREDENTIALS = 50" in cs_content, "C-19: CredentialStore no define MAX_CREDENTIALS = 50"
 
+def test_c20_keyboard_details_contract():
+    base = os.path.dirname(os.path.abspath(__file__))
+    dc_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "DictationController.kt")
+    ee_file = os.path.join(base, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "EditEngine.kt")
+
+    with open(dc_file, "r", encoding="utf-8") as f:
+        dc_content = f.read()
+    with open(ee_file, "r", encoding="utf-8") as f:
+        ee_content = f.read()
+
+    # 1. DictationController.kt: independencia de hapticStop
+    assert "val hapticStop: Boolean" in dc_content, "C-20: MicFeedback no declara hapticStop"
+    assert "MicEvent.STOP -> if (fb.hapticStop)" in dc_content, "C-20: MicEvent.STOP debe condicionarse a fb.hapticStop"
+    assert "MicEvent.STOP -> if (fb.hapticStart)" not in dc_content, "C-20: MicEvent.STOP no debe depender de fb.hapticStart"
+
+    # 2. EditEngine.kt: Locale.ROOT y tests turco
+    assert "import java.util.Locale" in ee_content, "C-20: EditEngine no importa java.util.Locale"
+    assert "text.lowercase(Locale.ROOT)" in ee_content, "C-20: EditEngine no usa text.lowercase(Locale.ROOT)"
+    assert "text.uppercase(Locale.ROOT)" in ee_content, "C-20: EditEngine no usa text.uppercase(Locale.ROOT)"
+    assert "text == text.lowercase(Locale.ROOT)" in ee_content, "C-20: nextCase no compara con text.lowercase(Locale.ROOT)"
+    assert "text == text.uppercase(Locale.ROOT)" in ee_content, "C-20: nextCase no compara con text.uppercase(Locale.ROOT)"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3381,6 +3404,7 @@ def main():
         ("C-17: una sola vibración por tecla", test_c17_single_vibration_contract),
         ("C-18: precisión de toques y borrado por lotes", test_c18_touch_precision_contract),
         ("C-19: puente de claves sano y límites", test_c19_bridge_keys_contract),
+        ("C-20: detalles del teclado y mayúsculas", test_c20_keyboard_details_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

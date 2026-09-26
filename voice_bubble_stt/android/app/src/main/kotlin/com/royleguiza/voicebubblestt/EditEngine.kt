@@ -11,6 +11,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import java.util.Locale
 
 internal fun commitOrWarn(
     service: InputMethodService,
@@ -154,7 +155,7 @@ class EditEngine(
      * `Mi_Funcion`, `hola mundo` → `Hola Mundo`. Acentos ES mapean 1:1.
      */
     internal fun toTitleCase(text: String): String {
-        val lower = text.lowercase()
+        val lower = text.lowercase(Locale.ROOT)
         val sb = StringBuilder(lower.length)
         var wordStart = true
         for (c in lower) {
@@ -179,12 +180,15 @@ class EditEngine(
      * Sin estado entre toques (D-M6): la decisión sale solo del contenido
      * actual de la selección, así que una selección perdida/colapsada por el
      * editor degrada honesto a shift normal en vez de ciclar fantasma.
+     *
+     * Contrato C-20: Se usa [Locale.ROOT] explícito para que el casing sea
+     * determinista en todos los idiomas y no colapse en turco (I/ı y İ/i).
      */
     internal fun nextCase(text: String): Pair<String, CaseState> {
-        if (text == text.lowercase()) return Pair(toTitleCase(text), CaseState.TITLE)
-        if (isTitleCase(text)) return Pair(text.uppercase(), CaseState.UPPER)
-        if (text == text.uppercase()) return Pair(text.lowercase(), CaseState.LOWER)
-        return Pair(text.lowercase(), CaseState.LOWER)
+        if (text == text.lowercase(Locale.ROOT)) return Pair(toTitleCase(text), CaseState.TITLE)
+        if (isTitleCase(text)) return Pair(text.uppercase(Locale.ROOT), CaseState.UPPER)
+        if (text == text.uppercase(Locale.ROOT)) return Pair(text.lowercase(Locale.ROOT), CaseState.LOWER)
+        return Pair(text.lowercase(Locale.ROOT), CaseState.LOWER)
     }
 
     fun commitOrWarn(text: CharSequence): Boolean {

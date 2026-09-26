@@ -37,10 +37,15 @@ import androidx.core.content.ContextCompat
 /**
  * Snapshot de feedback del micrófono (prefs del puente, lectura en vivo
  * por evento): hápticas independientes de las teclas + sonidos opt-in.
+ *
+ * Contrato C-20: [hapticStart] y [hapticStop] son flags independientes.
+ * Apagar [hapticStart] no debe apagar [hapticStop] ni viceversa (resolviendo
+ * la ambigüedad histórica donde STOP usaba hapticStart).
  */
 data class MicFeedback(
     val hapticsEnabled: Boolean,
     val hapticStart: Boolean,
+    val hapticStop: Boolean = true,
     val hapticRecording: Boolean,
     val hapticPaste: Boolean,
     val hapticCancel: Boolean,
@@ -363,7 +368,7 @@ class DictationController(
             if (fb.hapticsEnabled) {
                 when (kind) {
                     MicEvent.START -> if (fb.hapticStart) host.micBuzz(12L, 255)
-                    MicEvent.STOP -> if (fb.hapticStart) host.micBuzz(20L, 200)
+                    MicEvent.STOP -> if (fb.hapticStop) host.micBuzz(20L, 200)
                     MicEvent.PASTE -> if (fb.hapticPaste) host.micBuzz(15L, 180)
                     MicEvent.CANCEL -> if (fb.hapticCancel) host.micBuzz(30L, 160)
                 }
