@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../ui/debouncer.dart';
 import '../../ui/design_tokens.dart';
 import '../../widgets/settings_v2.dart';
 
@@ -59,24 +60,6 @@ class TrackpadTab extends StatelessWidget {
     required this.trackpadAutoReturn,
     required this.onSaveTrackpadAutoReturn,
   });
-
-  static final _sensitivityChips = <double, String>{
-    0.5: '0.5x',
-    1.0: '1.0x',
-    1.5: '1.5x',
-    2.0: '2.0x',
-  };
-
-  double get _snappedSensitivity {
-    var best = _sensitivityChips.keys.first;
-    for (final v in _sensitivityChips.keys) {
-      if ((trackpadSensitivity - v).abs() <
-          (trackpadSensitivity - best).abs()) {
-        best = v;
-      }
-    }
-    return best;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -180,43 +163,9 @@ class TrackpadTab extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Velocidad del puntero',
-                          style: kSettingRowTitle.copyWith(
-                            color: isDark
-                                ? kLabelPrimaryDark
-                                : kLabelPrimaryLight,
-                          ),
-                        ),
-                        Text(
-                          '${trackpadSensitivity.toStringAsFixed(1)}x',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      key: const ValueKey('kb-trackpad-sensitivity-slider'),
-                      value: trackpadSensitivity,
-                      min: 0.5,
-                      max: 2.5,
-                      divisions: 20,
-                      label: '${trackpadSensitivity.toStringAsFixed(1)}x',
-                      onChanged: onTrackpadSensitivitySlider,
-                    ),
-                    const SizedBox(height: 4),
-                    Center(
-                      child: SliderChips<double>(
-                        options: _sensitivityChips,
-                        selected: _snappedSensitivity,
-                        onSelected: onTrackpadSensitivitySlider,
-                      ),
+                    TrackpadSensitivitySection(
+                      sensitivity: trackpadSensitivity,
+                      onSensitivityChanged: onTrackpadSensitivitySlider,
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -454,6 +403,123 @@ class _TrackpadSegmentedBlock extends StatelessWidget {
             ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Fila de sensibilidad con estado local + debouncer interno (C-33).
+///
+/// El slider actualiza su propio estado local de inmediato para respuesta
+/// táctil sin lag y difiere la persistencia mediante [Debouncer] sin
+/// provocar rebuilds globales de la pantalla de Ajustes.
+class TrackpadSensitivitySection extends StatefulWidget {
+  final double sensitivity;
+  final ValueChanged<double> onSensitivityChanged;
+
+  const TrackpadSensitivitySection({
+    super.key,
+    required this.sensitivity,
+    required this.onSensitivityChanged,
+  });
+
+  @override
+  State<TrackpadSensitivitySection> createState() =>
+      _TrackpadSensitivitySectionState();
+}
+
+class _TrackpadSensitivitySectionState
+    extends State<TrackpadSensitivitySection> {
+  late double _current;
+  late final Debouncer _debouncer;
+
+  static final _sensitivityChips = <double, String>{
+    0.5: '0.5x',
+    1.0: '1.0x',
+    1.5: '1.5x',
+    2.0: '2.0x',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.sensitivity;
+    _debouncer = Debouncer(delay: const Duration(milliseconds: 150));
+  }
+
+  @override
+  void didUpdateWidget(covariant TrackpadSensitivitySection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sensitivity != widget.sensitivity) {
+      _current = widget.sensitivity;
+    }
+  }
+
+  @override
+  void dispose() {
+    _debouncer.dispose();
+    super.dispose();
+  }
+
+  double get _snappedSensitivity {
+    var best = _sensitivityChips.keys.first;
+    for (final v in _sensitivityChips.keys) {
+      if ((_current - v).abs() < (_current - best).abs()) {
+        best = v;
+      }
+    }
+    return best;
+  }
+
+  void _onChanged(double value) {
+    setState(() => _current = value);
+    _debouncer.run(() async {
+      widget.onSensitivityChanged(value);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Velocidad del puntero',
+              style: kSettingRowTitle.copyWith(
+                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+              ),
+            ),
+            Text(
+              '${_current.toStringAsFixed(1)}x',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          key: const ValueKey('kb-trackpad-sensitivity-slider'),
+          value: _current,
+          min: 0.5,
+          max: 2.5,
+          divisions: 20,
+          label: '${_current.toStringAsFixed(1)}x',
+          onChanged: _onChanged,
+        ),
+        const SizedBox(height: 4),
+        Center(
+          child: SliderChips<double>(
+            options: _sensitivityChips,
+            selected: _snappedSensitivity,
+            onSelected: _onChanged,
+          ),
+        ),
       ],
     );
   }

@@ -17,6 +17,7 @@ import 'notes_screen.dart';
 import '../models/voice_note.dart';
 import '../services/notes_service.dart';
 import '../services/widget_service.dart';
+import '../controllers/recording_controller.dart';
 import '../widgets/record_button.dart';
 import '../widgets/history_list.dart';
 import '../widgets/transcription_popup.dart';
@@ -26,12 +27,14 @@ class HomeScreen extends StatefulWidget {
   final TranscriptionService? transcriptionService;
   final StorageService? storageService;
   final FloatingBubbleService? floatingBubbleService;
+  final RecordingController? recordingController;
 
   const HomeScreen({
     super.key,
     this.transcriptionService,
     this.storageService,
     this.floatingBubbleService,
+    this.recordingController,
   });
 
   @override
@@ -43,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen>
   late final TranscriptionService _transcriptionService;
   late final StorageService _storageService;
   late final FloatingBubbleService _floatingBubbleService;
+  late final RecordingController _recordingController;
   final _secureStorage = StorageService.espSecureStorage;
   final _keyboardService = KeyboardService();
 
@@ -84,6 +88,13 @@ class _HomeScreenState extends State<HomeScreen>
         storageService: _storageService,
       );
     }
+    _recordingController = widget.recordingController ??
+        RecordingController(
+          transcriptionService: _transcriptionService,
+          floatingBubbleService: _floatingBubbleService,
+          onHapticStart: _hapticStart,
+          onHapticStop: _hapticStop,
+        );
     _init();
   }
 
@@ -697,6 +708,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    if (widget.recordingController == null) {
+      _recordingController.dispose();
+    }
     WidgetsBinding.instance.removeObserver(this);
     _floatingBubbleService.onBubbleTap = null;
     _floatingBubbleService.onBubbleClose = null;

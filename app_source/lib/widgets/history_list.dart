@@ -50,6 +50,7 @@ class HistoryList extends StatelessWidget {
       itemBuilder: (context, index) {
         final t = transcriptions[index];
         return ListTile(
+          key: ValueKey(t.id),
           // Motor Cloud único: sin motor Local no hay rama de ícono.
           leading: Icon(
             Icons.cloud,

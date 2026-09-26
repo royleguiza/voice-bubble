@@ -83,6 +83,7 @@ class NoteCard extends StatelessWidget {
                       if (note.hasAudio) ...[
                         const SizedBox(height: 6),
                         NoteAudioRow(
+                          key: ValueKey('audio_${note.id}'),
                           audioPath: note.audioPath!,
                           noteId: note.id,
                           onDeleteAudio: onDeleteAudio,

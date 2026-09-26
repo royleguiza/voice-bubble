@@ -476,13 +476,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _storageService.setTrackpadScrollPosition(value);
   }
 
-  /// Entrada del slider de sensibilidad: estado local inmediato (thumb
-  /// sin lag) + persistencia diferida 150 ms (helper reutilizable).
+  /// Entrada del slider de sensibilidad (C-33): el estado visual y el
+  /// debouncer viven en [TrackpadSensitivitySection] para evitar el rebuild
+  /// de toda la pantalla de Ajustes en cada tick. Aquí solo persistimos.
   void _onTrackpadSensitivitySlider(double value) {
-    setState(() => _trackpadSensitivity = value);
-    _persistSliderDebounced(
-        'trackpadSensitivity',
-        () => _storageService.setTrackpadSensitivity(value));
+    _trackpadSensitivity = value;
+    _storageService.setTrackpadSensitivity(value);
   }
 
   Future<void> _saveTrackpadAccelCurve(String value) async {

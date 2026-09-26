@@ -18,6 +18,9 @@ class Transcription {
     required this.timestamp,
   });
 
+  /// Identificador único para widgets y claves de lista (C-33).
+  String get id => '${timestamp.millisecondsSinceEpoch}_${text.hashCode}';
+
   factory Transcription.fromJson(Map<String, dynamic> json) {
     final parsed = tryFromJson(json);
     if (parsed != null) return parsed;

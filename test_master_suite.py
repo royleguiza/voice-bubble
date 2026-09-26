@@ -59,6 +59,7 @@ SUITES = [
     ("Contraste que se lee (C-30)", "test_c30_contrast_and_accessible_tokens_suite.py"),
     ("Transparencia del sistema + tokens (C-31)", "test_c31_system_transparency_and_tokens_suite.py"),
     ("Semántica correcta + teclado físico (C-32)", "test_c32_semantics_and_physical_keyboard_suite.py"),
+    ("Settings y Home sin rebuilds + keys (C-33)", "test_c33_no_rebuilds_and_keys_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3818,6 +3819,43 @@ def test_c32_semantics_and_physical_keyboard_contract():
         cs = f.read()
     assert "CallbackShortcuts(" in cs and "AutofillHints.username" in cs and "AutofillHints.password" in cs, "C-32: credentials_screen debe tener CallbackShortcuts y autofillHints"
 
+def test_c33_no_rebuilds_and_keys_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    tt_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "trackpad_tab.dart")
+    ss_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings_screen.dart")
+    ns_file = os.path.join(base_dir, "app_source", "lib", "screens", "notes_screen.dart")
+    nc_file = os.path.join(base_dir, "app_source", "lib", "widgets", "note_card.dart")
+    hl_file = os.path.join(base_dir, "app_source", "lib", "widgets", "history_list.dart")
+    rc_file = os.path.join(base_dir, "app_source", "lib", "controllers", "recording_controller.dart")
+
+    with open(tt_file, "r", encoding="utf-8") as f:
+        tt = f.read()
+    assert "class TrackpadSensitivitySection extends StatefulWidget" in tt, "C-33: TrackpadSensitivitySection debe ser StatefulWidget"
+    assert "Debouncer(" in tt, "C-33: TrackpadSensitivitySection debe tener Debouncer"
+    assert "kb-trackpad-sensitivity-slider" in tt, "C-33: Slider debe conservar clave de tracking"
+
+    with open(ss_file, "r", encoding="utf-8") as f:
+        ss = f.read()
+    handler = re.search(r"void _onTrackpadSensitivitySlider\s*\([^)]*\)\s*\{([^}]+)\}", ss)
+    assert handler and "setState" not in handler.group(1), "C-33: _onTrackpadSensitivitySlider no debe llamar a setState"
+
+    with open(ns_file, "r", encoding="utf-8") as f:
+        ns = f.read()
+    assert re.search(r"NoteCard\s*\([^)]*key:\s*ValueKey\([^)]*id\)", ns), "C-33: NoteCard debe tener ValueKey(id)"
+
+    with open(nc_file, "r", encoding="utf-8") as f:
+        nc = f.read()
+    assert re.search(r"NoteAudioRow\s*\([^)]*key:\s*ValueKey\([^)]*id[^)]*\)", nc), "C-33: NoteAudioRow debe tener ValueKey con id"
+
+    with open(hl_file, "r", encoding="utf-8") as f:
+        hl = f.read()
+    assert re.search(r"ListTile\s*\([^)]*key:\s*ValueKey\([^)]*id\)", hl), "C-33: HistoryList ListTile debe tener ValueKey(id)"
+
+    with open(rc_file, "r", encoding="utf-8") as f:
+        rc = f.read()
+    assert "class RecordingController extends ChangeNotifier" in rc, "C-33: RecordingController debe ser ChangeNotifier"
+    assert "static const int minAudioBytes = 8000;" in rc, "C-33: RecordingController debe declarar minAudioBytes = 8000"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3863,6 +3901,7 @@ def main():
         ("C-30: contraste que se lee", test_c30_contrast_and_accessible_tokens_contract),
         ("C-31: transparencia del sistema + tokens", test_c31_system_transparency_and_tokens_contract),
         ("C-32: semántica correcta + teclado físico", test_c32_semantics_and_physical_keyboard_contract),
+        ("C-33: settings y home sin rebuilds + keys", test_c33_no_rebuilds_and_keys_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

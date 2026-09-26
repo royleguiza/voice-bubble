@@ -585,6 +585,7 @@ class _NotesScreenState extends State<NotesScreen>
                     itemBuilder: (_, i) {
                       final n = _filtered[i];
                       return NoteCard(
+                        key: ValueKey(n.id),
                         note: n,
                         onTap: () => _openEditor(n),
                         onDeleteAudio: n.hasAudio
