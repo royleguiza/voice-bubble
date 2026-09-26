@@ -76,6 +76,10 @@ class CloudSttService {
   static const String model = _model;
   static const String language = _language;
 
+  /// Umbral mínimo de audio útil (8000 bytes, ~0.25 s a 16kHz 16-bit mono).
+  /// Por debajo de 8000B se descarta como click o ruido vacío.
+  static const int minAudioBytes = 8000;
+
   final String apiKey;
   final http.Client? client;
 
@@ -83,6 +87,17 @@ class CloudSttService {
     required this.apiKey,
     this.client,
   });
+
+  /// Crea una copia del servicio conservando el [client] (y la clave si no se pasa).
+  CloudSttService copyWith({
+    String? apiKey,
+    http.Client? client,
+  }) {
+    return CloudSttService(
+      apiKey: apiKey ?? this.apiKey,
+      client: client ?? this.client,
+    );
+  }
 
   /// Timeout adaptativo: base de procesamiento + 1 s por cada
   /// [_timeoutBytesPerSecond] bytes del audio (subida a ~50 KB/s efectivos
@@ -114,6 +129,12 @@ class CloudSttService {
     }
 
     final fileLength = await file.length();
+    if (fileLength < minAudioBytes) {
+      throw const TranscriptionException(
+        'El archivo de audio es demasiado corto para transcribir (mínimo 8000 bytes).',
+        kind: TranscriptionErrorKind.badRequest,
+      );
+    }
     if (fileLength > maxFileSizeBytes) {
       throw const TranscriptionException(
         'El archivo de audio supera el límite de 25 MB.',

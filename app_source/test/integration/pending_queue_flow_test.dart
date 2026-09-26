@@ -31,7 +31,7 @@ class _FakeRecorder implements AudioRecorder {
     startCount++;
     lastConfig = config;
     lastPath = path;
-    File(path).writeAsBytesSync(List<int>.filled(2048, 0x61));
+    File(path).writeAsBytesSync(List<int>.filled(8192, 0x61));
   }
 
   @override

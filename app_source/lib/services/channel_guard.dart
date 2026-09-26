@@ -38,10 +38,35 @@ class ChannelResult {
   const ChannelResult(this.ok, this.kind, [this.code]);
 }
 
+/// ============================================================================
+/// POLÍTICA DE 3 NIVELES DE ERRORES (Contrato C-24)
+/// ============================================================================
+/// - Nivel 1 (UI-crítico): retorna bool o lanza excepción descriptiva; la UI
+///   muestra aviso claro al usuario (SnackBar/diálogo). Jamás dice "guardado" si falló.
+/// - Nivel 2 (Fondo/no bloqueante): se acumula en [channelErrorCount] o métricas
+///   visibles en diagnóstico, sin interrumpir el flujo del usuario ni tragar ciegamente.
+/// - Nivel 3 (Defensivo): solo I/O de limpieza (borrado de temporales huérfanos,
+///   teardown en dispose) con catch seguro para no encadenar fallos.
+/// ============================================================================
+
 int _channelErrorCount = 0;
 
-/// Contador release-safe de fallos no-permiso (sin contenido).
+/// Contador release-safe de fallos no-permiso / fondo (Nivel 2).
 int get channelErrorCount => _channelErrorCount;
+
+/// Registra un error de segundo plano en el contador de Nivel 2.
+void recordBackgroundError([String? context]) {
+  _channelErrorCount++;
+  if (kDebugMode && context != null) {
+    debugPrint('Background error in $context (total: $_channelErrorCount)');
+  }
+}
+
+/// Resetea el contador de errores de canal/fondo para testing.
+@visibleForTesting
+void resetChannelErrorCountForTesting() {
+  _channelErrorCount = 0;
+}
 
 Future<ChannelResult> invokeChannelResult(
   MethodChannel channel,

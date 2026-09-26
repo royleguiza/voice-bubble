@@ -50,6 +50,7 @@ SUITES = [
     ("Datos: fechas rotas no contaminan (C-21)", "test_c21_broken_dates_suite.py"),
     ("Datos: espejos que no mienten (C-22)", "test_c22_honest_mirrors_suite.py"),
     ("Concurrencia: escritura sin pisadas y UUID v4 único (C-23)", "test_c23_concurrent_writes_and_unique_ids_suite.py"),
+    ("Errores que se ven y reporte honesto (C-24)", "test_c24_visible_errors_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3489,6 +3490,60 @@ def test_c23_concurrent_writes_contract():
     assert "private val REPO_MUTEX = Any()" in repo_content, "C-23: TranscriptionHistoryRepository no declara REPO_MUTEX"
     assert "synchronized(REPO_MUTEX)" in repo_content, "C-23: TranscriptionHistoryRepository addTranscription no usa synchronized(REPO_MUTEX)"
 
+def test_c24_visible_errors_contract():
+    base = os.path.dirname(os.path.abspath(__file__))
+    cstt_file = os.path.join(base, "app_source", "lib", "services", "cloud_stt_service.dart")
+    home_file = os.path.join(base, "app_source", "lib", "screens", "home_screen.dart")
+    guard_file = os.path.join(base, "app_source", "lib", "services", "channel_guard.dart")
+    widget_file = os.path.join(base, "app_source", "lib", "services", "widget_service.dart")
+    storage_file = os.path.join(base, "app_source", "lib", "services", "storage_service.dart")
+    trans_file = os.path.join(base, "app_source", "lib", "services", "transcription_service.dart")
+    notes_scr = os.path.join(base, "app_source", "lib", "screens", "notes_screen.dart")
+    editor_scr = os.path.join(base, "app_source", "lib", "screens", "note_editor_screen.dart")
+
+    assert os.path.isfile(cstt_file), "C-24: cloud_stt_service.dart no existe"
+    with open(cstt_file, "r", encoding="utf-8") as f:
+        cstt_src = f.read()
+    assert "static const int minAudioBytes = 8000;" in cstt_src, "C-24: CloudSttService minAudioBytes != 8000"
+    assert "CloudSttService copyWith(" in cstt_src and "client: client ?? this.client" in cstt_src, "C-24: CloudSttService no preserva client en copyWith"
+    assert "fileLength < minAudioBytes" in cstt_src, "C-24: CloudSttService no valida minAudioBytes"
+
+    with open(home_file, "r", encoding="utf-8") as f:
+        home_src = f.read()
+    assert "static const int minAudioBytes = 8000;" in home_src, "C-24: home_screen minAudioBytes != 8000"
+    assert "file.lengthSync() >= _minAudioBytes" in home_src, "C-24: home_screen no valida _minAudioBytes"
+
+    with open(guard_file, "r", encoding="utf-8") as f:
+        guard_src = f.read()
+    assert "POLÍTICA DE 3 NIVELES DE ERRORES" in guard_src, "C-24: channel_guard no documenta 3 niveles"
+    assert "void recordBackgroundError(" in guard_src, "C-24: channel_guard no expone recordBackgroundError"
+    assert "int get channelErrorCount" in guard_src, "C-24: channel_guard no expone channelErrorCount"
+
+    with open(widget_file, "r", encoding="utf-8") as f:
+        widget_src = f.read()
+    assert "invokeChannelResult" in widget_src, "C-24: WidgetService no usa invokeChannelResult"
+    assert "recordBackgroundError" in widget_src, "C-24: WidgetService no usa recordBackgroundError"
+    assert "catch (_) {}" not in widget_src, "C-24: WidgetService contiene catch (_) {} ciego"
+
+    with open(storage_file, "r", encoding="utf-8") as f:
+        storage_src = f.read()
+    assert "Future<bool> _save() async" in storage_src, "C-24: _save no retorna Future<bool>"
+    assert "Future<bool> _saveHistoryFile() async" in storage_src, "C-24: _saveHistoryFile no retorna Future<bool>"
+    assert "Future<bool> saveSnippets(List<Snippet> snippets) async" in storage_src, "C-24: saveSnippets no retorna Future<bool>"
+
+    with open(trans_file, "r", encoding="utf-8") as f:
+        trans_src = f.read()
+    assert "_cloudService = _cloudService.copyWith(apiKey: apiKey);" in trans_src, "C-24: updateApiKey no usa copyWith"
+    assert "if (!saved)" in trans_src and "disco lleno o error de almacenamiento" in trans_src, "C-24: transcribe no lanza en fallo de add"
+
+    with open(notes_scr, "r", encoding="utf-8") as f:
+        notes_src = f.read()
+    assert "Nota no guardada; el audio se conserva" in notes_src, "C-24: notes_screen no avisa fallo de guardado"
+
+    with open(editor_scr, "r", encoding="utf-8") as f:
+        editor_src = f.read()
+    assert "Limite alcanzado o error" in editor_src, "C-24: note_editor_screen no avisa fallo de guardado"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3525,6 +3580,7 @@ def main():
         ("C-21: fechas rotas no contaminan", test_c21_broken_dates_contract),
         ("C-22: espejos que no mienten", test_c22_honest_mirrors_contract),
         ("C-23: escritura sin pisadas y UUID v4 único", test_c23_concurrent_writes_contract),
+        ("C-24: errores que se ven y reporte honesto", test_c24_visible_errors_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

@@ -46,7 +46,7 @@ class _FakeRecorder implements AudioRecorder {
     lastConfig = config;
     lastPath = path;
     // IO sincrona: simula que el plugin escribe el WAV PCM16 en disco.
-    File(path).writeAsBytesSync(List<int>.filled(2048, 0x61));
+    File(path).writeAsBytesSync(List<int>.filled(8192, 0x61));
   }
 
   @override

@@ -332,10 +332,11 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {}
   }
 
-  /// Audio mínimo útil para llamar a Groq (>1000 bytes). Se exige tanto en
+  /// Audio mínimo útil para llamar a Groq (≥8000 bytes). Se exige tanto en
   /// [_stopRecording] como en [_retryPending]: por debajo se limpia el
   /// temporal sin transcribir y sin mostrar error.
-  static const int _minAudioBytes = 1000;
+  static const int minAudioBytes = 8000;
+  static const int _minAudioBytes = minAudioBytes;
 
   /// SPK-17 (Dart): se mantiene I/O SYNC a propósito. `await File.exists()`
   /// se cuelga bajo FakeAsync de testWidgets (regla AGENTS §9.2-10,

@@ -1120,8 +1120,9 @@ class StorageService {
   }
 
   /// Serializa el JSON array ordenado por [Snippet.orden]; el orden es
-  /// estable: empates conservan la posicion relativa de entrada.
-  Future<void> saveSnippets(List<Snippet> snippets) async {
+  /// estable: empates conservan la posicion relativa de entrada. Retorna
+  /// true si SharedPreferences persistió con éxito, false en caso de fallo (Nivel 1).
+  Future<bool> saveSnippets(List<Snippet> snippets) async {
     final indexed = <(int, Snippet)>[
       for (var i = 0; i < snippets.length; i++) (i, snippets[i]),
     ];
@@ -1129,11 +1130,15 @@ class StorageService {
       final byOrden = a.$2.orden.compareTo(b.$2.orden);
       return byOrden != 0 ? byOrden : a.$1.compareTo(b.$1);
     });
-    final prefs = await _prefs();
-    await prefs.setString(
-      snippetsKey,
-      jsonEncode(indexed.map((e) => e.$2.toJson()).toList()),
-    );
+    try {
+      final prefs = await _prefs();
+      return await prefs.setString(
+        snippetsKey,
+        jsonEncode(indexed.map((e) => e.$2.toJson()).toList()),
+      );
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Agrega un snippet al final de la lista. Devuelve false si viola los
@@ -1152,7 +1157,7 @@ class StorageService {
     // Lectura ilegible: bloqueada la escritura para no pisar datos.
     if (current == null) return false;
     if (current.length >= maxSnippets) return false;
-    await saveSnippets([
+    return await saveSnippets([
       ...current,
       Snippet(
         id: _nextSnippetId(),
@@ -1162,7 +1167,6 @@ class StorageService {
         color: color,
       ),
     ]);
-    return true;
   }
 
   /// Actualiza nombre, contenido y/o color del snippet con ese id. Devuelve
@@ -1194,8 +1198,7 @@ class StorageService {
       contenido: contenido ?? base.contenido,
       color: nextColor,
     );
-    await saveSnippets(current);
-    return true;
+    return await saveSnippets(current);
   }
 
   /// Elimina el snippet con ese id y renumera [Snippet.orden] para que
@@ -1207,11 +1210,10 @@ class StorageService {
     final remaining =
         current.where((s) => s.id != id).toList(growable: false);
     if (remaining.length == current.length) return false;
-    await saveSnippets([
+    return await saveSnippets([
       for (var i = 0; i < remaining.length; i++)
         remaining[i].copyWith(orden: i),
     ]);
-    return true;
   }
 
   /// Recibe los ids en el nuevo orden deseado y reescribe [Snippet.orden]
@@ -1246,7 +1248,8 @@ class StorageService {
     final current = await _readSnippets();
     if (current == null) return;
     if (current.isEmpty) {
-      await saveSnippets(_seedSnippets);
+      final saved = await saveSnippets(_seedSnippets);
+      if (!saved) return;
     }
     await prefs.setBool(snippetsSeededKey, true);
   }

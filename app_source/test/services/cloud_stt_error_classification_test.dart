@@ -20,7 +20,7 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('h5_errors_test_');
     tempAudioFile = File('${tempDir.path}/audio.wav');
-    await tempAudioFile.writeAsBytes(List<int>.filled(2048, 0));
+    await tempAudioFile.writeAsBytes(List<int>.filled(8192, 0));
   });
 
   tearDown(() async {

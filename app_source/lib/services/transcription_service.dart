@@ -53,6 +53,7 @@ class TranscriptionService {
         _releaseMicrophone = releaseMicrophone ?? _defaultMicClaimReleaser;
 
   StorageService get storageService => _storageService;
+  CloudSttService get cloudService => _cloudService;
 
   /// Solicita el permiso de micrófono. SOLO debe llamarse en intención
   /// explícita de grabar (p.ej. al pulsar grabar y el permiso aún no está
@@ -67,7 +68,7 @@ class TranscriptionService {
   }
 
   void updateApiKey(String apiKey) {
-    _cloudService = CloudSttService(apiKey: apiKey);
+    _cloudService = _cloudService.copyWith(apiKey: apiKey);
   }
 
   Future<void> startRecording(String path) async {
@@ -130,7 +131,12 @@ class TranscriptionService {
 
     if (result.text.isNotEmpty) {
       final saved = await _storageService.add(result);
-      if (!saved) return result;
+      if (!saved) {
+        throw const TranscriptionException(
+          'No se pudo guardar la transcripción en el historial (disco lleno o error de almacenamiento).',
+          kind: TranscriptionErrorKind.server,
+        );
+      }
     }
 
     // C-10: no borrar temporal si el texto devuelto es vacío para permitir reintento

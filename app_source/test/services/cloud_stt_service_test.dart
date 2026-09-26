@@ -13,7 +13,7 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('cloud_stt_test_');
     tempAudioFile = File('${tempDir.path}/test_audio.wav');
-    await tempAudioFile.writeAsBytes(List<int>.filled(1024, 0));
+    await tempAudioFile.writeAsBytes(List<int>.filled(8192, 0));
   });
 
   tearDown(() async {
