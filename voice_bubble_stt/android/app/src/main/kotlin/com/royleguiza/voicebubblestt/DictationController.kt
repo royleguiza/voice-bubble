@@ -582,8 +582,9 @@ class DictationController(
                         } else {
                             // AT-A10: el dictado se comete directo en el campo
                             // destino; jamas alimenta el query de snippets.
-                            service.currentInputConnection?.commitText(text, 1)
-                            micEvent(MicEvent.PASTE)
+                            if (commitOrWarn(text)) {
+                                micEvent(MicEvent.PASTE)
+                            }
                         }
                     }
                 },
@@ -595,6 +596,12 @@ class DictationController(
                     }
                 },
             )
+        }
+    }
+
+    private fun commitOrWarn(text: CharSequence): Boolean {
+        return com.royleguiza.voicebubblestt.commitOrWarn(service, text, host.isSpanish()) {
+            host.showNotice(if (host.isSpanish()) StatusLayer.NOTICE_DEAD_CONNECTION_ES else StatusLayer.NOTICE_DEAD_CONNECTION_EN)
         }
     }
 

@@ -975,6 +975,12 @@ class SnippetsLayer(
         return tv
     }
 
+    private fun commitOrWarn(text: CharSequence): Boolean {
+        return com.royleguiza.voicebubblestt.commitOrWarn(service, text, host.isSpanish()) {
+            warnDeadConnection(service, host.isSpanish())
+        }
+    }
+
     /**
      * Insercion del contenido completo en el cursor via commitText (soporta
      * multilinea con \n) y regreso a la capa de origen.
@@ -982,7 +988,7 @@ class SnippetsLayer(
     private fun insert(snippet: VbSnippet) {
         host.haptic(host.rootView())
         host.consumeModifiers()
-        service.currentInputConnection?.commitText(snippet.contenido, 1)
+        if (!commitOrWarn(snippet.contenido)) return
         searchActive = false
         searchField = null
         host.setLayer(origin)

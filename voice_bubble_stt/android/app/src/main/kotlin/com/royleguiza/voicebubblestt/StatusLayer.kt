@@ -23,6 +23,19 @@ class StatusLayer(
     private val host: UiHost,
 ) {
 
+    companion object {
+        const val NOTICE_DEAD_CONNECTION_ES = "Conexión perdida"
+        const val NOTICE_DEAD_CONNECTION_EN = "Connection lost"
+
+        @Volatile
+        internal var activeInstance: StatusLayer? = null
+            private set
+    }
+
+    init {
+        activeInstance = this
+    }
+
     /** Lo mínimo que el aviso exige al teclado. */
     interface UiHost {
         fun rootView(): LinearLayout

@@ -56,6 +56,12 @@ class HistoryLayer(
         host.dismissPopups()
     }
 
+    private fun commitOrWarn(text: CharSequence): Boolean {
+        return com.royleguiza.voicebubblestt.commitOrWarn(service, text, host.isSpanish()) {
+            warnDeadConnection(service, host.isSpanish())
+        }
+    }
+
     private fun loadEntries(repo: TranscriptionHistoryRepository?): List<JSONObject> {
         return try {
             repo?.loadHistory() ?: emptyList()
@@ -128,8 +134,9 @@ class HistoryLayer(
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
                 setOnClickListener {
                     host.haptic(this)
-                    host.commitText(text)
-                    host.dismissPopups()
+                    if (commitOrWarn(text)) {
+                        host.dismissPopups()
+                    }
                 }
             }
             content.addView(tv)

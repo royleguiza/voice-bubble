@@ -32,6 +32,7 @@ SUITES = [
     ("Teclado: filas parejas + glyphs gruesos (layout nativo)", "test_keyboard_layout_suite.py"),
     ("Micrófono: hápticas y sonidos por evento", "test_mic_feedback_suite.py"),
     ("Notas: cola diferida cloud offline (C1-C7)", "test_pending_notes_suite.py"),
+    ("Conexión: blindaje del teclado ante conexión muerta (C-06)", "test_c06_dead_connection_suite.py"),
 ]
 
 def run_test(name, func):
@@ -2674,6 +2675,69 @@ def test_manifest_retention():
     assert "debug.keystore" not in release_block, "El bloque release no debe usar debug.keystore"
     assert '"android"' not in release_block, "Password pública en release prohibida"
 
+def test_c06_dead_connection_contract():
+    """
+    Guarda C-06: Blindaje del teclado ante conexión muerta.
+    Verifica:
+    1. Cero llamadas a `currentInputConnection?.` sin control posterior en los 6 archivos
+       del contrato (EditEngine, SnippetsLayer, ClipboardLayer, DictationController,
+       HistoryLayer, StatusLayer).
+    2. Helper `commitOrWarn` en nivel de paquete y en capas dependientes.
+    3. Excepciones de IPC (DeadObjectException, RemoteException, IllegalStateException, Exception)
+       capturadas en commitOrWarn, handleShiftTap, sendKeyEventWithMeta, sendKeyCode,
+       handleBackspace, deleteWordBeforeCursor, handleEnter, y commitImageClip.
+    4. Compresión de flujo de UI: aborto sin mutación de estado en SnippetsLayer (no setLayer),
+       ClipboardLayer (no showLayer), DictationController (no MicEvent.PASTE), y
+       HistoryLayer (no dismissPopups).
+    """
+    base_kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    c06_files = [
+        "EditEngine.kt",
+        "SnippetsLayer.kt",
+        "ClipboardLayer.kt",
+        "DictationController.kt",
+        "HistoryLayer.kt",
+        "StatusLayer.kt",
+    ]
+    for fn in c06_files:
+        path = os.path.join(base_kt, fn)
+        assert os.path.isfile(path), f"Falta archivo C-06: {path}"
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        matches = re.findall(r"currentInputConnection\?\.([a-zA-Z0-9_]+)", content)
+        assert len(matches) == 0, f"C-06: {fn} contiene llamadas desprotegidas currentInputConnection?. ({matches})"
+
+    ee_path = os.path.join(base_kt, "EditEngine.kt")
+    with open(ee_path, "r", encoding="utf-8") as f:
+        ee = f.read()
+    commit_fn = ee[ee.find("internal fun commitOrWarn") : ee.find("internal fun warnDeadConnection")]
+    for exc in ["DeadObjectException", "RemoteException", "IllegalStateException", "Exception"]:
+        assert f"catch (_: {exc})" in commit_fn, f"C-06: commitOrWarn no captura {exc}"
+
+    # Verificación de abortos en UI
+    snip_path = os.path.join(base_kt, "SnippetsLayer.kt")
+    with open(snip_path, "r", encoding="utf-8") as f:
+        snip = f.read()
+    assert "if (!commitOrWarn(snippet.contenido)) return" in snip, "C-06: SnippetsLayer no aborta en commit fallido"
+    insert_body = snip[snip.find("private fun insert(snippet: VbSnippet)") :]
+    assert insert_body.find("if (!commitOrWarn(snippet.contenido)) return") < insert_body.find("host.setLayer(origin)"), "C-06: SnippetsLayer cambia capa antes de commit"
+
+    clip_path = os.path.join(base_kt, "ClipboardLayer.kt")
+    with open(clip_path, "r", encoding="utf-8") as f:
+        clip = f.read()
+    assert "if (commitOrWarn(text)) {" in clip, "C-06: ClipboardLayer no condiciona showLayer a commitOrWarn"
+    assert "private fun commitImageClip(clip: ClipboardItem): Boolean" in clip, "C-06: commitImageClip no devuelve Boolean"
+
+    dict_path = os.path.join(base_kt, "DictationController.kt")
+    with open(dict_path, "r", encoding="utf-8") as f:
+        dict_ctrl = f.read()
+    assert "if (commitOrWarn(text)) {" in dict_ctrl and "micEvent(MicEvent.PASTE)" in dict_ctrl, "C-06: DictationController emite PASTE ante commit fallido"
+
+    hist_path = os.path.join(base_kt, "HistoryLayer.kt")
+    with open(hist_path, "r", encoding="utf-8") as f:
+        hist = f.read()
+    assert "if (commitOrWarn(text)) {" in hist and "host.dismissPopups()" in hist, "C-06: HistoryLayer cierra popups ante commit fallido"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -2692,6 +2756,7 @@ def main():
         ("Seguridad: Bóveda cifrada de secretos (SPK-02)", test_secrets_vault),
         ("Dictado: tope 5min + timeouts (fuente única)", test_dictation_contract),
         ("C-05: exclusión mutua del micrófono", test_c05_mic_exclusion_contract),
+        ("C-06: blindaje del teclado ante conexión muerta", test_c06_dead_connection_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

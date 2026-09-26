@@ -6,7 +6,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.net.Uri
+import android.os.DeadObjectException
 import android.os.Handler
+import android.os.RemoteException
 import android.view.View
 import android.widget.LinearLayout
 import androidx.core.content.FileProvider
@@ -242,35 +244,58 @@ class ClipboardLayer(
         filmstripView?.let { loadAsync(it) }
     }
 
+    private fun commitOrWarn(text: CharSequence): Boolean {
+        return com.royleguiza.voicebubblestt.commitOrWarn(service, text, host.isSpanish()) {
+            warnDeadConnection(service, host.isSpanish())
+        }
+    }
+
     private fun pasteClip(clip: ClipboardItem, autoClose: Boolean = true) {
         host.haptic(host.rootView())
-        // Al pegar desde la capa, volver al origen como hace Claves.
-        if (autoClose && host.currentLayer() == Layer.CLIPBOARD) {
-            host.showLayer(origin)
-        }
         when (clip.type) {
             ClipType.TEXT, ClipType.CODE, ClipType.MATH, ClipType.URL -> {
-                clip.text?.let { host.commitText(it) }
+                val text = clip.text ?: return
+                if (commitOrWarn(text)) {
+                    if (autoClose && host.currentLayer() == Layer.CLIPBOARD) {
+                        host.showLayer(origin)
+                    }
+                }
             }
             ClipType.IMAGE -> {
-                commitImageClip(clip, autoClose)
+                if (commitImageClip(clip)) {
+                    if (autoClose && host.currentLayer() == Layer.CLIPBOARD) {
+                        host.showLayer(origin)
+                    }
+                }
             }
         }
     }
 
-    private fun commitImageClip(clip: ClipboardItem, autoClose: Boolean) {
+    private fun commitImageClip(clip: ClipboardItem): Boolean {
         val file = store.getMediaFile(clip)
         if (file == null) {
             service.showClipboardNotice(if (host.isSpanish()) "Imagen no disponible" else "Image unavailable")
-            return
+            return false
         }
 
         val editorInfo = service.currentInputEditorInfo
         val inputConnection = service.currentInputConnection
-        if (editorInfo == null || inputConnection == null) return
+        if (editorInfo == null || inputConnection == null) {
+            warnDeadConnection(service, host.isSpanish())
+            return false
+        }
 
         val supportedMimes = try {
             EditorInfoCompat.getContentMimeTypes(editorInfo)
+        } catch (_: DeadObjectException) {
+            warnDeadConnection(service, host.isSpanish())
+            return false
+        } catch (_: RemoteException) {
+            warnDeadConnection(service, host.isSpanish())
+            return false
+        } catch (_: IllegalStateException) {
+            warnDeadConnection(service, host.isSpanish())
+            return false
         } catch (_: Exception) {
             emptyArray<String>()
         }
@@ -280,7 +305,7 @@ class ClipboardLayer(
         }
 
         if (isSupported) {
-            try {
+            return try {
                 val contentUri = FileProvider.getUriForFile(
                     service,
                     "${service.packageName}.clipboardfileprovider",
@@ -299,12 +324,26 @@ class ClipboardLayer(
                 )
                 if (!success) {
                     service.showClipboardNotice(if (host.isSpanish()) "La app no aceptó la imagen" else "App rejected image")
+                    false
+                } else {
+                    true
                 }
+            } catch (_: DeadObjectException) {
+                warnDeadConnection(service, host.isSpanish())
+                false
+            } catch (_: RemoteException) {
+                warnDeadConnection(service, host.isSpanish())
+                false
+            } catch (_: IllegalStateException) {
+                warnDeadConnection(service, host.isSpanish())
+                false
             } catch (_: Exception) {
                 service.showClipboardNotice(if (host.isSpanish()) "Error al insertar imagen" else "Error inserting image")
+                false
             }
         } else {
             service.showClipboardNotice(if (host.isSpanish()) "Este campo no acepta imágenes" else "Field does not support images")
+            return false
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.royleguiza.voicebubblestt
 
 import android.inputmethodservice.InputMethodService
+import android.os.DeadObjectException
+import android.os.RemoteException
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
@@ -9,6 +11,49 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+
+internal fun commitOrWarn(
+    service: InputMethodService,
+    text: CharSequence,
+    isSpanish: Boolean = true,
+    onWarn: (() -> Unit)? = null,
+): Boolean {
+    val ic = service.currentInputConnection ?: run {
+        if (onWarn != null) onWarn() else warnDeadConnection(service, isSpanish)
+        return false
+    }
+    val ok = try {
+        ic.commitText(text, 1)
+    } catch (_: DeadObjectException) {
+        false
+    } catch (_: RemoteException) {
+        false
+    } catch (_: IllegalStateException) {
+        false
+    } catch (_: Exception) {
+        false
+    }
+    if (!ok) {
+        if (onWarn != null) onWarn() else warnDeadConnection(service, isSpanish)
+        return false
+    }
+    return true
+}
+
+internal fun warnDeadConnection(service: InputMethodService, isSpanish: Boolean = true) {
+    val msg = if (isSpanish) StatusLayer.NOTICE_DEAD_CONNECTION_ES else StatusLayer.NOTICE_DEAD_CONNECTION_EN
+    val status = StatusLayer.activeInstance
+    if (status != null) {
+        status.show(msg)
+    } else {
+        try {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                service.showClipboardNotice(msg)
+            }
+        } catch (_: Exception) {
+        }
+    }
+}
 
 /**
  * Motor de edición (SPK-05, módulo 18 de N): máquina shift/caps,
@@ -142,6 +187,16 @@ class EditEngine(
         return Pair(text.lowercase(), CaseState.LOWER)
     }
 
+    fun commitOrWarn(text: CharSequence): Boolean {
+        return com.royleguiza.voicebubblestt.commitOrWarn(service, text, host.isSpanish()) {
+            warnDeadConnection()
+        }
+    }
+
+    private fun warnDeadConnection() {
+        host.cycleNotice(if (host.isSpanish()) StatusLayer.NOTICE_DEAD_CONNECTION_ES else StatusLayer.NOTICE_DEAD_CONNECTION_EN)
+    }
+
     /**
      * Ciclo de caso con ⇧ sobre la selección (MEJ-02, D-M1…D-M7).
      * Devuelve true si consumió el tap (no llamar a toggleShift).
@@ -154,6 +209,15 @@ class EditEngine(
         val ic = service.currentInputConnection ?: return false
         val selected = try {
             ic.getSelectedText(0)?.toString()
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+            null
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+            null
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+            null
         } catch (_: Exception) {
             null
         }
@@ -165,19 +229,50 @@ class EditEngine(
         req.hintMaxChars = 0
         val sel = try {
             ic.getExtractedText(req, 0)
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+            null
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+            null
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+            null
         } catch (_: Exception) {
             null
         }
         val start = sel?.selectionStart ?: -1
         val end = sel?.selectionEnd ?: -1
-        ic.beginBatchEdit()
-        try {
-            ic.commitText(transformed, 1)
-            if (transformed.length == selected.length && start >= 0 && end >= 0 && end > start) {
+        var batchStarted = false
+        val committed = try {
+            batchStarted = ic.beginBatchEdit()
+            val ok = ic.commitText(transformed, 1)
+            if (ok && transformed.length == selected.length && start >= 0 && end >= 0 && end > start) {
                 ic.setSelection(start, start + transformed.length)
             }
+            ok
+        } catch (_: DeadObjectException) {
+            false
+        } catch (_: RemoteException) {
+            false
+        } catch (_: IllegalStateException) {
+            false
+        } catch (_: Exception) {
+            false
         } finally {
-            ic.endBatchEdit()
+            if (batchStarted) {
+                try {
+                    ic.endBatchEdit()
+                } catch (_: DeadObjectException) {
+                } catch (_: RemoteException) {
+                } catch (_: IllegalStateException) {
+                } catch (_: Exception) {
+                }
+            }
+        }
+        if (!committed) {
+            warnDeadConnection()
+            return false
         }
         val es = host.isSpanish()
         host.cycleNotice(
@@ -238,8 +333,9 @@ class EditEngine(
             sendModifiedChar(base.lowercaseChar())
             return
         }
-        service.currentInputConnection?.commitText(displayFor(base), 1)
-        releaseMomentaryShift()
+        if (commitOrWarn(displayFor(base))) {
+            releaseMomentaryShift()
+        }
     }
 
     /** El shift momentaneo muere tras cada commit; caps lock persiste. */
@@ -269,14 +365,15 @@ class EditEngine(
                 return
             }
         }
-        service.currentInputConnection?.commitText(text, 1)
-        consumeModifiers()
+        if (commitOrWarn(text)) {
+            consumeModifiers()
+        }
     }
 
-    fun commit(text: String) {
-        if (insertTextToActiveEditor(text)) return
-        if (routeToSnippetQuery(text)) return
-        service.currentInputConnection?.commitText(text, 1)
+    fun commit(text: String): Boolean {
+        if (insertTextToActiveEditor(text)) return true
+        if (routeToSnippetQuery(text)) return true
+        return commitOrWarn(text)
     }
 
     /**
@@ -294,8 +391,9 @@ class EditEngine(
     private fun sendModifiedChar(c: Char) {
         val code = keyCodeFor(c)
         if (code == null) {
-            service.currentInputConnection?.commitText(c.toString(), 1)
-            consumeModifiers()
+            if (commitOrWarn(c.toString())) {
+                consumeModifiers()
+            }
             return
         }
         var meta = 0
@@ -312,10 +410,23 @@ class EditEngine(
             if (s?.moveCursorInEditor(keyCode, extend) == true) return
             if (s?.moveCursorInQuery(keyCode, extend) == true) return
         }
-        val ic = service.currentInputConnection ?: return
+        val ic = service.currentInputConnection ?: run {
+            warnDeadConnection()
+            return
+        }
         val now = SystemClock.uptimeMillis()
-        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
-        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
+        try {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, meta))
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, meta))
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+        } catch (_: Exception) {
+            warnDeadConnection()
+        }
     }
 
     fun sendKeyCode(keyCode: Int) {
@@ -325,8 +436,21 @@ class EditEngine(
             if (s?.moveCursorInEditor(keyCode, false) == true) return
             if (s?.moveCursorInQuery(keyCode, false) == true) return
         }
-        if (service.currentInputConnection == null) return
-        service.sendDownUpKeyEvents(keyCode)
+        if (service.currentInputConnection == null) {
+            warnDeadConnection()
+            return
+        }
+        try {
+            service.sendDownUpKeyEvents(keyCode)
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+        } catch (_: Exception) {
+            warnDeadConnection()
+        }
     }
 
     private fun isCursorKey(keyCode: Int): Boolean =
@@ -345,19 +469,40 @@ class EditEngine(
         host.haptic(host.rootView())
         if (backspaceActiveEditor()) return
         if (snippets()?.backspaceQuery() == true) return
-        val ic = service.currentInputConnection ?: return
+        val ic = service.currentInputConnection ?: run {
+            warnDeadConnection()
+            return
+        }
         val selected = try {
             ic.getSelectedText(0)
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+            null
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+            null
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+            null
         } catch (_: Exception) {
             null
         }
         if (!selected.isNullOrEmpty()) {
-            ic.commitText("", 1)
+            commitOrWarn("")
             return
         }
         // AT-A5: mismo criterio sobre el documento via InputConnection.
         val before = try {
             ic.getTextBeforeCursor(2, 0)
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+            null
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+            null
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+            null
         } catch (_: Exception) {
             null
         }
@@ -369,8 +514,32 @@ class EditEngine(
         } else {
             1
         }
-        if (!ic.deleteSurroundingText(count, 0)) {
-            service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+        val deleted = try {
+            ic.deleteSurroundingText(count, 0)
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+            false
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+            false
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+            false
+        } catch (_: Exception) {
+            false
+        }
+        if (!deleted) {
+            try {
+                service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+            } catch (_: DeadObjectException) {
+                warnDeadConnection()
+            } catch (_: RemoteException) {
+                warnDeadConnection()
+            } catch (_: IllegalStateException) {
+                warnDeadConnection()
+            } catch (_: Exception) {
+                warnDeadConnection()
+            }
         }
     }
 
@@ -400,9 +569,21 @@ class EditEngine(
             snippets()?.deleteQueryWord()
             return
         }
-        val ic = service.currentInputConnection ?: return
+        val ic = service.currentInputConnection ?: run {
+            warnDeadConnection()
+            return
+        }
         val before = try {
             ic.getTextBeforeCursor(SWIPE_WORD_LOOKBACK_CHARS, 0)
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+            null
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+            null
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+            null
         } catch (_: Exception) {
             null
         }
@@ -410,7 +591,17 @@ class EditEngine(
         val start = wordStart(before, before.length)
         val count = before.length - start
         if (count > 0) {
-            ic.deleteSurroundingText(count, 0)
+            try {
+                ic.deleteSurroundingText(count, 0)
+            } catch (_: DeadObjectException) {
+                warnDeadConnection()
+            } catch (_: RemoteException) {
+                warnDeadConnection()
+            } catch (_: IllegalStateException) {
+                warnDeadConnection()
+            } catch (_: Exception) {
+                warnDeadConnection()
+            }
         }
     }
 
@@ -421,7 +612,20 @@ class EditEngine(
             snippets()?.exitSearchMode()
             return
         }
-        if (service.currentInputConnection == null) return
-        service.sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
+        if (service.currentInputConnection == null) {
+            warnDeadConnection()
+            return
+        }
+        try {
+            service.sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
+        } catch (_: DeadObjectException) {
+            warnDeadConnection()
+        } catch (_: RemoteException) {
+            warnDeadConnection()
+        } catch (_: IllegalStateException) {
+            warnDeadConnection()
+        } catch (_: Exception) {
+            warnDeadConnection()
+        }
     }
 }
