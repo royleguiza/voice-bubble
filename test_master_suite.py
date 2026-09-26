@@ -55,6 +55,7 @@ SUITES = [
     ("TalkBack graba en Mantener (C-26)", "test_c26_talkback_hold_recording_suite.py"),
     ("Nada tapado + scroll que no salta (C-27)", "test_c27_nothing_obscured_and_scroll_suite.py"),
     ("Sheet con scroll + botones 44dp (C-28)", "test_c28_sheet_scroll_and_touch_targets_suite.py"),
+    ("Burbuja siempre recuperable (C-29)", "test_c29_bubble_clamping_and_no_limits_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3696,6 +3697,32 @@ def test_c28_sheet_scroll_and_touch_targets_contract():
         "C-28: note_audio_row 'Borrar audio' sin minimumSize 44x44"
     )
 
+def test_c29_bubble_clamping_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    bubble_file = os.path.join(
+        base_dir,
+        "voice_bubble_stt",
+        "android",
+        "app",
+        "src",
+        "main",
+        "kotlin",
+        "com",
+        "royleguiza",
+        "voicebubblestt",
+        "FloatingBubbleService.kt",
+    )
+    assert os.path.isfile(bubble_file), f"C-29: FloatingBubbleService.kt no existe en {bubble_file}"
+
+    with open(bubble_file, "r", encoding="utf-8") as f:
+        src = f.read()
+
+    assert "FLAG_LAYOUT_NO_LIMITS" not in src, "C-29: FloatingBubbleService retiene FLAG_LAYOUT_NO_LIMITS"
+    assert "clampBubblePosition" in src, "C-29: FloatingBubbleService sin función clampBubblePosition"
+    assert "navigationBars" in src, "C-29: FloatingBubbleService no consulta WindowInsets.Type.navigationBars"
+    assert "displayCutout" in src, "C-29: FloatingBubbleService no consulta WindowInsets.Type.displayCutout"
+    assert "safeY" in src or "clampBubblePosition" in src, "C-29: snapToNearestEdge no ancla safeY"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3737,6 +3764,7 @@ def main():
         ("C-26: TalkBack graba en Mantener", test_c26_talkback_hold_recording_contract),
         ("C-27: nada tapado y scroll que no salta", test_c27_nothing_obscured_and_scroll_contract),
         ("C-28: sheet con scroll y botones 44dp", test_c28_sheet_scroll_and_touch_targets_contract),
+        ("C-29: burbuja siempre recuperable", test_c29_bubble_clamping_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

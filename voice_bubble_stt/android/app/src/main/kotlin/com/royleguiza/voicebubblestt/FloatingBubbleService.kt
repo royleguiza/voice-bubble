@@ -21,6 +21,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import androidx.core.content.ContextCompat
@@ -202,6 +203,48 @@ class FloatingBubbleService : Service() {
         return builder.build()
     }
 
+    private fun getTopInset(): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val insets = windowManager?.currentWindowMetrics?.windowInsets?.getInsetsIgnoringVisibility(
+                    WindowInsets.Type.statusBars() or WindowInsets.Type.displayCutout()
+                )
+                if (insets != null && insets.top > 0) return insets.top
+            } catch (_: Throwable) {}
+        }
+        val resId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resId > 0) resources.getDimensionPixelSize(resId) else (28 * resources.displayMetrics.density).toInt()
+    }
+
+    private fun getBottomInset(): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val insets = windowManager?.currentWindowMetrics?.windowInsets?.getInsetsIgnoringVisibility(
+                    WindowInsets.Type.navigationBars()
+                )
+                if (insets != null && insets.bottom > 0) return insets.bottom
+            } catch (_: Throwable) {}
+        }
+        val resId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
+        return if (resId > 0) resources.getDimensionPixelSize(resId) else (48 * resources.displayMetrics.density).toInt()
+    }
+
+    private fun clampBubblePosition(rawX: Int, rawY: Int): Pair<Int, Int> {
+        val dm = resources.displayMetrics
+        val density = dm.density
+        val bubbleSize = bubbleView?.width ?: (64 * density).toInt()
+        val minX = 0
+        val maxX = (dm.widthPixels - bubbleSize).coerceAtLeast(0)
+        val topInset = getTopInset()
+        val bottomInset = getBottomInset()
+        val minY = topInset
+        val maxY = (dm.heightPixels - bubbleSize - bottomInset).coerceAtLeast(minY)
+
+        val clampedX = rawX.coerceIn(minX, maxX)
+        val clampedY = rawY.coerceIn(minY, maxY)
+        return Pair(clampedX, clampedY)
+    }
+
     private fun setupBubbleView() {
         val wm = windowManager
             ?: getSystemService(Context.WINDOW_SERVICE) as? WindowManager
@@ -217,18 +260,22 @@ class FloatingBubbleService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        val (initX, initY) = clampBubblePosition(
+            resources.displayMetrics.widthPixels - bubbleSize - (16 * density).toInt(),
+            (resources.displayMetrics.heightPixels * 0.45).toInt()
+        )
+
         windowLayoutParams = WindowManager.LayoutParams(
             bubbleSize,
             bubbleSize,
             layoutFlag,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
                     WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = (resources.displayMetrics.widthPixels - bubbleSize - (16 * density).toInt())
-            y = (resources.displayMetrics.heightPixels * 0.45).toInt()
+            x = initX
+            y = initY
         }
 
         bubbleView = BubbleCanvasView(this).apply {
@@ -272,8 +319,9 @@ class FloatingBubbleService : Service() {
                                 bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
                                 bubbleLongPress = null
                             }
-                            windowLayoutParams.x = initialX + dx
-                            windowLayoutParams.y = initialY + dy
+                            val (clampedX, clampedY) = clampBubblePosition(initialX + dx, initialY + dy)
+                            windowLayoutParams.x = clampedX
+                            windowLayoutParams.y = clampedY
                             windowManager?.updateViewLayout(bubbleView, windowLayoutParams)
                             return true
                         }
@@ -356,10 +404,14 @@ class FloatingBubbleService : Service() {
         val margin = (12 * density).toInt()
         val bubbleSize = bubbleView?.width ?: (64 * density).toInt()
 
+        // Asegurar que la coordenada Y permanezca en la zona segura visible
+        val (_, safeY) = clampBubblePosition(windowLayoutParams.x, windowLayoutParams.y)
+        windowLayoutParams.y = safeY
+
         val targetX = if (windowLayoutParams.x + bubbleSize / 2 < screenWidth / 2) {
             margin
         } else {
-            screenWidth - bubbleSize - margin
+            (screenWidth - bubbleSize - margin).coerceAtLeast(margin)
         }
 
         val startX = windowLayoutParams.x
