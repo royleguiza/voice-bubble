@@ -52,9 +52,9 @@ Color? snippetPaletteBase(String? id, {required bool isDark}) {
 Color? snippetPaletteFill(String? id, {required bool isDark}) =>
     snippetPaletteBase(id, isDark: isDark)?.withValues(alpha: 0.20);
 
-/// Stroke teñido (~40%) del snippet.
+/// Stroke teñido (~40%) del snippet (design.md §12: alpha 0.40 / 0x66).
 Color? snippetPaletteStroke(String? id, {required bool isDark}) =>
-    snippetPaletteBase(id, isDark: isDark)?.withValues(alpha: 0.45);
+    snippetPaletteBase(id, isDark: isDark)?.withValues(alpha: 0.40);
 
 // ---------------------------------------------------------------------------
 // Background Colors
@@ -108,11 +108,17 @@ const double kGlassBlurLarge = 24.0;
 /// Blur radius (sigma) for small glass elements (chips, buttons).
 const double kGlassBlurSmall = 12.0;
 
+/// Blur radius (sigma) when reduced transparency or high contrast is active (design.md §9).
+const double kGlassBlurReduced = 2.0;
+
 /// Specular border color on glass – light context (white 55%).
 const Color kGlassBorderLight = Color(0x8CFFFFFF); // rgba(255,255,255,.55)
 
 /// Specular border color on glass – dark context (white 18%).
 const Color kGlassBorderDark = Color(0x2EFFFFFF); // rgba(255,255,255,.18)
+
+/// Border width on glass when high contrast or reduced transparency is active (2px, design.md §9).
+const double kGlassBorderWidthAccessible = 2.0;
 
 // ---------------------------------------------------------------------------
 // Shadows – Simulated Glass Depth
@@ -149,14 +155,25 @@ const BoxShadow kGlassShadowSmallDark = BoxShadow(
 // Border Radius – Consistent Scale
 // ---------------------------------------------------------------------------
 
-/// Capsule / pill-shaped controls (primary button, segmented control).
-const double kBorderRadiusCapsule = 100.0;
+/// Small elements, badges, key previews, indicator borders (8px).
+const double kBorderRadiusSmall = 8.0;
 
-/// Cards, history items, secondary surfaces.
+/// Cards, history items, secondary surfaces (16–20px per design.md §6).
 const double kBorderRadiusCard = 16.0;
 
-/// Elevated sheets, dialogs.
+/// Pill-shaped card elements, tab items (20px per design.md §6).
+const double kBorderRadiusCardLarge = 20.0;
+const double kBorderRadiusPill = 20.0;
+
+/// Elevated sheets, dialogs (24–32px per design.md §6).
 const double kBorderRadiusSheet = 24.0;
+
+/// Dock containers, large floating bars (32px per design.md §6).
+const double kBorderRadiusDock = 32.0;
+const double kBorderRadiusSheetLarge = 32.0;
+
+/// Capsule / pill-shaped controls (primary button, segmented control, drag handles).
+const double kBorderRadiusCapsule = 100.0;
 
 // ---------------------------------------------------------------------------
 // Typography – Apple HIG Approximation for Android (Roboto)

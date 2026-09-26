@@ -225,7 +225,7 @@ class _SnippetsTabState extends State<SnippetsTab> {
 
   /// Tarjeta Variante C (lab snippets): título + swatch arriba, contenido
   /// al centro, acciones compactas al pie junto al meta. Fill teñido ~20% +
-  /// stroke ~45% (token snippetPaletteStroke), radio kBorderRadiusCard.
+  /// stroke ~40% (token snippetPaletteStroke), radio kBorderRadiusCard.
   /// Sin muesca. Claves y tipo IconButton intactos (contrato K4).
   Widget _buildSnippetTile(Snippet snippet, int index) {
     final theme = Theme.of(context);
@@ -506,7 +506,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                     height: 5,
                     decoration: BoxDecoration(
                       color: Theme.of(context).dividerColor,
-                      borderRadius: BorderRadius.circular(100),
+                      borderRadius: BorderRadius.circular(kBorderRadiusCapsule),
                     ),
                   ),
                 ),

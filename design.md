@@ -250,8 +250,8 @@ Además:
 
 | Token | Claro | Oscuro | Uso |
 |---|---|---|---|
-| `kb_surface` | vidrio Regular: blur σ10–14 + fill blanco ~75% + borde blanco .55 | fill negro ~55% + borde blanco .18 | Fondo completo del teclado |
-| `kb_key_bg` | blanco ~85% opacidad | `#2C2C2E` ~85% | Tecla normal |
+| `kb_surface` | `#F0F2F2F7` (fill adaptativo ~94% para garantizar legibilidad sin blur del sistema) | `#F01C1C1E` (~94%) | Fondo completo del teclado (valores alineados con `res/values/colors.xml`) |
+| `kb_key_bg` | `#F2FFFFFF` (~95% opacidad) | `#F22C2C2E` (~95%) | Tecla normal (valores alineados con `res/values/colors.xml`) |
 | `kb_key_bg_alt` | `#D6D6DC` | `#3A3A3C` | Shift, backspace, cambiador de capa |
 | `kb_key_stroke` | `#C5C5C9` | `#48484A` | Borde 1 dp de las teclas alt (definición sobre el surface) |
 | `kb_key_bg_accent` | `tintAccent #007AFF` | `#0A84FF` | Enter y tecla de capa activa |
@@ -261,7 +261,7 @@ Además:
 
 ### Paleta de snippets (color por snippet)
 
-Solo **6 ids fijos** (nunca color libre). El chip/card usa **fondo teñido ~20%** + **stroke ~40%** del color base; texto sigue `kb_label`. `color` es opcional en el JSON (`null` = sin tinte, visual actual).
+Solo **6 ids fijos** (nunca color libre). El chip/card usa **fondo teñido ~20%** + **stroke ~40%** (`alpha: 0.40` / `0x66` en Android nativo y Flutter) del color base; texto sigue `kb_label`. `color` es opcional en el JSON (`null` = sin tinte, visual actual).
 
 | id | Base claro | Base oscuro |
 |---|---|---|
@@ -279,7 +279,9 @@ Selectores de color: editor inline del teclado (`SnippetsLayer`) y sheet de Ajus
 | Medida | Valor | Nota |
 |---|---|---|
 | Altura de tecla | 42–48 dp | 4 filas QWERTY; gap entre teclas 6 dp |
-| **Chip de snippet** | **40 dp** + **16 sp bold** | Excepción a 48 dp por densidad/legibilidad (pedido del dueño); respeta perfil de altura |
+| **Chip de snippet** | **40 dp** + **16 sp bold** | Excepción firmada a 48 dp por densidad/legibilidad (pedido del dueño); respeta perfil de altura |
+| **Barra snippet** (`kb_snippet_bar_height`) | **28 dp** | Excepción firmada de diseño para la barra compacta/slim del editor inline de snippets, optimizando espacio vertical |
+| **Tecla mini** (`kb_mini_key_height`) | **40 dp** | Excepción firmada de diseño para el modo mini 2 filas (MEJ-12): perfil compacto que escala con el multiplicador de altura |
 | Radio de tecla | 8 dp | concéntrico con el surface (16 dp) |
 | Stroke de tecla alt | 1 dp | `kb_key_stroke`; presente también en estado presionado |
 | Fila terminal | misma altura que teclas | TAB/ESC/CTRL/ALT/flechas presente en todas las capas; ocultable desde Settings para quien ya tiene teclas propias (ej. Termux) |

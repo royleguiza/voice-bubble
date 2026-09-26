@@ -52,8 +52,10 @@ void main() {
       expect(kGlassOpacityDark, 0.45);
       expect(kGlassBlurLarge, 24.0);
       expect(kGlassBlurSmall, 12.0);
+      expect(kGlassBlurReduced, 2.0);
       expect(kGlassBorderLight, const Color(0x8CFFFFFF));
       expect(kGlassBorderDark, const Color(0x2EFFFFFF));
+      expect(kGlassBorderWidthAccessible, 2.0);
     });
 
     test('shadow definitions have correct blur and offset', () {
@@ -82,9 +84,28 @@ void main() {
 
   group('Border radius tokens', () {
     test('border radius values match design specifications', () {
-      expect(kBorderRadiusCapsule, 100.0);
+      expect(kBorderRadiusSmall, 8.0);
       expect(kBorderRadiusCard, 16.0);
+      expect(kBorderRadiusCardLarge, 20.0);
+      expect(kBorderRadiusPill, 20.0);
       expect(kBorderRadiusSheet, 24.0);
+      expect(kBorderRadiusDock, 32.0);
+      expect(kBorderRadiusSheetLarge, 32.0);
+      expect(kBorderRadiusCapsule, 100.0);
+    });
+  });
+
+  group('Snippet palette tokens', () {
+    test('snippet palette stroke has 0.40 alpha per design.md §12', () {
+      final stroke = snippetPaletteStroke('azul', isDark: false);
+      expect(stroke, isNotNull);
+      expect(stroke!.opacity, closeTo(0.40, 0.01));
+    });
+
+    test('snippet palette fill has 0.20 alpha per design.md §12', () {
+      final fill = snippetPaletteFill('azul', isDark: false);
+      expect(fill, isNotNull);
+      expect(fill!.opacity, closeTo(0.20, 0.01));
     });
   });
 

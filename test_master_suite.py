@@ -57,6 +57,7 @@ SUITES = [
     ("Sheet con scroll + botones 44dp (C-28)", "test_c28_sheet_scroll_and_touch_targets_suite.py"),
     ("Burbuja siempre recuperable (C-29)", "test_c29_bubble_clamping_and_no_limits_suite.py"),
     ("Contraste que se lee (C-30)", "test_c30_contrast_and_accessible_tokens_suite.py"),
+    ("Transparencia del sistema + tokens (C-31)", "test_c31_system_transparency_and_tokens_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3754,6 +3755,35 @@ def test_c30_contrast_and_accessible_tokens_contract():
     assert "#007AFF" not in w_src, "C-30: widget_notes.xml retiene #007AFF hardcodeado"
     assert "@color/kb_key_bg_accent" in w_src, "C-30: widget_notes.xml no usa @color/kb_key_bg_accent"
 
+def test_c31_system_transparency_and_tokens_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    glass_file = os.path.join(base_dir, "app_source", "lib", "ui", "glass_container.dart")
+    tokens_file = os.path.join(base_dir, "app_source", "lib", "ui", "design_tokens.dart")
+    tabbar_file = os.path.join(base_dir, "app_source", "lib", "widgets", "settings_tab_bar.dart")
+
+    assert os.path.isfile(glass_file), f"C-31: glass_container.dart no existe en {glass_file}"
+    assert os.path.isfile(tokens_file), f"C-31: design_tokens.dart no existe en {tokens_file}"
+    assert os.path.isfile(tabbar_file), f"C-31: settings_tab_bar.dart no existe en {tabbar_file}"
+
+    with open(glass_file, "r", encoding="utf-8") as f:
+        g_src = f.read()
+    assert "_blurReduced" in g_src, "C-31: GlassContainer no define _blurReduced"
+    assert "accessibleNavigationOf" in g_src or "reduceTransparency" in g_src, "C-31: GlassContainer no consulta reduceTransparency/accessibleNavigationOf"
+    assert "highContrastOf" in g_src or "highContrast" in g_src, "C-31: GlassContainer no consulta highContrastOf"
+
+    with open(tokens_file, "r", encoding="utf-8") as f:
+        t_src = f.read()
+    assert "kGlassBlurReduced" in t_src, "C-31: design_tokens.dart no define kGlassBlurReduced"
+    assert "kGlassBorderWidthAccessible" in t_src, "C-31: design_tokens.dart no define kGlassBorderWidthAccessible"
+    assert "kBorderRadiusSmall" in t_src, "C-31: design_tokens.dart no define kBorderRadiusSmall"
+    assert "kBorderRadiusDock" in t_src or "kBorderRadiusSheetLarge" in t_src, "C-31: design_tokens.dart no define kBorderRadiusDock/SheetLarge"
+    assert "kBorderRadiusCardLarge" in t_src or "kBorderRadiusPill" in t_src, "C-31: design_tokens.dart no define kBorderRadiusCardLarge/Pill"
+
+    with open(tabbar_file, "r", encoding="utf-8") as f:
+        tb_src = f.read()
+    assert "borderRadius: 32," not in tb_src, "C-31: settings_tab_bar.dart contiene radio 32 hardcodeado"
+    assert "kBorderRadiusDock" in tb_src or "kBorderRadiusSheetLarge" in tb_src, "C-31: settings_tab_bar.dart no usa token dock/sheet para radio"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -3797,6 +3827,7 @@ def main():
         ("C-28: sheet con scroll y botones 44dp", test_c28_sheet_scroll_and_touch_targets_contract),
         ("C-29: burbuja siempre recuperable", test_c29_bubble_clamping_contract),
         ("C-30: contraste que se lee", test_c30_contrast_and_accessible_tokens_contract),
+        ("C-31: transparencia del sistema + tokens", test_c31_system_transparency_and_tokens_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

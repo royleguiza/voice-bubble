@@ -54,7 +54,7 @@ class SettingsTabBar extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: GlassContainer(
-          borderRadius: 32,
+          borderRadius: kBorderRadiusDock,
           crystal: true,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           child: SizedBox(
@@ -100,7 +100,7 @@ class SettingsTabBar extends StatelessWidget {
           child: InkWell(
             key: data.key,
             onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(kBorderRadiusCardLarge),
             child: AnimatedContainer(
               duration: duration,
               padding: const EdgeInsets.symmetric(vertical: 6),
@@ -108,7 +108,7 @@ class SettingsTabBar extends StatelessWidget {
                 color: isSelected
                     ? activeColor.withValues(alpha: 0.15)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(kBorderRadiusCardLarge),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

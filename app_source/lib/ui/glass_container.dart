@@ -7,6 +7,11 @@ import 'design_tokens.dart';
 /// Aplica blur + fill translúcido según brightness del tema, borde especular
 /// 1px y sombra de profundidad. [small] selecciona la variante de elementos
 /// chicos (blur 12 / sombra corta) vs grandes (blur 24 / sombra profunda).
+///
+/// Accesibilidad (C-31 / design.md §9): se adapta a las preferencias del sistema
+/// de reducción de transparencia (`accessibleNavigationOf`) y alto contraste
+/// (`highContrastOf`). Cuando alguna de ellas está activa, el fill se vuelve
+/// opaco, el blur se reduce a 2px y el borde se refuerza a 2px.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double borderRadius;
@@ -17,6 +22,14 @@ class GlassContainer extends StatelessWidget {
   final bool crystal;
   final EdgeInsetsGeometry? padding;
 
+  /// Preferencia explícita de reducción de transparencia. Si es null,
+  /// consulta [MediaQuery.accessibleNavigationOf].
+  final bool? reduceTransparency;
+
+  /// Preferencia explícita de alto contraste. Si es null,
+  /// consulta [MediaQuery.highContrastOf].
+  final bool? highContrast;
+
   const GlassContainer({
     super.key,
     required this.child,
@@ -24,11 +37,13 @@ class GlassContainer extends StatelessWidget {
     this.small = true,
     this.crystal = false,
     this.padding,
+    this.reduceTransparency,
+    this.highContrast,
   });
 
   /// Filtros compartidos: ImageFilter.blur crea un objeto nativo por
   /// construcción y GlassContainer se reconstruye en cada frame de
-  /// animaciones y por cada carácter del form de snippets. Reutilizar dos
+  /// animaciones y por cada carácter del form de snippets. Reutilizar
   /// instancias elimina ese costo GPU sin cambiar el efecto visual.
   static final ImageFilter _blurSmall = ImageFilter.blur(
     sigmaX: kGlassBlurSmall,
@@ -42,6 +57,10 @@ class GlassContainer extends StatelessWidget {
     sigmaX: kGlassBlurCrystal,
     sigmaY: kGlassBlurCrystal,
   );
+  static final ImageFilter _blurReduced = ImageFilter.blur(
+    sigmaX: kGlassBlurReduced,
+    sigmaY: kGlassBlurReduced,
+  );
 
   ImageFilter get _filter =>
       crystal ? _blurCrystal : (small ? _blurSmall : _blurLarge);
@@ -49,12 +68,34 @@ class GlassContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isHighContrast =
+        highContrast ?? MediaQuery.highContrastOf(context);
+    final isReduceTransparency =
+        reduceTransparency ?? MediaQuery.accessibleNavigationOf(context);
+    final bool isAccessible = isHighContrast || isReduceTransparency;
+
+    final ImageFilter filter = isAccessible ? _blurReduced : _filter;
 
     final Color fill;
     final Color borderColor;
     final double borderWidth;
     final BoxShadow shadow;
-    if (crystal) {
+    if (isHighContrast) {
+      fill = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
+      borderColor = isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
+      borderWidth = kGlassBorderWidthAccessible;
+      shadow = small
+          ? (isDark ? kGlassShadowSmallDark : kGlassShadowSmallLight)
+          : (isDark ? kGlassShadowDark : kGlassShadowLight);
+    } else if (isReduceTransparency) {
+      fill = isDark ? kBgElevatedDark : kBgElevatedLight;
+      borderColor =
+          isDark ? kGlassBorderCrystalDark : kGlassBorderCrystalLight;
+      borderWidth = kGlassBorderWidthAccessible;
+      shadow = small
+          ? (isDark ? kGlassShadowSmallDark : kGlassShadowSmallLight)
+          : (isDark ? kGlassShadowDark : kGlassShadowLight);
+    } else if (crystal) {
       fill = isDark ? kGlassFillCrystalDark : kGlassFillCrystalLight;
       borderColor =
           isDark ? kGlassBorderCrystalDark : kGlassBorderCrystalLight;
@@ -74,10 +115,10 @@ class GlassContainer extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: BackdropFilter(
-        filter: _filter,
+        filter: filter,
         child: Container(
           padding: padding,
-          foregroundDecoration: crystal
+          foregroundDecoration: (crystal && !isAccessible)
               ? BoxDecoration(
                   // Highlight superior simétrico (no diagonal): la misma
                   // luz en todo el ancho para que el dock se vea parejo

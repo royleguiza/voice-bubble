@@ -784,7 +784,7 @@ class _SpacebarVisualCards extends StatelessWidget {
                 color: isSelected ? scheme.primary : scheme.outlineVariant,
                 width: isSelected ? 2 : 1,
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(kBorderRadiusSmall),
             ),
             child: id == 'center'
                 ? Align(
