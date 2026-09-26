@@ -624,7 +624,7 @@ class DictationController(
                             if (generation != transcriptionGeneration) return@runOnMain
                             micIdle()
                         }
-                        return@onDone
+                        return@transcribe
                     }
                     lastDictationSlot = null
                     // AT-A3: historial (lectura de disco + XML + prefs) en el
@@ -689,7 +689,7 @@ class DictationController(
                             if (generation != transcriptionGeneration) return@runOnMain
                             micIdle()
                         }
-                        return@onDone
+                        return@transcribe
                     }
                     lastDictationSlot = null
                     if (!text.isNullOrBlank()) addToSharedHistory(text)

@@ -384,7 +384,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // --- TrackpadBridge.UiHost (módulo 6) + ClipboardLayer.UiHost (módulo 7):
     // currentLayer/isPasswordField/isSpanish/rootView/haptic ya existen
     // arriba y sirven a las cuatro interfaces (misma firma, una sola impl).
-    override fun commitText(text: String) = editor.commit(text)
+    override fun commitText(text: String) {
+        editor.commit(text)
+    }
 
     // --- SnippetsLayer.UiHost (SPK-05 módulo 8). commitText no sirve aquí:
     // insertar un snippet debe saltear el ruteo al query (bucle), por eso

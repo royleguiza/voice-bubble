@@ -1,6 +1,7 @@
 package com.royleguiza.voicebubblestt
 
 import android.content.Context
+import android.content.SharedPreferences
 
 /**
  * Preferencias del teclado (SPK-05, módulo 4 de N): las 21 claves del

@@ -33,6 +33,7 @@ class ClipboardLayer(
     /** Lo mínimo que el portapapeles exige al teclado. */
     interface UiHost {
         fun isSpanish(): Boolean
+        fun isPasswordField(): Boolean
         fun rootView(): LinearLayout
         fun haptic(view: View)
         fun commitText(text: String)
