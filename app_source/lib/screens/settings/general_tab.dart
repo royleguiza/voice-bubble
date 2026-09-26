@@ -153,6 +153,7 @@ class GeneralTab extends StatelessWidget {
         SettingsCard(
           children: [
             SwitchListTile(
+              key: const ValueKey('bubble-active-switch'),
               secondary: const SettingIconTile(
                 icon: Icons.chat_bubble_rounded,
                 background: kTileGreen,
@@ -429,6 +430,7 @@ class ApiKeyCard extends StatelessWidget {
             ],
             if (isEditingApiKey) ...[
               TextField(
+                key: const ValueKey('api-key-input-field'),
                 controller: apiKeyController,
                 obscureText: true,
                 decoration: InputDecoration(
@@ -445,6 +447,7 @@ class ApiKeyCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton(
+                      key: const ValueKey('api-key-cancel-button'),
                       onPressed: onCancelApiEdit,
                       child: const Text('Cancelar'),
                     ),
@@ -452,6 +455,7 @@ class ApiKeyCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: FilledButton.icon(
+                      key: const ValueKey('api-key-save-button'),
                       icon: const Icon(Icons.save),
                       label: const Text('Guardar'),
                       onPressed: onSaveApiKey,

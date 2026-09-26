@@ -40,7 +40,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('VoiceBubble STT'), findsOneWidget);
+      expect(find.byKey(const ValueKey('homeTitleText')), findsOneWidget);
       expect(find.byType(AppBar), findsOneWidget);
     });
 
@@ -48,7 +48,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      expect(find.byIcon(Icons.settings), findsOneWidget);
+      expect(find.byKey(const ValueKey('homeSettingsButton')), findsOneWidget);
     });
 
     testWidgets('shows RecordButton widget', (tester) async {
@@ -62,7 +62,7 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      expect(find.text('Listo para transcribir'), findsOneWidget);
+      expect(find.byKey(const ValueKey('homeStatusText')), findsOneWidget);
     });
 
     testWidgets('shows mic icon in record button initially', (tester) async {
@@ -83,11 +83,11 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.settings));
+      await tester.tap(find.byKey(const ValueKey('homeSettingsButton')));
       await tester.pumpAndSettle();
 
       expect(find.byType(SettingsScreen), findsOneWidget);
-      expect(find.text('API Key de Groq'), findsOneWidget);
+      expect(find.byKey(const ValueKey('api-cta-button')), findsOneWidget);
     });
 
     testWidgets('tapping record button changes to recording state', (tester) async {

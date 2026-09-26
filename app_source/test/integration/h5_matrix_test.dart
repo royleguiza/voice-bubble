@@ -342,20 +342,20 @@ void main() {
         bundle.bubble,
         bundle.recorder,
       );
-      expect(find.text('Listo para transcribir'), findsOneWidget);
+      expect(find.byKey(const ValueKey('homeStatusText')), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       // Anillo pulsante infinito: pump fijo, nunca pumpAndSettle (leccion 14).
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
-      expect(find.text('Grabando...'), findsOneWidget);
+      expect(find.byKey(const ValueKey('homeStatusText')), findsOneWidget);
 
       // 20 ticks x 30 s = ~10 minutos de grabacion sostenida.
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(seconds: 30));
       }
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
-      expect(find.text('Grabando...'), findsOneWidget);
+      expect(find.byKey(const ValueKey('homeStatusText')), findsOneWidget);
       expect(tester.takeException(), isNull);
       expect(bundle.recorder.startCount, 1);
       // La config PCM16/WAV sigue intacta tras la sesion larga (leccion 13).
@@ -426,8 +426,8 @@ void main() {
 
       // Primer intento: fallo de red reintentable.
       expect(find.textContaining('Sin conexión a internet'), findsOneWidget);
-      expect(find.text('Reintentar'), findsOneWidget);
-      expect(find.text('Error, toca para reintentar'), findsOneWidget);
+      expect(find.byType(SnackBarAction), findsOneWidget);
+      expect(find.byKey(const ValueKey('homeStatusText')), findsOneWidget);
       final audioPath = bundle.cloud.requestedPaths.single;
       // Archivo CONSERVADO pese al fallo (premisa del reintento).
       expect(File(audioPath).existsSync(), isTrue);
@@ -437,7 +437,7 @@ void main() {
       // Reintento desde la accion del SnackBar.
       final retryIdleCountBefore = bundle.bubble.idleUpdateCount;
       final retryIdleCompleted = bundle.bubble.expectNextIdleUpdate();
-      await tester.tap(find.text('Reintentar'));
+      await tester.tap(find.byType(SnackBarAction));
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 250));
       }
@@ -465,7 +465,7 @@ void main() {
       // El SnackBar anterior caduca con su timer: sin colgados al terminar.
       await tester.pump(const Duration(seconds: 5));
       await tester.pumpAndSettle();
-      expect(find.text('Reintentar'), findsNothing);
+      expect(find.byType(SnackBarAction), findsNothing);
     });
   });
 

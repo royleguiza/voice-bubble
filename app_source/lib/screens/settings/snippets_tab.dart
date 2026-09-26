@@ -86,10 +86,12 @@ class _SnippetsTabState extends State<SnippetsTab> {
         ),
         actions: [
           TextButton(
+            key: const ValueKey('snippet-dialog-cancel-delete'),
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Cancelar'),
           ),
           FilledButton(
+            key: const ValueKey('snippet-dialog-confirm-delete'),
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Eliminar'),
           ),
@@ -611,11 +613,13 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
+                      key: const ValueKey('snippet-cancel-button'),
                       onPressed: () => Navigator.of(context).pop(),
                       child: const Text('Cancelar'),
                     ),
                     const SizedBox(width: 8),
                     FilledButton(
+                      key: const ValueKey('snippet-save-button'),
                       // Deshabilitado mientras se guarda para evitar
                       // dobles submits con read-modify-write concurrentes.
                       onPressed: _submitting ? null : _submit,

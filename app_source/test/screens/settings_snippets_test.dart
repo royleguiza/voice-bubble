@@ -9,6 +9,8 @@ import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
+import '../helpers/test_app.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
@@ -60,18 +62,11 @@ void main() {
   });
 
   Widget buildTestableWidget(WidgetTester tester) {
-    // Superficie alta (800x2400 logicos): la pagina de Settings crece con la
-    // seccion de snippets y el ListView lazy no construye lo que queda fuera
-    // del viewport (9.1-17 / 9.1-21).
-    tester.view.physicalSize = const Size(1600, 4800);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(tester.view.reset);
-    return MaterialApp(
-      home: SettingsScreen(
-        storageService: storageService,
-        floatingBubbleService: FloatingBubbleService(),
-        keyboardService: KeyboardService(channel: keyboardChannel),
-      ),
+    return buildTestableSettingsScreen(
+      tester,
+      storageService: storageService,
+      keyboardService: KeyboardService(channel: keyboardChannel),
+      physicalSize: const Size(1600, 4800),
     );
   }
 
@@ -126,7 +121,7 @@ void main() {
         find.byKey(const ValueKey('snippet-content-field')),
         'texto de prueba',
       );
-      await tester.tap(find.text('Guardar'));
+      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
       await tester.pumpAndSettle();
 
       expect(find.text('Mi snippet'), findsOneWidget);
@@ -164,7 +159,7 @@ void main() {
         find.byKey(const ValueKey('snippet-content-field')),
         'codex --nuevo ',
       );
-      await tester.tap(find.text('Guardar cambios'));
+      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
       await tester.pumpAndSettle();
 
       expect(find.text('Codex editado'), findsOneWidget);
@@ -201,7 +196,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Eliminar snippet'), findsOneWidget);
-      await tester.tap(find.text('Eliminar'));
+      await tester.tap(find.byKey(const ValueKey('snippet-dialog-confirm-delete')));
       await tester.pumpAndSettle();
 
       expect(find.text('Gemini'), findsNothing);
@@ -261,11 +256,11 @@ void main() {
         find.byKey(const ValueKey('snippet-content-field')),
         'x',
       );
-      await tester.tap(find.text('Guardar'));
+      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Límite de 50'), findsOneWidget);
-      expect(find.text('Guardar'), findsOneWidget);
+      expect(find.byKey(const ValueKey('snippet-save-button')), findsOneWidget);
       // El sheet sigue abierto con el error: el snippet rechazado no debe
       // aparecer en las tarjetas de snippets de Settings.
       expect(
@@ -296,12 +291,12 @@ void main() {
         find.byKey(const ValueKey('snippet-content-field')),
         'a' * 2001,
       );
-      await tester.tap(find.text('Guardar'));
+      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
       await tester.pumpAndSettle();
 
       expect(find.text('Máximo 2000 caracteres'), findsOneWidget);
       expect(find.text('2001 / 2000'), findsOneWidget);
-      expect(find.text('Guardar'), findsOneWidget);
+      expect(find.byKey(const ValueKey('snippet-save-button')), findsOneWidget);
 
       final loaded = await StorageService().loadSnippets();
       expect(loaded.length, 5);
@@ -322,7 +317,7 @@ void main() {
         find.byKey(const ValueKey('snippet-content-field')),
         'sin nombre',
       );
-      await tester.tap(find.text('Guardar'));
+      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
       await tester.pumpAndSettle();
 
       expect(find.text('El nombre es obligatorio'), findsOneWidget);
@@ -354,7 +349,7 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('snippet-color-azul')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Guardar'));
+      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
       await tester.pumpAndSettle();
 
       final loaded = await StorageService().loadSnippets();
@@ -384,7 +379,7 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('snippet-color-none')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Guardar cambios'));
+      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
       await tester.pumpAndSettle();
 
       final loaded = await StorageService().loadSnippets();

@@ -11,6 +11,8 @@ import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/ui/theme_mode.dart';
 import 'package:voice_bubble_stt/widgets/settings_tab_bar.dart';
 
+import '../helpers/test_app.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
@@ -91,19 +93,13 @@ void main() {
     FloatingBubbleService? bubbleService,
     KeyboardService? keyboardService,
   }) {
-    // Superficie alta (800x2400 logicos) para que toda la pagina de Settings
-    // sea visible sin scroll: la tarjeta del teclado y la seccion de snippets
-    // alargan la lista (9.1-17 / 9.1-21).
-    tester.view.physicalSize = const Size(1600, 4800);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(tester.view.reset);
-    return MaterialApp(
-      home: SettingsScreen(
-        storageService: storageService,
-        floatingBubbleService: bubbleService ?? FloatingBubbleService(),
-        keyboardService:
-            keyboardService ?? KeyboardService(channel: keyboardChannel),
-      ),
+    return buildTestableSettingsScreen(
+      tester,
+      storageService: storageService,
+      bubbleService: bubbleService ?? FloatingBubbleService(),
+      keyboardService:
+          keyboardService ?? KeyboardService(channel: keyboardChannel),
+      physicalSize: const Size(1600, 4800),
     );
   }
 
@@ -312,10 +308,7 @@ void main() {
 
   group('SettingsScreen - Floating Bubble Toggle & Permissions', () {
     Finder bubbleSwitch() => find.descendant(
-          of: find.ancestor(
-            of: find.text('Activar burbuja'),
-            matching: find.byType(SwitchListTile),
-          ),
+          of: find.byKey(const ValueKey('bubble-active-switch')),
           matching: find.byType(Switch),
         );
 
@@ -470,7 +463,8 @@ void main() {
 
       await tester.tap(
           find.byKey(const ValueKey('burbuja-overlay-permission-row')));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(
           find.text('Permiso de superposición concedido'), findsOneWidget);
@@ -574,10 +568,7 @@ void main() {
 
   group('SettingsScreen - Fila terminal del teclado', () {
     Finder terminalSwitch() => find.descendant(
-          of: find.ancestor(
-            of: find.text('Fila terminal'),
-            matching: find.byType(SwitchListTile),
-          ),
+          of: find.byKey(const ValueKey('kb-terminal-row-switch')),
           matching: find.byType(Switch),
         );
 
@@ -630,10 +621,7 @@ void main() {
 
   group('SettingsScreen - Tecla de capa código', () {
     Finder codeKeySwitch() => find.descendant(
-          of: find.ancestor(
-            of: find.text('Tecla de capa código'),
-            matching: find.byType(SwitchListTile),
-          ),
+          of: find.byKey(const ValueKey('kb-code-key-switch')),
           matching: find.byType(Switch),
         );
 
@@ -687,10 +675,7 @@ void main() {
 
   group('SettingsScreen - Tecla de idioma', () {
     Finder languageKeySwitch() => find.descendant(
-          of: find.ancestor(
-            of: find.text('Tecla de idioma'),
-            matching: find.byType(SwitchListTile),
-          ),
+          of: find.byKey(const ValueKey('kb-language-key-switch')),
           matching: find.byType(Switch),
         );
 

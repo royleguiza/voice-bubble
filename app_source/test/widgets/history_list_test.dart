@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/history_list.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
+import 'package:voice_bubble_stt/ui/transcription_feedback.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -44,7 +45,7 @@ void main() {
   group('HistoryList', () {
     testWidgets('shows empty message when list is empty', (tester) async {
       await tester.pumpWidget(wrap(const HistoryList(transcriptions: [])));
-      expect(find.text('No hay transcripciones aun'), findsOneWidget);
+      expect(find.byKey(const ValueKey('history-empty-message')), findsOneWidget);
     });
 
     testWidgets('renders items when list has items', (tester) async {
@@ -95,8 +96,9 @@ void main() {
         transcriptions: [makeT('tap test')],
       )));
       await tester.tap(find.byIcon(Icons.copy_rounded));
-      await tester.pumpAndSettle();
-      expect(find.text('Texto copiado'), findsOneWidget);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text(copiedToClipboardMessage), findsOneWidget);
     });
 
     testWidgets('handles single item list', (tester) async {
@@ -110,16 +112,16 @@ void main() {
     testWidgets('handles maximum items (20)', (tester) async {
       final items = List.generate(20, (i) => makeT('item $i'));
       await tester.pumpWidget(wrap(HistoryList(transcriptions: items)));
-      expect(find.text('item 0'), findsOneWidget);
+      expect(find.byKey(ValueKey(items[0].id)), findsOneWidget);
       // ListView es lazy: los ítems fuera del viewport no se construyen,
       // hay que hacer scroll hasta el último.
       await tester.dragUntilVisible(
-        find.text('item 19'),
+        find.byKey(ValueKey(items[19].id)),
         find.byType(ListView),
         const Offset(0, -200),
       );
       await tester.pump();
-      expect(find.text('item 19'), findsOneWidget);
+      expect(find.byKey(ValueKey(items[19].id)), findsOneWidget);
     });
 
     testWidgets('list is scrollable', (tester) async {

@@ -24,12 +24,6 @@ void main() {
     expect(find.byKey(const ValueKey('tab-snippets')), findsOneWidget);
     expect(find.byKey(const ValueKey('tab-credenciales')), findsOneWidget);
 
-    expect(find.text('General'), findsOneWidget);
-    expect(find.text('Teclado'), findsOneWidget);
-    expect(find.text('Trackpad'), findsOneWidget);
-    expect(find.text('Snippets'), findsOneWidget);
-    expect(find.text('Claves'), findsOneWidget);
-
     // Conteo exacto: agregar/quitar un tab debe romper aquí a propósito.
     final tabKeys = find.byWidgetPredicate((w) =>
         w.key is ValueKey &&

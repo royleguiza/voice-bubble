@@ -30,6 +30,7 @@ class HistoryList extends StatelessWidget {
             child: Center(
               child: Text(
                 'No hay transcripciones aun',
+                key: const ValueKey('history-empty-message'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -66,6 +67,7 @@ class HistoryList extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           trailing: IconButton(
+            key: ValueKey('copy_btn_${t.id}'),
             icon: const Icon(Icons.copy_rounded, size: 18),
             tooltip: copyTooltipMessage,
             onPressed: () async {

@@ -8,6 +8,8 @@ import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
+import '../helpers/test_app.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
@@ -36,15 +38,11 @@ void main() {
   });
 
   Widget buildTestableWidget(WidgetTester tester) {
-    tester.view.physicalSize = const Size(1600, 6400);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(tester.view.reset);
-    return MaterialApp(
-      home: SettingsScreen(
-        storageService: storageService,
-        floatingBubbleService: FloatingBubbleService(),
-        keyboardService: KeyboardService(channel: keyboardChannel),
-      ),
+    return buildTestableSettingsScreen(
+      tester,
+      storageService: storageService,
+      keyboardService: KeyboardService(channel: keyboardChannel),
+      physicalSize: const Size(1600, 6400),
     );
   }
 

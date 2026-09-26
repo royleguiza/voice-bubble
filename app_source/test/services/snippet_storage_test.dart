@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/snippet.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
+import '../helpers/kotlin_fixtures.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -475,6 +476,14 @@ void main() {
 
       final loaded = await service.loadSnippets();
       expect(loaded.map((s) => s.id).toList(), ['a', 'b', 'c']);
+    });
+  });
+
+  group('SnippetStorage - paridad con contrato de claves', () {
+    test('claves de snippets pertenecen al contrato canónico', () {
+      const snippetKeys = {'voice_snippets_v1', 'kb_snippets_seeded'};
+      expect(kContractKeysSnapshot.containsAll(snippetKeys), isTrue);
+      expect(StorageService.bridgeKeys.toSet().containsAll(snippetKeys), isTrue);
     });
   });
 }

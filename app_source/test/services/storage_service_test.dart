@@ -8,6 +8,7 @@ import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
+import '../helpers/kotlin_fixtures.dart';
 import '../helpers/mock_channels.dart';
 
 Transcription _makeTranscription(String text) {
@@ -754,6 +755,20 @@ void main() {
     test('bridgeKeys cubre exactamente el contrato (51 claves)', () {
       expect(StorageService.bridgeKeys.length, 51);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
+      expect(Set.of(StorageService.bridgeKeys), kContractKeysSnapshot);
+      final contractFile = File('docs/contract-keys.txt');
+      final altFile = File('../docs/contract-keys.txt');
+      final activeFile = contractFile.existsSync()
+          ? contractFile
+          : (altFile.existsSync() ? altFile : null);
+      if (activeFile != null) {
+        final diskKeys = activeFile
+            .readAsLinesSync()
+            .map((l) => l.trim())
+            .where((l) => l.isNotEmpty && !l.startsWith('#'))
+            .toSet();
+        expect(Set.of(StorageService.bridgeKeys), diskKeys);
+      }
     });
 
     test('floating_bubble_enabled es solo-Dart (burbuja va por canal)',

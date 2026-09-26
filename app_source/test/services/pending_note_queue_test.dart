@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/services/pending_note_queue.dart';
+import '../helpers/kotlin_fixtures.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -75,18 +76,13 @@ void main() {
     });
 
     test('clave en contract-keys.txt (compartida con el widget)', () {
+      expect(kContractKeysSnapshot.contains('voice_notes_pending_v1'), isTrue);
       final f = File('docs/contract-keys.txt');
-      if (!f.existsSync()) {
-        // cwd puede ser app_source en algunos runners; buscar desde repo.
-        final alt = File('../docs/contract-keys.txt');
-        final raw = alt.existsSync()
-            ? alt.readAsStringSync()
-            : (f.existsSync() ? f.readAsStringSync() : '');
-        expect(raw.contains('voice_notes_pending_v1'), isTrue);
-        return;
+      final alt = File('../docs/contract-keys.txt');
+      final active = f.existsSync() ? f : (alt.existsSync() ? alt : null);
+      if (active != null) {
+        expect(active.readAsStringSync().contains('voice_notes_pending_v1'), isTrue);
       }
-      expect(f.readAsStringSync().contains('voice_notes_pending_v1'),
-          isTrue);
     });
 
     test('primera instalación permite encolar el primer pendiente', () async {

@@ -761,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VoiceBubble STT'),
+        title: const Text('VoiceBubble STT', key: ValueKey('homeTitleText')),
         centerTitle: true,
         actions: [
           Padding(
@@ -797,6 +797,7 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
+                    key: const ValueKey('homeSettingsButton'),
                     customBorder: const CircleBorder(),
                     onTap: _openSettings,
                     child: const Tooltip(
@@ -890,6 +891,7 @@ class _HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 16),
                     Text(
                       _statusText,
+                      key: const ValueKey('homeStatusText'),
                       style: kTextSubhead.copyWith(
                         color: _isRecording ? kRecording : labelSecondary,
                       ),

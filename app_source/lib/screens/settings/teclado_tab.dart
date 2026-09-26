@@ -286,6 +286,7 @@ class TecladoTab extends StatelessWidget {
               ),
             ),
             SwitchListTile(
+              key: const ValueKey('kb-terminal-row-switch'),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16),
               title: const Text('Fila terminal'),
@@ -299,6 +300,7 @@ class TecladoTab extends StatelessWidget {
               onChanged: onToggleTerminalRow,
             ),
             SwitchListTile(
+              key: const ValueKey('kb-code-key-switch'),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16),
               title: const Text('Tecla de capa código'),
@@ -312,6 +314,7 @@ class TecladoTab extends StatelessWidget {
               onChanged: onToggleCodeKey,
             ),
             SwitchListTile(
+              key: const ValueKey('kb-language-key-switch'),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16),
               title: const Text('Tecla de idioma'),
@@ -325,6 +328,7 @@ class TecladoTab extends StatelessWidget {
               onChanged: onToggleLanguageKey,
             ),
             SwitchListTile(
+              key: const ValueKey('kb-clipboard-images-switch'),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16),
               title: const Text('Imágenes en portapapeles'),
@@ -698,6 +702,7 @@ class _HapticCompositeRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SwitchListTile(
+          key: const ValueKey('kb-haptics-switch'),
           contentPadding: EdgeInsets.zero,
           title: const Text('Vibración'),
           subtitle: Text(

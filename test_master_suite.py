@@ -63,6 +63,7 @@ SUITES = [
     ("Firma, lockfile y https (C-34)", "test_c34_signing_lockfile_and_https_suite.py"),
     ("Logs, borrado, widget y errores (C-35)", "test_c35_logs_deletion_widget_errors_suite.py"),
     ("Muertos sincerados (C-36)", "test_c36_sincerar_muertos_suite.py"),
+    ("Tests que no mienten (C-37)", "test_c37_honest_tests_suite.py"),
 ]
 
 def run_test(name, func):
@@ -3976,6 +3977,49 @@ def test_c36_sincerar_muertos_contract():
         clip = f.read()
     assert "imagesEnabled()" in clip and "!imagesEnabled()" in clip, "C-36: ClipboardStore sin gate imagesEnabled"
 
+def test_c37_honest_tests_contract():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    test_app_file = os.path.join(base_dir, "app_source", "test", "helpers", "test_app.dart")
+    fixtures_file = os.path.join(base_dir, "app_source", "test", "helpers", "kotlin_fixtures.dart")
+    home_file = os.path.join(base_dir, "app_source", "lib", "screens", "home_screen.dart")
+    gen_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "general_tab.dart")
+    tec_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "teclado_tab.dart")
+    snip_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "snippets_tab.dart")
+    hist_file = os.path.join(base_dir, "app_source", "lib", "widgets", "history_list.dart")
+    full_flow_file = os.path.join(base_dir, "app_source", "test", "integration", "full_flow_test.dart")
+
+    with open(test_app_file, "r", encoding="utf-8") as f:
+        ta = f.read()
+    assert "buildTestableSettingsScreen" in ta and "configureTestViewSize" in ta, "C-37: test_app.dart sin buildTestableSettingsScreen"
+
+    with open(fixtures_file, "r", encoding="utf-8") as f:
+        kf = f.read()
+    assert "kContractKeysSnapshot" in kf and "keyboardEntry" in kf, "C-37: kotlin_fixtures.dart sin snapshot o keyboardEntry"
+
+    with open(home_file, "r", encoding="utf-8") as f:
+        home = f.read()
+    assert "homeStatusText" in home and "homeSettingsButton" in home, "C-37: home_screen sin keys homeStatusText o homeSettingsButton"
+
+    with open(gen_file, "r", encoding="utf-8") as f:
+        gen = f.read()
+    assert "bubble-active-switch" in gen and "api-key-save-button" in gen, "C-37: general_tab sin bubble-active-switch o api-key-save-button"
+
+    with open(tec_file, "r", encoding="utf-8") as f:
+        tec = f.read()
+    assert "kb-haptics-switch" in tec and "kb-terminal-row-switch" in tec, "C-37: teclado_tab sin kb-haptics-switch o kb-terminal-row-switch"
+
+    with open(snip_file, "r", encoding="utf-8") as f:
+        snip = f.read()
+    assert "snippet-save-button" in snip and "snippet-dialog-confirm-delete" in snip, "C-37: snippets_tab sin snippet-save-button"
+
+    with open(hist_file, "r", encoding="utf-8") as f:
+        hist = f.read()
+    assert "history-empty-message" in hist, "C-37: history_list sin history-empty-message"
+
+    with open(full_flow_file, "r", encoding="utf-8") as f:
+        ff = f.read()
+    assert "homeSettingsButton" in ff and "test_app.dart" in ff, "C-37: full_flow_test no usa test_app o homeSettingsButton"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -4025,6 +4069,7 @@ def main():
         ("C-34: firma, lockfile y https", test_c34_signing_lockfile_and_https_contract),
         ("C-35: logs, borrado seguro, widget discreto y errores acotados", test_c35_logs_deletion_widget_errors_contract),
         ("C-36: muertos sincerados", test_c36_sincerar_muertos_contract),
+        ("C-37: tests que no mienten", test_c37_honest_tests_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

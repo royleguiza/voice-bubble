@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
+import '../helpers/kotlin_fixtures.dart';
 import '../helpers/mock_channels.dart';
 
 /// Contrato del historial compartido Flutter<->teclado (K3).
@@ -586,20 +587,4 @@ void main() {
       );
     });
   });
-}
-
-/// Forma EXACTA que produce org.json en el lado Kotlin.
-String keyboardEntry(String text, DateTime timestamp) {
-  return '{"text":"$text","timestamp":"${timestamp.toUtc().toIso8601String()}"}';
-}
-
-/// Replica la entrada que persiste el teclado nativo (K3): JSON plano con
-/// timestamp UTC, convertido a Transcription para la app.
-Transcription keyboardStyleTranscription(String text, int minuteOffset) {
-  return Transcription.fromJson(
-    jsonDecode(keyboardEntry(
-      text,
-      DateTime.parse('2026-08-23T10:00:00Z').add(Duration(minutes: minuteOffset)),
-    )) as Map<String, dynamic>,
-  );
 }

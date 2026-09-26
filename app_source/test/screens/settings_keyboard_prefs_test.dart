@@ -8,6 +8,8 @@ import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
+import '../helpers/test_app.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final messenger =
@@ -59,19 +61,11 @@ void main() {
   });
 
   Widget buildTestableWidget(WidgetTester tester) {
-    // Superficie alta (800x3000 logicos): la pagina de Settings crece con
-    // las preferencias nuevas (MEJ-05 suma la tarjeta de pulsación larga)
-    // y el ListView lazy no construye lo que queda fuera del viewport
-    // (9.1-17 / 9.1-21).
-    tester.view.physicalSize = const Size(1600, 6000);
-    tester.view.devicePixelRatio = 2.0;
-    addTearDown(tester.view.reset);
-    return MaterialApp(
-      home: SettingsScreen(
-        storageService: storageService,
-        floatingBubbleService: FloatingBubbleService(),
-        keyboardService: KeyboardService(channel: keyboardChannel),
-      ),
+    return buildTestableSettingsScreen(
+      tester,
+      storageService: storageService,
+      keyboardService: KeyboardService(channel: keyboardChannel),
+      physicalSize: const Size(1600, 6000),
     );
   }
 
@@ -94,10 +88,7 @@ void main() {
       tester.widget<SegmentedButton<String>>(heightSelector()).selected;
 
   Finder hapticsSwitch() => find.descendant(
-        of: find.ancestor(
-          of: find.text('Vibración'),
-          matching: find.byType(SwitchListTile),
-        ),
+        of: find.byKey(const ValueKey('kb-haptics-switch')),
         matching: find.byType(Switch),
       );
 
@@ -210,10 +201,7 @@ void main() {
   });
 
   Finder clipboardImagesSwitch() => find.descendant(
-        of: find.ancestor(
-          of: find.text('Imágenes en portapapeles'),
-          matching: find.byType(SwitchListTile),
-        ),
+        of: find.byKey(const ValueKey('kb-clipboard-images-switch')),
         matching: find.byType(Switch),
       );
 
