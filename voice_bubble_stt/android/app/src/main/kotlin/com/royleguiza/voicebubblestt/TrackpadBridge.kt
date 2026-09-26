@@ -77,7 +77,7 @@ class TrackpadBridge(
             host.rebuild()
         } else {
             val cur = host.currentLayer()
-            host.setLastLetters(if (cur != Layer.SNIPPETS && cur != Layer.TRACKPAD) cur else Layer.LETTERS)
+            host.setLastLetters(if (cur != Layer.SNIPPETS && cur != Layer.TRACKPAD && cur != Layer.CLIPBOARD) cur else Layer.LETTERS)
             host.setLayer(Layer.TRACKPAD)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(service)) {
                 Toast.makeText(service, "Concede el permiso de superposición para ver el cursor", Toast.LENGTH_SHORT).show()

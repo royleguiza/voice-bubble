@@ -41,6 +41,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // --- Dictado (K3 + M4 Morph-to-Pill; máquina en DictationController) ---
     private lateinit var dictation: DictationController
     private var currentIsPasswordField = false
+    private var currentPackageName: String? = null
     private var spaceKeyView: View? = null
     private var commaKeyView: View? = null
     private var dotKeyView: View? = null
@@ -136,11 +137,24 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+
+        val newPackage = info?.packageName
+        val isPassword = isPasswordInput(info)
+
+        // C-08: Early return si es restart en el mismo paquete y sin cambio de tipo contraseña:
+        // evita cancelar dictado, recargar preferencias de disco o reconstruir vistas
+        // innecesariamente (ej. commits continuos en WebView/navegadores).
+        if (restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField) {
+            return
+        }
+
+        currentPackageName = newPackage
+        currentIsPasswordField = isPassword
+
         // K5-T5: defensa extra; nunca arrancar un campo con dictado vivo.
         dictation.cancelDictationIfActive()
         kbPrefs.load()
         if (::miniStore.isInitialized) miniMode = miniStore.load()
-        currentIsPasswordField = isPasswordInput(info)
         if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS || layer == Layer.CLIPBOARD)) {
             layer = Layer.LETTERS
         }
@@ -300,8 +314,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (layer == Layer.CODE) {
             layer = lastLettersLayer
         } else {
-            // Desde snippets no se pisa la memoria: volver conserva el origen.
-            lastLettersLayer = if (layer == Layer.SYMBOLS) Layer.LETTERS else layer
+            // Desde snippets y portapapeles no se pisa la memoria: volver conserva el origen.
+            lastLettersLayer = if (layer == Layer.SYMBOLS || layer == Layer.CLIPBOARD) Layer.LETTERS else layer
             layer = Layer.CODE
         }
         rebuild()
@@ -377,7 +391,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun setLayer(next: Layer) { layer = next }
     override fun consumeModifiers() = editor.consumeModifiers()
     override fun lastLetters(): Layer = lastLettersLayer
-    override fun setLastLetters(l: Layer) { lastLettersLayer = l }
+    override fun setLastLetters(l: Layer) {
+        if (l != Layer.CLIPBOARD) {
+            lastLettersLayer = l
+        }
+    }
     override fun rootView(): LinearLayout = root
     override fun beginTransition() = trackpad.playTransition()
 

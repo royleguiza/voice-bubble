@@ -34,6 +34,7 @@ SUITES = [
     ("Notas: cola diferida cloud offline (C1-C7)", "test_pending_notes_suite.py"),
     ("Conexión: blindaje del teclado ante conexión muerta (C-06)", "test_c06_dead_connection_suite.py"),
     ("Claves: relleno de claves seguro (C-07)", "test_c07_credentials_safe_fill_suite.py"),
+    ("Vistas: rebuild solo cuando toca y blindaje restart (C-08)", "test_c08_rebuild_guards_suite.py"),
 ]
 
 def run_test(name, func):
@@ -2776,6 +2777,64 @@ def test_c07_credentials_safe_fill_contract():
 
     assert "Log." not in creds, "C-07: filtración de seguridad: Log.* presente en CredentialsLayer"
 
+def test_c08_rebuild_guards_contract():
+    """
+    Guarda C-08: Rebuild solo cuando toca y blindaje de restart.
+    Verifica:
+    1. Early return en VoiceKeyboardService.onStartInputView ante restart sin cambio de paquete ni campo.
+    2. Orden estricto en onStartInputView: early return ocurre ANTES de:
+       - dictation.cancelDictationIfActive()
+       - kbPrefs.load()
+       - clipboard.onStartInputView(restarting)
+       - rebuild()
+    3. ClipboardLayer.onStartInputView es un no-op si restarting == true.
+    4. Layer.CLIPBOARD nunca se persiste en lastLettersLayer (setLastLetters, codeToggle, TrackpadBridge.toggle).
+    5. ClipboardLayer maneja su propio origin de forma independiente.
+    """
+    base_kt = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+    vks_path = os.path.join(base_kt, "VoiceKeyboardService.kt")
+    clip_path = os.path.join(base_kt, "ClipboardLayer.kt")
+    track_path = os.path.join(base_kt, "TrackpadBridge.kt")
+
+    assert os.path.isfile(vks_path), f"Falta archivo: {vks_path}"
+    assert os.path.isfile(clip_path), f"Falta archivo: {clip_path}"
+    assert os.path.isfile(track_path), f"Falta archivo: {track_path}"
+
+    with open(vks_path, "r", encoding="utf-8") as f:
+        vks = f.read()
+    with open(clip_path, "r", encoding="utf-8") as f:
+        clip = f.read()
+    with open(track_path, "r", encoding="utf-8") as f:
+        track = f.read()
+
+    # 1. onStartInputView early return
+    on_start = vks[vks.find("override fun onStartInputView(info: EditorInfo?, restarting: Boolean)") : vks.find("override fun onFinishInputView")]
+    assert "restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField" in on_start, "C-08: falta early return en onStartInputView"
+    assert "return" in on_start, "C-08: falta return en early return guard"
+
+    # 2. Orden estricto
+    early_return_pos = on_start.find("if (restarting &&")
+    cancel_pos = on_start.find("dictation.cancelDictationIfActive()")
+    load_pos = on_start.find("kbPrefs.load()")
+    clip_pos = on_start.find("clipboard.onStartInputView(restarting)")
+    rebuild_pos = on_start.find("rebuild()")
+
+    assert early_return_pos < cancel_pos, "C-08: cancelDictationIfActive ocurre antes de early return"
+    assert early_return_pos < load_pos, "C-08: kbPrefs.load() ocurre antes de early return"
+    assert early_return_pos < clip_pos, "C-08: clipboard.onStartInputView ocurre antes de early return"
+    assert early_return_pos < rebuild_pos, "C-08: rebuild() ocurre antes de early return"
+
+    # 3. ClipboardLayer no-op en restart
+    clip_on_start = clip[clip.find("fun onStartInputView(restarting: Boolean)") : clip.find("fun toggle()")]
+    assert "if (restarting) return" in clip_on_start, "C-08: ClipboardLayer.onStartInputView no hace no-op en restarting"
+
+    # 4. Aislamiento de lastLettersLayer
+    assert "if (l != Layer.CLIPBOARD)" in vks, "C-08: setLastLetters permite Layer.CLIPBOARD"
+    code_toggle = vks[vks.find("override fun codeToggle()") : vks.find("fun setMiniMode(")]
+    assert "layer == Layer.CLIPBOARD" in code_toggle, "C-08: codeToggle no previene Layer.CLIPBOARD"
+    assert "cur != Layer.CLIPBOARD" in track, "C-08: TrackpadBridge.toggle no previene Layer.CLIPBOARD"
+    assert "private var origin = Layer.LETTERS" in clip, "C-08: ClipboardLayer no tiene variable origin privada"
+
 def _delegate(script):
     def run():
         res = subprocess.run(["python3", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -2796,6 +2855,7 @@ def main():
         ("C-05: exclusión mutua del micrófono", test_c05_mic_exclusion_contract),
         ("C-06: blindaje del teclado ante conexión muerta", test_c06_dead_connection_contract),
         ("C-07: relleno de claves seguro", test_c07_credentials_safe_fill_contract),
+        ("C-08: rebuild solo cuando toca y blindaje restart", test_c08_rebuild_guards_contract),
         ("Persistencia: Retención al desinstalar (hasFragileUserData)", test_manifest_retention),
     ]
     for name, script in SUITES:

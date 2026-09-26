@@ -73,6 +73,8 @@ class ClipboardLayer(
     }
 
     fun onStartInputView(restarting: Boolean) {
+        // C-08: no-op si restarting para no re-procesar clips en commits continuos (ej. WebView)
+        if (restarting) return
         handlePrimaryClipChanged(notifyOnFailure = true)
     }
 

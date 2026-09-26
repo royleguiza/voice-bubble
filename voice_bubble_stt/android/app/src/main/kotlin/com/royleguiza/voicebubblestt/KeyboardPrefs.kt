@@ -142,6 +142,12 @@ class KeyboardPrefs(private val context: Context) {
         "3"
     }
 
+    /**
+     * Carga de preferencias desde SharedPreferences.
+     * C-08: se ejecuta únicamente al cambiar de campo (onStartInputView con restarting=false
+     * o cambio de paquete/campo). En restarts sobre el mismo campo se preserva la caché
+     * en memoria para no golpear I/O ni reconstruir vistas.
+     */
     fun load() {
         heightFactor = try {
             when (
