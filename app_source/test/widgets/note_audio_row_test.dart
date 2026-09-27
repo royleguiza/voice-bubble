@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/note_audio_row.dart';
@@ -63,6 +65,28 @@ void main() {
 
       expect(find.text('Audio no encontrado'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('C-45: cabecera dañada avisa sin crashear', (tester) async {
+      final dir =
+          await Directory.systemTemp.createTemp('note_audio_corrupt_');
+      final path = '${dir.path}/roto.wav';
+      await File(path).writeAsBytes(List<int>.filled(9000, 0));
+      await tester.pumpWidget(wrap(NoteAudioRow(
+        audioPath: path,
+        noteId: 'n4',
+      )));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('notePlayAudio-n4')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Audio dañado; borralo y grabalo de nuevo'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+      if (await dir.exists()) await dir.delete(recursive: true);
     });
   });
 }

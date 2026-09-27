@@ -372,12 +372,16 @@ class WidgetDictationService(
                 }
                 return@execute
             }
-            speechClient.transcribe(wav, config, onDone = { text ->
+            // C-45: si el WAV trae hueco sin tapa se persiste ya reparado
+            // (el cliente además lo repara para subir). Sin esto la nota
+            // quedaba con audio irreproducible aunque el texto llegara.
+            val persist = SpeechToTextClient.tryRepairHolePcmBytes(wav) ?: wav
+            speechClient.transcribe(persist, config, onDone = { text ->
                 val durableSaved = synchronized(persistenceLock) {
                     if (text == null || text.isBlank()) {
                         false
                     } else {
-                        saveUntitledNote(text.trim(), wav)
+                        saveUntitledNote(text.trim(), persist)
                     }
                 }
                 BackgroundWork.postMain {
@@ -392,29 +396,30 @@ class WidgetDictationService(
                     mainHandler.postDelayed(runnable, 1200)
                 }
             }, onError = { code, message ->
-                BackgroundWork.execute {
-                    val enqueueResult = if (shouldEnqueuePending(code, message)) {
-                        enqueuePendingWavResult(wav)
-                    } else {
-                        PendingEnqueueResult.FAILED
-                    }
-                    val enqueued = enqueueResult != PendingEnqueueResult.FAILED
-                    BackgroundWork.postMain {
-                        if (enqueued) {
-                            updateWidgetsState("pending")
-                            pendingResetRunnable?.let { mainHandler.removeCallbacks(it) }
-                            val runnable = Runnable {
-                                updateWidgetsState("idle")
-                                stopForeground(true)
-                                stopSelf()
-                            }
-                            pendingResetRunnable = runnable
-                            mainHandler.postDelayed(runnable, 2000)
-                        } else {
+                // Ya estamos en hilo de fondo (el del cliente): encolar
+                // directo, sin otro BackgroundWork anidado. El anidado más
+                // el fill(0) del cliente dejaba el pendiente en ceros.
+                val enqueueResult = if (shouldEnqueuePending(code, message)) {
+                    enqueuePendingWavResult(persist)
+                } else {
+                    PendingEnqueueResult.FAILED
+                }
+                val enqueued = enqueueResult != PendingEnqueueResult.FAILED
+                BackgroundWork.postMain {
+                    if (enqueued) {
+                        updateWidgetsState("pending")
+                        pendingResetRunnable?.let { mainHandler.removeCallbacks(it) }
+                        val runnable = Runnable {
                             updateWidgetsState("idle")
                             stopForeground(true)
                             stopSelf()
                         }
+                        pendingResetRunnable = runnable
+                        mainHandler.postDelayed(runnable, 2000)
+                    } else {
+                        updateWidgetsState("idle")
+                        stopForeground(true)
+                        stopSelf()
                     }
                 }
             })

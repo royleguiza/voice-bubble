@@ -403,7 +403,36 @@ class WidgetNoteEditActivity : Activity() {
         // (datos o Wi-Fi), sin pasar por Notas de la app.
         findViewById<View>(R.id.slot_transcribe).visibility = View.VISIBLE
         findViewById<View>(R.id.btn_transcribe).setOnClickListener { requestPendingTranscription() }
+        // C-45: un pendiente dañado (ceros) quedaba atrapado sin salida:
+        // la modal solo ofrecía play/transcribir. Se habilita eliminar.
+        findViewById<View>(R.id.slot_delete).visibility = View.VISIBLE
+        findViewById<View>(R.id.btn_delete).setOnClickListener { requestDiscardPending() }
         setEditorState(writable = false, ready = false, deletable = false)
+    }
+
+    /**
+     * C-45: descarta el pendiente desde la propia modal (el audio no se
+     * pudo reproducir/transcribir o el usuario ya no lo quiere). Quita el
+     * índice compartido, borra el WAV y refresca widgets.
+     */
+    private fun requestDiscardPending() {
+        val id = pendingId ?: return
+        val path = pendingAudioPath
+        if (!transcribeInProgress.compareAndSet(false, true)) return
+        BackgroundWork.execute {
+            try {
+                NoteStore(this).removePending(id)
+            } catch (_: Exception) {}
+            try {
+                if (!path.isNullOrBlank()) File(path).delete()
+            } catch (_: Exception) {}
+            BackgroundWork.execute { refreshNoteWidgets() }
+            transcribeInProgress.set(false)
+            BackgroundWork.postMain {
+                Toast.makeText(this, "Audio descartado", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        }
     }
 
     /**
@@ -419,14 +448,23 @@ class WidgetNoteEditActivity : Activity() {
         setTranscribeBusy(true)
         BackgroundWork.execute {
             try {
-                val wav = try {
+                val raw = try {
                     File(path).readBytes()
                 } catch (_: Exception) {
                     null
                 }
-                if (wav == null || wav.isEmpty()) {
+                if (raw == null || raw.isEmpty()) {
                     failPendingTranscription("Audio no disponible")
                     return@execute
+                }
+                // C-45: si el pendiente trae hueco sin tapa (stop anormal
+                // en la app) se repara y se persiste sano para el play.
+                val repaired = SpeechToTextClient.tryRepairHolePcmBytes(raw)
+                val wav = repaired ?: raw
+                if (repaired != null) {
+                    try {
+                        File(path).writeBytes(wav)
+                    } catch (_: Exception) {}
                 }
                 val client = try {
                     SpeechToTextClient(this)
@@ -604,6 +642,7 @@ class WidgetNoteEditActivity : Activity() {
                     if (player === mediaPlayer) releasePlayer()
                     playerLoading.set(false)
                     icon.setImageResource(R.drawable.widget_ic_play)
+                    Toast.makeText(this, "Audio dañado; podés descartarlo", Toast.LENGTH_SHORT).show()
                 }
                 true
             }

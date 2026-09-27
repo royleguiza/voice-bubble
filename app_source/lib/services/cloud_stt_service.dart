@@ -303,6 +303,15 @@ class CloudSttService {
     List<int>? repaired;
     if (!isValidWavHeader(head, fileLength)) {
       repaired = await tryRepairHolePcm(file, head, fileLength);
+      // C-45: el reparado se persiste en disco (best-effort) para que el
+      // audio conservado (notes_audio) y los reintentos/pendientes vean un
+      // WAV sano y reproducible. Sin esto la nota quedaba con texto pero
+      // audio irreproducible aunque la subida saliera.
+      if (repaired != null) {
+        try {
+          await file.writeAsBytes(repaired, flush: true);
+        } catch (_) {}
+      }
     }
     if (repaired == null && !isValidWavHeader(head, fileLength)) {
       final String motivo = checkWavHeader(head, fileLength);

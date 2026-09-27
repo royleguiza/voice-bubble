@@ -198,13 +198,10 @@ class PendingNoteQueue {
           );
         }
         final item = PendingNote.fromJson(Map<String, dynamic>.from(element));
-        if (!File(item.audioPath).existsSync()) {
-          return const _PendingReadResult(
-            [],
-            state: _PendingIndexState.corrupt,
-            writable: false,
-          );
-        }
+        // C-45: un solo WAV faltante no voltea toda la cola (placeholder
+        // muerto / "Cola no disponible"). Se filtra; load() persiste la
+        // lista limpia y la reconciliación barre el huérfano.
+        if (!File(item.audioPath).existsSync()) continue;
         out.add(item);
       }
       return _PendingReadResult(

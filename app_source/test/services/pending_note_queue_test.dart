@@ -308,7 +308,7 @@ void main() {
     expect(prefs.getString(PendingNoteQueue.pendingKey), '{bad');
   });
 
-  test('índice pendiente sin WAV queda corrupto y bloquea mutaciones',
+  test('C-45: índice con WAV faltante se filtra sin voltear la cola',
       () async {
     final queue = PendingNoteQueue();
     await queue.load();
@@ -318,13 +318,29 @@ void main() {
     final source = makeTempWav('new.wav');
 
     final reloaded = PendingNoteQueue();
-    expect(await reloaded.load(), isFalse);
-    expect(await reloaded.enqueueFromTemp(source), isNull);
+    expect(await reloaded.load(), isTrue);
     expect(reloaded.items, isEmpty);
-    expect(File(source).existsSync(), isTrue);
+    final again = await reloaded.enqueueFromTemp(source);
+    expect(again, isNotNull);
     final prefs = await SharedPreferences.getInstance();
     final stored = jsonDecode(prefs.getString(PendingNoteQueue.pendingKey)!) as List;
     expect(stored, hasLength(1));
+    expect((stored.single as Map)['id'], again!.id);
+  });
+
+  test('C-45: un faltante entre varios solo filtra ese', () async {
+    final queue = PendingNoteQueue();
+    await queue.load();
+    final keep = await queue.enqueueFromTemp(makeTempWav('keep.wav'));
+    final drop = await queue.enqueueFromTemp(makeTempWav('drop.wav'));
+    expect(keep, isNotNull);
+    expect(drop, isNotNull);
+    File(drop!.audioPath).deleteSync();
+
+    final reloaded = PendingNoteQueue();
+    expect(await reloaded.load(), isTrue);
+    expect(reloaded.items.map((e) => e.id), contains(keep!.id));
+    expect(reloaded.items.map((e) => e.id), isNot(contains(drop.id)));
   });
 
   test('unavailable queue blocks mutation and preserves the last snapshot', () async {

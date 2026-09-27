@@ -39,15 +39,15 @@ internal fun loadWidgetPendingSnapshot(context: Context): WidgetPendingSnapshot 
                 created == null || created.toLong() <= 0L) {
                 return WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)
             }
+            // C-45: un solo WAV faltante no voltea toda la cola (placeholder
+            // muerto). Se filtra; la reconciliación barre el huérfano.
             val audio = File(path)
-            if (!audio.exists() || !audio.isFile) {
-                return WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)
-            }
+            if (!audio.exists() || !audio.isFile) continue
             items.add(VbPending(id, path, created.toLong()))
         }
         WidgetPendingSnapshot(
             items.sortedByDescending { it.createdAtMs },
-            if (array.length() == 0) NoteIndexState.EMPTY else NoteIndexState.VALID,
+            if (items.isEmpty()) NoteIndexState.EMPTY else NoteIndexState.VALID,
         )
     } catch (_: Exception) {
         WidgetPendingSnapshot(emptyList(), NoteIndexState.CORRUPT)

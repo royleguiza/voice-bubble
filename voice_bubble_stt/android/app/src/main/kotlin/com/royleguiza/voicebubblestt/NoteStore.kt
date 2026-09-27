@@ -705,16 +705,15 @@ class NoteStore(
                     return ParsedPendingIndex(emptySet(), NoteIndexState.CORRUPT)
                 }
                 val audio = File(path)
-                if (!audio.isFile) {
-                    return ParsedPendingIndex(emptySet(), NoteIndexState.CORRUPT)
-                }
+                // C-45: filtrar faltantes en vez de corromper toda la cola.
+                if (!audio.isFile) continue
                 try {
                     paths.add(audio.canonicalPath)
                 } catch (_: Exception) {
                     return ParsedPendingIndex(emptySet(), NoteIndexState.CORRUPT)
                 }
             }
-            val state = if (arr.length() == 0) NoteIndexState.EMPTY else NoteIndexState.VALID
+            val state = if (paths.isEmpty()) NoteIndexState.EMPTY else NoteIndexState.VALID
             ParsedPendingIndex(paths, state)
         } catch (_: Exception) {
             ParsedPendingIndex(emptySet(), NoteIndexState.CORRUPT)

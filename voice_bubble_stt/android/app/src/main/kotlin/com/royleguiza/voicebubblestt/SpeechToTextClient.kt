@@ -77,6 +77,51 @@ class SpeechToTextClient(
             return hex.toString() + "/" + ascii.toString() + "/" + fileLength
         }
 
+        /**
+         * C-45: tapa WAV PCM 16-bit mono 16kHz (formato propio, espejo de
+         * Dart `CloudSttService.buildWavHeader`). Solo metadatos de formato.
+         */
+        fun buildWavHeader(dataSize: Int): ByteArray {
+            val out = ByteArrayOutputStream(WAV_HEADER_BYTES)
+            fun le16(v: Int) { out.write(v and 0xFF); out.write((v shr 8) and 0xFF) }
+            fun le32(v: Int) { le16(v and 0xFFFF); le16((v shr 16) and 0xFFFF) }
+            out.write("RIFF".toByteArray()); le32(dataSize + 36)
+            out.write("WAVE".toByteArray())
+            out.write("fmt ".toByteArray()); le32(16)
+            le16(1); le16(1); le32(SAMPLE_RATE); le32(SAMPLE_RATE * 2)
+            le16(2); le16(16)
+            out.write("data".toByteArray()); le32(dataSize)
+            return out.toByteArray()
+        }
+
+        /**
+         * C-45 (espejo Dart `tryRepairHolePcm`): rescata un PCM nuestro sin
+         * tapa (hueco de 44 ceros + audio real detrás por stop anormal).
+         * Devuelve los bytes reparados o null (vacío, extranjero o ilegible:
+         * se mantiene el error claro). No toca el original.
+         */
+        fun tryRepairHolePcmBytes(bytes: ByteArray, fileLength: Int = bytes.size): ByteArray? {
+            if (fileLength <= WAV_HEADER_BYTES || bytes.size < WAV_HEADER_BYTES) return null
+            for (i in 0 until WAV_HEADER_BYTES) if (bytes[i] != 0.toByte()) return null
+            var content = false
+            for (i in WAV_HEADER_BYTES until bytes.size) {
+                if (bytes[i] != 0.toByte()) { content = true; break }
+            }
+            if (!content) {
+                val tailLen = if (fileLength > 8192) 4096 else fileLength
+                val from = maxOf(0, bytes.size - tailLen)
+                for (i in from until bytes.size) {
+                    if (bytes[i] != 0.toByte()) { content = true; break }
+                }
+            }
+            if (!content) return null
+            val dataSize = fileLength - WAV_HEADER_BYTES
+            if (dataSize <= 0) return null
+            if (bytes.size < fileLength) return null
+            val body = bytes.copyOfRange(WAV_HEADER_BYTES, WAV_HEADER_BYTES + dataSize)
+            return buildWavHeader(dataSize) + body
+        }
+
         internal fun checkWavHeader(bytes: ByteArray, fileLength: Int): String {            if (bytes.size < 12 || fileLength < 44) return "corto"
             fun u32(o: Int): Int {
                 if (o + 4 > bytes.size) return -1
@@ -377,8 +422,15 @@ class SpeechToTextClient(
             )
             return
         }
+        // C-45: el buffer del llamador (reintento del teclado, encolado
+        // offline del widget) NO se cera: se sube una copia y la limpieza
+        // forense C-35 corre sobre la copia. Sin esto, el pendiente offline
+        // quedaba en puros ceros [no-riff 00000000] y el reintento también.
+        // Además se intenta el rescate de PCM sin tapa antes de validar.
+        val snapshot = wav.copyOf()
+        val upload = tryRepairHolePcmBytes(snapshot) ?: snapshot
         transcribeGuarded(
-            wav,
+            upload,
             config,
             onDone = { text ->
                 uploadInFlight.set(false)

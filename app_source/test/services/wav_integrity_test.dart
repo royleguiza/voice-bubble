@@ -280,6 +280,23 @@ void main() {
         throwsA(isA<TranscriptionException>()),
       );
     });
+
+    test('C-45: el reparado se persiste en disco sano y reproducible',
+        () async {
+      final f = File('${tempDir.path}/hueco3.wav');
+      await f.writeAsBytes(holePcmFile(8192));
+      final service = CloudSttService(
+        apiKey: 'gsk_test_key',
+        client: MockClient((http.BaseRequest request) async {
+          return http.Response('{"text":"hola"}', 200,
+              headers: {'content-type': 'application/json'});
+        }),
+      );
+      await service.transcribe(f.path);
+      final onDisk = await f.readAsBytes();
+      expect(CloudSttService.isValidWavHeader(onDisk, onDisk.length), isTrue);
+      expect(String.fromCharCodes(onDisk.sublist(0, 4)), 'RIFF');
+    });
   });
 
   group('TranscriptionService.transcribe - vuelo único (C-43)', () {

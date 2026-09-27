@@ -172,7 +172,8 @@ save_block = svc.split("fun saveUntitledNote", 1)[1].split("private fun isDeferr
 pending_block = svc.split("fun enqueuePendingWav", 1)[1].split("private fun updateWidgetsState", 1)[0]
 check("Dictado serializa la escritura completa bajo una cola",
       "val durableSaved = synchronized(persistenceLock)" in svc
-      and "saveUntitledNote(text.trim(), wav)" in svc)
+      and ("saveUntitledNote(text.trim(), wav)" in svc
+           or "saveUntitledNote(text.trim(), persist)" in svc))
 check("Dictado solo informa éxito tras WAV durable y commit de nota",
       "writeWavFile(" in save_block and "?: return false" in save_block
       and "result != NoteSaveResult.SAVED" in save_block
@@ -319,7 +320,7 @@ check("NoteStore distingue ausente, corrupto, vacío y no disponible",
       all(state in store for state in ("MISSING", "CORRUPT", "EMPTY", "VALID", "UNAVAILABLE"))
       and 'RawIndexRead(null, false)' in store
       and 'raw.isBlank()' in store
-      and 'arr.length() == 0' in store)
+      and ('arr.length() == 0' in store or 'paths.isEmpty()' in store))
 check("NoteStore sweep exige lock, estados no autoritativos, notas y claim",
       'withStoreLock' in reconcile_block
       and 'val authoritative = isAuthoritative(snapshot.fileState)' in reconcile_block

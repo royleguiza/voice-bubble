@@ -32,10 +32,40 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
   StreamSubscription<void>? _doneSub;
   bool _playing = false;
   bool _missing = false;
+  bool _corrupt = false;
 
   bool get _fileExists {
     try {
       return File(widget.audioPath).existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// C-45: cabecera mínima RIFF/WAVE antes de reproducir. Un notes_audio
+  /// heredado dañado (hueco sin tapa de antes del fix) fallaba en silencio;
+  /// ahora avisa "Audio dañado" en vez de no hacer nada.
+  bool _hasValidHeader() {
+    try {
+      final file = File(widget.audioPath);
+      if (!file.existsSync() || file.lengthSync() < 12) return false;
+      final raf = file.openSync(mode: FileMode.read);
+      try {
+        final head = raf.readSync(12);
+        if (head.length < 12) return false;
+        return head[0] == 0x52 && // R
+            head[1] == 0x49 && // I
+            head[2] == 0x46 && // F
+            head[3] == 0x46 && // F
+            head[8] == 0x57 && // W
+            head[9] == 0x41 && // A
+            head[10] == 0x56 && // V
+            head[11] == 0x45; // E
+      } finally {
+        try {
+          raf.closeSync();
+        } catch (_) {}
+      }
     } catch (_) {
       return false;
     }
@@ -51,6 +81,10 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
     }
     if (!_fileExists) {
       if (mounted) setState(() => _missing = true);
+      return;
+    }
+    if (!_hasValidHeader()) {
+      if (mounted) setState(() => _corrupt = true);
       return;
     }
     try {
@@ -97,7 +131,9 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
           child: Text(
             _missing
                 ? 'Audio no encontrado'
-                : 'Audio original conservado',
+                : _corrupt
+                    ? 'Audio dañado; borralo y grabalo de nuevo'
+                    : 'Audio original conservado',
             style: kTextCaption.copyWith(color: secondary),
           ),
         ),

@@ -444,7 +444,9 @@ class WidgetNotesBehaviorTest {
     }
 
     @Test
-    fun pendingSnapshotRejectsIndexEntryWhenWavIsMissing() {
+    fun pendingSnapshotFiltersMissingWavWithoutCorruptingQueue() {
+        // C-45: un solo WAV faltante no voltea toda la cola (placeholder
+        // muerto). Se filtra y la cola sigue disponible.
         val root = Files.createTempDirectory("c04-pending-missing-wav-").toFile()
         try {
             val preferences = MemoryPreferences()
@@ -452,15 +454,18 @@ class WidgetNotesBehaviorTest {
             preferences.seed(NoteStore.PENDING_KEY, pendingIndex(missing))
 
             val snapshot = loadWidgetPendingSnapshot(TestContext(root, preferences))
-            assertEquals(NoteIndexState.CORRUPT, snapshot.state)
+            assertEquals(NoteIndexState.EMPTY, snapshot.state)
             assertTrue(snapshot.items.isEmpty())
+            assertTrue(snapshot.available)
         } finally {
             root.deleteRecursively()
         }
     }
 
     @Test
-    fun noteStorePendingParserTreatsMissingWavAsCorrupt() {
+    fun noteStorePendingParserFiltersMissingWavKeepingQueueUsable() {
+        // C-45: espejo del filtro Dart; el huérfano fresco se preserva por
+        // gracia pero la cola no queda corrupta.
         val root = Files.createTempDirectory("c04-note-store-pending-parser-").toFile()
         try {
             val preferences = MemoryPreferences()
@@ -468,7 +473,7 @@ class WidgetNotesBehaviorTest {
             val audioDirectory = File(root, "pending_notes").apply { mkdirs() }
             val orphan = File(audioDirectory, "orphan.wav").apply { writeBytes(byteArrayOf(1)) }
 
-            assertFalse(NoteStore(TestContext(root, preferences)).reconcilePendingAudio())
+            assertTrue(NoteStore(TestContext(root, preferences)).reconcilePendingAudio())
             assertTrue(orphan.exists())
         } finally {
             root.deleteRecursively()
@@ -933,6 +938,29 @@ class WidgetNotesBehaviorTest {
         assertTrue(SpeechToTextClient.isValidWav(withJunk))
         // Recorte a mitad de chunks: sin data a la vista.
         assertFalse(SpeechToTextClient.isValidWav(good.copyOfRange(0, 60)))
+    }
+
+    @Test
+    fun tryRepairHolePcmBytesRescuesOurPcmWithoutLid() {
+        // C-45 (espejo Dart): hueco de 44 ceros + audio real -> tapa sana.
+        val pcm = ByteArray(8192) { i -> ((i * 7) % 251 + 1).toByte() }
+        val hole = ByteArray(44) + pcm
+        val repaired = SpeechToTextClient.tryRepairHolePcmBytes(hole)
+        assertTrue(repaired != null)
+        assertEquals("ok", SpeechToTextClient.checkWavHeader(repaired!!, repaired.size))
+        assertTrue(SpeechToTextClient.isValidWav(repaired))
+        // El original no se toca (el llamador decide persistirlo).
+        assertEquals(0.toByte(), hole[0])
+    }
+
+    @Test
+    fun tryRepairHolePcmBytesRefusesEmptiesAndForeigners() {
+        assertTrue(SpeechToTextClient.tryRepairHolePcmBytes(ByteArray(9000)) == null)
+        val foreign = ByteArray(9000)
+        foreign[4] = 0x66.toByte(); foreign[5] = 0x74.toByte()
+        foreign[6] = 0x79.toByte(); foreign[7] = 0x70.toByte()
+        assertTrue(SpeechToTextClient.tryRepairHolePcmBytes(foreign) == null)
+        assertTrue(SpeechToTextClient.tryRepairHolePcmBytes(ByteArray(10)) == null)
     }
 
     @Test

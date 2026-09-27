@@ -152,6 +152,13 @@ class _NotesScreenState extends State<NotesScreen>
         setState(() => _isTranscribing = false);
         return;
       }
+      // C-45: transcribir PRIMERO (repara el hueco sin tapa en disco) y
+      // conservar DESPUÉS, para que notes_audio quede sano y reproducible.
+      // Antes se copiaba el dañado y la nota quedaba con audio muerto.
+      final file = await _transcriptionService.transcribe(
+        path,
+        deleteAudioOnSuccess: false,
+      );
       keptPath = await _pendingQueue.keepCopyForNote(path);
       if (keptPath == null) {
         if (mounted) {
@@ -162,10 +169,6 @@ class _NotesScreenState extends State<NotesScreen>
         }
         return;
       }
-      final file = await _transcriptionService.transcribe(
-        path,
-        deleteAudioOnSuccess: false,
-      );
       final ok = await _notesService.addFromTranscription(
         file.text,
         audioPath: keptPath,
@@ -220,17 +223,10 @@ class _NotesScreenState extends State<NotesScreen>
   Future<void> _transcribePending(PendingNote item) async {
     if (_isTranscribingPending) return;
     setState(() => _isTranscribingPending = true);
-    final keptPath = await _pendingQueue.promoteToKept(item);
-    if (keptPath == null) {
-      if (mounted) {
-        setState(() => _isTranscribingPending = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo conservar el audio')),
-        );
-      }
-      return;
-    }
+    // C-45: transcribir PRIMERO (repara en disco) y promover DESPUÉS, para
+    // que notes_audio quede sano. Antes se promovía el dañado.
     var noteCommitted = false;
+    String? keptPath;
     try {
       final key = await StorageService.espSecureStorage
               .read(key: 'groq_api_key') ??
@@ -240,11 +236,22 @@ class _NotesScreenState extends State<NotesScreen>
         item.audioPath,
         deleteAudioOnSuccess: false,
       );
+      keptPath = await _pendingQueue.promoteToKept(item);
+      if (keptPath == null) {
+        if (mounted) {
+          setState(() => _isTranscribingPending = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No se pudo conservar el audio')),
+          );
+        }
+        return;
+      }
       final ok = await _notesService.addFromTranscription(
         file.text,
         audioPath: keptPath,
       );
       if (!ok) {
+        _pendingQueue.deleteKeptAudio(keptPath);
         if (mounted) {
           setState(() => _isTranscribingPending = false);
           ScaffoldMessenger.of(context).showSnackBar(
