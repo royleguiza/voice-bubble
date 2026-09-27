@@ -20,6 +20,8 @@ import '../helpers/mock_channels.dart';
 /// con 400 "valid media file". Ahora se valida la cabecera en cliente y
 /// el parte lleva filename audio.wav + audio/wav como el nativo.
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('CloudSttService.isValidWavHeader', () {
     test('acepta cabecera PCM16 mono 16k bien formada', () {
       final bytes = validWavBytes();
@@ -94,7 +96,7 @@ void main() {
     test('rechaza fmt sin data (recorte a mitad de chunks)', () {
       final good = validWavBytes();
       final cut = good.sublist(0, 60);
-      expect(CloudSttService.isValidWavHeader(cut, 8236), isFalse);
+      expect(CloudSttService.isValidWavHeader(cut, cut.length), isFalse);
     });
   });
 
