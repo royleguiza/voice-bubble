@@ -99,8 +99,7 @@ void main() {
 
       // --- Abrir: el grupo se ensancha y empuja las acciones a los costados.
       buttonOf('playPendingButton-$id').onPressed!();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
 
       expect(clockWidth(), greaterThan(0));
       expect(find.text('00:00 / 00:00'), findsOneWidget);
@@ -119,8 +118,7 @@ void main() {
 
       // --- Cerrar: la animacion inverse reagrupa las dos burbujas en un play.
       buttonOf('closePendingPlayer-$id').onPressed!();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pumpAndSettle();
 
       expect(clockWidth(), 0);
       expect(find.text('No se pudo reproducir este audio'), findsNothing);

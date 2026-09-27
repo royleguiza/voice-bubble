@@ -180,6 +180,12 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
         # alignment el Text conserva su ancho intrinseco y daria 104 siempre.
         self.assertIn("find.ancestor(", test)
         self.assertIn("matching: find.byType(AnimatedContainer)", test)
+        # La apertura y el cierre se asientan con pumpAndSettle: el setState
+        # del cierre va en un microtask, y un salto de tiempo fijo deja la
+        # animacion implicita en su valor inicial (no avanza ningun frame).
+        c46 = test.split("C-46: play abre reloj+X")[1].split("testWidgets(")[0]
+        self.assertEqual(c46.count("pumpAndSettle()"), 3,
+                         "armado + apertura y cierre asidados")
         # El player debe quedar en la misma fila que las acciones.
         row = code.split("Row(")[-1]
         self.assertIn("_PlayerStage(", code)
