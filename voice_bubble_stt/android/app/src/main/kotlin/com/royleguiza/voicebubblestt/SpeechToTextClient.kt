@@ -47,6 +47,33 @@ class SpeechToTextClient(
             val seconds = TIMEOUT_BASE_SECONDS + (bytes / TIMEOUT_BYTES_PER_SECOND)
             return seconds.coerceIn(TIMEOUT_MIN_SECONDS, TIMEOUT_MAX_SECONDS)
         }
+
+        /**
+         * C-42: valida contenedor WAV (magias RIFF/WAVE/fmt/data y tamaño
+         * consistente). Espejo de CloudSttService.isValidWavHeader de Dart:
+         * no juzga sample-rate/canales, solo truncados y basura.
+         */
+        fun isValidWav(wav: ByteArray): Boolean {
+            if (wav.size < 44) return false
+            fun u32(o: Int): Int =
+                (wav[o].toInt() and 0xFF) or
+                    ((wav[o + 1].toInt() and 0xFF) shl 8) or
+                    ((wav[o + 2].toInt() and 0xFF) shl 16) or
+                    ((wav[o + 3].toInt() and 0xFF) shl 24)
+            fun magic(o: Int, s: String): Boolean {
+                if (s.length != 4) return false
+                for (i in 0..3) if (wav[o + i] != s[i].code.toByte()) return false
+                return true
+            }
+            if (!magic(0, "RIFF") || !magic(8, "WAVE") ||
+                !magic(12, "fmt ") || !magic(36, "data")
+            ) {
+                return false
+            }
+            if (u32(4) + 8 > wav.size) return false
+            val dataSize = u32(40)
+            return dataSize > 0 && dataSize <= wav.size - 44
+        }
     }
 
     data class Config(
@@ -307,6 +334,15 @@ class SpeechToTextClient(
                 400,
                 if (spanishModeProvider()) "El audio supera el límite de 25 MB."
                 else "Audio exceeds 25 MB limit."
+            )
+            return
+        }
+        // C-42: no subir basura que Groq rechaza con 400 "valid media file".
+        if (!isValidWav(wav)) {
+            onError(
+                400,
+                if (spanishModeProvider()) "El audio está dañado y no se puede transcribir."
+                else "Audio is corrupted and cannot be transcribed."
             )
             return
         }

@@ -68,6 +68,7 @@ SUITES = [
     ("Widget transcribe el pendiente acá (C-39)", "test_c39_widget_pending_transcribe_suite.py"),
     ("Cuerpo expandible con tirador (C-40)", "test_c40_expandable_note_body_suite.py"),
     ("Widget termina de grabar + velo (C-41)", "test_c41_widget_stop_and_veil_suite.py"),
+    ("Integridad de subida anti-400 (C-42)", "test_c42_upload_integrity_suite.py"),
 ]
 
 def run_test(name, func):

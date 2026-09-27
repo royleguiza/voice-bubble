@@ -833,8 +833,7 @@ class WidgetNotesBehaviorTest {
     }
 
     @Test
-    fun clampBodyHeightKeepsInsideRange() {
-        assertEquals(100, clampBodyHeight(50, 100, 500))
+    fun clampBodyHeightKeepsInsideRange() {        assertEquals(100, clampBodyHeight(50, 100, 500))
         assertEquals(500, clampBodyHeight(900, 100, 500))
         assertEquals(300, clampBodyHeight(300, 100, 500))
         assertEquals(100, clampBodyHeight(900, 100, 40))
@@ -845,6 +844,49 @@ class WidgetNotesBehaviorTest {
         assertEquals(376, computeBodyMaxPx(800, 100, 300, 12, 12, 180))
         assertEquals(180, computeBodyMaxPx(300, 50, 200, 12, 12, 180))
         assertEquals(180, computeBodyMaxPx(0, 0, 0, 12, 12, 180))
+    }
+
+    private fun validWavBytes(dataSize: Int = 8192): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        fun u16(v: Int) {
+            out.write(v and 0xFF)
+            out.write((v shr 8) and 0xFF)
+        }
+        fun u32(v: Int) {
+            u16(v and 0xFFFF)
+            u16((v shr 16) and 0xFFFF)
+        }
+        fun tag(s: String) {
+            for (c in s) out.write(c.code)
+        }
+        tag("RIFF"); u32(dataSize + 36); tag("WAVE"); tag("fmt "); u32(16)
+        u16(1); u16(1); u32(16000); u32(32000); u16(2); u16(16)
+        tag("data"); u32(dataSize)
+        out.write(ByteArray(dataSize))
+        return out.toByteArray()
+    }
+
+    @Test
+    fun isValidWavAcceptsWellFormedPcm() {
+        assertTrue(SpeechToTextClient.isValidWav(validWavBytes()))
+    }
+
+    @Test
+    fun isValidWavRejectsTruncatedAndGarbage() {
+        assertFalse(SpeechToTextClient.isValidWav(ByteArray(10)))
+        val good = validWavBytes()
+        for (off in listOf(0, 8, 12, 36)) {
+            val bad = good.copyOf()
+            bad[off] = 0x58.toByte()
+            assertFalse(SpeechToTextClient.isValidWav(bad))
+        }
+        val zero = good.copyOf()
+        zero[40] = 0; zero[41] = 0; zero[42] = 0; zero[43] = 0
+        assertFalse(SpeechToTextClient.isValidWav(zero))
+        val huge = good.copyOf()
+        huge[40] = 0xFF.toByte(); huge[41] = 0xFF.toByte()
+        huge[42] = 0xFF.toByte(); huge[43] = 0x7F.toByte()
+        assertFalse(SpeechToTextClient.isValidWav(huge))
     }
 
     @Test

@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 
+import '../helpers/wav_fixture.dart';
+
 void main() {
   late Directory tempDir;
   late File tempAudioFile;
@@ -13,7 +15,7 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('cloud_stt_test_');
     tempAudioFile = File('${tempDir.path}/test_audio.wav');
-    await tempAudioFile.writeAsBytes(List<int>.filled(8192, 0));
+    await tempAudioFile.writeAsBytes(validWavBytes());
   });
 
   tearDown(() async {

@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 
+import '../helpers/wav_fixture.dart';
+
 /// Matriz H5-T5: contrato de clasificacion de errores de CloudSttService.
 ///
 /// Red/timeout y servidor saturado (network/server) = REINTENTABLES.
@@ -20,7 +22,7 @@ void main() {
   setUp(() async {
     tempDir = await Directory.systemTemp.createTemp('h5_errors_test_');
     tempAudioFile = File('${tempDir.path}/audio.wav');
-    await tempAudioFile.writeAsBytes(List<int>.filled(8192, 0));
+    await tempAudioFile.writeAsBytes(validWavBytes());
   });
 
   tearDown(() async {

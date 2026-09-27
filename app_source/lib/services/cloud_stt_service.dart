@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../models/transcription.dart';
 
 /// Contrato de reintento (para la UI sin tocar screens/):
@@ -80,6 +81,33 @@ class CloudSttService {
   /// Por debajo de 8000B se descarta como click o ruido vacío.
   static const int minAudioBytes = 8000;
 
+  /// Valida contenedor WAV (C-42): magias RIFF/WAVE/fmt/data y tamaño
+  /// declarado consistente con el archivo. No juzga sample-rate ni
+  /// canales (Groq remuestrea): solo detecta truncados y basura que
+  /// Groq rechazaría con 400 "valid media file".
+  static bool isValidWavHeader(List<int> bytes, int fileLength) {
+    if (bytes.length < 44 || fileLength < 44) return false;
+    int u32(int o) =>
+        bytes[o] |
+        (bytes[o + 1] << 8) |
+        (bytes[o + 2] << 16) |
+        (bytes[o + 3] << 24);
+    bool magic(int o, String s) =>
+        bytes[o] == s.codeUnitAt(0) &&
+        bytes[o + 1] == s.codeUnitAt(1) &&
+        bytes[o + 2] == s.codeUnitAt(2) &&
+        bytes[o + 3] == s.codeUnitAt(3);
+    if (!magic(0, 'RIFF') ||
+        !magic(8, 'WAVE') ||
+        !magic(12, 'fmt ') ||
+        !magic(36, 'data')) {
+      return false;
+    }
+    if (u32(4) + 8 > fileLength) return false;
+    final int dataSize = u32(40);
+    return dataSize > 0 && dataSize <= fileLength - 44;
+  }
+
   final String apiKey;
   final http.Client? client;
 
@@ -141,6 +169,21 @@ class CloudSttService {
         kind: TranscriptionErrorKind.badRequest,
       );
     }
+    // C-42: validar integridad ANTES de subir (solo cabecera, barato).
+    // Un truncado/garbage pasaba los tamaños y Groq lo rechazaba con 400.
+    final RandomAccessFile raf = await file.open(mode: FileMode.read);
+    List<int> head;
+    try {
+      head = await raf.read(64);
+    } finally {
+      await raf.close();
+    }
+    if (!isValidWavHeader(head, fileLength)) {
+      throw const TranscriptionException(
+        'El audio está dañado y no se puede transcribir. Grabalo de nuevo.',
+        kind: TranscriptionErrorKind.badRequest,
+      );
+    }
     final timeout = timeoutForBytes(fileLength);
 
     final request = http.MultipartRequest('POST', Uri.parse(_endpoint));
@@ -149,7 +192,12 @@ class CloudSttService {
     request.fields[_multipartFieldLanguage] = _language;
     try {
       request.files.add(
-        await http.MultipartFile.fromPath(_multipartFieldFile, audioPath),
+        await http.MultipartFile.fromPath(
+          _multipartFieldFile,
+          audioPath,
+          filename: 'audio.wav',
+          contentType: MediaType('audio', 'wav'),
+        ),
       );
     } on FileSystemException catch (e) {
       throw TranscriptionException(
