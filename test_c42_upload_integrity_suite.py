@@ -65,7 +65,7 @@ class TestC42UploadIntegritySuite(unittest.TestCase):
         src = read_file(NATIVE)
         self.assertIn("fun isValidWav(wav: ByteArray): Boolean", src)
         self.assertIn('"RIFF"', src)
-        self.assertIn("isValidWav(wav)", src.split("fun transcribeGuarded(")[1][:1200],
+        self.assertIn('checkWavHeader(wav, wav.size)', src.split("fun transcribeGuarded(")[1][:1200],
                       "Debe validar antes del POST")
         self.assertIn("dañado", src)
 

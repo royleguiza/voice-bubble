@@ -81,13 +81,11 @@ class CloudSttService {
   /// Por debajo de 8000B se descarta como click o ruido vacío.
   static const int minAudioBytes = 8000;
 
-  /// Valida contenedor WAV (C-42/C-43): recorre los sub-chunks (tolera
-  /// extras como JUNK/LIST/fact que escriben grabadores reales) y exige
-  /// RIFF/WAVE, un chunk fmt, un chunk data con tamaño consistente. No
-  /// juzga sample-rate ni canales (Groq remuestrea): solo detecta
-  /// truncados y basura que Groq rechazaría con 400 "valid media file".
-  static bool isValidWavHeader(List<int> bytes, int fileLength) {
-    if (bytes.length < 12 || fileLength < 44) return false;
+  /// Motivo del rechazo del validador WAV (C-43): se muestra entre
+  /// corchetes para diagnosticar en dispositivo sin exponer contenido.
+  /// Solo tamaños, jamás audio.
+  static String checkWavHeader(List<int> bytes, int fileLength) {
+    if (bytes.length < 12 || fileLength < 44) return 'corto';
     int u32(int o) {
       if (o + 4 > bytes.length) return -1;
       return bytes[o] |
@@ -104,22 +102,33 @@ class CloudSttService {
           bytes[o + 3] == s.codeUnitAt(3);
     }
 
-    if (!magic(0, 'RIFF') || !magic(8, 'WAVE')) return false;
+    if (!magic(0, 'RIFF') || !magic(8, 'WAVE')) return 'no-riff';
     final int riffSize = u32(4);
-    if (riffSize < 0 || riffSize + 8 > fileLength) return false;
+    if (riffSize < 0 || riffSize + 8 > fileLength) return 'riff-tamano';
     var pos = 12;
     var fmtFound = false;
     while (pos + 8 <= bytes.length) {
       final int size = u32(pos + 4);
-      if (size < 0) return false;
+      if (size < 0) return 'chunk-roto';
       if (magic(pos, 'fmt ')) fmtFound = true;
       if (magic(pos, 'data')) {
-        return fmtFound && size > 0 && pos + 8 + size <= fileLength;
+        if (!fmtFound) return 'sin-fmt';
+        if (size <= 0) return 'vacio';
+        if (pos + 8 + size > fileLength) return 'trunco';
+        return 'ok';
       }
       pos += 8 + size + (size % 2);
     }
-    return false;
+    return 'sin-data';
   }
+
+  /// Valida contenedor WAV (C-42/C-43): recorre los sub-chunks (tolera
+  /// extras como JUNK/LIST/fact que escriben grabadores reales) y exige
+  /// RIFF/WAVE, un chunk fmt, un chunk data con tamaño consistente. No
+  /// juzga sample-rate ni canales (Groq remuestrea): solo detecta
+  /// truncados y basura que Groq rechazaría con 400 "valid media file".
+  static bool isValidWavHeader(List<int> bytes, int fileLength) =>
+      checkWavHeader(bytes, fileLength) == 'ok';
 
   final String apiKey;
   final http.Client? client;
@@ -192,8 +201,9 @@ class CloudSttService {
       await raf.close();
     }
     if (!isValidWavHeader(head, fileLength)) {
-      throw const TranscriptionException(
-        'El audio está dañado y no se puede transcribir. Grabalo de nuevo.',
+      final String motivo = checkWavHeader(head, fileLength);
+      throw TranscriptionException(
+        'El audio está dañado [$motivo] y no se puede transcribir. Grabalo de nuevo.',
         kind: TranscriptionErrorKind.badRequest,
       );
     }

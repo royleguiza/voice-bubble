@@ -890,6 +890,19 @@ class WidgetNotesBehaviorTest {
     }
 
     @Test
+    fun checkWavHeaderReportsKnownReasons() {
+        assertEquals("corto", SpeechToTextClient.checkWavHeader(ByteArray(3), 3))
+        val good = validWavBytes()
+        assertEquals("ok", SpeechToTextClient.checkWavHeader(good, good.size))
+        val noRiff = good.copyOf()
+        noRiff[0] = 0x58.toByte()
+        assertEquals("no-riff", SpeechToTextClient.checkWavHeader(noRiff, noRiff.size))
+        val empty = good.copyOf()
+        empty[40] = 0; empty[41] = 0; empty[42] = 0; empty[43] = 0
+        assertEquals("vacio", SpeechToTextClient.checkWavHeader(empty, empty.size))
+    }
+
+    @Test
     fun isValidWavToleratesExtraChunksBeforeData() {
         val good = validWavBytes(4096)
         val head = good.copyOfRange(0, 36)

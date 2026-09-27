@@ -98,6 +98,24 @@ void main() {
       final cut = good.sublist(0, 60);
       expect(CloudSttService.isValidWavHeader(cut, cut.length), isFalse);
     });
+
+    test('informa el motivo entre códigos conocidos', () {
+      expect(CloudSttService.checkWavHeader(<int>[1, 2], 2), 'corto');
+      final good = validWavBytes();
+      expect(
+          CloudSttService.checkWavHeader(good, good.length), 'ok');
+      final noRiff = List<int>.from(good);
+      noRiff[0] = 0x58;
+      expect(CloudSttService.checkWavHeader(noRiff, noRiff.length),
+          'no-riff');
+      final empty = List<int>.from(good);
+      empty[40] = 0;
+      empty[41] = 0;
+      empty[42] = 0;
+      empty[43] = 0;
+      expect(
+          CloudSttService.checkWavHeader(empty, empty.length), 'vacio');
+    });
   });
 
   group('CloudSttService.transcribe - integridad (C-42)', () {

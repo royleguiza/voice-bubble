@@ -53,14 +53,14 @@ class SpeechToTextClient(
         /**
          * C-42/C-43: valida contenedor WAV recorriendo sub-chunks (tolera
          * extras como JUNK/LIST/fact de grabadores reales). Espejo de
-         * CloudSttService.isValidWavHeader de Dart.
+         * CloudSttService.checkWavHeader de Dart. Devuelve 'ok' o el motivo.
          */
         fun isValidWav(wav: ByteArray): Boolean {
-            return isValidWavHeader(wav, wav.size)
+            return checkWavHeader(wav, wav.size) == "ok"
         }
 
-        internal fun isValidWavHeader(bytes: ByteArray, fileLength: Int): Boolean {
-            if (bytes.size < 12 || fileLength < 44) return false
+        internal fun checkWavHeader(bytes: ByteArray, fileLength: Int): String {
+            if (bytes.size < 12 || fileLength < 44) return "corto"
             fun u32(o: Int): Int {
                 if (o + 4 > bytes.size) return -1
                 return (bytes[o].toInt() and 0xFF) or
@@ -73,22 +73,24 @@ class SpeechToTextClient(
                 for (i in 0..3) if (bytes[o + i] != s[i].code.toByte()) return false
                 return true
             }
-            if (!magic(0, "RIFF") || !magic(8, "WAVE")) return false
+            if (!magic(0, "RIFF") || !magic(8, "WAVE")) return "no-riff"
             val riffSize = u32(4)
-            if (riffSize < 0 || riffSize.toLong() + 8 > fileLength) return false
+            if (riffSize < 0 || riffSize.toLong() + 8 > fileLength) return "riff-tamano"
             var pos = 12
             var fmtFound = false
             while (pos + 8 <= bytes.size) {
                 val size = u32(pos + 4)
-                if (size < 0) return false
+                if (size < 0) return "chunk-roto"
                 if (magic(pos, "fmt ")) fmtFound = true
                 if (magic(pos, "data")) {
-                    return fmtFound && size > 0 &&
-                        size.toLong() <= fileLength - pos - 8
+                    if (!fmtFound) return "sin-fmt"
+                    if (size <= 0) return "vacio"
+                    if (size.toLong() > fileLength - pos - 8) return "trunco"
+                    return "ok"
                 }
                 pos += 8 + size + (size % 2)
             }
-            return false
+            return "sin-data"
         }
     }
 
@@ -387,11 +389,13 @@ class SpeechToTextClient(
             return
         }
         // C-42: no subir basura que Groq rechaza con 400 "valid media file".
-        if (!isValidWav(wav)) {
+        // El motivo viaja entre corchetes para diagnosticar en dispositivo.
+        val motivo = checkWavHeader(wav, wav.size)
+        if (motivo != "ok") {
             onError(
                 400,
-                if (spanishModeProvider()) "El audio está dañado y no se puede transcribir."
-                else "Audio is corrupted and cannot be transcribed."
+                if (spanishModeProvider()) "El audio está dañado [$motivo] y no se puede transcribir."
+                else "Audio is corrupted [$motivo] and cannot be transcribed."
             )
             return
         }

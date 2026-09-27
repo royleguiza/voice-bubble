@@ -45,10 +45,12 @@ class TestC43TolerantWavAndSingleFlightSuite(unittest.TestCase):
         self.assertIn("pos += 8 + size + (size % 2)", dart,
                       "Dart debe caminar los sub-chunks")
         self.assertIn("fmtFound", dart)
+        self.assertIn("static String checkWavHeader(", dart,
+                      "Debe informar el motivo")
         nat = read_file(NATIVE)
         self.assertIn("pos += 8 + size + (size % 2)", nat,
                       "El nativo debe caminar igual")
-        self.assertIn("fmtFound", nat)
+        self.assertIn("fun checkWavHeader(", nat)
 
     def test_02_vuelo_unico(self):
         svc = read_file(SVC)
