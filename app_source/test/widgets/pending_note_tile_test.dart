@@ -81,26 +81,13 @@ void main() {
             ),
           );
       // El reloj siempre esta en el arbol; colapsado vale ancho 0.
-      double clockWidth() => tester.widget<AnimatedContainer>(
-            find.ancestor(
-              of: find.byKey(ValueKey('pendingPlayerClock-$id')),
-              matching: find.byType(AnimatedContainer),
-            ),
-          ).width ??
-          0;
-      double closeWidth() => tester
-          .widgetList<AnimatedContainer>(
-            find.byType(AnimatedContainer),
-          )
-          .last
-          .width ??
-          0;
+      // Se mide el tamano RENDERIZADO, no la propiedad del widget.
+      double clockWidth() =>
+          tester.getSize(find.byKey(ValueKey('pendingPlayerClock-$id'))).width;
 
-      // --- Colapsado: una sola burbuja con play, reloj y X sin ancho,
-      //     y el player en la MISMA fila que las acciones.
+      // --- Colapsado: una sola burbuja con play, reloj sin ancho y X inerte.
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
       expect(clockWidth(), 0);
-      expect(closeWidth(), 0);
       expect(buttonOf('playPendingButton-$id').onPressed, isNotNull);
       expect(buttonOf('closePendingPlayer-$id').onPressed, isNull,
           reason: 'la X colapsada no debe capturar el toque del play');
@@ -111,7 +98,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 350));
 
       expect(clockWidth(), greaterThan(0));
-      expect(closeWidth(), 48);
       expect(find.text('00:00 / 00:00'), findsOneWidget);
       expect(find.text('No se pudo reproducir este audio'), findsOneWidget);
       expect(find.byType(Slider), findsNothing);
@@ -132,7 +118,6 @@ void main() {
       await tester.pump(const Duration(milliseconds: 350));
 
       expect(clockWidth(), 0);
-      expect(closeWidth(), 0);
       expect(find.text('No se pudo reproducir este audio'), findsNothing);
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
       expect(buttonOf('closePendingPlayer-$id').onPressed, isNull);

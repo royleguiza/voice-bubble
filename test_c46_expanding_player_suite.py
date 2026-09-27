@@ -157,6 +157,7 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
     def test_06_dart_stage_por_ancho(self):
         src = read_file(TILE)
         code = read_code(TILE)
+        test = read_file(TILE_TEST)
         self.assertIn("class _PlayerStage", src)
         self.assertIn("AnimatedContainer", src)
         self.assertIn("playPendingButton-", src)
@@ -172,6 +173,9 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
         # El reloj mide ancho 0 colapsado y se ensancha al abrir.
         self.assertIn("width: open ? _clockWidth : 0", code)
         self.assertIn("width: open ? _buttonSize : 0", code)
+        # El test mide el tamano renderizado, no una propiedad inexistente.
+        self.assertIn("tester.getSize(", test)
+        self.assertNotIn(".width ??", test)
         # El player debe quedar en la misma fila que las acciones.
         row = code.split("Row(")[-1]
         self.assertIn("_PlayerStage(", code)
