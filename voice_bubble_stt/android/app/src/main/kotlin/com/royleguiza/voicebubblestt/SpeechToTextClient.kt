@@ -75,7 +75,7 @@ class SpeechToTextClient(
             }
             if (!magic(0, "RIFF") || !magic(8, "WAVE")) return false
             val riffSize = u32(4)
-            if (riffSize < 0 || riffSize + 8 > fileLength) return false
+            if (riffSize < 0 || riffSize.toLong() + 8 > fileLength) return false
             var pos = 12
             var fmtFound = false
             while (pos + 8 <= bytes.size) {
@@ -83,7 +83,8 @@ class SpeechToTextClient(
                 if (size < 0) return false
                 if (magic(pos, "fmt ")) fmtFound = true
                 if (magic(pos, "data")) {
-                    return fmtFound && size > 0 && pos + 8 + size <= fileLength
+                    return fmtFound && size > 0 &&
+                        size.toLong() <= fileLength - pos - 8
                 }
                 pos += 8 + size + (size % 2)
             }
