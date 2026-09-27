@@ -892,10 +892,11 @@ class WidgetNotesBehaviorTest {
     @Test
     fun describeHeadSummarizesWithoutContent() {
         val good = validWavBytes()
-        assertEquals(
-            "52524946/RIFF/" + good.size,
-            SpeechToTextClient.describeHead(good, good.size),
-        )
+        assertEquals(8236, good.size)
+        val fp = SpeechToTextClient.describeHead(good, good.size)
+        assertTrue(fp.startsWith("52524946/RIFF/"))
+        assertTrue(fp.endsWith("/8236"))
+        assertEquals("52524946/RIFF/8236", fp)
         assertEquals(
             "000102/.../3",
             SpeechToTextClient.describeHead(byteArrayOf(0, 1, 2), 3),
