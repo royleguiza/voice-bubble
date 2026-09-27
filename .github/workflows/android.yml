@@ -91,6 +91,10 @@ jobs:
           printf 'sdk.dir=%s\nflutter.sdk=%s\n' "$ANDROID_HOME" "$flutter_sdk" \
             > voice_bubble_stt/android/local.properties
 
+      - name: Limpiar compilados de test anti-cache rancio
+        working-directory: voice_bubble_stt/android
+        run: gradle --no-daemon :app:cleanTestDebugUnitTest :app:cleanCompileDebugUnitTestKotlin
+
       - name: Test Kotlin nativo del historial C-02
         working-directory: voice_bubble_stt/android
         run: |
