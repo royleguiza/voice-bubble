@@ -80,7 +80,9 @@ void main() {
         find.byKey(ValueKey('discardPendingButton-$id')),
         warnIfMissed: false,
       );
-      await tester.pumpAndSettle();
+      // Sin pumpAndSettle: con busy=true el botón muestra
+      // CircularProgressIndicator (animación infinita, §9.1-14).
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(transcribed, isFalse);
       expect(discarded, isFalse);

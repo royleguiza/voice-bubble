@@ -68,10 +68,11 @@ void main() {
     });
 
     testWidgets('C-45: cabecera dañada avisa sin crashear', (tester) async {
-      final dir =
-          await Directory.systemTemp.createTemp('note_audio_corrupt_');
+      // IO síncrona: los futures de dart:io se cuelgan bajo FakeAsync
+      // en widget tests (§9.2-10).
+      final dir = Directory.systemTemp.createTempSync('note_audio_corrupt_');
       final path = '${dir.path}/roto.wav';
-      await File(path).writeAsBytes(List<int>.filled(9000, 0));
+      File(path).writeAsBytesSync(List<int>.filled(9000, 0));
       await tester.pumpWidget(wrap(NoteAudioRow(
         audioPath: path,
         noteId: 'n4',
@@ -86,7 +87,7 @@ void main() {
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
-      if (await dir.exists()) await dir.delete(recursive: true);
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
     });
   });
 }
