@@ -47,10 +47,13 @@ class TestC43TolerantWavAndSingleFlightSuite(unittest.TestCase):
         self.assertIn("fmtFound", dart)
         self.assertIn("static String checkWavHeader(", dart,
                       "Debe informar el motivo")
+        self.assertIn("static String describeHead(", dart,
+                      "Debe incluir huella sin contenido")
         nat = read_file(NATIVE)
         self.assertIn("pos += 8 + size + (size % 2)", nat,
                       "El nativo debe caminar igual")
         self.assertIn("fun checkWavHeader(", nat)
+        self.assertIn("fun describeHead(", nat)
 
     def test_02_vuelo_unico(self):
         svc = read_file(SVC)

@@ -59,8 +59,22 @@ class SpeechToTextClient(
             return checkWavHeader(wav, wav.size) == "ok"
         }
 
-        internal fun checkWavHeader(bytes: ByteArray, fileLength: Int): String {
-            if (bytes.size < 12 || fileLength < 44) return "corto"
+        /**
+         * Huella de cabecera para diagnóstico (C-44): 4 primeros bytes en
+         * hex + ASCII + tamaño. Solo metadatos, jamás contenido.
+         */
+        internal fun describeHead(bytes: ByteArray, fileLength: Int): String {
+            val hex = StringBuilder()
+            val ascii = StringBuilder()
+            for (i in 0 until minOf(4, bytes.size)) {
+                val c = bytes[i].toInt() and 0xFF
+                hex.append(c.toString(16).padStart(2, '0'))
+                ascii.append(if (c in 32..126) c.toChar() else '.')
+            }
+            return "$hex/$ascii/$fileLength"
+        }
+
+        internal fun checkWavHeader(bytes: ByteArray, fileLength: Int): String {            if (bytes.size < 12 || fileLength < 44) return "corto"
             fun u32(o: Int): Int {
                 if (o + 4 > bytes.size) return -1
                 return (bytes[o].toInt() and 0xFF) or
@@ -392,9 +406,10 @@ class SpeechToTextClient(
         // El motivo viaja entre corchetes para diagnosticar en dispositivo.
         val motivo = checkWavHeader(wav, wav.size)
         if (motivo != "ok") {
+            val huella = describeHead(wav, wav.size)
             onError(
                 400,
-                if (spanishModeProvider()) "El audio está dañado [$motivo] y no se puede transcribir."
+                if (spanishModeProvider()) "El audio está dañado [$motivo $huella] y no se puede transcribir."
                 else "Audio is corrupted [$motivo] and cannot be transcribed."
             )
             return

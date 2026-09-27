@@ -99,8 +99,7 @@ void main() {
       expect(CloudSttService.isValidWavHeader(cut, cut.length), isFalse);
     });
 
-    test('informa el motivo entre códigos conocidos', () {
-      expect(CloudSttService.checkWavHeader(<int>[1, 2], 2), 'corto');
+    test('informa el motivo entre códigos conocidos', () {      expect(CloudSttService.checkWavHeader(<int>[1, 2], 2), 'corto');
       final good = validWavBytes();
       expect(
           CloudSttService.checkWavHeader(good, good.length), 'ok');
@@ -115,6 +114,13 @@ void main() {
       empty[43] = 0;
       expect(
           CloudSttService.checkWavHeader(empty, empty.length), 'vacio');
+    });
+
+    test('describeHead resume 4 bytes + tamano sin contenido', () {
+      final good = validWavBytes();
+      expect(CloudSttService.describeHead(good, good.length),
+          '52524946/RIFF/${good.length}');
+      expect(CloudSttService.describeHead(<int>[0, 1, 2], 3), '000102/.../3');
     });
   });
 

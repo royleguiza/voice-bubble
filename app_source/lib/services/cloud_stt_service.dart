@@ -81,6 +81,20 @@ class CloudSttService {
   /// Por debajo de 8000B se descarta como click o ruido vacío.
   static const int minAudioBytes = 8000;
 
+  /// Huella de cabecera para diagnóstico en dispositivo (C-44): primeros
+  /// 4 bytes en hex + ASCII + tamaño. Solo metadatos, jamás contenido.
+  /// Ej: "52524946/RIFF/8236", "00000000/..../8236", "7b227472/{\"tr/312".
+  static String describeHead(List<int> bytes, int fileLength) {
+    final StringBuffer hex = StringBuffer();
+    final StringBuffer ascii = StringBuffer();
+    for (var i = 0; i < 4 && i < bytes.length; i++) {
+      hex.write(bytes[i].toRadixString(16).padLeft(2, '0'));
+      final int c = bytes[i];
+      ascii.write(c >= 32 && c < 127 ? String.fromCharCode(c) : '.');
+    }
+    return '$hex/$ascii/$fileLength';
+  }
+
   /// Motivo del rechazo del validador WAV (C-43): se muestra entre
   /// corchetes para diagnosticar en dispositivo sin exponer contenido.
   /// Solo tamaños, jamás audio.
@@ -202,8 +216,9 @@ class CloudSttService {
     }
     if (!isValidWavHeader(head, fileLength)) {
       final String motivo = checkWavHeader(head, fileLength);
+      final String huella = describeHead(head, fileLength);
       throw TranscriptionException(
-        'El audio está dañado [$motivo] y no se puede transcribir. Grabalo de nuevo.',
+        'El audio está dañado [$motivo $huella] y no se puede transcribir. Grabalo de nuevo.',
         kind: TranscriptionErrorKind.badRequest,
       );
     }
