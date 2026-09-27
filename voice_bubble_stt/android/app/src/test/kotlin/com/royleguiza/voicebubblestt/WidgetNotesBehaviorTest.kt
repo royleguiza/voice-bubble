@@ -894,8 +894,8 @@ class WidgetNotesBehaviorTest {
         val good = validWavBytes()
         assertEquals(8236, good.size)
         val fp = SpeechToTextClient.describeHead(good, good.size)
-        assertTrue(fp.startsWith("52524946/RIFF/"))
-        assertTrue(fp.endsWith("/8236"))
+        assertTrue(fp.startsWith("52524946/RIFF/"), "fp=[$fp]")
+        assertTrue(fp.endsWith("/8236"), "fp=[$fp]")
         assertEquals("52524946/RIFF/8236", fp)
         assertEquals(
             "000102/.../3",
