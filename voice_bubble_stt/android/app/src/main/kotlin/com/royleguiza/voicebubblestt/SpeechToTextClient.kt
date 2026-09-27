@@ -64,14 +64,17 @@ class SpeechToTextClient(
          * hex + ASCII + tamaño. Solo metadatos, jamás contenido.
          */
         internal fun describeHead(bytes: ByteArray, fileLength: Int): String {
+            val digits = "0123456789abcdef"
             val hex = StringBuilder()
             val ascii = StringBuilder()
-            for (i in 0 until minOf(4, bytes.size)) {
+            val n = if (bytes.size < 4) bytes.size else 4
+            for (i in 0 until n) {
                 val c = bytes[i].toInt() and 0xFF
-                hex.append(c.toString(16).padStart(2, '0'))
-                ascii.append(if (c in 32..126) c.toChar() else '.')
+                hex.append(digits[(c shr 4) and 0x0F])
+                hex.append(digits[c and 0x0F])
+                ascii.append(if (c >= 32 && c <= 126) bytes[i].toInt().toChar() else '.')
             }
-            return "$hex/$ascii/$fileLength"
+            return hex.toString() + "/" + ascii.toString() + "/" + fileLength
         }
 
         internal fun checkWavHeader(bytes: ByteArray, fileLength: Int): String {            if (bytes.size < 12 || fileLength < 44) return "corto"
