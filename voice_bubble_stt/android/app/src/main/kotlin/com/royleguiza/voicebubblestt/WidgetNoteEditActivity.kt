@@ -194,7 +194,10 @@ class WidgetNoteEditActivity : Activity() {
     }
 
     private fun setupEditorWindow() {
-        findViewById<View>(R.id.player_bar)?.visibility = View.GONE
+        // C-46: la fila con el player es exclusiva del pendiente; la nota
+        // normal usa la botonera clásica de siempre.
+        findViewById<View>(R.id.pending_row)?.visibility = View.GONE
+        findViewById<View>(R.id.classic_row)?.visibility = View.VISIBLE
         try {
             window.setSoftInputMode(
                 WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or
@@ -396,21 +399,23 @@ class WidgetNoteEditActivity : Activity() {
         findViewById<View>(R.id.edit_title_wrap).visibility = View.GONE
         val bodyEt = findViewById<EditText>(R.id.edit_body)
         bodyEt.setText(pendingInfoText(pending))
-        findViewById<View>(R.id.slot_save).visibility = View.GONE
-        findViewById<View>(R.id.slot_copy).visibility = View.GONE
-        // C-46: la reproducción vive en la barra expandible (tiempos reales);
-        // el slot_play clásico queda oculto en modo pendiente.
-        findViewById<View>(R.id.slot_play).visibility = View.GONE
+        // C-46: la fila del pendiente (con el player integrado) reemplaza por
+        // completo a la botonera clásica, que queda oculta.
+        findViewById<View>(R.id.pending_row).visibility = View.VISIBLE
+        findViewById<View>(R.id.classic_row).visibility = View.GONE
+        findViewById<View>(R.id.pending_transcribe).visibility = View.VISIBLE
+        findViewById<View>(R.id.pending_cancel).visibility = View.VISIBLE
+        findViewById<View>(R.id.pending_delete).visibility = View.VISIBLE
+        findViewById<View>(R.id.pending_cancel).setOnClickListener { finish() }
         setupExpandingPlayer(pending)
-        findViewById<View>(R.id.btn_play).setOnClickListener { togglePlayback() }
         // C-39: transcribir directo desde el widget con la red vigente
         // (datos o Wi-Fi), sin pasar por Notas de la app.
-        findViewById<View>(R.id.slot_transcribe).visibility = View.VISIBLE
-        findViewById<View>(R.id.btn_transcribe).setOnClickListener { requestPendingTranscription() }
+        findViewById<View>(R.id.pending_transcribe)
+            .setOnClickListener { requestPendingTranscription() }
         // C-45: un pendiente dañado (ceros) quedaba atrapado sin salida:
         // la modal solo ofrecía play/transcribir. Se habilita eliminar.
-        findViewById<View>(R.id.slot_delete).visibility = View.VISIBLE
-        findViewById<View>(R.id.btn_delete).setOnClickListener { requestDiscardPending() }
+        findViewById<View>(R.id.pending_delete)
+            .setOnClickListener { requestDiscardPending() }
         setEditorState(writable = false, ready = false, deletable = false)
     }
 
@@ -441,14 +446,25 @@ class WidgetNoteEditActivity : Activity() {
 
     /**
      * C-46: reproductor expandible del pendiente con tiempos reales.
-     * Play centrado que se abre en dos burbujas (pausa izq, X der) con
-     * 00:17 / 00:56 en el medio, sin barra. El cierre es la inversa.
-     * El total colapsado es estimado por tamaño (PCM16 mono 16kHz);
-     * al preparar MediaPlayer se corrige con la duración real y el
-     * transcurrido se publica cada 500 ms.
+     *
+     * El player vive dentro de la fila de botones, entre dos espaciadores de
+     * peso. Colapsado solo se ve el play (48dp) y queda centrado porque los
+     * dos espaciadores se reparten el sobrante por igual. Al abrirse crecen el
+     * reloj y la X, el grupo se ensancha y los espaciadores ceden terreno: la
+     * X de cerrar la modal se va a la izquierda y Transcribir a la derecha,
+     * sin salirse de la tarjeta. Cerrar es la animación inversa.
+     *
+     * Nunca se superponen: el ancho de la X y del reloj es 0 colapsado, así
+     * que no hay translación ni IgnorePointer que puedan interceptar el play.
+     *
+     * El total colapsado se estima por tamaño (PCM16 mono 16kHz); al
+     * preparar MediaPlayer se corrige con la duración real y el transcurrido
+     * se publica cada 500 ms.
      */
     private var playerOpen = false
     private var playerTotalMs = 0
+    private var playerClockWidthPx = 0
+    private var playerSpreadAnimator: android.animation.ValueAnimator? = null
     private val elapsedHandler by lazy {
         android.os.Handler(android.os.Looper.getMainLooper())
     }
@@ -470,8 +486,64 @@ class WidgetNoteEditActivity : Activity() {
         } catch (_: Exception) {}
     }
 
-    private fun playerGapPx(container: android.view.View): Float {
-        return playerGapPx(container.width.toFloat(), resources.displayMetrics.density)
+    /** Ancho del reloj ya con aire a los lados; se mide una sola vez. */
+    private fun measureClockWidth(): Int {
+        return try {
+            val clock = findViewById<TextView>(R.id.player_clock) ?: return 0
+            val gap = (12 * resources.displayMetrics.density).toInt()
+            val spec = android.view.View.MeasureSpec.makeMeasureSpec(
+                0,
+                android.view.View.MeasureSpec.UNSPECIFIED,
+            )
+            clock.measure(spec, spec)
+            (clock.measuredWidth + gap * 2).coerceAtLeast(gap)
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    /**
+     * progress 0 = solo play centrado. progress 1 = pausa | reloj | X.
+     * Mueve anchos, no posiciones: los espaciadores hacen el resto.
+     */
+    private fun applyPlayerSpread(progress: Float) {
+        try {
+            val close = findViewById<android.view.View>(R.id.btn_player_close) ?: return
+            val clock = findViewById<android.view.View>(R.id.player_clock) ?: return
+            val main = findViewById<android.view.View>(R.id.btn_player_main) ?: return
+            val density = resources.displayMetrics.density
+            val button = (48 * density).toInt()
+            val gap = (12 * density).toInt()
+
+            val closeParams = close.layoutParams as android.widget.LinearLayout.LayoutParams
+            closeParams.width = (button * progress).toInt().coerceAtLeast(0)
+            close.layoutParams = closeParams
+
+            val clockParams = clock.layoutParams as android.widget.LinearLayout.LayoutParams
+            clockParams.width = (playerClockWidthPx * progress).toInt().coerceAtLeast(0)
+            clock.layoutParams = clockParams
+
+            val mainParams = main.layoutParams as android.widget.LinearLayout.LayoutParams
+            mainParams.rightMargin = gap
+            main.layoutParams = mainParams
+        } catch (_: Exception) {}
+    }
+
+    private fun animatePlayerSpread(open: Boolean) {
+        try {
+            playerSpreadAnimator?.cancel()
+            val from = if (open) 0f else 1f
+            val to = if (open) 1f else 0f
+            val animator = android.animation.ValueAnimator.ofFloat(from, to)
+            animator.duration = 280L
+            animator.addUpdateListener { value ->
+                applyPlayerSpread(value.animatedValue as Float)
+            }
+            playerSpreadAnimator = animator
+            animator.start()
+        } catch (_: Exception) {
+            applyPlayerSpread(if (open) 1f else 0f)
+        }
     }
 
     private fun setupExpandingPlayer(pending: VbPending) {
@@ -479,55 +551,27 @@ class WidgetNoteEditActivity : Activity() {
         val bar = findViewById<android.view.View>(R.id.player_bar) ?: return
         val main = findViewById<android.view.View>(R.id.btn_player_main) ?: return
         val close = findViewById<android.view.View>(R.id.btn_player_close) ?: return
-        val clock = findViewById<TextView>(R.id.player_clock)
-        bar.visibility = android.view.View.VISIBLE
-        main.translationX = 0f
-        close.translationX = 0f
-        close.alpha = 0f
-        close.scaleX = 0.6f
-        close.scaleY = 0.6f
-        close.visibility = android.view.View.INVISIBLE
-        clock?.visibility = android.view.View.INVISIBLE
-        clock?.alpha = 0f
+        val clock = findViewById<TextView>(R.id.player_clock) ?: return
         playerOpen = false
         renderClock(0L)
+        playerClockWidthPx = measureClockWidth()
+        bar.visibility = android.view.View.VISIBLE
+        applyPlayerSpread(0f)
+        setPlayerMainIcon(playing = false)
         main.setOnClickListener { toggleExpandingPlayback() }
         close.setOnClickListener { closeExpandingPlayback() }
     }
 
     private fun openExpandingPlayer() {
-        val bar = findViewById<android.view.View>(R.id.player_bar) ?: return
-        val main = findViewById<android.view.View>(R.id.btn_player_main) ?: return
-        val close = findViewById<android.view.View>(R.id.btn_player_close) ?: return
-        val clock = findViewById<TextView>(R.id.player_clock)
-        val gap = playerGapPx(bar)
+        if (playerClockWidthPx <= 0) playerClockWidthPx = measureClockWidth()
         playerOpen = true
-        close.visibility = android.view.View.VISIBLE
-        clock?.visibility = android.view.View.VISIBLE
-        main.animate().translationX(-gap).setDuration(280).start()
-        close.animate().translationX(gap).alpha(1f).scaleX(1f).scaleY(1f)
-            .setDuration(280).start()
-        clock?.animate()?.alpha(1f)?.setDuration(280)?.start()
+        animatePlayerSpread(open = true)
     }
 
     private fun collapseExpandingPlayer() {
-        val main = findViewById<android.view.View>(R.id.btn_player_main) ?: return
-        val close = findViewById<android.view.View>(R.id.btn_player_close) ?: return
-        val clock = findViewById<TextView>(R.id.player_clock)
         playerOpen = false
         stopElapsedUpdates()
-        main.animate().translationX(0f).setDuration(280).start()
-        close.animate().translationX(0f).alpha(0f).scaleX(0.6f).scaleY(0.6f)
-            .setDuration(280).withEndAction {
-                try {
-                    close.visibility = android.view.View.INVISIBLE
-                } catch (_: Exception) {}
-            }.start()
-        clock?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
-            try {
-                clock.visibility = android.view.View.INVISIBLE
-            } catch (_: Exception) {}
-        }?.start()
+        animatePlayerSpread(open = false)
         setPlayerMainIcon(playing = false)
     }
 
@@ -781,6 +825,11 @@ class WidgetNoteEditActivity : Activity() {
     }
 
     private fun setTranscribeBusy(busy: Boolean) {
+        try {
+            // C-46: el pendiente transcribe desde su propia fila.
+            findViewById<View>(R.id.pending_transcribe).isEnabled = !busy
+        } catch (_: Exception) {
+        }
         try {
             findViewById<View>(R.id.btn_transcribe).isEnabled = !busy
         } catch (_: Exception) {

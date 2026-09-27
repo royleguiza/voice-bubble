@@ -80,38 +80,59 @@ void main() {
               matching: find.byType(IconButton),
             ),
           );
-      // El reloj siempre existe en el árbol; lo que cambia es su opacidad.
-      double clockOpacity() => tester.widget<AnimatedOpacity>(
+      // El reloj siempre esta en el arbol; colapsado vale ancho 0.
+      double clockWidth() => tester.widget<AnimatedContainer>(
             find.ancestor(
               of: find.byKey(ValueKey('pendingPlayerClock-$id')),
-              matching: find.byType(AnimatedOpacity),
+              matching: find.byType(AnimatedContainer),
             ),
-          ).opacity;
+          ).width ??
+          0;
+      double closeWidth() => tester
+          .widgetList<AnimatedContainer>(
+            find.byType(AnimatedContainer),
+          )
+          .last
+          .width ??
+          0;
 
-      // --- Colapsado: una sola burbuja con play, reloj invisible, X inerte.
+      // --- Colapsado: una sola burbuja con play, reloj y X sin ancho,
+      //     y el player en la MISMA fila que las acciones.
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
-      expect(clockOpacity(), 0);
+      expect(clockWidth(), 0);
+      expect(closeWidth(), 0);
       expect(buttonOf('playPendingButton-$id').onPressed, isNotNull);
       expect(buttonOf('closePendingPlayer-$id').onPressed, isNull,
           reason: 'la X colapsada no debe capturar el toque del play');
 
-      // --- Abrir: reloj visible, X utilizable, sigue sin barra de tiempo.
+      // --- Abrir: el grupo se ensancha y empuja las acciones a los costados.
       buttonOf('playPendingButton-$id').onPressed!();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
 
-      expect(clockOpacity(), 1);
+      expect(clockWidth(), greaterThan(0));
+      expect(closeWidth(), 48);
       expect(find.text('00:00 / 00:00'), findsOneWidget);
       expect(find.text('No se pudo reproducir este audio'), findsOneWidget);
       expect(find.byType(Slider), findsNothing);
       expect(buttonOf('closePendingPlayer-$id').onPressed, isNotNull);
+      // Las acciones siguen visibles: nada se sale de pantalla.
+      expect(
+        find.byKey(ValueKey('transcribeCloudButton-$id')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ValueKey('discardPendingButton-$id')),
+        findsOneWidget,
+      );
 
-      // --- Cerrar: la animación inversa reagrupa las dos burbujas en un play.
+      // --- Cerrar: la animacion inverse reagrupa las dos burbujas en un play.
       buttonOf('closePendingPlayer-$id').onPressed!();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 350));
 
-      expect(clockOpacity(), 0);
+      expect(clockWidth(), 0);
+      expect(closeWidth(), 0);
       expect(find.text('No se pudo reproducir este audio'), findsNothing);
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
       expect(buttonOf('closePendingPlayer-$id').onPressed, isNull);

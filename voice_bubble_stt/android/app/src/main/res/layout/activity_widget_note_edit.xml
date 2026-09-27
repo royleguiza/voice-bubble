@@ -84,68 +84,150 @@
             android:inputType="textMultiLine" />
 
         <!-- C-46: reproductor expandible del pendiente (solo modo pendiente).
-             Play centrado que se abre en dos burbujas (pausa izq, X der) con
-             00:17 / 00:56 en el medio, sin barra. Tiempos reales de MediaPlayer. -->
-        <FrameLayout
-            android:id="@+id/player_bar"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:layout_marginTop="10dp"
-            android:visibility="gone">
-
-            <TextView
-                android:id="@+id/player_clock"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="00:00 / 00:00"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:textColor="@color/kb_label"
-                android:visibility="invisible" />
-
-            <FrameLayout
-                android:id="@+id/btn_player_main"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="center"
-                android:background="@drawable/widget_note_card_bg"
-                android:contentDescription="Reproducir audio">
-
-                <ImageView
-                    android:id="@+id/player_main_icon"
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/widget_ic_play" />
-            </FrameLayout>
-
-            <FrameLayout
-                android:id="@+id/btn_player_close"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="center"
-                android:background="@drawable/widget_note_card_bg"
-                android:contentDescription="Cerrar reproductor"
-                android:visibility="invisible">
-
-                <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
-                    android:layout_gravity="center"
-                    android:src="@drawable/widget_ic_x" />
-            </FrameLayout>
-        </FrameLayout>
-
-        <!-- Botonera equitativa: cada boton vive en un slot de igual peso,
-             asi los visibles quedan siempre a la misma distancia entre si
-             (2, 3 o 4 segun el modo) sin huecos indebidos. -->
+             Vive DENTRO de la botonera, no en una fila propia: asi no empuja
+             la botonera hacia abajo. Al tocarla, el grupo crece desde el play
+             central y los dos espaciadores de peso ceden terreno, con lo que
+             la X de cerrar (izq) y Transcribir (der) se separan solas hacia
+             los costados sin salirse de la tarjeta. Nunca se solapan.
+             Estructura: pausa | reloj | X, ancho del reloj y de la X en 0
+             cuando está colapsado. -->
         <LinearLayout
+            android:id="@+id/pending_row"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <!-- Grupo izquierdo: cerrar la modal + descartar. -->
+            <LinearLayout
+                android:id="@+id/player_group_left"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <FrameLayout
+                    android:id="@+id/pending_cancel"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Cancelar">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_x" />
+                </FrameLayout>
+
+                <FrameLayout
+                    android:id="@+id/pending_delete"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Eliminar nota">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_delete" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <!-- Espaciador izquierdo: cede terreno al abrirse el player. -->
+            <Space
+                android:id="@+id/player_spacer_left"
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <LinearLayout
+                android:id="@+id/player_bar"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <FrameLayout
+                    android:id="@+id/btn_player_main"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Reproducir audio">
+
+                    <ImageView
+                        android:id="@+id/player_main_icon"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_play" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/player_clock"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:gravity="center"
+                    android:text="00:00 / 00:00"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/kb_label" />
+
+                <FrameLayout
+                    android:id="@+id/btn_player_close"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/widget_note_card_bg"
+                    android:contentDescription="Cerrar reproductor">
+
+                    <ImageView
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/widget_ic_x" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <!-- Espaciador derecho: cede terreno al abrirse el player. -->
+            <Space
+                android:id="@+id/player_spacer_right"
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Grupo derecho: transcribir. -->
+            <FrameLayout
+                android:id="@+id/pending_transcribe"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/widget_note_card_bg"
+                android:contentDescription="Transcribir ahora"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/widget_ic_audio" />
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- Botonera clásica        <!-- Botonera clásica para los otros modos (nota normal). Cada botón
+             vive en un slot de igual peso, asi los visibles quedan siempre a
+             la misma distancia entre si (2, 3 o 4 segun el modo). Oculta por
+             defecto: el modo pendiente usa la fila de arriba. -->
+        <LinearLayout
+            android:id="@+id/classic_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
 
             <LinearLayout
                 android:layout_width="0dp"

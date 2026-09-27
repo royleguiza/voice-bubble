@@ -36,6 +36,27 @@ def read_file(path):
         return f.read()
 
 
+def read_code(path):
+    """Igual que read_file pero sin comentarios: las aserciones de mecanismo
+    (sin translación, sin IgnorePointer) tienen que mirar código, no prosa."""
+    src = read_file(path)
+    out, in_block = [], False
+    for line in src.splitlines():
+        stripped = line.strip()
+        if in_block:
+            if "*/" in stripped:
+                in_block = False
+            continue
+        if stripped.startswith("/*"):
+            if "*/" not in stripped:
+                in_block = True
+            continue
+        if stripped.startswith("//"):
+            continue
+        out.append(line.split("//")[0])
+    return "\n".join(out)
+
+
 LAYOUT = os.path.join(
     REPO_ROOT, "voice_bubble_stt", "android", "app", "src", "main",
     "res", "layout", "activity_widget_note_edit.xml",
@@ -53,72 +74,99 @@ TILE_TEST = os.path.join(APP, "test", "widgets", "pending_note_tile_test.dart")
 
 class TestC46ExpandingPlayerSuite(unittest.TestCase):
 
-    def test_01_layout_bar_oculta_y_botonera_intacta(self):
+    def test_01_player_vive_en_la_fila_de_acciones(self):
         xml = read_file(LAYOUT)
-        self.assertIn('android:id="@+id/player_bar"', xml)
-        self.assertIn('android:id="@+id/btn_player_main"', xml)
-        self.assertIn('android:id="@+id/btn_player_close"', xml)
-        self.assertIn('android:id="@+id/player_clock"', xml)
+        # La fila del pendiente: grupo izq | espaciador | player | espaciador | grupo der.
+        self.assertIn('android:id="@+id/pending_row"', xml)
+        self.assertIn('android:id="@+id/classic_row"', xml)
+        for name in ("player_bar", "player_spacer_left", "player_spacer_right",
+                     "player_group_left", "pending_cancel", "pending_delete",
+                     "pending_transcribe"):
+            self.assertIn(f'android:id="@+id/{name}"', xml)
+        # Los dos espaciadores reparten el sobrante por igual: eso es lo que
+        # centra el play colapsado y lo que empuja a los costados al abrir.
+        for spacer in ("player_spacer_left", "player_spacer_right"):
+            chunk = xml.split(f'@+id/{spacer}"')[1].split(">")[0]
+            self.assertIn('android:layout_width="0dp"', chunk)
+            self.assertIn('android:layout_weight="1"', chunk)
+        # El reloj y la X arrancan en ancho 0: nunca tapan al play.
+        clock = xml.split('@+id/player_clock"')[1].split(">")[0]
+        self.assertIn('android:layout_width="0dp"', clock)
+        close = xml.split('@+id/btn_player_close"')[1].split(">")[0]
+        self.assertIn('android:layout_width="0dp"', close)
+        # El player no puede vivir en una fila propia: eso lo empujaba abajo.
         bar = xml.split('@+id/player_bar"')[1].split(">")[0]
-        self.assertIn('android:layout_height="64dp"', bar)
-        self.assertIn('android:visibility="gone"', bar)
-        # La botonera equitativa no se toca.
-        for slot in ("@+id/slot_delete", "@+id/slot_play",
-                     "@+id/slot_copy", "@+id/slot_save"):
-            self.assertIn(slot, xml)
+        self.assertNotIn('match_parent', bar)
+        # La botonera clásica se oculta por defecto (solo nota normal).
+        classic = xml.split('@+id/classic_row"')[1].split(">")[0]
+        self.assertIn('android:visibility="gone"', classic)
 
-    def test_02_activity_apertura_cierre_espejo(self):
+    def test_02_actividad_empuja_en_vez_de_superponer(self):
         src = read_file(ACT)
+        code = read_code(ACT)
         for name in ("openExpandingPlayer", "collapseExpandingPlayer",
                      "toggleExpandingPlayback", "closeExpandingPlayback",
-                     "setupExpandingPlayer"):
+                     "setupExpandingPlayer", "applyPlayerSpread",
+                     "animatePlayerSpread", "measureClockWidth"):
             self.assertIn(name, src, f"Falta {name}")
-        self.assertIn("translationX(-gap)", src)
-        self.assertIn("translationX(gap)", src)
-        self.assertIn("translationX(0f)", src)
-        self.assertIn("setDuration(280)", src)
-        self.assertIn("R.id.slot_play).visibility = View.GONE", src,
-                      "La reproducción vive en la barra en pendiente")
+        # Sin translación: la expansión es de ancho, no de posición. Esto es
+        # lo que mata la clase de bug de hit-test que quemó 10 CI.
+        self.assertNotIn("translationX", code)
+        self.assertNotIn("IgnorePointer", code)
+        self.assertIn("closeParams.width = (button * progress)", code)
+        self.assertIn("clockParams.width = (playerClockWidthPx * progress)", code)
+        self.assertIn("playerSpreadAnimator?.cancel()", code,
+                      "una apertura a la vez, sin animaciones cruzadas")
+        # El player pertenece a la fila del pendiente, no a la clásica.
+        self.assertIn("R.id.pending_row", code)
+        self.assertIn("R.id.classic_row", code)
+        self.assertIn("R.id.pending_transcribe", code)
+        self.assertRegex(
+            code,
+            r"R\.id\.classic_row\)\?\.visibility = View\.VISIBLE",
+            "La nota normal debe mostrar la botonera clásica")
 
-    def test_03_activity_tiempos_reales(self):
+    def test_03_tiempos_reales(self):
         src = read_file(ACT)
-        self.assertIn("mediaPlayer.duration", src,
-                      "Total real al preparar")
-        self.assertIn("postDelayed(this, 500L)", src,
-                      "Transcurrido cada 500 ms")
+        self.assertIn("mediaPlayer.duration", src, "Total real al preparar")
+        self.assertIn("postDelayed(this, 500L)", src, "Transcurrido cada 500 ms")
         self.assertIn("currentPosition", src)
         self.assertIn("widget_ic_pause", src)
         self.assertIn("widget_ic_play", src)
 
     def test_04_helpers_puros(self):
         src = read_file(HELPER)
-        for name in ("formatPlayerClock", "estimatePlayerTotalMs",
-                     "playerGapPx"):
-            self.assertIn(name, src, f"Falta {name}")
+        self.assertIn("formatPlayerClock", src)
+        self.assertIn("estimatePlayerTotalMs", src)
         self.assertIn("32000", src)
-        self.assertIn("0.30f", src)
         kt = read_file(KT_TEST)
         for name in ("expandingPlayerClockFormatsWithSlash",
-                     "expandingPlayerTotalEstimatesFromPcmSize",
-                     "expandingPlayerGapKeepsNumbersClear"):
+                     "expandingPlayerTotalEstimatesFromPcmSize"):
             self.assertIn(name, kt, f"Falta test {name}")
 
-    def test_05_dart_stage_espejo(self):
+    def test_05_dart_stage_por_ancho(self):
         src = read_file(TILE)
+        code = read_code(TILE)
         self.assertIn("class _PlayerStage", src)
-        self.assertIn("AnimatedPositioned", src)
-        self.assertIn("AnimatedOpacity", src)
+        self.assertIn("AnimatedContainer", src)
         self.assertIn("playPendingButton-", src)
         self.assertIn("closePendingPlayer-", src)
         self.assertIn("pendingPlayerClock-", src)
-        self.assertIn("onPositionChanged", src,
-                      "Transcurrido real del player")
-        self.assertIn("getDuration()", src,
-                      "Total real al sonar")
-        self.assertIn("padLeft(2, '0')", src,
-                      "Formato 00:17 / 00:56")
-        self.assertNotIn("Slider(", src)
-        self.assertNotIn("data-seek", src)
+        self.assertIn("onPositionChanged", src, "Transcurrido real del player")
+        self.assertIn("getDuration()", src, "Total real al sonar")
+        self.assertIn("padLeft(2, '0')", src, "Formato 00:17 / 00:56")
+        self.assertNotIn("Slider(", code)
+        # Sin superposición ni translación en Dart tampoco.
+        self.assertNotIn("AnimatedPositioned", code)
+        self.assertNotIn("IgnorePointer", code)
+        # El reloj mide ancho 0 colapsado y se ensancha al abrir.
+        self.assertIn("width: open ? _clockWidth : 0", code)
+        self.assertIn("width: open ? _buttonSize : 0", code)
+        # El player debe quedar en la misma fila que las acciones.
+        row = code.split("Row(")[-1]
+        self.assertIn("_PlayerStage(", code)
+        self.assertIn("transcribeCloudButton-", code)
+        self.assertIn("discardPendingButton-", code)
 
     def test_06_izquierda_es_pausa_no_play(self):
         # Requisito del dueño: al reproducir, la burbuja izquierda muestra
@@ -127,17 +175,13 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
         self.assertIn(
             "playing ? Icons.pause_rounded : Icons.play_arrow_rounded", src,
             "La burbuja izquierda debe ser pausa mientras suena")
-        # La X queda a la derecha y solo es activa con el player abierto.
         stage = src.split("class _PlayerStage")[1]
-        self.assertIn("center - gap - _buttonSize / 2", stage,
-                      "Burbuja principal a la izquierda del reloj")
-        self.assertIn("center + gap - _buttonSize / 2", stage,
-                      "X a la derecha del reloj")
+        # Orden de izquierda a derecha en el build: pausa, reloj, X.
+        build = stage.split("Widget build(")[1]
+        self.assertLess(build.index("mainKey"), build.index("clockKey"))
+        self.assertLess(build.index("clockKey"), build.index("closeKey"))
         self.assertIn("enabled: enabled && open", stage,
                       "La X solo captura toques con el player abierto")
-        self.assertIn("IgnorePointer(", stage,
-                      "La X colapsada no debe tapar al play")
-        # Nativo: mismo contrato de icono.
         act = read_file(ACT)
         self.assertIn("widget_ic_pause", act)
         self.assertIn('contentDescription = "Pausar audio"', act)

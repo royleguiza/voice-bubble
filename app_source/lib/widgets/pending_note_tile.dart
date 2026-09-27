@@ -212,21 +212,12 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
                   ),
                 ),
               const SizedBox(height: 10),
-              // C-46: reproductor expandible con tiempos reales. Play
-              // centrado que se abre en dos burbujas (pausa izq, X der)
-              // con transcurrido / total en el medio, sin barra.
-              _PlayerStage(
-                open: _open,
-                playing: _playing,
-                enabled: !widget.busy,
-                clock: '${_fmt(_position)} / ${_fmt(_total)}',
-                mainKey: ValueKey('playPendingButton-${widget.item.id}'),
-                closeKey: ValueKey('closePendingPlayer-${widget.item.id}'),
-                clockKey: ValueKey('pendingPlayerClock-${widget.item.id}'),
-                onMain: _toggleMain,
-                onClose: _closePlayer,
-              ),
-              const SizedBox(height: 10),
+              // C-46: el player vive en la MISMA fila que las acciones, entre
+              // dos espaciadores. Colapsado solo se ve el play y queda centrado
+              // porque los espaciadores se reparten el sobrante por igual; al
+              // abrirse crecen el reloj y la X, el grupo se ensancha y los
+              // espaciadores ceden terreno, empujando Transcribir a la derecha
+              // sin que se salga de la pantalla. Nunca se superponen.
               Row(
                 children: [
                   Expanded(
@@ -240,10 +231,24 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
                               child: CircularProgressIndicator(
                                   strokeWidth: 2),
                             )
-                          : const Text('Transcribir con nube'),
+                          : const Text('Transcribir'),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
+                  _PlayerStage(
+                    open: _open,
+                    playing: _playing,
+                    enabled: !widget.busy,
+                    clock: '${_fmt(_position)} / ${_fmt(_total)}',
+                    mainKey: ValueKey('playPendingButton-${widget.item.id}'),
+                    closeKey:
+                        ValueKey('closePendingPlayer-${widget.item.id}'),
+                    clockKey:
+                        ValueKey('pendingPlayerClock-${widget.item.id}'),
+                    onMain: _toggleMain,
+                    onClose: _closePlayer,
+                  ),
+                  const SizedBox(width: 6),
                   IconButton(
                     key: ValueKey('discardPendingButton-${widget.item.id}'),
                     tooltip: 'Descartar audio',
@@ -267,11 +272,13 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
   }
 }
 
-/// Escenario del reproductor expandible (C-46).
+/// Grupo del reproductor expandible (C-46).
 ///
-/// Play centrado que se abre en dos burbujas: pausa a la izquierda y X a
-/// la derecha, con `clock` (transcurrido / total) en el medio. Sin barra.
-/// La apertura y el cierre animan en espejo con [AnimatedPositioned].
+/// Colapsado es un solo play. Al abrir, el reloj y la X crecen desde ancho 0
+/// y el grupo queda: pausa a la izquierda, `clock` (transcurrido / total) en
+/// el medio, X a la derecha. Sin barra. Cerrar es la animación inversa.
+/// Va dentro de la fila de acciones, entre dos espaciadores: al ensancharse
+/// el grupo, los espaciadores ceden terreno y empujan las acciones afuera.
 class _PlayerStage extends StatelessWidget {
   final bool open;
   final bool playing;
@@ -296,82 +303,66 @@ class _PlayerStage extends StatelessWidget {
   });
 
   static const double _buttonSize = 48;
+  static const double _clockWidth = 104;
   static const Duration _anim = Duration(milliseconds: 280);
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth =
-            constraints.maxWidth.isFinite ? constraints.maxWidth : 320.0;
-        final center = maxWidth / 2;
-        final double gap = (maxWidth * 0.30).clamp(96.0, 150.0).toDouble();
-        // Ambas burbujas en el centro cuando están colapsadas;
-        // la X usa IgnorePointer para no bloquear el play.
-        final buttonLeft = center - _buttonSize / 2;
-        final mainLeft = open ? center - gap - _buttonSize / 2 : buttonLeft;
-        final closeLeft = open ? center + gap - _buttonSize / 2 : buttonLeft;
-        return SizedBox(
-          height: 64,
-          width: double.infinity,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Center(
-                child: AnimatedOpacity(
-                  duration: _anim,
-                  opacity: open ? 1 : 0,
-                  child: Text(
-                    clock,
-                    key: clockKey,
-                    style: kTextSubhead.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: [FontFeature.tabularFigures()],
-                    ),
-                  ),
+    // C-46: la apertura crece por ancho, no por posicion. Colapsado el reloj y
+    // la X valen 0, asi que no hay nada que tape al play ni que pueda
+    // interceptar su toque. Al crecer, los Expanded de los costados ceden
+    // terreno y empujan las acciones hacia afuera.
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _RoundButton(
+          key: mainKey,
+          tooltip: playing ? 'Pausar' : 'Escuchar audio',
+          icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+          enabled: enabled,
+          onPressed: onMain,
+        ),
+        AnimatedContainer(
+          duration: _anim,
+          curve: Curves.easeOut,
+          width: open ? _clockWidth : 0,
+          alignment: Alignment.center,
+          child: ClipRect(
+            child: AnimatedOpacity(
+              duration: _anim,
+              opacity: open ? 1 : 0,
+              child: Text(
+                clock,
+                key: clockKey,
+                softWrap: false,
+                overflow: TextOverflow.clip,
+                style: kTextSubhead.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: [FontFeature.tabularFigures()],
                 ),
               ),
-               AnimatedPositioned(
-                duration: _anim,
-                curve: Curves.easeOut,
-                left: mainLeft,
-                top: 8,
-                child: _RoundButton(
-                  key: mainKey,
-                  tooltip: playing ? 'Pausar' : 'Escuchar audio',
-                  icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  enabled: enabled,
-                  onPressed: onMain,
-                ),
-              ),
-              AnimatedPositioned(
-                duration: _anim,
-                curve: Curves.easeOut,
-                left: closeLeft,
-                top: 8,
-                child: IgnorePointer(
-                  ignoring: !open,
-                  child: AnimatedOpacity(
-                    duration: _anim,
-                    opacity: open ? 1 : 0,
-                    child: AnimatedScale(
-                      duration: _anim,
-                      scale: open ? 1 : 0.6,
-                      child: _RoundButton(
-                        key: closeKey,
-                        tooltip: 'Cerrar reproductor',
-                        icon: Icons.close_rounded,
-                        enabled: enabled && open,
-                        onPressed: open ? onClose : () {},
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-        );
-      },
+        ),
+        AnimatedContainer(
+          duration: _anim,
+          curve: Curves.easeOut,
+          width: open ? _buttonSize : 0,
+          child: ClipRect(
+            child: AnimatedOpacity(
+              duration: _anim,
+              opacity: open ? 1 : 0,
+              child: _RoundButton(
+                key: closeKey,
+                tooltip: 'Cerrar reproductor',
+                icon: Icons.close_rounded,
+                enabled: enabled && open,
+                onPressed: onClose,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

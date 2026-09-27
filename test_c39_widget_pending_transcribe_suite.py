@@ -90,25 +90,24 @@ class TestC39WidgetPendingTranscribeSuite(unittest.TestCase):
 
     def test_04_layout_y_texto_pendiente(self):
         xml = read_file(LAYOUT)
-        self.assertIn('android:id="@+id/slot_transcribe"', xml)
-        slot = xml.split('@+id/slot_transcribe"')[1].split("</LinearLayout>")[0]
-        self.assertIn('android:visibility="gone"', slot,
-                      "Oculto por defecto (solo modo pendiente)")
-        self.assertIn('android:id="@+id/btn_transcribe"', xml)
-        btn = xml.split('@+id/btn_transcribe"')[1].split("</FrameLayout>")[0]
+        # C-46: el pendiente transcribe desde su propia fila (fila del
+        # player), no desde el slot de la botonera clásica.
+        self.assertIn('android:id="@+id/pending_transcribe"', xml)
+        btn = xml.split('@+id/pending_transcribe"')[1].split("</FrameLayout>")[0]
         self.assertIn('android:layout_width="48dp"', btn)
         self.assertIn("widget_ic_audio", btn)
         self.assertIn('contentDescription="Transcribir ahora"', xml)
         act = read_file(ACTIVITY)
-        self.assertIn("R.id.slot_transcribe", act)
+        self.assertIn("R.id.pending_transcribe", act)
         self.assertIn("Transcribilo acá con tus datos o Wi-Fi", act)
         self.assertNotIn("Se transcribe solo desde Notas de la app", act)
 
     def test_05_diseno_y_privacidad_intactos(self):
         xml = read_file(LAYOUT)
         # C-46: 6 de botonera + 2 de la barra player expandible.
-        self.assertEqual(xml.count('android:layout_width="48dp"'), 8,
-                         "8 botones de 48dp (6 botonera + player main/close)")
+        self.assertEqual(xml.count('android:layout_width="48dp"'), 10,
+                         "10 botones de 48dp: 6 de la botonera clasica + 4 de la "
+                         "fila del pendiente (cerrar, descartar, transcribir, play)")
         self.assertIn('android:id="@+id/player_bar"', xml)
         self.assertIn("@drawable/widget_glass_inner", xml)
         for path in (ACTIVITY, STORE):
@@ -125,8 +124,9 @@ class TestC39WidgetPendingTranscribeSuite(unittest.TestCase):
         # Borra el pendiente aunque falle el guardado: pierde el audio.
         mut_del = "removePending(id)\naddUntitledNote(text, keptPath)"
         self.assertNotIn("SAVED", mut_del)
-        # Botón siempre visible: estorba en modo edición.
-        mut_slot = '<LinearLayout android:id="@+id/slot_transcribe">'
+        # Botón siempre visible: estorba en modo edición. C-46: ahora vive en
+        # la fila del pendiente y se muestra desde setupPendingMode.
+        mut_slot = '<FrameLayout\n                    android:id="@+id/pending_transcribe"'
         self.assertNotIn('visibility="gone"', mut_slot)
 
 
