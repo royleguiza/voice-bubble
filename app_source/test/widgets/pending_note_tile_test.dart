@@ -80,10 +80,15 @@ void main() {
               matching: find.byType(IconButton),
             ),
           );
-      // El reloj siempre esta en el arbol; colapsado vale ancho 0.
-      // Se mide el tamano RENDERIZADO, no la propiedad del widget.
-      double clockWidth() =>
-          tester.getSize(find.byKey(ValueKey('pendingPlayerClock-$id'))).width;
+      // Se mide la CAJA del reloj, no el texto: con alignment el hijo recibe
+      // restricciones flojas y el Text conserva su ancho intrinseco (lo que
+      // se ve recortado es la caja, que vale 0).
+      double clockWidth() => tester.getSize(
+            find.ancestor(
+              of: find.byKey(ValueKey('pendingPlayerClock-$id')),
+              matching: find.byType(AnimatedContainer),
+            ),
+          ).width;
 
       // --- Colapsado: una sola burbuja con play, reloj sin ancho y X inerte.
       expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);

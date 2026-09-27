@@ -173,9 +173,13 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
         # El reloj mide ancho 0 colapsado y se ensancha al abrir.
         self.assertIn("width: open ? _clockWidth : 0", code)
         self.assertIn("width: open ? _buttonSize : 0", code)
-        # El test mide el tamano renderizado, no una propiedad inexistente.
+        # El test mide la caja renderizada, no una propiedad inexistente.
         self.assertIn("tester.getSize(", test)
         self.assertNotIn(".width ??", test)
+        # Y debe medir la CAJA (ancestor AnimatedContainer), no el texto: con
+        # alignment el Text conserva su ancho intrinseco y daria 104 siempre.
+        self.assertIn("find.ancestor(", test)
+        self.assertIn("matching: find.byType(AnimatedContainer)", test)
         # El player debe quedar en la misma fila que las acciones.
         row = code.split("Row(")[-1]
         self.assertIn("_PlayerStage(", code)
