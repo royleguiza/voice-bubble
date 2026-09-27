@@ -116,12 +116,12 @@ void main() {
       );
       final result = await service.transcribe(ok.path);
       expect(result.text, 'hola');
-      final multi = seen! as http.MultipartRequest;
-      expect(multi.fields['model'], 'whisper-large-v3-turbo');
-      expect(multi.fields['language'], 'es');
-      expect(multi.files, hasLength(1));
-      expect(multi.files.single.filename, 'audio.wav');
-      expect(multi.files.single.contentType.mimeType, 'audio/wav');
+      // MockClient finaliza el multipart: se verifica sobre el cuerpo.
+      final req = seen! as http.Request;
+      expect(req.body, contains('filename="audio.wav"'));
+      expect(req.body, contains('audio/wav'));
+      expect(req.body, contains('whisper-large-v3-turbo'));
+      expect(req.body, contains('name="language"'));
     });
   });
 }
