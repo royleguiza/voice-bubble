@@ -101,9 +101,8 @@ class TestC40ExpandableNoteBodySuite(unittest.TestCase):
 
     def test_05_diseno_y_privacidad_intactos(self):
         xml = read_file(LAYOUT)
-        # C-46: 6 de botonera + 2 de la barra player expandible.
-        self.assertEqual(xml.count('android:layout_width="48dp"'), 8,
-                         "8 botones de 48dp (6 botonera + player main/close)")
+        self.assertEqual(xml.count('android:layout_width="48dp"'), 6,
+                         "6 botones de 48dp intactos")
         self.assertIn("@drawable/widget_glass_inner", xml)
         self.assertIn('android:clickable="true"', xml)
         act = read_file(ACTIVITY)

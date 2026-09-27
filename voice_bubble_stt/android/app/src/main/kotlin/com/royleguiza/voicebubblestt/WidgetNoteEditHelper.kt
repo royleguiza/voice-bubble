@@ -17,30 +17,6 @@ internal enum class ExistingNoteUiState {
     UNAVAILABLE,
 }
 
-/**
- * C-46: reproductor expandible del pendiente. Reloj `00:17 / 00:56` con
- * minutos de dos dígitos; total estimado por tamaño (PCM16 mono 16kHz
- * propio, 32000 B/s); apertura en dos burbujas al 30% del ancho con
- * aire mínimo de 96dp y tope de 150dp (el cierre es la inversa).
- */
-internal fun formatPlayerClock(positionMs: Long, totalMs: Long): String {
-    fun part(ms: Long): String {
-        val total = (ms.coerceAtLeast(0) / 1000).toInt()
-        return String.format(java.util.Locale.US, "%02d:%02d", total / 60, total % 60)
-    }
-    return "${part(positionMs)} / ${part(totalMs)}"
-}
-
-internal fun estimatePlayerTotalMs(fileLength: Long): Long {
-    if (fileLength <= 44) return 0L
-    return ((fileLength - 44) / 32000.0 * 1000).toLong().coerceAtLeast(1000L)
-}
-
-internal fun playerGapPx(containerWidthPx: Float, density: Float): Float {
-    val d = if (density > 0) density else 1f
-    return (containerWidthPx * 0.30f).coerceIn(96f * d, 150f * d)
-}
-
 internal fun parseWidgetPending(
     raw: String?,
     id: String,
