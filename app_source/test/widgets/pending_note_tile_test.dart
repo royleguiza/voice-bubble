@@ -70,7 +70,9 @@ void main() {
         onTranscribe: () => transcribed = true,
         onDiscard: () => discarded = true,
       )));
-      await tester.pumpAndSettle();
+      // Sin pumpAndSettle en este test: con busy=true el botón ya muestra
+      // CircularProgressIndicator (animación infinita, §9.1-14).
+      await tester.pump(const Duration(milliseconds: 100));
 
       await tester.tap(
         find.byKey(ValueKey('transcribeCloudButton-$id')),
