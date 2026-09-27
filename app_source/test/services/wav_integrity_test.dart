@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -116,12 +117,15 @@ void main() {
       );
       final result = await service.transcribe(ok.path);
       expect(result.text, 'hola');
-      // MockClient finaliza el multipart: se verifica sobre el cuerpo.
+      // MockClient finaliza el multipart: se verifica sobre los bytes
+      // (el cuerpo binario no decodifica como UTF-8 estricto).
       final req = seen! as http.Request;
-      expect(req.body, contains('filename="audio.wav"'));
-      expect(req.body, contains('audio/wav'));
-      expect(req.body, contains('whisper-large-v3-turbo'));
-      expect(req.body, contains('name="language"'));
+      final String bodyText =
+          utf8.decode(req.bodyBytes, allowMalformed: true);
+      expect(bodyText, contains('filename="audio.wav"'));
+      expect(bodyText, contains('audio/wav'));
+      expect(bodyText, contains('whisper-large-v3-turbo'));
+      expect(bodyText, contains('name="language"'));
     });
   });
 }
