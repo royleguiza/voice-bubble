@@ -83,7 +83,7 @@ class CloudSttService {
 
   /// Huella de cabecera para diagnóstico en dispositivo (C-44): primeros
   /// 4 bytes en hex + ASCII + tamaño. Solo metadatos, jamás contenido.
-  /// Ej: "52524946/RIFF/8236", "00000000/..../8236", "7b227472/{\"tr/312".
+  /// Ej: "52494646/RIFF/8236", "00000000/..../8236", "7b227472/{\"tr/312".
   static String describeHead(List<int> bytes, int fileLength) {
     final StringBuffer hex = StringBuffer();
     final StringBuffer ascii = StringBuffer();

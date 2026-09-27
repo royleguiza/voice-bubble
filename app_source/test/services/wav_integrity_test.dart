@@ -119,7 +119,7 @@ void main() {
     test('describeHead resume 4 bytes + tamano sin contenido', () {
       final good = validWavBytes();
       expect(CloudSttService.describeHead(good, good.length),
-          '52524946/RIFF/${good.length}');
+          '52494646/RIFF/${good.length}');
       expect(CloudSttService.describeHead(<int>[0, 1, 2], 3), '000102/.../3');
     });
   });
