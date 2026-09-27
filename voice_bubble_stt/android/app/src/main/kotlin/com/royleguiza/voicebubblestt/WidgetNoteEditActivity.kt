@@ -194,6 +194,7 @@ class WidgetNoteEditActivity : Activity() {
     }
 
     private fun setupEditorWindow() {
+        findViewById<View>(R.id.player_bar)?.visibility = View.GONE
         try {
             window.setSoftInputMode(
                 WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE or
@@ -397,7 +398,10 @@ class WidgetNoteEditActivity : Activity() {
         bodyEt.setText(pendingInfoText(pending))
         findViewById<View>(R.id.slot_save).visibility = View.GONE
         findViewById<View>(R.id.slot_copy).visibility = View.GONE
-        findViewById<View>(R.id.slot_play).visibility = View.VISIBLE
+        // C-46: la reproducción vive en la barra expandible (tiempos reales);
+        // el slot_play clásico queda oculto en modo pendiente.
+        findViewById<View>(R.id.slot_play).visibility = View.GONE
+        setupExpandingPlayer(pending)
         findViewById<View>(R.id.btn_play).setOnClickListener { togglePlayback() }
         // C-39: transcribir directo desde el widget con la red vigente
         // (datos o Wi-Fi), sin pasar por Notas de la app.
@@ -433,6 +437,251 @@ class WidgetNoteEditActivity : Activity() {
                 finish()
             }
         }
+    }
+
+    /**
+     * C-46: reproductor expandible del pendiente con tiempos reales.
+     * Play centrado que se abre en dos burbujas (pausa izq, X der) con
+     * 00:17 / 00:56 en el medio, sin barra. El cierre es la inversa.
+     * El total colapsado es estimado por tamaño (PCM16 mono 16kHz);
+     * al preparar MediaPlayer se corrige con la duración real y el
+     * transcurrido se publica cada 500 ms.
+     */
+    private var playerOpen = false
+    private var playerTotalMs = 0
+    private val elapsedHandler by lazy {
+        android.os.Handler(android.os.Looper.getMainLooper())
+    }
+    private var elapsedRunnable: Runnable? = null
+
+    private fun estimateTotalMs(path: String?): Long {
+        if (path.isNullOrBlank()) return 0L
+        return try {
+            estimatePlayerTotalMs(File(path).length())
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun renderClock(positionMs: Long) {
+        try {
+            findViewById<TextView>(R.id.player_clock)?.text =
+                formatPlayerClock(positionMs, playerTotalMs.toLong())
+        } catch (_: Exception) {}
+    }
+
+    private fun playerGapPx(container: android.view.View): Float {
+        return playerGapPx(container.width.toFloat(), resources.displayMetrics.density)
+    }
+
+    private fun setupExpandingPlayer(pending: VbPending) {
+        playerTotalMs = estimateTotalMs(pending.audioPath).toInt()
+        val bar = findViewById<android.view.View>(R.id.player_bar) ?: return
+        val main = findViewById<android.view.View>(R.id.btn_player_main) ?: return
+        val close = findViewById<android.view.View>(R.id.btn_player_close) ?: return
+        val clock = findViewById<TextView>(R.id.player_clock)
+        bar.visibility = android.view.View.VISIBLE
+        main.translationX = 0f
+        close.translationX = 0f
+        close.alpha = 0f
+        close.scaleX = 0.6f
+        close.scaleY = 0.6f
+        close.visibility = android.view.View.INVISIBLE
+        clock?.visibility = android.view.View.INVISIBLE
+        clock?.alpha = 0f
+        playerOpen = false
+        renderClock(0L)
+        main.setOnClickListener { toggleExpandingPlayback() }
+        close.setOnClickListener { closeExpandingPlayback() }
+    }
+
+    private fun openExpandingPlayer() {
+        val bar = findViewById<android.view.View>(R.id.player_bar) ?: return
+        val main = findViewById<android.view.View>(R.id.btn_player_main) ?: return
+        val close = findViewById<android.view.View>(R.id.btn_player_close) ?: return
+        val clock = findViewById<TextView>(R.id.player_clock)
+        val gap = playerGapPx(bar)
+        playerOpen = true
+        close.visibility = android.view.View.VISIBLE
+        clock?.visibility = android.view.View.VISIBLE
+        main.animate().translationX(-gap).setDuration(280).start()
+        close.animate().translationX(gap).alpha(1f).scaleX(1f).scaleY(1f)
+            .setDuration(280).start()
+        clock?.animate()?.alpha(1f)?.setDuration(280)?.start()
+    }
+
+    private fun collapseExpandingPlayer() {
+        val main = findViewById<android.view.View>(R.id.btn_player_main) ?: return
+        val close = findViewById<android.view.View>(R.id.btn_player_close) ?: return
+        val clock = findViewById<TextView>(R.id.player_clock)
+        playerOpen = false
+        stopElapsedUpdates()
+        main.animate().translationX(0f).setDuration(280).start()
+        close.animate().translationX(0f).alpha(0f).scaleX(0.6f).scaleY(0.6f)
+            .setDuration(280).withEndAction {
+                try {
+                    close.visibility = android.view.View.INVISIBLE
+                } catch (_: Exception) {}
+            }.start()
+        clock?.animate()?.alpha(0f)?.setDuration(200)?.withEndAction {
+            try {
+                clock.visibility = android.view.View.INVISIBLE
+            } catch (_: Exception) {}
+        }?.start()
+        setPlayerMainIcon(playing = false)
+    }
+
+    private fun setPlayerMainIcon(playing: Boolean) {
+        try {
+            val icon = findViewById<android.widget.ImageView>(R.id.player_main_icon)
+            if (playing) {
+                icon?.setImageResource(R.drawable.widget_ic_pause)
+                findViewById<android.view.View>(R.id.btn_player_main)
+                    ?.contentDescription = "Pausar audio"
+            } else {
+                icon?.setImageResource(R.drawable.widget_ic_play)
+                findViewById<android.view.View>(R.id.btn_player_main)
+                    ?.contentDescription = "Reproducir audio"
+            }
+        } catch (_: Exception) {}
+    }
+
+    private fun startElapsedUpdates() {
+        stopElapsedUpdates()
+        val runnable = object : Runnable {
+            override fun run() {
+                try {
+                    val pos = try {
+                        player?.currentPosition ?: 0
+                    } catch (_: Exception) {
+                        0
+                    }
+                    renderClock(pos.toLong())
+                } catch (_: Exception) {}
+                elapsedHandler.postDelayed(this, 500L)
+            }
+        }
+        elapsedRunnable = runnable
+        elapsedHandler.post(runnable)
+    }
+
+    private fun stopElapsedUpdates() {
+        elapsedRunnable?.let { elapsedHandler.removeCallbacks(it) }
+        elapsedRunnable = null
+    }
+
+    private fun toggleExpandingPlayback() {
+        val current = player
+        if (current != null && playerPrepared) {
+            try {
+                if (current.isPlaying) {
+                    current.pause()
+                    setPlayerMainIcon(playing = false)
+                    stopElapsedUpdates()
+                    try {
+                        renderClock(current.currentPosition.toLong())
+                    } catch (_: Exception) {}
+                } else {
+                    current.start()
+                    setPlayerMainIcon(playing = true)
+                    startElapsedUpdates()
+                }
+            } catch (_: Exception) {
+                releasePlayer()
+                collapseExpandingPlayer()
+            }
+            return
+        }
+        val path = pendingAudioPath
+        if (path.isNullOrBlank()) {
+            Toast.makeText(this, "Audio no disponible", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!playerLoading.compareAndSet(false, true)) return
+        openExpandingPlayer()
+        BackgroundWork.execute {
+            val mediaPlayer = try {
+                val created = android.media.MediaPlayer()
+                created.setDataSource(path)
+                created
+            } catch (_: Exception) {
+                playerLoading.set(false)
+                BackgroundWork.postMain {
+                    collapseExpandingPlayer()
+                    Toast.makeText(this, "Audio no disponible", Toast.LENGTH_SHORT).show()
+                }
+                return@execute
+            }
+            mediaPlayer.setOnPreparedListener {
+                BackgroundWork.postMain {
+                    if (player !== mediaPlayer) return@postMain
+                    playerPrepared = true
+                    playerLoading.set(false)
+                    try {
+                        playerTotalMs = mediaPlayer.duration
+                    } catch (_: Exception) {}
+                    try {
+                        mediaPlayer.start()
+                        setPlayerMainIcon(playing = true)
+                        startElapsedUpdates()
+                        renderClock(0L)
+                    } catch (_: Exception) {
+                        releasePlayer()
+                        collapseExpandingPlayer()
+                    }
+                }
+            }
+            mediaPlayer.setOnCompletionListener {
+                BackgroundWork.postMain {
+                    if (player !== mediaPlayer) return@postMain
+                    try {
+                        mediaPlayer.seekTo(0)
+                    } catch (_: Exception) {}
+                    renderClock(0L)
+                    collapseExpandingPlayer()
+                }
+            }
+            mediaPlayer.setOnErrorListener { _, _, _ ->
+                BackgroundWork.postMain {
+                    if (player === mediaPlayer) releasePlayer()
+                    playerLoading.set(false)
+                    collapseExpandingPlayer()
+                    Toast.makeText(this, "Audio dañado; podés descartarlo", Toast.LENGTH_SHORT).show()
+                }
+                true
+            }
+            synchronized(this) {
+                if (player != null) {
+                    try {
+                        mediaPlayer.release()
+                    } catch (_: Exception) {}
+                    playerLoading.set(false)
+                    return@execute
+                }
+                player = mediaPlayer
+            }
+            try {
+                mediaPlayer.prepareAsync()
+            } catch (_: Exception) {
+                synchronized(this) {
+                    if (player === mediaPlayer) player = null
+                }
+                try {
+                    mediaPlayer.release()
+                } catch (_: Exception) {}
+                playerLoading.set(false)
+                BackgroundWork.postMain {
+                    collapseExpandingPlayer()
+                    Toast.makeText(this, "No se pudo reproducir", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun closeExpandingPlayback() {
+        releasePlayer()
+        renderClock(0L)
+        collapseExpandingPlayer()
     }
 
     /**
@@ -676,6 +925,7 @@ class WidgetNoteEditActivity : Activity() {
     private fun releasePlayer() {
         playerPrepared = false
         playerLoading.set(false)
+        stopElapsedUpdates()
         val current = player
         player = null
         try {

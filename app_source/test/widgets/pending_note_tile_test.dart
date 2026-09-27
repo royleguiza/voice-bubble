@@ -12,14 +12,26 @@ void main() {
         createdAtMs: DateTime.now().millisecondsSinceEpoch,
       );
 
-  Widget wrap(PendingNoteTile tile) {
-    return MaterialApp(home: Scaffold(body: tile));
+  Widget wrap(WidgetTester tester, PendingNoteTile tile) {
+    // C-46: superficie y ancho de teléfono reales. El ancho fijo hace
+    // determinista el LayoutBuilder del player (gap = 30% clamp 96-150),
+    // y la superficie alta evita que la fila del player caiga bajo el
+    // pliegue del viewport (§9.1-17/21).
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    return MaterialApp(
+      home: Scaffold(body: Center(child: SizedBox(width: 360, child: tile))),
+    );
   }
 
   group('PendingNoteTile (C-45)', () {
     testWidgets('muestra transcribir, escuchar y descartar', (tester) async {
       const id = '11111111-1111-4111-8111-111111111111';
-      await tester.pumpWidget(wrap(PendingNoteTile(
+      await tester.pumpWidget(wrap(tester, PendingNoteTile(
         item: item(id),
         busy: false,
         onTranscribe: () {},
@@ -37,15 +49,24 @@ void main() {
         findsOneWidget,
       );
       expect(
+        find.byKey(ValueKey('closePendingPlayer-$id')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ValueKey('pendingPlayerClock-$id')),
+        findsOneWidget,
+      );
+      expect(
         find.byKey(ValueKey('discardPendingButton-$id')),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('audio inexistente avisa sin crashear', (tester) async {
-      const id = '22222222-2222-4222-8222-222222222222';
-      await tester.pumpWidget(wrap(PendingNoteTile(
+    testWidgets('C-46: play abre reloj+X y la X reagrupa en un play',
+        (tester) async {
+      const id = '44444444-4444-4444-8444-444444444444';
+      await tester.pumpWidget(wrap(tester, PendingNoteTile(
         item: item(id),
         busy: false,
         onTranscribe: () {},
@@ -53,8 +74,71 @@ void main() {
       )));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(ValueKey('playPendingButton-$id')));
+      IconButton buttonOf(String key) => tester.widget<IconButton>(
+            find.descendant(
+              of: find.byKey(ValueKey(key)),
+              matching: find.byType(IconButton),
+            ),
+          );
+      // El reloj siempre existe en el árbol; lo que cambia es su opacidad.
+      double clockOpacity() => tester.widget<AnimatedOpacity>(
+            find.ancestor(
+              of: find.byKey(ValueKey('pendingPlayerClock-$id')),
+              matching: find.byType(AnimatedOpacity),
+            ),
+          ).opacity;
+
+      // --- Colapsado: una sola burbuja con play, reloj invisible, X inerte.
+      expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+      expect(clockOpacity(), 0);
+      expect(buttonOf('playPendingButton-$id').onPressed, isNotNull);
+      expect(buttonOf('closePendingPlayer-$id').onPressed, isNull,
+          reason: 'la X colapsada no debe capturar el toque del play');
+
+      // --- Abrir: reloj visible, X utilizable, sigue sin barra de tiempo.
+      buttonOf('playPendingButton-$id').onPressed!();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(clockOpacity(), 1);
+      expect(find.text('00:00 / 00:00'), findsOneWidget);
+      expect(find.text('No se pudo reproducir este audio'), findsOneWidget);
+      expect(find.byType(Slider), findsNothing);
+      expect(buttonOf('closePendingPlayer-$id').onPressed, isNotNull);
+
+      // --- Cerrar: la animación inversa reagrupa las dos burbujas en un play.
+      buttonOf('closePendingPlayer-$id').onPressed!();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(clockOpacity(), 0);
+      expect(find.text('No se pudo reproducir este audio'), findsNothing);
+      expect(find.byIcon(Icons.play_arrow_rounded), findsOneWidget);
+      expect(buttonOf('closePendingPlayer-$id').onPressed, isNull);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('audio inexistente avisa sin crashear', (tester) async {
+      const id = '22222222-2222-4222-8222-222222222222';
+      await tester.pumpWidget(wrap(tester, PendingNoteTile(
+        item: item(id),
+        busy: false,
+        onTranscribe: () {},
+        onDiscard: () {},
+      )));
       await tester.pumpAndSettle();
+
+      // C-46: se invoca el callback del play, no un tap por coordenadas.
+      tester
+          .widget<IconButton>(
+            find.descendant(
+              of: find.byKey(ValueKey('playPendingButton-$id')),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .onPressed!();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
 
       expect(find.text('No se pudo reproducir este audio'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -64,7 +148,7 @@ void main() {
       const id = '33333333-3333-4333-8333-333333333333';
       var transcribed = false;
       var discarded = false;
-      await tester.pumpWidget(wrap(PendingNoteTile(
+      await tester.pumpWidget(wrap(tester, PendingNoteTile(
         item: item(id),
         busy: true,
         onTranscribe: () => transcribed = true,
