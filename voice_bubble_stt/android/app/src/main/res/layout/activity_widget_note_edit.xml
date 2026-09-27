@@ -216,7 +216,7 @@
             </FrameLayout>
         </LinearLayout>
 
-        <!-- Botonera clásica        <!-- Botonera clásica para los otros modos (nota normal). Cada botón
+        <!-- Botonera clásica para los otros modos (nota normal). Cada botón
              vive en un slot de igual peso, asi los visibles quedan siempre a
              la misma distancia entre si (2, 3 o 4 segun el modo). Oculta por
              defecto: el modo pendiente usa la fila de arriba. -->

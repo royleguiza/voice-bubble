@@ -22,6 +22,7 @@ Verifica (estático, sin SDK):
 import os
 import sys
 import unittest
+import xml.dom.minidom
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 KT = os.path.join(
@@ -74,7 +75,16 @@ TILE_TEST = os.path.join(APP, "test", "widgets", "pending_note_tile_test.dart")
 
 class TestC46ExpandingPlayerSuite(unittest.TestCase):
 
-    def test_01_player_vive_en_la_fila_de_acciones(self):
+    def test_01_layout_bien_formsdo(self):
+        # Un <!-- anidado o un tag sin cerrar hace fallar AAPT2 en el CI con
+        # un error que no dice qué línea es. Se valida el XML de verdad.
+        for path in (LAYOUT,):
+            try:
+                xml.dom.minidom.parse(path)
+            except Exception as exc:  # noqa: BLE001
+                self.fail(f"XML mal formado en {os.path.basename(path)}: {exc}")
+
+    def test_02_player_vive_en_la_fila_de_acciones(self):
         xml = read_file(LAYOUT)
         # La fila del pendiente: grupo izq | espaciador | player | espaciador | grupo der.
         self.assertIn('android:id="@+id/pending_row"', xml)
@@ -126,7 +136,7 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
             r"R\.id\.classic_row\)\?\.visibility = View\.VISIBLE",
             "La nota normal debe mostrar la botonera clásica")
 
-    def test_03_tiempos_reales(self):
+    def test_04_tiempos_reales(self):
         src = read_file(ACT)
         self.assertIn("mediaPlayer.duration", src, "Total real al preparar")
         self.assertIn("postDelayed(this, 500L)", src, "Transcurrido cada 500 ms")
@@ -134,7 +144,7 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
         self.assertIn("widget_ic_pause", src)
         self.assertIn("widget_ic_play", src)
 
-    def test_04_helpers_puros(self):
+    def test_05_helpers_puros(self):
         src = read_file(HELPER)
         self.assertIn("formatPlayerClock", src)
         self.assertIn("estimatePlayerTotalMs", src)
@@ -144,7 +154,7 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
                      "expandingPlayerTotalEstimatesFromPcmSize"):
             self.assertIn(name, kt, f"Falta test {name}")
 
-    def test_05_dart_stage_por_ancho(self):
+    def test_06_dart_stage_por_ancho(self):
         src = read_file(TILE)
         code = read_code(TILE)
         self.assertIn("class _PlayerStage", src)
@@ -168,7 +178,7 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
         self.assertIn("transcribeCloudButton-", code)
         self.assertIn("discardPendingButton-", code)
 
-    def test_06_izquierda_es_pausa_no_play(self):
+    def test_07_izquierda_es_pausa_no_play(self):
         # Requisito del dueño: al reproducir, la burbuja izquierda muestra
         # PAUSA (no play). El ternario debe tener la pausa en el lado True.
         src = read_file(TILE)
@@ -186,7 +196,7 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
         self.assertIn("widget_ic_pause", act)
         self.assertIn('contentDescription = "Pausar audio"', act)
 
-    def test_07_cobertura_dart(self):
+    def test_08_cobertura_dart(self):
         test = read_file(TILE_TEST)
         self.assertIn("play abre reloj+X y la X reagrupa en un play", test)
         self.assertIn("pendingPlayerClock-$id", test)
@@ -198,7 +208,7 @@ class TestC46ExpandingPlayerSuite(unittest.TestCase):
         self.assertNotIn("tap(\n        find.byKey(ValueKey('closePendingPlayer", test)
         self.assertIn(".onPressed!()", test)
 
-    def test_08_sin_secretos_ni_logs(self):
+    def test_09_sin_secretos_ni_logs(self):
         for path in (ACT, HELPER, TILE):
             src = read_file(path)
             self.assertNotIn("print(", src)
