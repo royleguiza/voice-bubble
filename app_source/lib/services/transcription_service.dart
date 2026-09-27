@@ -123,7 +123,34 @@ class TranscriptionService {
   ///
   /// En éxito el llamador decide si borra el archivo temporal. En fallo lo
   /// conserva para permitir reintento sin regrabar.
+  ///
+  /// Vuelo único (C-43): solo una subida a la vez en todo el proceso; un
+  /// segundo intento concurrente recibe error ocupado en vez de golpear
+  /// la cuota de Groq en paralelo. Se transcribe lo seleccionado, nada más.
+  static bool _uploadInFlight = false;
+
   Future<Transcription> transcribe(
+    String audioPath, {
+    bool deleteAudioOnSuccess = true,
+  }) async {
+    if (_uploadInFlight) {
+      throw const TranscriptionException(
+        'Ya hay una transcripción en curso. Esperá a que termine.',
+        kind: TranscriptionErrorKind.badRequest,
+      );
+    }
+    _uploadInFlight = true;
+    try {
+      return await _transcribeGuarded(
+        audioPath,
+        deleteAudioOnSuccess: deleteAudioOnSuccess,
+      );
+    } finally {
+      _uploadInFlight = false;
+    }
+  }
+
+  Future<Transcription> _transcribeGuarded(
     String audioPath, {
     bool deleteAudioOnSuccess = true,
   }) async {

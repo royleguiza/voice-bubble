@@ -11,6 +11,7 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.io.DataOutputStream
 import java.io.IOException
@@ -27,6 +28,7 @@ class SpeechToTextClient(
 ) {
 
     companion object {
+        private val uploadInFlight = AtomicBoolean(false)
         const val SAMPLE_RATE = 16000
 
         /** Tope de dictado: 5 minutos. Publico: el teclado arma su timeout desde aca. */
@@ -49,30 +51,43 @@ class SpeechToTextClient(
         }
 
         /**
-         * C-42: valida contenedor WAV (magias RIFF/WAVE/fmt/data y tamaño
-         * consistente). Espejo de CloudSttService.isValidWavHeader de Dart:
-         * no juzga sample-rate/canales, solo truncados y basura.
+         * C-42/C-43: valida contenedor WAV recorriendo sub-chunks (tolera
+         * extras como JUNK/LIST/fact de grabadores reales). Espejo de
+         * CloudSttService.isValidWavHeader de Dart.
          */
         fun isValidWav(wav: ByteArray): Boolean {
-            if (wav.size < 44) return false
-            fun u32(o: Int): Int =
-                (wav[o].toInt() and 0xFF) or
-                    ((wav[o + 1].toInt() and 0xFF) shl 8) or
-                    ((wav[o + 2].toInt() and 0xFF) shl 16) or
-                    ((wav[o + 3].toInt() and 0xFF) shl 24)
+            return isValidWavHeader(wav, wav.size)
+        }
+
+        internal fun isValidWavHeader(bytes: ByteArray, fileLength: Int): Boolean {
+            if (bytes.size < 12 || fileLength < 44) return false
+            fun u32(o: Int): Int {
+                if (o + 4 > bytes.size) return -1
+                return (bytes[o].toInt() and 0xFF) or
+                    ((bytes[o + 1].toInt() and 0xFF) shl 8) or
+                    ((bytes[o + 2].toInt() and 0xFF) shl 16) or
+                    ((bytes[o + 3].toInt() and 0xFF) shl 24)
+            }
             fun magic(o: Int, s: String): Boolean {
-                if (s.length != 4) return false
-                for (i in 0..3) if (wav[o + i] != s[i].code.toByte()) return false
+                if (s.length != 4 || o + 4 > bytes.size) return false
+                for (i in 0..3) if (bytes[o + i] != s[i].code.toByte()) return false
                 return true
             }
-            if (!magic(0, "RIFF") || !magic(8, "WAVE") ||
-                !magic(12, "fmt ") || !magic(36, "data")
-            ) {
-                return false
+            if (!magic(0, "RIFF") || !magic(8, "WAVE")) return false
+            val riffSize = u32(4)
+            if (riffSize < 0 || riffSize + 8 > fileLength) return false
+            var pos = 12
+            var fmtFound = false
+            while (pos + 8 <= bytes.size) {
+                val size = u32(pos + 4)
+                if (size < 0) return false
+                if (magic(pos, "fmt ")) fmtFound = true
+                if (magic(pos, "data")) {
+                    return fmtFound && size > 0 && pos + 8 + size <= fileLength
+                }
+                pos += 8 + size + (size % 2)
             }
-            if (u32(4) + 8 > wav.size) return false
-            val dataSize = u32(40)
-            return dataSize > 0 && dataSize <= wav.size - 44
+            return false
         }
     }
 
@@ -323,7 +338,40 @@ class SpeechToTextClient(
      * cancelacion.
      * C-13: onError reporta el código HTTP (o null en errores de red/IO) junto con el mensaje.
      */
+    /**
+     * Vuelo único (C-43): una sola subida a la vez en todo el proceso;
+     * un segundo intento concurrente recibe ocupado en vez de golpear
+     * la cuota de Groq en paralelo. Se transcribe lo seleccionado.
+     */
     fun transcribe(
+        wav: ByteArray,
+        config: Config,
+        onDone: (String?) -> Unit,
+        onError: (code: Int?, message: String) -> Unit,
+    ) {
+        if (!uploadInFlight.compareAndSet(false, true)) {
+            onError(
+                400,
+                if (spanishModeProvider()) "Ya hay una transcripción en curso."
+                else "Another transcription is already running."
+            )
+            return
+        }
+        transcribeGuarded(
+            wav,
+            config,
+            onDone = { text ->
+                uploadInFlight.set(false)
+                onDone(text)
+            },
+            onError = { code, message ->
+                uploadInFlight.set(false)
+                onError(code, message)
+            },
+        )
+    }
+
+    private fun transcribeGuarded(
         wav: ByteArray,
         config: Config,
         onDone: (String?) -> Unit,

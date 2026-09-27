@@ -890,6 +890,26 @@ class WidgetNotesBehaviorTest {
     }
 
     @Test
+    fun isValidWavToleratesExtraChunksBeforeData() {
+        val good = validWavBytes(4096)
+        val head = good.copyOfRange(0, 36)
+        val rest = good.copyOfRange(36, good.size)
+        val junk = ByteArray(16)
+        junk[0] = 'J'.code.toByte(); junk[1] = 'U'.code.toByte()
+        junk[2] = 'N'.code.toByte(); junk[3] = 'K'.code.toByte()
+        junk[4] = 8
+        val withJunk = head + junk + rest
+        val riff = withJunk.size - 8
+        withJunk[4] = (riff and 0xFF).toByte()
+        withJunk[5] = ((riff shr 8) and 0xFF).toByte()
+        withJunk[6] = ((riff shr 16) and 0xFF).toByte()
+        withJunk[7] = ((riff shr 24) and 0xFF).toByte()
+        assertTrue(SpeechToTextClient.isValidWav(withJunk))
+        // Recorte a mitad de chunks: sin data a la vista.
+        assertFalse(SpeechToTextClient.isValidWav(good.copyOfRange(0, 60)))
+    }
+
+    @Test
     fun removePendingDeletesOnlyTheTargetEntry() {
         val root = Files.createTempDirectory("c39-rempend-").toFile()
         try {

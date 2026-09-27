@@ -1,12 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
+import 'package:voice_bubble_stt/services/storage_service.dart';
+import 'package:voice_bubble_stt/services/transcription_service.dart';
 
 import '../helpers/wav_fixture.dart';
+import '../helpers/mock_channels.dart';
 
 /// C-42: integridad del WAV antes de subir + multipart explícito.
 ///
@@ -63,6 +69,32 @@ void main() {
       bad[6] = 0xFF;
       bad[7] = 0x7F;
       expect(CloudSttService.isValidWavHeader(bad, bad.length), isFalse);
+    });
+
+    test('tolera chunks extra (JUNK) antes de data', () {
+      final good = validWavBytes(4096);
+      final head36 = good.sublist(0, 36);
+      final rest = good.sublist(36);
+      final List<int> junk = <int>[
+        0x4A, 0x55, 0x4E, 0x4B, // JUNK
+        0x08, 0x00, 0x00, 0x00, // size 8
+        0, 0, 0, 0, 0, 0, 0, 0,
+      ];
+      final withJunk = head36 + junk + rest;
+      final int fileLength = withJunk.length;
+      final int riff = fileLength - 8;
+      withJunk[4] = riff & 0xFF;
+      withJunk[5] = (riff >> 8) & 0xFF;
+      withJunk[6] = (riff >> 16) & 0xFF;
+      withJunk[7] = (riff >> 24) & 0xFF;
+      expect(
+          CloudSttService.isValidWavHeader(withJunk, fileLength), isTrue);
+    });
+
+    test('rechaza fmt sin data (recorte a mitad de chunks)', () {
+      final good = validWavBytes();
+      final cut = good.sublist(0, 60);
+      expect(CloudSttService.isValidWavHeader(cut, 8236), isFalse);
     });
   });
 
@@ -128,4 +160,77 @@ void main() {
       expect(bodyText, contains('name="language"'));
     });
   });
+
+  group('TranscriptionService.transcribe - vuelo único (C-43)', () {
+    test('segundo intento concurrente recibe ocupado', () async {
+      SharedPreferences.setMockInitialValues({});
+      final dir =
+          await Directory.systemTemp.createTemp('singleflight_test_');
+      registerAppChannelMocks(temporaryDirectory: dir.path);
+      try {
+        final a = File('${dir.path}/a.wav');
+        await a.writeAsBytes(validWavBytes());
+        final gate = Completer<http.Response>();
+        final service = TranscriptionService(
+          cloudService: CloudSttService(
+            apiKey: 'gsk_test_key',
+            client: MockClient((_) => gate.future),
+          ),
+          storageService: StorageService(),
+          recorder: _StillRecorder(),
+          claimMicrophone: () async => 1,
+          releaseMicrophone: (_) async {},
+        );
+        final first =
+            service.transcribe(a.path, deleteAudioOnSuccess: false);
+        await expectLater(
+          service.transcribe(a.path),
+          throwsA(
+            isA<TranscriptionException>().having(
+              (e) => e.message,
+              'message',
+              contains('en curso'),
+            ),
+          ),
+        );
+        gate.complete(http.Response('{"text":"hola"}', 200,
+            headers: {'content-type': 'application/json'}));
+        expect((await first).text, 'hola');
+      } finally {
+        unregisterAppChannelMocks();
+        if (await dir.exists()) {
+          await dir.delete(recursive: true);
+        }
+      }
+    });
+  });
+}
+
+class _StillRecorder implements AudioRecorder {
+  @override
+  Future<bool> hasPermission({bool request = true}) async => true;
+
+  @override
+  Future<void> start(RecordConfig config, {required String path}) async {}
+
+  @override
+  Future<String?> stop() async => null;
+
+  @override
+  Future<bool> isRecording() async => false;
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> resume() async {}
+
+  @override
+  Future<void> cancel() async {}
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }

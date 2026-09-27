@@ -81,31 +81,44 @@ class CloudSttService {
   /// Por debajo de 8000B se descarta como click o ruido vacío.
   static const int minAudioBytes = 8000;
 
-  /// Valida contenedor WAV (C-42): magias RIFF/WAVE/fmt/data y tamaño
-  /// declarado consistente con el archivo. No juzga sample-rate ni
-  /// canales (Groq remuestrea): solo detecta truncados y basura que
-  /// Groq rechazaría con 400 "valid media file".
+  /// Valida contenedor WAV (C-42/C-43): recorre los sub-chunks (tolera
+  /// extras como JUNK/LIST/fact que escriben grabadores reales) y exige
+  /// RIFF/WAVE, un chunk fmt, un chunk data con tamaño consistente. No
+  /// juzga sample-rate ni canales (Groq remuestrea): solo detecta
+  /// truncados y basura que Groq rechazaría con 400 "valid media file".
   static bool isValidWavHeader(List<int> bytes, int fileLength) {
-    if (bytes.length < 44 || fileLength < 44) return false;
-    int u32(int o) =>
-        bytes[o] |
-        (bytes[o + 1] << 8) |
-        (bytes[o + 2] << 16) |
-        (bytes[o + 3] << 24);
-    bool magic(int o, String s) =>
-        bytes[o] == s.codeUnitAt(0) &&
-        bytes[o + 1] == s.codeUnitAt(1) &&
-        bytes[o + 2] == s.codeUnitAt(2) &&
-        bytes[o + 3] == s.codeUnitAt(3);
-    if (!magic(0, 'RIFF') ||
-        !magic(8, 'WAVE') ||
-        !magic(12, 'fmt ') ||
-        !magic(36, 'data')) {
-      return false;
+    if (bytes.length < 12 || fileLength < 44) return false;
+    int u32(int o) {
+      if (o + 4 > bytes.length) return -1;
+      return bytes[o] |
+          (bytes[o + 1] << 8) |
+          (bytes[o + 2] << 16) |
+          (bytes[o + 3] << 24);
     }
-    if (u32(4) + 8 > fileLength) return false;
-    final int dataSize = u32(40);
-    return dataSize > 0 && dataSize <= fileLength - 44;
+
+    bool magic(int o, String s) {
+      if (o + 4 > bytes.length) return false;
+      return bytes[o] == s.codeUnitAt(0) &&
+          bytes[o + 1] == s.codeUnitAt(1) &&
+          bytes[o + 2] == s.codeUnitAt(2) &&
+          bytes[o + 3] == s.codeUnitAt(3);
+    }
+
+    if (!magic(0, 'RIFF') || !magic(8, 'WAVE')) return false;
+    final int riffSize = u32(4);
+    if (riffSize < 0 || riffSize + 8 > fileLength) return false;
+    var pos = 12;
+    var fmtFound = false;
+    while (pos + 8 <= bytes.length) {
+      final int size = u32(pos + 4);
+      if (size < 0) return false;
+      if (magic(pos, 'fmt ')) fmtFound = true;
+      if (magic(pos, 'data')) {
+        return fmtFound && size > 0 && pos + 8 + size <= fileLength;
+      }
+      pos += 8 + size + (size % 2);
+    }
+    return false;
   }
 
   final String apiKey;
@@ -174,7 +187,7 @@ class CloudSttService {
     final RandomAccessFile raf = await file.open(mode: FileMode.read);
     List<int> head;
     try {
-      head = await raf.read(64);
+      head = await raf.read(4096);
     } finally {
       await raf.close();
     }
