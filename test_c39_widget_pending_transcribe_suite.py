@@ -106,8 +106,10 @@ class TestC39WidgetPendingTranscribeSuite(unittest.TestCase):
 
     def test_05_diseno_y_privacidad_intactos(self):
         xml = read_file(LAYOUT)
-        self.assertEqual(xml.count('android:layout_width="48dp"'), 6,
-                         "6 botones de 48dp")
+        # C-46: 6 de botonera + 2 de la barra player expandible.
+        self.assertEqual(xml.count('android:layout_width="48dp"'), 8,
+                         "8 botones de 48dp (6 botonera + player main/close)")
+        self.assertIn('android:id="@+id/player_bar"', xml)
         self.assertIn("@drawable/widget_glass_inner", xml)
         for path in (ACTIVITY, STORE):
             src = read_file(path)

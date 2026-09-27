@@ -112,8 +112,9 @@ class TestC38WidgetDismissSuite(unittest.TestCase):
         self.assertIn('android:id="@+id/btn_copy"', xml)
         self.assertIn("@drawable/widget_glass_inner", xml,
                        "La tarjeta conserva su fondo")
-        self.assertEqual(xml.count('android:layout_width="48dp"'), 6,
-                         "Los 6 botones conservan 48dp (X, tacho, play, transcribir, copiar, guardar)")
+        # C-46: 6 de botonera + 2 de la barra player expandible.
+        self.assertEqual(xml.count('android:layout_width="48dp"'), 8,
+                         "Los 8 botones conservan 48dp (6 botonera + player main/close)")
         styles = read_file(os.path.join(
             REPO_ROOT, "voice_bubble_stt", "android", "app", "src",
             "main", "res", "values", "styles.xml"))

@@ -37,9 +37,40 @@ void main() {
         findsOneWidget,
       );
       expect(
+        find.byKey(ValueKey('closePendingPlayer-$id')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ValueKey('pendingPlayerClock-$id')),
+        findsOneWidget,
+      );
+      expect(
         find.byKey(ValueKey('discardPendingButton-$id')),
         findsOneWidget,
       );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('C-46: play se abre con reloj y la X colapsa', (tester) async {
+      const id = '44444444-4444-4444-8444-444444444444';
+      await tester.pumpWidget(wrap(PendingNoteTile(
+        item: item(id),
+        busy: false,
+        onTranscribe: () {},
+        onDiscard: () {},
+      )));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(ValueKey('playPendingButton-$id')));
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(find.text('00:00 / 00:00'), findsOneWidget);
+      expect(find.text('No se pudo reproducir este audio'), findsOneWidget);
+
+      await tester.tap(find.byKey(ValueKey('closePendingPlayer-$id')));
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(find.text('No se pudo reproducir este audio'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
@@ -54,7 +85,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(ValueKey('playPendingButton-$id')));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 350));
 
       expect(find.text('No se pudo reproducir este audio'), findsOneWidget);
       expect(tester.takeException(), isNull);

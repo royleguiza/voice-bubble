@@ -964,6 +964,34 @@ class WidgetNotesBehaviorTest {
     }
 
     @Test
+    fun expandingPlayerClockFormatsWithSlash() {
+        // C-46: 00:17 / 00:56 con minutos de dos dígitos.
+        assertEquals("00:17 / 00:56", formatPlayerClock(17000L, 56000L))
+        assertEquals("00:00 / 00:37", formatPlayerClock(0L, 37000L))
+        assertEquals("01:05 / 01:05", formatPlayerClock(65000L, 65000L))
+        assertEquals("00:00 / 00:00", formatPlayerClock(-5L, -5L))
+    }
+
+    @Test
+    fun expandingPlayerTotalEstimatesFromPcmSize() {
+        // C-46: PCM16 mono 16kHz = 32000 B/s; corto o vacío = 0.
+        assertEquals(0L, estimatePlayerTotalMs(44L))
+        assertEquals(0L, estimatePlayerTotalMs(0L))
+        assertEquals(1000L, estimatePlayerTotalMs(45L))
+        assertEquals(6000L, estimatePlayerTotalMs(44L + 32000L * 6))
+    }
+
+    @Test
+    fun expandingPlayerGapKeepsNumbersClear() {
+        // C-46: 30% del ancho con aire mínimo 96dp y tope 150dp.
+        // density=0 → d=1f (protección contra división).
+        assertEquals(96f, playerGapPx(200f, 1f), 0.001f)
+        assertEquals(150f, playerGapPx(2000f, 1f), 0.001f)
+        assertEquals(120f, playerGapPx(400f, 1f), 0.001f)
+        assertEquals(120f, playerGapPx(400f, 0f), 0.001f)
+    }
+
+    @Test
     fun removePendingDeletesOnlyTheTargetEntry() {
         val root = Files.createTempDirectory("c39-rempend-").toFile()
         try {

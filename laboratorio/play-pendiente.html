@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="sistema">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VoiceBubble · Play central que se abre (iteración)</title>
+<style>
+  :root{
+    --bg:#f2f2f7; --card:#ffffff; --label:#1c1c1e; --secondary:#6b6b70;
+    --sep:#e0e0e6; --chip:rgba(127,127,140,.18); --chip2:rgba(127,127,140,.28);
+    --accent:#007aff; --radius:16px;
+  }
+  html[data-theme="oscuro"]{
+    --bg:#101014; --card:#1c1c22; --label:#f2f2f7; --secondary:#a7a7b0;
+    --sep:#33333a;
+  }
+  @media (prefers-color-scheme: dark){
+    html[data-theme="sistema"]{
+      --bg:#101014; --card:#1c1c22; --label:#f2f2f7; --secondary:#a7a7b0;
+      --sep:#33333a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--label);
+    font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding:24px}
+  .wrap{max-width:720px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:var(--secondary);font-size:14px;margin:0 0 16px;max-width:70ch}
+  .toolbar{display:flex;gap:8px;align-items:center;margin:0 0 20px;flex-wrap:wrap}
+  .toolbar span{font-size:13px;color:var(--secondary)}
+  .seg{display:flex;border:1px solid var(--sep);border-radius:999px;overflow:hidden}
+  .seg button{border:0;background:transparent;color:var(--label);
+    padding:8px 16px;font-size:14px;cursor:pointer;min-height:44px}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .card{background:var(--card);border:1px solid var(--sep);
+    border-radius:var(--radius);padding:16px}
+  .card h2{font-size:16px;margin:0 0 2px}
+  .why{font-size:13px;color:var(--secondary);margin:0 0 12px}
+  .modal{background:var(--chip);border-radius:12px;padding:20px 12px}
+  .stage{position:relative;height:64px}
+  .mbtn{position:absolute;top:8px;width:48px;height:48px;border-radius:50%;border:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    background:var(--chip2);color:var(--label);cursor:pointer;
+    transition:left .28s ease, opacity .2s ease, transform .28s ease;
+    left:calc(50% - 24px);opacity:1}
+  .mbtn svg{width:22px;height:22px}
+  .mbtn.ghost{opacity:0;pointer-events:none;transform:scale(.6)}
+  .times{position:absolute;top:0;left:0;right:0;height:64px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    opacity:0;transform:scale(.85);transition:opacity .25s ease .08s, transform .25s ease .08s;
+    pointer-events:none}
+  .times.show{opacity:1;transform:scale(1)}
+  .times .t{font-variant-numeric:tabular-nums;font-size:15px;font-weight:600}
+  .times .tdim{font-size:12px;color:var(--secondary);font-variant-numeric:tabular-nums}
+  .hint{text-align:center;font-size:12px;color:var(--secondary);margin:10px 0 0;min-height:18px}
+  footer{margin-top:20px;font-size:12px;color:var(--secondary)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Play central que se abre</h1>
+  <p class="sub">Iteración sobre la opción A: un solo botón <b>play centrado</b> con la duración total.
+  Al tocarlo <b>viaja a la izquierda transformado en pausa</b> y a la derecha
+  aparece la <b>✕ para cerrar</b> — en el medio queda <b>00:17 / 00:56</b>,
+  sin barra inferior. Pausar vuelve el botón a play · la ✕ colapsa todo al centro.</p>
+  <div class="toolbar" role="group" aria-label="Tema de vista">
+    <span>Vista:</span>
+    <div class="seg" id="seg">
+      <button data-t="sistema" aria-pressed="true">Sistema</button>
+      <button data-t="claro" aria-pressed="false">Claro</button>
+      <button data-t="oscuro" aria-pressed="false">Oscuro</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Modal del pendiente (simulación)</h2>
+    <p class="why">Audio ficticio de 0:37 en tiempo real.</p>
+    <div class="modal">
+      <div class="stage" id="stage">
+        <div class="times" id="times">
+          <span class="t" id="clock">00:00 / 00:37</span>
+        </div>
+        <button class="mbtn" id="btnMain" aria-label="Reproducir audio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path id="mainIcon" d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="mbtn ghost" id="btnClose" aria-label="Cerrar reproductor">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p class="hint" id="hint">Tocá el play · total 0:37</p>
+    </div>
+  </div>
+  <footer>Laboratorio untracked (no va al repo).</footer>
+</div>
+<script>
+(function () {
+  var DUR = 37, t = 0, playing = false, timer = null;
+  var PLAY = 'M8 5v14l11-7z';
+  var PAUSE = 'M8 5v5v4v5M16 5v5v4v5';
+  var stage = document.getElementById('stage');
+  var btnMain = document.getElementById('btnMain');
+  var btnClose = document.getElementById('btnClose');
+  var mainIcon = document.getElementById('mainIcon');
+  var times = document.getElementById('times');
+  var clock = document.getElementById('clock');
+  var hint = document.getElementById('hint');
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmt(s) {
+    s = Math.max(0, Math.floor(s));
+    return pad(Math.floor(s / 60)) + ':' + pad(s % 60);
+  }
+  function layout() {
+    var w = stage.clientWidth, c = w / 2;
+    if (!playing && t === 0) {
+      // Cierre (inversa): ambas burbujas vuelven al centro y se funden.
+      btnMain.style.left = (c - 24) + 'px';
+      btnClose.style.left = (c - 24) + 'px';
+      btnClose.classList.add('ghost');
+      times.classList.remove('show');
+      mainIcon.setAttribute('d', PLAY);
+      btnMain.setAttribute('aria-label', 'Reproducir audio');
+      hint.textContent = 'Tocá el play · total ' + fmt(DUR);
+    } else {
+      // Apertura: las dos burbujas se separan desde el play central, con
+      // aire de sobra para que no se peguen a los números.
+      var gap = Math.max(96, Math.min(150, w * 0.30));
+      btnClose.classList.remove('ghost');
+      btnMain.style.left = (c - gap - 24) + 'px';
+      btnClose.style.left = (c + gap - 24) + 'px';
+      times.classList.add('show');
+      mainIcon.setAttribute('d', playing ? PAUSE : PLAY);
+      btnMain.setAttribute('aria-label', playing ? 'Pausar audio' : 'Reproducir audio');
+      hint.textContent = playing ? 'Reproduciendo…' : 'Pausado en ' + fmt(t);
+    }
+  }
+  function render() { clock.textContent = fmt(t) + ' / ' + fmt(DUR); }
+  function tick() {
+    t += 1;
+    if (t >= DUR) { t = DUR; render(); collapse('Terminó · total ' + fmt(DUR)); return; }
+    render();
+  }
+  function collapse(msg) {
+    playing = false;
+    if (timer) { clearInterval(timer); timer = null; }
+    t = 0; render(); layout();
+    if (msg) hint.textContent = msg;
+  }
+  btnMain.addEventListener('click', function () {
+    if (playing) { playing = false; layout(); render(); return; }
+    if (t >= DUR) t = 0;
+    playing = true; layout(); render();
+    if (timer) clearInterval(timer);
+    timer = setInterval(tick, 1000);
+  });
+  btnClose.addEventListener('click', function () {
+    if (!playing && t === 0) return;
+    collapse();
+    hint.textContent = 'Tocá el play · total ' + fmt(DUR);
+  });
+  window.addEventListener('resize', layout);
+  render(); layout();
+  var seg = document.getElementById('seg');
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    document.documentElement.setAttribute('data-theme', b.getAttribute('data-t'));
+    var btns = seg.querySelectorAll('button');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].setAttribute('aria-pressed', btns[i] === b ? 'true' : 'false');
+    }
+  });
+})();
+</script>
+</body>
+</html>
