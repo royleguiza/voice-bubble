@@ -203,8 +203,24 @@ class MicrophoneClaimTest {
     }
 
     @Test
-    fun widgetReTapWhileBusyIsIgnoredInsteadOfClaimingAgain() {
-        val teclado = BackgroundWork.tryClaimMicrophone()
+    fun widgetStopTapWhileRecordingIsAlwaysHonored() {
+        // Regresión: el tap de STOP quedaba IGNORED por isBusy (subido en
+        // el START) y la grabación no terminaba nunca; solo ACTION_CANCEL
+        // funcionaba. El STOP manda siempre; el START sigue blindado.
+        assertEquals(WidgetToggleOutcome.START, widget.handleToggle())
+        setRecording(widget, true)
+        assertEquals(WidgetToggleOutcome.STOP, widget.handleToggle())
+        assertEquals(WidgetToggleOutcome.STOP, widget.handleToggle())
+    }
+
+    private fun setRecording(service: WidgetDictationService, value: Boolean) {
+        val field = WidgetDictationService::class.java.getDeclaredField("isRecording")
+        field.isAccessible = true
+        field.setBoolean(service, value)
+    }
+
+    @Test
+    fun widgetReTapWhileBusyIsIgnoredInsteadOfClaimingAgain() {        val teclado = BackgroundWork.tryClaimMicrophone()
         assertTrue(teclado != 0L)
 
         assertEquals(WidgetToggleOutcome.START, widget.handleToggle())

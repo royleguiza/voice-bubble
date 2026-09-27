@@ -210,9 +210,13 @@ class WidgetDictationService(
     }
 
     internal fun handleToggle(): WidgetToggleOutcome {
+        // El STOP manda siempre: con isBusy en alto (subido en el START y
+        // retenido en recording/transcribing a propósito), el tap de la
+        // píldora roja quedaba IGNORED y la grabación no terminaba nunca.
+        if (isRecording) return WidgetToggleOutcome.STOP
         if (isBusy) return WidgetToggleOutcome.IGNORED
         isBusy = true
-        return if (isRecording) WidgetToggleOutcome.STOP else WidgetToggleOutcome.START
+        return WidgetToggleOutcome.START
     }
 
     private fun cancelRecording() {
