@@ -187,6 +187,101 @@ void main() {
     });
   });
 
+  group('CloudSttService - rescate de PCM sin tapa (C-45)', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('wav_repair_test_');
+    });
+
+    tearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    List<int> holePcmFile(int dataSize) {
+      final pcm = List<int>.generate(dataSize, (i) => (i * 7) % 251 + 1);
+      return List<int>.filled(44, 0) + pcm;
+    }
+
+    test('repara hueco de 44 ceros y transcribe', () async {
+      final f = File('${tempDir.path}/hueco.wav');
+      await f.writeAsBytes(holePcmFile(8192));
+      final service = CloudSttService(
+        apiKey: 'gsk_test_key',
+        client: MockClient((http.BaseRequest request) async {
+          return http.Response('{"text":"hola"}', 200,
+              headers: {'content-type': 'application/json'});
+        }),
+      );
+      final result = await service.transcribe(f.path);
+      expect(result.text, 'hola');
+    });
+
+    test('el reparado lleva cabecera RIFF válida', () async {
+      final f = File('${tempDir.path}/hueco2.wav');
+      await f.writeAsBytes(holePcmFile(8192));
+      http.BaseRequest? seen;
+      final service = CloudSttService(
+        apiKey: 'gsk_test_key',
+        client: MockClient((http.BaseRequest request) async {
+          seen = request;
+          return http.Response('{"text":"hola"}', 200,
+              headers: {'content-type': 'application/json'});
+        }),
+      );
+      await service.transcribe(f.path);
+      final req = seen! as http.Request;
+      final String bodyText =
+          utf8.decode(req.bodyBytes, allowMalformed: true);
+      expect(bodyText, contains('RIFF'));
+      expect(bodyText, contains('filename="audio.wav"'));
+    });
+
+    test('todo ceros no se repara ni se sube', () async {
+      final f = File('${tempDir.path}/ceros.wav');
+      await f.writeAsBytes(List<int>.filled(9000, 0));
+      var calls = 0;
+      final service = CloudSttService(
+        apiKey: 'gsk_test_key',
+        client: MockClient((_) async {
+          calls++;
+          return http.Response('{"text":"x"}', 200);
+        }),
+      );
+      await expectLater(
+        service.transcribe(f.path),
+        throwsA(
+          isA<TranscriptionException>().having(
+            (e) => e.message,
+            'message',
+            contains('dañado'),
+          ),
+        ),
+      );
+      expect(calls, 0);
+    });
+
+    test('extranjero (ftyp) no se repara', () async {
+      final f = File('${tempDir.path}/video.wav');
+      final fake = List<int>.filled(9000, 0);
+      fake[4] = 0x66;
+      fake[5] = 0x74;
+      fake[6] = 0x79;
+      fake[7] = 0x70;
+      await f.writeAsBytes(fake);
+      final service = CloudSttService(
+        apiKey: 'gsk_test_key',
+        client: MockClient((_) async => http.Response('{"text":"x"}', 200)),
+      );
+      await expectLater(
+        service.transcribe(f.path),
+        throwsA(isA<TranscriptionException>()),
+      );
+    });
+  });
+
   group('TranscriptionService.transcribe - vuelo único (C-43)', () {
     test('segundo intento concurrente recibe ocupado', () async {
       SharedPreferences.setMockInitialValues({});

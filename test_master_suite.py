@@ -70,6 +70,7 @@ SUITES = [
     ("Widget termina de grabar + velo (C-41)", "test_c41_widget_stop_and_veil_suite.py"),
     ("Integridad de subida anti-400 (C-42)", "test_c42_upload_integrity_suite.py"),
     ("WAV tolerante + un solo envío (C-43)", "test_c43_tolerant_wav_and_single_flight_suite.py"),
+    ("Rescate de PCM sin tapa (C-44)", "test_c44_wav_repair_suite.py"),
 ]
 
 def run_test(name, func):

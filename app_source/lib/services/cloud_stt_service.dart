@@ -95,6 +95,92 @@ class CloudSttService {
     return '$hex/$ascii/$fileLength';
   }
 
+  /// Arma una cabecera WAV PCM 16-bit mono 16kHz (nuestro formato propio).
+  static List<int> buildWavHeader(int dataSize) {
+    void u16(List<int> out, int v) {
+      out.add(v & 0xFF);
+      out.add((v >> 8) & 0xFF);
+    }
+
+    void u32(List<int> out, int v) {
+      u16(out, v & 0xFFFF);
+      u16(out, (v >> 16) & 0xFFFF);
+    }
+
+    void tag(List<int> out, String s) {
+      for (var i = 0; i < 4; i++) {
+        out.add(s.codeUnitAt(i));
+      }
+    }
+
+    final List<int> head = <int>[];
+    tag(head, 'RIFF');
+    u32(head, dataSize + 36);
+    tag(head, 'WAVE');
+    tag(head, 'fmt ');
+    u32(head, 16);
+    u16(head, 1);
+    u16(head, 1);
+    u32(head, 16000);
+    u32(head, 32000);
+    u16(head, 2);
+    u16(head, 16);
+    tag(head, 'data');
+    u32(head, dataSize);
+    assert(head.length == 44);
+    return head;
+  }
+
+  /// Intenta rescatar un PCM nuestro sin tapa (C-45): hueco de 44 ceros +
+  /// audio real detrás (stop anormal). Devuelve los bytes reparados o null
+  /// (vacío, extranjero o ilegible: se mantiene el error claro).
+  static Future<List<int>?> tryRepairHolePcm(
+    File file,
+    List<int> head,
+    int fileLength,
+  ) async {
+    if (fileLength <= 44 || head.length < 44) return null;
+    for (var i = 0; i < 44; i++) {
+      if (head[i] != 0) return null;
+    }
+    var content = false;
+    for (var i = 44; i < head.length; i++) {
+      if (head[i] != 0) {
+        content = true;
+        break;
+      }
+    }
+    if (!content) {
+      final int tailLen =
+          fileLength > 8192 ? 4096 : fileLength;
+      final RandomAccessFile raf = await file.open(mode: FileMode.read);
+      try {
+        await raf.setPosition(fileLength - tailLen);
+        final List<int> tail = await raf.read(tailLen);
+        for (final int b in tail) {
+          if (b != 0) {
+            content = true;
+            break;
+          }
+        }
+      } finally {
+        await raf.close();
+      }
+    }
+    if (!content) return null;
+    final int dataSize = fileLength - 44;
+    if (dataSize <= 0) return null;
+    final RandomAccessFile raf = await file.open(mode: FileMode.read);
+    try {
+      await raf.setPosition(44);
+      final List<int> body = await raf.read(dataSize);
+      if (body.length != dataSize) return null;
+      return buildWavHeader(dataSize) + body;
+    } finally {
+      await raf.close();
+    }
+  }
+
   /// Motivo del rechazo del validador WAV (C-43): se muestra entre
   /// corchetes para diagnosticar en dispositivo sin exponer contenido.
   /// Solo tamaños, jamás audio.
@@ -214,7 +300,11 @@ class CloudSttService {
     } finally {
       await raf.close();
     }
+    List<int>? repaired;
     if (!isValidWavHeader(head, fileLength)) {
+      repaired = await tryRepairHolePcm(file, head, fileLength);
+    }
+    if (repaired == null && !isValidWavHeader(head, fileLength)) {
       final String motivo = checkWavHeader(head, fileLength);
       final String huella = describeHead(head, fileLength);
       throw TranscriptionException(
@@ -228,31 +318,40 @@ class CloudSttService {
     request.headers[_headerAuthorization] = 'Bearer $apiKey';
     request.fields[_multipartFieldModel] = _model;
     request.fields[_multipartFieldLanguage] = _language;
-    try {
-      request.files.add(
-        await http.MultipartFile.fromPath(
+    final http.MultipartFile audioPart;
+    if (repaired != null) {
+      audioPart = http.MultipartFile.fromBytes(
+        _multipartFieldFile,
+        repaired,
+        filename: 'audio.wav',
+        contentType: MediaType('audio', 'wav'),
+      );
+    } else {
+      try {
+        audioPart = await http.MultipartFile.fromPath(
           _multipartFieldFile,
           audioPath,
           filename: 'audio.wav',
           contentType: MediaType('audio', 'wav'),
-        ),
-      );
-    } on FileSystemException catch (e) {
-      throw TranscriptionException(
-        'No se pudo leer el audio para subirlo: ${e.message}',
-        kind: TranscriptionErrorKind.badRequest,
-      );
-    } on OSError catch (e) {
-      throw TranscriptionException(
-        'No se pudo leer el audio para subirlo: ${e.message}',
-        kind: TranscriptionErrorKind.badRequest,
-      );
-    } catch (_) {
-      throw const TranscriptionException(
-        'No se pudo leer el audio para subirlo.',
-        kind: TranscriptionErrorKind.badRequest,
-      );
+        );
+      } on FileSystemException catch (e) {
+        throw TranscriptionException(
+          'No se pudo leer el audio para subirlo: ${e.message}',
+          kind: TranscriptionErrorKind.badRequest,
+        );
+      } on OSError catch (e) {
+        throw TranscriptionException(
+          'No se pudo leer el audio para subirlo: ${e.message}',
+          kind: TranscriptionErrorKind.badRequest,
+        );
+      } catch (_) {
+        throw const TranscriptionException(
+          'No se pudo leer el audio para subirlo.',
+          kind: TranscriptionErrorKind.badRequest,
+        );
+      }
     }
+    request.files.add(audioPart);
 
     final response = await _guardNetworkCall(() {
       final effectiveClient = client;
