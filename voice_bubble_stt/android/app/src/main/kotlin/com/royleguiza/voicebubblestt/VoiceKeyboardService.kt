@@ -41,6 +41,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // --- Dictado (K3 + M4 Morph-to-Pill; máquina en DictationController) ---
     private lateinit var dictation: DictationController
     private var currentIsPasswordField = false
+    private var currentIsNumericField = false
     private var currentPackageName: String? = null
     private var spaceKeyView: View? = null
     private var commaKeyView: View? = null
@@ -147,16 +148,18 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
         val newPackage = info?.packageName
         val isPassword = isPasswordInput(info)
+        val isNumeric = isNumericInput(info)
 
         // C-08: Early return si es restart en el mismo paquete y sin cambio de tipo contraseña:
         // evita cancelar dictado, recargar preferencias de disco o reconstruir vistas
         // innecesariamente (ej. commits continuos en WebView/navegadores).
-        if (restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField) {
+        if (restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField && isNumeric == currentIsNumericField) {
             return
         }
 
         currentPackageName = newPackage
         currentIsPasswordField = isPassword
+        currentIsNumericField = isNumeric
 
         // K5-T5: defensa extra; nunca arrancar un campo con dictado vivo.
         dictation.cancelDictationIfActive()
@@ -178,9 +181,15 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         dictation.syncBubbleState()
         // FIX ?123 persistente: los restart de la app destino (restarting=true,
         // ej. navegadores/WebView tras cada commit) no deben tumbar la capa
-        // SYMBOLS/CODE. Solo un campo nuevo resetea a LETTERS.
+        // SYMBOLS/CODE. Solo un campo nuevo resetea a LETTERS (o a NUMERIC
+        // si el campo lo pide).
         if (!restarting) {
-            layer = Layer.LETTERS
+            if (isNumeric) {
+                if (miniMode) setMiniMode(false, rebuildNow = false)
+                layer = Layer.NUMERIC
+            } else {
+                layer = Layer.LETTERS
+            }
             lastLettersLayer = Layer.LETTERS
             if (::editor.isInitialized) editor.resetForNewField()
         }
@@ -268,13 +277,15 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         } else {
             trackpad.hide()
             // En CLIPBOARD se salta la terminal para compensar la cinta.
-            if (kbPrefs.terminalRowVisiblePref && layer != Layer.CLIPBOARD) {
+            // En NUMERIC también: la calculadora no necesita TAB/ESC/CTRL/ALT.
+            if (kbPrefs.terminalRowVisiblePref && layer != Layer.CLIPBOARD && layer != Layer.NUMERIC) {
                 addRow(toolbar.buildTerminalRow())
             }
             when (layer) {
                 Layer.LETTERS -> layout.buildLetterRows()
                 Layer.SYMBOLS -> layout.buildSymbolRows()
                 Layer.CODE -> layout.buildCodeRows()
+                Layer.NUMERIC -> layout.buildNumericRows()
                 Layer.SNIPPETS -> buildSnippetRows()
                 Layer.CREDENTIALS -> buildCredentialRows()
                 Layer.CLIPBOARD -> {
@@ -283,7 +294,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 }
                 Layer.TRACKPAD -> {}
             }
-            addRow(layout.buildBottomBar())
+            if (layer == Layer.NUMERIC) {
+                addRow(layout.buildNumericBottomRow())
+            } else {
+                addRow(layout.buildBottomBar())
+            }
             spaceKeyView = layout.spaceView
             commaKeyView = layout.commaView
             dotKeyView = layout.dotView
@@ -551,10 +566,51 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (miniMode) setMiniMode(false, rebuildNow = false)
         if (layer == Layer.SNIPPETS) {
             snippets.cycleSubLayerForSymbols()
-        } else {
-            layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
-            rebuild()
+            return
         }
+        // Desde NUMERIC, ABC vuelve a letras (promesa de la tecla).
+        if (layer == Layer.NUMERIC) {
+            layer = Layer.LETTERS
+            lastLettersLayer = Layer.LETTERS
+            rebuild()
+            return
+        }
+        // Ida por !?# desde NUMERIC: ABC en símbolos vuelve al numérico.
+        if (layer == Layer.SYMBOLS && lastLettersLayer == Layer.NUMERIC) {
+            layer = Layer.NUMERIC
+            lastLettersLayer = Layer.LETTERS
+            rebuild()
+            return
+        }
+        layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
+        rebuild()
+    }
+
+    /**
+     * Entrada a la capa numérica (mantener ?123/ABC). Tap sigue intacto;
+     * el mantener sale de mini (la calculadora exige altura completa) y
+     * conserva ABC → LETTERS como retorno predecible.
+     */
+    override fun pressNumericKey() {
+        if (miniMode) setMiniMode(false, rebuildNow = false)
+        if (layer == Layer.NUMERIC) return
+        if (layer == Layer.SNIPPETS && ::snippets.isInitialized) {
+            snippets.resetState()
+        }
+        lastLettersLayer = Layer.LETTERS
+        layer = Layer.NUMERIC
+        rebuild()
+    }
+
+    /** !?# dentro del numérico: va a símbolos recordando volver al numérico. */
+    override fun pressSymbolsFromNumeric() {
+        if (layer != Layer.NUMERIC) {
+            pressSymbolsKey()
+            return
+        }
+        lastLettersLayer = Layer.NUMERIC
+        layer = Layer.SYMBOLS
+        rebuild()
     }
     override fun toggleLanguage() {
         spanishMode = !spanishMode
@@ -577,6 +633,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         layer == Layer.SNIPPETS && (snippets.subLayer == Layer.SYMBOLS || snippets.subLayer == Layer.CODE) -> "ABC"
         layer == Layer.SYMBOLS || layer == Layer.CODE || layer == Layer.CREDENTIALS -> "ABC"
         layer == Layer.CLIPBOARD -> "ABC"
+        layer == Layer.NUMERIC -> "ABC"
         else -> "?123"
     }
     override fun isLanguageKeyVisible(): Boolean = kbPrefs.languageKeyVisiblePref

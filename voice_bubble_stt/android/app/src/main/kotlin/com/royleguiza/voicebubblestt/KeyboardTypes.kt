@@ -7,7 +7,7 @@ package com.royleguiza.voicebubblestt
  * snippets, credenciales) los usan sin pasar por VKS.
  */
 
-enum class Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD, CREDENTIALS, CLIPBOARD }
+enum class Layer { LETTERS, SYMBOLS, CODE, SNIPPETS, TRACKPAD, CREDENTIALS, CLIPBOARD, NUMERIC }
 
 internal enum class MicState { IDLE, RECORDING, PROCESSING, BUSY }
 

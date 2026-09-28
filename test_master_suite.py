@@ -73,6 +73,7 @@ SUITES = [
     ("Rescate de PCM sin tapa (C-44)", "test_c44_wav_repair_suite.py"),
     ("Offline sin perder audio (C-45)", "test_c45_offline_pending_fix_suite.py"),
     ("Reproductor expandible del pendiente (C-46)", "test_c46_expanding_player_suite.py"),
+    ("Teclado numérico inteligente (C-47)", "test_c47_numeric_keyboard_suite.py"),
 ]
 
 def run_test(name, func):

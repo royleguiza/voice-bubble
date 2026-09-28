@@ -539,6 +539,73 @@ class KeyFactory(
         return key
     }
 
+    /**
+     * Tecla especial con long-press (capa NUMERIC): tap y mantener tienen
+     * acciones distintas (ej. ?123 tap = símbolos, mantener = numérico).
+     * El haptic del mantener lo pone la fábrica; el tap ya vibra en DOWN
+     * vía longPress. Sin lanzar nunca.
+     */
+    fun makeSpecialKeyWithLongPress(
+        label: String,
+        bgRes: Int,
+        weight: Float,
+        description: String?,
+        textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_small),
+        isBold: Boolean = true,
+        heightPx: Int? = null,
+        onTap: () -> Unit,
+        onLongPress: () -> Unit,
+    ): TextView {
+        val key = makeKey(
+            label,
+            weight,
+            bgRes,
+            R.color.kb_label,
+            textSizePx,
+            isBold = isBold,
+            heightPx = heightPx,
+        )
+        if (description != null) {
+            key.contentDescription = description
+        }
+        key.tag = onTap
+        host.attachPress(
+            key,
+            onLongPress = {
+                host.haptic(key)
+                onLongPress()
+            },
+            onTapUp = onTap,
+        )
+        return key
+    }
+
+    /**
+     * Tecla de símbolo con fondo secundario (operadores de la capa
+     * NUMERIC): mismo commit que makeSymbolKey pero con kb_key_alt para
+     * distinguir operadores del bloque central de dígitos.
+     */
+    fun makeAltSymbolKey(
+        label: String,
+        description: String?,
+        textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_small),
+        isBold: Boolean = true,
+    ): TextView {
+        val key = makeKey(
+            label,
+            1f,
+            R.drawable.kb_key_alt,
+            R.color.kb_label,
+            textSizePx,
+            isBold = isBold,
+        )
+        key.contentDescription = description ?: label
+        val commit: () -> Unit = { host.commitSymbolKey(label) }
+        key.tag = commit
+        host.attachTap(key, commit)
+        return key
+    }
+
     fun makeActionIconKey(
         iconRes: Int,
         bgRes: Int,

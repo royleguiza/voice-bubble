@@ -76,7 +76,7 @@ check("Sin useKeyHeight en toolbar (§layout)", "useKeyHeight" not in tb)
 check("VKS implementa isMiniMode/miniToggle", "override fun isMiniMode()" in vks and "override fun miniToggle()" in vks)
 
 # --- 4. Rebuild mini ---
-mini = vks.split("if (miniMode)")[1].split("} else if (layer == Layer.TRACKPAD)")[0] if "if (miniMode)" in vks else ""
+mini = vks.split("if (miniMode) {")[1].split("} else if (layer == Layer.TRACKPAD)")[0] if "if (miniMode) {" in vks else ""
 check("Rama mini en rebuild()", "if (miniMode)" in vks)
 check("Mini: clipboard inline", "Layer.CLIPBOARD -> addRow(clipboard.buildRows())" in vks)
 check("Mini: credenciales inline", "credentials.buildRows(root)" in vks)
@@ -90,6 +90,7 @@ check("Snippets expande a completo", "override fun snippetsToggle()" in vks and 
 check("Trackpad expande a completo", "override fun trackpadToggle()" in vks)
 check("Code expande a completo", "override fun codeToggle()" in vks)
 check("Símbolos expanden a completo", "override fun pressSymbolsKey()" in vks)
+check("Numérico expande a completo", "override fun pressNumericKey()" in vks and "setMiniMode(false" in vks)
 check("Clipboard NO expande (inline)", "override fun clipboardToggle() = clipboard.toggle()" in vks)
 check("Credenciales NO expanden (inline)", "override fun credentialsToggle() = credentials.toggle()" in vks)
 check("Aviso de modo i18n", "Mini-teclado" in vks and "Teclado completo" in vks)

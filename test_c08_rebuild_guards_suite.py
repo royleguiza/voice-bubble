@@ -4,7 +4,7 @@ TEST SUITE: REBUILD SOLO CUANDO TOCA (CONTRATO C-08)
 
 Verifica al 100% de certeza sobre el código REAL:
 1. Early return en `VoiceKeyboardService.onStartInputView` cuando `restarting == true`
-   con el mismo paquete y sin cambio de campo-contraseña.
+   con el mismo paquete y sin cambio de campo-contraseña ni de tipo numérico.
 2. Comprobación de orden estricto en `onStartInputView`:
    - El early return ocurre ANTES de `dictation.cancelDictationIfActive()`.
    - El early return ocurre ANTES de `kbPrefs.load()`.
@@ -67,6 +67,10 @@ check(
 check(
     "onStartInputView valida sin cambio de tipo contraseña en restart",
     "isPassword == currentIsPasswordField" in on_start,
+)
+check(
+    "onStartInputView valida sin cambio de tipo numérico en restart",
+    "isNumeric == currentIsNumericField" in on_start,
 )
 
 # 2. Orden de operaciones en onStartInputView (early return antes de cualquier efecto colateral)
@@ -141,7 +145,7 @@ check(
 # 6. Mutaciones negativas
 def test_mutations():
     # Mutación 1: Eliminar early return de onStartInputView
-    mutated_start = on_start.replace("if (restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField) {\n            return\n        }", "")
+    mutated_start = on_start.replace("if (restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField && isNumeric == currentIsNumericField) {\n            return\n        }", "")
     check("Mutación 1 (sin early return en onStartInputView): detectada", "if (restarting &&" not in mutated_start)
 
     # Mutación 2: Invertir el orden (cancelar dictado antes de early return)

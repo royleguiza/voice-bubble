@@ -142,6 +142,19 @@ internal fun isPasswordInput(info: EditorInfo?): Boolean {
         variation == InputType.TYPE_NUMBER_VARIATION_PASSWORD
 }
 
+/**
+ * Campos numéricos (capa NUMERIC): NUMBER, PHONE y DATETIME. Incluye los
+ * PIN numéricos (clase NUMBER con variación password): siguen siendo
+ * password (sin mic/snippets) pero se muestran con layout numérico.
+ */
+internal fun isNumericInput(info: EditorInfo?): Boolean {
+    if (info == null) return false
+    val cls = info.inputType and InputType.TYPE_MASK_CLASS
+    return cls == InputType.TYPE_CLASS_NUMBER ||
+        cls == InputType.TYPE_CLASS_PHONE ||
+        cls == InputType.TYPE_CLASS_DATETIME
+}
+
 /** Codigo de tecla fisica para combinaciones modificadoras (a-z y corchetes). */
 internal fun keyCodeFor(c: Char): Int? = when {
     c in 'a'..'z' -> KeyEvent.KEYCODE_A + (c - 'a')

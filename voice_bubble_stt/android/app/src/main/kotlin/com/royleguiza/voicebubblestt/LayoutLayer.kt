@@ -33,6 +33,8 @@ class LayoutLayer(
         fun toggleShiftKey()
         fun trackShiftKey(view: ImageView)
         fun pressSymbolsKey()
+        fun pressNumericKey()
+        fun pressSymbolsFromNumeric()
         fun toggleLanguage()
         fun pressSpace()
         fun pressEnter()
@@ -103,12 +105,102 @@ class LayoutLayer(
         host.addContentRow(row3)
     }
 
+    /**
+     * Capa numérica (calculadora): bloque central de dígitos con fondo
+     * principal + operadores laterales con fondo secundario. Misma
+     * fábrica y gestos que el resto (⌫ con repetición y swipe-palabra).
+     */
+    fun buildNumericRows() {
+        val es = host.isSpanish()
+        val row1 = keys.horizontalRow()
+        row1.addView(keys.makeAltSymbolKey("-", if (es) "menos" else "minus"))
+        for (c in "789") {
+            row1.addView(keys.makeSymbolKey(c.toString()))
+        }
+        row1.addView(keys.makeAltSymbolKey("+", if (es) "más" else "plus"))
+        keys.makeGapTolerant(row1)
+        host.addContentRow(row1)
+
+        val row2 = keys.horizontalRow()
+        row2.addView(keys.makeAltSymbolKey("*", if (es) "multiplicación" else "multiply"))
+        for (c in "456") {
+            row2.addView(keys.makeSymbolKey(c.toString()))
+        }
+        row2.addView(keys.makeAltSymbolKey("%", if (es) "porcentaje" else "percent"))
+        keys.makeGapTolerant(row2)
+        host.addContentRow(row2)
+
+        val row3 = keys.horizontalRow()
+        row3.addView(keys.makeAltSymbolKey("/", if (es) "división" else "divide"))
+        for (c in "123") {
+            row3.addView(keys.makeSymbolKey(c.toString()))
+        }
+        row3.addView(keys.makeBackspaceKey())
+        keys.makeGapTolerant(row3)
+        host.addContentRow(row3)
+    }
+
+    /**
+     * Fila inferior numérica (sin espacio, por pedido): ABC pastilla,
+     * coma, !?#, cero central, igual, punto y el mismo Enter accent
+     * del resto del teclado.
+     */
+    fun buildNumericBottomRow(): LinearLayout {
+        val row = keys.horizontalRow()
+        val es = host.isSpanish()
+
+        val btnAbc = keys.makeSpecialKeyWithLongPress(
+            "ABC",
+            R.drawable.kb_key_alt,
+            1.5f,
+            if (es) "letras" else "letters",
+            isBold = true,
+            onTap = { host.pressSymbolsKey() },
+            onLongPress = { host.pressSymbolsKey() },
+        )
+        row.addView(btnAbc)
+        row.addView(keys.makeSymbolKey(","))
+        val btnSym = keys.makeSpecialKey(
+            "!?#",
+            R.drawable.kb_key_alt,
+            1.5f,
+            if (es) "símbolos" else "symbols",
+            isBold = true,
+        ) {
+            host.pressSymbolsFromNumeric()
+        }
+        row.addView(btnSym)
+        row.addView(keys.makeSymbolKey("0"))
+        row.addView(keys.makeAltSymbolKey("=", if (es) "igual" else "equals"))
+        row.addView(keys.makeSymbolKey("."))
+
+        val enter = keys.makeActionIconKey(
+            R.drawable.ic_enter,
+            R.drawable.kb_key_accent,
+            1.8f,
+            if (es) "intro" else "enter",
+            tintColorRes = R.color.kb_label_on_accent,
+        ) {
+            host.pressEnter()
+        }
+        row.addView(enter)
+        return row
+    }
+
     fun buildBottomBar(): LinearLayout {
         val row = keys.horizontalRow()
 
-        val btnSym = keys.makeSpecialKey(host.symbolsLabel(), R.drawable.kb_key_alt, 1.5f, if (host.isSpanish()) "símbolos" else "symbols", isBold = true) {
-            host.pressSymbolsKey()
-        }
+        // Tap = alternar símbolos; mantener = capa numérica (con pista para TalkBack).
+        val symDesc = if (host.isSpanish()) "símbolos, mantén para números" else "symbols, hold for numbers"
+        val btnSym = keys.makeSpecialKeyWithLongPress(
+            host.symbolsLabel(),
+            R.drawable.kb_key_alt,
+            1.5f,
+            symDesc,
+            isBold = true,
+            onTap = { host.pressSymbolsKey() },
+            onLongPress = { host.pressNumericKey() },
+        )
 
         val btnLang = if (host.isLanguageKeyVisible()) {
             keys.makeSpecialKey(if (host.isSpanish()) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (host.isSpanish()) "cambiar idioma" else "switch language", isBold = true) {
