@@ -463,10 +463,11 @@ class KeyFactory(
         label: String,
         textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_small),
         isBold: Boolean = true,
+        weight: Float = 1f,
     ): TextView {
         val key = makeKey(
             label,
-            1f,
+            weight,
             R.drawable.kb_key_bg,
             R.color.kb_label,
             textSizePx,
@@ -590,10 +591,11 @@ class KeyFactory(
         description: String?,
         textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_small),
         isBold: Boolean = true,
+        weight: Float = 1f,
     ): TextView {
         val key = makeKey(
             label,
-            1f,
+            weight,
             R.drawable.kb_key_alt,
             R.color.kb_label,
             textSizePx,
@@ -637,12 +639,12 @@ class KeyFactory(
         return key
     }
 
-    fun makeBackspaceKey(heightPx: Int? = null): ImageView {
+    fun makeBackspaceKey(heightPx: Int? = null, weight: Float = 1.3f): ImageView {
         val action: () -> Unit = { host.deleteBackward() }
         val key = makeActionIconKey(
             R.drawable.ic_backspace,
             R.drawable.kb_key_alt,
-            1.3f,
+            weight,
             if (host.isSpanish()) "borrar" else "delete",
             tintColorRes = R.color.kb_label,
             heightPx = heightPx,

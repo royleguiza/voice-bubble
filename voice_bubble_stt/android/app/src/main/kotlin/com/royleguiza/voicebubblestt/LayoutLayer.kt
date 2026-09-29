@@ -109,41 +109,46 @@ class LayoutLayer(
      * Capa numérica (calculadora): bloque central de dígitos con fondo
      * principal + operadores laterales con fondo secundario. Misma
      * fábrica y gestos que el resto (⌫ con repetición y swipe-palabra).
+     * Grilla simétrica de 5 columnas: bordes (operadores/borrar) de
+     * ancho de borde + 3 dígitos centrales más anchos (las divas).
+     * Total por fila = 5.0, idéntico en las 3 filas y en la inferior.
      */
     fun buildNumericRows() {
         val es = host.isSpanish()
         val row1 = keys.horizontalRow()
-        row1.addView(keys.makeAltSymbolKey("-", if (es) "menos" else "minus"))
+        row1.addView(keys.makeAltSymbolKey("-", if (es) "menos" else "minus", weight = NUM_EDGE_W))
         for (c in "789") {
-            row1.addView(keys.makeSymbolKey(c.toString()))
+            row1.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
-        row1.addView(keys.makeAltSymbolKey("+", if (es) "más" else "plus"))
+        row1.addView(keys.makeAltSymbolKey("+", if (es) "más" else "plus", weight = NUM_EDGE_W))
         keys.makeGapTolerant(row1)
         host.addContentRow(row1)
 
         val row2 = keys.horizontalRow()
-        row2.addView(keys.makeAltSymbolKey("*", if (es) "multiplicación" else "multiply"))
+        row2.addView(keys.makeAltSymbolKey("*", if (es) "multiplicación" else "multiply", weight = NUM_EDGE_W))
         for (c in "456") {
-            row2.addView(keys.makeSymbolKey(c.toString()))
+            row2.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
-        row2.addView(keys.makeAltSymbolKey("%", if (es) "porcentaje" else "percent"))
+        row2.addView(keys.makeAltSymbolKey("%", if (es) "porcentaje" else "percent", weight = NUM_EDGE_W))
         keys.makeGapTolerant(row2)
         host.addContentRow(row2)
 
         val row3 = keys.horizontalRow()
-        row3.addView(keys.makeAltSymbolKey("/", if (es) "división" else "divide"))
+        row3.addView(keys.makeAltSymbolKey("/", if (es) "división" else "divide", weight = NUM_EDGE_W))
         for (c in "123") {
-            row3.addView(keys.makeSymbolKey(c.toString()))
+            row3.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
-        row3.addView(keys.makeBackspaceKey())
+        row3.addView(keys.makeBackspaceKey(weight = NUM_EDGE_W))
         keys.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
     /**
      * Fila inferior numérica (sin espacio, por pedido): ABC pastilla,
-     * coma, !?#, cero central, igual, punto y el mismo Enter accent
-     * del resto del teclado.
+     * !?# junto a ABC, coma, cero central del ancho de la columna 3,
+     * punto, igual junto al Enter y el mismo Enter accent del resto.
+     * Simetría: bordes ABC/Enter = columnas laterales; !?# e igual
+     * espejados; coma y punto pequeños espejados (ws + wp = dígito).
      */
     fun buildNumericBottomRow(): LinearLayout {
         val row = keys.horizontalRow()
@@ -152,32 +157,32 @@ class LayoutLayer(
         val btnAbc = keys.makeSpecialKeyWithLongPress(
             "ABC",
             R.drawable.kb_key_alt,
-            1.5f,
+            NUM_EDGE_W,
             if (es) "letras" else "letters",
             isBold = true,
             onTap = { host.pressSymbolsKey() },
             onLongPress = { host.pressSymbolsKey() },
         )
         row.addView(btnAbc)
-        row.addView(keys.makeSymbolKey(","))
         val btnSym = keys.makeSpecialKey(
             "!?#",
             R.drawable.kb_key_alt,
-            1.5f,
+            NUM_SYM_W,
             if (es) "símbolos" else "symbols",
             isBold = true,
         ) {
             host.pressSymbolsFromNumeric()
         }
         row.addView(btnSym)
-        row.addView(keys.makeSymbolKey("0"))
-        row.addView(keys.makeAltSymbolKey("=", if (es) "igual" else "equals"))
-        row.addView(keys.makeSymbolKey("."))
+        row.addView(keys.makeSymbolKey(",", weight = NUM_PUNCT_W))
+        row.addView(keys.makeSymbolKey("0", weight = NUM_DIGIT_W))
+        row.addView(keys.makeSymbolKey(".", weight = NUM_PUNCT_W))
+        row.addView(keys.makeAltSymbolKey("=", if (es) "igual" else "equals", weight = NUM_SYM_W))
 
         val enter = keys.makeActionIconKey(
             R.drawable.ic_enter,
             R.drawable.kb_key_accent,
-            1.8f,
+            NUM_EDGE_W,
             if (es) "intro" else "enter",
             tintColorRes = R.color.kb_label_on_accent,
         ) {
@@ -185,6 +190,20 @@ class LayoutLayer(
         }
         row.addView(enter)
         return row
+    }
+
+    companion object {
+        /** Ancho de columnas laterales (operadores, ⌫, ABC, Enter). */
+        const val NUM_EDGE_W = 0.85f
+
+        /** Ancho de dígitos (las divas; el 0 iguala la columna 3). */
+        const val NUM_DIGIT_W = 1.1f
+
+        /** !?# e igual, espejados. */
+        const val NUM_SYM_W = 0.7f
+
+        /** Coma y punto pequeños, espejados (sym + punct = dígito). */
+        const val NUM_PUNCT_W = 0.4f
     }
 
     fun buildBottomBar(): LinearLayout {

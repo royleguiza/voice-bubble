@@ -76,20 +76,20 @@ class TestC47NumericKeyboardSuite(unittest.TestCase):
                          ("%", "porcentaje"), ("/", "divisi")]:
             self.assertIn(f'"{op}"', rows)
         self.assertIn("menos", rows)
-        self.assertIn("makeBackspaceKey()", rows)
+        self.assertIn("makeBackspaceKey(weight = NUM_EDGE_W)", rows)
         self.assertEqual(rows.count("makeGapTolerant("), 3)
         # Dígitos fondo principal, operadores secundario.
-        self.assertIn("makeSymbolKey(c.toString())", rows)
+        self.assertIn("makeSymbolKey(c.toString(), weight = NUM_DIGIT_W)", rows)
         self.assertIn("makeAltSymbolKey(", rows)
 
     def test_05_fila_inferior_exacta_sin_espacio(self):
         src = read_file(LAYOUT)
         self.assertIn("fun buildNumericBottomRow()", src)
         bottom = src.split("fun buildNumericBottomRow()")[1].split("fun buildBottomBar")[0]
-        for label in ['"ABC"', '","', '"!?#"', '"0"', '"="', '"."']:
+        for label in ['"ABC"', '"!?#"', '","', '"0"', '"."', '"="']:
             self.assertIn(label, bottom)
-        # Orden exacto de izquierda a derecha.
-        idx = [bottom.index(label) for label in ['"ABC"', '","', '"!?#"', '"0"', '"="', '"."']]
+        # Orden exacto de izquierda a derecha: ABC, !?#, coma, 0, punto, igual.
+        idx = [bottom.index(label) for label in ['"ABC"', '"!?#"', '","', '"0"', '"."', '"="']]
         self.assertEqual(idx, sorted(idx))
         # Mismo Enter que el resto (icono + accent + pressEnter).
         self.assertIn("R.drawable.ic_enter", bottom)
@@ -99,6 +99,27 @@ class TestC47NumericKeyboardSuite(unittest.TestCase):
         self.assertNotIn("pressSpace", bottom)
         self.assertNotIn("attachSpacebar", bottom)
         self.assertNotIn("5.0f", bottom)
+
+    def test_05b_simetria_de_pesos(self):
+        src = read_file(LAYOUT)
+        for const in ("NUM_EDGE_W = 0.85f", "NUM_DIGIT_W = 1.1f",
+                      "NUM_SYM_W = 0.7f", "NUM_PUNCT_W = 0.4f"):
+            self.assertIn(const, src)
+        # Totales: filas 0.85 + 3x1.1 + 0.85 = 5.0; inferior igual.
+        edge, digit, sym, punct = 0.85, 1.1, 0.7, 0.4
+        self.assertAlmostEqual(edge + 3 * digit + edge, 5.0)
+        self.assertAlmostEqual(edge + sym + punct + digit + punct + sym + edge, 5.0)
+        self.assertAlmostEqual(sym + punct, digit)
+        bottom = src.split("fun buildNumericBottomRow()")[1].split("fun buildBottomBar")[0]
+        rows = src.split("fun buildNumericRows()")[1].split("fun buildNumericBottomRow")[0]
+        # Bordes y Enter igualan la columna lateral; ⌫ también.
+        self.assertIn("NUM_EDGE_W", bottom)
+        self.assertIn("makeBackspaceKey(weight = NUM_EDGE_W)", rows)
+        # El 0 iguala la columna central 3; coma/punto pequeños; !?# e igual espejados.
+        self.assertIn('makeSymbolKey("0", weight = NUM_DIGIT_W)', bottom)
+        self.assertIn('makeSymbolKey(",", weight = NUM_PUNCT_W)', bottom)
+        self.assertIn('makeSymbolKey(".", weight = NUM_PUNCT_W)', bottom)
+        self.assertIn("NUM_SYM_W", bottom)
 
     def test_06_toggles_bidireccionales(self):
         vks = read_file(VKS)
