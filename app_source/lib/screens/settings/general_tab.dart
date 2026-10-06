@@ -652,7 +652,7 @@ class GeminiApiKeyCard extends StatelessWidget {
                 child: FilledButton(
                   key: const ValueKey('gemini-cta-button'),
                   onPressed: onStartApiEdit,
-                  child: const Text('Ingresa tu API Key'),
+                  child: const Text('Ingresa tu API Key de Google'),
                 ),
               ),
               const SizedBox(height: 4),
