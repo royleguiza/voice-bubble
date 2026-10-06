@@ -154,6 +154,21 @@ class WidgetNoteEditActivity : Activity() {
         findViewById<View>(R.id.btn_save).setOnClickListener {
             requestSave(titleEt.text.toString(), bodyEt.text.toString())
         }
+        fun launchGemini(action: String) {
+            val id = noteId
+            if (id == null) {
+                Toast.makeText(this, "Guardá la nota primero", Toast.LENGTH_SHORT).show()
+                return
+            }
+            val intent = android.content.Intent(this, MainActivity::class.java).apply {
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("widget_action", "gemini_$action")
+                putExtra("note_id", id)
+            }
+            startActivity(intent)
+        }
+        findViewById<View>(R.id.btn_gemini_investigar).setOnClickListener { launchGemini("investigar") }
+        findViewById<View>(R.id.btn_gemini_reestructurar).setOnClickListener { launchGemini("reestructurar") }
         findViewById<View>(R.id.btn_delete).setOnClickListener { confirmDelete() }
 
         val editingId = noteId

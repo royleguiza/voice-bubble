@@ -60,10 +60,12 @@ check("sin sampling params deprecados (temperature)", "temperature" not in servi
 check("error con detalle de body copiable", "_bodyDetail" in service)
 
 # 4. Editor
-check("editor: botón título", "geminiTituloButton" in editor)
+check("editor: icono título", "geminiTituloIcon" in editor)
 check("editor: botón reestructurar", "geminiReestructurarButton" in editor)
 check("editor: botón investigar", "geminiInvestigarButton" in editor)
 check("editor: preview con Aplicar/Descartar", "Descartar" in editor and "Aplicar" in editor)
+check("servicio: thinkingLevel minimal (evita respuesta vacía)", "thinkingLevel" in service)
+check("widget: slots gemini en layout nativo", "btn_gemini_investigar" in suite.read("voice_bubble_stt/android/app/src/main/res/layout/activity_widget_note_edit.xml"))
 check("editor: no muestra botones sin key", "_geminiReady" in editor and "_loadGeminiState" in editor)
 
 # 5. Ajustes

@@ -13,11 +13,13 @@ import '../ui/transcription_feedback.dart';
 class NoteEditorScreen extends StatefulWidget {
   final VoiceNote? note;
   final NotesService notesService;
+  final String? initialGeminiAction;
 
   const NoteEditorScreen({
     super.key,
     this.note,
     required this.notesService,
+    this.initialGeminiAction,
   });
 
   @override
@@ -37,6 +39,18 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _titleCtrl = TextEditingController(text: widget.note?.titulo ?? '');
     _bodyCtrl = TextEditingController(text: widget.note?.cuerpo ?? '');
     _loadGeminiState();
+    _titleCtrl.addListener(_onTitleChanged);
+    if (widget.initialGeminiAction != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _geminiReady) {
+          _runGemini(widget.initialGeminiAction!);
+        }
+      });
+    }
+  }
+
+  void _onTitleChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadGeminiState() async {
@@ -96,6 +110,15 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       return;
     }
     if (resultado == null) return;
+    if (accion == 'titulo') {
+      _titleCtrl.text = resultado;
+      if (widget.note != null) {
+        await widget.notesService.updateNote(widget.note!.id,
+            titulo: resultado, cuerpo: _bodyCtrl.text);
+        await WidgetService().updateWidgets();
+      }
+      return;
+    }
     _showGeminiResult(accion, resultado);
   }
 
@@ -116,15 +139,18 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           ),
           FilledButton(
             key: ValueKey('geminiApply_$accion'),
-            onPressed: () {
-              if (accion == 'titulo') {
-                _titleCtrl.text = resultado;
-              } else if (accion == 'reestructurar') {
+            onPressed: () async {
+              if (accion == 'reestructurar') {
                 _bodyCtrl.text = resultado;
               } else {
                 _bodyCtrl.text = '${_bodyCtrl.text}\n\n$resultado';
               }
               Navigator.of(ctx).pop();
+              if (widget.note != null) {
+                await widget.notesService
+                    .updateNote(widget.note!.id, cuerpo: _bodyCtrl.text);
+                await WidgetService().updateWidgets();
+              }
             },
             child: Text(accion == 'investigar' ? 'Anexar' : 'Aplicar'),
           ),
@@ -199,6 +225,15 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             maxLength: NotesService.maxTituloLength,
             style: kTextSubhead.copyWith(fontWeight: FontWeight.w600),
             decoration: InputDecoration(
+              suffixIcon: (_geminiReady && _titleCtrl.text.trim().isEmpty)
+                  ? IconButton(
+                      key: const ValueKey('geminiTituloIcon'),
+                      icon: const Icon(Icons.auto_awesome),
+                      tooltip: 'Generar título con IA',
+                      onPressed:
+                          _geminiBusy ? null : () => _runGemini('titulo'),
+                    )
+                  : null,
               labelText: 'Titulo',
               labelStyle: kTextFootnote.copyWith(
                 color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
@@ -243,36 +278,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          if (_geminiReady)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    key: const ValueKey('geminiTituloButton'),
-                    icon: const Icon(Icons.auto_awesome, size: 18),
-                    label: Text(_geminiBusy ? 'Procesando…' : 'IA · Título'),
-                    onPressed: _geminiBusy ? null : () => _runGemini('titulo'),
-                  ),
-                  OutlinedButton.icon(
-                    key: const ValueKey('geminiReestructurarButton'),
-                    icon: const Icon(Icons.reorder_rounded, size: 18),
-                    label: const Text('IA · Reestructurar'),
-                    onPressed:
-                        _geminiBusy ? null : () => _runGemini('reestructurar'),
-                  ),
-                  OutlinedButton.icon(
-                    key: const ValueKey('geminiInvestigarButton'),
-                    icon: const Icon(Icons.travel_explore_rounded, size: 18),
-                    label: const Text('IA · Investigar'),
-                    onPressed:
-                        _geminiBusy ? null : () => _runGemini('investigar'),
-                  ),
-                ],
-              ),
-            ),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -313,6 +318,22 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   );
                 },
               ),
+              if (_geminiReady) ...[
+                IconButton(
+                  key: const ValueKey('geminiInvestigarButton'),
+                  icon: const Icon(Icons.public_rounded),
+                  tooltip: 'Investigar con IA',
+                  onPressed:
+                      _geminiBusy ? null : () => _runGemini('investigar'),
+                ),
+                IconButton(
+                  key: const ValueKey('geminiReestructurarButton'),
+                  icon: const Icon(Icons.format_align_left_rounded),
+                  tooltip: 'Reestructurar con IA',
+                  onPressed:
+                      _geminiBusy ? null : () => _runGemini('reestructurar'),
+                ),
+              ],
               if (widget.note != null)
                 OutlinedButton.icon(
                   icon: const Icon(Icons.delete_outline_rounded, size: 18),

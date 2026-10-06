@@ -180,7 +180,14 @@ class _HomeScreenState extends State<HomeScreen>
           context,
           MaterialPageRoute(builder: (_) => const NotesScreen()),
         );
-      } else if (act == 'open_note' && noteId != null && noteId.isNotEmpty) {
+      } else if ((act == 'open_note' ||
+              act == 'gemini_investigar' ||
+              act == 'gemini_reestructurar') &&
+          noteId != null &&
+          noteId.isNotEmpty) {
+        String? geminiAction;
+        if (act == 'gemini_investigar') geminiAction = 'investigar';
+        if (act == 'gemini_reestructurar') geminiAction = 'reestructurar';
         final notesService = NotesService();
         await notesService.load();
         VoiceNote? note;
@@ -194,7 +201,11 @@ class _HomeScreenState extends State<HomeScreen>
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => NoteEditorScreen(note: note, notesService: notesService),
+              builder: (_) => NoteEditorScreen(
+                    note: note,
+                    notesService: notesService,
+                    initialGeminiAction: geminiAction,
+                  ),
             ),
           );
         } else {

@@ -27,9 +27,9 @@ class GeminiNoteService {
       'https://generativelanguage.googleapis.com/v1beta/models';
 
   static const String systemInstruction =
-      'Respondé siempre en español. Salvo que se indique lo contrario, devolvé '
-      'texto plano sin markdown ni emojis. No inventes información que no esté '
-      'en la nota.';
+      'Respondé siempre en el mismo idioma en que esté escrita la nota. Salvo '
+      'que se indique lo contrario, devolvé texto plano sin markdown ni emojis. '
+      'No inventes información que no esté en la nota.';
 
   final http.Client _client;
   final String _apiKey;
@@ -39,11 +39,14 @@ class GeminiNoteService {
         _client = client ?? http.Client();
 
   static const String promptTitulo = '''
-Analizá la siguiente nota dictada por voz y proponé UN título.
+Analizá la siguiente nota dictada por voz y proponé UN título en el mismo
+idioma de la nota.
 Reglas:
 - Máximo 6 palabras y 60 caracteres.
 - Sin comillas, sin punto final, sin emojis.
-- Debe capturar el tema principal, no una palabra suelta.
+- Debe capturar el tema principal, no una palabra suelta: no respondas con
+  una categoría genérica ni con el idioma objetivo del dictado.
+- Respondé ÚNICAMENTE el título, sin prefijos ni explicaciones.
 - Si la nota no tiene tema claro, devolvé "Nota sin título".
 
 Nota:
@@ -65,7 +68,7 @@ Nota:
 """{texto}"""''';
 
   static const String promptInvestigar = '''
-A partir de la siguiente nota, generá una investigación preliminar en español
+A partir de la siguiente nota, generá una investigación preliminar en el mismo idioma de la nota
 con este formato:
 
 1. Tema detectado (una línea)
@@ -85,7 +88,7 @@ Nota:
 
   Future<String> sugerirTitulo(String texto) => _run(
         _fill(promptTitulo, texto),
-        maxOutputTokens: 60,
+        maxOutputTokens: 256,
       );
 
   Future<String> reestructurar(String texto) => _run(
@@ -95,7 +98,7 @@ Nota:
 
   Future<String> investigar(String texto) => _run(
         _fill(promptInvestigar, texto),
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048,
       );
 
   static String _fill(String template, String texto) =>
@@ -119,6 +122,7 @@ Nota:
       ],
       'generationConfig': {
         'maxOutputTokens': maxOutputTokens,
+        'thinkingConfig': {'thinkingLevel': 'minimal'},
       },
     });
 
@@ -146,7 +150,9 @@ Nota:
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final text = _extractText(data);
         if (text == null || text.trim().isEmpty) {
-          throw const GeminiException('Respuesta vacía',
+          final reason = _finishReason(data);
+          throw GeminiException(
+              'Respuesta vacía del modelo (finishReason: $reason)',
               kind: GeminiErrorKind.unknown);
         }
         return text.trim();
@@ -176,6 +182,16 @@ Nota:
     }
     throw GeminiException('Error ${response.statusCode}: $detail',
         kind: GeminiErrorKind.badRequest);
+  }
+
+  static String _finishReason(Map<String, dynamic> data) {
+    try {
+      final candidates = data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) return 'sin candidatos';
+      return '${candidates.first['finishReason'] ?? 'desconocido'}';
+    } catch (_) {
+      return 'desconocido';
+    }
   }
 
   static String? _extractText(Map<String, dynamic> data) {
