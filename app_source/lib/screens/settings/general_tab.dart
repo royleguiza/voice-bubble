@@ -31,6 +31,20 @@ class GeneralTab extends StatelessWidget {
   final VoidCallback onShowAboutSheet;
   final String widgetMicPosition;
   final ValueChanged<String> onWidgetMicPosition;
+  final bool geminiHasApiKey;
+  final bool geminiIsEditingApiKey;
+  final TextEditingController geminiApiKeyController;
+  final String? geminiApiKeyError;
+  final bool geminiShowApiDetail;
+  final String geminiApiKeyTail;
+  final VoidCallback onGeminiStartApiEdit;
+  final VoidCallback onGeminiCancelApiEdit;
+  final VoidCallback onGeminiSaveApiKey;
+  final VoidCallback onGeminiClearApiKey;
+  final VoidCallback onGeminiToggleApiDetail;
+  final VoidCallback onGeminiTestConnection;
+  final bool geminiActionsEnabled;
+  final ValueChanged<bool> onToggleGeminiActions;
 
   const GeneralTab({
     super.key,
@@ -57,6 +71,20 @@ class GeneralTab extends StatelessWidget {
     required this.onShowAboutSheet,
     required this.widgetMicPosition,
     required this.onWidgetMicPosition,
+    required this.geminiHasApiKey,
+    required this.geminiIsEditingApiKey,
+    required this.geminiApiKeyController,
+    required this.geminiApiKeyError,
+    required this.geminiShowApiDetail,
+    required this.geminiApiKeyTail,
+    required this.onGeminiStartApiEdit,
+    required this.onGeminiCancelApiEdit,
+    required this.onGeminiSaveApiKey,
+    required this.onGeminiClearApiKey,
+    required this.onGeminiToggleApiDetail,
+    required this.onGeminiTestConnection,
+    required this.geminiActionsEnabled,
+    required this.onToggleGeminiActions,
   });
 
   @override
@@ -88,6 +116,41 @@ class GeneralTab extends StatelessWidget {
           onClearApiKey: onClearApiKey,
           onToggleApiDetail: onToggleApiDetail,
         ),
+        const SizedBox(height: 8),
+        GeminiApiKeyCard(
+          hasApiKey: geminiHasApiKey,
+          isEditingApiKey: geminiIsEditingApiKey,
+          apiKeyController: geminiApiKeyController,
+          apiKeyError: geminiApiKeyError,
+          showApiDetail: geminiShowApiDetail,
+          apiKeyTail: geminiApiKeyTail,
+          onStartApiEdit: onGeminiStartApiEdit,
+          onCancelApiEdit: onGeminiCancelApiEdit,
+          onSaveApiKey: onGeminiSaveApiKey,
+          onClearApiKey: onGeminiClearApiKey,
+          onToggleApiDetail: onGeminiToggleApiDetail,
+        ),
+        const SizedBox(height: 8),
+        if (geminiHasApiKey)
+          SettingsCard(
+            children: [
+              SwitchListTile(
+                key: const ValueKey('geminiActionsSwitch'),
+                title: const Text('Mostrar acciones de IA en las notas'),
+                subtitle: const Text(
+                    'Título con IA, reestructurar e investigar aparecen en el editor de cada nota.'),
+                value: geminiActionsEnabled,
+                onChanged: onToggleGeminiActions,
+              ),
+              ListTile(
+                key: const ValueKey('geminiTestButton'),
+                leading: const Icon(Icons.wifi_tethering_rounded),
+                title: const Text('Probar conexión'),
+                subtitle: const Text('Una llamada mínima para validar la clave.'),
+                onTap: onGeminiTestConnection,
+              ),
+            ],
+          ),
         const SizedBox(height: 8),
         SettingsCard(
           children: [
@@ -469,6 +532,176 @@ class ApiKeyCard extends StatelessWidget {
                 width: double.infinity,
                 child: FilledButton.tonalIcon(
                   key: const ValueKey('api-loaded-button'),
+                  icon: Icon(Icons.check_circle, color: successColor),
+                  label: Text('API Key cargada $apiKeyTail'),
+                  onPressed: onToggleApiDetail,
+                ),
+              ),
+              if (showApiDetail) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Oculta por seguridad. Solo se muestran los últimos 4 caracteres.',
+                  style:
+                      theme.textTheme.bodySmall?.copyWith(color: variantColor),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: onStartApiEdit,
+                        child: const Text('Cambiar'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Borrar'),
+                        onPressed: onClearApiKey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class GeminiApiKeyCard extends StatelessWidget {
+  final bool hasApiKey;
+  final bool isEditingApiKey;
+  final TextEditingController apiKeyController;
+  final String? apiKeyError;
+  final bool showApiDetail;
+  final String apiKeyTail;
+  final VoidCallback onStartApiEdit;
+  final VoidCallback onCancelApiEdit;
+  final VoidCallback onSaveApiKey;
+  final VoidCallback onClearApiKey;
+  final VoidCallback onToggleApiDetail;
+
+  const ApiKeyCard({
+    super.key,
+    required this.hasApiKey,
+    required this.isEditingApiKey,
+    required this.apiKeyController,
+    required this.apiKeyError,
+    required this.showApiDetail,
+    required this.apiKeyTail,
+    required this.onStartApiEdit,
+    required this.onCancelApiEdit,
+    required this.onSaveApiKey,
+    required this.onClearApiKey,
+    required this.onToggleApiDetail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final variantColor = theme.colorScheme.onSurfaceVariant;
+    final isDark = theme.brightness == Brightness.dark;
+    final successColor = isDark ? kSuccessDark : kSuccessLight;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ConstrainedBox(
+              constraints:
+                  const BoxConstraints(minHeight: kSettingRowMinHeight),
+              child: Row(
+                children: [
+                  SettingIconTile(
+                    icon: Icons.key_rounded,
+                    background: hasApiKey ? kTileGreen : kTileBlue,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'API Key de Google AI Studio',
+                      style: kSettingRowTitle.copyWith(
+                        color: isDark
+                            ? kLabelPrimaryDark
+                            : kLabelPrimaryLight,
+                      ),
+                    ),
+                  ),
+                  StatusPill(
+                    dotColor: hasApiKey ? successColor : kWarning,
+                    label: hasApiKey ? 'Activa' : 'Falta',
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Opcional: habilita título, reestructuración e investigación con IA en tus notas. Obtén tu clave en aistudio.google.com',
+              style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+            ),
+            const SizedBox(height: 12),
+            if (!hasApiKey && !isEditingApiKey) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  key: const ValueKey('gemini-cta-button'),
+                  onPressed: onStartApiEdit,
+                  child: const Text('Ingresa tu API Key'),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Tócalo para habilitar el campo, pégala y guárdala.',
+                style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
+              ),
+            ],
+            if (isEditingApiKey) ...[
+              TextField(
+                key: const ValueKey('gemini-key-input-field'),
+                controller: apiKeyController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: 'AIza... / AQ....',
+                  border: const OutlineInputBorder(),
+                  errorText: apiKeyError,
+                  suffixIcon: hasApiKey
+                      ? Icon(Icons.check_circle, color: successColor)
+                      : null,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const ValueKey('gemini-key-cancel-button'),
+                      onPressed: onCancelApiEdit,
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const ValueKey('gemini-key-save-button'),
+                      icon: const Icon(Icons.save),
+                      label: const Text('Guardar'),
+                      onPressed: onSaveApiKey,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (hasApiKey && !isEditingApiKey) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  key: const ValueKey('gemini-loaded-button'),
                   icon: Icon(Icons.check_circle, color: successColor),
                   label: Text('API Key cargada $apiKeyTail'),
                   onPressed: onToggleApiDetail,

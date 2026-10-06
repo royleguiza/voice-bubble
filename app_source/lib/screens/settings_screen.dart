@@ -10,6 +10,8 @@ import 'settings/teclado_tab.dart';
 import 'settings/trackpad_tab.dart';
 import '../services/channel_guard.dart';
 import '../services/storage_service.dart';
+import '../services/gemini_key_store.dart';
+import '../services/gemini_note_service.dart';
 import '../services/widget_service.dart';
 import '../ui/theme_mode.dart';
 import '../services/floating_bubble_service.dart';
@@ -52,6 +54,13 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _isEditingApiKey = false;
   String? _apiKeyError;
   bool _showApiDetail = false;
+  final _geminiKeyStore = GeminiKeyStore();
+  final _geminiApiKeyController = TextEditingController();
+  bool _geminiHasApiKey = false;
+  bool _geminiIsEditingApiKey = false;
+  String? _geminiApiKeyError;
+  bool _geminiShowApiDetail = false;
+  bool _geminiActionsEnabled = true;
   String _recordMode = StorageService.defaultRecordMode;
   bool _isBubbleEnabled = false;
   bool _showBubbleHistory = true;
@@ -128,6 +137,8 @@ class _SettingsScreenState extends State<SettingsScreen>
   /// keystore bloqueado no dejen la pantalla sin estado.
   Future<void> _loadInitialState() async {
     final apiKey = await _readStoredApiKey();
+    final geminiKey = await _geminiKeyStore.getKey() ?? '';
+    final geminiActions = await _geminiKeyStore.actionsEnabled();
     final results = await (
       _storageService.loadRecordMode(),
       _readBubbleEnabled(),
@@ -188,6 +199,12 @@ class _SettingsScreenState extends State<SettingsScreen>
       _isEditingApiKey = false;
       _apiKeyError = null;
       _showApiDetail = false;
+      _geminiApiKeyController.text = geminiKey;
+      _geminiHasApiKey = geminiKey.isNotEmpty;
+      _geminiIsEditingApiKey = false;
+      _geminiApiKeyError = null;
+      _geminiShowApiDetail = false;
+      _geminiActionsEnabled = geminiActions;
       _recordMode = results.$1;
       _isBubbleEnabled = results.$2;
       _isKeyboardEnabled = results.$3.$1;
@@ -894,6 +911,96 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
+  String get _geminiApiKeyTail {
+    final text = _geminiApiKeyController.text.trim();
+    if (text.length < 4) return '••••';
+    return '••••${text.substring(text.length - 4)}';
+  }
+
+  Future<void> _saveGeminiApiKey() async {
+    final key = _geminiApiKeyController.text.trim();
+    String? error;
+    if (key.isEmpty) {
+      error = 'Pega tu API Key de Google AI Studio para continuar.';
+    } else if (key.length < 10) {
+      error = 'Parece incompleta: revisa que la copiaste entera.';
+    }
+    if (error != null) {
+      if (mounted) setState(() => _geminiApiKeyError = error);
+      return;
+    }
+    final ok = await _geminiKeyStore.saveKey(key);
+    if (!ok) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo guardar la API key')),
+      );
+      return;
+    }
+    await _geminiKeyStore.setActionsEnabled(_geminiActionsEnabled);
+    if (!mounted) return;
+    setState(() {
+      _geminiHasApiKey = true;
+      _geminiIsEditingApiKey = false;
+      _geminiApiKeyError = null;
+      _geminiShowApiDetail = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('API key de Gemini guardada')),
+    );
+  }
+
+  void _startGeminiApiEdit() {
+    if (mounted) {
+      setState(() {
+        _geminiIsEditingApiKey = true;
+        _geminiApiKeyError = null;
+        _geminiShowApiDetail = false;
+      });
+    }
+  }
+
+  void _cancelGeminiApiEdit() {
+    if (mounted) {
+      setState(() {
+        _geminiIsEditingApiKey = false;
+        _geminiApiKeyError = null;
+      });
+    }
+  }
+
+  Future<void> _clearGeminiApiKey() async {
+    await _geminiKeyStore.clearKey();
+    if (!mounted) return;
+    _geminiApiKeyController.clear();
+    setState(() {
+      _geminiHasApiKey = false;
+      _geminiIsEditingApiKey = false;
+      _geminiApiKeyError = null;
+      _geminiShowApiDetail = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('API key de Gemini eliminada')),
+    );
+  }
+
+  Future<void> _testGeminiConnection() async {
+    final key = _geminiApiKeyController.text.trim();
+    if (key.isEmpty) return;
+    final ok = await GeminiNoteService(apiKey: key).testConnection();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? 'Conectado con Gemini' : 'No se pudo conectar: revisa la clave'),
+      ),
+    );
+  }
+
+  Future<void> _toggleGeminiActions(bool enabled) async {
+    await _geminiKeyStore.setActionsEnabled(enabled);
+    if (mounted) setState(() => _geminiActionsEnabled = enabled);
+  }
+
   /// Cola visible de la key para el botón verde (últimos 4, resto oculto).
   /// Nunca expone la key completa en UI.
   String get _apiKeyTail {
@@ -930,6 +1037,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _apiKeyController.dispose();
+    _geminiApiKeyController.dispose();
     for (final debouncer in _sliderDebouncers.values) {
       debouncer.dispose();
     }
@@ -1021,6 +1129,24 @@ class _SettingsScreenState extends State<SettingsScreen>
           setState(() => _showApiDetail = !_showApiDetail);
         }
       },
+      geminiHasApiKey: _geminiHasApiKey,
+      geminiIsEditingApiKey: _geminiIsEditingApiKey,
+      geminiApiKeyController: _geminiApiKeyController,
+      geminiApiKeyError: _geminiApiKeyError,
+      geminiShowApiDetail: _geminiShowApiDetail,
+      geminiApiKeyTail: _geminiApiKeyTail,
+      onGeminiStartApiEdit: _startGeminiApiEdit,
+      onGeminiCancelApiEdit: _cancelGeminiApiEdit,
+      onGeminiSaveApiKey: _saveGeminiApiKey,
+      onGeminiClearApiKey: _clearGeminiApiKey,
+      onGeminiToggleApiDetail: () {
+        if (mounted) {
+          setState(() => _geminiShowApiDetail = !_geminiShowApiDetail);
+        }
+      },
+      onGeminiTestConnection: _testGeminiConnection,
+      geminiActionsEnabled: _geminiActionsEnabled,
+      onToggleGeminiActions: _toggleGeminiActions,
       recordMode: _recordMode,
       onSaveRecordMode: _saveRecordMode,
       isBubbleEnabled: _isBubbleEnabled,

@@ -1,0 +1,211 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+/// Servicio on-demand de acciones IA sobre notas (Gemini).
+/// Contrato:
+/// - Cada llamada ejecuta exactamente UNA petición HTTP (no reintenta).
+/// - Fallos como [GeminiException] con [GeminiErrorKind] clasificado.
+/// - La key viaja en header `x-goog-api-key`, nunca en la URL ni en logs.
+enum GeminiErrorKind { network, server, auth, badRequest, unknown }
+
+class GeminiException implements Exception {
+  final String message;
+  final GeminiErrorKind kind;
+  const GeminiException(this.message, {this.kind = GeminiErrorKind.unknown});
+  bool get isRetryable =>
+      kind == GeminiErrorKind.network || kind == GeminiErrorKind.server;
+  @override
+  String toString() => message;
+}
+
+class GeminiNoteService {
+  static const String model = 'gemini-3.5-flash';
+  static const Duration timeout = Duration(seconds: 30);
+  static const String _modelsEndpoint =
+      'https://generativelanguage.googleapis.com/v1beta/models';
+
+  static const String systemInstruction =
+      'Respondé siempre en español. Salvo que se indique lo contrario, devolvé '
+      'texto plano sin markdown ni emojis. No inventes información que no esté '
+      'en la nota.';
+
+  final http.Client _client;
+  final String _apiKey;
+
+  GeminiNoteService({required String apiKey, http.Client? client})
+      : _apiKey = apiKey,
+        _client = client ?? http.Client();
+
+  static const String promptTitulo = '''
+Analizá la siguiente nota dictada por voz y proponé UN título.
+Reglas:
+- Máximo 6 palabras y 60 caracteres.
+- Sin comillas, sin punto final, sin emojis.
+- Debe capturar el tema principal, no una palabra suelta.
+- Si la nota no tiene tema claro, devolvé "Nota sin título".
+
+Nota:
+"""{texto}"""''';
+
+  static const String promptReestructurar = '''
+Reorganizá la siguiente nota dictada por voz (que viene con pausas, muletillas
+y orden libre) en una estructura limpia.
+Reglas estrictas:
+- NO agregues información, datos, fechas ni nombres que no estén en la nota.
+- NO elimines hechos, aunque estén repetidos; solo reordená.
+- Corregí ortografía y puntuación.
+- Usá listas con guiones para enumeraciones y párrafos cortos para el resto.
+- Conservá el sentido y el tono del dictado original.
+- Si un fragmento es ambiguo, dejalo tal cual con [?] al final.
+- Texto plano, sin encabezados inventados.
+
+Nota:
+"""{texto}"""''';
+
+  static const String promptInvestigar = '''
+A partir de la siguiente nota, generá una investigación preliminar en español
+con este formato:
+
+1. Tema detectado (una línea)
+2. Puntos clave que la nota ya menciona (bullets)
+3. Preguntas abiertas que la nota deja sin responder (bullets)
+4. Contexto general que conoce el modelo relacionado con el tema (3-5 bullets),
+   marcando con [sin verificar] los datos que no se puedan confirmar.
+5. "Para profundizar": 2-3 búsquedas sugeridas que el usuario puede hacer.
+
+Reglas:
+- NO afirmes fechas, cifras ni nombres propios salvo que estén en la nota o con [sin verificar].
+- No inventes fuentes ni enlaces.
+- Texto plano, bullets con "-".
+
+Nota:
+"""{texto}"""''';
+
+  Future<String> sugerirTitulo(String texto) => _run(
+        _fill(promptTitulo, texto),
+        maxOutputTokens: 60,
+      );
+
+  Future<String> reestructurar(String texto) => _run(
+        _fill(promptReestructurar, texto),
+        maxOutputTokens: 2048,
+      );
+
+  Future<String> investigar(String texto) => _run(
+        _fill(promptInvestigar, texto),
+        maxOutputTokens: 1024,
+      );
+
+  static String _fill(String template, String texto) =>
+      template.replaceAll('{texto}', texto);
+
+  Future<String> _run(String prompt,
+      {required int maxOutputTokens}) async {
+    final uri = Uri.parse('$_modelsEndpoint/$model:generateContent');
+    final body = jsonEncode({
+      'system_instruction': {
+        'parts': [
+          {'text': systemInstruction}
+        ]
+      },
+      'contents': [
+        {
+          'parts': [
+            {'text': prompt}
+          ]
+        }
+      ],
+      'generationConfig': {
+        'maxOutputTokens': maxOutputTokens,
+      },
+    });
+
+    http.Response response;
+    try {
+      response = await _client
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': _apiKey,
+            },
+            body: body,
+          )
+          .timeout(timeout);
+    } on TimeoutException {
+      throw const GeminiException('Tiempo de espera agotado',
+          kind: GeminiErrorKind.network);
+    } on Exception catch (e) {
+      throw GeminiException('Error de red: $e', kind: GeminiErrorKind.network);
+    }
+
+    if (response.statusCode == 200) {
+      try {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final text = _extractText(data);
+        if (text == null || text.trim().isEmpty) {
+          throw const GeminiException('Respuesta vacía',
+              kind: GeminiErrorKind.unknown);
+        }
+        return text.trim();
+      } on GeminiException {
+        rethrow;
+      } catch (_) {
+        throw const GeminiException('Respuesta inválida',
+            kind: GeminiErrorKind.unknown);
+      }
+    }
+    final detail = _bodyDetail(response.body);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw GeminiException('API key inválida (${response.statusCode}) $detail',
+          kind: GeminiErrorKind.auth);
+    }
+    if (response.statusCode == 404) {
+      throw GeminiException('Modelo no disponible: $detail',
+          kind: GeminiErrorKind.badRequest);
+    }
+    if (response.statusCode == 429) {
+      throw GeminiException('Cuota agotada: $detail',
+          kind: GeminiErrorKind.server);
+    }
+    if (response.statusCode >= 500) {
+      throw GeminiException('Error del servidor (${response.statusCode}): $detail',
+          kind: GeminiErrorKind.server);
+    }
+    throw GeminiException('Error ${response.statusCode}: $detail',
+        kind: GeminiErrorKind.badRequest);
+  }
+
+  static String? _extractText(Map<String, dynamic> data) {
+    try {
+      final candidates = data['candidates'] as List?;
+      if (candidates == null || candidates.isEmpty) return null;
+      final content = candidates.first['content'] as Map?;
+      final parts = content?['parts'] as List?;
+      if (parts == null || parts.isEmpty) return null;
+      return parts.first['text'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _bodyDetail(String body) {
+    final trimmed = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (trimmed.length <= 200) return trimmed;
+    return '${trimmed.substring(0, 200)}…';
+  }
+
+  /// Prueba ligera de la key (un token) para el botón "Probar conexión".
+  Future<bool> testConnection() async {
+    try {
+      final uri = Uri.parse('$_modelsEndpoint');
+      final res = await _client
+          .get(uri, headers: {'x-goog-api-key': _apiKey}).timeout(timeout);
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+}

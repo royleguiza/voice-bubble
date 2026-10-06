@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../models/voice_note.dart';
 import '../services/notes_service.dart';
+import '../services/gemini_key_store.dart';
+import '../services/gemini_note_service.dart';
 import '../services/widget_service.dart';
 import '../ui/design_tokens.dart';
 import '../ui/transcription_feedback.dart';
@@ -24,12 +26,110 @@ class NoteEditorScreen extends StatefulWidget {
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _bodyCtrl;
+  final _geminiKeyStore = GeminiKeyStore();
+  bool _geminiReady = false;
+  bool _geminiBusy = false;
 
   @override
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.note?.titulo ?? '');
     _bodyCtrl = TextEditingController(text: widget.note?.cuerpo ?? '');
+    _loadGeminiState();
+  }
+
+  Future<void> _loadGeminiState() async {
+    final has = await _geminiKeyStore.hasKey();
+    final enabled = await _geminiKeyStore.actionsEnabled();
+    if (mounted) setState(() => _geminiReady = has && enabled);
+  }
+
+  Future<void> _runGemini(String accion) async {
+    final texto = _bodyCtrl.text.trim();
+    if (texto.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribe o dicta una nota primero')),
+      );
+      return;
+    }
+    final key = await _geminiKeyStore.getKey();
+    if (key == null) {
+      if (!mounted) return;
+      setState(() => _geminiReady = false);
+      return;
+    }
+    if (mounted) setState(() => _geminiBusy = true);
+    String? resultado;
+    Object? error;
+    try {
+      final service = GeminiNoteService(apiKey: key);
+      if (accion == 'titulo') {
+        resultado = await service.sugerirTitulo(texto);
+      } else if (accion == 'reestructurar') {
+        resultado = await service.reestructurar(texto);
+      } else {
+        resultado = await service.investigar(texto);
+      }
+    } catch (e) {
+      error = e;
+    }
+    if (!mounted) return;
+    setState(() => _geminiBusy = false);
+    if (error != null) {
+      final msg = error is GeminiException
+          ? error.message
+          : 'Error inesperado: $error';
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Error de IA'),
+          content: SelectableText(msg),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    if (resultado == null) return;
+    _showGeminiResult(accion, resultado);
+  }
+
+  void _showGeminiResult(String accion, String resultado) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(accion == 'titulo'
+            ? 'Título sugerido'
+            : accion == 'reestructurar'
+                ? 'Nota reestructurada'
+                : 'Investigación preliminar'),
+        content: SingleChildScrollView(child: Text(resultado)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Descartar'),
+          ),
+          FilledButton(
+            key: ValueKey('geminiApply_$accion'),
+            onPressed: () {
+              if (accion == 'titulo') {
+                _titleCtrl.text = resultado;
+              } else if (accion == 'reestructurar') {
+                _bodyCtrl.text = resultado;
+              } else {
+                _bodyCtrl.text = '${_bodyCtrl.text}\n\n$resultado';
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: Text(accion == 'investigar' ? 'Anexar' : 'Aplicar'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -142,6 +242,36 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          if (_geminiReady)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    key: const ValueKey('geminiTituloButton'),
+                    icon: const Icon(Icons.auto_awesome, size: 18),
+                    label: Text(_geminiBusy ? 'Procesando…' : 'IA · Título'),
+                    onPressed: _geminiBusy ? null : () => _runGemini('titulo'),
+                  ),
+                  OutlinedButton.icon(
+                    key: const ValueKey('geminiReestructurarButton'),
+                    icon: const Icon(Icons.reorder_rounded, size: 18),
+                    label: const Text('IA · Reestructurar'),
+                    onPressed:
+                        _geminiBusy ? null : () => _runGemini('reestructurar'),
+                  ),
+                  OutlinedButton.icon(
+                    key: const ValueKey('geminiInvestigarButton'),
+                    icon: const Icon(Icons.travel_explore_rounded, size: 18),
+                    label: const Text('IA · Investigar'),
+                    onPressed:
+                        _geminiBusy ? null : () => _runGemini('investigar'),
+                  ),
+                ],
+              ),
+            ),
           Wrap(
             spacing: 8,
             runSpacing: 8,
