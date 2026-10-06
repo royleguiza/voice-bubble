@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async' show unawaited;
 
 import '../models/voice_note.dart';
 import '../services/notes_service.dart';
@@ -79,7 +80,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       final msg = error is GeminiException
           ? error.message
           : 'Error inesperado: $error';
-      showDialog<void>(
+      unawaited(showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Error de IA'),
@@ -91,7 +92,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             ),
           ],
         ),
-      );
+      ));
       return;
     }
     if (resultado == null) return;
@@ -99,7 +100,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   }
 
   void _showGeminiResult(String accion, String resultado) {
-    showDialog<void>(
+    unawaited(showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(accion == 'titulo'
@@ -129,7 +130,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Future<void> _save() async {

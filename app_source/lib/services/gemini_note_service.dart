@@ -200,7 +200,7 @@ Nota:
   /// Prueba ligera de la key (un token) para el botón "Probar conexión".
   Future<bool> testConnection() async {
     try {
-      final uri = Uri.parse('$_modelsEndpoint');
+      final uri = Uri.parse(_modelsEndpoint);
       final res = await _client
           .get(uri, headers: {'x-goog-api-key': _apiKey}).timeout(timeout);
       return res.statusCode == 200;
