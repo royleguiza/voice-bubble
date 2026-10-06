@@ -585,7 +585,7 @@ class GeminiApiKeyCard extends StatelessWidget {
   final VoidCallback onClearApiKey;
   final VoidCallback onToggleApiDetail;
 
-  const ApiKeyCard({
+  const GeminiApiKeyCard({
     super.key,
     required this.hasApiKey,
     required this.isEditingApiKey,
