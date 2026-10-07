@@ -35,7 +35,7 @@ void main() {
       final client = MockClient((request) async => http.Response('{}', 401));
       final service = GeminiNoteService(apiKey: 'bad', client: client);
       await expectLater(
-        service.reestructurar('x'),
+        service.resumir('x'),
         throwsA(isA<GeminiException>().having(
             (e) => e.kind, 'kind', GeminiErrorKind.auth)),
       );
@@ -45,7 +45,7 @@ void main() {
       final client = MockClient((request) async => http.Response('{}', 429));
       final service = GeminiNoteService(apiKey: 'k', client: client);
       await expectLater(
-        service.investigar('x'),
+        service.resumir('x'),
         throwsA(isA<GeminiException>()
             .having((e) => e.kind, 'kind', GeminiErrorKind.server)
             .having((e) => e.isRetryable, 'retryable', true)),
