@@ -180,14 +180,11 @@ class _HomeScreenState extends State<HomeScreen>
           context,
           MaterialPageRoute(builder: (_) => const NotesScreen()),
         );
-      } else if ((act == 'open_note' ||
-              act == 'gemini_investigar' ||
-              act == 'gemini_reestructurar') &&
+      } else if ((act == 'open_note' || act == 'gemini_resumir') &&
           noteId != null &&
           noteId.isNotEmpty) {
         String? geminiAction;
-        if (act == 'gemini_investigar') geminiAction = 'investigar';
-        if (act == 'gemini_reestructurar') geminiAction = 'reestructurar';
+        if (act == 'gemini_resumir') geminiAction = 'resumir';
         final notesService = NotesService();
         await notesService.load();
         VoiceNote? note;

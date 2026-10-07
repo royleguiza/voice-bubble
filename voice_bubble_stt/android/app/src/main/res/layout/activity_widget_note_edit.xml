@@ -321,40 +321,18 @@
             </LinearLayout>
 
             <LinearLayout
-                android:id="@+id/slot_gemini_investigar"
+                android:id="@+id/slot_gemini_resumir"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center">
 
                 <FrameLayout
-                    android:id="@+id/btn_gemini_investigar"
+                    android:id="@+id/btn_gemini_resumir"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_note_card_bg"
-                    android:contentDescription="Investigar con IA">
-
-                    <ImageView
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/widget_ic_globe" />
-                </FrameLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/slot_gemini_reestructurar"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center">
-
-                <FrameLayout
-                    android:id="@+id/btn_gemini_reestructurar"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
-                    android:contentDescription="Reestructurar con IA">
+                    android:contentDescription="Resumir con IA">
 
                     <ImageView
                         android:layout_width="22dp"

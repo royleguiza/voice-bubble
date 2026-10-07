@@ -80,10 +80,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       final service = GeminiNoteService(apiKey: key);
       if (accion == 'titulo') {
         resultado = await service.sugerirTitulo(texto);
-      } else if (accion == 'reestructurar') {
-        resultado = await service.reestructurar(texto);
-      } else {
-        resultado = await service.investigar(texto);
+      } else if (accion == 'resumir') {
+        resultado = await service.resumir(texto);
       }
     } catch (e) {
       error = e;
@@ -126,11 +124,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     unawaited(showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(accion == 'titulo'
-            ? 'Título sugerido'
-            : accion == 'reestructurar'
-                ? 'Nota reestructurada'
-                : 'Investigación preliminar'),
+        title: Text(accion == 'titulo' ? 'Título sugerido' : 'Resumen de la nota'),
         content: SingleChildScrollView(child: Text(resultado)),
         actions: [
           TextButton(
@@ -140,11 +134,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           FilledButton(
             key: ValueKey('geminiApply_$accion'),
             onPressed: () async {
-              if (accion == 'reestructurar') {
-                _bodyCtrl.text = resultado;
-              } else {
-                _bodyCtrl.text = '${_bodyCtrl.text}\n\n$resultado';
-              }
+              _bodyCtrl.text = resultado;
               Navigator.of(ctx).pop();
               if (widget.note != null) {
                 await widget.notesService
@@ -152,7 +142,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 await WidgetService().updateWidgets();
               }
             },
-            child: Text(accion == 'investigar' ? 'Anexar' : 'Aplicar'),
+            child: const Text('Reemplazar'),
           ),
         ],
       ),
@@ -256,7 +246,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             controller: _bodyCtrl,
             minLines: 8,
             maxLines: 14,
-            maxLength: NotesService.maxCuerpoLength,
             style: kTextBody,
             decoration: InputDecoration(
               labelText: 'Cuerpo',
@@ -320,18 +309,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               ),
               if (_geminiReady) ...[
                 IconButton(
-                  key: const ValueKey('geminiInvestigarButton'),
-                  icon: const Icon(Icons.public_rounded),
-                  tooltip: 'Investigar con IA',
+                  key: const ValueKey('geminiResumirButton'),
+                  icon: const Icon(Icons.short_text_rounded),
+                  tooltip: 'Resumir con IA',
                   onPressed:
-                      _geminiBusy ? null : () => _runGemini('investigar'),
-                ),
-                IconButton(
-                  key: const ValueKey('geminiReestructurarButton'),
-                  icon: const Icon(Icons.format_align_left_rounded),
-                  tooltip: 'Reestructurar con IA',
-                  onPressed:
-                      _geminiBusy ? null : () => _runGemini('reestructurar'),
+                      _geminiBusy ? null : () => _runGemini('resumir'),
                 ),
               ],
               if (widget.note != null)

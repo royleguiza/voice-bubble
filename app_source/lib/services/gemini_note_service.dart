@@ -52,52 +52,28 @@ Reglas:
 Nota:
 """{texto}"""''';
 
-  static const String promptReestructurar = '''
-Reorganizá la siguiente nota dictada por voz (que viene con pausas, muletillas
-y orden libre) en una estructura limpia.
+  static const String promptResumen = '''
+Resumí la siguiente nota dictada por voz.
 Reglas estrictas:
-- NO agregues información, datos, fechas ni nombres que no estén en la nota.
-- NO elimines hechos, aunque estén repetidos; solo reordená.
-- Corregí ortografía y puntuación.
-- Usá listas con guiones para enumeraciones y párrafos cortos para el resto.
-- Conservá el sentido y el tono del dictado original.
-- Si un fragmento es ambiguo, dejalo tal cual con [?] al final.
+- El resumen debe ser mucho más corto que la nota original (objetivo <= 30%
+  del texto, sin extenderse si no hace falta).
+- Mencioná solo lo más importante: hechos, decisiones, fechas y nombres que
+  aparezcan en la nota. NO inventes datos ni conclusiones.
+- Usá viñetas cortas para los puntos clave; una línea inicial con el tema.
+- Mantené el idioma de la nota original.
 - Texto plano, sin encabezados inventados.
 
 Nota:
 """{texto}"""''';
 
-  static const String promptInvestigar = '''
-A partir de la siguiente nota, generá una investigación preliminar en el mismo idioma de la nota
-con este formato:
-
-1. Tema detectado (una línea)
-2. Puntos clave que la nota ya menciona (bullets)
-3. Preguntas abiertas que la nota deja sin responder (bullets)
-4. Contexto general que conoce el modelo relacionado con el tema (3-5 bullets),
-   marcando con [sin verificar] los datos que no se puedan confirmar.
-5. "Para profundizar": 2-3 búsquedas sugeridas que el usuario puede hacer.
-
-Reglas:
-- NO afirmes fechas, cifras ni nombres propios salvo que estén en la nota o con [sin verificar].
-- No inventes fuentes ni enlaces.
-- Texto plano, bullets con "-".
-
-Nota:
-"""{texto}"""''';
 
   Future<String> sugerirTitulo(String texto) => _run(
         _fill(promptTitulo, texto),
         maxOutputTokens: 256,
       );
 
-  Future<String> reestructurar(String texto) => _run(
-        _fill(promptReestructurar, texto),
-        maxOutputTokens: 2048,
-      );
-
-  Future<String> investigar(String texto) => _run(
-        _fill(promptInvestigar, texto),
+  Future<String> resumir(String texto) => _run(
+        _fill(promptResumen, texto),
         maxOutputTokens: 2048,
       );
 

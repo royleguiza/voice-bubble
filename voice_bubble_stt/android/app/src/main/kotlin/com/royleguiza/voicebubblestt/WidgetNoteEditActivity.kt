@@ -167,8 +167,7 @@ class WidgetNoteEditActivity : Activity() {
             }
             startActivity(intent)
         }
-        findViewById<View>(R.id.btn_gemini_investigar).setOnClickListener { launchGemini("investigar") }
-        findViewById<View>(R.id.btn_gemini_reestructurar).setOnClickListener { launchGemini("reestructurar") }
+        findViewById<View>(R.id.btn_gemini_resumir).setOnClickListener { launchGemini("resumir") }
         findViewById<View>(R.id.btn_delete).setOnClickListener { confirmDelete() }
 
         val editingId = noteId

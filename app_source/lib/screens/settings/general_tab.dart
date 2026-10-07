@@ -138,7 +138,7 @@ class GeneralTab extends StatelessWidget {
                 key: const ValueKey('geminiActionsSwitch'),
                 title: const Text('Mostrar acciones de IA en las notas'),
                 subtitle: const Text(
-                    'Título con IA, reestructurar e investigar aparecen en el editor de cada nota.'),
+                    'Título con IA y resumen aparecen en el editor de cada nota.'),
                 value: geminiActionsEnabled,
                 onChanged: onToggleGeminiActions,
               ),
@@ -642,7 +642,7 @@ class GeminiApiKeyCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Opcional: habilita título, reestructuración e investigación con IA en tus notas. Obtén tu clave en aistudio.google.com',
+              'Opcional: habilita título y resumen con IA en tus notas. Obtén tu clave en aistudio.google.com',
               style: theme.textTheme.bodySmall?.copyWith(color: variantColor),
             ),
             const SizedBox(height: 12),

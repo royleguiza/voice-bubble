@@ -49,10 +49,9 @@ check("servicio: una sola petición por llamada (1 POST)", service.count(".post(
 # 3. Prompts
 check("prompt título: límite palabras", "Máximo 6 palabras y 60 caracteres" in service)
 check("prompt título: sin emojis", "Sin comillas, sin punto final, sin emojis" in service)
-check("prompt reestructurar: no inventar", "NO agregues información" in service)
-check("prompt reestructurar: ambiguo [?]", "[?]" in service)
-check("prompt investigar: sin verificar", "[sin verificar]" in service)
-check("prompt investigar: 5 secciones", all(f"{i}. " in service for i in range(1, 6)))
+check("prompt resumen: corto (<=30%)", "<= 30%" in service)
+check("prompt resumen: no inventar", "NO inventes" in service)
+check("sin investigar en el servicio", "investigar" not in service)
 check("system instruction presente", "systemInstruction" in service)
 check("modelo GA 2026 (gemini-3.5-flash)", "gemini-3.5-flash" in service)
 check("NO usa gemini-2.5-flash (404 nuevos usuarios)", "gemini-2.5-flash" not in service)
@@ -61,11 +60,13 @@ check("error con detalle de body copiable", "_bodyDetail" in service)
 
 # 4. Editor
 check("editor: icono título", "geminiTituloIcon" in editor)
-check("editor: botón reestructurar", "geminiReestructurarButton" in editor)
-check("editor: botón investigar", "geminiInvestigarButton" in editor)
-check("editor: preview con Aplicar/Descartar", "Descartar" in editor and "Aplicar" in editor)
+check("editor: botón resumir", "geminiResumirButton" in editor)
+check("editor: sin botón investigar", "geminiInvestigarButton" not in editor)
+check("editor: preview con Reemplazar/Descartar", "Descartar" in editor and "Reemplazar" in editor)
 check("servicio: thinkingLevel minimal (evita respuesta vacía)", "thinkingLevel" in service)
-check("widget: slots gemini en layout nativo", "btn_gemini_investigar" in suite.read("voice_bubble_stt/android/app/src/main/res/layout/activity_widget_note_edit.xml"))
+check("widget: slot resumir en layout nativo", "btn_gemini_resumir" in suite.read("voice_bubble_stt/android/app/src/main/res/layout/activity_widget_note_edit.xml"))
+check("widget: sin slot investigar", "btn_gemini_investigar" not in suite.read("voice_bubble_stt/android/app/src/main/res/layout/activity_widget_note_edit.xml"))
+check("cuerpo con tope amplio (200k)", "maxCuerpoLength = 200000" in suite.read("app_source/lib/services/notes_service.dart"))
 check("editor: no muestra botones sin key", "_geminiReady" in editor and "_loadGeminiState" in editor)
 
 # 5. Ajustes

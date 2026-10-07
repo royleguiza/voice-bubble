@@ -56,7 +56,7 @@ class NotesService {
   static const int lockPollMs = 50;
   static const int maxNotes = 50;
   static const int maxTituloLength = 80;
-  static const int maxCuerpoLength = 2000;
+  static const int maxCuerpoLength = 200000; // antes 2000: bloqueaba dictados largos en el editor.
 
   final Future<bool> Function(File file, String encoded)? _fileWriter;
   final Future<bool> Function(
