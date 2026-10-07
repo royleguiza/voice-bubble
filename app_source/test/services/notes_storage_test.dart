@@ -141,9 +141,9 @@ void main() {
       expect(s.notes.length, 50);
     });
 
-    test('rechaza cuerpo 2001', () async {
+    test('rechaza cuerpo 200001', () async {
       final s = NotesService();
-      expect(await s.addNote(titulo: 't', cuerpo: 'a' * 2001), isFalse);
+      expect(await s.addNote(titulo: 't', cuerpo: 'a' * 200001), isFalse);
     });
 
     test('permite titulo vacio (Sin titulo)', () async {
