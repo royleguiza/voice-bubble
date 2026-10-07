@@ -167,6 +167,7 @@ class WidgetNoteEditActivity : Activity() {
             }
             startActivity(intent)
         }
+        findViewById<View>(R.id.btn_gemini_titulo).setOnClickListener { launchGemini("titulo") }
         findViewById<View>(R.id.btn_gemini_resumir).setOnClickListener { launchGemini("resumir") }
         findViewById<View>(R.id.btn_delete).setOnClickListener { confirmDelete() }
 

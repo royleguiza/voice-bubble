@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>VoiceBubble · Propuesta Gemini en Notas</title>
+<style>
+  :root {
+    --bg-base: #F2F2F7;
+    --bg-elevated: #FFFFFF;
+    --bg-secondary: #E9E9EE;
+    --label-primary: #111114;
+    --label-secondary: rgba(60,60,67,.66);
+    --label-tertiary: rgba(60,60,67,.4);
+    --separator: rgba(60,60,67,.18);
+    --tint: #007AFF;
+    --tint-soft: rgba(0,122,255,.1);
+    --code-bg: rgba(60,60,67,.08);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-base: #000000;
+      --bg-elevated: #1C1C1E;
+      --bg-secondary: #2C2C2E;
+      --label-primary: #F2F2F7;
+      --label-secondary: rgba(235,235,245,.62);
+      --label-tertiary: rgba(235,235,245,.32);
+      --separator: rgba(84,84,88,.5);
+      --tint: #0A84FF;
+      --tint-soft: rgba(10,132,255,.16);
+      --code-bg: rgba(235,235,245,.1);
+    }
+  }
+  [data-theme="light"] { color-scheme: light; --bg-base:#F2F2F7; --bg-elevated:#FFFFFF; --bg-secondary:#E9E9EE; --label-primary:#111114; --label-secondary:rgba(60,60,67,.66); --label-tertiary:rgba(60,60,67,.4); --separator:rgba(60,60,67,.18); --tint:#007AFF; --tint-soft:rgba(0,122,255,.1); --code-bg:rgba(60,60,67,.08); }
+  [data-theme="dark"] { color-scheme: dark; --bg-base:#000000; --bg-elevated:#1C1C1E; --bg-secondary:#2C2C2E; --label-primary:#F2F2F7; --label-secondary:rgba(235,235,245,.62); --label-tertiary:rgba(235,235,245,.32); --separator:rgba(84,84,88,.5); --tint:#0A84FF; --tint-soft:rgba(10,132,255,.16); --code-bg:rgba(235,235,245,.1); }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg-base);
+    color: var(--label-primary);
+    font-family: Roboto, -apple-system, "Segoe UI", sans-serif;
+    font-size: 17px;
+    line-height: 1.55;
+    padding: 0 18px calc(48px + env(safe-area-inset-bottom));
+  }
+  main { max-width: 44rem; margin: 0 auto; }
+
+  header { border-bottom: 1px solid var(--separator); padding: 28px 0 18px; }
+  .eyebrow {
+    color: var(--tint); font-size: 12.5px; font-weight: 700;
+    letter-spacing: .12em; text-transform: uppercase; margin: 0 0 8px;
+  }
+  h1 { font-size: 27px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .lede { color: var(--label-secondary); margin: 0 0 14px; font-size: 15.5px; }
+  h2 {
+    font-size: 20px; margin: 34px 0 10px; letter-spacing: -0.01em;
+    scroll-margin-top: 16px;
+  }
+  h2 .num { color: var(--tint); margin-right: 6px; font-variant-numeric: tabular-nums; }
+  h3 { font-size: 16.5px; margin: 22px 0 6px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 14px; padding-left: 20px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 700; }
+  .muted { color: var(--label-secondary); }
+  small, .fine { color: var(--label-tertiary); font-size: 13px; }
+  code, pre {
+    font-family: "Roboto Mono", ui-monospace, Menlo, monospace;
+    font-size: 13.5px;
+  }
+  code { background: var(--code-bg); padding: 1.5px 6px; border-radius: 6px; word-break: break-word; }
+  pre {
+    background: var(--bg-elevated); border: 1px solid var(--separator);
+    border-radius: var(--radius); padding: 12px 14px; overflow-x: auto; margin: 0 0 16px;
+  }
+
+  .card {
+    background: var(--bg-elevated); border: 1px solid var(--separator);
+    border-radius: var(--radius); padding: 16px; margin: 0 0 14px;
+  }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 4px; }
+  .pill {
+    background: var(--tint-soft); color: var(--tint);
+    border-radius: 999px; padding: 4px 11px; font-size: 13px; font-weight: 600;
+  }
+
+  table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 14.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--separator); vertical-align: top; }
+  th { color: var(--label-secondary); font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; }
+
+  nav.toc {
+    background: var(--bg-elevated); border: 1px solid var(--separator);
+    border-radius: var(--radius); padding: 14px 16px; margin: 18px 0 0;
+  }
+  nav.toc p { margin: 0 0 8px; font-weight: 700; font-size: 14px; }
+  nav.toc a { display: block; color: var(--tint); text-decoration: none; padding: 4px 0; font-size: 14.5px; }
+
+  button.theme {
+    position: fixed; top: calc(10px + env(safe-area-inset-top)); right: 14px;
+    background: var(--bg-elevated); color: var(--label-primary);
+    border: 1px solid var(--separator); border-radius: 999px;
+    min-width: 44px; min-height: 44px; padding: 0 14px; font-size: 14px; font-weight: 600;
+    box-shadow: 0 2px 10px rgba(0,0,0,.08);
+  }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 6px; }
+
+  .mock {
+    border: 1px solid var(--separator); border-radius: 20px; background: var(--bg-base);
+    padding: 14px; margin: 0 0 16px;
+  }
+  .mock .screen {
+    background: var(--bg-elevated); border-radius: 14px; padding: 14px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--tint-soft); color: var(--tint);
+    border-radius: 12px; padding: 10px 14px; font-weight: 600; font-size: 15px; margin: 4px 6px 4px 0;
+  }
+  .btn.primary { background: var(--tint); color: #fff; }
+  blockquote {
+    margin: 0 0 14px; padding: 12px 16px;
+    background: var(--tint-soft); border-radius: 12px; color: var(--label-secondary);
+  }
+</style>
+</head>
+<body>
+<button class="theme" id="themeToggle" aria-label="Cambiar tema claro/oscuro">🌗 Tema</button>
+<main>
+<header>
+  <p class="eyebrow">VoiceBubble STT · Propuesta de implementación</p>
+  <h1>IA opcional en Notas con Gemini</h1>
+  <p class="lede">Investigación del modelo de API key de Google AI Studio y propuesta de diseño para título con IA, reestructuración de nota e investigación bajo demanda.</p>
+  <div class="pill-row">
+    <span class="pill">Opt-in</span><span class="pill">Bajo demanda</span><span class="pill">Misma key del usuario</span><span class="pill">Sin backend propio</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Índice">
+  <p>Contenido</p>
+  <a href="#s1">1. Resumen ejecutivo</a>
+  <a href="#s2">2. Cómo es hoy la API key de Google</a>
+  <a href="#s3">3. Costos y límites relevantes</a>
+  <a href="#s4">4. Decisiones de arquitectura</a>
+  <a href="#s5">5. Plan de implementación</a>
+  <a href="#s6">6. Propuesta de interfaz</a>
+  <a href="#s7">7. Seguridad y privacidad</a>
+  <a href="#s8">8. Riesgos y preguntas abiertas</a>
+  <a href="#s9">9. Hitos y seguimiento</a>
+</nav>
+
+<h2 id="s1"><span class="num">1.</span>Resumen ejecutivo</h2>
+<div class="card">
+  <p><strong>Veredicto: factible y de alcance chico.</strong> La app ya guarda keys y habla HTTPS (Groq Whisper). Agregar Gemini replica ese patrón: una key opcional en Ajustes, tres acciones en la nota, y la llamada sale desde el dispositivo del usuario. No necesitamos servidor propio, ni base de datos nueva, ni cambiar la burbuja.</p>
+  <p class="muted" style="margin:0">El único cruce de plataforma real es el widget de notas: hoy es Kotlin nativo y Gemini vive del lado Flutter. La propuesta pragmática: el widget ofrece "abrir en la app para procesar" y, opcionalmente en una fase 2, llamada HTTP directa en Kotlin.</p>
+</div>
+
+<h2 id="s2"><span class="num">2.</span>Cómo es hoy la API key de Google</h2>
+<h3>2.1 Qué es</h3>
+<p>Una API key de Gemini es una credencial asociada a un <strong>proyecto de Google Cloud</strong>. No tiene saldo propio: hereda la facturación y la cuota del proyecto. Se crea gratis en <code>aistudio.google.com</code> → API keys → <em>Create API key</em>. El usuario obtiene algo como <code>AIza…</code> (formato histórico) y, desde 2026, Google está migrando las altas nuevas a <strong>authorization keys</strong>; las standard keys se rechazarían a partir de septiembre de 2026. Diseñar el campo de Ajustes como texto libre y validar por <em>formato de respuesta</em> (401/403 vs 200), nunca por regex del prefijo.</p>
+
+<p>Una key real del formato actual se ve así (ejemplo <strong>redactado</strong>; el valor real jamás se commitea ni aparece en logs): <code>AQ.Ab8R••••••••••••••••••••••••••••••••••••••••••</code> — prefijo <code>AQ.</code> seguido de ~50 caracteres alfanuméricos con guiones. El campo de Ajustes acepta este largo y valida por respuesta de la API, nunca por regex del prefijo.</p>
+
+<p class="muted"><strong>Nota de roadmap (fuera de alcance ahora):</strong> en el futuro la misma key podría habilitar transcripción de audio con Gemini, de modo que STT, título, reestructuración e investigación salgan del mismo proveedor. Queda explícitamente fuera de esta fase: la app seguirá usando Groq Whisper para transcribir.</p>
+
+<h3>2.2 Modelos de tier</h3>
+<table>
+  <tr><th>Tier</th><th>Requisito</th><th>Qué implica</th></tr>
+  <tr><td>Free</td><td>Proyecto activo</td><td>Tokens gratis, límites RPM/TPM/RPD por modelo; <strong>el contenido puede usarse para mejorar productos de Google</strong></td></tr>
+  <tr><td>Tier 1+</td><td>Cuenta de facturación vinculada</td><td>Más cuota, contenido <strong>no</strong> usado para entrenamiento, límites de gasto por tramos ($250 / $2.000 / $20.000)</td></tr>
+</table>
+
+<h3>2.3 Llamada mínima</h3>
+<pre>POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+Content-Type: application/json
+x-goog-api-key: &lt;API_KEY&gt;
+
+{ "contents": [{ "parts": [{ "text": "…" }] }] }</pre>
+<p>Endpoint público, HTTPS, sin OAuth del lado cliente. Alternativas equivalentes: SDK oficial <code>google_generative_ai</code> (Dart) o el header <code>x-goog-api-key</code> como arriba (preferido por no depender de una key en la URL/logs).</p>
+
+<h2 id="s3"><span class="num">3.</span>Costos y límites relevantes</h2>
+<table>
+  <tr><th>Concepto</th><th>Free Tier</th><th>Tier 1 (aprox.)</th></tr>
+  <tr><td>gemini-2.5-flash · texto</td><td>Gratis (con cuotas dinámicas publicadas en AI Studio)</td><td>~$0.30–0.75 / 1M tokens entrada, ~$2.50–3.75 / 1M salida (verificado oct-2026, sujeto a cambio)</td></tr>
+  <tr><td>gemini-2.5-flash-lite</td><td>Gratis</td><td>~$0.10 / 1M entrada</td></tr>
+  <tr><td>Grounding con Google Search</td><td>No disponible / limitado según modelo</td><td>1.500 RPD gratis, luego ~$35 / 1.000 prompts con grounding</td></tr>
+  <tr><td>Cuenta tras marzo 2026</td><td colspan="2">El crédito de prueba de $300 ya <strong>no</strong> cubre Gemini API / AI Studio</td></tr>
+</table>
+<p class="muted">Traducción práctica: para un uso personal de notas, el tier Free alcanza casi seguro. La opción "Investigar" con búsqueda en vivo requiere grounding y probablemente tier pago; propongo dejarla como <strong>investigación por conocimiento del modelo</strong> (resumen + puntos + preguntas abiertas) en la fase 1, y grounding con Search como flag opcional en fase 2.</p>
+
+<h2 id="s4"><span class="num">4.</span>Decisiones de arquitectura</h2>
+<ol>
+  <li><strong>Key opcional, guardada igual que la de Groq.</strong> Reusar el repositorio de credenciales existente (`credential_repository.dart` / `stt_config_store.dart`) con una segunda entrada <code>gemini_api_key</code>. Si está vacía, las tres opciones de IA no aparecen: cero fricción para quien no la configura.</li>
+  <li><strong>Llamada directa desde Dart</strong> (<code>package:http</code> ya está en el proyecto vía cloud_stt). Solo se dispara por clic. Sin streaming en fase 1; respuesta completa con estado de carga.</li>
+  <li><strong>Un solo servicio</strong> <code>lib/services/gemini_note_service.dart</code> con tres métodos: <code>sugerirTitulo(texto)</code>, <code>reestructurar(texto)</code>, <code>investigar(texto)</code>. Cada uno es un prompt distinto y un <code>systemInstruction</code> fijo ("responder en español, texto plano salvo markdown ligero").</li>
+  <li><strong>Notas:</strong> los resultados se aplican como <em>sugerencia revisable</em>: título → chip "Aplicar / Descartar"; reestructuración → vista previa con "Reemplazar nota / Descartar"; investigación → se anexa como bloque nuevo o se copia, nunca reemplaza el dictado original.</li>
+  <li><strong>Widget nativo (Kotlin):</strong> fase 1, el widget no llama a Gemini; muestra un botón "Abrir en VoiceBubble para procesar con IA" que abre la app en la nota. Fase 2 (opcional): duplicar la llamada con `HttpURLConnection` en el RemoteViewsService, leyendo la misma key.</li>
+  <li><strong>Nada de secretos en logs ni en el repo.</strong> La key jamás viaja a ningún servidor nuestro (no hay). HTTPS + header. Redacción en logs.</li>
+</ol>
+
+<h2 id="s5"><span class="num">5.</span>Plan de implementación</h2>
+<table>
+  <tr><th>Fase</th><th>Entregable</th><th>Verificación</th></tr>
+  <tr><td>F0</td><td>Campo "Gemini API key" en Ajustes (texto, oculto por defecto, botón Probar) + validación contra `models` endpoint</td><td>Suite de test de settings; probar con key inválida muestra error claro</td></tr>
+  <tr><td>F1</td><td>`gemini_note_service.dart` + 3 prompts + timeout 30s + errores visibles (sin key → aviso, 429 → "cuota agotada", sin red → "sin conexión")</td><td>Unit tests con cliente HTTP mockeado; c06/c09/c24 cubren estados</td></tr>
+  <tr><td>F2</td><td>UI en detalle de nota: menú "IA" con 3 acciones; preview de resultado; aplicar/descartar</td><td>Suite nueva `test_gemini_notes_suite.py` + tests de widgets Flutter</td></tr>
+  <tr><td>F3</td><td>Widget: atajo "Abrir para procesar con IA"</td><td>Suite Kotlin existente extendida</td></tr>
+  <tr><td>F4</td><td>(Opcional) Grounding con Google Search para "Investigar" + nota de costo en UI</td><td>Gate por flag en Ajustes</td></tr>
+</table>
+<p>Orden de ramas: trabajar en <code>feat/gemini-notas</code> desde <code>main</code>, PR a revisión salvo que pidas push directo. Build de APK solo por GitHub Actions, como siempre.</p>
+
+<h2 id="s6"><span class="num">6.</span>Propuesta de interfaz</h2>
+<h3>6.1 Detalle de nota — menú IA</h3>
+<div class="mock"><div class="screen">
+  <p style="margin:0 0 8px;font-weight:700">Nota de reunión con el estudio</p>
+  <p class="muted" style="font-size:14.5px;margin:0 0 12px">buy sol… eh, dice que jueves corte y que llevemos… no, grabado el 2 de octubre…</p>
+  <span class="btn primary">✦ IA · Título</span>
+  <span class="btn">✦ IA · Reestructurar</span>
+  <span class="btn">✦ IA · Investigar</span>
+</div></div>
+<p>El menú solo existe si hay key configurada. Los botones usan <code>tintAccent</code> sobre fondo de contenido (<code>bgSecondary</code>), <strong>no</strong> glass: siguiendo DESIGN.md §2, el contenido no es Liquid Glass. El glyph "✦" es el único adorno; sin gradientes ni colores nuevos.</p>
+
+<h3>6.2 Resultado = sugerencia revisable</h3>
+<div class="mock"><div class="screen">
+  <p style="margin:0 0 4px;font-weight:700">Título sugerido</p>
+  <p style="margin:0 0 12px;font-size:19px">“Corte mensual y compras de octubre”</p>
+  <span class="btn primary">Aplicar título</span>
+  <span class="btn">Descartar</span>
+</div></div>
+
+<h3>6.3 Ajustes — nueva sección</h3>
+<div class="mock"><div class="screen">
+  <p style="margin:0 0 6px;font-weight:700">Inteligencia (opcional)</p>
+  <p class="muted" style="font-size:14px;margin:0 0 10px">Agregá tu API key de Google AI Studio para habilitar título, reestructura e investigación en tus notas. La clave se guarda solo en este dispositivo.</p>
+  <span class="btn">Pegar / editar key</span>
+  <span class="btn">Probar conexión</span>
+</div></div>
+
+<h3>6.3bis Prompts internos (lo que se envía a Gemini al tocar cada botón)</h3>
+<p>Todo pasa por el mismo <code>systemInstruction</code>: <em>"Respondé siempre en español. Salvo que se indique lo contrario, devolvé texto plano sin markdown ni emojis. No inventes información que no esté en la nota."</em></p>
+
+<h3>Título con IA — restricciones duras</h3>
+<pre>Analizá la siguiente nota dictada por voz y proponé UN título.
+Reglas:
+- Máximo 6 palabras y 60 caracteres.
+- Sin comillas, sin punto final, sin emojis.
+- Debe capturar el tema principal, no una palabra suelta.
+- Si la nota no tiene tema claro, devolvé "Nota sin título".
+
+Nota:
+"""{texto_de_la_nota}"""</pre>
+
+<h3>Reestructurar — cero alucinación</h3>
+<pre>Reorganizá la siguiente nota dictada por voz (que viene con pausas, muletillas
+y orden libre) en una estructura limpia.
+Reglas estrictas:
+- NO agregues información, datos, fechas ni nombres que no estén en la nota.
+- NO elimines hechos, aunque estén repetidos; solo reordená.
+- Corregí ortografía y puntuación.
+- Usá listas con guiones para enumeraciones y párrafos cortos para el resto.
+- Conservá el sentido y el tono del dictado original.
+- Si un fragmento es ambiguo, dejalo tal cual con [?] al final.
+- Texto plano, sin encabezados inventados.
+
+Nota:
+"""{texto_de_la_nota}"""</pre>
+
+<h3>Investigar — investigación preliminar, con límites honestos</h3>
+<pre>A partir de la siguiente nota, generá una investigación preliminar en español
+con este formato:
+
+1. Tema detectado (una línea)
+2. Puntos clave que la nota ya menciona (bullets)
+3. Preguntas abiertas que la nota deja sin responder (bullets)
+4. Contexto general que conoce el modelo relacionado con el tema (3-5 bullets),
+   marcando con [sin verificar] los datos que no se puedan confirmar.
+5. "Para profundizar": 2-3 búsquedas sugeridas que el usuario puede hacer.
+
+Reglas:
+- NO afirmes fechas, cifras ni nombres propios salvo que estén en la nota o con [sin verificar].
+- No inventes fuentes ni enlaces.
+- Texto plano, bullets con "-".
+
+Nota:
+"""{texto_de_la_nota}"""</pre>
+<p>La "investigación" de fase 1 es esto: organización + contexto del modelo, nunca una búsqueda web con citas. El grounding con Google Search queda para fase 4 y lo etiquetará la UI explícitamente como "con búsqueda en vivo (con costo)".</p>
+
+<h3>6.3ter Cómo aparece en Configuración para el usuario</h3>
+<p>En Ajustes → tab <em>General</em>, al final, una sección nueva <strong>"Inteligencia (opcional)"</strong> con:</p>
+<ul>
+  <li>Texto explicativo: <em>"Conectá tu propia cuenta de Google AI Studio para habilitar tres acciones sobre tus notas: sugerir título, reestructurar el texto y generar una investigación preliminar. Es opcional: si no cargás una clave, la app funciona igual. La clave se guarda solo en este dispositivo y tus notas viajan directamente a Google, sin pasar por ningún servidor de VoiceBubble."</em></li>
+  <li>Campo de la key (oculto, con ojito para mostrar), igual que el de Groq.</li>
+  <li>Botón <strong>"Cómo consigo una clave"</strong> → abre <code>aistudio.google.com</code> en el navegador del teléfono.</li>
+  <li>Botón <strong>"Probar conexión"</strong> → una llamada mínima; muestra ✔ "Conectado" o el error real.</li>
+  <li>Toggle <strong>"Mostrar acciones de IA en las notas"</strong> (default ON si hay key, OFF si no) por si el usuario prefiere esconderlas sin borrar la clave.</li>
+</ul>
+<p>Los mismos cinco elementos se reflejan en el widget con la misma sección vía deep-link "Abrir Ajustes", sin key en Kotlin.</p>
+
+<h3>6.3bis2 Modelo y parámetros de salida</h3>
+<p><strong>Modelo: <code>gemini-3.5-flash</code></strong> (GA 2026-05, cubierto en free tier, sin shutdown anunciado; es el reemplazo oficial de <code>gemini-2.5-flash</code>, que devuelve 404 a usuarios nuevos desde sep-2026). Ojo: Google deprecó <code>temperature</code>/<code>top_p</code>/<code>top_k</code> en los modelos 3.x, así que no los enviamos.</p>
+<table>
+  <tr><th>Acción</th><th>maxOutputTokens</th><th>Por qué</th></tr>
+  <tr><td>Título</td><td>~60</td><td>Pocas palabras, salida corta y barata</td></tr>
+  <tr><td>Reestructurar</td><td>~2048</td><td>El doble de la nota típica</td></tr>
+  <tr><td>Investigar</td><td>~1024</td><td>Síntesis acotada, sin divagar</td></tr>
+</table>
+<p class="muted">Errores visibles en la app con cuerpo de la API copiable (SelectableText) para diagnosticar: 401 key inválida, 404 modelo no disponible, 429 cuota, 5xx servidor, timeout.</p>
+
+<h3>6.4 Tokens</h3>
+<table>
+  <tr><th>Uso</th><th>Token</th></tr>
+  <tr><td>Fondo sheet / tarjeta</td><td><code>bgElevated</code> / <code>bgSecondary</code></td></tr>
+  <tr><td>Texto resultado</td><td><code>labelPrimary</code></td></tr>
+  <tr><td>Acciones IA</td><td><code>tintAccent</code> (nunca rojo salvo error)</td></tr>
+  <tr><td>Estados de carga/error</td><td><code>labelSecondary</code> + icono semántico</td></tr>
+</table>
+
+<h2 id="s7"><span class="num">7.</span>Seguridad y privacidad</h2>
+<ul>
+  <li>Key solo en almacenamiento local seguro del dispositivo, mismo trato que la key de Groq.</li>
+  <li>En tier Free, Google puede usar el contenido para mejorar productos: el texto se resume en Ajustes con un aviso honesto ("gratis implica que tu nota se procesa como contenido de pruebas; para uso sensible, vinculá facturación en AI Studio").</li>
+  <li>Ningún dato de la nota pasa por servidores nuestros. No hay telemetría nueva.</li>
+  <li>Errores visibles, nunca silenciosos (consistente con suite c24).</li>
+</ul>
+
+<h2 id="s8"><span class="num">8.</span>Riesgos y preguntas abiertas</h2>
+<ul>
+  <li><strong>Cuota del tier Free:</strong> Google no publica una matriz fija garantizada; el límite es dinámico por cuenta. El botón "Probar conexión" en Ajustes es la forma honesta de verificar.</li>
+  <li><strong>Investigar con búsqueda real</strong> requiere grounding y probablemente tier pago: propongo fase 1 con conocimiento del modelo y grounding opcional.</li>
+  <li><strong>Cambio de formato de keys</strong> (standard → authorization keys, sep-2026): validar por respuesta de la API, no por regex.</li>
+  <li><strong>widget nativo:</strong> confirmar si aceptás el atajo "Abrir en app" (fase 1) o querés la llamada Kotlin directa desde el MVP.</li>
+</ul>
+
+<h2 id="s9"><span class="num">9.</span>Hitos y seguimiento de implementación</h2>
+<p class="muted">Estado en vivo: cada hito se marca ✅ al completarse. Nada se pushea a GitHub sin autorización.</p>
+<div class="card" id="hitos">
+<ul style="list-style:none;padding-left:0">
+  <li>✅ <strong>H0 · Diseño cerrado</strong> — propuesta aprobada y prompts fijos (esta página).</li>
+  <li>✅ <strong>H1 · Ajustes</strong> — segunda <code>ApiKeyCard</code> ("API Key de Google AI Studio") en General, key en <code>flutter_secure_storage</code>, "Probar conexión", toggle "Mostrar acciones de IA".</li>
+  <li>✅ <strong>H2 · Servicio</strong> — <code>gemini_note_service.dart</code> con título/reestructurar/investigar, timeout 30 s, errores 401/429/red clasificados, key en header (nunca en URL).</li>
+  <li>✅ <strong>H3 · UI en nota</strong> — 3 botones "IA · Título / Reestructurar / Investigar" en el editor, visibles solo con key configurada y toggle ON; diálogo preview con Aplicar/Anexar/Descartar.</li>
+  <li>✅ <strong>H4 · Widget</strong> — atajo existente: tocar una nota del widget abre la app (MainActivity con acciones IA ya presentes en el editor).</li>
+  <li>✅ <strong>H5 · Tests</strong> — suite Python <code>test_c48_gemini_notes_suite.py</code> 39/39 verde; unit tests Dart <code>gemini_note_service_test.dart</code> y <code>gemini_key_store_test.dart</code> (corren en CI; no hay Flutter local).</li>
+  <li>✅ <strong>H6 · Auditoría</strong> — master suite 97/99 (los 2 fallos son C-34 preexistente en android.yml), detector Impeccable solo Roboto-advisory, CI verde run <code>37538087788</code>, APK <code>voice-bubble-arm64-debug-apk-r279</code>. 3 iteraciones de fix: constructor duplicado, 2 infos de analyze estricto, finder duplicado del CTA.</li>
+</ul>
+</div>
+<p><strong>Estrategia de testing:</strong> (1) <em>unit</em> en <code>app_source/test/services/</code> con cliente HTTP mockeado — nunca se pega a la API real salvo prueba manual con tu key; (2) <em>widget tests</em> verificando que sin key no aparecen botones y con key sí; (3) <em>suite Python</em> de contrato que lee el código real y valida los prompts (≤60 caracteres en título, "no inventes" en reestructurar, lista fija de 5 puntos en investigar), timeout presente, sin key hardcodeada; (4) regresiones: <code>master_suite</code> completo antes del push.</p>
+
+<p class="fine" style="margin-top:36px">Documento generado para revisión · VoiceBubble STT · Oct 2026 · Fuentes: ai.google.dev/pricing, /docs/billing, /docs/rate-limits, aistudio.google.com/docs/pricing (consultadas 2026-10-06).</p>
+</main>
+<script>
+  const t = document.getElementById('themeToggle');
+  const saved = localStorage.getItem('vb-plan-theme');
+  if (saved) document.documentElement.dataset.theme = saved;
+  t.addEventListener('click', () => {
+    const cur = document.documentElement.dataset.theme;
+    const next = cur === 'dark' ? 'light' : cur === 'light' ? '' : 'dark';
+    if (next) { document.documentElement.dataset.theme = next; localStorage.setItem('vb-plan-theme', next); }
+    else { delete document.documentElement.dataset.theme; localStorage.removeItem('vb-plan-theme'); }
+  });
+</script>
+</body>
+</html>
