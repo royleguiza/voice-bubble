@@ -97,21 +97,57 @@ extension _GeneralPages on _SettingsScreenState {
   Widget _buildBurbujaPage(BuildContext context) {
     return _subpage(
       context,
-      title: 'Burbuja flotante',
+      title: 'Barra flotante',
       sections: [
         SettingsSection(
-          footer: 'Dictá encima de cualquier app y copiá el resultado. '
-              'Mantené la burbuja presionada para ver el historial.',
+          footer: 'Dictá y usá el puntero encima de cualquier app. '
+              'Arrastrala hacia el centro para usarla como burbuja; pegala '
+              'a un borde para volver a la barra.',
           children: [
             SettingsSwitchRow(
               key: const ValueKey('bubble-active-switch'),
-              title: 'Burbuja flotante',
+              title: 'Barra flotante',
               value: _isBubbleEnabled,
               onChanged: _toggleBubble,
             ),
+            SettingsMenuRow<String>(
+              id: 'dock-form-selector',
+              title: 'Forma',
+              value: _dockForm,
+              options: const [
+                SettingsOption('edge', 'Barra en el borde'),
+                SettingsOption('bubble', 'Burbuja'),
+              ],
+              onSelected: _saveDockForm,
+            ),
+          ],
+        ),
+        SettingsSection(
+          header: 'Herramientas',
+          footer: 'Con una sola herramienta, tocar la burbuja la usa '
+              'directo.',
+          children: [
+            SettingsSwitchRow(
+              key: const ValueKey('dock-tool-mic-switch'),
+              title: 'Micrófono',
+              value: _dockToolMic,
+              onChanged: (v) => _toggleDockTool(pointer: false, value: v),
+            ),
+            SettingsSwitchRow(
+              key: const ValueKey('dock-tool-pointer-switch'),
+              title: 'Puntero',
+              value: _dockToolPointer,
+              onChanged: (v) => _toggleDockTool(pointer: true, value: v),
+            ),
+          ],
+        ),
+        SettingsSection(
+          footer: 'Mantené presionada la barra o la burbuja para ver lo '
+              'último que dictaste.',
+          children: [
             SettingsSwitchRow(
               key: const ValueKey('bubble-history-switch'),
-              title: 'Historial en la burbuja',
+              title: 'Historial',
               value: _showBubbleHistory,
               onChanged: _toggleBubbleHistory,
             ),
@@ -119,7 +155,7 @@ extension _GeneralPages on _SettingsScreenState {
         ),
         SettingsSection(
           header: 'Permiso',
-          footer: 'Android lo pide para mostrar la burbuja encima de otras '
+          footer: 'Android lo pide para mostrar la barra encima de otras '
               'apps.',
           children: [
             SettingsNavRow(

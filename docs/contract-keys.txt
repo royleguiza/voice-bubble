@@ -1,4 +1,7 @@
 bubble_history_enabled
+dock_form
+dock_tool_mic
+dock_tool_pointer
 kb_bottom_elevation_dp
 kb_clipboard_images_enabled
 kb_code_key_visible
@@ -41,6 +44,7 @@ kb_trackpad_sensitivity
 kb_trackpad_tap_to_click
 kb_trackpad_toolbar_visible
 notes_deferred_queue_enabled
+pointer_open_mode
 transcriptions
 vb_cred_pass_v1
 vb_cred_show_user

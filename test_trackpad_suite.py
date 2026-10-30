@@ -108,20 +108,28 @@ keystore_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/debug.keys
 check("Keystore persistente debug.keystore existe en android/app", os.path.isfile(keystore_path))
 check("build.gradle.kts configura signingConfigs con debug.keystore", 'debug.keystore' in gradle_content)
 
-# --- TEST 3: VoiceBubbleAccessibilityService ---
+# --- TEST 3: clics en otras apps = complemento VoiceBubble Puntero (2026-10-30) ---
+# VoiceBubble sigue sin Accesibilidad (perfil anti-Play-Protect). El servicio
+# que hace los gestos vive en la app aparte puntero_android/.
 acc_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceBubbleAccessibilityService.kt")
-check("VoiceBubbleAccessibilityService.kt existe", os.path.isfile(acc_kt_path))
-if os.path.isfile(acc_kt_path):
-    with open(acc_kt_path, "r", encoding="utf-8") as f:
+check("VoiceBubble ya no trae servicio de Accesibilidad propio", not os.path.isfile(acc_kt_path))
+pun_dir = os.path.join(WORKSPACE, "puntero_android/app/src/main/kotlin/com/royleguiza/voicebubble/puntero")
+pun_svc_path = os.path.join(pun_dir, "PunteroService.kt")
+check("PunteroService.kt existe en el complemento", os.path.isfile(pun_svc_path))
+if os.path.isfile(pun_svc_path):
+    with open(pun_svc_path, "r", encoding="utf-8") as f:
         acc_content = f.read()
-    check("VoiceBubbleAccessibilityService extiende AccessibilityService", "class VoiceBubbleAccessibilityService : AccessibilityService()" in acc_content)
-    check("VoiceBubbleAccessibilityService implementa dispatchTap", "fun dispatchTap(" in acc_content)
-    check("VoiceBubbleAccessibilityService implementa dispatchLongPress", "fun dispatchLongPress(" in acc_content)
-    check("VoiceBubbleAccessibilityService implementa dispatchScroll", "fun dispatchScroll(" in acc_content)
-    check("VoiceBubbleAccessibilityService tiene singleton isConnected()", "fun isConnected(): Boolean" in acc_content)
-    check("VoiceBubbleAccessibilityService sanitiza coordenadas contra NaN y valores negativos", "isNaN" in acc_content)
-    check("VoiceBubbleAccessibilityService implementa batching de scroll sin colisiones (flushPendingScroll)", "flushPendingScroll" in acc_content and "isScrollActive" in acc_content)
-    check("VoiceBubbleAccessibilityService trazo no vacio via lineTo en dispatchTap", "lineTo(x, y)" in acc_content)
+    with open(os.path.join(pun_dir, "ScrollQueue.kt"), "r", encoding="utf-8") as f:
+        queue_content = f.read()
+    with open(os.path.join(pun_dir, "PointerProtocol.kt"), "r", encoding="utf-8") as f:
+        proto_content = f.read()
+    check("PunteroService extiende AccessibilityService", "class PunteroService : AccessibilityService()" in acc_content)
+    check("PunteroService hace tap y toque largo", "PointerProtocol.OP_TAP -> press(" in acc_content and "PointerProtocol.OP_LONG_PRESS -> press(" in acc_content)
+    check("PunteroService hace scroll en cola (sin cancelarse a 60 Hz)", "scroll.add(" in acc_content and "scroll.finished()" in acc_content and "if (active) null" in queue_content)
+    check("PunteroService solo escucha con permiso de firma", "PointerProtocol.PERMISSION_POINTER" in acc_content and "registerReceiver(" in acc_content)
+    check("Protocolo sanitiza coordenadas (NaN, infinitos, negativos)", "isFinite()" in proto_content and "x < 0f || y < 0f" in proto_content)
+    check("Trazo no vacío via lineTo en el tap", "lineTo(x, y)" in acc_content)
+    check("PunteroService sin telemetría (onAccessibilityEvent vacío)", "Cero telemetría" in acc_content)
 
 # --- TEST 4: PointerOverlayManager ---
 pom_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/PointerOverlayManager.kt")
@@ -139,25 +147,26 @@ if os.path.isfile(pom_kt_path):
     check("PointerOverlayManager alinea subpixel de punta de flecha con density", "tipOffset" in pom_content)
     check("PointerOverlayManager limite inferior dinamico resetBottomLimit", "resetBottomLimit" in pom_content)
 
-# --- TEST 4B: FloatingTrackpadService (Burbuja Independiente de Mouse) ---
+# --- TEST 4B: FloatingTrackpadService (panel que abre la barra flotante) ---
 ftp_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/FloatingTrackpadService.kt")
 check("FloatingTrackpadService.kt existe", os.path.isfile(ftp_kt_path))
 if os.path.isfile(ftp_kt_path):
     with open(ftp_kt_path, "r", encoding="utf-8") as f:
         ftp_content = f.read()
     check("FloatingTrackpadService extiende Service", "class FloatingTrackpadService : Service()" in ftp_content)
-    check("FloatingTrackpadService implementa expandToDock", "fun expandToDock()" in ftp_content)
-    check("FloatingTrackpadService implementa expandToMiniPad", "fun expandToMiniPad()" in ftp_content)
-    check("FloatingTrackpadService implementa minimizeToBubble", "fun minimizeToBubble()" in ftp_content)
-    check("FloatingTrackpadService maneja idle dimming", "idleDimRunnable" in ftp_content)
-    check("FloatingTrackpadService snap a bordes", "snapBubbleToEdge" in ftp_content)
+    check("FloatingTrackpadService se abre desde la barra (ACTION_OPEN con ancla)", "fun open(context: Context, anchorX: Int, anchorY: Int)" in ftp_content and "ACTION_OPEN ->" in ftp_content)
+    check("FloatingTrackpadService sin burbuja propia (al cerrar termina)", "withEndAction { stopSelf() }" in ftp_content and "snapBubbleToEdge" not in ftp_content)
+    check("FloatingTrackpadService abre panel abajo o ventana flotante", "MODE_PANEL" in ftp_content and "MODE_WINDOW" in ftp_content and "PREF_OPEN_MODE" in ftp_content)
+    check("FloatingTrackpadService en vidrio (GlassWindow con desenfoque)", "GlassWindow(this, root, cornerRadiusPx = 30 * d)" in ftp_content)
     check("FloatingTrackpadService integra VirtualTrackpadView", "VirtualTrackpadView(" in ftp_content)
-    check("FloatingTrackpadService despacha taps a VoiceBubbleAccessibilityService", "VoiceBubbleAccessibilityService.dispatchTap" in ftp_content)
-    check("FloatingTrackpadService despacha scroll a VoiceBubbleAccessibilityService", "VoiceBubbleAccessibilityService.dispatchScroll" in ftp_content)
-    check("FloatingTrackpadService implementa rayita drag handle con gestos", "rayita" in ftp_content and "minimizeToBubble" in ftp_content)
+    check("FloatingTrackpadService despacha tap/clic largo/scroll por PointerLink", "PointerLink.tap(" in ftp_content and "PointerLink.longPress(" in ftp_content and "PointerLink.scroll(" in ftp_content)
+    check("La línea: un toque cierra, sin botón ×", "if (e.actionMasked == MotionEvent.ACTION_UP) closePanel()" in ftp_content and '"×"' not in ftp_content)
+    check("La línea muestra la cuenta del cierre automático", "onIdleCountdown" in ftp_content and "fun startCountdown(totalMs: Long)" in ftp_content)
     check("FloatingTrackpadService maneja extensión a 380dp y colapso", "380" in ftp_content and "240" in ftp_content)
-    check("FloatingTrackpadService maneja arrastre minipad libre en 2D (x e y)", "expandedLayoutParams.x = (initialX + dx)" in ftp_content and "expandedLayoutParams.y = (initialY + dy)" in ftp_content)
-    check("FloatingTrackpadService actualiza cota inferior del puntero al extender altura", "pointerManager?.updateKeyboardTop" in ftp_content)
+    check("FloatingTrackpadService mueve la ventana flotante en 2D", "win.moveTo((wx0 + dx)" in ftp_content and "(wy0 + dy)" in ftp_content)
+    check("El puntero puede llegar a toda la pantalla (cota inferior liberada)", "pointerManager?.resetBottomLimit()" in ftp_content)
+    check("Puntero sobre el panel: el panel se vuelve casi transparente", "fun updateGhost()" in ftp_content)
+    check("Sin complemento avisa una vez cómo activarlo", "fun hintNoCompanion()" in ftp_content and "VoiceBubble Puntero" in ftp_content)
     check("FloatingTrackpadService usa tema glass por defecto para Liquid Glass", 'theme = "glass"' in ftp_content)
 
 ftp_dart_path = os.path.join(WORKSPACE, "app_source/lib/services/floating_trackpad_service.dart")
@@ -433,37 +442,36 @@ check("FloatingTrackpadService lee kb_trackpad_haptic como String (sin getBoolea
       '.getString("flutter.kb_trackpad_haptic"' in ftp_content_recheck,
       "ITEM-INTERFAZ CR-10: FloatingTrackpadService.kt usa getBoolean para una clave String (ClassCastException)")
 
-# --- TEST 15: La UI no promete clics en otra app + degradación real ---
-# Los textos del trackpad describen capa DENTRO del teclado; jamás se
-# promete inyección/clics en otras apps (el despacho nativo exige el
-# servicio conectado y degrada por fallback local).
-check("UI del trackpad describe capa dentro del teclado",
-      "Un puntero dentro del teclado para mover el cursor" in trackpad_combined
-      and "sus clics se quedan dentro del" in trackpad_combined,
-      "Faltan los textos honestos de la tarjeta de trackpad")
-check("UI del trackpad sin promesas de clics en otra app",
+# --- TEST 15: honestidad de la UI (2026-10-30) ---
+# Los clics en otras apps existen SOLO con el complemento VoiceBubble Puntero
+# activo. La UI lo dice tal cual y no promete nada más; el nativo no despacha
+# si el complemento no está activo y el teclado degrada a teclas locales.
+link_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/PointerLink.kt")
+with open(link_path, "r", encoding="utf-8") as f:
+    link_content = f.read()
+check("UI del trackpad describe el puntero del teclado",
+      "Un puntero dentro del teclado para mover el cursor" in trackpad_combined,
+      "Falta el texto del trackpad del teclado")
+check("UI condiciona los clics en otras apps al complemento",
+      "VoiceBubble Puntero" in trackpad_combined
+      and "Sin él, el puntero se mueve pero no hace clic." in trackpad_combined,
+      "La UI promete clics en otras apps sin nombrar el complemento")
+check("UI del trackpad sin promesas de control ajeno",
       "inyecta" not in trackpad_combined
-      and "clic en otra" not in trackpad_combined
-      and "clics en otra" not in trackpad_combined
       and "controla otras" not in trackpad_combined,
-      "La UI promete interacción fuera de la app")
-check("VoiceKeyboardService degrada sin accesibilidad (gate isConnected)",
-      "if (VoiceBubbleAccessibilityService.isConnected())" in vk_content,
-      "El despacho del trackpad no verifica conexión antes de inyectar")
-check("TrackpadBridge degrada a teclas locales (DPAD_CENTER/MENU)",
-      "KEYCODE_DPAD_CENTER" in bridge_content
+      "La UI promete interacción fuera de lo que hace")
+check("PointerLink no despacha sin complemento activo",
+      "if (cmd == null || !isEnabled(context)) return false" in link_content,
+      "El despacho no verifica el complemento antes de enviar")
+check("Teclado: clic por complemento o tecla local",
+      "if (PointerLink.tap(service, x, y)) return" in bridge_content
+      and "KEYCODE_DPAD_CENTER" in bridge_content
       and "KEYCODE_MENU" in bridge_content,
-      "Sin fallback local cuando el servicio está dormido")
-check("FloatingTrackpadService no despacha sin conexión (guards SPK-23)",
-      ftp_content.count("if (!VoiceBubbleAccessibilityService.isConnected()) return") >= 3,
-      "Faltan guards isConnected en onLeftClick/onRightClick/onScroll")
-check("Contrato dormido documentado (docs/contrato-trackpad.md)",
+      "Sin fallback local cuando el complemento no está")
+check("Contrato documentado (docs/contrato-trackpad.md)",
       os.path.isfile(os.path.join(WORKSPACE, "docs/contrato-trackpad.md"))
-      and "puntero local" in open(os.path.join(WORKSPACE, "docs/contrato-trackpad.md"), encoding="utf-8").read().lower(),
-      "Falta la fuente única del estado dormido")
-check("Aviso honesto en la UI de Ajustes (puntero local)",
-      "Puntero local" in trackpad_combined,
-      "La UI no avisa que no hace clic fuera")
+      and "voicebubble puntero" in open(os.path.join(WORKSPACE, "docs/contrato-trackpad.md"), encoding="utf-8").read().lower(),
+      "Falta la fuente única del estado del puntero")
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TRACKPAD & ISLA: {suite.passed} pasados, {suite.failed} fallidos.")

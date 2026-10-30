@@ -47,7 +47,7 @@ jobs:
 
       - name: Sin contenido en Logs
         run: |
-          if grep -rniE 'Log\.[a-z]+\(.*\b(texto|text|contenido|content|password|contrase|snippet|clip|transcri|credential|cred|user|usuario|wav|audio|key|token|groq|bearer)\b' voice_bubble_stt/android/app/src/main/kotlin; then
+          if grep -rniE 'Log\.[a-z]+\(.*\b(texto|text|contenido|content|password|contrase|snippet|clip|transcri|credential|cred|user|usuario|wav|audio|key|token|groq|bearer)\b' voice_bubble_stt/android/app/src/main/kotlin puntero_android/app/src/main/kotlin; then
             echo '::error::posible filtracion de contenido en Log'
             exit 1
           fi
@@ -108,6 +108,26 @@ jobs:
         working-directory: voice_bubble_stt/android
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.MicrophoneClaimTest
 
+      - name: Test Kotlin nativo de la barra flotante y el protocolo del puntero
+        working-directory: voice_bubble_stt/android
+        run: >-
+          gradle --no-daemon :app:testDebugUnitTest
+          --tests com.royleguiza.voicebubblestt.DockGeometryTest
+          --tests com.royleguiza.voicebubblestt.PointerProtocolTest
+
+      - name: Protocolo del puntero idéntico en las dos apps
+        run: |
+          strip() { grep -E '^\s*const val ' "$1" | sed 's/^\s*//'; }
+          diff <(strip voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/PointerProtocol.kt) \
+               <(strip puntero_android/app/src/main/kotlin/com/royleguiza/voicebubble/puntero/PointerProtocol.kt) \
+            || { echo '::error::PointerProtocol difiere entre VoiceBubble y VoiceBubble Puntero'; exit 1; }
+
+      - name: Complemento VoiceBubble Puntero (tests + APK)
+        working-directory: puntero_android
+        # Misma debug.keystore que VoiceBubble: el permiso de firma del
+        # puntero exige que las dos apps estén firmadas igual.
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug -PbuildNumber=${{ github.run_number }}
+
       - name: Analyze estricto (infos y warnings fatales)
         working-directory: voice_bubble_stt
         run: flutter analyze
@@ -139,6 +159,15 @@ jobs:
         with:
           name: voice-bubble-arm64-debug-apk-r${{ github.run_number }}
           path: voice_bubble_stt/build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+
+      - name: Upload APK VoiceBubble Puntero
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-bubble-puntero-apk-r${{ github.run_number }}
+          path: puntero_android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
           compression-level: 6

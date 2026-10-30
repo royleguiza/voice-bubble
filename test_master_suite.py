@@ -56,6 +56,7 @@ SUITES = [
     ("Nada tapado + scroll que no salta (C-27)", "test_c27_nothing_obscured_and_scroll_suite.py"),
     ("Sheet con scroll + botones 44dp (C-28)", "test_c28_sheet_scroll_and_touch_targets_suite.py"),
     ("Burbuja siempre recuperable (C-29)", "test_c29_bubble_clamping_and_no_limits_suite.py"),
+    ("Barra flotante + VoiceBubble Puntero", "test_floating_dock_suite.py"),
     ("Contraste que se lee (C-30)", "test_c30_contrast_and_accessible_tokens_suite.py"),
     ("Transparencia del sistema + tokens (C-31)", "test_c31_system_transparency_and_tokens_suite.py"),
     ("Semántica correcta + teclado físico (C-32)", "test_c32_semantics_and_physical_keyboard_suite.py"),
@@ -3351,7 +3352,8 @@ def test_c19_bridge_keys_contract():
         cs_content = f.read()
 
     # 1. Claves y límites
-    assert len(keys_content) == 51, f"C-19: contract-keys.txt debe tener 51 claves, tiene {len(keys_content)}"
+    # 51 + 4 de la barra flotante (dock_form, dock_tool_mic, dock_tool_pointer, pointer_open_mode).
+    assert len(keys_content) == 55, f"C-19: contract-keys.txt debe tener 55 claves, tiene {len(keys_content)}"
     assert "kb_stt_key_configured" in keys_content, "C-19: contract-keys.txt debe incluir kb_stt_key_configured"
     assert "20" in limits_content and "50" in limits_content and "15" in limits_content and "25" in limits_content, "C-19: contract-limits.md debe documentar 20/50/15/25"
 
@@ -3738,11 +3740,21 @@ def test_c29_bubble_clamping_contract():
     with open(bubble_file, "r", encoding="utf-8") as f:
         src = f.read()
 
-    assert "FLAG_LAYOUT_NO_LIMITS" not in src, "C-29: FloatingBubbleService retiene FLAG_LAYOUT_NO_LIMITS"
-    assert "clampBubblePosition" in src, "C-29: FloatingBubbleService sin función clampBubblePosition"
-    assert "navigationBars" in src, "C-29: FloatingBubbleService no consulta WindowInsets.Type.navigationBars"
-    assert "displayCutout" in src, "C-29: FloatingBubbleService no consulta WindowInsets.Type.displayCutout"
-    assert "safeY" in src or "clampBubblePosition" in src, "C-29: snapToNearestEdge no ancla safeY"
+    # Desde 2026-10-30 la burbuja es la barra flotante (DockController/DockGeometry/GlassWindow).
+    kt_dir = os.path.dirname(bubble_file)
+    def _r(name):
+        with open(os.path.join(kt_dir, name), "r", encoding="utf-8") as fh:
+            return fh.read()
+    dock = _r("DockController.kt")
+    geo = _r("DockGeometry.kt")
+    glass = _r("GlassWindow.kt")
+    for name, code in (("FloatingBubbleService", src), ("DockController", dock), ("GlassWindow", glass)):
+        live = [l for l in code.splitlines() if "FLAG_LAYOUT_NO_LIMITS" in l and not l.strip().startswith("*")]
+        assert not live, f"C-29: {name} retiene FLAG_LAYOUT_NO_LIMITS"
+    assert "fun clampBubble(" in geo and "fun clampCenterY(" in geo, "C-29: DockGeometry sin clamps de burbuja/barra"
+    assert "navigationBars" in dock, "C-29: DockController no consulta WindowInsets.Type.navigationBars"
+    assert "displayCutout" in dock, "C-29: DockController no consulta WindowInsets.Type.displayCutout"
+    assert "clampBubblePos()" in dock and "clampCenter(center0 + dy)" in dock, "C-29: gestos sin clamp"
 
 def test_c30_contrast_and_accessible_tokens_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -3942,7 +3954,10 @@ def test_c35_logs_deletion_widget_errors_contract():
 
     with open(bubble_file, "r", encoding="utf-8") as f:
         bubble = f.read()
-    assert "Color.WHITE" not in bubble and "R.color.kb_label_on_accent" in bubble, "C-35: FloatingBubbleService con Color.WHITE o sin token"
+    # La burbuja la dibuja DockViews.kt desde 2026-10-30.
+    with open(os.path.join(os.path.dirname(bubble_file), "DockViews.kt"), "r", encoding="utf-8") as f:
+        bubble += f.read()
+    assert "Color.WHITE" not in bubble and "R.color.kb_label_on_accent" in bubble, "C-35: barra flotante con Color.WHITE o sin token"
 
 def test_c36_sincerar_muertos_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -3961,7 +3976,7 @@ def test_c36_sincerar_muertos_contract():
 
     with open(ftp_file, "r", encoding="utf-8") as f:
         ftp = f.read()
-    assert "ACTION_SHOW_MINIPAD" in ftp and "expandToMiniPad()" in ftp, "C-36: FloatingTrackpadService sin ACTION_SHOW_MINIPAD"
+    assert 'const val MODE_WINDOW = "window"' in ftp and "PREF_OPEN_MODE" in ftp, "C-36: FloatingTrackpadService sin ventana flotante (ex minipad)"
 
     with open(settings_file, "r", encoding="utf-8") as f:
         settings = f.read()

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VoiceBubble Puntero</string>
+    <string name="service_label">VoiceBubble Puntero</string>
+    <string name="service_description">Hace los clics del puntero de VoiceBubble en cualquier app. No lee el contenido de la pantalla ni guarda nada.</string>
+</resources>

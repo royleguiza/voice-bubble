@@ -9,7 +9,7 @@ Verifica:
    - app_source/test/helpers/test_app.dart existe y exporta buildTestApp, configureTestViewSize, buildTestableSettingsScreen.
    - app_source/test/helpers/kotlin_fixtures.dart existe y exporta keyboardEntry, keyboardStyleTranscription y kContractKeysSnapshot.
 2. Snapshot canónico de contract-keys.txt:
-   - kContractKeysSnapshot contiene exactamente las 51 claves de docs/contract-keys.txt sin omisiones ni extras.
+   - kContractKeysSnapshot contiene exactamente las 55 claves de docs/contract-keys.txt sin omisiones ni extras.
    - storage_service_test.dart y snippet_storage_test.dart verifican contra kContractKeysSnapshot.
 3. Localización por ValueKeys estables (extensión §9.2-12):
    - home_screen.dart tiene homeTitleText, homeSettingsButton, homeStatusText.
@@ -69,7 +69,7 @@ class TestC37HonestTestsSuite(unittest.TestCase):
             for line in txt_content.splitlines()
             if line.strip() and not line.strip().startswith("#")
         )
-        self.assertEqual(len(disk_keys), 51, "Debe haber exactamente 51 claves en contract-keys.txt")
+        self.assertEqual(len(disk_keys), 55, "Debe haber exactamente 55 claves en contract-keys.txt")
 
         fixtures_content = read_file("app_source/test/helpers/kotlin_fixtures.dart")
         self.assertIsNotNone(fixtures_content)
@@ -80,7 +80,7 @@ class TestC37HonestTestsSuite(unittest.TestCase):
         snapshot_raw = match.group(1)
         snapshot_keys = set(re.findall(r"'([^']+)'", snapshot_raw))
 
-        self.assertEqual(len(snapshot_keys), 51, "kContractKeysSnapshot debe contener 51 claves")
+        self.assertEqual(len(snapshot_keys), 55, "kContractKeysSnapshot debe contener 55 claves")
         self.assertEqual(disk_keys, snapshot_keys, "Snapshot debe ser idéntico al archivo de contrato")
 
     def test_04_storage_and_snippet_tests_reference_contract_keys_snapshot(self):

@@ -1,432 +1,187 @@
 package com.royleguiza.voicebubblestt
 
 import android.animation.ValueAnimator
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.Color
-import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.provider.Settings
-import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.view.WindowManager
-import android.view.animation.DecelerateInterpolator
-import android.widget.FrameLayout
-import android.widget.ImageView
+import android.view.animation.LinearInterpolator
 import android.widget.LinearLayout
-import androidx.core.content.ContextCompat
-import kotlin.math.abs
+import android.widget.Toast
+import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 /**
- * Trackpad virtual en overlay propio (servicio normal, sin accesibilidad).
- * Puntero local sí; clics en otra app dormidos (ver docs/contrato-trackpad.md).
+ * Trackpad flotante que abre la barra (herramienta "Puntero").
+ *
+ * - Sin burbuja propia: lo abre la barra y, al cerrarse, el servicio termina.
+ * - "Se abre como" (flutter.pointer_open_mode): panel abajo o ventana flotante.
+ * - La línea de arriba: un toque lo cierra; arrastrarla mueve la ventana o
+ *   baja el panel; se acorta mostrando cuánto falta para el cierre automático
+ *   (flutter.kb_trackpad_auto_return, 0 = queda abierto).
+ * - Clics, clic largo y scroll en otras apps: vía el complemento
+ *   VoiceBubble Puntero ([PointerLink]). Sin él, el puntero solo se mueve.
+ *   Ver docs/contrato-trackpad.md.
  */
 class FloatingTrackpadService : Service() {
 
     companion object {
+        const val ACTION_OPEN = "com.royleguiza.voicebubblestt.ACTION_OPEN_TRACKPAD"
         const val ACTION_STOP = "com.royleguiza.voicebubblestt.ACTION_STOP_TRACKPAD"
-        const val ACTION_SHOW_DOCK = "com.royleguiza.voicebubblestt.ACTION_SHOW_DOCK"
-        const val ACTION_SHOW_MINIPAD = "com.royleguiza.voicebubblestt.ACTION_SHOW_MINIPAD"
+        const val EXTRA_ANCHOR_X = "anchor_x"
+        const val EXTRA_ANCHOR_Y = "anchor_y"
+        const val PREF_OPEN_MODE = "flutter.pointer_open_mode"
+        const val MODE_PANEL = "panel"
+        const val MODE_WINDOW = "window"
 
         @Volatile
         var isRunning: Boolean = false
             private set
 
-        private var instance: FloatingTrackpadService? = null
-
-        fun start(context: Context) {
-            val intent = Intent(context, FloatingTrackpadService::class.java)
+        fun open(context: Context, anchorX: Int, anchorY: Int) {
+            val intent = Intent(context, FloatingTrackpadService::class.java).apply {
+                action = ACTION_OPEN
+                putExtra(EXTRA_ANCHOR_X, anchorX)
+                putExtra(EXTRA_ANCHOR_Y, anchorY)
+            }
             context.startService(intent)
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, FloatingTrackpadService::class.java)
-            context.stopService(intent)
+            context.stopService(Intent(context, FloatingTrackpadService::class.java))
         }
     }
 
     private var windowManager: WindowManager? = null
     private var pointerManager: PointerOverlayManager? = null
-
-    private var bubbleView: View? = null
-    private lateinit var bubbleLayoutParams: WindowManager.LayoutParams
-
-    private var expandedContainer: LinearLayout? = null
-    private var trackpadView: VirtualTrackpadView? = null
-    private lateinit var expandedLayoutParams: WindowManager.LayoutParams
-
-    private var isExpanded = false
-    private var currentMode = "dock" // "dock" o "minipad"
-    private var isExtendedHeight = false
-    private var snapAnimator: ValueAnimator? = null
-
+    private var panelWindow: GlassWindow? = null
+    private var container: LinearLayout? = null
+    private var handleView: HandleView? = null
+    private var mode = MODE_PANEL
+    private var extended = false
     private val handler = Handler(Looper.getMainLooper())
-    private val idleDimRunnable = Runnable {
-        bubbleView?.animate()?.alpha(0.35f)?.setDuration(300L)?.start()
-    }
+    private var lastNoCompanionHint = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
-        isRunning = true
-
         if (!Settings.canDrawOverlays(this)) {
             stopSelf()
             return
         }
-
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         pointerManager = PointerOverlayManager(this)
-
-        setupBubbleView()
-        setupExpandedView()
+        isRunning = true
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
         when (intent?.action) {
-            ACTION_SHOW_DOCK -> expandToDock()
-            ACTION_SHOW_MINIPAD -> expandToMiniPad()
+            ACTION_STOP -> {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            ACTION_OPEN -> {
+                val ax = intent.getIntExtra(EXTRA_ANCHOR_X, -1)
+                val ay = intent.getIntExtra(EXTRA_ANCHOR_Y, -1)
+                try {
+                    openPanel(ax, ay)
+                } catch (_: Exception) {
+                    stopSelf()
+                }
+            }
+            else -> if (panelWindow == null) stopSelf()
         }
-        // START_NOT_STICKY: servicio de UI bajo demanda, sin foreground ni
-        // estado que rescatar. Si el proceso muere, el sistema NO lo resucita
-        // solo (evita burbujas fantasma y loops de reinicio); quien lo necesite
-        // (MainActivity) lo vuelve a arrancar explícitamente.
+        // Servicio de UI bajo demanda: si el proceso muere no se resucita solo.
         return START_NOT_STICKY
     }
 
-    private fun isNightMode(): Boolean {
-        return (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+    // ------------------------------------------------------------- medidas
+
+    private val d get() = resources.displayMetrics.density
+
+    private fun screenSize(): Pair<Int, Int> {
+        val wm = windowManager
+        if (wm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val b = wm.currentWindowMetrics.bounds
+                if (b.width() > 0) return Pair(b.width(), b.height())
+            } catch (_: Exception) {}
+        }
+        return Pair(resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels)
     }
 
-    private fun setupBubbleView() {
-        val wm = windowManager ?: return
-        val density = resources.displayMetrics.density
-        val bubbleSize = (52 * density).toInt()
+    private fun bottomInset(): Int {
+        val wm = windowManager
+        if (wm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val i = wm.currentWindowMetrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars())
+                return i.bottom
+            } catch (_: Exception) {}
+        }
+        return (24 * d).roundToInt()
+    }
 
-        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+    private fun panelHeight(): Int = ((if (extended) 380 else 240) * d).roundToInt()
+
+    // --------------------------------------------------------------- panel
+
+    private fun readMode(): String {
+        val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val v = try {
+            prefs.getString(PREF_OPEN_MODE, MODE_PANEL)
+        } catch (_: Exception) {
+            MODE_PANEL
+        }
+        return if (v == MODE_WINDOW) MODE_WINDOW else MODE_PANEL
+    }
+
+    private fun openPanel(anchorX: Int, anchorY: Int) {
+        mode = readMode()
+        if (panelWindow == null) buildPanel()
+        val win = panelWindow ?: return
+        val (sw, sh) = screenSize()
+        val h = panelHeight()
+        val (x, y, w) = if (mode == MODE_PANEL) {
+            val margin = (10 * d).roundToInt()
+            Triple(margin, sh - bottomInset() - h - (12 * d).roundToInt(), sw - 2 * margin)
         } else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
+            val w = (280 * d).roundToInt().coerceAtMost(sw - (16 * d).roundToInt())
+            val ax = if (anchorX >= 0) anchorX else sw / 2
+            val ay = if (anchorY >= 0) anchorY else sh / 2
+            val x = if (ax < sw / 2) ax + (16 * d).roundToInt() else ax - w - (16 * d).roundToInt()
+            Triple(x.coerceIn(0, sw - w), (ay - h / 2).coerceIn((40 * d).roundToInt(), sh - h - bottomInset()), w)
         }
-
-        bubbleLayoutParams = WindowManager.LayoutParams(
-            bubbleSize,
-            bubbleSize,
-            layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = (resources.displayMetrics.widthPixels - bubbleSize - (12 * density).toInt())
-            y = (resources.displayMetrics.heightPixels * 0.52).toInt()
+        if (win.isShown()) win.setBounds(x, y, w, h) else win.show(x, y, w, h)
+        container?.let {
+            it.alpha = 0f
+            it.scaleX = 0.92f
+            it.scaleY = 0.92f
+            it.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(220L).start()
         }
-
-        val bubble = FrameLayout(this).apply {
-            val bg = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                val isNight = isNightMode()
-                setColor(if (isNight) 0xE61C1C1E.toInt() else 0xE6FFFFFF.toInt()) // #E61C1C1E / #E6FFFFFF
-                setStroke((1.5f * density).toInt(), 0xFF38BDF8.toInt()) // #38BDF8
-            }
-            background = bg
-            elevation = 6f * density
-
-            val icon = ImageView(context).apply {
-                try {
-                    setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_trackpad))
-                } catch (_: Throwable) {
-                    try { setImageResource(R.drawable.ic_trackpad) } catch (_: Throwable) {}
-                }
-                setColorFilter(ContextCompat.getColor(context, R.color.kb_label))
-                val pad = (12 * density).toInt()
-                setPadding(pad, pad, pad, pad)
-            }
-            addView(
-                icon,
-                FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-            )
-
-            setOnTouchListener(object : View.OnTouchListener {
-                private var initialX = 0
-                private var initialY = 0
-                private var initialTouchX = 0f
-                private var initialTouchY = 0f
-                private var isClick = false
-
-                override fun onTouch(v: View, event: MotionEvent): Boolean {
-                    resetIdleTimer()
-                    when (event.action) {
-                        MotionEvent.ACTION_DOWN -> {
-                            initialX = bubbleLayoutParams.x
-                            initialY = bubbleLayoutParams.y
-                            initialTouchX = event.rawX
-                            initialTouchY = event.rawY
-                            isClick = true
-                            v.animate().alpha(1.0f).setDuration(100L).start()
-                            return true
-                        }
-                        MotionEvent.ACTION_MOVE -> {
-                            val dx = (event.rawX - initialTouchX).toInt()
-                            val dy = (event.rawY - initialTouchY).toInt()
-                            if (abs(dx) > 10 || abs(dy) > 10) {
-                                isClick = false
-                            }
-                            bubbleLayoutParams.x = initialX + dx
-                            bubbleLayoutParams.y = initialY + dy
-                            try {
-                                wm.updateViewLayout(bubbleView, bubbleLayoutParams)
-                            } catch (_: Exception) {}
-                            return true
-                        }
-                        MotionEvent.ACTION_UP -> {
-                            if (isClick) {
-                                expandToDock()
-                            } else {
-                                snapBubbleToEdge()
-                            }
-                            return true
-                        }
-                    }
-                    return false
-                }
-            })
-        }
-
-        bubbleView = bubble
-        wm.addView(bubble, bubbleLayoutParams)
-        resetIdleTimer()
+        pointerManager?.resetBottomLimit()
+        pointerManager?.show()
     }
 
-    private fun resetIdleTimer() {
-        handler.removeCallbacks(idleDimRunnable)
-        bubbleView?.alpha = 1.0f
-        handler.postDelayed(idleDimRunnable, 4000L)
-    }
-
-    private fun snapBubbleToEdge() {
-        val wm = windowManager ?: return
-        val screenWidth = resources.displayMetrics.widthPixels
-        val density = resources.displayMetrics.density
-        val margin = (12 * density).toInt()
-        val bubbleSize = bubbleView?.width ?: (52 * density).toInt()
-
-        val targetX = if (bubbleLayoutParams.x + bubbleSize / 2 < screenWidth / 2) {
-            margin
-        } else {
-            screenWidth - bubbleSize - margin
-        }
-
-        val startX = bubbleLayoutParams.x
-        snapAnimator?.cancel()
-        snapAnimator = ValueAnimator.ofInt(startX, targetX).apply {
-            duration = 240L
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { anim ->
-                bubbleLayoutParams.x = anim.animatedValue as Int
-                try {
-                    wm.updateViewLayout(bubbleView, bubbleLayoutParams)
-                } catch (_: Exception) {}
-            }
-            start()
-        }
-    }
-
-    private fun setupExpandedView() {
-        val wm = windowManager ?: return
-        val density = resources.displayMetrics.density
-        val isNight = isNightMode()
-
-        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
-        }
-
-        val standardH = (240 * density).toInt()
-        expandedLayoutParams = WindowManager.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            standardH,
-            layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.BOTTOM
-        }
-
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val bg = GradientDrawable().apply {
-                setColor(if (isNight) 0xE6171A24.toInt() else 0xE6F2F4F8.toInt()) // #E6171A24 / #E6F2F4F8
-                cornerRadii = floatArrayOf(
-                    18f * density, 18f * density,
-                    18f * density, 18f * density,
-                    0f, 0f, 0f, 0f
-                )
-                setStroke((1.2f * density).toInt(), if (isNight) 0x33FFFFFF.toInt() else 0x26000000.toInt()) // #33FFFFFF / #26000000
-            }
-            background = bg
-            elevation = 12f * density
-        }
-
-        // --- ZONA RAYITA INTERACTIVA SUPERIOR (DRAG HANDLE ZONE) ---
-        val handleZone = FrameLayout(this).apply {
-            val h = (28 * density).toInt()
-            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, h)
-
-            // Rayita de cápsula central (44dp x 5dp)
-            val rayita = View(context).apply {
-                val rW = (44 * density).toInt()
-                val rH = (5 * density).toInt()
-                layoutParams = FrameLayout.LayoutParams(rW, rH).apply {
-                    gravity = Gravity.CENTER
-                }
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.RECTANGLE
-                    cornerRadius = 3f * density
-                    setColor(if (isNight) 0xE6FFFFFF.toInt() else 0xCC1D1D1F.toInt()) // #E6FFFFFF / #CC1D1D1F
-                }
-            }
-            addView(rayita)
-
-            // GESTOS EN LA RAYITA:
-            // 1. Toque simple (click): Cierra directamente (minimizeToBubble).
-            // 2. Deslizar abajo: Cierra (o baja a estándar si estaba extendido).
-            // 3. Deslizar arriba: Amplía a 380dp.
-            // 4. En modo minipad: Mueve la ventana libremente en 2D por la pantalla.
-            setOnTouchListener(object : View.OnTouchListener {
-                private var startX = 0f
-                private var startY = 0f
-                private var initialX = 0
-                private var initialY = 0
-                private var startHeight = standardH
-                private var didDrag = false
-                private var wasExtended = false
-
-                override fun onTouch(v: View, event: MotionEvent): Boolean {
-                    when (event.actionMasked) {
-                        MotionEvent.ACTION_DOWN -> {
-                            startX = event.rawX
-                            startY = event.rawY
-                            initialX = expandedLayoutParams.x
-                            initialY = expandedLayoutParams.y
-                            startHeight = expandedLayoutParams.height
-                            didDrag = false
-                            wasExtended = isExtendedHeight || (startHeight > (280 * density).toInt())
-                            return true
-                        }
-                        MotionEvent.ACTION_MOVE -> {
-                            val dx = (event.rawX - startX).toInt()
-                            val dy = (event.rawY - startY).toInt()
-                            if (abs(dx) > (6 * density) || abs(dy) > (6 * density)) {
-                                didDrag = true
-                            }
-
-                            if (currentMode == "minipad") {
-                                // En modo minipad permite mover la ventana flotante libremente en 2D
-                                val screenW = resources.displayMetrics.widthPixels
-                                val screenH = resources.displayMetrics.heightPixels
-                                expandedLayoutParams.x = (initialX + dx).coerceIn(0, (screenW - expandedLayoutParams.width).coerceAtLeast(0))
-                                expandedLayoutParams.y = (initialY + dy).coerceIn(0, (screenH - expandedLayoutParams.height).coerceAtLeast(0))
-                                try {
-                                    wm.updateViewLayout(expandedContainer, expandedLayoutParams)
-                                } catch (_: Exception) {}
-                                return true
-                            }
-
-                            // En modo dock:
-                            if (wasExtended) {
-                                // Arrastrar hacia abajo baja la altura
-                                if (dy > 0) {
-                                    val newH = (startHeight - dy).toInt().coerceAtLeast(standardH)
-                                    expandedLayoutParams.height = newH
-                                    try {
-                                        wm.updateViewLayout(expandedContainer, expandedLayoutParams)
-                                    } catch (_: Exception) {}
-                                    // Swipe down profundo (> 70dp de exceso) cierra el trackpad
-                                    if (dy > (startHeight - standardH + (70 * density))) {
-                                        minimizeToBubble()
-                                        return true
-                                    }
-                                }
-                            } else {
-                                // Modo estándar (240dp):
-                                if (dy > 0) {
-                                    // Arrastre hacia abajo: swipe-down cierra
-                                    if (dy > (55 * density)) {
-                                        minimizeToBubble()
-                                        return true
-                                    }
-                                } else if (dy < 0) {
-                                    // Arrastre hacia arriba: amplía la altura
-                                    val maxH = (380 * density).toInt()
-                                    val newH = (startHeight - dy).toInt().coerceAtMost(maxH)
-                                    expandedLayoutParams.height = newH
-                                    try {
-                                        wm.updateViewLayout(expandedContainer, expandedLayoutParams)
-                                    } catch (_: Exception) {}
-                                }
-                            }
-                            return true
-                        }
-                        MotionEvent.ACTION_UP -> {
-                            if (!didDrag) {
-                                // Toque simple en la rayita: cierra directamente
-                                minimizeToBubble()
-                                return true
-                            }
-                            if (currentMode == "minipad") {
-                                return true
-                            }
-                            val dy = event.rawY - startY
-                            if (wasExtended) {
-                                if (dy > (30 * density)) {
-                                    setExtendedHeight(false)
-                                } else {
-                                    setExtendedHeight(true)
-                                }
-                            } else {
-                                if (dy > (20 * density)) {
-                                    minimizeToBubble()
-                                } else if (dy < -(25 * density)) {
-                                    setExtendedHeight(true)
-                                } else {
-                                    setExtendedHeight(false)
-                                }
-                            }
-                            return true
-                        }
-                    }
-                    return false
-                }
-            })
-        }
-        container.addView(handleZone)
-
-        // --- CUERPO: VirtualTrackpadView ---
+    @SuppressLint("ClickableViewAccessibility")
+    private fun buildPanel() {
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val scrollPos = prefs.getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
         val tapClick = prefs.getBoolean("flutter.kb_trackpad_tap_to_click", true)
@@ -443,8 +198,6 @@ class FloatingTrackpadService : Service() {
         }
         val sens = try {
             when (val raw = prefs.all["flutter.kb_trackpad_sensitivity"]) {
-                is Float -> raw
-                is Double -> raw.toFloat()
                 is Number -> raw.toFloat()
                 is String -> raw.toFloatOrNull() ?: 1.2f
                 else -> 1.2f
@@ -454,9 +207,7 @@ class FloatingTrackpadService : Service() {
         }
         val accel = prefs.getString("flutter.kb_trackpad_accel_curve", "dynamic") ?: "dynamic"
         val style = prefs.getString("flutter.kb_trackpad_pointer_style", "arrow") ?: "arrow"
-        // Contrato kb_trackpad_haptic: el lado Dart guarda String ("subtle"/"none"/"firm").
-        // Leer con getString + default seguro: getBoolean lanzaría ClassCastException
-        // cuando el valor almacenado es String. Solo estos tres valores son válidos.
+        // Contrato kb_trackpad_haptic: String ("subtle"/"none"/"firm"), nunca bool.
         val hapticMode = try {
             (prefs.getString("flutter.kb_trackpad_haptic", "subtle") ?: "subtle").takeIf {
                 it == "subtle" || it == "none" || it == "firm"
@@ -472,196 +223,260 @@ class FloatingTrackpadService : Service() {
             pointerStyle = style
         }
 
-        val tpHeight = (208 * density).toInt()
-        val tpView = VirtualTrackpadView(
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = (10 * d).roundToInt()
+            setPadding(pad, (2 * d).roundToInt(), pad, pad)
+        }
+        val handle = HandleView(this)
+        handle.contentDescription = "Cerrar trackpad"
+        handle.setOnTouchListener(HandleTouch())
+        root.addView(handle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (34 * d).roundToInt()))
+
+        val tp = VirtualTrackpadView(
             context = this,
             scrollPosition = scrollPos,
             tapToClick = tapClick,
             secondaryClickMode = secClick,
             scrollDirection = scrollDir,
             autoReturnSeconds = autoReturn,
-            trackpadHeightPx = tpHeight,
+            trackpadHeightPx = (196 * d).roundToInt(),
             buttonLayout = buttonLayout,
             theme = "glass",
             listener = object : VirtualTrackpadView.TrackpadListener {
                 override fun onPointerMove(dx: Float, dy: Float) {
                     pointerManager?.moveBy(dx, dy)
+                    updateGhost()
                 }
 
                 override fun onLeftClick() {
                     pointerManager?.triggerClickFeedback()
-                    // SPK-23: sin accesibilidad declarada esto es no-op;
-                    // el trackpad se vende como puntero local (ver aviso en UI).
-                    if (!VoiceBubbleAccessibilityService.isConnected()) return
                     val pos = pointerManager?.getPosition() ?: return
-                    VoiceBubbleAccessibilityService.dispatchTap(pos.first, pos.second)
+                    if (!PointerLink.tap(this@FloatingTrackpadService, pos.first, pos.second)) hintNoCompanion()
                 }
 
                 override fun onRightClick() {
                     pointerManager?.triggerClickFeedback()
-                    if (!VoiceBubbleAccessibilityService.isConnected()) return
                     val pos = pointerManager?.getPosition() ?: return
-                    VoiceBubbleAccessibilityService.dispatchLongPress(pos.first, pos.second)
+                    if (!PointerLink.longPress(this@FloatingTrackpadService, pos.first, pos.second)) hintNoCompanion()
                 }
 
                 override fun onScroll(deltaY: Float) {
-                    if (!VoiceBubbleAccessibilityService.isConnected()) return
                     val pos = pointerManager?.getPosition() ?: return
-                    VoiceBubbleAccessibilityService.dispatchScroll(pos.first, pos.second, deltaY)
+                    PointerLink.scroll(this@FloatingTrackpadService, pos.first, pos.second, deltaY)
                 }
 
                 override fun onAutoReturn() {
-                    minimizeToBubble()
+                    closePanel()
+                }
+
+                override fun onIdleCountdown(totalMs: Long) {
+                    handleView?.startCountdown(totalMs)
                 }
 
                 override fun performHaptic(isFirm: Boolean) {
-                    if (hapticMode == "none") return
-                    val useFirm = isFirm || hapticMode == "firm"
-                    try {
-                        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                        if (vibrator?.hasVibrator() == true) {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                val effect = if (useFirm) {
-                                    VibrationEffect.createOneShot(35L, VibrationEffect.DEFAULT_AMPLITUDE)
-                                } else {
-                                    VibrationEffect.createOneShot(18L, 90)
-                                }
-                                vibrator.vibrate(effect)
-                            } else {
-                                @Suppress("DEPRECATION")
-                                vibrator.vibrate(if (useFirm) 35L else 18L)
-                            }
-                        }
-                    } catch (_: Exception) {}
+                    vibrate(isFirm, hapticMode)
                 }
-            }
+            },
         )
-        container.addView(
-            tpView,
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f)
-        )
+        root.addView(tp, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
-        trackpadView = tpView
-        expandedContainer = container
+        container = root
+        handleView = handle
+        panelWindow = GlassWindow(this, root, cornerRadiusPx = 30 * d) { blur ->
+            root.background = if (blur) null else android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = 30 * d
+                setColor(androidx.core.content.ContextCompat.getColor(this@FloatingTrackpadService, R.color.dock_glass_frosted))
+                setStroke((1 * d).roundToInt(), androidx.core.content.ContextCompat.getColor(this@FloatingTrackpadService, R.color.dock_glass_line))
+            }
+        }
     }
 
-    private fun setExtendedHeight(extended: Boolean) {
-        val wm = windowManager ?: return
-        val container = expandedContainer ?: return
-        val density = resources.displayMetrics.density
-        isExtendedHeight = extended
+    /** Puntero encima del panel: el panel se vuelve casi transparente (y el clic pasa). */
+    private fun updateGhost() {
+        val win = panelWindow ?: return
+        val root = container ?: return
+        val (px, py) = pointerManager?.getPosition() ?: return
+        val inside = px >= win.x && px <= win.x + win.width && py >= win.y && py <= win.y + win.height
+        val target = if (inside) 0.28f else 1f
+        if (root.alpha != target) root.animate().alpha(target).setDuration(120L).start()
+    }
 
-        val targetH = if (extended) (380 * density).toInt() else (240 * density).toInt()
-        expandedLayoutParams.height = targetH
-
-        if (currentMode == "dock") {
-            pointerManager?.updateKeyboardTop(resources.displayMetrics.heightPixels.toFloat() - targetH)
+    private fun hintNoCompanion() {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastNoCompanionHint < 8000L) return
+        lastNoCompanionHint = now
+        val status = PointerLink.status(this)
+        val msg = if (status == PointerProtocol.STATUS_MISSING) {
+            "Para hacer clic en otras apps, instalá VoiceBubble Puntero"
+        } else {
+            "Activá VoiceBubble Puntero en Accesibilidad para hacer clic"
         }
-
         try {
-            wm.updateViewLayout(container, expandedLayoutParams)
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         } catch (_: Exception) {}
     }
 
-    fun expandToDock() {
-        val wm = windowManager ?: return
-        val container = expandedContainer ?: return
-        val density = resources.displayMetrics.density
-
-        currentMode = "dock"
-        val dockH = if (isExtendedHeight) (380 * density).toInt() else (240 * density).toInt()
-
-        expandedLayoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
-        expandedLayoutParams.height = dockH
-        expandedLayoutParams.gravity = Gravity.BOTTOM
-        expandedLayoutParams.x = 0
-        expandedLayoutParams.y = 0
-
-        pointerManager?.updateKeyboardTop(resources.displayMetrics.heightPixels.toFloat() - dockH)
-        pointerManager?.show()
-
-        if (!isExpanded) {
-            wm.addView(container, expandedLayoutParams)
-            isExpanded = true
-        } else {
-            wm.updateViewLayout(container, expandedLayoutParams)
-        }
-
-        bubbleView?.visibility = View.GONE
-        handler.removeCallbacks(idleDimRunnable)
+    private fun vibrate(isFirm: Boolean, hapticMode: String) {
+        if (hapticMode == "none") return
+        val useFirm = isFirm || hapticMode == "firm"
+        try {
+            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            if (vibrator?.hasVibrator() == true) {
+                val effect = if (useFirm) {
+                    VibrationEffect.createOneShot(35L, VibrationEffect.DEFAULT_AMPLITUDE)
+                } else {
+                    VibrationEffect.createOneShot(18L, 90)
+                }
+                vibrator.vibrate(effect)
+            }
+        } catch (_: Exception) {}
     }
 
-    fun expandToMiniPad() {
-        val wm = windowManager ?: return
-        val container = expandedContainer ?: return
-        val density = resources.displayMetrics.density
-
-        currentMode = "minipad"
-        val padW = (280 * density).toInt()
-        val padH = if (isExtendedHeight) (380 * density).toInt() else (240 * density).toInt()
-
-        expandedLayoutParams.width = padW
-        expandedLayoutParams.height = padH
-        expandedLayoutParams.gravity = Gravity.TOP or Gravity.START
-        expandedLayoutParams.x = (resources.displayMetrics.widthPixels - padW) / 2
-        expandedLayoutParams.y = (resources.displayMetrics.heightPixels * 0.45).toInt()
-
-        pointerManager?.resetBottomLimit()
-        pointerManager?.show()
-
-        if (!isExpanded) {
-            wm.addView(container, expandedLayoutParams)
-            isExpanded = true
-        } else {
-            wm.updateViewLayout(container, expandedLayoutParams)
-        }
-
-        bubbleView?.visibility = View.GONE
-        handler.removeCallbacks(idleDimRunnable)
+    private fun setExtended(value: Boolean) {
+        val win = panelWindow ?: return
+        extended = value
+        val h = panelHeight()
+        val (_, sh) = screenSize()
+        val y = if (mode == MODE_PANEL) sh - bottomInset() - h - (12 * d).roundToInt() else win.y
+        win.setBounds(win.x, y, win.width, h)
     }
 
-    fun minimizeToBubble() {
-        val wm = windowManager ?: return
-        val container = expandedContainer ?: return
-
+    private fun closePanel() {
         pointerManager?.hide()
-
-        if (isExpanded) {
-            try {
-                wm.removeViewImmediate(container)
-            } catch (_: Exception) {}
-            isExpanded = false
+        val root = container
+        if (root == null) {
+            stopSelf()
+            return
         }
+        root.animate().alpha(0f).scaleX(0.94f).scaleY(0.94f).setDuration(160L).withEndAction { stopSelf() }.start()
+    }
 
-        bubbleView?.visibility = View.VISIBLE
-        resetIdleTimer()
+    /** La línea: toque = cerrar; arrastre = mover (ventana) o bajar/extender (panel). */
+    private inner class HandleTouch : View.OnTouchListener {
+        private var x0 = 0f
+        private var y0 = 0f
+        private var wx0 = 0
+        private var wy0 = 0
+        private var dragged = false
+
+        override fun onTouch(v: View, e: MotionEvent): Boolean {
+            val win = panelWindow ?: return false
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    x0 = e.rawX
+                    y0 = e.rawY
+                    wx0 = win.x
+                    wy0 = win.y
+                    dragged = false
+                    handleView?.cancelCountdown()
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = e.rawX - x0
+                    val dy = e.rawY - y0
+                    if (!dragged && hypot(dx, dy) > 6 * d) dragged = true
+                    if (!dragged) return true
+                    if (mode == MODE_WINDOW) {
+                        val (sw, sh) = screenSize()
+                        win.moveTo((wx0 + dx).roundToInt().coerceIn(0, sw - win.width), (wy0 + dy).roundToInt().coerceIn(0, sh - win.height))
+                    } else {
+                        container?.translationY = dy.coerceAtLeast(0f)
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val dy = e.rawY - y0
+                    container?.animate()?.translationY(0f)?.setDuration(160L)?.start()
+                    if (!dragged) {
+                        if (e.actionMasked == MotionEvent.ACTION_UP) closePanel()
+                        return true
+                    }
+                    if (mode == MODE_PANEL) {
+                        when {
+                            dy > 55 * d -> closePanel()
+                            dy < -25 * d && !extended -> setExtended(true)
+                            dy > 20 * d && extended -> setExtended(false)
+                        }
+                    }
+                }
+            }
+            return true
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        panelWindow?.refreshTheme()
+        handleView?.refreshPalette()
     }
 
     override fun onDestroy() {
-        val wm = windowManager
-        handler.removeCallbacks(idleDimRunnable)
-        snapAnimator?.cancel()
-        snapAnimator = null
-
+        handler.removeCallbacksAndMessages(null)
+        handleView?.cancelCountdown()
         pointerManager?.destroy()
         pointerManager = null
-
-        if (isExpanded && expandedContainer != null) {
-            try {
-                wm?.removeViewImmediate(expandedContainer)
-            } catch (_: Exception) {}
-            isExpanded = false
-        }
-
-        if (bubbleView != null) {
-            try {
-                wm?.removeViewImmediate(bubbleView)
-            } catch (_: Exception) {}
-            bubbleView = null
-        }
-
-        instance = null
+        panelWindow?.dismiss()
+        panelWindow = null
+        container = null
+        handleView = null
         isRunning = false
         super.onDestroy()
+    }
+}
+
+/**
+ * La línea de arriba del trackpad: botón de cerrar y, a la vez, reloj del
+ * cierre automático (se acorta desde los extremos hacia el centro).
+ */
+@SuppressLint("ViewConstructor")
+internal class HandleView(context: Context) : View(context) {
+    private val d = resources.displayMetrics.density
+    private var palette = DockPalette(context)
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private var remaining = 1f
+    private var counting = false
+    private var animator: ValueAnimator? = null
+
+    fun refreshPalette() {
+        palette = DockPalette(context)
+        invalidate()
+    }
+
+    fun startCountdown(totalMs: Long) {
+        animator?.cancel()
+        if (totalMs <= 0) return
+        counting = true
+        animator = ValueAnimator.ofFloat(1f, 0f).apply {
+            duration = totalMs
+            interpolator = LinearInterpolator()
+            addUpdateListener {
+                remaining = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    fun cancelCountdown() {
+        animator?.cancel()
+        animator = null
+        counting = false
+        remaining = 1f
+        invalidate()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val w = 40 * d
+        val h = 5 * d
+        val cx = width / 2f
+        val cy = height / 2f
+        val track = RectF(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+        paint.color = palette.track
+        canvas.drawRoundRect(track, h / 2, h / 2, paint)
+        val fw = w * (if (counting) remaining else 1f)
+        if (fw > 0.5f) {
+            paint.color = if (counting) palette.accent else palette.handle
+            canvas.drawRoundRect(RectF(cx - fw / 2, track.top, cx + fw / 2, track.bottom), h / 2, h / 2, paint)
+        }
     }
 }

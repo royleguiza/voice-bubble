@@ -43,4 +43,13 @@
     <color name="snippet_stroke_violeta">#66BF5AF2</color>
     <color name="snippet_fill_gris">#338E8E93</color>
     <color name="snippet_stroke_gris">#668E8E93</color>
+    <!-- Barra flotante de vidrio: valores de noche. -->
+    <color name="dock_glass_tint">#6B3A3A40</color>
+    <color name="dock_glass_frosted">#E62C2C30</color>
+    <color name="dock_glass_highlight">#38FFFFFF</color>
+    <color name="dock_glass_line">#1AFFFFFF</color>
+    <color name="dock_label">#FFF5F5F7</color>
+    <color name="dock_tool_pressed">#1FFFFFFF</color>
+    <color name="dock_track">#33FFFFFF</color>
+    <color name="dock_handle">#99F5F5F7</color>
 </resources>

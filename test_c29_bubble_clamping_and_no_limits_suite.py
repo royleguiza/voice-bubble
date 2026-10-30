@@ -2,144 +2,128 @@
 """
 test_c29_bubble_clamping_and_no_limits_suite.py
 ===============================================
-Suite de verificación para el Contrato C-29:
-"Burbuja siempre recuperable [D]"
+Contrato C-29: "Burbuja siempre recuperable [D]".
 
-Requisitos verificados:
-1. Erradicación total de FLAG_LAYOUT_NO_LIMITS:
-   - FloatingBubbleService.kt no contiene WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS.
-2. Clamping geométrico bidireccional (X e Y):
-   - clampBubblePosition limita X en [0, screenWidth - bubbleSize].
-   - clampBubblePosition limita Y en [topInset, screenHeight - bubbleSize - bottomInset].
-3. Insets de sistema (navigationBars | displayCutout | statusBars):
-   - getTopInset() integra WindowInsets.Type.statusBars() y displayCutout() con fallback.
-   - getBottomInset() integra WindowInsets.Type.navigationBars() con fallback.
-4. Integración en el ciclo de gestos:
-   - setupBubbleView inicializa con clampBubblePosition.
-   - ACTION_MOVE actualiza windowLayoutParams con clampBubblePosition.
-   - snapToNearestEdge ancla windowLayoutParams.y con clampBubblePosition (safeY)
-     y restringe targetX contra desbordes.
-5. Batería de mutaciones negativas (5/5 detectadas al 100%).
+Desde 2026-10-30 la burbuja es la barra flotante (DockController +
+DockGeometry + GlassWindow): un objeto con dos formas, barra en el borde y
+burbuja libre. El contrato se mantiene igual:
+
+1. Sin FLAG_LAYOUT_NO_LIMITS en ninguna ventana de la barra.
+2. Clamping geométrico bidireccional:
+   - DockGeometry.clampBubble limita X en [0, screenW - size] e Y en
+     [topInset, screenH - bottomInset - size].
+   - DockGeometry.clampCenterY limita el centro de la barra a la zona segura.
+3. Insets de sistema: topInset() con statusBars | displayCutout,
+   bottomInset() con navigationBars, ambos con fallback.
+4. Integración en gestos: mover la burbuja, mover la barra, soltar contra
+   un borde y aplicar la forma pasan siempre por el clamp.
+5. Tests JVM (DockGeometryTest) cubren los límites.
+6. Mutaciones negativas detectadas.
 """
 
 import os
+import re
 import sys
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-BUBBLE_SERVICE = os.path.join(
-    BASE_DIR,
-    "voice_bubble_stt",
-    "android",
-    "app",
-    "src",
-    "main",
-    "kotlin",
-    "com",
-    "royleguiza",
-    "voicebubblestt",
-    "FloatingBubbleService.kt",
-)
+KT = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt")
+TEST_KT = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "test", "kotlin", "com", "royleguiza", "voicebubblestt")
 
-def test_file_exists():
-    assert os.path.isfile(BUBBLE_SERVICE), f"FloatingBubbleService.kt no existe en {BUBBLE_SERVICE}"
+
+def read(path):
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+SERVICE = read(os.path.join(KT, "FloatingBubbleService.kt"))
+DOCK = read(os.path.join(KT, "DockController.kt"))
+GEO = read(os.path.join(KT, "DockGeometry.kt"))
+GLASS = read(os.path.join(KT, "GlassWindow.kt"))
+GEO_TEST = read(os.path.join(TEST_KT, "DockGeometryTest.kt"))
+
+
+def code_of(src, needle, span=900):
+    i = src.find(needle)
+    assert i != -1, f"No se encontró: {needle}"
+    return src[i:i + span]
+
 
 def test_no_layout_no_limits_flag():
-    with open(BUBBLE_SERVICE, "r", encoding="utf-8") as f:
-        src = f.read()
-    assert "FLAG_LAYOUT_NO_LIMITS" not in src, (
-        "FloatingBubbleService.kt contiene FLAG_LAYOUT_NO_LIMITS permitiendo que la burbuja se escape de pantalla"
-    )
+    for name, src in (("FloatingBubbleService", SERVICE), ("DockController", DOCK), ("GlassWindow", GLASS)):
+        flagged = [l for l in src.splitlines() if "FLAG_LAYOUT_NO_LIMITS" in l and not l.strip().startswith("*")]
+        assert not flagged, f"{name} usa FLAG_LAYOUT_NO_LIMITS: la barra podría salir de pantalla"
 
-def test_insets_computation_methods():
-    with open(BUBBLE_SERVICE, "r", encoding="utf-8") as f:
-        src = f.read()
 
-    assert "fun getTopInset(): Int" in src, "Falta método getTopInset() en FloatingBubbleService.kt"
-    assert "fun getBottomInset(): Int" in src, "Falta método getBottomInset() en FloatingBubbleService.kt"
-    assert "navigationBars" in src, "getBottomInset() no consulta WindowInsets.Type.navigationBars()"
-    assert "displayCutout" in src, "getTopInset() no consulta WindowInsets.Type.displayCutout()"
-    assert "statusBars" in src, "getTopInset() no consulta WindowInsets.Type.statusBars()"
-    assert "status_bar_height" in src, "Falta fallback a dimen status_bar_height"
-    assert "navigation_bar_height" in src, "Falta fallback a dimen navigation_bar_height"
+def test_clamp_geometry():
+    bubble = code_of(GEO, "fun clampBubble(")
+    assert "x.coerceIn(0f, maxX)" in bubble and "screenW - size" in bubble, "clampBubble no limita X"
+    assert "y.coerceIn(topInset, maxY)" in bubble and "screenH - bottomInset - size" in bubble, "clampBubble no limita Y"
+    center = code_of(GEO, "fun clampCenterY(")
+    assert "topInset + halfExtent" in center and "screenH - bottomInset - halfExtent" in center, "clampCenterY sin zona segura"
+    assert "if (hi <= lo)" in center, "clampCenterY sin caso de pantalla mínima"
 
-def test_clamp_bubble_position_logic():
-    with open(BUBBLE_SERVICE, "r", encoding="utf-8") as f:
-        src = f.read()
 
-    clamp_idx = src.find("fun clampBubblePosition")
-    assert clamp_idx != -1, "Falta función clampBubblePosition en FloatingBubbleService.kt"
-    clamp_code = src[clamp_idx:clamp_idx + 800]
+def test_insets():
+    top = code_of(DOCK, "private fun topInset(): Float")
+    bottom = code_of(DOCK, "private fun bottomInset(): Float")
+    assert "statusBars()" in top and "displayCutout()" in top, "topInset sin statusBars/displayCutout"
+    assert "return 28f * d" in top, "topInset sin fallback"
+    assert "navigationBars()" in bottom, "bottomInset sin navigationBars"
+    assert "return 48f * d" in bottom, "bottomInset sin fallback"
 
-    assert "coerceIn(minX, maxX)" in clamp_code, "Falta clamp horizontal coerceIn(minX, maxX)"
-    assert "coerceIn(minY, maxY)" in clamp_code, "Falta clamp vertical coerceIn(minY, maxY)"
-    assert "getTopInset()" in clamp_code, "clampBubblePosition debe invocar getTopInset()"
-    assert "getBottomInset()" in clamp_code, "clampBubblePosition debe invocar getBottomInset()"
 
-def test_touch_and_snap_clamping_integration():
-    with open(BUBBLE_SERVICE, "r", encoding="utf-8") as f:
-        src = f.read()
+def test_gesture_integration():
+    assert "clampBubble(" in code_of(DOCK, "private fun clampBubblePos()", 400)
+    assert "DockGeometry.clampCenterY(" in code_of(DOCK, "private fun clampCenter(y: Float)", 400)
+    bubble_move = code_of(DOCK, "private inner class BubbleTouch", 2200)
+    assert "clampBubblePos()" in bubble_move, "mover la burbuja no limita su posición"
+    edge_touch = code_of(DOCK, "private inner class EdgeTouch", 3600)
+    assert "clampCenter(center0 + dy)" in edge_touch, "mover la barra no limita su posición"
+    assert "clampBubblePos()" in edge_touch, "la burbuja que nace del arrastre no se limita"
+    finish = code_of(DOCK, "private fun finishBubbleDrag()", 900)
+    assert "clampCenter(bubbleY + bubbleSize / 2f)" in finish, "soltar contra el borde no limita la barra"
+    apply = code_of(DOCK, "private fun applyForm()", 1200)
+    assert "centerY = clampCenter(centerY)" in apply and "clampBubblePos()" in apply, "aplicar la forma no limita"
 
-    # ACTION_MOVE
-    move_idx = src.find("MotionEvent.ACTION_MOVE ->")
-    assert move_idx != -1, "No se encontró ACTION_MOVE en FloatingBubbleService.kt"
-    move_code = src[move_idx:move_idx + 600]
-    assert "clampBubblePosition" in move_code, "ACTION_MOVE no aplica clampBubblePosition a las coordenadas"
 
-    # snapToNearestEdge
-    snap_idx = src.find("fun snapToNearestEdge()")
-    assert snap_idx != -1, "No se encontró snapToNearestEdge en FloatingBubbleService.kt"
-    snap_code = src[snap_idx:snap_idx + 700]
-    assert "safeY" in snap_code or "clampBubblePosition" in snap_code, (
-        "snapToNearestEdge no verifica la posición vertical segura (safeY) de la burbuja"
-    )
+def test_jvm_tests_cover_limits():
+    for name in ("la burbuja no se sale de la pantalla", "el centro de la barra queda dentro de la zona segura",
+                 "pantalla minima no rompe el limite vertical"):
+        assert name in GEO_TEST, f"Falta test JVM: {name}"
+
 
 def test_negative_mutations():
-    with open(BUBBLE_SERVICE, "r", encoding="utf-8") as f:
-        src = f.read()
+    mut1 = GLASS.replace("FLAG_LAYOUT_IN_SCREEN or", "FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or")
+    assert [l for l in mut1.splitlines() if "FLAG_LAYOUT_NO_LIMITS" in l and not l.strip().startswith("*")], "Mutación 1 no detectable"
+    mut2 = DOCK.replace("centerY = clampCenter(center0 + dy)", "centerY = center0 + dy")
+    assert "clampCenter(center0 + dy)" not in mut2, "Mutación 2 no detectable"
+    mut3 = DOCK.replace("WindowInsets.Type.navigationBars()", "0")
+    assert "navigationBars()" not in code_of(mut3, "private fun bottomInset(): Float"), "Mutación 3 no detectable"
+    mut4 = DOCK.replace("WindowInsets.Type.statusBars() or WindowInsets.Type.displayCutout()", "0")
+    assert "displayCutout()" not in code_of(mut4, "private fun topInset(): Float"), "Mutación 4 no detectable"
+    mut5 = GEO.replace("y.coerceIn(topInset, maxY)", "y")
+    assert "y.coerceIn(topInset, maxY)" not in mut5, "Mutación 5 no detectable"
 
-    # Mutación 1: Reintroducir FLAG_LAYOUT_NO_LIMITS
-    mut1 = src.replace(
-        "WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED",
-        "WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS",
-    )
-    assert "FLAG_LAYOUT_NO_LIMITS" in mut1, "Mutación 1 falló al aplicar"
-
-    # Mutación 2: Quitar clampBubblePosition de ACTION_MOVE
-    mut2 = src.replace("clampBubblePosition(initialX + dx, initialY + dy)", "Pair(initialX + dx, initialY + dy)")
-    move_idx = mut2.find("MotionEvent.ACTION_MOVE ->")
-    move_code = mut2[move_idx:move_idx + 600]
-    assert "clampBubblePosition" not in move_code, "Mutación 2 falló al aplicar"
-
-    # Mutación 3: Eliminar navigationBars del cálculo de insets
-    mut3 = src.replace("WindowInsets.Type.navigationBars()", "0")
-    bottom_idx = mut3.find("fun getBottomInset(): Int")
-    bottom_code = mut3[bottom_idx:bottom_idx + 400]
-    assert "navigationBars" not in bottom_code, "Mutación 3 falló al aplicar"
-
-    # Mutación 4: Eliminar displayCutout del cálculo de insets
-    mut4 = src.replace("WindowInsets.Type.displayCutout()", "0")
-    top_idx = mut4.find("fun getTopInset(): Int")
-    top_code = mut4[top_idx:top_idx + 400]
-    assert "displayCutout" not in top_code, "Mutación 4 falló al aplicar"
-
-    # Mutación 5: Quitar el clamp vertical safeY de snapToNearestEdge
-    mut5 = src.replace("windowLayoutParams.y = safeY", "/* no clamp safeY */")
-    snap_idx = mut5.find("fun snapToNearestEdge()")
-    snap_code = mut5[snap_idx:snap_idx + 700]
-    assert "windowLayoutParams.y = safeY" not in snap_code, "Mutación 5 falló al aplicar"
 
 def run_all_tests():
     tests = [
-        test_file_exists,
         test_no_layout_no_limits_flag,
-        test_insets_computation_methods,
-        test_clamp_bubble_position_logic,
-        test_touch_and_snap_clamping_integration,
+        test_clamp_geometry,
+        test_insets,
+        test_gesture_integration,
+        test_jvm_tests_cover_limits,
         test_negative_mutations,
     ]
+    failed = 0
     for t in tests:
-        t()
-    print(f"C-29: {len(tests)}/6 tests OK (100% PASS)")
+        try:
+            t()
+        except AssertionError as e:
+            failed += 1
+            print(f"  [FAIL] {t.__name__}: {e}")
+    print(f"C-29: {len(tests) - failed}/{len(tests)} tests OK")
+    return failed
+
 
 if __name__ == "__main__":
-    run_all_tests()
+    sys.exit(1 if run_all_tests() else 0)

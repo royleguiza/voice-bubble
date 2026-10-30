@@ -1,6 +1,5 @@
 package com.royleguiza.voicebubblestt
 
-import android.animation.ValueAnimator
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,33 +8,22 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.PixelFormat
-import android.graphics.RectF
+import android.content.res.Configuration
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
-import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
-import android.view.WindowInsets
 import android.view.WindowManager
-import android.view.animation.DecelerateInterpolator
-import androidx.core.content.ContextCompat
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
 
+/**
+ * Servicio en primer plano (micrófono) de la barra flotante. La UI (barra en
+ * el borde o burbuja, con micrófono y puntero) vive en [DockController]; acá
+ * quedan la notificación, el historial y el puente con Dart.
+ */
 class FloatingBubbleService : Service() {
 
     companion object {
         const val CHANNEL_ID = "voice_bubble_foreground_channel"
         const val NOTIFICATION_ID = 1001
         const val ACTION_STOP = "com.royleguiza.voicebubblestt.ACTION_STOP"
-        private const val BUBBLE_LONG_PRESS_MS = 500L
 
         var isRunning: Boolean = false
             private set
@@ -61,6 +49,13 @@ class FloatingBubbleService : Service() {
         }
 
         private var instance: FloatingBubbleService? = null
+
+        /** Ajustes cambió forma o herramientas: redibujar la barra viva. */
+        fun reloadDock(): Boolean {
+            val svc = instance ?: return false
+            svc.reloadDock()
+            return true
+        }
     }
 
     interface BubbleActionListener {
@@ -69,13 +64,8 @@ class FloatingBubbleService : Service() {
     }
 
     private var windowManager: WindowManager? = null
-    private var bubbleView: BubbleCanvasView? = null
+    private var dock: DockController? = null
     private var bubbleHistoryController: BubbleHistoryController? = null
-    private var snapAnimator: ValueAnimator? = null
-    private lateinit var windowLayoutParams: WindowManager.LayoutParams
-    private val uiHandler = Handler(Looper.getMainLooper())
-    private var bubbleLongPress: Runnable? = null
-    private var bubbleLongPressFired = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -122,10 +112,9 @@ class FloatingBubbleService : Service() {
      */
     private fun abortStartup() {
         try {
-            bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
+            dock?.destroy()
         } catch (_: Exception) {}
-        bubbleLongPress = null
-        bubbleLongPressFired = false
+        dock = null
         windowManager = null
         lastVisualState = "idle"
         isRunning = false
@@ -203,165 +192,41 @@ class FloatingBubbleService : Service() {
         return builder.build()
     }
 
-    private fun getTopInset(): Int {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val insets = windowManager?.currentWindowMetrics?.windowInsets?.getInsetsIgnoringVisibility(
-                    WindowInsets.Type.statusBars() or WindowInsets.Type.displayCutout()
-                )
-                if (insets != null && insets.top > 0) return insets.top
-            } catch (_: Throwable) {}
-        }
-        val resId = resources.getIdentifier("status_bar_height", "dimen", "android")
-        return if (resId > 0) resources.getDimensionPixelSize(resId) else (28 * resources.displayMetrics.density).toInt()
-    }
-
-    private fun getBottomInset(): Int {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                val insets = windowManager?.currentWindowMetrics?.windowInsets?.getInsetsIgnoringVisibility(
-                    WindowInsets.Type.navigationBars()
-                )
-                if (insets != null && insets.bottom > 0) return insets.bottom
-            } catch (_: Throwable) {}
-        }
-        val resId = resources.getIdentifier("navigation_bar_height", "dimen", "android")
-        return if (resId > 0) resources.getDimensionPixelSize(resId) else (48 * resources.displayMetrics.density).toInt()
-    }
-
-    private fun clampBubblePosition(rawX: Int, rawY: Int): Pair<Int, Int> {
-        val dm = resources.displayMetrics
-        val density = dm.density
-        val bubbleSize = bubbleView?.width ?: (64 * density).toInt()
-        val minX = 0
-        val maxX = (dm.widthPixels - bubbleSize).coerceAtLeast(0)
-        val topInset = getTopInset()
-        val bottomInset = getBottomInset()
-        val minY = topInset
-        val maxY = (dm.heightPixels - bubbleSize - bottomInset).coerceAtLeast(minY)
-
-        val clampedX = rawX.coerceIn(minX, maxX)
-        val clampedY = rawY.coerceIn(minY, maxY)
-        return Pair(clampedX, clampedY)
-    }
-
     private fun setupBubbleView() {
-        val wm = windowManager
-            ?: getSystemService(Context.WINDOW_SERVICE) as? WindowManager
-            ?: return
-        windowManager = wm
-        val density = resources.displayMetrics.density
-        val bubbleSize = (64 * density).toInt()
+        dock = DockController(this, object : DockController.Callbacks {
+            override fun onMicTap() {
+                onBubbleActionListener?.onBubbleTap()
+            }
 
-        val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            @Suppress("DEPRECATION")
-            WindowManager.LayoutParams.TYPE_PHONE
-        }
+            override fun onPointerTap(anchorX: Int, anchorY: Int) {
+                try {
+                    FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY)
+                } catch (_: Exception) {}
+            }
 
-        val (initX, initY) = clampBubblePosition(
-            resources.displayMetrics.widthPixels - bubbleSize - (16 * density).toInt(),
-            (resources.displayMetrics.heightPixels * 0.45).toInt()
-        )
-
-        windowLayoutParams = WindowManager.LayoutParams(
-            bubbleSize,
-            bubbleSize,
-            layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = initX
-            y = initY
-        }
-
-        bubbleView = BubbleCanvasView(this).apply {
-            setOnTouchListener(object : View.OnTouchListener {
-                private var initialX = 0
-                private var initialY = 0
-                private var initialTouchX = 0f
-                private var initialTouchY = 0f
-                private var isClick = false
-
-                override fun onTouch(v: View, event: MotionEvent): Boolean {
-                    when (event.action) {
-                        MotionEvent.ACTION_DOWN -> {
-                            initialX = windowLayoutParams.x
-                            initialY = windowLayoutParams.y
-                            initialTouchX = event.rawX
-                            initialTouchY = event.rawY
-                            isClick = true
-                            bubbleLongPressFired = false
-                            // Toque largo en reposo = historial (el toque
-                            // simple siempre graba/detiene en la burbuja).
-                            val r = Runnable {
-                                if (isClick && !bubbleLongPressFired &&
-                                    lastVisualState == "idle" &&
-                                    bubbleHistoryController?.isOpen() != true
-                                ) {
-                                    bubbleLongPressFired = true
-                                    isClick = false
-                                    showBubbleHistory()
-                                }
-                            }
-                            bubbleLongPress = r
-                            uiHandler.postDelayed(r, BUBBLE_LONG_PRESS_MS)
-                            return true
-                        }
-                        MotionEvent.ACTION_MOVE -> {
-                            val dx = (event.rawX - initialTouchX).toInt()
-                            val dy = (event.rawY - initialTouchY).toInt()
-                            if (abs(dx) > 10 || abs(dy) > 10) {
-                                isClick = false
-                                bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
-                                bubbleLongPress = null
-                            }
-                            val (clampedX, clampedY) = clampBubblePosition(initialX + dx, initialY + dy)
-                            windowLayoutParams.x = clampedX
-                            windowLayoutParams.y = clampedY
-                            windowManager?.updateViewLayout(bubbleView, windowLayoutParams)
-                            return true
-                        }
-                        MotionEvent.ACTION_UP -> {
-                            bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
-                            bubbleLongPress = null
-                            if (bubbleLongPressFired) {
-                                bubbleLongPressFired = false
-                                return true
-                            }
-                            if (isClick) {
-                                onBubbleActionListener?.onBubbleTap()
-                            } else {
-                                snapToNearestEdge()
-                            }
-                            return true
-                        }
-                        MotionEvent.ACTION_CANCEL -> {
-                            bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
-                            bubbleLongPress = null
-                            bubbleLongPressFired = false
-                            return true
-                        }
-                    }
-                    return false
-                }
-            })
-        }
-
-        windowManager?.addView(bubbleView, windowLayoutParams)
+            override fun onHistoryRequested(x: Int, y: Int, size: Int): Boolean =
+                showBubbleHistory(x, y, size)
+        }).also { it.start() }
     }
 
-    /** Modal de historial anclada a la burbuja clásica (hito B1–B7). */
-    fun showBubbleHistory() {
+    /** Ajustes cambió forma o herramientas de la barra. */
+    fun reloadDock() {
+        dock?.reloadPrefs()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
         try {
-            if (bubbleView == null || bubbleHistoryController?.isOpen() == true) return
-            if (!BubbleHistoryController.isEnabled(this)) return
-            val wm = windowManager ?: return
-            val density = resources.displayMetrics.density
-            val size = (64 * density).toInt()
+            dock?.onConfigurationChanged()
+        } catch (_: Exception) {}
+    }
+
+    /** Modal de historial anclada a la barra/burbuja (hito B1–B7). */
+    private fun showBubbleHistory(x: Int, y: Int, size: Int): Boolean {
+        try {
+            if (dock == null || bubbleHistoryController?.isOpen() == true) return false
+            if (!BubbleHistoryController.isEnabled(this)) return false
+            val wm = windowManager ?: return false
             var controller = bubbleHistoryController
             if (controller == null) {
                 controller = BubbleHistoryController(
@@ -377,71 +242,29 @@ class FloatingBubbleService : Service() {
                     },
                     onClosed = {
                         try {
-                            bubbleView?.visibility = View.VISIBLE
+                            dock?.setHidden(false)
                         } catch (_: Exception) {}
                     }
                 )
                 bubbleHistoryController = controller
             }
-            bubbleView?.visibility = View.GONE
-            controller.showFrom(windowLayoutParams.x, windowLayoutParams.y, size)
+            dock?.setHidden(true)
+            controller.showFrom(x, y, size)
+            return true
         } catch (_: Exception) {
             try {
-                bubbleView?.visibility = View.VISIBLE
+                dock?.setHidden(false)
             } catch (_: Exception) {}
+            return false
         }
-    }
-
-    private fun snapToNearestEdge() {
-        // Cancelar el animador previo: sin esto dos snaps encadenados pelean
-        // por windowLayoutParams.x y la burbuja termina en tierra de nadie.
-        try {
-            snapAnimator?.cancel()
-        } catch (_: Exception) {}
-        snapAnimator = null
-        val screenWidth = resources.displayMetrics.widthPixels
-        val density = resources.displayMetrics.density
-        val margin = (12 * density).toInt()
-        val bubbleSize = bubbleView?.width ?: (64 * density).toInt()
-
-        // Asegurar que la coordenada Y permanezca en la zona segura visible
-        val (_, safeY) = clampBubblePosition(windowLayoutParams.x, windowLayoutParams.y)
-        windowLayoutParams.y = safeY
-
-        val targetX = if (windowLayoutParams.x + bubbleSize / 2 < screenWidth / 2) {
-            margin
-        } else {
-            (screenWidth - bubbleSize - margin).coerceAtLeast(margin)
-        }
-
-        val startX = windowLayoutParams.x
-        val animator = ValueAnimator.ofInt(startX, targetX).apply {
-            duration = 240
-            interpolator = DecelerateInterpolator()
-            addUpdateListener { animation ->
-                windowLayoutParams.x = animation.animatedValue as Int
-                windowManager?.updateViewLayout(bubbleView, windowLayoutParams)
-            }
-        }
-        snapAnimator = animator
-        animator.start()
     }
 
     fun updateBubbleVisualState(state: String) {
-        bubbleView?.setState(state)
+        dock?.setDictationState(state)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Runnable pendiente sobre una vista removida = disparo fantasma del
-        // historial tras destruir el servicio. Fuera antes que las vistas.
-        bubbleLongPress?.let { uiHandler.removeCallbacks(it) }
-        bubbleLongPress = null
-        bubbleLongPressFired = false
-        // Cancelar antes de remover la vista: un frame pendiente del animator
-        // sobre una vista desasociada lanza IllegalArgumentException.
-        snapAnimator?.cancel()
-        snapAnimator = null
         isRunning = false
         lastVisualState = "idle"
 
@@ -450,149 +273,11 @@ class FloatingBubbleService : Service() {
         } catch (_: Exception) {}
         bubbleHistoryController = null
 
-        if (bubbleView != null && windowManager != null) {
-            try {
-                windowManager?.removeView(bubbleView)
-            } catch (_: Exception) {}
-            bubbleView = null
-        }
+        try {
+            dock?.destroy()
+        } catch (_: Exception) {}
+        dock = null
         instance = null
         onBubbleActionListener?.onBubbleClose()
-    }
-
-    class BubbleCanvasView(context: Context) : View(context) {
-        // Paleta via tokens R.color (claro/noche); resolver UNA vez, no por frame.
-        private val accentColor = ContextCompat.getColor(context, R.color.kb_key_bg_accent)
-        private val iconColor = ContextCompat.getColor(context, R.color.kb_label_on_accent)
-        private val recordingColor = ContextCompat.getColor(context, R.color.kb_recording)
-        private val recordingBgColor = ContextCompat.getColor(context, R.color.bubble_recording_bg)
-        private val transcribingBgColor = ContextCompat.getColor(context, R.color.bubble_transcribing_bg)
-        private val idleBgColor = ContextCompat.getColor(context, R.color.bubble_idle_bg)
-        private val idleBorderColor = ContextCompat.getColor(context, R.color.bubble_idle_border)
-        private val activeBorderColor = ContextCompat.getColor(context, R.color.bubble_active_border)
-
-        private var visualState = "idle"
-        private var spinnerAngle = 0f
-        private var pulsePhase = 0f
-
-        private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-        }
-        private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 2f * resources.displayMetrics.density
-        }
-        private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            color = iconColor
-        }
-        private val spinnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 3.5f * resources.displayMetrics.density
-            strokeCap = Paint.Cap.ROUND
-            color = iconColor
-        }
-        private val pulsePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 3f * resources.displayMetrics.density
-            color = recordingColor
-        }
-        // Cacheado: drawMicIcon corre por frame y antes alojaba un Paint por
-        // llamada (GC churn en plena animación). Solo el strokeWidth muta.
-        private val micArcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeCap = Paint.Cap.ROUND
-            color = accentColor
-        }
-
-        init {
-            postInvalidateOnAnimation()
-        }
-
-        fun setState(state: String) {
-            visualState = state
-            invalidate()
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val w = width.toFloat()
-            val h = height.toFloat()
-            val cx = w / 2f
-            val cy = h / 2f
-            val radius = cx.coerceAtMost(cy) - (4f * resources.displayMetrics.density)
-
-            when (visualState) {
-                "recording" -> {
-                    bgPaint.color = recordingBgColor
-                    borderPaint.color = activeBorderColor
-                    canvas.drawCircle(cx, cy, radius, bgPaint)
-                    canvas.drawCircle(cx, cy, radius, borderPaint)
-
-                    pulsePhase += 0.08f
-                    val pulseScale = 1.0f + 0.12f * (0.5f + 0.5f * sin(pulsePhase))
-                    val pulseAlpha = (180 * (1f - (pulseScale - 1f) / 0.12f)).toInt().coerceIn(0, 255)
-                    pulsePaint.alpha = pulseAlpha
-                    canvas.drawCircle(cx, cy, radius * pulseScale, pulsePaint)
-
-                    val stopSize = radius * 0.45f
-                    val stopRect = RectF(cx - stopSize, cy - stopSize, cx + stopSize, cy + stopSize)
-                    iconPaint.color = iconColor
-                    canvas.drawRoundRect(stopRect, 4f * resources.displayMetrics.density, 4f * resources.displayMetrics.density, iconPaint)
-                    postInvalidateOnAnimation()
-                }
-                "transcribing" -> {
-                    bgPaint.color = transcribingBgColor
-                    borderPaint.color = activeBorderColor
-                    canvas.drawCircle(cx, cy, radius, bgPaint)
-                    canvas.drawCircle(cx, cy, radius, borderPaint)
-
-                    spinnerAngle = (spinnerAngle + 7f) % 360f
-                    val spinnerRadius = radius * 0.52f
-                    val spinnerRect = RectF(cx - spinnerRadius, cy - spinnerRadius, cx + spinnerRadius, cy + spinnerRadius)
-                    canvas.drawArc(spinnerRect, spinnerAngle, 280f, false, spinnerPaint)
-                    postInvalidateOnAnimation()
-                }
-                else -> {
-                    bgPaint.color = idleBgColor
-                    borderPaint.color = idleBorderColor
-                    canvas.drawCircle(cx, cy, radius, bgPaint)
-                    canvas.drawCircle(cx, cy, radius, borderPaint)
-
-                    drawMicIcon(canvas, cx, cy, radius * 0.45f)
-                }
-            }
-        }
-
-        private fun drawMicIcon(canvas: Canvas, cx: Float, cy: Float, size: Float) {
-            iconPaint.color = accentColor
-            val density = resources.displayMetrics.density
-
-            val capsuleWidth = size * 0.48f
-            val capsuleHeight = size * 0.95f
-            val capsuleRect = RectF(
-                cx - capsuleWidth / 2f,
-                cy - capsuleHeight / 2f - size * 0.15f,
-                cx + capsuleWidth / 2f,
-                cy + capsuleHeight / 2f - size * 0.15f
-            )
-            canvas.drawRoundRect(capsuleRect, capsuleWidth / 2f, capsuleWidth / 2f, iconPaint)
-
-            val arcRadius = capsuleWidth * 0.85f
-            val arcRect = RectF(
-                cx - arcRadius,
-                cy - capsuleHeight * 0.15f,
-                cx + arcRadius,
-                cy + capsuleHeight * 0.55f
-            )
-            micArcPaint.strokeWidth = 2f * density
-            canvas.drawArc(arcRect, 0f, 180f, false, micArcPaint)
-
-            val baseTopY = cy + capsuleHeight * 0.55f
-            val baseBottomY = baseTopY + size * 0.35f
-            canvas.drawLine(cx, baseTopY, cx, baseBottomY, micArcPaint)
-            val baseFootWidth = size * 0.45f
-            canvas.drawLine(cx - baseFootWidth / 2f, baseBottomY, cx + baseFootWidth / 2f, baseBottomY, micArcPaint)
-        }
     }
 }

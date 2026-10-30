@@ -860,6 +860,47 @@ class StorageService {
   Future<void> setTrackpadAutoReturn(int seconds) => _setValidatedInt(
       kbTrackpadAutoReturnKey, kbTrackpadAutoReturns, seconds);
 
+  // --- Barra flotante (prototipo "Burbuja de puntero", 2026-10-30) ---
+  // Kotlin (DockController / FloatingTrackpadService) lee estas claves con
+  // prefijo "flutter."; DockController escribe dock_form cuando el usuario
+  // convierte la barra en burbuja (o al revés) con el dedo.
+  static const String dockFormKey = 'dock_form';
+  static const List<String> dockForms = ['edge', 'bubble'];
+  static const String defaultDockForm = 'edge';
+
+  static const String dockToolMicKey = 'dock_tool_mic';
+  static const bool defaultDockToolMic = true;
+
+  static const String dockToolPointerKey = 'dock_tool_pointer';
+  static const bool defaultDockToolPointer = false;
+
+  static const String pointerOpenModeKey = 'pointer_open_mode';
+  static const List<String> pointerOpenModes = ['panel', 'window'];
+  static const String defaultPointerOpenMode = 'panel';
+
+  Future<String> getDockForm() =>
+      _getValidatedString(dockFormKey, dockForms, defaultDockForm);
+
+  Future<void> setDockForm(String form) =>
+      _setValidatedString(dockFormKey, dockForms, form);
+
+  Future<bool> getDockToolMic() => _getBool(dockToolMicKey, defaultDockToolMic);
+
+  Future<void> setDockToolMic(bool enabled) =>
+      _setBool(dockToolMicKey, enabled);
+
+  Future<bool> getDockToolPointer() =>
+      _getBool(dockToolPointerKey, defaultDockToolPointer);
+
+  Future<void> setDockToolPointer(bool enabled) =>
+      _setBool(dockToolPointerKey, enabled);
+
+  Future<String> getPointerOpenMode() => _getValidatedString(
+      pointerOpenModeKey, pointerOpenModes, defaultPointerOpenMode);
+
+  Future<void> setPointerOpenMode(String mode) =>
+      _setValidatedString(pointerOpenModeKey, pointerOpenModes, mode);
+
   static const String widgetMicPositionKey = 'widget_mic_position';
   static const List<String> widgetMicPositions = ['left', 'right'];
   static const String defaultWidgetMicPosition = 'right';
@@ -879,6 +920,9 @@ class StorageService {
 
   static const List<String> bridgeKeys = [
     _bubbleHistoryKey,
+    dockFormKey,
+    dockToolMicKey,
+    dockToolPointerKey,
     kbBottomElevationDpKey,
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,
@@ -901,6 +945,7 @@ class StorageService {
     kbMicStopStyleKey,
     notesDeferredQueueKey,
     notesPendingKey,
+    pointerOpenModeKey,
     snippetsSeededKey,
     kbSpacebarAlignmentKey,
     kbSpacebarTrackpadModeKey,

@@ -181,43 +181,34 @@ class TrackpadBridge(
     }
 
     /**
-     * Fallback DPAD vigente (C-36): si Accesibilidad no está activa,
+     * Fallback DPAD vigente (C-36): si el complemento VoiceBubble Puntero no está activo,
      * despacha KEYCODE_DPAD_CENTER mediante InputConnection.
      */
     @androidx.annotation.VisibleForTesting
     internal fun dispatchTap(x: Float, y: Float) {
-        if (VoiceBubbleAccessibilityService.isConnected()) {
-            VoiceBubbleAccessibilityService.dispatchTap(x, y)
-            return
-        }
+        if (PointerLink.tap(service, x, y)) return
         service.currentInputConnection ?: return
         service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_CENTER)
     }
 
     /**
-     * Fallback DPAD vigente (C-36): si Accesibilidad no está activa,
+     * Fallback DPAD vigente (C-36): si el complemento VoiceBubble Puntero no está activo,
      * despacha KEYCODE_MENU mediante InputConnection.
      */
     @androidx.annotation.VisibleForTesting
     internal fun dispatchLongPress(x: Float, y: Float) {
-        if (VoiceBubbleAccessibilityService.isConnected()) {
-            VoiceBubbleAccessibilityService.dispatchLongPress(x, y)
-            return
-        }
+        if (PointerLink.longPress(service, x, y)) return
         service.currentInputConnection ?: return
         service.sendDownUpKeyEvents(KeyEvent.KEYCODE_MENU)
     }
 
     /**
-     * Fallback DPAD vigente (C-36): si Accesibilidad no está activa,
+     * Fallback DPAD vigente (C-36): si el complemento VoiceBubble Puntero no está activo,
      * despacha KEYCODE_DPAD_DOWN / KEYCODE_DPAD_UP mediante InputConnection.
      */
     @androidx.annotation.VisibleForTesting
     internal fun dispatchScroll(x: Float, y: Float, deltaY: Float) {
-        if (VoiceBubbleAccessibilityService.isConnected()) {
-            VoiceBubbleAccessibilityService.dispatchScroll(x, y, deltaY)
-            return
-        }
+        if (PointerLink.scroll(service, x, y, deltaY)) return
         service.currentInputConnection ?: return
         if (deltaY > 0) {
             service.sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)

@@ -23,7 +23,7 @@ import kotlin.math.sqrt
  *
  * REGLA DE PRIVACIDAD: CERO logs ni persistencia de coordenadas.
  */
-class PointerOverlayManager(private val context: Context) {
+class PointerOverlayManager(private val context: Context) : OverlayPassThrough.Handle {
 
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val pointerView = PointerView(context)
@@ -131,6 +131,22 @@ class PointerOverlayManager(private val context: Context) {
 
         pointerView.visibility = View.VISIBLE
         isVisible = true
+        OverlayPassThrough.register(this)
+    }
+
+    // El puntero tapa justo el punto del clic: durante el gesto se vuelve
+    // transparente (Android 12+ bloquea toques bajo overlays opacos).
+    override fun screenBounds(): IntArray? {
+        if (!isAttached || !isVisible) return null
+        return intArrayOf(layoutParams.x, layoutParams.y, layoutParams.x + pointerSizePx, layoutParams.y + pointerSizePx)
+    }
+
+    override fun setPassThrough(enabled: Boolean) {
+        if (!isAttached) return
+        layoutParams.alpha = if (enabled) 0f else 1f
+        try {
+            windowManager.updateViewLayout(pointerView, layoutParams)
+        } catch (_: Exception) {}
     }
 
     fun hide() {
@@ -218,6 +234,7 @@ class PointerOverlayManager(private val context: Context) {
     }
 
     fun destroy() {
+        OverlayPassThrough.unregister(this)
         if (isAttached) {
             try {
                 windowManager.removeViewImmediate(pointerView)

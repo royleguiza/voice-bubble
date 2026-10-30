@@ -1,19 +1,54 @@
-# Trackpad: puntero local, sin clics fuera
+# Trackpad y puntero: qué hace de verdad
 
 > Fuente única del estado real del trackpad (SPK-23). Si la UI promete
-> otra cosa, vale este doc.
+> otra cosa, vale este doc. Actualizado 2026-10-30 (barra flotante).
 
-- El puntero se mueve SOLO dentro del overlay propio
-  (`PointerOverlayManager` sobre `TYPE_APPLICATION_OVERLAY`).
-- Los clics/scrolls hacia otra app están **dormidos**: sin
-  `AccessibilityService` declarado en el manifest,
-  `VoiceBubbleAccessibilityService.isConnected()` es siempre falso y
-  `dispatchTap/LongPress/Scroll` son no-ops (con guard explícito en
-  `FloatingTrackpadService` + fallback a `DPAD_CENTER`/`MENU` en
-  `TrackpadBridge` para el teclado).
-- La UI lo vende como **"puntero local"**: no hace clic fuera sin
-  accesibilidad. No dejar promesa rota.
-- Privacidad: cero monitoreo de ventanas, cero registro de eventos
-  (`onAccessibilityEvent` vacío, sin logs).
-- Si algún día se declara el servicio, este doc + la UI + los guards se
-  actualizan juntos. Hoy: dormido.
+## Dónde vive
+
+- **Barra flotante** (`DockController`, servicio `FloatingBubbleService`):
+  un solo objeto de vidrio con dos formas, barra en el borde o burbuja libre.
+  Sus herramientas son Micrófono y Puntero (Ajustes › Barra flotante).
+- **Trackpad flotante** (`FloatingTrackpadService`): lo abre la herramienta
+  Puntero. Panel abajo o ventana flotante (`pointer_open_mode`). Un toque en
+  la línea de arriba lo cierra; la línea se acorta mientras corre el cierre
+  automático (`kb_trackpad_auto_return`).
+- **Trackpad del teclado** (`TrackpadBridge`): capa dentro del teclado
+  propio, independiente de la barra.
+
+## Clics en otras apps: complemento VoiceBubble Puntero
+
+- VoiceBubble **no declara AccessibilityService** (perfil anti-Play-Protect,
+  2026-09-05). Los clics, el clic largo y el scroll en otras apps los hace
+  la app aparte **VoiceBubble Puntero** (`puntero_android/`), que sí tiene
+  un servicio de Accesibilidad.
+- Protocolo: `PointerProtocol.kt` (espejo exacto en las dos apps). VoiceBubble
+  manda un broadcast explícito al paquete del complemento; el complemento
+  solo lo acepta si quien envía tiene el permiso de firma
+  `com.royleguiza.voicebubble.puntero.permission.POINTER`, declarado en las
+  dos apps (misma `debug.keystore`), así el orden de instalación no importa.
+- Antes de cada gesto, las ventanas propias que tapan el punto (puntero,
+  panel, barra) se vuelven transparentes e intocables durante el gesto:
+  Android 12+ bloquea toques bajo overlays de otra app con más de 80 % de
+  opacidad (`OverlayPassThrough`).
+- Sin complemento (o con su Accesibilidad apagada) **el puntero se mueve
+  pero no hace clic** en otras apps: `PointerLink` devuelve false y el
+  trackpad avisa una vez cómo activarlo. El teclado cae a teclas locales
+  (DPAD_CENTER / MENU / DPAD_UP-DOWN).
+
+## Privacidad
+
+- El complemento no lee ventanas (`canRetrieveWindowContent=false`), no
+  registra eventos (`onAccessibilityEvent` vacío) y no guarda nada.
+- VoiceBubble solo envía coordenadas y el tipo de gesto.
+
+## Límites conocidos
+
+- Desenfoque real del vidrio: Android 12+ y solo en rectángulos
+  redondeados (burbuja, abanico, trackpad). La barra del borde, por su
+  cuello cóncavo, usa vidrio lechoso propio.
+- Con navegación por gestos, deslizar desde el borde es "Atrás": la barra
+  reserva su alto (tope de Android 200 dp por borde) y se abre con un toque.
+- Algunas pantallas sensibles del sistema pueden ocultar las ventanas
+  flotantes.
+- Instalado desde GitHub, Android 13+ pide "Permitir ajustes restringidos"
+  antes de activar la Accesibilidad del complemento.

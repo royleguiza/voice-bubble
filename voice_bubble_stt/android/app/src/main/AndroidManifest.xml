@@ -7,6 +7,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Permiso normal (sin impacto Play Protect): háptica del trackpad/píldora vía Vibrator. -->
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <!-- Puntero: VoiceBubble NO declara AccessibilityService (perfil
+         anti-Play-Protect). Los clics en otras apps los hace el complemento
+         VoiceBubble Puntero, que solo acepta órdenes de apps con esta firma.
+         El permiso se declara en las DOS apps (misma firma) para que el orden
+         de instalación no importe. Ver docs/contrato-trackpad.md. -->
+    <permission
+        android:name="com.royleguiza.voicebubble.puntero.permission.POINTER"
+        android:protectionLevel="signature"/>
+    <uses-permission android:name="com.royleguiza.voicebubble.puntero.permission.POINTER"/>
     <application
         android:label="VoiceBubble STT"
         android:name="${applicationName}"
@@ -22,19 +31,17 @@
             android:foregroundServiceType="microphone"
             android:exported="false" />
 
-        <!-- Trackpad flotante: servicio NORMAL (no foreground, no accesibilidad),
-             igual que FloatingBubbleService en exported=false. Sin él, startService
-             lanza IllegalArgumentException (CR-2). Sin BIND_ACCESSIBILITY_SERVICE
-             por perfil anti-Play-Protect: solo overlay local + movimiento de puntero;
-             el dispatch en otra app queda dormido (ver cabecera del servicio). -->
+        <!-- Trackpad flotante (lo abre la barra): servicio NORMAL (no foreground,
+             no accesibilidad), exported=false. Sin él, startService lanza
+             IllegalArgumentException (CR-2). Sin BIND_ACCESSIBILITY_SERVICE por
+             perfil anti-Play-Protect: los clics en otra app van por el
+             complemento VoiceBubble Puntero (PointerLink). -->
         <service
             android:name=".FloatingTrackpadService"
             android:exported="false" />
 
         <!-- Sin AccessibilityService por perfil anti-Play-Protect (2026-09-05):
-             la clase queda versionada pero NO declarada: el sistema jamás la
-             instancia (isConnected()=false) y el trackpad degrada por
-             sus propios fallbacks. Ver AGENTS.md Estado. -->
+             vive en el complemento aparte (puntero_android/). Ver AGENTS.md Estado. -->
         <service
             android:name=".VoiceKeyboardService"
             android:label="@string/ime_name"
@@ -113,6 +120,8 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- Saber si el complemento VoiceBubble Puntero está instalado. -->
+        <package android:name="com.royleguiza.voicebubble.puntero"/>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

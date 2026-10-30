@@ -700,6 +700,9 @@ void main() {
     // mismo día (docs/contrato-claves.md).
     const expectedBridgeKeys = {
       'bubble_history_enabled',
+      'dock_form',
+      'dock_tool_mic',
+      'dock_tool_pointer',
       'kb_bottom_elevation_dp',
       'kb_clipboard_images_enabled',
       'kb_code_key_visible',
@@ -747,13 +750,14 @@ void main() {
       'vb_cred_pass_v1',
       'vb_cred_show_user',
       'vb_credentials_v1',
+      'pointer_open_mode',
       'voice_notes_v1',
       'voice_snippets_v1',
       'widget_mic_position',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (51 claves)', () {
-      expect(StorageService.bridgeKeys.length, 51);
+    test('bridgeKeys cubre exactamente el contrato (55 claves)', () {
+      expect(StorageService.bridgeKeys.length, 55);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
       expect(Set.of(StorageService.bridgeKeys), kContractKeysSnapshot);
       final contractFile = File('docs/contract-keys.txt');

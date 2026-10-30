@@ -20,6 +20,7 @@ class FloatingBubbleService {
   static const String _mIsBubbleRunning = 'isBubbleRunning';
   static const String _mUpdateBubbleState = 'updateBubbleState';
   static const String _mPushHistoryEntry = 'pushHistoryEntry';
+  static const String _mReloadDock = 'reloadDock';
 
   final MethodChannel _channel;
   void Function()? onBubbleTap;
@@ -66,6 +67,10 @@ class FloatingBubbleService {
 
   /// Verifica si el servicio de la burbuja está actualmente en ejecución.
   Future<bool> isBubbleRunning() => _invokeBool(_mIsBubbleRunning);
+
+  /// Avisa a la barra viva que cambiaron su forma o sus herramientas.
+  /// false si la barra no está corriendo (la leerá al arrancar).
+  Future<bool> reloadDock() => _invokeBool(_mReloadDock);
 
   /// Actualiza el estado visual de la burbuja (idle, recording, transcribing).
   Future<bool> updateBubbleState(BubbleVisualState state) =>

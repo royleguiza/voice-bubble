@@ -37,6 +37,7 @@ FBS = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblest
 check("BubbleHistoryController.kt existe", os.path.isfile(os.path.join(WORKSPACE, KT)))
 kt = read(KT)
 fbs = read(FBS)
+dock = read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/DockController.kt")
 # SPK-11: vistas extraídas a HistoryCardView/SnippetsCardView (el controlador
 # delega; los checks de tarjetas miran los tres archivos).
 history = read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/HistoryCardView.kt")
@@ -80,17 +81,21 @@ check("Haptico al seleccionar (VIRTUAL_KEY tolerante)", "VIRTUAL_KEY" in kt)
 check("Vacio elegante Sin transcripciones", "Sin transcripciones todav" in cards)
 
 # --- 4. Wiring en FloatingBubbleService ---
-check("Toque largo 500 ms en la burbuja clasica", "BUBBLE_LONG_PRESS_MS = 500L" in fbs)
+# Barra flotante (2026-10-30): el toque largo vive en DockController (barra y burbuja).
+check("Toque largo 500 ms en la barra/burbuja", "LONG_PRESS_MS = 500L" in dock
+      and "requestHistory()" in dock and 'dictationState != "idle"' in dock)
 check("Gate por switch isEnabled antes de mostrar", "BubbleHistoryController.isEnabled" in fbs)
 check("showBubbleHistory() como miembro (no anidada en setup)",
-      "fun showBubbleHistory()" in fbs)
+      "private fun showBubbleHistory(x: Int, y: Int, size: Int): Boolean" in fbs
+      and "onHistoryRequested" in fbs)
 check("Mic de la modal reenvia onBubbleTap (graba via Dart)",
       "bubbleHistoryController?.close()" in fbs and "onBubbleActionListener?.onBubbleTap()" in fbs)
 check("onDestroy destruye el controlador", "bubbleHistoryController?.destroy()" in fbs)
 check("Un unico companion object (Kotlin lo exige)",
       fbs.count("companion object") == 1, "multiples companion objects no compilan")
-check("Burbuja oculta (GONE) con modal abierta y restaurada al cerrar",
-      "visibility = View.GONE" in fbs and "visibility = View.VISIBLE" in fbs)
+check("Barra oculta con modal abierta y restaurada al cerrar",
+      "dock?.setHidden(true)" in fbs and "dock?.setHidden(false)" in fbs
+      and "fun setHidden(value: Boolean)" in dock)
 
 # --- 5. Recursos ---
 for dw in ["ic_copy.xml", "ic_check.xml", "kb_ic_mic.xml"]:
@@ -120,7 +125,7 @@ check("Default ON del historial de burbuja",
 dart_settings = read("app_source/lib/screens/settings_screen.dart")
 dart_general = read("app_source/lib/screens/settings/general_tab.dart")
 check("Settings con switch bubble-history-switch",
-      ("bubble-history-switch" in dart_settings or "bubble-history-switch" in dart_general) and ("Historial en la burbuja" in dart_settings or "Historial en la burbuja" in dart_general))
+      ("bubble-history-switch" in dart_settings or "bubble-history-switch" in dart_general) and ("title: 'Historial'" in dart_settings or "title: 'Historial'" in dart_general))
 check("Toggle persiste via saveBubbleHistoryEnabled",
       "_toggleBubbleHistory" in dart_settings)
 contract = read("docs/contract-keys.txt").splitlines()

@@ -60,6 +60,9 @@ class VirtualTrackpadView(
         fun onScroll(deltaY: Float)
         fun onAutoReturn()
         fun performHaptic(isFirm: Boolean = false)
+
+        /** Arrancó (o se reinició) la cuenta para el cierre automático. */
+        fun onIdleCountdown(totalMs: Long) {}
     }
 
     private val density = context.resources.displayMetrics.density
@@ -114,6 +117,7 @@ class VirtualTrackpadView(
         if (autoReturnSeconds > 0) {
             handler.removeCallbacks(autoReturnRunnable)
             handler.postDelayed(autoReturnRunnable, autoReturnSeconds * 1000L)
+            listener.onIdleCountdown(autoReturnSeconds * 1000L)
         }
     }
 

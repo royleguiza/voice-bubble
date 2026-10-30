@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
+import 'package:voice_bubble_stt/services/floating_trackpad_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
@@ -15,9 +16,15 @@ import 'test_app.dart';
 class SettingsHarness {
   static const bubbleChannel = MethodChannel(FloatingBubbleService.channelName);
   static const keyboardChannel = MethodChannel(KeyboardService.channelName);
+  static const trackpadChannel =
+      MethodChannel(FloatingTrackpadService.channelName);
 
   final List<MethodCall> bubbleLog = <MethodCall>[];
   final List<MethodCall> keyboardLog = <MethodCall>[];
+  final List<MethodCall> trackpadLog = <MethodCall>[];
+
+  /// Estado del complemento VoiceBubble Puntero que devuelve el nativo.
+  String pointerStatus = FloatingTrackpadService.pointerMissing;
 
   bool keyboardEnabled = false;
   bool keyboardSelected = false;
@@ -41,8 +48,19 @@ class SettingsHarness {
     keyboardSelected = false;
     canDrawOverlays = true;
     bubbleStarts = true;
+    pointerStatus = FloatingTrackpadService.pointerMissing;
     bubbleLog.clear();
     keyboardLog.clear();
+    trackpadLog.clear();
+    _messenger.setMockMethodCallHandler(trackpadChannel, (call) async {
+      trackpadLog.add(call);
+      switch (call.method) {
+        case 'getPointerStatus':
+          return pointerStatus;
+        default:
+          return true;
+      }
+    });
     _messenger.setMockMethodCallHandler(bubbleChannel, (call) async {
       bubbleLog.add(call);
       switch (call.method) {
@@ -72,7 +90,13 @@ class SettingsHarness {
   void tearDown() {
     _messenger.setMockMethodCallHandler(bubbleChannel, null);
     _messenger.setMockMethodCallHandler(keyboardChannel, null);
+    _messenger.setMockMethodCallHandler(trackpadChannel, null);
   }
+
+  /// Métodos llamados en el canal de la burbuja/barra (para verificar recargas).
+  Iterable<String> get bubbleMethods => bubbleLog.map((c) => c.method);
+
+  Iterable<String> get trackpadMethods => trackpadLog.map((c) => c.method);
 
   /// Monta Ajustes con el helper común (superficie alta 800x3200 lógicos
   /// para que las páginas largas queden construidas sin scroll).

@@ -92,7 +92,7 @@ Ver sección "Estado" al final de este archivo y los checkboxes de `docs/archive
 
 Ver `INSTALL.md` §4 para la lista vigente y su justificación (única fuente de verdad para usuario).
 
-- Sin `AccessibilityService` declarado (BLOQUEADO 2026-09-05, perfil anti-Play-Protect).
+- Sin `AccessibilityService` declarado en VoiceBubble (BLOQUEADO 2026-09-05, perfil anti-Play-Protect). Desde 2026-10-30 los clics del puntero en otras apps los hace el complemento aparte `puntero_android/` (VoiceBubble Puntero), protocolo `PointerProtocol.kt` espejado y permiso de firma en las dos apps. Ver `docs/contrato-trackpad.md`.
 
 ### Dependencias
 
@@ -276,6 +276,8 @@ Para asegurar la integridad de las compilaciones sin acceso local a SDK:
 - [x] Hito 6 – Testing final y entrega → push único a `main` (`c146c09`, 6 commits), ritual CI completado: run [`32634338510`](https://github.com/royleguiza/voice-bubble/actions/runs/32634338510) success · **368 tests** · artefacto `voice-bubble-arm64-debug-apk-r57` (dentro: `app-arm64-v8a-debug.apk`; retención 7 días); tags [`v0.9.0-keyboard-beta`](https://github.com/royleguiza/voice-bubble/tree/v0.9.0-keyboard-beta) (commit `079f8e8`) y [`v1.0.0`](https://github.com/royleguiza/voice-bubble/tree/v1.0.0)
 
 - [x] Lote v1.2 – Configuración con Tabs C2, Tecla Micrófono M4 Morph-to-Pill y APK split arm64 (2026-08-24, auditado en MODO-LOOP >9.0; evidencia verificable: `IndexedStack` en `app_source/lib/screens/settings_screen.dart:719`, icono `kb_ic_mic` en `VoiceKeyboardService.kt:1577`, `SpeechToTextClient.MAX_SECONDS`): Settings con 4 tabs glass inferiores (`IndexedStack` que preserva estado + 96dp bottom padding); tecla mic M4 en teclado nativo Kotlin con expansión a pastilla roja, punto pulsante, cronómetro M:SS y touch target cancelar >=44dp; ícono vectorial limpio `kb_ic_mic.xml` (reemplazo definitivo del emoji 🎤) y animación de 3 puntos en ola en `PROCESSING` (`kb_proc_dot.xml`); optimización de CI a split arm64 (-67% de peso, 168MB -> 48MB en storage GitHub). CI verde a la primera: run [`32682031857`](https://github.com/royleguiza/voice-bubble/actions/runs/32682031857) success · artefacto `voice-bubble-arm64-debug-apk-r64` (48.35 MB comprimido; dentro: `app-arm64-v8a-debug.apk`).
+
+**Barra flotante + VoiceBubble Puntero (2026-10-30)**: la burbuja pasa a ser un objeto de vidrio con dos formas (barra en el borde ↔ burbuja, por gesto) y herramientas Micrófono/Puntero (`DockController`, `DockGeometry`, `GlassWindow`, `DockViews`). El trackpad flotante lo abre la barra (sin burbuja propia, sin ×: la línea cierra). Clics en otras apps vía complemento `puntero_android/` (Accesibilidad solo ahí). Claves nuevas del puente: `dock_form`, `dock_tool_mic`, `dock_tool_pointer`, `pointer_open_mode` (contrato 55). Suite `test_floating_dock_suite.py`; tests JVM `DockGeometryTest`, `PointerProtocolTest` y del complemento. Verificación en dispositivo pendiente (desenfoque, gestos, pass-through de clics).
 
 **Siguiente etapa (Reinicio Septiembre 2026)**: Ejecución del backlog de 24 mejoras estructurado en [`docs/archive/MEJORAS-SEPTIEMBRE.md`](docs/archive/MEJORAS-SEPTIEMBRE.md) (MEJ-01 a MEJ-24), comenzando por los planes aprobados [`docs/archive/plan-clipboard.md`](docs/archive/plan-clipboard.md), [`docs/archive/plan-ciclar-mayusculas.md`](docs/archive/plan-ciclar-mayusculas.md) y [`plan-hito4-burbuja-hibrida.md`](plan-hito4-burbuja-hibrida.md) (HB0 en ejecución local, sin push por pedido del dueño).
 

@@ -126,6 +126,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _trackpadHaptic = StorageService.defaultTrackpadHaptic;
   String _trackpadPointerStyle = StorageService.defaultTrackpadPointerStyle;
   int _trackpadAutoReturn = StorageService.defaultTrackpadAutoReturn;
+  String _dockForm = StorageService.defaultDockForm;
+  bool _dockToolMic = StorageService.defaultDockToolMic;
+  bool _dockToolPointer = StorageService.defaultDockToolPointer;
+  String _pointerOpenMode = StorageService.defaultPointerOpenMode;
+  String _pointerStatus = FloatingTrackpadService.pointerMissing;
   String _themeMode = StorageService.defaultThemeMode;
   String _widgetMicPosition = StorageService.defaultWidgetMicPosition;
 
@@ -199,6 +204,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     final trackpadHaptic = await s.getTrackpadHaptic();
     final trackpadPointerStyle = await s.getTrackpadPointerStyle();
     final trackpadAutoReturn = await s.getTrackpadAutoReturn();
+    final dockForm = await s.getDockForm();
+    final dockToolMic = await s.getDockToolMic();
+    final dockToolPointer = await s.getDockToolPointer();
+    final pointerOpenMode = await s.getPointerOpenMode();
     final bubbleHistory = await s.loadBubbleHistoryEnabled();
     final notesDeferred = await s.loadNotesDeferredQueueEnabled();
     final credentialsKeyVisible = await s.loadKeyboardCredentialsKeyVisible();
@@ -243,6 +252,10 @@ class _SettingsScreenState extends State<SettingsScreen>
       _trackpadHaptic = trackpadHaptic;
       _trackpadPointerStyle = trackpadPointerStyle;
       _trackpadAutoReturn = trackpadAutoReturn;
+      _dockForm = dockForm;
+      _dockToolMic = dockToolMic;
+      _dockToolPointer = dockToolPointer;
+      _pointerOpenMode = pointerOpenMode;
       _showBubbleHistory = bubbleHistory;
       _notesDeferredQueue = notesDeferred;
       _clipboardImagesEnabled = clipboardImages;
@@ -260,6 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _geminiKeyStore.getKey(),
       _readBubbleEnabled(),
       _readKeyboardStatus(),
+      _floatingTrackpadService.getPointerStatus(),
     ).wait;
     final apiKey = results.$1;
     final geminiKey = results.$2 ?? '';
@@ -278,6 +292,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         _isBubbleEnabled = results.$3;
         _isKeyboardEnabled = results.$4.$1;
         _isKeyboardSelected = results.$4.$2;
+        _pointerStatus = results.$5;
       });
     }
     // Espejo D7 (credenciales del teclado nativo): solo se repara si falta.
@@ -480,20 +495,87 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (mounted) setState(() => _micStopStyle = v);
   }
 
+  /// Trackpad dentro del teclado (el flotante lo abre la barra, ver
+  /// [_toggleDockTool]). Solo persiste: el teclado nativo lee la pref.
   Future<void> _toggleTrackpadEnabled(bool value) async {
     setState(() => _trackpadEnabled = value);
     await _storageService.setTrackpadEnabled(value);
-    // La burbuja overlay del trackpad se gobierna desde este toggle (antes
-    // el servicio Dart no tenía ningún llamador). Best-effort sin diálogos:
-    // sin permiso de overlay el nativo devuelve false y la pref sigue
-    // siendo la fuente de verdad que lee el teclado.
-    try {
-      if (value) {
-        await _floatingTrackpadService.startTrackpadBubble();
-      } else {
-        await _floatingTrackpadService.stopTrackpadBubble();
-      }
-    } catch (_) {}
+  }
+
+  // --- Barra flotante: forma y herramientas -------------------------------
+
+  Future<void> _saveDockForm(String form) async {
+    setState(() => _dockForm = form);
+    await _storageService.setDockForm(form);
+    await _floatingBubbleService.reloadDock();
+  }
+
+  /// Micrófono / Puntero en la barra. Siempre queda al menos una.
+  Future<void> _toggleDockTool({required bool pointer, required bool value}) async {
+    final micAfter = pointer ? _dockToolMic : value;
+    final pointerAfter = pointer ? value : _dockToolPointer;
+    if (!micAfter && !pointerAfter) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Dejá al menos una herramienta')),
+      );
+      return;
+    }
+    setState(() {
+      _dockToolMic = micAfter;
+      _dockToolPointer = pointerAfter;
+    });
+    if (pointer) {
+      await _storageService.setDockToolPointer(value);
+    } else {
+      await _storageService.setDockToolMic(value);
+    }
+    await _floatingBubbleService.reloadDock();
+    if (pointer && value && _pointerStatus != FloatingTrackpadService.pointerReady && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Para hacer clic en otras apps, activá VoiceBubble Puntero en Trackpad'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _savePointerOpenMode(String mode) async {
+    setState(() => _pointerOpenMode = mode);
+    await _storageService.setPointerOpenMode(mode);
+  }
+
+  Future<void> _loadPointerStatus() async {
+    final status = await _floatingTrackpadService.getPointerStatus();
+    if (mounted && status != _pointerStatus) {
+      setState(() => _pointerStatus = status);
+    }
+  }
+
+  /// Fila del complemento: sin instalar explica cómo conseguirlo; instalado
+  /// abre Accesibilidad para activarlo (o revisarlo).
+  Future<void> _onPointerCompanionTap() async {
+    if (_pointerStatus == FloatingTrackpadService.pointerMissing) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('VoiceBubble Puntero'),
+          content: const Text(
+            'Es una app chica que hace los clics del puntero en otras apps. '
+            'Se descarga junto con VoiceBubble, en el mismo lugar de GitHub. '
+            'Instalala y volvé acá para activarla.',
+          ),
+          actions: [
+            TextButton(
+              key: const ValueKey('pointer-missing-ok'),
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    await _floatingTrackpadService.openAccessibilitySettings();
   }
 
   Future<void> _toggleTrackpadToolbarVisible(bool value) async {
@@ -635,6 +717,8 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _handleAppResumed() async {
+    // Al volver de Accesibilidad: el complemento pudo quedar activo.
+    unawaited(_loadPointerStatus());
     final wasEnabled = _isKeyboardEnabled;
     await _loadKeyboardStatus();
     // Si acaba de habilitar el teclado en ajustes del sistema, mostramos
@@ -1226,7 +1310,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               key: const ValueKey('nav-burbuja'),
               icon: Icons.bubble_chart_rounded,
               tile: kTileBlue,
-              title: 'Burbuja flotante',
+              title: 'Barra flotante',
               value: _isBubbleEnabled ? 'Activada' : 'Apagada',
               onTap: () => _go(SettingsPage.burbuja),
             ),
@@ -1235,7 +1319,9 @@ class _SettingsScreenState extends State<SettingsScreen>
               icon: Icons.touch_app_rounded,
               tile: kTileIndigo,
               title: 'Trackpad',
-              value: _trackpadEnabled ? 'Activado' : 'Apagado',
+              value: _trackpadEnabled || _dockToolPointer
+                  ? 'Activado'
+                  : 'Apagado',
               onTap: () => _go(SettingsPage.trackpad),
             ),
           ],

@@ -88,6 +88,9 @@ class MainActivity : FlutterActivity() {
                     "isBubbleRunning" -> {
                         result.success(FloatingBubbleService.isRunning)
                     }
+                    "reloadDock" -> {
+                        result.success(FloatingBubbleService.reloadDock())
+                    }
                     "updateBubbleState" -> {
                         val state = call.argument<String>("state") ?: "idle"
                         FloatingBubbleService.updateState(state)
@@ -188,15 +191,19 @@ class MainActivity : FlutterActivity() {
                         result.success(true)
                     }
                 }
+                // Clics en otras apps: complemento VoiceBubble Puntero
+                // (VoiceBubble no declara Accesibilidad, ver PointerProtocol).
                 "isAccessibilityGranted" -> {
-                    result.success(VoiceBubbleAccessibilityService.isConnected())
+                    result.success(PointerLink.isReady(this@MainActivity))
+                }
+                "getPointerStatus" -> {
+                    result.success(PointerLink.status(this@MainActivity))
                 }
                 "openAccessibilitySettings" -> {
-                    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    }
-                    startActivity(intent)
-                    result.success(true)
+                    result.success(PointerLink.openAccessibilitySettings(this@MainActivity))
+                }
+                "openCompanionDetails" -> {
+                    result.success(PointerLink.openCompanionDetails(this@MainActivity))
                 }
                 "openAppDetailsSettings" -> {
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -208,7 +215,8 @@ class MainActivity : FlutterActivity() {
                 }
                 "startTrackpadBubble" -> {
                     try {
-                        FloatingTrackpadService.start(this@MainActivity)
+                        val dm = resources.displayMetrics
+                        FloatingTrackpadService.open(this@MainActivity, dm.widthPixels / 2, dm.heightPixels / 2)
                         result.success(true)
                     } catch (e: Exception) {
                         result.error("START_TRACKPAD_ERROR", e.message, null)

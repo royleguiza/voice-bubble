@@ -46,4 +46,14 @@
     <color name="snippet_stroke_violeta">#66BF5AF2</color>
     <color name="snippet_fill_gris">#338E8E93</color>
     <color name="snippet_stroke_gris">#668E8E93</color>
+    <!-- Barra flotante de vidrio (prototipo "Burbuja de puntero", 2026-10-30).
+         tint: sobre desenfoque real (Android 12+); frosted: vidrio lechoso sin desenfoque. -->
+    <color name="dock_glass_tint">#80FFFFFF</color>
+    <color name="dock_glass_frosted">#EBF7F7FA</color>
+    <color name="dock_glass_highlight">#B3FFFFFF</color>
+    <color name="dock_glass_line">#1A000000</color>
+    <color name="dock_label">#FF111114</color>
+    <color name="dock_tool_pressed">#14000000</color>
+    <color name="dock_track">#29000000</color>
+    <color name="dock_handle">#80111114</color>
 </resources>

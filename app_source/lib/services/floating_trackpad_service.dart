@@ -2,13 +2,12 @@ import 'package:flutter/services.dart';
 
 import 'channel_guard.dart';
 
-/// Servicio de comunicacion bidireccional con el servicio de Burbuja Flotante
-/// de Trackpad y Puntero Virtual en Android.
+/// Canal con el trackpad flotante y el complemento VoiceBubble Puntero.
 ///
-/// Cableado real: `SettingsScreen._toggleTrackpadEnabled` arranca/detiene la
-/// burbuja a través de este servicio (antes tenía cero importadores). La
-/// config fina del trackpad (sensibilidad, layout…) sigue viajando por
-/// `StorageService` prefs, que el teclado nativo lee con prefijo "flutter.".
+/// El trackpad se abre desde la barra flotante (herramienta Puntero); desde
+/// acá Ajustes consulta el estado del complemento y abre sus pantallas del
+/// sistema. La config fina del trackpad (sensibilidad, layout…) viaja por
+/// `StorageService` prefs, que el nativo lee con prefijo "flutter.".
 class FloatingTrackpadService {
   static const String channelName =
       'com.royleguiza.voicebubblestt/floating_trackpad';
@@ -21,6 +20,18 @@ class FloatingTrackpadService {
   static const String _mStartTrackpadBubble = 'startTrackpadBubble';
   static const String _mStopTrackpadBubble = 'stopTrackpadBubble';
   static const String _mIsTrackpadBubbleRunning = 'isTrackpadBubbleRunning';
+  static const String _mGetPointerStatus = 'getPointerStatus';
+  static const String _mOpenCompanionDetails = 'openCompanionDetails';
+
+  /// Estados del complemento VoiceBubble Puntero (ver PointerProtocol.kt).
+  static const String pointerMissing = 'missing';
+  static const String pointerDisabled = 'disabled';
+  static const String pointerReady = 'ready';
+  static const List<String> pointerStatuses = [
+    pointerMissing,
+    pointerDisabled,
+    pointerReady,
+  ];
 
   final MethodChannel _channel;
 
@@ -40,11 +51,26 @@ class FloatingTrackpadService {
   Future<bool> requestOverlayPermission() =>
       _invokeBool(_mRequestOverlayPermission);
 
-  /// Comprueba si el acceso de asistencia está activo y conectado.
-  /// (Solo invoca el canal nativo histórico; en Dart no se declara ni usa
-  /// ningún servicio del sistema — perfil anti-Play-Protect intacto.)
+  /// true si el complemento VoiceBubble Puntero está instalado y activo.
+  /// (VoiceBubble no declara Accesibilidad: perfil anti-Play-Protect intacto;
+  /// los clics los hace el complemento.)
   Future<bool> isAccessibilityGranted() =>
       _invokeBool(_mIsAccessibilityGranted);
+
+  /// Estado del complemento: [pointerMissing], [pointerDisabled] o
+  /// [pointerReady]. Ante cualquier fallo de canal devuelve [pointerMissing].
+  Future<String> getPointerStatus() async {
+    try {
+      final value = await _channel.invokeMethod<String>(_mGetPointerStatus);
+      return pointerStatuses.contains(value) ? value! : pointerMissing;
+    } catch (_) {
+      recordBackgroundError('FloatingTrackpadService.getPointerStatus');
+      return pointerMissing;
+    }
+  }
+
+  /// Información de la app del complemento ("Permitir ajustes restringidos").
+  Future<bool> openCompanionDetails() => _invokeBool(_mOpenCompanionDetails);
 
   /// Abre los Ajustes de Accesibilidad del sistema.
   Future<bool> openAccessibilitySettings() =>
@@ -54,10 +80,10 @@ class FloatingTrackpadService {
   Future<bool> openAppDetailsSettings() =>
       _invokeBool(_mOpenAppDetailsSettings);
 
-  /// Inicia el servicio de la burbuja flotante del trackpad.
+  /// Abre el panel del trackpad (normalmente lo abre la barra flotante).
   Future<bool> startTrackpadBubble() => _invokeBool(_mStartTrackpadBubble);
 
-  /// Detiene el servicio de la burbuja flotante del trackpad.
+  /// Cierra el panel del trackpad.
   Future<bool> stopTrackpadBubble() => _invokeBool(_mStopTrackpadBubble);
 
   /// Verifica si el servicio de la burbuja del trackpad esta actualmente activo.

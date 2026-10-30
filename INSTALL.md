@@ -39,22 +39,34 @@ El certificado debe coincidir con el fingerprint de la clave debug versionada de
 
 *(Nota: En builds de release para distribución oficial o tiendas, la firma se inyectará mediante secrets protegidos de GitHub Actions y variables de entorno `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, sin versionar contraseñas de producción en el repositorio).*
 
-## 2. Activación de la burbuja flotante
+## 2. Activación de la barra flotante
 
-La burbuja requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW**, "Mostrar sobre otras apps"): Android no lo concede automáticamente.
+La barra requiere el permiso especial de superposición (**SYSTEM_ALERT_WINDOW**, "Mostrar sobre otras apps"): Android no lo concede automáticamente.
 
-1. Abre VoiceBubble STT y ve a la pantalla de **Ajustes**.
-2. Activa el interruptor de la **burbuja**: la app te llevará al ajuste de sistema "Mostrar sobre otras apps"; concede el permiso a VoiceBubble STT y vuelve.
-3. Con el permiso concedido, la burbuja aparece flotando sobre cualquier app:
-   - Arrastrable, con snap al borde (o isla/píldora según tu modo de acople).
-   - Tocar → graba; tocar de nuevo → detiene y transcribe → pegado en 2 caminos (prioridad fija): 1) nuestro teclado activo → inserción directa en cursor (`commitText`, sin permisos extra); 2) resto → portapapeles + pegado manual con aviso. Sin accesibilidad declarada (BLOQUEADO 2026-09-05, perfil anti-Play-Protect): no hay inyección con tercer teclado.
+1. Abre VoiceBubble STT y ve a **Ajustes › Barra flotante**.
+2. Activa **Barra flotante**: la app te llevará al ajuste de sistema "Mostrar sobre otras apps"; concede el permiso a VoiceBubble STT y vuelve.
+3. Con el permiso concedido, aparece una lengüeta fina de vidrio en el borde de la pantalla:
+   - **Tocar** la lengüeta la abre con las herramientas (Micrófono y Puntero, se eligen en Ajustes).
+   - **Deslizarla arriba o abajo** la ubica donde te quede cómoda.
+   - **Arrastrarla hacia el centro** la convierte en burbuja; **soltar la burbuja contra un borde** la vuelve barra.
+   - **Mantenerla presionada** muestra el historial de dictados.
+   - Micrófono: tocar → graba; tocar de nuevo → detiene y transcribe → pegado en 2 caminos (prioridad fija): 1) nuestro teclado activo → inserción directa en cursor (`commitText`, sin permisos extra); 2) resto → portapapeles + pegado manual con aviso.
 4. Mientras el servicio está activo verás su **notificación persistente** (es obligatoria en Android para un servicio en primer plano).
 
-> Histórico: el tercer camino por accesibilidad (inyectar con otro teclado) quedó BLOQUEADO el 2026-09-05 y no se documenta como vigente. Spec archivada en `plan-hito4-burbuja-hibrida.md` §6.
+### 2a. Puntero en otras apps (complemento VoiceBubble Puntero)
+
+El trackpad de la barra mueve un puntero por toda la pantalla. Para que ese puntero **haga clic en otras apps** (con cualquier teclado) hace falta el complemento **VoiceBubble Puntero**, una app aparte y chica. VoiceBubble no tiene permiso de Accesibilidad; lo tiene solo el complemento.
+
+1. En GitHub Actions, junto al APK de VoiceBubble, descargá el artefacto `voice-bubble-puntero-apk-r<N>` e instalalo.
+2. Abrí **VoiceBubble Puntero** y tocá **Activar en Accesibilidad**; elegí "VoiceBubble Puntero" y activalo.
+3. Si Android dice **«Ajuste restringido»** (Android 13+ con apps instaladas desde fuera de Play): abrí la información de la app (el complemento tiene un botón), tocá ⋮ arriba a la derecha → **Permitir ajustes restringidos**, y repetí el paso 2.
+4. En VoiceBubble, **Ajustes › Trackpad** debe decir "VoiceBubble Puntero: Activo".
+
+El complemento no lee lo que hay en pantalla ni guarda nada: solo hace el toque donde está el puntero. Detalle técnico en `docs/contrato-trackpad.md`.
 
 ## 2b. Alerta de Play Protect (leer si aparece un aviso)
 
-1. Al instalar el APK, Play Protect puede mostrar "Aplicación desconocida": es **esperado** en sideload debug sin verificación de identidad de desarrollador (obligatoria desde septiembre 2026). Desde 2026-09-05 la app **no declara accesibilidad**, así que no verás alertas de ese permiso ni bloqueos de protección mejorada por nuestra parte. Si el aviso ofrece "Más detalles → **Instalar de todas formas**", podés continuar; es tu decisión.
+1. Al instalar el APK, Play Protect puede mostrar "Aplicación desconocida": es **esperado** en sideload debug sin verificación de identidad de desarrollador (obligatoria desde septiembre 2026). Desde 2026-09-05 VoiceBubble **no declara accesibilidad**, así que no verás alertas de ese permiso por su parte. El complemento opcional VoiceBubble Puntero sí la usa (§2a): si Play Protect avisa, el aviso es solo sobre el complemento. Si el aviso ofrece "Más detalles → **Instalar de todas formas**", podés continuar; es tu decisión.
 2. Si el sistema **bloquea sin opción de continuar**: es la protección mejorada contra fraude de Google (activa en 185 mercados), una decisión automática, no un error de la app. Avisanos con captura del mensaje exacto.
 3. Nunca desactivar Play Protect para instalar.
 

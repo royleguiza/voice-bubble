@@ -9,9 +9,9 @@ Verifica:
    - TrackpadBridge.kt documenta fallback DPAD ante ausencia de servicio de accesibilidad.
    - dispatchTap, dispatchLongPress y dispatchScroll anotados con @VisibleForTesting.
    - isAccessibilityGranted y openAccessibilitySettings vigentes en canal y MainActivity.
-2. Cableado y disponibilidad de minipad:
-   - FloatingTrackpadService.kt define ACTION_SHOW_MINIPAD y lo maneja en onStartCommand.
-   - expandToMiniPad() preservado y cableado para activación por intent o UI.
+2. Cableado y disponibilidad de minipad (desde 2026-10-30: "Ventana flotante"):
+   - FloatingTrackpadService.kt lee flutter.pointer_open_mode y abre la ventana
+     flotante (MODE_WINDOW) junto a la barra; la línea la mueve en 2D.
 3. Contador de errores de canal/fondo en Diagnóstico:
    - channel_guard.dart expone channelErrorCount y recordBackgroundError.
    - settings_screen.dart importa y muestra channelErrorCount en la sección Diagnóstico.
@@ -79,14 +79,14 @@ def test_accessibility_dpad_fallback_and_visible_for_testing():
 def test_minipad_wiring():
     """2. Cableado y disponibilidad de minipad en FloatingTrackpadService."""
     trackpad = read_file(FLOATING_TRACKPAD)
-    assert "ACTION_SHOW_MINIPAD" in trackpad, (
-        "FloatingTrackpadService.kt debe definir ACTION_SHOW_MINIPAD"
+    assert 'const val MODE_WINDOW = "window"' in trackpad, (
+        "FloatingTrackpadService.kt debe definir el modo ventana (ex minipad)"
     )
-    assert "ACTION_SHOW_MINIPAD -> expandToMiniPad()" in trackpad or "expandToMiniPad()" in trackpad, (
-        "FloatingTrackpadService.kt debe cablear expandToMiniPad() en onStartCommand"
+    assert "PREF_OPEN_MODE" in trackpad and "ACTION_OPEN ->" in trackpad, (
+        "FloatingTrackpadService.kt debe abrir el panel leyendo pointer_open_mode"
     )
-    assert "fun expandToMiniPad()" in trackpad, (
-        "FloatingTrackpadService.kt debe implementar expandToMiniPad()"
+    assert "if (mode == MODE_WINDOW)" in trackpad and "win.moveTo(" in trackpad, (
+        "La ventana flotante debe poder moverse en 2D con la línea"
     )
 
 
@@ -177,8 +177,8 @@ def test_negative_mutations():
 
     # 2. Quitar ACTION_SHOW_MINIPAD
     trackpad = read_file(FLOATING_TRACKPAD)
-    mutated_trackpad = trackpad.replace("ACTION_SHOW_MINIPAD", "ACTION_UNUSED_PAD")
-    if "ACTION_SHOW_MINIPAD" not in mutated_trackpad:
+    mutated_trackpad = trackpad.replace("MODE_WINDOW", "MODE_UNUSED")
+    if "MODE_WINDOW" not in mutated_trackpad:
         mutations_passed += 1
 
     # 3. Quitar channelErrorCount de settings_screen

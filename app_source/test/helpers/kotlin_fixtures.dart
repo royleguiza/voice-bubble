@@ -17,10 +17,13 @@ Transcription keyboardStyleTranscription(String text, int minuteOffset) {
   );
 }
 
-/// Snapshot canónico de las 51 claves del contrato maestro (docs/contract-keys.txt).
+/// Snapshot canónico de las 55 claves del contrato maestro (docs/contract-keys.txt).
 /// Usado para verificar paridad triangular sin acoplarse al filesystem de disco en tests.
 const Set<String> kContractKeysSnapshot = {
   'bubble_history_enabled',
+  'dock_form',
+  'dock_tool_mic',
+  'dock_tool_pointer',
   'kb_bottom_elevation_dp',
   'kb_clipboard_images_enabled',
   'kb_code_key_visible',
@@ -68,6 +71,7 @@ const Set<String> kContractKeysSnapshot = {
   'vb_cred_show_user',
   'vb_credentials_v1',
   'voice_notes_pending_v1',
+  'pointer_open_mode',
   'voice_notes_v1',
   'voice_snippets_v1',
   'widget_mic_position',

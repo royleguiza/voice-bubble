@@ -6,10 +6,10 @@ Suite de verificación exhaustiva para el Contrato C-19:
 "Puente de claves sano y límites de contrato (20/50/15/25)"
 
 Verifica:
-1. docs/contract-keys.txt: 51 claves ordenadas alfabéticamente incluyendo kb_stt_key_configured.
+1. docs/contract-keys.txt: 55 claves ordenadas alfabéticamente incluyendo kb_stt_key_configured.
 2. docs/contract-limits.md: existencia y especificación de los 4 límites (20/50/15/25).
 3. StorageService.dart:
-   - bridgeKeys cubre exactamente las 51 claves.
+   - bridgeKeys cubre exactamente las 55 claves (51 + 4 de la barra flotante, 2026-10-30).
    - sttKeyConfiguredKey ('kb_stt_key_configured') incluido en bridgeKeys.
    - notesPendingKey referencia PendingNoteQueue.pendingKey como fuente única.
    - getBottomElevationDp y setBottomElevationDp aplican clamp(0, 64).
@@ -119,9 +119,9 @@ with open(note_store_path, "r", encoding="utf-8") as f:
 with open(clip_store_path, "r", encoding="utf-8") as f:
     clip_code = f.read()
 
-# --- 2. docs/contract-keys.txt: 51 claves y orden alfabético ---
+# --- 2. docs/contract-keys.txt: 55 claves y orden alfabético ---
 keys_list = [k.strip() for k in contract_keys_raw.splitlines() if k.strip()]
-suite.check("docs/contract-keys.txt contiene exactamente 51 claves", len(keys_list) == 51, f"Total: {len(keys_list)}")
+suite.check("docs/contract-keys.txt contiene exactamente 55 claves", len(keys_list) == 55, f"Total: {len(keys_list)}")
 suite.check("docs/contract-keys.txt está estrictamente ordenado", keys_list == sorted(keys_list))
 suite.check("docs/contract-keys.txt contiene kb_stt_key_configured", "kb_stt_key_configured" in keys_list)
 
@@ -186,10 +186,10 @@ suite.check(
     "Future<int> _getValidatedInt(" in storage_code and "catch (_)" in storage_code
 )
 
-# Test de StorageService sincronizado con 51 claves
+# Test de StorageService sincronizado con 55 claves
 suite.check(
-    "storage_service_test.dart espera 51 claves y contiene kb_stt_key_configured",
-    "'kb_stt_key_configured'" in storage_test_code and "bridgeKeys.length, 51" in storage_test_code
+    "storage_service_test.dart espera 55 claves y contiene kb_stt_key_configured",
+    "'kb_stt_key_configured'" in storage_test_code and "bridgeKeys.length, 55" in storage_test_code
 )
 
 # --- 5. KeyboardPrefs.kt: whitelists, clamps y lectura sttKeyConfigured ---
@@ -310,7 +310,7 @@ cmd2 = (
 kt_result2 = subprocess.check_output(cmd2, shell=True, text=True).strip()
 kt_keys = set(kt_result.split()) | set(kt_result2.split())
 
-suite.check("Kotlin extrae exactamente 51 claves de contrato", len(kt_keys) == 51, f"Total: {len(kt_keys)}")
+suite.check("Kotlin extrae exactamente 55 claves de contrato", len(kt_keys) == 55, f"Total: {len(kt_keys)}")
 suite.check("Claves Kotlin coinciden exactamente con docs/contract-keys.txt", kt_keys == set(keys_list))
 
 # Extracción de bridgeKeys de StorageService.dart
@@ -324,7 +324,7 @@ if m:
         if ident in const_vals:
             dart_table.append(const_vals[ident])
 
-suite.check("Dart bridgeKeys extrae exactamente 51 claves", len(dart_table) == 51, f"Total: {len(dart_table)}")
+suite.check("Dart bridgeKeys extrae exactamente 55 claves", len(dart_table) == 55, f"Total: {len(dart_table)}")
 suite.check("Dart bridgeKeys coincide exactamente con docs/contract-keys.txt", set(dart_table) == set(keys_list))
 
 # --- 10. Verificación de Resistencia a Mutaciones (Comprobación de Regresiones) ---

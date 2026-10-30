@@ -66,7 +66,7 @@ void main() {
         'transcripcion': 'Transcripción',
         'ia': 'Inteligencia artificial',
         'teclado': 'Teclado',
-        'burbuja': 'Burbuja flotante',
+        'burbuja': 'Barra flotante',
         'trackpad': 'Trackpad',
         'snippets': 'Snippets',
         'claves': 'Claves',
@@ -441,7 +441,7 @@ void main() {
 
       expect(
         tester.getSemantics(byKey('nav-burbuja')),
-        matchesSemantics(label: 'Burbuja flotante, Apagada', isButton: true),
+        matchesSemantics(label: 'Barra flotante, Apagada', isButton: true),
       );
       handle.dispose();
     });

@@ -1,33 +1,99 @@
 part of '../settings_screen.dart';
 
-/// Página Trackpad: interruptores arriba; el resto de las opciones solo
-/// aparece con el trackpad encendido (no abruma con ajustes inertes).
+/// Página Trackpad: arriba el puntero en otras apps (complemento
+/// VoiceBubble Puntero, lo abre la barra flotante) y el trackpad del
+/// teclado; el ajuste fino solo aparece si alguno de los dos está en uso.
 extension _TrackpadPage on _SettingsScreenState {
   Widget _buildTrackpadPage(BuildContext context) {
+    final status = _pointerStatus;
+    final statusLabel = switch (status) {
+      FloatingTrackpadService.pointerReady => 'Activo',
+      FloatingTrackpadService.pointerDisabled => 'Activar',
+      _ => 'No instalado',
+    };
+    final statusFooter = switch (status) {
+      FloatingTrackpadService.pointerReady =>
+        'Los clics del puntero llegan a cualquier app. No lee la pantalla '
+            'ni guarda nada.',
+      FloatingTrackpadService.pointerDisabled =>
+        'Activalo en Accesibilidad. Si Android dice «Ajuste restringido», '
+            'tocá Permitir ajustes restringidos y volvé a intentar.',
+      _ => 'Para hacer clic en otras apps hace falta el complemento '
+          'VoiceBubble Puntero. Sin él, el puntero se mueve pero no hace clic.',
+    };
     return _subpage(
       context,
       title: 'Trackpad',
       sections: [
         SettingsSection(
+          header: 'Puntero en otras apps',
+          footer: statusFooter,
+          children: [
+            SettingsNavRow(
+              key: const ValueKey('pointer-companion-row'),
+              title: 'VoiceBubble Puntero',
+              value: statusLabel,
+              valueColor: status == FloatingTrackpadService.pointerReady
+                  ? null
+                  : SettingsPalette.of(context).alert,
+              onTap: _onPointerCompanionTap,
+            ),
+            if (status == FloatingTrackpadService.pointerDisabled)
+              SettingsActionRow(
+                key: const ValueKey('pointer-restricted-row'),
+                title: 'Permitir ajustes restringidos',
+                onTap: _floatingTrackpadService.openCompanionDetails,
+              ),
+          ],
+        ),
+        SettingsSection(
+          footer: 'Se abre desde la barra flotante. Para cerrarlo, tocá la '
+              'línea de arriba.',
+          children: [
+            SettingsMenuRow<String>(
+              id: 'pointer-open-mode-selector',
+              title: 'Se abre como',
+              value: _pointerOpenMode,
+              options: const [
+                SettingsOption('panel', 'Panel abajo'),
+                SettingsOption('window', 'Ventana flotante'),
+              ],
+              onSelected: _savePointerOpenMode,
+            ),
+            SettingsMenuRow<int>(
+              id: 'kb-trackpad-auto-return-selector',
+              title: 'Al soltar',
+              value: _trackpadAutoReturn,
+              options: const [
+                SettingsOption(0, 'Queda abierto'),
+                SettingsOption(5, 'Se cierra a los 5 s'),
+                SettingsOption(15, 'Se cierra a los 15 s'),
+                SettingsOption(30, 'Se cierra a los 30 s'),
+              ],
+              onSelected: _saveTrackpadAutoReturn,
+            ),
+          ],
+        ),
+        SettingsSection(
+          header: 'En el teclado',
           footer: 'Un puntero dentro del teclado para mover el cursor con '
-              'precisión. Puntero local: sus clics se quedan dentro del '
-              'teclado.',
+              'precisión.',
           children: [
             SettingsSwitchRow(
               key: const ValueKey('kb-trackpad-enabled-switch'),
-              title: 'Trackpad',
+              title: 'Trackpad en el teclado',
               value: _trackpadEnabled,
               onChanged: _toggleTrackpadEnabled,
             ),
             SettingsSwitchRow(
               key: const ValueKey('kb-trackpad-toolbar-switch'),
-              title: 'Acceso en la barra',
+              title: 'Acceso en la barra del teclado',
               value: _trackpadToolbarVisible,
               onChanged: _toggleTrackpadToolbarVisible,
             ),
           ],
         ),
-        if (_trackpadEnabled) ...[
+        if (_trackpadEnabled || _dockToolPointer) ...[
           SettingsSection(
             header: 'Puntero',
             children: [
@@ -119,8 +185,6 @@ extension _TrackpadPage on _SettingsScreenState {
           ),
           SettingsSection(
             header: 'Otros',
-            footer: 'Vuelve a las letras si no tocás el trackpad durante ese '
-                'tiempo.',
             children: [
               SettingsMenuRow<String>(
                 id: 'kb-trackpad-haptic-selector',
@@ -132,18 +196,6 @@ extension _TrackpadPage on _SettingsScreenState {
                   SettingsOption('none', 'Ninguna'),
                 ],
                 onSelected: _saveTrackpadHaptic,
-              ),
-              SettingsMenuRow<int>(
-                id: 'kb-trackpad-auto-return-selector',
-                title: 'Volver al teclado',
-                value: _trackpadAutoReturn,
-                options: const [
-                  SettingsOption(0, 'Nunca'),
-                  SettingsOption(5, 'A los 5 s'),
-                  SettingsOption(15, 'A los 15 s'),
-                  SettingsOption(30, 'A los 30 s'),
-                ],
-                onSelected: _saveTrackpadAutoReturn,
               ),
             ],
           ),

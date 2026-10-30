@@ -25,7 +25,8 @@ Verifica:
    - Modo discreto suprime el cuerpo de la nota; modo normal colapsa a 1 línea sin saltos.
 6. Pre-check POST_NOTIFICATIONS en FGS y tokenización visual:
    - WidgetDictationService.kt implementa hasNotificationPermission y blinda startForeground con try/catch.
-   - FloatingBubbleService.kt sustituye Color.WHITE por el token de diseño R.color.kb_label_on_accent.
+   - La barra flotante (DockViews.kt, dibuja lo que antes dibujaba FloatingBubbleService)
+     usa el token R.color.kb_label_on_accent y nunca Color.WHITE.
 7. Batería de mutaciones negativas para garantizar detección contra regresiones.
 """
 
@@ -44,6 +45,7 @@ PENDING_QUEUE = os.path.join(BASE_DIR, "app_source", "lib", "services", "pending
 WIDGET_EDIT = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "WidgetNoteEditActivity.kt")
 WIDGET_LIST = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "WidgetNotesListService.kt")
 WIDGET_DICTATION = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "WidgetDictationService.kt")
+DOCK_VIEWS = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "DockViews.kt")
 BUBBLE_SVC = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "FloatingBubbleService.kt")
 KT_DIR = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "kotlin")
 
@@ -165,12 +167,13 @@ def test_widget_fgs_precheck_and_tokens():
         "WidgetDictationService.kt debe envolver startForeground en try/catch para mitigar SecurityException"
     )
 
-    bubble = read_file(BUBBLE_SVC)
+    # Desde 2026-10-30 la burbuja la dibuja DockViews.kt (barra flotante).
+    bubble = read_file(BUBBLE_SVC) + read_file(DOCK_VIEWS)
     assert "Color.WHITE" not in bubble, (
-        "FloatingBubbleService.kt no debe contener Color.WHITE hardcodeado en vistas canvas"
+        "La barra flotante no debe contener Color.WHITE hardcodeado en vistas canvas"
     )
     assert "R.color.kb_label_on_accent" in bubble, (
-        "FloatingBubbleService.kt debe utilizar el token R.color.kb_label_on_accent"
+        "La barra flotante debe utilizar el token R.color.kb_label_on_accent"
     )
 
 
@@ -209,8 +212,8 @@ def test_negative_mutations():
     assert not uuid_regex.matches("invalid-uuid-1234") if hasattr(uuid_regex, "matches") else not uuid_regex.match("invalid-uuid-1234")
     mutations_passed += 1
 
-    # 6. Reintroducir Color.WHITE en FloatingBubbleService
-    bubble = read_file(BUBBLE_SVC)
+    # 6. Reintroducir Color.WHITE en la barra flotante
+    bubble = read_file(BUBBLE_SVC) + read_file(DOCK_VIEWS)
     mutated_bubble = bubble + "\nval test = Color.WHITE\n"
     if "Color.WHITE" in mutated_bubble:
         mutations_passed += 1
