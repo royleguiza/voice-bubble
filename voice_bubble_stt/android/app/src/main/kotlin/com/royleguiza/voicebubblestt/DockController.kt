@@ -72,6 +72,9 @@ internal class DockController(
     private var dictationState = "idle"
     private var hidden = false
 
+    /** Con el trackpad abierto la burbuja se esconde (la barra del borde queda). */
+    private var trackpadOpen = false
+
     private var openFraction = 0f
     private var expanded = false
     private var openAnimator: ValueAnimator? = null
@@ -149,7 +152,14 @@ internal class DockController(
         hidden = value
         closeArc()
         edgeWindow?.setVisible(!value && form == DockGeometry.Form.EDGE)
-        bubbleWindow?.setVisible(!value && form == DockGeometry.Form.BUBBLE)
+        bubbleWindow?.setVisible(!value && !trackpadOpen && form == DockGeometry.Form.BUBBLE)
+    }
+
+    fun setTrackpadOpen(open: Boolean) {
+        if (trackpadOpen == open) return
+        trackpadOpen = open
+        if (open) closeArc()
+        bubbleWindow?.setVisible(!hidden && !open && form == DockGeometry.Form.BUBBLE)
     }
 
     fun onConfigurationChanged() {
@@ -249,7 +259,7 @@ internal class DockController(
             openFraction = 0f
             clampBubblePos()
             showBubbleAt(bubbleX, bubbleY)
-            bubbleWindow?.setVisible(!hidden)
+            bubbleWindow?.setVisible(!hidden && !trackpadOpen)
         }
     }
 

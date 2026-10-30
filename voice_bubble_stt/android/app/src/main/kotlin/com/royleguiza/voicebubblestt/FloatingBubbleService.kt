@@ -50,6 +50,11 @@ class FloatingBubbleService : Service() {
 
         private var instance: FloatingBubbleService? = null
 
+        /** El trackpad flotante se abrió/cerró: la burbuja se esconde mientras está abierto. */
+        fun setTrackpadOpen(open: Boolean) {
+            instance?.dock?.setTrackpadOpen(open)
+        }
+
         /** Ajustes cambió forma o herramientas: redibujar la barra viva. */
         fun reloadDock(): Boolean {
             val svc = instance ?: return false

@@ -183,6 +183,7 @@ class FloatingTrackpadService : Service() {
         }
         pointerManager?.resetBottomLimit()
         pointerManager?.show()
+        FloatingBubbleService.setTrackpadOpen(true)
         startIdle()
     }
 
@@ -251,15 +252,24 @@ class FloatingTrackpadService : Service() {
                     if (!PointerLink.tap(this@FloatingTrackpadService, pos.first, pos.second)) hintNoCompanion()
                 }
 
-                override fun onLongPress() {
+                override fun onLongPressArmed() {
                     pointerManager?.triggerClickFeedback(long = true)
+                }
+
+                override fun onLongPress() {
                     val pos = pointerManager?.getPosition() ?: return
                     if (!PointerLink.longPress(this@FloatingTrackpadService, pos.first, pos.second)) hintNoCompanion()
                 }
 
                 override fun onScroll(gestureDy: Float) {
                     val pos = pointerManager?.getPosition() ?: return
-                    if (!PointerLink.scroll(this@FloatingTrackpadService, pos.first, pos.second, gestureDy)) hintNoCompanion()
+                    // En tramos de hasta MAX_SCROLL_PX: el complemento los encadena.
+                    for (chunk in PointerProtocol.scrollChunks(gestureDy)) {
+                        if (!PointerLink.scroll(this@FloatingTrackpadService, pos.first, pos.second, chunk)) {
+                            hintNoCompanion()
+                            return
+                        }
+                    }
                 }
 
                 override fun onTouchStart() {
@@ -365,6 +375,7 @@ class FloatingTrackpadService : Service() {
 
     private fun closePanel() {
         pointerManager?.hide()
+        FloatingBubbleService.setTrackpadOpen(false)
         val root = container
         if (root == null) {
             stopSelf()
@@ -434,6 +445,7 @@ class FloatingTrackpadService : Service() {
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         PointerLink.stopListening(this)
+        FloatingBubbleService.setTrackpadOpen(false)
         handleView?.cancelCountdown()
         pointerManager?.destroy()
         pointerManager = null

@@ -18,6 +18,13 @@
   - Puntero (`PointerOverlayManager`): flecha fina con sombra; la punta está
     en coordenadas de pantalla completa y el clic va a la punta tal como se
     ve dibujada (`getLocationOnScreen`).
+    La ventana de la flecha empieza 3 px a la derecha y abajo de la punta:
+    nunca tapa el punto del clic.
+  - Android cancela los gestos del complemento mientras haya un dedo real
+    apoyado: el clic largo se arma al mantener y se hace al soltar; el
+    scroll se junta y se manda al soltar, en tramos (`scrollChunks`).
+  - Con el trackpad abierto la burbuja se esconde y vuelve al cerrarlo
+    (`DockController.setTrackpadOpen`); la barra del borde queda.
 - **Trackpad del teclado** (`TrackpadBridge`): capa dentro del teclado
   propio, independiente de la barra.
 

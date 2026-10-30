@@ -42,6 +42,11 @@ class ScrollQueueTest {
         q.add(0f, 0f, 10f)
         repeat(20) { q.add(0f, 0f, 100f) }
         assertEquals(PointerProtocol.MAX_SCROLL_PX, q.finished()!!, 0f)
+        // Lo que sobra (2000 - 600) sigue en tramos, sin perderse.
+        assertEquals(PointerProtocol.MAX_SCROLL_PX, q.finished()!!, 0f)
+        assertEquals(PointerProtocol.MAX_SCROLL_PX, q.finished()!!, 0f)
+        assertEquals(200f, q.finished()!!, 0f)
+        assertNull(q.finished())
     }
 
     @Test

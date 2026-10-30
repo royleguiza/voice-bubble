@@ -28,8 +28,12 @@ object PointerLink {
     private var enabledCache = false
     private var enabledCacheAt = 0L
 
-    /** Margen para dar tiempo a que el sistema aplique el "apartar ventanas". */
-    private const val CLEAR_LEAD_MS = 48L
+    /**
+     * Margen para que Android aplique el "apartar ventanas" antes del toque:
+     * el cambio pasa por la ventana, el WindowManager y SurfaceFlinger (≈3
+     * cuadros). Con 48 ms a veces no llegaba y Android bloqueaba el clic.
+     */
+    private const val CLEAR_LEAD_MS = 120L
 
     // --- Confirmación de clics (ver PointerProtocol.ACTION_RESULT) ---
     private var seq = 0
@@ -226,7 +230,9 @@ object OverlayPassThrough {
             } catch (_: Exception) {
                 null
             } ?: continue
-            if (!PointerProtocol.pathHits(cmd, b[0], b[1], b[2], b[3], slopPx = 4f)) continue
+            // Solo importa dónde APOYA el gesto: el resto del trazo (scroll) va a
+            // la ventana que recibió ese primer toque aunque pase por encima de otras.
+            if (!PointerProtocol.pathHits(cmd.copy(dy = 0f), b[0], b[1], b[2], b[3], slopPx = 1f)) continue
             try {
                 h.setPassThrough(true)
                 cleared.add(h)

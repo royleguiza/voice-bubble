@@ -109,4 +109,16 @@ class PointerProtocolTest {
         assertTrue(PointerProtocol.ACTION_RESULT.startsWith(PointerProtocol.COMPANION_PACKAGE))
         assertTrue(PointerProtocol.ACK_TIMEOUT_MS in 500L..3000L)
     }
+
+    @Test
+    fun `scroll largo en tramos sin perder recorrido`() {
+        val max = PointerProtocol.MAX_SCROLL_PX
+        assertEquals(listOf(max, max, 300f), PointerProtocol.scrollChunks(2 * max + 300f))
+        assertEquals(listOf(-max, -50f), PointerProtocol.scrollChunks(-max - 50f))
+        assertEquals(listOf(120f), PointerProtocol.scrollChunks(120f))
+        assertTrue(PointerProtocol.scrollChunks(0.5f).isEmpty())
+        assertTrue(PointerProtocol.scrollChunks(Float.NaN).isEmpty())
+        // Tope de seguridad: nunca más de 20 tramos.
+        assertEquals(20, PointerProtocol.scrollChunks(1e9f).size)
+    }
 }

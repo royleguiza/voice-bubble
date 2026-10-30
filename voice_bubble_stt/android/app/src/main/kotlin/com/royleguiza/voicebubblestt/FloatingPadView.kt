@@ -21,8 +21,11 @@ import androidx.core.graphics.ColorUtils
  * lisa (sin botones ni grilla) con una guía fina a la derecha para desplazar.
  *
  * - Deslizar: mueve el puntero.
- * - Tocar: clic. Mantener: clic largo.
- * - Dos dedos o la guía de la derecha: desplazar la página.
+ * - Tocar: clic. Mantener: clic largo (se hace al soltar).
+ * - Dos dedos o la guía de la derecha: desplazar la página (al soltar).
+ *
+ * Android cancela los gestos del complemento mientras haya un dedo real
+ * apoyado, así que todo se despacha al levantar el dedo.
  *
  * Los gestos los clasifica [PadGestures] (lógica pura, testeada en JVM).
  */
@@ -37,6 +40,9 @@ internal class FloatingPadView(
         fun onMove(dx: Float, dy: Float)
         fun onTap()
         fun onLongPress()
+
+        /** Se mantuvo apretado: el clic largo quedó armado (se hace al soltar). */
+        fun onLongPressArmed()
 
         /** [gestureDy]: recorrido vertical del gesto de scroll a despachar. */
         fun onScroll(gestureDy: Float)
@@ -76,11 +82,20 @@ internal class FloatingPadView(
     private var railLastY = 0f
     private var railDownY = 0f
 
+    /** Scroll juntado durante el toque; se manda al soltar. */
+    private var pendingScroll = 0f
+
     private val longPressCheck = Runnable {
         if (gestures.longPressDue(SystemClock.uptimeMillis()) != null) {
             listener.performHaptic(true)
-            listener.onLongPress()
+            listener.onLongPressArmed()
         }
+    }
+
+    private fun flushScroll() {
+        val total = pendingScroll
+        pendingScroll = 0f
+        if (total != 0f) listener.onScroll(total)
     }
 
     init {
@@ -190,6 +205,7 @@ internal class FloatingPadView(
         val now = SystemClock.uptimeMillis()
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                pendingScroll = 0f
                 listener.onTouchStart()
                 if (e.x >= width - railW) {
                     mode = Mode.RAIL
@@ -215,7 +231,7 @@ internal class FloatingPadView(
                     invalidate()
                     if (dy != 0f) {
                         fadeHint()
-                        listener.onScroll(PadGestures.railDelta(dy))
+                        pendingScroll += PadGestures.railDelta(dy)
                     }
                 }
                 Mode.PAD -> {
@@ -232,7 +248,7 @@ internal class FloatingPadView(
                         is PadGestures.Action.Scroll -> {
                             removeCallbacks(longPressCheck)
                             fadeHint()
-                            listener.onScroll(PadGestures.scrollDelta(a.fingerDy, naturalScroll))
+                            pendingScroll += PadGestures.scrollDelta(a.fingerDy, naturalScroll)
                         }
                         else -> {}
                     }
@@ -242,20 +258,26 @@ internal class FloatingPadView(
             MotionEvent.ACTION_UP -> {
                 removeCallbacks(longPressCheck)
                 if (mode == Mode.PAD) {
-                    if (gestures.up(now) == PadGestures.Action.Tap) {
-                        listener.performHaptic(false)
-                        listener.onTap()
+                    when (gestures.up(now)) {
+                        PadGestures.Action.Tap -> {
+                            listener.performHaptic(false)
+                            listener.onTap()
+                        }
+                        PadGestures.Action.LongPress -> listener.onLongPress()
+                        else -> {}
                     }
                     setTouching(false)
                 } else if (mode == Mode.RAIL) {
                     springThumb()
                 }
                 mode = Mode.NONE
+                flushScroll()
                 listener.onTouchEnd()
             }
             MotionEvent.ACTION_CANCEL -> {
                 removeCallbacks(longPressCheck)
                 gestures.cancel()
+                pendingScroll = 0f
                 if (mode == Mode.PAD) setTouching(false) else if (mode == Mode.RAIL) springThumb()
                 mode = Mode.NONE
                 listener.onTouchEnd()

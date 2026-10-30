@@ -6,6 +6,10 @@ import kotlin.math.hypot
  * Gestos de la superficie del trackpad flotante (como el prototipo HTML):
  * deslizar mueve el puntero, tocar hace clic, mantener hace clic largo y
  * dos dedos desplazan. Lógica pura (sin android.*) para testearla en la JVM.
+ *
+ * Android cancela cualquier gesto del complemento mientras haya un dedo
+ * real en la pantalla: por eso el clic largo se "arma" al mantener y se
+ * hace al soltar, y el scroll se junta y se manda al soltar.
  */
 class PadGestures(private val slopPx: Float) {
 
@@ -98,7 +102,7 @@ class PadGestures(private val slopPx: Float) {
         return if (dx != 0f || dy != 0f) Action.Move(dx, dy) else null
     }
 
-    /** Llamar cuando vence el temporizador del clic largo. */
+    /** Llamar cuando vence el temporizador del clic largo: lo deja armado (se hace al soltar). */
     fun longPressDue(t: Long): Action? {
         if (!active || moved || multi || longFired) return null
         if (t - downT < LONG_PRESS_MS) return null
@@ -106,10 +110,17 @@ class PadGestures(private val slopPx: Float) {
         return Action.LongPress
     }
 
+    /** Al soltar: clic, clic largo armado (si no se movió después) o nada. */
     fun up(t: Long): Action? {
-        val tap = active && !moved && !multi && !longFired && t - downT < TAP_MAX_MS
+        val still = active && !moved && !multi
+        val tap = still && !longFired && t - downT < TAP_MAX_MS
+        val long = still && longFired
         active = false
-        return if (tap) Action.Tap else null
+        return when {
+            tap -> Action.Tap
+            long -> Action.LongPress
+            else -> null
+        }
     }
 
     fun cancel() {

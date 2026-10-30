@@ -37,7 +37,14 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
     /** Distancia de la esquina de la ventana a la punta (deja lugar a la onda del clic). */
     private val hotPx = (HOT_DP * density).toInt()
     private val windowPx = (WINDOW_DP * density).toInt()
-    private val pointerView = PointerView(context, hotPx.toFloat())
+    /**
+     * La flecha se dibuja con su ventana empezando [ARROW_GAP_PX] px a la derecha
+     * y abajo de la punta: la ventana nunca tapa el punto del clic, así Android
+     * no bloquea el toque (regla de overlays de Android 12+) y no hace falta
+     * ocultarla a tiempo. Punto y cruz sí se centran (y se apartan al clic).
+     */
+    private val arrowTipPx = (1f * density)
+    private val pointerView = PointerView(context, hotPx.toFloat(), arrowTipPx)
     private var isAttached = false
     private var isVisible = false
 
@@ -58,9 +65,11 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
         set(value) {
             field = value
             pointerView.setStyle(value)
+            updateLayout()
         }
 
     companion object {
+        private const val ARROW_GAP_PX = 3
         private const val HOT_DP = 22f
         private const val WINDOW_DP = 64f
     }
@@ -91,6 +100,9 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
         updateScreenMetrics()
         pointerView.setStyle(pointerStyle)
     }
+
+    /** Esquina de la ventana menos la punta (en px). */
+    private fun originOffset(): Int = if (pointerStyle == "dot" || pointerStyle == "cross") -hotPx else ARROW_GAP_PX
 
     /** Tamaño real de la pantalla (incluye barra de estado y de navegación). */
     private fun updateScreenMetrics() {
@@ -143,8 +155,8 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
         if (initialY != null) posY = initialY
 
         clampCoordinates()
-        layoutParams.x = posX.toInt() - hotPx
-        layoutParams.y = posY.toInt() - hotPx
+        layoutParams.x = posX.toInt() + originOffset()
+        layoutParams.y = posY.toInt() + originOffset()
 
         if (!isAttached) {
             try {
@@ -202,7 +214,7 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
      */
     fun getPosition(): Pair<Float, Float> {
         val loc = drawnOrigin()
-        val tipOffset = hotPx.toFloat()
+        val tipOffset = -originOffset().toFloat()
         val x = (loc[0] + tipOffset).coerceIn(0f, (screenWidth - 1).toFloat())
         val y = (loc[1] + tipOffset).coerceIn(0f, (screenHeight - 1).toFloat())
         return Pair(x, y)
@@ -260,14 +272,14 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
 
     private fun updateLayout() {
         if (!isAttached) return
-        layoutParams.x = posX.toInt() - hotPx
-        layoutParams.y = posY.toInt() - hotPx
+        layoutParams.x = posX.toInt() + originOffset()
+        layoutParams.y = posY.toInt() + originOffset()
         try {
             windowManager.updateViewLayout(pointerView, layoutParams)
         } catch (_: Exception) {}
     }
 
-    /** Onda en la punta al hacer clic (como el prototipo). */
+    /** Flecha: se "aprieta" sobre la punta. Punto y cruz: onda (como el prototipo). */
     fun triggerClickFeedback(long: Boolean = false) {
         if (isVisible) {
             pointerView.animateClick(long)
@@ -287,9 +299,10 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
 
     /**
      * Dibujo del puntero. La flecha es la del prototipo (estilo macOS): blanca,
-     * contorno negro fino y sombra suave; la punta queda en (hot, hot).
+     * contorno negro fino y sombra suave; la punta queda en (tip, tip).
+     * Punto y cruz se centran en (hot, hot).
      */
-    private class PointerView(context: Context, private val hot: Float) : View(context) {
+    private class PointerView(context: Context, private val hot: Float, private val tip: Float) : View(context) {
 
         private val d = resources.displayMetrics.density
         private var style: String = "arrow"
@@ -325,6 +338,7 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
         private val arrowPath = Path()
         private var ripple = -1f
         private var rippleLong = false
+        private var press = 1f
 
         init {
             // La sombra de un trazo necesita capa por software; la vista es chica.
@@ -345,8 +359,8 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
             )
             arrowPath.reset()
             for (i in pts.indices step 2) {
-                val x = hot + (pts[i] - 2.5f) * unit
-                val y = hot + (pts[i + 1] - 2.2f) * unit
+                val x = tip + (pts[i] - 2.5f) * unit
+                val y = tip + (pts[i + 1] - 2.2f) * unit
                 if (i == 0) arrowPath.moveTo(x, y) else arrowPath.lineTo(x, y)
             }
             arrowPath.close()
@@ -358,6 +372,18 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
         }
 
         fun animateClick(long: Boolean) {
+            if (style != "dot" && style != "cross") {
+                ValueAnimator.ofFloat(1f, if (long) 0.72f else 0.8f, 1f).apply {
+                    duration = if (long) 420L else 220L
+                    interpolator = DecelerateInterpolator()
+                    addUpdateListener {
+                        press = it.animatedValue as Float
+                        invalidate()
+                    }
+                    start()
+                }
+                return
+            }
             rippleLong = long
             ValueAnimator.ofFloat(0f, 1f).apply {
                 duration = if (long) 700L else 450L
@@ -412,8 +438,11 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
                 else -> { // "arrow"
                     strokePaint.strokeWidth = 1.3f * unit
                     strokePaint.color = Color.BLACK
+                    canvas.save()
+                    canvas.scale(press, press, tip, tip)
                     canvas.drawPath(arrowPath, fillPaint)
                     canvas.drawPath(arrowPath, strokePaint)
+                    canvas.restore()
                 }
             }
         }

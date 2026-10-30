@@ -127,4 +127,20 @@ object PointerProtocol {
         RESULT_REJECTED -> "VoiceBubble Puntero no pudo hacer el clic. Apagalo y volvé a prenderlo en Accesibilidad."
         else -> "VoiceBubble Puntero no responde. Apagalo y volvé a prenderlo en Accesibilidad."
     }
+
+    /**
+     * Parte un scroll largo en tramos de hasta [MAX_SCROLL_PX] con el mismo
+     * signo. Ignora recorridos de menos de 1 px o no finitos.
+     */
+    fun scrollChunks(total: Float): List<Float> {
+        if (!total.isFinite() || abs(total) < 1f) return emptyList()
+        val out = ArrayList<Float>()
+        var left = total
+        while (abs(left) >= 1f && out.size < 20) {
+            val step = left.coerceIn(-MAX_SCROLL_PX, MAX_SCROLL_PX)
+            out.add(step)
+            left -= step
+        }
+        return out
+    }
 }

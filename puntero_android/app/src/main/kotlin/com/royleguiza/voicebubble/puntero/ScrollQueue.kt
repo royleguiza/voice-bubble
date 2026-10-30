@@ -40,8 +40,9 @@ class ScrollQueue(private val minDeltaPx: Float = 2f, private val maxDeltaPx: Fl
             pending = 0f
             return null
         }
+        // Lo que excede un trazo queda para el siguiente (no se pierde).
         val out = pending.coerceIn(-maxDeltaPx, maxDeltaPx)
-        pending = 0f
+        pending -= out
         active = true
         return out
     }

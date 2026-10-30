@@ -44,13 +44,23 @@ class PadGesturesTest {
     }
 
     @Test
-    fun `mantener quieto dispara un solo clic largo y al soltar no hay clic`() {
+    fun `mantener quieto arma un solo clic largo que se hace al soltar`() {
         val p = g()
         p.down(10f, 10f, 0L)
         assertNull(p.longPressDue(PadGestures.LONG_PRESS_MS - 1))
         assertEquals(PadGestures.Action.LongPress, p.longPressDue(PadGestures.LONG_PRESS_MS))
         assertNull(p.longPressDue(PadGestures.LONG_PRESS_MS + 100))
-        assertNull(p.up(PadGestures.LONG_PRESS_MS + 200))
+        // Android cancela gestos con el dedo apoyado: se despacha al soltar.
+        assertEquals(PadGestures.Action.LongPress, p.up(PadGestures.LONG_PRESS_MS + 200))
+    }
+
+    @Test
+    fun `clic largo armado se cancela si despues se desliza`() {
+        val p = g()
+        p.down(10f, 10f, 0L)
+        p.longPressDue(PadGestures.LONG_PRESS_MS)
+        p.move(60f, 10f, 1, 10f)
+        assertNull(p.up(PadGestures.LONG_PRESS_MS + 300))
     }
 
     @Test
