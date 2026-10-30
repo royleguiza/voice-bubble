@@ -115,9 +115,9 @@ check("Dart: bridgeKeys incluye las 2", "kbLongPressDelayKey," in dart and "kbLo
 tab = read("app_source/lib/screens/settings/teclado_tab.dart")
 check("UI: switch con Key", "kb-long-press-symbols-switch" in tab)
 check("UI: segmented delay con Key", "kb-long-press-delay-selector" in tab)
-check("UI: textos Rápido/Normal/Relajado",
-      all(s in tab for s in ["'Rápido'", "'Normal'", "'Relajado'"]) or
-      all(s in tab for s in ["Rápido", "Normal", "Relajado"]))
+check("UI: opciones Corta/Normal/Larga con su tiempo",
+      all(s in tab for s in ["'Corta', detail: '250 ms'", "'Normal', detail: '350 ms'",
+                             "'Larga', detail: '450 ms'"]))
 screen = read("app_source/lib/screens/settings_screen.dart")
 check("Settings carga switch", "getLongPressSymbolsEnabled()" in screen)
 check("Settings carga delay", "getLongPressDelay()" in screen)

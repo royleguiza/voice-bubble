@@ -1,922 +1,463 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:voice_bubble_stt/screens/settings_screen.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
-import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
-import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/ui/theme_mode.dart';
-import 'package:voice_bubble_stt/widgets/settings_tab_bar.dart';
 
-import '../helpers/test_app.dart';
+import '../helpers/settings_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  const channel = MethodChannel(FloatingBubbleService.channelName);
-  const keyboardChannel = MethodChannel(KeyboardService.channelName);
+  final h = SettingsHarness();
 
-  late StorageService storageService;
-  late List<MethodCall> bubbleLog;
-  late List<MethodCall> keyboardLog;
+  setUp(() => h.setUp());
+  tearDown(h.tearDown);
 
-  setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
-    SharedPreferences.setMockInitialValues({});
-    storageService = StorageService();
-    bubbleLog = <MethodCall>[];
-    keyboardLog = <MethodCall>[];
+  const secureStore = FlutterSecureStorage(aOptions: StorageService.espOptions);
 
-    messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
-      bubbleLog.add(call);
-      switch (call.method) {
-        case 'canDrawOverlays':
-          return true;
-        case 'requestOverlayPermission':
-          return true;
-        case 'startBubble':
-          return true;
-        case 'stopBubble':
-          return true;
-        case 'isBubbleRunning':
-          return false;
-        default:
-          return null;
+  group('Ajustes 2026 - raíz y navegación', () {
+    testWidgets('la raíz lista todas las secciones como filas', (tester) async {
+      await h.pump(tester);
+
+      expect(find.text('Ajustes'), findsOneWidget);
+      for (final page in const [
+        'transcripcion',
+        'ia',
+        'teclado',
+        'burbuja',
+        'trackpad',
+        'snippets',
+        'claves',
+        'notas',
+      ]) {
+        expect(byKey('nav-$page'), findsOneWidget, reason: page);
       }
-    });
-    // Estado inicial reproducible y keyboardLog determinista para todos los
-    // tests que no registran su propio handler (mockKeyboardChannel lo
-    // reemplaza). En produccion el canal nativo siempre responde.
-    messenger.setMockMethodCallHandler(keyboardChannel,
-        (MethodCall call) async {
-      keyboardLog.add(call);
-      switch (call.method) {
-        case 'isKeyboardEnabled':
-          return false;
-        case 'isKeyboardSelected':
-          return false;
-        case 'openKeyboardSettings':
-          return true;
-        default:
-          return null;
-      }
-    });
-  });
-
-  tearDown(() {
-    messenger.setMockMethodCallHandler(channel, null);
-    messenger.setMockMethodCallHandler(keyboardChannel, null);
-  });
-
-  void mockKeyboardChannel({bool enabled = false, bool selected = false}) {
-    messenger.setMockMethodCallHandler(keyboardChannel, (MethodCall call) async {
-      keyboardLog.add(call);
-      switch (call.method) {
-        case 'isKeyboardEnabled':
-          return enabled;
-        case 'isKeyboardSelected':
-          return selected;
-        case 'openKeyboardSettings':
-          return true;
-        default:
-          return null;
-      }
-    });
-  }
-
-  Widget buildTestableWidget(
-    WidgetTester tester, {
-    FloatingBubbleService? bubbleService,
-    KeyboardService? keyboardService,
-  }) {
-    return buildTestableSettingsScreen(
-      tester,
-      storageService: storageService,
-      bubbleService: bubbleService ?? FloatingBubbleService(),
-      keyboardService:
-          keyboardService ?? KeyboardService(channel: keyboardChannel),
-      physicalSize: const Size(1600, 4800),
-    );
-  }
-
-  group('SettingsScreen - API Key & General', () {
-    testWidgets('muestra título General v2 sin AppBar', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      // Título de página + etiqueta del tab (ambos "General").
-      expect(find.text('General'), findsNWidgets(2));
-      expect(find.byType(AppBar), findsNothing);
+      expect(byKey('about-open-button'), findsOneWidget);
+      expect(byKey('theme-selector'), findsOneWidget);
     });
 
-    testWidgets('shows "API Key de Groq" section header', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      expect(find.text('API Key de Groq'), findsOneWidget);
-    });
-
-    testWidgets('shows description text about Groq', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text(
-            'Necesaria para el modo Cloud. Obtén tu clave en console.groq.com'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('shows TextField for API key input after CTA (v1)', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('api-cta-button')), findsOneWidget);
-      expect(find.text('Ingresa tu API Key'), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(TextField), findsOneWidget);
-      expect(find.text('gsk_...'), findsOneWidget);
-    });
-
-    testWidgets('shows save button with Icons.save in edit mode (v1)', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
-      await tester.pumpAndSettle();
-
-      expect(find.byIcon(Icons.save), findsOneWidget);
-    });
-
-    testWidgets('shows validation error for non-gsk key (v1)', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField), 'bad_key');
-      await tester.tap(find.byIcon(Icons.save));
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('gsk_'), findsWidgets);
-    });
-
-    testWidgets('shows delete button when API key exists (v1 detail)', (tester) async {
-      FlutterSecureStorage.setMockInitialValues(
-          {'groq_api_key': 'gsk_existing_1234'});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('api-loaded-button')), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('api-loaded-button')));
-      await tester.pumpAndSettle();
-
-      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
-    });
-
-    testWidgets('does not show delete button when no API key', (tester) async {
-      FlutterSecureStorage.setMockInitialValues({});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      expect(find.byIcon(Icons.delete_outline), findsNothing);
-    });
-
-    testWidgets('shows "Acerca de" button in Inicio opening sheet (v1)', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('about-open-button')), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('about-open-button')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('VoiceBubble STT v1.0.0'), findsOneWidget);
-    });
-
-    testWidgets('shows version "VoiceBubble STT v1.0.0" in sheet (v1)', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('about-open-button')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('VoiceBubble STT v1.0.0'), findsOneWidget);
-    });
-
-    testWidgets('shows app description text in sheet (v1)', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('about-open-button')));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Transcripción de voz a texto con Groq Whisper.'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('el sheet Acerca muestra el selector de tema en Sistema (v2)',
+    testWidgets('sin clave ni teclado muestra "Terminá de configurar"',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await h.pump(tester);
 
-      await tester.tap(find.byKey(const ValueKey('about-open-button')));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('about-theme-selector')),
-          findsOneWidget);
-      expect(find.text('Sistema'), findsOneWidget);
-      expect(find.text('Claro'), findsOneWidget);
-      expect(find.text('Oscuro'), findsOneWidget);
+      expect(byKey('setup-section'), findsOneWidget);
+      expect(byKey('setup-groq-row'), findsOneWidget);
+      expect(byKey('setup-keyboard-row'), findsOneWidget);
     });
 
-    testWidgets('elegir Oscuro persiste el tema (v2)', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+    testWidgets('con clave y teclado activo no muestra la configuración',
+        (tester) async {
+      h.setUp(secure: {'groq_api_key': 'gsk_lista_1234'});
+      h.keyboardEnabled = true;
+      h.keyboardSelected = true;
+      await h.pump(tester);
 
-      await tester.tap(find.byKey(const ValueKey('about-open-button')));
-      await tester.pumpAndSettle();
+      expect(byKey('setup-section'), findsNothing);
+      expect(rowShows('nav-transcripcion', 'Groq'), isTrue);
+      expect(rowShows('nav-teclado', 'Activo'), isTrue);
+    });
 
-      await tester.tap(find.text('Oscuro'));
-      await tester.pumpAndSettle();
+    testWidgets('cada fila abre su página y Volver regresa a la raíz',
+        (tester) async {
+      await h.pump(tester);
 
-      expect(await storageService.loadThemeMode(), 'oscuro');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('theme_mode'), 'oscuro');
+      const pages = {
+        'transcripcion': 'Transcripción',
+        'ia': 'Inteligencia artificial',
+        'teclado': 'Teclado',
+        'burbuja': 'Burbuja flotante',
+        'trackpad': 'Trackpad',
+        'snippets': 'Snippets',
+        'claves': 'Claves',
+        'notas': 'Notas y widgets',
+      };
+      for (final entry in pages.entries) {
+        await openPage(tester, entry.key);
+        expect(byKey('settings-back-button'), findsOneWidget,
+            reason: entry.key);
+        expect(byKey('nav-${entry.key}'), findsNothing, reason: entry.key);
+        await goBack(tester);
+        expect(byKey('nav-${entry.key}'), findsOneWidget, reason: entry.key);
+      }
+    });
+
+    testWidgets('el Back del sistema sube un nivel antes de salir',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'teclado');
+      await tapKey(tester, 'nav-sonido');
+      expect(byKey('kb-haptics-switch'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(byKey('nav-sonido'), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(byKey('nav-teclado'), findsOneWidget);
+    });
+
+    testWidgets('solo se construye la página visible', (tester) async {
+      await h.pump(tester);
+      expect(byKey('kb-terminal-row-switch'), findsNothing);
+      expect(byKey('kb-trackpad-enabled-switch'), findsNothing);
+    });
+  });
+
+  group('Ajustes 2026 - clave de Groq', () {
+    testWidgets('sin clave la fila dice Agregar y abre el sheet',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'transcripcion');
+
+      expect(rowShows('api-key-row', 'Agregar'), isTrue);
+      await tapKey(tester, 'api-key-row');
+      expect(byKey('api-key-input-field'), findsOneWidget);
+      expect(byKey('api-key-save-button'), findsOneWidget);
+      expect(byKey('api-key-delete-button'), findsNothing);
+    });
+
+    testWidgets('el campo de la clave es oculto', (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'transcripcion');
+      await tapKey(tester, 'api-key-row');
+
+      final field = tester.widget<TextField>(find.descendant(
+        of: byKey('api-key-input-field'),
+        matching: find.byType(TextField),
+      ));
+      expect(field.obscureText, isTrue);
+    });
+
+    testWidgets('una clave sin gsk_ muestra error y no se guarda',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'transcripcion');
+      await tapKey(tester, 'api-key-row');
+
+      await tester.enterText(byKey('api-key-input-field'), 'sk_otra_cosa_123');
+      await tapKey(tester, 'api-key-save-button');
+
+      expect(find.text('Las claves de Groq empiezan con gsk_.'), findsOneWidget);
+      expect(byKey('api-key-input-field'), findsOneWidget);
+      expect(await secureStore.read(key: 'groq_api_key'), isNull);
+    });
+
+    testWidgets('guardar escribe la bóveda, cierra el sheet y muestra la cola',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'transcripcion');
+      await tapKey(tester, 'api-key-row');
+
+      await tester.enterText(byKey('api-key-input-field'), 'gsk_espejo_9876');
+      await tapKey(tester, 'api-key-save-button');
+
+      expect(byKey('api-key-input-field'), findsNothing);
+      expect(rowShows('api-key-row', '••••9876'), isTrue);
+      expect(await secureStore.read(key: 'groq_api_key'), 'gsk_espejo_9876');
+      final p = await prefs();
+      // Contrato K3/SPK-02: la clave va a la bóveda (la lee el IME); jamás
+      // a prefs planas. Solo se publican presencia y datos no sensibles.
+      expect(p.getString('kb_stt_api_key'), isNull);
+      expect(p.getBool('kb_stt_key_configured'), isTrue);
+      expect(p.getString('kb_stt_model'), CloudSttService.model);
+      expect(p.getString('kb_stt_url'), CloudSttService.endpoint);
+    });
+
+    testWidgets('Cancelar cierra el sheet y conserva la clave guardada',
+        (tester) async {
+      h.setUp(secure: {'groq_api_key': 'gsk_original_1111'});
+      await h.pump(tester);
+      await openPage(tester, 'transcripcion');
+      await tapKey(tester, 'api-key-row');
+
+      await tester.enterText(byKey('api-key-input-field'), 'gsk_descartada');
+      await tapKey(tester, 'api-key-cancel-button');
+
+      expect(byKey('api-key-input-field'), findsNothing);
+      expect(rowShows('api-key-row', '••••1111'), isTrue);
+      expect(await secureStore.read(key: 'groq_api_key'), 'gsk_original_1111');
+    });
+
+    testWidgets('Eliminar clave limpia bóveda y presencia', (tester) async {
+      h.setUp(secure: {'groq_api_key': 'gsk_a_borrar_22'});
+      await h.pump(tester);
+      final p = await prefs();
+      expect(p.getBool('kb_stt_key_configured'), isTrue);
+
+      await openPage(tester, 'transcripcion');
+      await tapKey(tester, 'api-key-row');
+      await tapKey(tester, 'api-key-delete-button');
+
+      expect(await secureStore.read(key: 'groq_api_key'), isNull);
+      expect(p.getBool('kb_stt_key_configured'), isFalse);
+      expect(rowShows('api-key-row', 'Agregar'), isTrue);
+    });
+
+    testWidgets('al abrir con clave y sin espejo se publica (backfill)',
+        (tester) async {
+      h.setUp(secure: {'groq_api_key': 'previa'});
+      await h.pump(tester);
+
+      final p = await prefs();
+      expect(p.getString('kb_stt_api_key'), isNull);
+      expect(p.getBool('kb_stt_key_configured'), isTrue);
+    });
+
+    testWidgets('con el espejo ya publicado no se reescribe al abrir',
+        (tester) async {
+      h.setUp(
+        secure: {'groq_api_key': 'gsk_vigente_77'},
+        prefs: {
+          'kb_stt_key_configured': true,
+          'kb_stt_url': 'https://custom.example/stt',
+        },
+      );
+      await h.pump(tester);
+
+      final p = await prefs();
+      expect(p.getBool('kb_stt_key_configured'), isTrue);
+      // saveSttMirror no corrió: no publicó modelo ni idioma.
+      expect(p.getString('kb_stt_model'), isNull);
+      expect(p.getString('kb_stt_url'), 'https://custom.example/stt');
+    });
+
+    testWidgets('el modo de grabación persiste al elegir Mantener',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'transcripcion');
+
+      expect(rowShows('record-mode-selector', 'Tocar'), isTrue);
+      await pickOption(
+          tester, 'record-mode-selector', StorageService.recordModeHold);
+
+      expect(rowShows('record-mode-selector', 'Mantener'), isTrue);
+      expect(await h.storage.loadRecordMode(), StorageService.recordModeHold);
+    });
+  });
+
+  group('Ajustes 2026 - inteligencia artificial', () {
+    testWidgets('sin clave de Google las acciones quedan ocultas',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'ia');
+
+      expect(rowShows('gemini-key-row', 'Agregar'), isTrue);
+      expect(byKey('geminiActionsSwitch'), findsNothing);
+      expect(byKey('geminiTestButton'), findsNothing);
+    });
+
+    testWidgets('guardar la clave de Google muestra acciones', (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'ia');
+      await tapKey(tester, 'gemini-key-row');
+
+      await tester.enterText(
+          byKey('gemini-key-input-field'), 'AIzaPruebaGemini42');
+      await tapKey(tester, 'gemini-key-save-button');
+
+      expect(byKey('gemini-key-input-field'), findsNothing);
+      expect(rowShows('gemini-key-row', '••••ni42'), isTrue);
+      expect(byKey('geminiActionsSwitch'), findsOneWidget);
+      expect(byKey('geminiTestButton'), findsOneWidget);
+    });
+  });
+
+  group('Ajustes 2026 - Acerca de y apariencia', () {
+    testWidgets('la tarjeta de la app abre Acerca de con diagnóstico',
+        (tester) async {
+      await h.pump(tester);
+      await tapKey(tester, 'about-open-button');
+
+      expect(byKey('about-version'), findsOneWidget);
+      expect(rowShows('about-version', '1.0.0'), isTrue);
+      expect(byKey('about-channel-errors'), findsOneWidget);
+    });
+
+    testWidgets('elegir Oscura persiste y aplica el tema', (tester) async {
+      await h.pump(tester);
+      expect(rowShows('theme-selector', 'Automática'), isTrue);
+
+      await pickOption(tester, 'theme-selector', 'oscuro');
+
+      expect(await h.storage.loadThemeMode(), 'oscuro');
+      expect(appThemeMode.value, ThemeMode.dark);
+      expect(rowShows('theme-selector', 'Oscura'), isTrue);
       appThemeMode.value = ThemeMode.system;
     });
+  });
 
-    testWidgets('TextField accepts text input in edit mode (v1)', (tester) async {      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+  group('Ajustes 2026 - burbuja flotante', () {
+    testWidgets('muestra burbuja apagada e historial encendido por defecto',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'burbuja');
 
-      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
-      await tester.pumpAndSettle();
-
-      final textField = find.byType(TextField);
-      await tester.enterText(textField, 'gsk_test_input_123');
-      await tester.pumpAndSettle();
-
-      expect(find.text('gsk_test_input_123'), findsOneWidget);
+      expect(switchValue(tester, 'bubble-active-switch'), isFalse);
+      expect(switchValue(tester, 'bubble-history-switch'), isTrue);
     });
 
-    testWidgets('save button stores the API key in FlutterSecureStorage (v1)',
+    testWidgets('el historial de la burbuja persiste (hito B6)',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await h.pump(tester);
+      await openPage(tester, 'burbuja');
 
-      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
-      await tester.pumpAndSettle();
+      await tapKey(tester, 'bubble-history-switch');
 
-      await tester.enterText(find.byType(TextField), 'gsk_my_secret_123');
-      await tester.tap(find.byIcon(Icons.save));
-      await tester.pumpAndSettle();
-
-      const storage = FlutterSecureStorage();
-      expect(await storage.read(key: 'groq_api_key'), 'gsk_my_secret_123');
+      expect(switchValue(tester, 'bubble-history-switch'), isFalse);
+      expect(await h.storage.loadBubbleHistoryEnabled(), isFalse);
     });
 
-    testWidgets('delete button clears the API key from FlutterSecureStorage (v1)',
+    testWidgets('encender con permiso arranca la burbuja', (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'burbuja');
+
+      await tapKey(tester, 'bubble-active-switch');
+
+      expect(h.bubbleLog.map((c) => c.method), contains('startBubble'));
+      expect(switchValue(tester, 'bubble-active-switch'), isTrue);
+      expect(await h.storage.loadFloatingBubbleEnabled(), isTrue);
+    });
+
+    testWidgets('sin permiso pide confirmación antes de abrir el ajuste',
         (tester) async {
-      FlutterSecureStorage.setMockInitialValues(
-          {'groq_api_key': 'gsk_key_to_delete'});
-      await tester.pumpWidget(buildTestableWidget(tester));
+      h.canDrawOverlays = false;
+      await h.pump(tester);
+      await openPage(tester, 'burbuja');
+
+      await tapKey(tester, 'bubble-active-switch');
+
+      expect(find.byType(AlertDialog), findsOneWidget);
+      await tester.tap(find.text('Cancelar'));
       await tester.pumpAndSettle();
+      expect(h.bubbleLog.map((c) => c.method),
+          isNot(contains('requestOverlayPermission')));
+      expect(switchValue(tester, 'bubble-active-switch'), isFalse);
+    });
 
-      await tester.tap(find.byKey(const ValueKey('api-loaded-button')));
-      await tester.pumpAndSettle();
+    testWidgets('apagar detiene la burbuja y guarda', (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'burbuja');
+      await tapKey(tester, 'bubble-active-switch');
 
-      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+      await tapKey(tester, 'bubble-active-switch');
 
-      await tester.tap(find.byIcon(Icons.delete_outline));
-      await tester.pumpAndSettle();
+      expect(h.bubbleLog.map((c) => c.method), contains('stopBubble'));
+      expect(await h.storage.loadFloatingBubbleEnabled(), isFalse);
+    });
 
-      const storage = FlutterSecureStorage();
-      expect(await storage.read(key: 'groq_api_key'), isNull);
+    testWidgets('la fila de permiso con permiso concedido avisa',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'burbuja');
+
+      await tapKey(tester, 'burbuja-overlay-permission-row');
+
+      expect(find.byType(SnackBar), findsOneWidget);
     });
   });
 
-  group('SettingsScreen - Floating Bubble Toggle & Permissions', () {
-    Finder bubbleSwitch() => find.descendant(
-          of: find.byKey(const ValueKey('bubble-active-switch')),
-          matching: find.byType(Switch),
-        );
+  group('Ajustes 2026 - notas y widgets', () {
+    testWidgets('guardar audio sin conexión persiste', (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'notas');
 
-    testWidgets('shows Floating Bubble switch tile (v2 general tab)', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await tapKey(tester, 'notes-deferred-queue-switch');
 
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('BURBUJA FLOTANTE'), findsOneWidget);
-      expect(find.text('Activar burbuja'), findsOneWidget);
-      expect(bubbleSwitch(), findsOneWidget);
+      expect(await h.storage.loadNotesDeferredQueueEnabled(), isTrue);
     });
 
-    testWidgets('shows bubble history switch ON by default (hito B6)',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+    testWidgets('el micrófono del widget pasa a la izquierda', (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'notas');
 
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
+      await pickOption(tester, 'widget-mic-position-selector', 'left');
 
-      final historySwitch = find.byKey(const ValueKey('bubble-history-switch'));
-      expect(find.text('Historial en la burbuja'), findsOneWidget);
-      expect(historySwitch, findsOneWidget);
-      expect(
-        tester.widget<Switch>(
-          find.descendant(
-            of: historySwitch,
-            matching: find.byType(Switch),
-          ),
-        ).value,
-        isTrue,
-      );
-    });
-
-    testWidgets('toggling history switch persists the preference (hito B6)',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-
-      final historySwitch = find.descendant(
-        of: find.byKey(const ValueKey('bubble-history-switch')),
-        matching: find.byType(Switch),
-      );
-      await tester.tap(historySwitch);
-      await tester.pumpAndSettle();
-
-      expect(await storageService.loadBubbleHistoryEnabled(), isFalse);
-      expect(tester.widget<Switch>(historySwitch).value, isFalse);
-    });
-
-    testWidgets('toggling switch ON starts bubble when permission granted',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-
-      final switchFinder = bubbleSwitch();
-      expect(tester.widget<Switch>(switchFinder).value, isFalse);
-
-      await tester.tap(switchFinder);
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(switchFinder).value, isTrue);
-      expect(bubbleLog.map((c) => c.method), contains('startBubble'));
-      expect(await storageService.loadFloatingBubbleEnabled(), isTrue);
-    });
-
-    testWidgets('toggling switch ON shows permission dialog if not permitted',
-        (tester) async {
-      messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
-        bubbleLog.add(call);
-        if (call.method == 'canDrawOverlays') return false;
-        if (call.method == 'requestOverlayPermission') return true;
-        return null;
-      });
-
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(bubbleSwitch());
-      await tester.pumpAndSettle();
-
-      expect(find.text('Permiso de superposición'), findsWidgets);
-      expect(find.text('Configurar'), findsOneWidget);
-
-      await tester.tap(find.text('Configurar'));
-      await tester.pumpAndSettle();
-
-      expect(bubbleLog.map((c) => c.method),
-          contains('requestOverlayPermission'));
-    });
-
-    testWidgets('toggling switch OFF stops bubble and updates storage',
-        (tester) async {
-      messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
-        bubbleLog.add(call);
-        if (call.method == 'isBubbleRunning') return true;
-        if (call.method == 'stopBubble') return true;
-        return true;
-      });
-      await storageService.saveFloatingBubbleEnabled(true);
-
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-
-      final switchFinder = bubbleSwitch();
-      expect(tester.widget<Switch>(switchFinder).value, isTrue);
-
-      await tester.tap(switchFinder);
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(switchFinder).value, isFalse);
-      expect(bubbleLog.map((c) => c.method), contains('stopBubble'));
-      expect(await storageService.loadFloatingBubbleEnabled(), isFalse);
-    });
-
-    testWidgets('general muestra fila de permiso con chevron (v2)',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Permiso superposición'), findsOneWidget);
-      expect(
-          find.byKey(const ValueKey('burbuja-overlay-permission-row')),
-          findsOneWidget);
-    });
-
-    testWidgets('tocar la fila de permiso con permiso concedido avisa (v2)',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(
-          find.byKey(const ValueKey('burbuja-overlay-permission-row')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(
-          find.text('Permiso de superposición concedido'), findsOneWidget);
+      expect(await h.storage.getWidgetMicPosition(), 'left');
     });
   });
 
-  group('SettingsScreen - Teclado VoiceBubble', () {
-    testWidgets('renderiza seccion de teclado con estado y boton de ajustes',
-        (tester) async {
-      mockKeyboardChannel();
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Teclado'), findsNWidgets(2));
-      expect(find.text('Abrir ajustes del sistema'), findsOneWidget);
-      expect(find.byIcon(Icons.keyboard), findsOneWidget);
+  group('Ajustes 2026 - estado del teclado', () {
+    testWidgets('consulta el estado del teclado al abrir', (tester) async {
+      await h.pump(tester);
+      final methods = h.keyboardLog.map((c) => c.method);
+      expect(methods, contains('isKeyboardEnabled'));
+      expect(methods, contains('isKeyboardSelected'));
     });
 
-    testWidgets('muestra "No habilitado" cuando el teclado esta apagado',
+    testWidgets('sin habilitar muestra los dos pasos y abre Android',
         (tester) async {
-      mockKeyboardChannel(enabled: false, selected: false);
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await h.pump(tester);
+      await openPage(tester, 'teclado');
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('No habilitado'), findsOneWidget);
-    });
-
-    testWidgets('muestra "Activo" cuando esta habilitado y seleccionado',
-        (tester) async {
-      mockKeyboardChannel(enabled: true, selected: true);
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Activo'), findsOneWidget);
-    });
-
-    testWidgets('muestra estado intermedio habilitado sin seleccionar',
-        (tester) async {
-      mockKeyboardChannel(enabled: true, selected: false);
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Habilitado, falta seleccionarlo'), findsOneWidget);
-    });
-
-    testWidgets('el boton abre los ajustes del sistema', (tester) async {
-      mockKeyboardChannel();
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Abrir ajustes del sistema'));
-      await tester.pumpAndSettle();
-
-      expect(keyboardLog.map((c) => c.method),
+      expect(byKey('kb-status-setup'), findsOneWidget);
+      await tapKey(tester, 'kb-open-settings-button');
+      expect(h.keyboardLog.map((c) => c.method),
           contains('openKeyboardSettings'));
     });
 
-    testWidgets('consulta el estado inicial del teclado al montar la pantalla',
+    testWidgets('habilitado sin elegir ofrece el selector', (tester) async {
+      h.keyboardEnabled = true;
+      await h.pump(tester);
+      await openPage(tester, 'teclado');
+
+      expect(byKey('kb-open-settings-button'), findsNothing);
+      await tapKey(tester, 'kb-picker-button');
+      expect(h.keyboardLog.map((c) => c.method),
+          contains('showInputMethodPicker'));
+    });
+
+    testWidgets('activo muestra la confirmación', (tester) async {
+      h.keyboardEnabled = true;
+      h.keyboardSelected = true;
+      await h.pump(tester);
+      await openPage(tester, 'teclado');
+
+      expect(byKey('kb-status-active'), findsOneWidget);
+      expect(find.text('VoiceBubble está activo'), findsOneWidget);
+    });
+
+    testWidgets('al volver de Android relee el estado y abre el selector',
         (tester) async {
-      mockKeyboardChannel(enabled: true, selected: true);
-      await tester.pumpWidget(buildTestableWidget(tester));
+      await h.pump(tester);
+      h.keyboardEnabled = true;
+      h.keyboardLog.clear();
+
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pumpAndSettle();
 
-      expect(keyboardLog.map((c) => c.method), contains('isKeyboardEnabled'));
+      final methods = h.keyboardLog.map((c) => c.method);
+      expect(methods, contains('isKeyboardEnabled'));
+      expect(methods, contains('showInputMethodPicker'));
+    });
+  });
+
+  group('Ajustes 2026 - accesibilidad', () {
+    testWidgets('las filas de navegación anuncian título y valor',
+        (tester) async {
+      final handle = tester.ensureSemantics();
+      await h.pump(tester);
+
       expect(
-          keyboardLog.map((c) => c.method), contains('isKeyboardSelected'));
-    });
-
-    testWidgets('el boton refrescar vuelve a consultar el estado',
-        (tester) async {
-      mockKeyboardChannel(enabled: false);
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      final consultasIniciales = keyboardLog.length;
-      await tester.tap(find.byIcon(Icons.refresh));
-      await tester.pumpAndSettle();
-
-      expect(keyboardLog.length, greaterThan(consultasIniciales));
-      expect(find.text('No habilitado'), findsOneWidget);
-    });
-  });
-
-  group('SettingsScreen - Fila terminal del teclado', () {
-    Finder terminalSwitch() => find.descendant(
-          of: find.byKey(const ValueKey('kb-terminal-row-switch')),
-          matching: find.byType(Switch),
-        );
-
-    testWidgets('muestra el switch con estado por defecto visible',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Fila terminal'), findsOneWidget);
-      expect(find.textContaining('Desactívala si usás Termux'),
-          findsOneWidget);
-      expect(terminalSwitch(), findsOneWidget);
-      expect(tester.widget<Switch>(terminalSwitch()).value, isTrue);
-    });
-
-    testWidgets('alternar el switch persiste la preferencia', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(terminalSwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(terminalSwitch()).value, isFalse);
-      expect(await storageService.loadKeyboardTerminalRowVisible(), isFalse);
-
-      await tester.tap(terminalSwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(terminalSwitch()).value, isTrue);
-      expect(await storageService.loadKeyboardTerminalRowVisible(), isTrue);
-    });
-
-    testWidgets('refleja el valor previamente guardado', (tester) async {
-      SharedPreferences.setMockInitialValues({'kb_terminal_row_visible': false});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(terminalSwitch()).value, isFalse);
-    });
-  });
-
-  group('SettingsScreen - Tecla de capa código', () {
-    Finder codeKeySwitch() => find.descendant(
-          of: find.byKey(const ValueKey('kb-code-key-switch')),
-          matching: find.byType(Switch),
-        );
-
-    testWidgets('muestra el switch con estado por defecto visible',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Tecla de capa código'), findsOneWidget);
-      expect(
-          find.textContaining('liberar espacio en la barra inferior'),
-          findsOneWidget);
-      expect(codeKeySwitch(), findsOneWidget);
-      expect(tester.widget<Switch>(codeKeySwitch()).value, isTrue);
-    });
-
-    testWidgets('alternar el switch persiste la preferencia', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(codeKeySwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(codeKeySwitch()).value, isFalse);
-      expect(await storageService.loadKeyboardCodeKeyVisible(), isFalse);
-
-      await tester.tap(codeKeySwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(codeKeySwitch()).value, isTrue);
-      expect(await storageService.loadKeyboardCodeKeyVisible(), isTrue);
-    });
-
-    testWidgets('refleja el valor previamente guardado', (tester) async {
-      SharedPreferences.setMockInitialValues({'kb_code_key_visible': false});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(codeKeySwitch()).value, isFalse);
-    });
-  });
-
-  group('SettingsScreen - Tecla de idioma', () {
-    Finder languageKeySwitch() => find.descendant(
-          of: find.byKey(const ValueKey('kb-language-key-switch')),
-          matching: find.byType(Switch),
-        );
-
-    testWidgets('muestra el switch con estado por defecto visible',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Tecla de idioma'), findsOneWidget);
-      expect(find.textContaining('dictás en un solo idioma'),
-          findsOneWidget);
-      expect(languageKeySwitch(), findsOneWidget);
-      expect(tester.widget<Switch>(languageKeySwitch()).value, isTrue);
-    });
-
-    testWidgets('alternar el switch persiste la preferencia', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(languageKeySwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(languageKeySwitch()).value, isFalse);
-      expect(await storageService.loadKeyboardLanguageKeyVisible(), isFalse);
-
-      await tester.tap(languageKeySwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(languageKeySwitch()).value, isTrue);
-      expect(await storageService.loadKeyboardLanguageKeyVisible(), isTrue);
-    });
-
-    testWidgets('refleja el valor previamente guardado', (tester) async {
-      SharedPreferences.setMockInitialValues({'kb_language_key_visible': false});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(languageKeySwitch()).value, isFalse);
-    });
-  });
-
-  group('SettingsScreen - bóveda STT para el teclado (SPK-02)', () {
-    testWidgets('guardar la API key escribe bóveda sin espejo plano',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField), 'gsk_espejo_123');
-      await tester.tap(find.byIcon(Icons.save));
-      await tester.pumpAndSettle();
-
-      final prefs = await SharedPreferences.getInstance();
-      // Contrato K3/SPK-02: la key va a la bóveda (la lee el IME vía
-      // SecureStore); jamás a prefs planas.
-      const secure =
-          FlutterSecureStorage(aOptions: StorageService.espOptions);
-      expect(await secure.read(key: 'groq_api_key'), 'gsk_espejo_123');
-      expect(prefs.getString('kb_stt_api_key'), isNull);
-      expect(prefs.getBool('kb_stt_key_configured'), isTrue);
-      expect(prefs.getString('kb_stt_model'), CloudSttService.model);
-      expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
-    });
-
-    testWidgets('borrar la API key limpia bóveda y presencia', (tester) async {
-      FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'gsk_a_borrar'});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await storageService.saveSttMirror(apiKey: 'gsk_a_borrar');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('kb_stt_key_configured'), isTrue);
-
-      await tester.tap(find.byKey(const ValueKey('api-loaded-button')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byIcon(Icons.delete_outline));
-      await tester.pumpAndSettle();
-
-      expect(prefs.getString('kb_stt_api_key'), isNull);
-      expect(prefs.getBool('kb_stt_key_configured'), isFalse);
-    });
-
-    testWidgets('al abrir Ajustes con key existente se republica (backfill)',
-        (tester) async {
-      FlutterSecureStorage.setMockInitialValues({'groq_api_key': 'previa'});
-      SharedPreferences.setMockInitialValues({});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      final prefs = await SharedPreferences.getInstance();
-      // Backfill: presencia + no sensibles, sin espejo plano.
-      expect(prefs.getString('kb_stt_api_key'), isNull);
-      expect(prefs.getBool('kb_stt_key_configured'), isTrue);
-    });
-  });
-
-  group('SettingsScreen - Tabs v2 Navigation & State', () {
-    testWidgets('arranca en General por defecto y muestra los 5 tabs',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(SettingsTabBar), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-general')), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-teclado')), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-trackpad')), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-snippets')), findsOneWidget);
-      expect(find.byKey(const ValueKey('tab-credenciales')), findsOneWidget);
-
-      expect(find.text('API Key de Groq'), findsOneWidget);
-      expect(find.text('Toque'), findsOneWidget);
-      expect(find.text('Mantener'), findsOneWidget);
-    });
-
-    testWidgets('navega a todos los tabs y actualiza el contenido visible',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      // General ya visible: burbuja integrada
-      expect(find.text('BURBUJA FLOTANTE'), findsOneWidget);
-      expect(find.text('Activar burbuja'), findsOneWidget);
-
-      // Navegar a Teclado
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-      expect(find.text('Teclado'), findsNWidgets(2));
-      expect(find.text('Altura del teclado'), findsOneWidget);
-
-      // Navegar a Trackpad
-      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
-      await tester.pumpAndSettle();
-      expect(find.text('Trackpad'), findsWidgets);
-      expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
-
-      // Navegar a Snippets
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-      expect(find.text('Snippets'), findsWidgets);
-      expect(find.byKey(const ValueKey('snippets-add-button')), findsOneWidget);
-
-      // Navegar a Claves
-      await tester.tap(find.byKey(const ValueKey('tab-credenciales')));
-      await tester.pumpAndSettle();
-      expect(find.text('Claves'), findsWidgets);
-      expect(
-          find.byKey(const ValueKey('credenciales-add-nombre')), findsOneWidget);
-
-      // Acerca vive como sheet desde General
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('about-open-button')));
-      await tester.pumpAndSettle();
-      expect(find.text('VoiceBubble STT v1.0.0'), findsOneWidget);
-
-      await tester.tap(find.byIcon(Icons.close_rounded));
-      await tester.pumpAndSettle();
-
-      // Regresar a General
-      expect(find.text('API Key de Groq'), findsOneWidget);
-    });
-
-    testWidgets('General integra burbuja y acerca sin accesos (v2)',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('bubble-history-switch')),
-          findsOneWidget);
-      expect(find.byKey(const ValueKey('about-open-button')), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-      expect(find.text('Teclado'), findsNWidgets(2));
-
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-      expect(find.text('Activar burbuja'), findsOneWidget);
-    });
-
-    testWidgets('persiste el estado de los inputs al cambiar de pestaña y volver',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('api-cta-button')));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField), 'gsk_temporal_test');
-      await tester.pumpAndSettle();
-      expect(find.text('gsk_temporal_test'), findsOneWidget);
-
-      // Cambiar a Teclado y luego a Snippets
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      // Volver a Inicio
-      await tester.tap(find.byKey(const ValueKey('tab-general')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('gsk_temporal_test'), findsOneWidget);
-    });
-
-    testWidgets('SettingsTabBar respeta accesibilidad y Reduced Motion',
-        (tester) async {
-      await tester.pumpWidget(
-        MediaQuery(
-          data: const MediaQueryData(
-            disableAnimations: true,
-            accessibleNavigation: true,
-          ),
-          child: MaterialApp(
-            home: SettingsScreen(
-              storageService: storageService,
-              floatingBubbleService: FloatingBubbleService(),
-              keyboardService: KeyboardService(channel: keyboardChannel),
-            ),
-          ),
-        ),
+        tester.getSemantics(byKey('nav-burbuja')),
+        matchesSemantics(label: 'Burbuja flotante, Apagada', isButton: true),
       );
-      await tester.pumpAndSettle();
+      handle.dispose();
+    });
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
+    testWidgets('respeta Reduced Motion (sin animación de página)',
+        (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await h.pump(tester);
+
+      await tester.tap(byKey('nav-teclado'));
       await tester.pump();
-
-      expect(find.text('Teclado'), findsNWidgets(2));
+      expect(byKey('kb-terminal-row-switch'), findsOneWidget);
+      expect(byKey('nav-teclado'), findsNothing);
     });
   });
-
 }

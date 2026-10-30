@@ -141,13 +141,19 @@ class TestC37HonestTestsSuite(unittest.TestCase):
         self.assertIn("ValueKey('homeStatusText')", h5_matrix)
         self.assertIn("SnackBarAction", h5_matrix)
 
-        settings_bar = read_file("app_source/test/widgets/settings_tab_bar_test.dart")
-        self.assertNotIn("expect(find.text('General'), findsOneWidget);", settings_bar)
+        # Ajustes 2026: la navegación se prueba por Key (nav-*), no por copy.
+        settings_test = read_file("app_source/test/screens/settings_screen_test.dart")
+        self.assertNotIn("expect(find.text('General'), findsOneWidget);", settings_test)
+        self.assertIn("'nav-$page'", read_file("app_source/test/helpers/settings_harness.dart"))
 
         contract_test = read_file("app_source/test/services/history_bridge_contract_test.dart")
         self.assertIn("kotlin_fixtures.dart", contract_test)
 
-        # Settings tests delegating buildTestableWidget
+        # Settings tests delegan el montaje en el arnés común, que a su vez
+        # usa buildTestableSettingsScreen de test_app.dart (un solo punto).
+        harness = read_file("app_source/test/helpers/settings_harness.dart")
+        self.assertIn("test_app.dart", harness)
+        self.assertIn("buildTestableSettingsScreen", harness)
         for test_file in [
             "app_source/test/screens/settings_screen_test.dart",
             "app_source/test/screens/settings_keyboard_prefs_test.dart",
@@ -156,8 +162,8 @@ class TestC37HonestTestsSuite(unittest.TestCase):
             "app_source/test/screens/settings_credentials_test.dart",
         ]:
             content = read_file(test_file)
-            self.assertIn("test_app.dart", content, f"{test_file} debe importar test_app.dart")
-            self.assertIn("buildTestableSettingsScreen", content, f"{test_file} debe usar buildTestableSettingsScreen")
+            self.assertIn("settings_harness.dart", content, f"{test_file} debe importar settings_harness.dart")
+            self.assertIn("h.pump(tester", content, f"{test_file} debe montar con el arnés")
 
     def test_07_negative_mutations_detection(self):
         """Prueba que mutaciones negativas reales son detectadas por la guarda."""

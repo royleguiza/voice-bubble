@@ -71,8 +71,10 @@ check("editor: no muestra botones sin key", "_geminiReady" in editor and "_loadG
 
 # 5. Ajustes
 check("general: segunda ApiKeyCard gemini", "geminiHasApiKey" in general)
-check("general: GeminiApiKeyCard", "GeminiApiKeyCard" in general)
-check("general: keys gemini preservadas", "ValueKey('gemini-cta-button')" in general)
+check("general: fila de clave Google AI", "ValueKey('gemini-key-row')" in general)
+check("general: sheet de clave con keys estables", all(k in general for k in [
+    "ValueKey('gemini-key-input-field')", "ValueKey('gemini-key-save-button')",
+    "ValueKey('gemini-key-cancel-button')", "ValueKey('gemini-key-delete-button')"]))
 check("general: toggle acciones", "geminiActionsSwitch" in general)
 check("general: botón probar conexión", "geminiTestButton" in general)
 check("settings: saveGeminiApiKey", "_saveGeminiApiKey" in settings)

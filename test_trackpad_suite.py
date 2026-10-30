@@ -301,7 +301,7 @@ with open(trackpad_tab_path, "r", encoding="utf-8") as f:
     trackpad_content = f.read()
 trackpad_combined = settings_content + trackpad_content
 
-check("SettingsScreen tiene tarjeta 'Modo Trackpad y Puntero Virtual'", "Modo Trackpad y Puntero Virtual" in trackpad_combined)
+check("SettingsScreen tiene página propia de Trackpad", "title: 'Trackpad'" in trackpad_combined and "ValueKey('nav-trackpad')" in trackpad_combined)
 check("SettingsScreen tiene selector de distribución de botones de clic (top, wings)", "kb-trackpad-button-layout-selector" in trackpad_combined)
 check("SettingsScreen tiene selector de modo trackpad en barra espaciadora", "kb-spacebar-trackpad-mode-selector" in settings_content or "kb-spacebar-trackpad-mode-selector" in teclado_content)
 check("SettingsScreen tiene selector de posición de scroll (right, left, disabled)", "kb-trackpad-scroll-position-selector" in trackpad_combined)
@@ -438,8 +438,8 @@ check("FloatingTrackpadService lee kb_trackpad_haptic como String (sin getBoolea
 # promete inyección/clics en otras apps (el despacho nativo exige el
 # servicio conectado y degrada por fallback local).
 check("UI del trackpad describe capa dentro del teclado",
-      "Habilita la capa de trackpad con puntero de mouse en el teclado." in trackpad_combined
-      and "Controla un puntero virtual en pantalla con aceleración cinemática" in trackpad_combined,
+      "Un puntero dentro del teclado para mover el cursor" in trackpad_combined
+      and "sus clics se quedan dentro del" in trackpad_combined,
       "Faltan los textos honestos de la tarjeta de trackpad")
 check("UI del trackpad sin promesas de clics en otra app",
       "inyecta" not in trackpad_combined

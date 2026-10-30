@@ -35,12 +35,15 @@ def test_settings_screen():
         teclado_content = f.read()
     combined = screen_content + teclado_content
 
-    assert "ButtonSegment(value: 'baja', label: Text('Baja'))" in combined
-    assert "ButtonSegment(value: 'media', label: Text('Media'))" in combined
-    assert "ButtonSegment(value: 'alta', label: Text('Alta'))" in combined
-    assert "ButtonSegment(value: 'muy_alta', label: Text('Muy alta'))" in combined
-    assert "case 'muy_alta':" in screen_content
-    print("  [PASS] SegmentedButton y hint text configurados para 4 niveles de altura.")
+    # Ajustes 2026: menú desplegable con las 4 alturas (valor de prefs →
+    # etiqueta visible) y vista previa que refleja la altura elegida.
+    assert "SettingsOption('baja', 'Baja')" in combined
+    assert "SettingsOption('media', 'Media')" in combined
+    assert "SettingsOption('alta', 'Alta')" in combined
+    assert "SettingsOption('muy_alta', 'Muy alta')" in combined
+    assert "id: 'kb-height-profile-selector'" in combined
+    assert "'muy_alta': 41.0" in teclado_content
+    print("  [PASS] Menú de altura y vista previa configurados para 4 niveles.")
 
 def test_kotlin_keyboard_service():
     print("  [TEST] Verificando constantes y factores en Kotlin (VKS + KeyboardSupport)...")
@@ -82,11 +85,11 @@ def test_key_spacing_chain():
     with open("app_source/lib/screens/settings/teclado_tab.dart", "r", encoding="utf-8") as f:
         tab = f.read()
     assert "kb-key-spacing-selector" in tab
-    assert "ButtonSegment(value: 'compacto'" in tab
-    assert "ButtonSegment(value: 'normal'" in tab
-    assert "ButtonSegment(value: 'amplio'" in tab
-    assert "ButtonSegment(value: 'extra'" in tab
-    assert "onSaveKeySpacing" in tab
+    assert "SettingsOption('compacto'" in tab
+    assert "SettingsOption('normal'" in tab
+    assert "SettingsOption('amplio'" in tab
+    assert "SettingsOption('extra'" in tab
+    assert "onSelected: _saveKeySpacing" in tab
     with open("app_source/lib/screens/settings_screen.dart", "r", encoding="utf-8") as f:
         settings = f.read()
     assert "_saveKeySpacing" in settings and "getKeySpacing()" in settings
@@ -127,10 +130,10 @@ def test_haptic_style_chain():
     with open("app_source/lib/screens/settings/teclado_tab.dart", "r", encoding="utf-8") as f:
         tab = f.read()
     assert "kb-haptic-style-selector" in tab
-    assert "ButtonSegment(value: 'nitido'" in tab
-    assert "ButtonSegment(value: 'firme'" in tab
-    assert "ButtonSegment(value: 'suave'" in tab
-    assert "onSaveHapticStyle" in tab
+    assert "SettingsOption('nitido'" in tab
+    assert "SettingsOption('firme'" in tab
+    assert "SettingsOption('suave'" in tab
+    assert "onSelected: _saveHapticStyle" in tab
     with open("docs/contract-keys.txt", "r", encoding="utf-8") as f:
         assert "kb_haptic_style" in f.read().splitlines()
     kt_dir = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"

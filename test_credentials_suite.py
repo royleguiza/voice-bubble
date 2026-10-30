@@ -70,7 +70,7 @@ def main():
     storage = read("app_source/lib/services/storage_service.dart")
     screen = read("app_source/lib/screens/credentials_screen.dart")
     settings = read("app_source/lib/screens/settings_screen.dart")
-    tabbar = read("app_source/lib/widgets/settings_tab_bar.dart")
+    teclado = read("app_source/lib/screens/settings/teclado_tab.dart")
     contract = read("docs/contract-keys.txt").strip().split("\n")
 
     # --- 1. Modelo Dart sin secretos ---
@@ -116,22 +116,26 @@ def main():
     suite.check("Formulario con 3 campos",
                 all(k in screen for k in ("credenciales-add-nombre", "credenciales-add-usuario", "credenciales-add-password")),
                 "Falta algún campo")
-    suite.check("Password obscure sin ojo", "obscureText: true" in screen and
+    kit = read("app_source/lib/widgets/settings_v2.dart")
+    suite.check("Password obscure sin ojo", "obscure: true" in screen
+                and "obscureText: obscure" in kit and "visibility" not in kit.lower() and
                 "visibility" not in screen.lower(), "Ojo o sin ocultar")
     suite.check("Sin edición (solo borrar)", "updateCredential" not in screen and
                 "Icons.delete_outline" in screen, "Hay edición o falta borrado")
+    suite.check("Borrar pide confirmación", "credenciales-confirm-delete" in screen,
+                "Borrado sin confirmar")
     suite.check("Switch mostrar-usuario", "credenciales-show-user" in screen and
-                "SwitchListTile" in screen, "Falta el switch")
+                "SettingsSwitchRow" in screen, "Falta el switch")
 
-    # --- 4. Dock inferior con sección propia ---
-    suite.check("Tab Claves en el dock", "tab-credenciales" in tabbar and
-                "'Claves'" in tabbar and "vpn_key" in tabbar,
-                "Dock sin sección propia")
-    suite.check("Settings monta tab 4 perezoso (v2)",
-                "CredentialsScreen(" in settings
-                and "storageService: _storageService" in settings
-                and "_builtTabs.contains(4)" in settings,
-                "Tab no cableado")
+    # --- 4. Página propia en Ajustes 2026 ---
+    suite.check("Claves con fila propia en la raíz", "ValueKey('nav-claves')" in settings
+                and "title: 'Claves'" in settings,
+                "Sin acceso propio")
+    suite.check("Settings monta Claves solo al entrar (perezoso)",
+                "case SettingsPage.claves:" in settings
+                and "CredentialsScreen(" in settings
+                and "storageService: _storageService" in settings,
+                "Página no cableada")
 
     # --- 5. Teclado nativo: botón y capa ---
     suite.check("Drawable ic_key.xml existe", os.path.isfile(
@@ -161,10 +165,10 @@ def main():
                 "Falta la capa")
     suite.check("Botón llave en toolbar", "R.drawable.ic_key" in vks and
                 ("credentials.toggle()" in vks or "credentialsToggle()" in vks), "Falta el botón")
-    suite.check("Llave ocultable desde Ajustes → Claves (default visible)",
+    suite.check("Llave ocultable desde Ajustes → Teclado (default visible)",
                 "isCredentialsKeyPref()" in vks
                 and "kb_credentials_key_visible" in storage
-                and "credenciales-key-visible-switch" in screen,
+                and "credenciales-key-visible-switch" in teclado,
                 "Falta el switch de la llavecita")
     suite.check("Llave visible en campos password cuando la pref está ON",
                 "sigue disponible si la pref" in vks

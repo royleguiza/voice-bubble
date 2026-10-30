@@ -1,851 +1,555 @@
-import 'package:flutter/material.dart';
+part of '../settings_screen.dart';
 
-import '../../ui/design_tokens.dart';
-import '../../widgets/settings_v2.dart';
+/// Páginas Teclado y Vibración y sonido. Arriba de Teclado va una vista
+/// previa en vivo que refleja altura, separación, teclas visibles, posición
+/// del micrófono y de la barra espaciadora.
+extension _TecladoPages on _SettingsScreenState {
+  Widget _buildTecladoPage(BuildContext context) {
+    return _subpage(
+      context,
+      title: 'Teclado',
+      sections: [
+        KeyboardPreview(
+          key: const ValueKey('kb-preview'),
+          heightProfile: _heightProfile,
+          keySpacing: _keySpacing,
+          bottomElevationDp: _bottomElevationDp,
+          showTerminalRow: _showTerminalRow,
+          showCodeKey: _showCodeKey,
+          showLanguageKey: _showLanguageKey,
+          showCredentialsKey: _showCredentialsKey,
+          showTrackpadKey: _trackpadToolbarVisible,
+          invertToolbar: _invertToolbar,
+          spacebarAlignment: _spacebarAlignment,
+        ),
+        _keyboardStatusSection(),
+        SettingsSection(
+          header: 'Tamaño',
+          children: [
+            SettingsMenuRow<String>(
+              id: 'kb-height-profile-selector',
+              title: 'Altura',
+              value: _heightProfile,
+              options: const [
+                SettingsOption('baja', 'Baja'),
+                SettingsOption('media', 'Media'),
+                SettingsOption('alta', 'Alta'),
+                SettingsOption('muy_alta', 'Muy alta'),
+              ],
+              onSelected: _saveHeightProfile,
+            ),
+            SettingsMenuRow<String>(
+              id: 'kb-key-spacing-selector',
+              title: 'Separación',
+              value: _keySpacing,
+              options: const [
+                SettingsOption('compacto', 'Compacta'),
+                SettingsOption('normal', 'Normal'),
+                SettingsOption('amplio', 'Amplia'),
+                SettingsOption('extra', 'Máxima'),
+              ],
+              onSelected: _saveKeySpacing,
+            ),
+            SettingsMenuRow<int>(
+              id: 'kb-bottom-elevation-selector',
+              title: 'Distancia al borde',
+              value: _bottomElevationDp,
+              options: const [
+                SettingsOption(0, 'Ninguna'),
+                SettingsOption(12, '12 dp'),
+                SettingsOption(24, '24 dp'),
+                SettingsOption(36, '36 dp'),
+                SettingsOption(48, '48 dp'),
+              ],
+              onSelected: _saveBottomElevation,
+            ),
+          ],
+        ),
+        SettingsSection(
+          header: 'Teclas',
+          footer: 'Ocultá las que no uses y el teclado gana espacio.',
+          children: [
+            SettingsSwitchRow(
+              key: const ValueKey('kb-terminal-row-switch'),
+              title: 'Fila de terminal',
+              value: _showTerminalRow,
+              onChanged: _toggleTerminalRow,
+            ),
+            SettingsSwitchRow(
+              key: const ValueKey('kb-code-key-switch'),
+              title: 'Tecla de código',
+              value: _showCodeKey,
+              onChanged: _toggleKeyboardCodeKey,
+            ),
+            SettingsSwitchRow(
+              key: const ValueKey('kb-language-key-switch'),
+              title: 'Tecla de idioma',
+              value: _showLanguageKey,
+              onChanged: _toggleKeyboardLanguageKey,
+            ),
+            SettingsSwitchRow(
+              key: const ValueKey('credenciales-key-visible-switch'),
+              title: 'Llave de claves',
+              value: _showCredentialsKey,
+              onChanged: _toggleKeyboardCredentialsKey,
+            ),
+          ],
+        ),
+        SettingsSection(
+          header: 'Escritura',
+          children: [
+            SettingsMenuRow<String>(
+              id: 'kb-spacebar-trackpad-mode-selector',
+              title: 'Mover el cursor',
+              value: _spacebarTrackpadMode,
+              options: const [
+                SettingsOption('ios_2d', 'Mantener', detail: 'en 2D'),
+                SettingsOption(
+                  'gboard_horizontal',
+                  'Deslizar',
+                  detail: 'lateral',
+                ),
+              ],
+              onSelected: _saveSpacebarTrackpadMode,
+            ),
+            SettingsMenuRow<String>(
+              id: 'kb-spacebar-alignment-selector',
+              title: 'Barra espaciadora',
+              value: _spacebarAlignment,
+              options: const [
+                SettingsOption('left', 'A la izquierda'),
+                SettingsOption('center', 'Centrada'),
+                SettingsOption('right', 'A la derecha'),
+              ],
+              onSelected: _saveSpacebarAlignment,
+            ),
+            SettingsSwitchRow(
+              key: const ValueKey('kb-invert-toolbar-switch'),
+              title: 'Micrófono a la izquierda',
+              value: _invertToolbar,
+              onChanged: _toggleInvertToolbar,
+            ),
+            SettingsSwitchRow(
+              key: const ValueKey('kb-long-press-symbols-switch'),
+              title: 'Símbolos al mantener',
+              value: _longPressSymbolsEnabled,
+              onChanged: _toggleLongPressSymbols,
+            ),
+            if (_longPressSymbolsEnabled)
+              SettingsMenuRow<String>(
+                id: 'kb-long-press-delay-selector',
+                title: 'Espera',
+                value: _longPressDelay,
+                options: const [
+                  SettingsOption('rapido', 'Corta', detail: '250 ms'),
+                  SettingsOption('normal', 'Normal', detail: '350 ms'),
+                  SettingsOption('relajado', 'Larga', detail: '450 ms'),
+                ],
+                onSelected: _saveLongPressDelay,
+              ),
+          ],
+        ),
+        SettingsSection(
+          iconInset: true,
+          children: [
+            SettingsNavRow(
+              key: const ValueKey('nav-sonido'),
+              icon: Icons.volume_up_rounded,
+              tile: kTilePink,
+              title: 'Vibración y sonido',
+              value: _hapticsEnabled ? 'Activados' : 'Sin vibración',
+              onTap: () => _go(SettingsPage.sonido),
+            ),
+          ],
+        ),
+        SettingsSection(
+          header: 'Portapapeles',
+          footer: 'Apagado guarda solo texto y ocupa menos memoria.',
+          children: [
+            SettingsSwitchRow(
+              key: const ValueKey('kb-clipboard-images-switch'),
+              title: 'Guardar imágenes',
+              badge: 'Beta',
+              value: _clipboardImagesEnabled,
+              onChanged: _toggleClipboardImages,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-/// Tab Teclado de Ajustes (rediseño v2): estado IME con píldora +
-/// apariencia y capas + barra espaciadora visual + avanzado expandible.
-/// Misma conducta, mismos textos y Keys que v1.
-class TecladoTab extends StatelessWidget {
-  final String keyboardStatusText;
-  final VoidCallback onLoadKeyboardStatus;
-  final bool showTerminalRow;
-  final ValueChanged<bool> onToggleTerminalRow;
-  final bool showCodeKey;
-  final ValueChanged<bool> onToggleCodeKey;
-  final bool showLanguageKey;
-  final ValueChanged<bool> onToggleLanguageKey;
-  final bool clipboardImagesEnabled;
-  final ValueChanged<bool> onToggleClipboardImages;
+  /// Activo: confirmación + "Cambiar de teclado". Sin activar: los dos
+  /// pasos (habilitar en Android y elegirlo).
+  Widget _keyboardStatusSection() {
+    if (_isKeyboardActive) {
+      return SettingsSection(
+        key: const ValueKey('kb-status-active'),
+        children: [
+          const SettingsStatusRow(
+            title: 'VoiceBubble está activo',
+            subtitle: 'Es tu teclado en todas las apps.',
+          ),
+          SettingsActionRow(
+            key: const ValueKey('kb-picker-button'),
+            title: 'Cambiar de teclado',
+            onTap: _showInputMethodPicker,
+          ),
+        ],
+      );
+    }
+    return SettingsSection(
+      key: const ValueKey('kb-status-setup'),
+      header: 'Activalo en dos pasos',
+      footer: 'Al volver de Android, el selector se abre solo.',
+      children: [
+        if (_isKeyboardEnabled)
+          const SettingsStatusRow(
+            title: 'Activado en Android',
+            subtitle: 'Falta elegirlo como teclado.',
+          )
+        else
+          SettingsActionRow(
+            key: const ValueKey('kb-open-settings-button'),
+            title: '1. Activar en Android',
+            onTap: _openKeyboardSettings,
+          ),
+        SettingsActionRow(
+          key: const ValueKey('kb-picker-button'),
+          title: '2. Elegir VoiceBubble',
+          onTap: _isKeyboardEnabled ? _showInputMethodPicker : null,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSonidoPage(BuildContext context) {
+    const tones = [
+      SettingsOption('1', 'Tono 1'),
+      SettingsOption('2', 'Tono 2'),
+      SettingsOption('3', 'Tono 3'),
+      SettingsOption('4', 'Tono 4'),
+    ];
+    return _subpage(
+      context,
+      title: 'Vibración y sonido',
+      sections: [
+        SettingsSection(
+          header: 'Al escribir',
+          children: [
+            SettingsSwitchRow(
+              key: const ValueKey('kb-haptics-switch'),
+              title: 'Vibrar al tocar',
+              value: _hapticsEnabled,
+              onChanged: _toggleHaptics,
+            ),
+            if (_hapticsEnabled)
+              SettingsMenuRow<String>(
+                id: 'kb-haptic-style-selector',
+                title: 'Intensidad',
+                value: _hapticStyle,
+                options: const [
+                  SettingsOption('nitido', 'Nítida', detail: 'clic seco'),
+                  SettingsOption('firme', 'Firme', detail: 'marcada'),
+                  SettingsOption('suave', 'Suave', detail: 'leve'),
+                ],
+                onSelected: _saveHapticStyle,
+              ),
+          ],
+        ),
+        SettingsSection(
+          header: 'Al dictar',
+          footer: 'Funciona aparte de la vibración de las teclas.',
+          children: [
+            SettingsSwitchRow(
+              key: const ValueKey('kb-mic-haptics-enabled'),
+              title: 'Vibración',
+              value: _micHapticsEnabled,
+              onChanged: _toggleMicHaptics,
+            ),
+            if (_micHapticsEnabled) ...[
+              SettingsSwitchRow(
+                key: const ValueKey('kb-mic-haptic-start'),
+                title: 'Al empezar',
+                value: _micHapticStart,
+                onChanged: _toggleMicHapticStart,
+              ),
+              SettingsSwitchRow(
+                key: const ValueKey('kb-mic-haptic-recording'),
+                title: 'Mientras graba',
+                value: _micHapticRecording,
+                onChanged: _toggleMicHapticRecording,
+              ),
+              SettingsSwitchRow(
+                key: const ValueKey('kb-mic-haptic-paste'),
+                title: 'Al pegar',
+                value: _micHapticPaste,
+                onChanged: _toggleMicHapticPaste,
+              ),
+              SettingsSwitchRow(
+                key: const ValueKey('kb-mic-haptic-cancel'),
+                title: 'Al cancelar',
+                value: _micHapticCancel,
+                onChanged: _toggleMicHapticCancel,
+              ),
+            ],
+          ],
+        ),
+        SettingsSection(
+          header: 'Sonidos del micrófono',
+          children: [
+            SettingsSwitchRow(
+              key: const ValueKey('kb-mic-sounds-enabled'),
+              title: 'Sonidos',
+              value: _micSoundsEnabled,
+              onChanged: _toggleMicSounds,
+            ),
+            if (_micSoundsEnabled) ...[
+              SettingsMenuRow<String>(
+                id: 'kb-mic-start-style',
+                title: 'Al empezar',
+                value: _micStartStyle,
+                options: tones,
+                onSelected: _saveMicStartStyle,
+              ),
+              SettingsMenuRow<String>(
+                id: 'kb-mic-stop-style',
+                title: 'Al terminar',
+                value: _micStopStyle,
+                options: tones,
+                onSelected: _saveMicStopStyle,
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Vista previa del teclado con los ajustes actuales. Decorativa para
+/// lectores de pantalla (los valores ya se anuncian en cada fila).
+class KeyboardPreview extends StatelessWidget {
   final String heightProfile;
-  final ValueChanged<String> onSaveHeightProfile;
-  final String heightProfileHint;
   final String keySpacing;
-  final ValueChanged<String> onSaveKeySpacing;
-  final String keySpacingHint;
-  final bool invertToolbar;
-  final ValueChanged<bool> onToggleInvertToolbar;
-  final String spacebarAlignment;
-  final ValueChanged<String> onSaveSpacebarAlignment;
-  final String spacebarTrackpadMode;
-  final ValueChanged<String> onSaveSpacebarTrackpadMode;
-  final bool longPressSymbolsEnabled;
-  final ValueChanged<bool> onToggleLongPressSymbols;
-  final String longPressDelay;
-  final ValueChanged<String> onSaveLongPressDelay;
-  final String longPressDelayHint;
   final int bottomElevationDp;
-  final ValueChanged<int> onSaveBottomElevation;
-  final bool hapticsEnabled;
-  final ValueChanged<bool> onToggleHaptics;
-  final String hapticStyle;
-  final ValueChanged<String> onSaveHapticStyle;
-  final String hapticStyleHint;
-  final bool micHapticsEnabled;
-  final ValueChanged<bool> onToggleMicHaptics;
-  final bool micHapticStart;
-  final ValueChanged<bool> onToggleMicHapticStart;
-  final bool micHapticRecording;
-  final ValueChanged<bool> onToggleMicHapticRecording;
-  final bool micHapticPaste;
-  final ValueChanged<bool> onToggleMicHapticPaste;
-  final bool micHapticCancel;
-  final ValueChanged<bool> onToggleMicHapticCancel;
-  final bool micSoundsEnabled;
-  final ValueChanged<bool> onToggleMicSounds;
-  final String micStartStyle;
-  final ValueChanged<String> onSaveMicStartStyle;
-  final String micStopStyle;
-  final ValueChanged<String> onSaveMicStopStyle;
-  final bool isKeyboardEnabled;
-  final bool isKeyboardSelected;
-  final VoidCallback onOpenKeyboardSettings;
-  final VoidCallback onShowInputMethodPicker;
-  final ValueChanged<int> onSelectTab;
+  final bool showTerminalRow;
+  final bool showCodeKey;
+  final bool showLanguageKey;
+  final bool showCredentialsKey;
+  final bool showTrackpadKey;
+  final bool invertToolbar;
+  final String spacebarAlignment;
 
-  const TecladoTab({
+  const KeyboardPreview({
     super.key,
-    required this.keyboardStatusText,
-    required this.onLoadKeyboardStatus,
-    required this.showTerminalRow,
-    required this.onToggleTerminalRow,
-    required this.showCodeKey,
-    required this.onToggleCodeKey,
-    required this.showLanguageKey,
-    required this.onToggleLanguageKey,
-    required this.clipboardImagesEnabled,
-    required this.onToggleClipboardImages,
     required this.heightProfile,
-    required this.onSaveHeightProfile,
-    required this.heightProfileHint,
     required this.keySpacing,
-    required this.onSaveKeySpacing,
-    required this.keySpacingHint,
-    required this.invertToolbar,
-    required this.onToggleInvertToolbar,
-    required this.spacebarAlignment,
-    required this.onSaveSpacebarAlignment,
-    required this.spacebarTrackpadMode,
-    required this.onSaveSpacebarTrackpadMode,
-    required this.longPressSymbolsEnabled,
-    required this.onToggleLongPressSymbols,
-    required this.longPressDelay,
-    required this.onSaveLongPressDelay,
-    required this.longPressDelayHint,
     required this.bottomElevationDp,
-    required this.onSaveBottomElevation,
-    required this.hapticsEnabled,
-    required this.onToggleHaptics,
-    required this.hapticStyle,
-    required this.onSaveHapticStyle,
-    required this.hapticStyleHint,
-    required this.micHapticsEnabled,
-    required this.onToggleMicHaptics,
-    required this.micHapticStart,
-    required this.onToggleMicHapticStart,
-    required this.micHapticRecording,
-    required this.onToggleMicHapticRecording,
-    required this.micHapticPaste,
-    required this.onToggleMicHapticPaste,
-    required this.micHapticCancel,
-    required this.onToggleMicHapticCancel,
-    required this.micSoundsEnabled,
-    required this.onToggleMicSounds,
-    required this.micStartStyle,
-    required this.onSaveMicStartStyle,
-    required this.micStopStyle,
-    required this.onSaveMicStopStyle,
-    required this.isKeyboardEnabled,
-    required this.isKeyboardSelected,
-    required this.onOpenKeyboardSettings,
-    required this.onShowInputMethodPicker,
-    required this.onSelectTab,
+    required this.showTerminalRow,
+    required this.showCodeKey,
+    required this.showLanguageKey,
+    required this.showCredentialsKey,
+    required this.showTrackpadKey,
+    required this.invertToolbar,
+    required this.spacebarAlignment,
   });
+
+  static const _keyHeights = {
+    'baja': 26.0,
+    'media': 31.0,
+    'alta': 36.0,
+    'muy_alta': 41.0,
+  };
+  static const _rowGaps = {
+    'compacto': 3.0,
+    'normal': 5.0,
+    'amplio': 7.0,
+    'extra': 10.0,
+  };
+  static const _keyGaps = {
+    'compacto': 3.0,
+    'normal': 5.0,
+    'amplio': 6.0,
+    'extra': 8.0,
+  };
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final variantColor = theme.colorScheme.onSurfaceVariant;
-    final isDark = theme.brightness == Brightness.dark;
-    final successColor = isDark ? kSuccessDark : kSuccessLight;
-    return ListView(
-      key: const PageStorageKey<String>('teclado_tab_scroll'),
-      padding: EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        96 + MediaQuery.paddingOf(context).bottom,
-      ),
-      children: [
-        const SettingsPageTitle('Teclado'),
-        SettingsCard(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final keyColor = isDark ? kKbPreviewKeyDark : kKbPreviewKeyLight;
+    final altColor = isDark ? kKbPreviewKeyAltDark : kKbPreviewKeyAltLight;
+    final fg = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
+    final accent = isDark ? kAccentDark : kAccentLight;
+    final keyH = _keyHeights[heightProfile] ?? 31.0;
+    final rowGap = _rowGaps[keySpacing] ?? 5.0;
+    final keyGap = _keyGaps[keySpacing] ?? 5.0;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final duration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
+
+    _PreviewKey letter(String c) => _PreviewKey(c, 10, keyColor, fg, 15);
+    _PreviewKey alt(String c, {int flex = 14, double fontSize = 15}) =>
+        _PreviewKey(c, flex, altColor, fg, fontSize, bold: true);
+
+    final rows = <List<_PreviewKey>>[
+      if (showTerminalRow)
+        [
+          for (final c in const ['esc', 'tab', 'ctrl', 'alt'])
+            alt(c, flex: 10, fontSize: 11),
+          for (final i in const [
+            Icons.arrow_back_rounded,
+            Icons.arrow_upward_rounded,
+            Icons.arrow_downward_rounded,
+            Icons.arrow_forward_rounded,
+          ])
+            _PreviewKey('', 10, altColor, fg, 18, icon: i),
+        ],
+      [for (final c in 'qwertyuiop'.split('')) letter(c)],
+      [for (final c in 'asdfghjklñ'.split('')) letter(c)],
+      [
+        _PreviewKey('', 14, altColor, fg, 18, icon: Icons.arrow_upward_rounded),
+        for (final c in 'zxcvbnm'.split('')) letter(c),
+        _PreviewKey('', 14, altColor, fg, 18, icon: Icons.backspace_outlined),
+      ],
+    ];
+    final mods = <_PreviewKey>[
+      alt('123', fontSize: 12),
+      if (showCodeKey) alt('</>', flex: 11, fontSize: 11),
+      if (showLanguageKey) alt('ES', flex: 11, fontSize: 11),
+    ];
+    final space = _PreviewKey('espacio', 50, keyColor, fg, 12);
+    final enter = _PreviewKey(
+      '',
+      16,
+      accent,
+      kLabelPrimaryDark,
+      18,
+      icon: Icons.keyboard_return_rounded,
+    );
+    rows.add(switch (spacebarAlignment) {
+      'left' => [space, ...mods, enter],
+      'right' => [...mods, enter, space],
+      _ => [...mods, space, enter],
+    });
+
+    final tools = <Widget>[
+      _tool(Icons.short_text_rounded, fg),
+      if (showCredentialsKey) _tool(Icons.key_rounded, fg),
+      if (showTrackpadKey) _tool(Icons.touch_app_rounded, fg),
+    ];
+    final mic = Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+      child: const Icon(Icons.mic_rounded, size: 18, color: kLabelPrimaryDark),
+    );
+    final clip = _tool(Icons.content_paste_rounded, fg);
+    final toolbar = invertToolbar
+        ? [mic, ...tools, clip]
+        : [clip, ...tools, mic];
+
+    return ExcludeSemantics(
+      child: AnimatedContainer(
+        duration: duration,
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.fromLTRB(5, 8, 5, 8 + bottomElevationDp / 2),
+        decoration: BoxDecoration(
+          color: isDark ? kKbPreviewSurfaceDark : kKbPreviewSurfaceLight,
+          borderRadius: BorderRadius.circular(kSettingsGroupRadius),
+        ),
+        child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-              child: Row(
-                children: [
-                  const SettingIconTile(
-                    icon: Icons.keyboard,
-                    background: kTileBlue,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Estado del Teclado',
-                      style: kSettingRowTitle.copyWith(
-                        color: isDark
-                            ? kLabelPrimaryDark
-                            : kLabelPrimaryLight,
-                      ),
-                    ),
-                  ),
-                  StatusPill(
-                    dotColor: isKeyboardEnabled && isKeyboardSelected
-                        ? successColor
-                        : (isKeyboardEnabled ? kWarning : kTileRed),
-                    label: keyboardStatusText,
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: onLoadKeyboardStatus,
-                    tooltip: 'Actualizar',
-                  ),
-                ],
+            SizedBox(
+              height: 34,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: toolbar,
+                ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            for (final row in rows) ...[
+              SizedBox(height: rowGap),
+              Row(
                 children: [
-                  Text(
-                    'Usa VoiceBubble como teclado del sistema en cualquier app.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: variantColor),
-                  ),
-                  const SizedBox(height: 12),
-                  if (!isKeyboardEnabled) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.settings),
-                        label: const Text('Abrir ajustes del sistema'),
-                        onPressed: onOpenKeyboardSettings,
+                  for (var i = 0; i < row.length; i++) ...[
+                    if (i > 0) SizedBox(width: keyGap),
+                    Expanded(
+                      flex: row[i].flex,
+                      child: AnimatedContainer(
+                        duration: duration,
+                        curve: Curves.easeOutCubic,
+                        height: keyH,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: row[i].color,
+                          borderRadius: BorderRadius.circular(6),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isDark
+                                  ? const Color(0x80000000)
+                                  : const Color(0x47000000),
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: row[i].icon != null
+                            ? Icon(
+                                row[i].icon,
+                                size: row[i].fontSize,
+                                color: row[i].foreground,
+                              )
+                            : FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  row[i].label,
+                                  style: kTextCaption.copyWith(
+                                    fontSize: row[i].fontSize,
+                                    fontWeight: row[i].bold
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                    color: row[i].foreground,
+                                  ),
+                                ),
+                              ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Paso 1: Activa "VoiceBubble STT" en Administrar teclados de Android. Al volver, la app te permitirá seleccionarlo inmediatamente sin salir.',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: variantColor),
-                    ),
-                  ] else if (!isKeyboardSelected) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.touch_app),
-                        label: const Text(
-                            'Seleccionar VoiceBubble como teclado'),
-                        onPressed: onShowInputMethodPicker,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Paso 2: Toca para abrir el selector modal y activar VoiceBubble STT directamente sin salir de la app.',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: variantColor),
-                    ),
-                    const SizedBox(height: 4),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.settings),
-                      label: const Text('Abrir ajustes del sistema'),
-                      onPressed: onOpenKeyboardSettings,
-                    ),
-                  ] else ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.tonalIcon(
-                        icon: Icon(Icons.check_circle, color: successColor),
-                        label: const Text('Teclado activo (toca para cambiar)'),
-                        onPressed: onShowInputMethodPicker,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'VoiceBubble está activo. Toca el botón para alternar rápidamente entre teclados sin salir de la app.',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: variantColor),
-                    ),
-                    const SizedBox(height: 4),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.settings),
-                      label: const Text('Abrir ajustes del sistema'),
-                      onPressed: onOpenKeyboardSettings,
                     ),
                   ],
                 ],
               ),
-            ),
+            ],
           ],
         ),
-        const SettingsGroupTitle('Apariencia y Capas'),
-        SettingsCard(
-          children: [
-            _PaddedBlock(
-              label: 'Altura del teclado',
-              hint: heightProfileHint,
-              child: SegmentedButton<String>(
-                key: const ValueKey('kb-height-profile-selector'),
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: 'baja', label: Text('Baja')),
-                  ButtonSegment(value: 'media', label: Text('Media')),
-                  ButtonSegment(value: 'alta', label: Text('Alta')),
-                  ButtonSegment(value: 'muy_alta', label: Text('Muy alta')),
-                ],
-                selected: {heightProfile},
-                onSelectionChanged: (profiles) =>
-                    onSaveHeightProfile(profiles.first),
-              ),
-            ),
-            _PaddedBlock(
-              label: 'Espaciado de teclas',
-              hint: keySpacingHint,
-              child: SegmentedButton<String>(
-                key: const ValueKey('kb-key-spacing-selector'),
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: 'compacto', label: Text('Compacto')),
-                  ButtonSegment(value: 'normal', label: Text('Normal')),
-                  ButtonSegment(value: 'amplio', label: Text('Amplio')),
-                  ButtonSegment(value: 'extra', label: Text('Extra')),
-                ],
-                selected: {keySpacing},
-                onSelectionChanged: (spacings) =>
-                    onSaveKeySpacing(spacings.first),
-              ),
-            ),
-            SwitchListTile(
-              key: const ValueKey('kb-terminal-row-switch'),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              title: const Text('Fila terminal'),
-              subtitle: Text(
-                'TAB, ESC, CTRL, ALT y flechas sobre las letras. '
-                'Desactívala si usás Termux, que ya trae teclas propias.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: showTerminalRow,
-              onChanged: onToggleTerminalRow,
-            ),
-            SwitchListTile(
-              key: const ValueKey('kb-code-key-switch'),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              title: const Text('Tecla de capa código'),
-              subtitle: Text(
-                'La tecla </> abre los símbolos de programación. '
-                'Desactívala para liberar espacio en la barra inferior.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: showCodeKey,
-              onChanged: onToggleCodeKey,
-            ),
-            SwitchListTile(
-              key: const ValueKey('kb-language-key-switch'),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              title: const Text('Tecla de idioma'),
-              subtitle: Text(
-                'El botón ES/EN junto a la barra espaciadora. '
-                'Desactívala si dictás en un solo idioma.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: showLanguageKey,
-              onChanged: onToggleLanguageKey,
-            ),
-            SwitchListTile(
-              key: const ValueKey('kb-clipboard-images-switch'),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              title: const Text('Imágenes en portapapeles'),
-              subtitle: Text(
-                'Experimental (texto primero): guarda imágenes del portapapeles. '
-                'Apagado por defecto para cuidar RAM y disco.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: clipboardImagesEnabled,
-              onChanged: onToggleClipboardImages,
-            ),
-            SwitchListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              title: const Text('Invertir disposición (Zurdo/Diestro)'),
-              subtitle: Text(
-                'El micrófono pasa a la izquierda y el portapapeles a la derecha.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: invertToolbar,
-              onChanged: onToggleInvertToolbar,
-            ),
-          ],
-        ),
-        const SettingsGroupTitle('Barra Espaciadora'),
-        SettingsCard(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: _SpacebarVisualCards(
-                current: spacebarAlignment,
-                onSelect: onSaveSpacebarAlignment,
-              ),
-            ),
-            _PaddedBlock(
-              label: 'Gesto de control',
-              tooltip: true,
-              hint: spacebarTrackpadMode == 'ios_2d'
-                  ? 'Mantener presionado >300ms activa navegación 2D libre con borrado de teclas estilo iOS.'
-                  : 'Deslizar sobre la barra mueve el cursor lateralmente estilo Gboard.',
-              child: SegmentedButton<String>(
-                key: const ValueKey('kb-spacebar-trackpad-mode-selector'),
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(
-                      value: 'ios_2d', label: Text('iOS 2D (Mantener)')),
-                  ButtonSegment(
-                      value: 'gboard_horizontal',
-                      label: Text('Gboard (Deslizar)')),
-                ],
-                selected: {spacebarTrackpadMode},
-                onSelectionChanged: (s) =>
-                    onSaveSpacebarTrackpadMode(s.first),
-              ),
-            ),
-          ],
-        ),
-        const SettingsGroupTitle('Pulsación larga'),
-        SettingsCard(
-          children: [
-            SwitchListTile(
-              key: const ValueKey('kb-long-press-symbols-switch'),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              title: const Text('Menús de pulsación larga'),
-              subtitle: Text(
-                'Mantén . , y letras para ; : ! ? ñ y tildes sin cambiar de capa.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: longPressSymbolsEnabled,
-              onChanged: onToggleLongPressSymbols,
-            ),
-            _PaddedBlock(
-              label: 'Retardo de pulsación larga',
-              hint: longPressDelayHint,
-              child: SegmentedButton<String>(
-                key: const ValueKey('kb-long-press-delay-selector'),
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: 'rapido', label: Text('Rápido')),
-                  ButtonSegment(value: 'normal', label: Text('Normal')),
-                  ButtonSegment(value: 'relajado', label: Text('Relajado')),
-                ],
-                selected: {longPressDelay},
-                onSelectionChanged: (d) => onSaveLongPressDelay(d.first),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        ExpandableSettingsCard(
-          icon: Icons.tune_rounded,
-          iconColor: kTileGray,
-          title: 'Opciones Avanzadas',          children: [
-            _PaddedBlock(
-              label: 'Elevación inferior',
-              hint:
-                  'Despega el teclado del borde inferior de la pantalla. Ideal para dispositivos con barra de gestos o biseles delgados.',
-              child: SegmentedButton<int>(
-                key: const ValueKey('kb-bottom-elevation-selector'),
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('0')),
-                  ButtonSegment(value: 12, label: Text('12')),
-                  ButtonSegment(value: 24, label: Text('24')),
-                  ButtonSegment(value: 36, label: Text('36')),
-                  ButtonSegment(value: 48, label: Text('48')),
-                ],
-                selected: {bottomElevationDp},
-                onSelectionChanged: (dps) =>
-                    onSaveBottomElevation(dps.first),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _HapticCompositeRow(
-              hapticsEnabled: hapticsEnabled,
-              onToggleHaptics: onToggleHaptics,
-              hapticStyle: hapticStyle,
-              onSaveHapticStyle: onSaveHapticStyle,
-              hapticStyleHint: hapticStyleHint,
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        ExpandableSettingsCard(
-          icon: Icons.mic_rounded,
-          iconColor: kTileRed,
-          title: 'Micrófono: vibración y sonido',
-          initiallyOpen: false,
-          children: [
-            SwitchListTile(
-              key: const ValueKey('kb-mic-haptics-enabled'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Vibración del micrófono'),
-              subtitle: Text(
-                'Feedback al dictar, independiente de la vibración de teclas. '
-                'Puedes apagar las teclas y conservar este.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: micHapticsEnabled,
-              onChanged: onToggleMicHaptics,
-            ),
-            SwitchListTile(
-              key: const ValueKey('kb-mic-haptic-start'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Vibrar al iniciar'),
-              subtitle: Text(
-                'Toque corto al empezar a grabar, como el resto de teclas.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: micHapticStart,
-              onChanged: onToggleMicHapticStart,
-            ),
-            SwitchListTile(
-              key: const ValueKey('kb-mic-haptic-recording'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Vibrar grabando'),
-              subtitle: Text(
-                'Pulso suave cada 3 segundos mientras graba.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: micHapticRecording,
-              onChanged: onToggleMicHapticRecording,
-            ),
-            SwitchListTile(
-              key: const ValueKey('kb-mic-haptic-paste'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Vibrar al pegar'),
-              subtitle: Text(
-                'Confirma cuando el dictado entra al campo de texto.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: micHapticPaste,
-              onChanged: onToggleMicHapticPaste,
-            ),
-            SwitchListTile(
-              key: const ValueKey('kb-mic-haptic-cancel'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Vibrar al cancelar'),
-              subtitle: Text(
-                'Aviso al descartar con la ✕ o el toque largo.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: micHapticCancel,
-              onChanged: onToggleMicHapticCancel,
-            ),
-            const SizedBox(height: 8),
-            SwitchListTile(
-              key: const ValueKey('kb-mic-sounds-enabled'),
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Sonidos del micrófono'),
-              subtitle: Text(
-                'Respuestas sonoras al iniciar, terminar, pegar y cancelar. '
-                'Apagado por defecto.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: micSoundsEnabled,
-              onChanged: onToggleMicSounds,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Sonido al iniciar',
-              style: kSettingRowTitle.copyWith(
-                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              key: const ValueKey('kb-mic-start-style'),
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: '1', label: Text('Opción 1')),
-                ButtonSegment(value: '2', label: Text('Opción 2')),
-                ButtonSegment(value: '3', label: Text('Opción 3')),
-                ButtonSegment(value: '4', label: Text('Opción 4')),
-              ],
-              selected: {micStartStyle},
-              onSelectionChanged: (s) => onSaveMicStartStyle(s.first),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Sonido al terminar',
-              style: kSettingRowTitle.copyWith(
-                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              key: const ValueKey('kb-mic-stop-style'),
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: '1', label: Text('Opción 1')),
-                ButtonSegment(value: '2', label: Text('Opción 2')),
-                ButtonSegment(value: '3', label: Text('Opción 3')),
-                ButtonSegment(value: '4', label: Text('Opción 4')),
-              ],
-              selected: {micStopStyle},
-              onSelectionChanged: (s) => onSaveMicStopStyle(s.first),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        SettingsCard(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '¿Buscas el trackpad?',
-                    style: theme.textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Ahora tiene su propia sección con puntero virtual y sensibilidad.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: variantColor),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton(
-                    key: const ValueKey('teclado-go-trackpad'),
-                    onPressed: () => onSelectTab(2),
-                    child: const Text('Abrirlo en su propia sección →'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
   }
+
+  Widget _tool(IconData icon, Color color) => SizedBox(
+    width: 32,
+    height: 32,
+    child: Icon(icon, size: 18, color: color),
+  );
 }
 
-/// Bloque etiquetado dentro de tarjeta (segmented + hint).
-class _PaddedBlock extends StatelessWidget {
+class _PreviewKey {
   final String label;
-  final bool tooltip;
-  final Widget child;
-  final String? hint;
+  final int flex;
+  final Color color;
+  final Color foreground;
+  final double fontSize;
+  final bool bold;
+  final IconData? icon;
 
-  const _PaddedBlock({
-    required this.label,
-    required this.child,
-    this.tooltip = false,
-    this.hint,
+  const _PreviewKey(
+    this.label,
+    this.flex,
+    this.color,
+    this.foreground,
+    this.fontSize, {
+    this.bold = false,
+    this.icon,
   });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: kSettingRowTitle.copyWith(
-                  color:
-                      isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-                ),
-              ),
-              if (tooltip) ...[
-                const SizedBox(width: 6),
-                Tooltip(
-                  message:
-                      'Mantén para 2D libre estilo iOS o desliza estilo Gboard.',
-                  child: Icon(
-                    Icons.help_rounded,
-                    size: 18,
-                    color: isDark
-                        ? kLabelTertiaryDark
-                        : kLabelTertiaryLight,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          child,
-          if (hint != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              hint!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Fila compuesta de háptica (lab v2): switch + segmented en una fila.
-class _HapticCompositeRow extends StatelessWidget {
-  final bool hapticsEnabled;
-  final ValueChanged<bool> onToggleHaptics;
-  final String hapticStyle;
-  final ValueChanged<String> onSaveHapticStyle;
-  final String hapticStyleHint;
-
-  const _HapticCompositeRow({
-    required this.hapticsEnabled,
-    required this.onToggleHaptics,
-    required this.hapticStyle,
-    required this.onSaveHapticStyle,
-    required this.hapticStyleHint,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SwitchListTile(
-          key: const ValueKey('kb-haptics-switch'),
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Vibración'),
-          subtitle: Text(
-            'Feedback háptico al tocar cada tecla.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          value: hapticsEnabled,
-          onChanged: onToggleHaptics,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Estilo háptico',
-          style: kSettingRowTitle.copyWith(
-            color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-          ),
-        ),
-        SegmentedButton<String>(
-          key: const ValueKey('kb-haptic-style-selector'),
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(value: 'nitido', label: Text('Nítido')),
-            ButtonSegment(value: 'firme', label: Text('Firme')),
-            ButtonSegment(value: 'suave', label: Text('Suave')),
-          ],
-          selected: {hapticStyle},
-          onSelectionChanged: (styles) =>
-              onSaveHapticStyle(styles.first),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          hapticStyleHint,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Selector visual de posición de espaciadora (lab v2): mini tarjetas con
-/// la barra dibujada a la izquierda, centro o derecha.
-class _SpacebarVisualCards extends StatelessWidget {
-  final String current;
-  final ValueChanged<String> onSelect;
-
-  const _SpacebarVisualCards({
-    required this.current,
-    required this.onSelect,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Expanded(child: _card(context, scheme, 'left', 'Zurdo')),
-        const SizedBox(width: 12),
-        Expanded(child: _card(context, scheme, 'center', 'Centro')),
-        const SizedBox(width: 12),
-        Expanded(child: _card(context, scheme, 'right', 'Diestro')),
-      ],
-    );
-  }
-
-  Widget _card(
-      BuildContext context, ColorScheme scheme, String id, String label) {
-    final isSelected = current == id;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Semantics(
-      button: true,
-      selected: isSelected,
-      label: 'Alineación $label',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(kBorderRadiusSmall),
-          onTap: () => onSelect(id),
-          child: Column(
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 50,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? scheme.primary.withValues(alpha: 0.12)
-                  : (isDark ? kBgSecondaryDark : kBgSecondaryLight),
-              border: Border.all(
-                color: isSelected ? scheme.primary : scheme.outlineVariant,
-                width: isSelected ? 2 : 1,
-              ),
-              borderRadius: BorderRadius.circular(kBorderRadiusSmall),
-            ),
-            child: id == 'center'
-                ? Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Container(
-                        width: 50,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: scheme.onSurface.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ),
-                  )
-                : Stack(
-                    children: [
-                      Positioned(
-                        bottom: 6,
-                        left: id == 'left' ? 8 : null,
-                        right: id == 'right' ? 8 : null,
-                        child: Container(
-                          width: 30,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color:
-                                scheme.onSurface.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  fontWeight:
-                      isSelected ? FontWeight.bold : FontWeight.normal,
-                  color:
-                      isSelected ? scheme.primary : scheme.onSurface,
-                ),
-          ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

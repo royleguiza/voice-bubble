@@ -1,196 +1,120 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
-import 'package:voice_bubble_stt/services/keyboard_service.dart';
-import 'package:voice_bubble_stt/services/storage_service.dart';
 
-import '../helpers/test_app.dart';
+import '../helpers/settings_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  const channel = MethodChannel(FloatingBubbleService.channelName);
-  const keyboardChannel = MethodChannel(KeyboardService.channelName);
+  final h = SettingsHarness();
 
-  late StorageService storageService;
+  setUp(() => h.setUp());
+  tearDown(h.tearDown);
 
-  setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
-    SharedPreferences.setMockInitialValues({});
-    storageService = StorageService();
-
-    messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
-      return false;
-    });
-    messenger.setMockMethodCallHandler(keyboardChannel, (MethodCall call) async {
-      return false;
-    });
-  });
-
-  tearDown(() {
-    messenger.setMockMethodCallHandler(channel, null);
-    messenger.setMockMethodCallHandler(keyboardChannel, null);
-  });
-
-  Widget buildTestableWidget(WidgetTester tester) {
-    return buildTestableSettingsScreen(
-      tester,
-      storageService: storageService,
-      keyboardService: KeyboardService(channel: keyboardChannel),
-      physicalSize: const Size(1600, 6400),
-    );
+  Future<void> openTrackpad(WidgetTester tester, {bool enabled = true}) async {
+    h.setUp(prefs: {'kb_trackpad_enabled': enabled});
+    await h.pump(tester);
+    await openPage(tester, 'trackpad');
   }
 
-  /// El tab arranca con el trackpad OFF (default): los detalles solo se
-  /// renderizan tras activar el switch (el tab los oculta con `if`).
-  Future<void> openTrackpadTabAndEnable(WidgetTester tester) async {
-    await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('kb-trackpad-enabled-switch')));
-    await tester.pumpAndSettle();
-  }
+  group('Trackpad', () {
+    testWidgets('apagado solo muestra los interruptores', (tester) async {
+      await openTrackpad(tester, enabled: false);
 
-  group('SettingsScreen - Trackpad y Puntero Virtual', () {
-    testWidgets('muestra la sección Modo Trackpad en la pestaña Trackpad (v1)',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Trackpad'), findsWidgets);
-      expect(find.text('Modo Trackpad y Puntero Virtual'), findsOneWidget);
-      expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
-      expect(find.text('Activar modo trackpad'), findsOneWidget);
+      expect(switchValue(tester, 'kb-trackpad-enabled-switch'), isFalse);
+      expect(byKey('kb-trackpad-toolbar-switch'), findsOneWidget);
+      expect(byKey('kb-trackpad-sensitivity-slider'), findsNothing);
+      expect(byKey('kb-trackpad-scroll-position-selector'), findsNothing);
     });
 
-    testWidgets('con trackpad OFF los detalles quedan ocultos por defecto',
+    testWidgets('encender persiste y muestra las opciones', (tester) async {
+      await openTrackpad(tester, enabled: false);
+
+      await tapKey(tester, 'kb-trackpad-enabled-switch');
+
+      expect(await h.storage.getTrackpadEnabled(), isTrue);
+      expect(byKey('kb-trackpad-sensitivity-slider'), findsOneWidget);
+      expect(byKey('kb-trackpad-pointer-style-selector'), findsOneWidget);
+    });
+
+    testWidgets('acceso en la barra persiste', (tester) async {
+      await openTrackpad(tester);
+      await tapKey(tester, 'kb-trackpad-toolbar-switch');
+      expect(await h.storage.getTrackpadToolbarVisible(), isTrue);
+    });
+
+    testWidgets('barra de scroll persiste (izquierda y oculta)',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openTrackpad(tester);
 
-      await tester.tap(find.byKey(const ValueKey('tab-trackpad')));
-      await tester.pumpAndSettle();
+      await pickOption(tester, 'kb-trackpad-scroll-position-selector', 'left');
+      expect((await prefs()).getString('kb_trackpad_scroll_position'), 'left');
 
-      expect(find.byKey(const ValueKey('kb-trackpad-enabled-switch')),
-          findsOneWidget);
+      await pickOption(
+          tester, 'kb-trackpad-scroll-position-selector', 'disabled');
       expect(
-          find.byKey(const ValueKey('kb-trackpad-scroll-position-selector')),
-          findsNothing);
-      expect(await StorageService().getTrackpadEnabled(), isFalse);
+          (await prefs()).getString('kb_trackpad_scroll_position'), 'disabled');
+      expect(rowShows('kb-trackpad-scroll-position-selector', 'Oculta'),
+          isTrue);
     });
 
-    testWidgets('cambiar selector de posición de scroll persiste en SharedPreferences',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+    testWidgets('forma del puntero persiste', (tester) async {
+      await openTrackpad(tester);
 
-      await openTrackpadTabAndEnable(tester);
+      await pickOption(tester, 'kb-trackpad-pointer-style-selector', 'dot');
+      expect((await prefs()).getString('kb_trackpad_pointer_style'), 'dot');
 
-      final scrollSelector = find.byKey(const ValueKey('kb-trackpad-scroll-position-selector'));
-      expect(scrollSelector, findsOneWidget);
-
-      // Tocar opción Izquierda
-      await tester.tap(find.text('Izquierda'));
-      await tester.pumpAndSettle();
-
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_trackpad_scroll_position'), 'left');
-
-      // Tocar opción Desactivada
-      await tester.tap(find.text('Desactivada'));
-      await tester.pumpAndSettle();
-
-      expect(prefs.getString('kb_trackpad_scroll_position'), 'disabled');
+      await pickOption(tester, 'kb-trackpad-pointer-style-selector', 'cross');
+      expect((await prefs()).getString('kb_trackpad_pointer_style'), 'cross');
     });
 
-    testWidgets('cambiar selector de estilo de puntero persiste en SharedPreferences',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+    testWidgets('distribución de botones persiste', (tester) async {
+      await openTrackpad(tester);
 
-      await openTrackpadTabAndEnable(tester);
+      await pickOption(tester, 'kb-trackpad-button-layout-selector', 'wings');
+      expect((await prefs()).getString('kb_trackpad_button_layout'), 'wings');
 
-      final pointerSelector = find.byKey(const ValueKey('kb-trackpad-pointer-style-selector'));
-      expect(pointerSelector, findsOneWidget);
-
-      await tester.tap(find.text('Punto'));
-      await tester.pumpAndSettle();
-
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_trackpad_pointer_style'), 'dot');
-
-      await tester.tap(find.text('Cruz'));
-      await tester.pumpAndSettle();
-
-      expect(prefs.getString('kb_trackpad_pointer_style'), 'cross');
+      await pickOption(tester, 'kb-trackpad-button-layout-selector', 'top');
+      expect((await prefs()).getString('kb_trackpad_button_layout'), 'top');
     });
 
-    testWidgets('cambiar selector de distribución de botones persiste en SharedPreferences',
+    testWidgets('aceleración, clic secundario, dirección y vibración persisten',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openTrackpad(tester);
 
-      await openTrackpadTabAndEnable(tester);
+      await pickOption(tester, 'kb-trackpad-accel-curve-selector', 'precision');
+      await pickOption(
+          tester, 'kb-trackpad-secondary-click-selector', 'button');
+      await pickOption(
+          tester, 'kb-trackpad-scroll-direction-selector', 'standard');
+      await pickOption(tester, 'kb-trackpad-haptic-selector', 'none');
 
-      final layoutSelector = find.byKey(const ValueKey('kb-trackpad-button-layout-selector'));
-      expect(layoutSelector, findsOneWidget);
-
-      await tester.tap(find.text('Laterales (Alas)'));
-      await tester.pumpAndSettle();
-
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_trackpad_button_layout'), 'wings');
-
-      await tester.tap(find.text('Superiores 50/50'));
-      await tester.pumpAndSettle();
-
-      expect(prefs.getString('kb_trackpad_button_layout'), 'top');
+      expect(await h.storage.getTrackpadAccelCurve(), 'precision');
+      expect(await h.storage.getTrackpadSecondaryClick(), 'button');
+      expect(await h.storage.getTrackpadScrollDirection(), 'standard');
+      expect(await h.storage.getTrackpadHaptic(), 'none');
     });
 
-    testWidgets('cambiar selector de gesto en barra espaciadora persiste en SharedPreferences',
+    testWidgets('tocar para hacer clic y volver al teclado persisten',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openTrackpad(tester);
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
+      await tapKey(tester, 'kb-trackpad-tap-to-click-switch');
+      await pickOption(tester, 'kb-trackpad-auto-return-selector', 15);
 
-      final spacebarSelector = find.byKey(const ValueKey('kb-spacebar-trackpad-mode-selector'));
-      expect(spacebarSelector, findsOneWidget);
-
-      await tester.tap(find.text('Gboard (Deslizar)'));
-      await tester.pumpAndSettle();
-
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_spacebar_trackpad_mode'), 'gboard_horizontal');
-
-      await tester.tap(find.text('iOS 2D (Mantener)'));
-      await tester.pumpAndSettle();
-
-      expect(prefs.getString('kb_spacebar_trackpad_mode'), 'ios_2d');
+      expect(await h.storage.getTrackpadTapToClick(), isFalse);
+      expect(await h.storage.getTrackpadAutoReturn(), 15);
     });
 
-    testWidgets('Teclado muestra enlace a la sección propia de Trackpad (v1)',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
+    testWidgets('mover la velocidad guarda tras el debounce', (tester) async {
+      await openTrackpad(tester);
+
+      final slider = tester.widget<Slider>(byKey('kb-trackpad-sensitivity-slider'));
+      slider.onChanged!(2.0);
+      await tester.pump(const Duration(milliseconds: 200));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.byKey(const ValueKey('teclado-go-trackpad')), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('teclado-go-trackpad')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Trackpad'), findsWidgets);
-      expect(find.text('Superficie Táctil Split Wings'), findsOneWidget);
+      expect(await h.storage.getTrackpadSensitivity(), 2.0);
+      expect(find.text('2.0×'), findsOneWidget);
     });
   });
 }

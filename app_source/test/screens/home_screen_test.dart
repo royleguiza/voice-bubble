@@ -87,7 +87,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(SettingsScreen), findsOneWidget);
-      expect(find.byKey(const ValueKey('api-cta-button')), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav-transcripcion')), findsOneWidget);
     });
 
     testWidgets('tapping record button changes to recording state', (tester) async {

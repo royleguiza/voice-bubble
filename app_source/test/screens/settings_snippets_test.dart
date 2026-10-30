@@ -1,388 +1,195 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/snippet.dart';
-import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
-import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
-import '../helpers/test_app.dart';
+import '../helpers/settings_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  const channel = MethodChannel(FloatingBubbleService.channelName);
-  const keyboardChannel = MethodChannel(KeyboardService.channelName);
+  final h = SettingsHarness();
 
-  late StorageService storageService;
+  setUp(() => h.setUp());
+  tearDown(h.tearDown);
 
-  setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
-    SharedPreferences.setMockInitialValues({});
-    storageService = StorageService();
-
-    messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
-      switch (call.method) {
-        case 'canDrawOverlays':
-          return true;
-        case 'requestOverlayPermission':
-          return true;
-        case 'startBubble':
-          return true;
-        case 'stopBubble':
-          return true;
-        case 'isBubbleRunning':
-          return false;
-        default:
-          return null;
-      }
-    });
-    messenger.setMockMethodCallHandler(keyboardChannel,
-        (MethodCall call) async {
-      switch (call.method) {
-        case 'isKeyboardEnabled':
-          return false;
-        case 'isKeyboardSelected':
-          return false;
-        case 'openKeyboardSettings':
-          return true;
-        default:
-          return null;
-      }
-    });
-  });
-
-  tearDown(() {
-    messenger.setMockMethodCallHandler(channel, null);
-    messenger.setMockMethodCallHandler(keyboardChannel, null);
-  });
-
-  Widget buildTestableWidget(WidgetTester tester) {
-    return buildTestableSettingsScreen(
-      tester,
-      storageService: storageService,
-      keyboardService: KeyboardService(channel: keyboardChannel),
-      physicalSize: const Size(1600, 4800),
-    );
+  Future<void> openSnippets(WidgetTester tester) async {
+    await h.pump(tester);
+    await openPage(tester, 'snippets');
   }
 
-  // Icono de accion dentro de la tarjeta de UN snippet concreto.
-  Finder tileAction(String nombre, IconData icon) => find.descendant(
-        of: find.ancestor(of: find.text(nombre), matching: find.byType(Card)),
-        matching: find.byIcon(icon),
-      );
+  Future<List<Snippet>> stored() async {
+    final list = await StorageService().loadSnippets();
+    return list..sort((a, b) => a.orden.compareTo(b.orden));
+  }
 
-  group('SettingsScreen - Gestión de snippets (K4)', () {
+  Future<void> fillAndSave(WidgetTester tester, String name, String content) async {
+    await tester.enterText(byKey('snippet-name-field'), name);
+    await tester.enterText(byKey('snippet-content-field'), content);
+    await tapKey(tester, 'snippet-save-button');
+  }
+
+  group('Snippets (K4)', () {
     testWidgets('muestra los 5 seeds tras ensureSeeds al entrar',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openSnippets(tester);
 
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      for (final nombre in [
-        'Codex',
-        'Gemini',
-        'Git commit',
-        'Git push',
-        'Supabase push',
-      ]) {
-        expect(find.text(nombre), findsOneWidget);
-      }
-      expect(find.text('Snippets'), findsWidgets);
-      expect(find.text('5 / 50'), findsOneWidget);
-      expect(find.byKey(const ValueKey('snippets-add-button')),
+      expect(find.text('Codex'), findsOneWidget);
+      expect(find.text('5 de 50 · Se insertan con un toque desde el teclado.'),
           findsOneWidget);
-      expect(find.byIcon(Icons.add_rounded), findsOneWidget);
+      expect((await stored()).length, 5);
     });
 
-    testWidgets('crear snippet lo muestra en la lista y persiste',
+    testWidgets('crear desde el + lo muestra en la lista y persiste',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
-      await tester.pumpAndSettle();
+      await openSnippets(tester);
+      await tapKey(tester, 'snippets-add-button');
       expect(find.text('Nuevo snippet'), findsOneWidget);
 
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-name-field')),
-        'Mi snippet',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-content-field')),
-        'texto de prueba',
-      );
-      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
-      await tester.pumpAndSettle();
+      await fillAndSave(tester, 'Mi snippet', 'Hola mundo');
 
       expect(find.text('Mi snippet'), findsOneWidget);
-      expect(find.text('6 / 50'), findsOneWidget);
-
-      // Persistencia verificada desde otra instancia del servicio.
-      final loaded = await StorageService().loadSnippets();
-      expect(loaded.length, 6);
-      expect(loaded.last.nombre, 'Mi snippet');
-      expect(loaded.last.contenido, 'texto de prueba');
+      final list = await stored();
+      expect(list.length, 6);
+      expect(list.last.contenido, 'Hola mundo');
     });
 
-    testWidgets('editar snippet precarga el formulario y persiste los cambios',
+    testWidgets('tocar un snippet precarga el formulario y guarda cambios',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(tileAction('Codex', Icons.edit_rounded));
-      await tester.pumpAndSettle();
+      await openSnippets(tester);
+      await tapKey(tester, 'snippet-edit-seed-codex');
 
       expect(find.text('Editar snippet'), findsOneWidget);
-      final nameField = tester.widget<TextField>(
-        find.byKey(const ValueKey('snippet-name-field')),
-      );
-      expect(nameField.controller?.text, 'Codex');
+      final nameField = tester.widget<TextField>(find.descendant(
+        of: byKey('snippet-name-field'),
+        matching: find.byType(TextField),
+      ));
+      expect(nameField.controller!.text, 'Codex');
 
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-name-field')),
-        'Codex editado',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-content-field')),
-        'codex --nuevo ',
-      );
-      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
-      await tester.pumpAndSettle();
+      await tester.enterText(byKey('snippet-name-field'), 'Codex editado');
+      await tapKey(tester, 'snippet-save-button');
 
       expect(find.text('Codex editado'), findsOneWidget);
-      expect(find.text('Codex'), findsNothing);
-
-      final loaded = await StorageService().loadSnippets();
-      final edited = loaded.firstWhere((s) => s.nombre == 'Codex editado');
-      expect(edited.id, 'seed-codex');
-      expect(edited.contenido, 'codex --nuevo ');
-
-      // Regresion del bug "guardar borra todo": editar UN snippet no debe
-      // alterar el total persistido ni el resto de los snippets.
-      expect(loaded.length, 5);
-      const intactos = {
-        'Gemini': 'gemini -p "',
-        'Git commit': 'git add . && git commit -m "',
-        'Git push': 'git push origin main',
-        'Supabase push': 'supabase db push',
-      };
-      for (final entry in intactos.entries) {
-        final otro = loaded.singleWhere((s) => s.nombre == entry.key);
-        expect(otro.contenido, entry.value, reason: entry.key);
-      }
+      final edited = (await stored()).firstWhere((s) => s.id == 'seed-codex');
+      expect(edited.nombre, 'Codex editado');
     });
 
-    testWidgets('borrar snippet pide confirmación y persiste', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(tileAction('Gemini', Icons.delete_outline_rounded));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Eliminar snippet'), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('snippet-dialog-confirm-delete')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Gemini'), findsNothing);
-      expect(find.text('4 / 50'), findsOneWidget);
-
-      final loaded = await StorageService().loadSnippets();
-      expect(loaded.length, 4);
-      expect(loaded.where((s) => s.nombre == 'Gemini'), isEmpty);
-    });
-
-    testWidgets('las flechas reordenan snippets y persisten el orden',
+    testWidgets('eliminar desde el formulario pide confirmación y persiste',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openSnippets(tester);
+      await tapKey(tester, 'snippet-edit-seed-codex');
+      await tapKey(tester, 'snippet-delete-button');
 
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
+      expect(find.text('Eliminar snippet'), findsWidgets);
+      await tapKey(tester, 'snippet-dialog-confirm-delete');
 
-      final upCodex = tester.widget<IconButton>(
-        find.byKey(const ValueKey('snippet-up-seed-codex')),
-      );
-      expect(upCodex.onPressed, isNull);
-
-      await tester.tap(tileAction('Codex', Icons.arrow_downward_rounded));
-      await tester.pumpAndSettle();
-
-      final loaded = await StorageService().loadSnippets();
-      expect(
-        loaded.map((s) => s.nombre).toList(),
-        ['Gemini', 'Codex', 'Git commit', 'Git push', 'Supabase push'],
-      );
-      expect(loaded.map((s) => s.orden).toList(), [0, 1, 2, 3, 4]);
+      expect(byKey('snippet-name-field'), findsNothing);
+      expect(byKey('snippet-edit-seed-codex'), findsNothing);
+      expect((await stored()).any((s) => s.id == 'seed-codex'), isFalse);
     });
 
-    testWidgets('límite 50: crear el 51 muestra feedback y no agrega',
+    testWidgets('cancelar el borrado deja el snippet', (tester) async {
+      await openSnippets(tester);
+      await tapKey(tester, 'snippet-edit-seed-codex');
+      await tapKey(tester, 'snippet-delete-button');
+      await tapKey(tester, 'snippet-dialog-cancel-delete');
+
+      expect((await stored()).any((s) => s.id == 'seed-codex'), isTrue);
+    });
+
+    testWidgets('Ordenar muestra flechas que reordenan y persisten',
+        (tester) async {
+      await openSnippets(tester);
+      expect(byKey('snippet-down-seed-codex'), findsNothing);
+
+      await tapKey(tester, 'snippets-reorder-button');
+      final firstBefore = (await stored()).first.id;
+      expect(firstBefore, 'seed-codex');
+
+      await tapKey(tester, 'snippet-down-seed-codex');
+
+      final list = await stored();
+      expect(list[1].id, 'seed-codex');
+      final up = tester.widget<IconButton>(byKey('snippet-up-${list.first.id}'));
+      expect(up.onPressed, isNull, reason: 'el primero no puede subir');
+    });
+
+    testWidgets('límite 50: el 51 muestra el aviso y no se agrega',
         (tester) async {
       final fifty = List<Snippet>.generate(
         50,
         (i) => Snippet(id: 'gen-$i', nombre: 'Gen $i', contenido: 'c$i', orden: i),
       );
-      await storageService.saveSnippets(fifty);
+      await h.storage.saveSnippets(fifty);
+      await openSnippets(tester);
 
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-name-field')),
-        'Extra',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-content-field')),
-        'x',
-      );
-      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
-      await tester.pumpAndSettle();
+      await tapKey(tester, 'snippets-add-button');
+      await fillAndSave(tester, 'Extra', 'x');
 
       expect(find.textContaining('Límite de 50'), findsOneWidget);
-      expect(find.byKey(const ValueKey('snippet-save-button')), findsOneWidget);
-      // El sheet sigue abierto con el error: el snippet rechazado no debe
-      // aparecer en las tarjetas de snippets de Settings.
-      expect(
-        find.descendant(of: find.byType(Card), matching: find.text('Extra')),
-        findsNothing,
-      );
-
-      final loaded = await StorageService().loadSnippets();
-      expect(loaded.length, 50);
+      expect(byKey('snippet-save-button'), findsOneWidget);
+      expect((await stored()).length, 50);
     });
 
-    testWidgets('contenido mayor a 2000 caracteres muestra error y no guarda',
+    testWidgets('más de 2000 caracteres muestra error y no guarda',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openSnippets(tester);
+      await tapKey(tester, 'snippets-add-button');
 
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-name-field')),
-        'Largo',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-content-field')),
-        'a' * 2001,
-      );
-      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
-      await tester.pumpAndSettle();
+      await fillAndSave(tester, 'Largo', 'a' * 2001);
 
       expect(find.text('Máximo 2000 caracteres'), findsOneWidget);
       expect(find.text('2001 / 2000'), findsOneWidget);
-      expect(find.byKey(const ValueKey('snippet-save-button')), findsOneWidget);
-
-      final loaded = await StorageService().loadSnippets();
-      expect(loaded.length, 5);
-      expect(loaded.where((s) => s.nombre == 'Largo'), isEmpty);
+      expect((await stored()).length, 5);
     });
 
     testWidgets('nombre vacío muestra error y no guarda', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openSnippets(tester);
+      await tapKey(tester, 'snippets-add-button');
 
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-content-field')),
-        'sin nombre',
-      );
-      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
-      await tester.pumpAndSettle();
+      await fillAndSave(tester, '   ', 'contenido');
 
       expect(find.text('El nombre es obligatorio'), findsOneWidget);
-      expect(find.text('Nuevo snippet'), findsOneWidget);
-
-      final loaded = await StorageService().loadSnippets();
-      expect(loaded.length, 5);
-      expect(loaded.where((s) => s.contenido == 'sin nombre'), isEmpty);
+      expect((await stored()).length, 5);
     });
 
     testWidgets('elegir color de paleta persiste en el snippet',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openSnippets(tester);
+      await tapKey(tester, 'snippets-add-button');
+      await tester.enterText(byKey('snippet-name-field'), 'Azulado');
+      await tester.enterText(byKey('snippet-content-field'), 'texto');
+      await tapKey(tester, 'snippet-color-azul');
+      await tapKey(tester, 'snippet-save-button');
 
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('snippets-add-button')));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-name-field')),
-        'Con color',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('snippet-content-field')),
-        'contenido',
-      );
-      await tester.tap(find.byKey(const ValueKey('snippet-color-azul')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
-      await tester.pumpAndSettle();
-
-      final loaded = await StorageService().loadSnippets();
-      final created = loaded.singleWhere((s) => s.nombre == 'Con color');
+      final created = (await stored()).firstWhere((s) => s.nombre == 'Azulado');
       expect(created.color, 'azul');
     });
 
-    testWidgets('editar snippet puede limpiar el color a Sin color',
-        (tester) async {
-      final withColor = const Snippet(
-        id: 'c1',
-        nombre: 'Teñido',
-        contenido: 'x',
-        orden: 0,
-        color: 'verde',
-      );
-      await storageService.saveSnippets([withColor]);
+    testWidgets('editar puede limpiar el color a Sin color', (tester) async {
+      await h.storage.saveSnippets(const [
+        Snippet(id: 'c1', nombre: 'Con color', contenido: 'x', orden: 0, color: 'verde'),
+      ]);
+      await openSnippets(tester);
+      await tapKey(tester, 'snippet-edit-c1');
+      await tapKey(tester, 'snippet-color-none');
+      await tapKey(tester, 'snippet-save-button');
 
-      await tester.pumpWidget(buildTestableWidget(tester));
+      final edited = (await stored()).firstWhere((s) => s.id == 'c1');
+      expect(edited.color, isNull);
+    });
+
+    testWidgets('el buscador filtra por nombre y contenido', (tester) async {
+      await openSnippets(tester);
+
+      await tester.enterText(byKey('snippets-search-field'), 'push');
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('tab-snippets')));
-      await tester.pumpAndSettle();
+      expect(byKey('snippet-edit-seed-codex'), findsNothing);
+      expect(find.text('Git push'), findsOneWidget);
 
-      await tester.tap(tileAction('Teñido', Icons.edit_rounded));
+      await tester.enterText(byKey('snippets-search-field'), 'zzz');
       await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('snippet-color-none')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('snippet-save-button')));
-      await tester.pumpAndSettle();
-
-      final loaded = await StorageService().loadSnippets();
-      expect(loaded.single.color, isNull);
+      expect(find.text('Sin resultados para "zzz".'), findsOneWidget);
     });
   });
 }

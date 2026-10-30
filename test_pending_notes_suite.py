@@ -87,7 +87,8 @@ check("Default flag OFF", re.search(
     r"loadNotesDeferredQueueEnabled\(\)\s*=>\s*_getBool\([^,]+,\s*false\)", st) is not None)
 check("Switch en GeneralTab con ValueKey",
       "notes-deferred-queue-switch" in read(GENERAL))
-check("Wiring en settings_screen", "onToggleNotesDeferredQueue" in read(SETTINGS))
+check("Wiring en settings_screen", "_toggleNotesDeferredQueue" in read(SETTINGS)
+      and "onChanged: _toggleNotesDeferredQueue" in read(GENERAL))
 check("Flag en contract-keys (widget lee la cola)",
       "notes_deferred_queue_enabled" in read(CONTRACT))
 check("Flag en bridgeKeys block (widget lee la cola)",

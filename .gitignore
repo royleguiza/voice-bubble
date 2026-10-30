@@ -76,3 +76,5 @@ auditoria-serve/
 # Laboratorios no versionados
 laboratorio/plan-gemini-ia/
 laboratorio/play-pendiente.html
+*.token
+gh-workflow-push.token

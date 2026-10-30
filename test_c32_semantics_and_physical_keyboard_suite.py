@@ -7,13 +7,13 @@ Auditoría C-32: Semántica correcta + teclado físico [D]
 Verifica:
 1. Semántica de tarjetas (note_card.dart, pending_note_tile.dart):
    - Uso de Semantics(container: true) en vez de button: true para evitar "botón dentro de botón" en TalkBack.
-2. Semántica de pestañas (settings_tab_bar.dart):
-   - Anuncio "pestaña $index de $total", selected: isSelected, button: true.
+2. Semántica del kit de Ajustes (settings_v2.dart):
+   - Filas anuncian "título, valor" como botón; interruptor con MergeSemantics.
    - excludeFromSemantics: true en Tooltip para evitar anuncio duplicado de etiqueta.
 3. Selección de texto en historial (history_list.dart):
    - SelectableText para permitir selección y copia con teclado/accesibilidad.
-4. Foco y activación por teclado en selector visual (teclado_tab.dart):
-   - Reemplazo de GestureDetector crudo por Semantics(button: true, selected: isSelected) + InkWell focusable.
+4. Foco y activación por teclado en menús (settings_v2.dart):
+   - MenuItemButton focusable + Semantics(selected) en la opción elegida; filas con InkWell.
 5. Accesibilidad en snippets (snippets_tab.dart):
    - _ColorSwatch con excludeFromSemantics: true en Tooltip, Semantics(button: true, selected: selected), InkWell.
    - _SnippetFormSheet con CallbackShortcuts(LogicalKeyboardKey.escape -> maybePop).
@@ -35,7 +35,7 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 NOTE_CARD = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "note_card.dart")
 PENDING_NOTE_TILE = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "pending_note_tile.dart")
-SETTINGS_TAB_BAR = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "settings_tab_bar.dart")
+SETTINGS_KIT = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "settings_v2.dart")
 HISTORY_LIST = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "history_list.dart")
 TECLADO_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "teclado_tab.dart")
 SNIPPETS_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "snippets_tab.dart")
@@ -67,25 +67,24 @@ def test_card_semantics():
     )
 
 
-def test_tab_bar_semantics():
-    """2. Pestañas con anuncio 'pestaña i de n', selected: isSelected y sin label duplicado."""
-    src = read_file(SETTINGS_TAB_BAR)
+def test_settings_kit_semantics():
+    """2. Kit de Ajustes: filas anuncian "título, valor" como botón y los
+    botones de vidrio no duplican el anuncio del Tooltip."""
+    src = read_file(SETTINGS_KIT)
 
-    # Debe pasar index y total
-    assert "index: i + 1" in src or "index:" in src, "SettingsTabBar debe pasar el índice de pestaña"
-    assert "total: _tabs.length" in src or "total:" in src, "SettingsTabBar debe pasar el total de pestañas"
-
-    # Semantics con selected, button y label con conteo de pestañas
-    assert re.search(r"Semantics\s*\([^)]*selected:\s*isSelected", src), (
-        "SettingsTabBar debe reportar selected: isSelected"
+    # Fila de navegación / menú: botón con título y valor en una sola etiqueta
+    assert re.search(r"Semantics\s*\([^)]*button:\s*true[^)]*label:\s*hasValue \? '\$title, \$value'", src), (
+        "SettingsNavRow debe anunciar 'título, valor' como botón"
     )
-    assert re.search(r"pestaña\s+\$index\s+de\s+\$total", src), (
-        "SettingsTabBar debe anunciar 'pestaña $index de $total'"
+    assert "label: '$title, $_currentLabel'" in src, (
+        "SettingsMenuRow debe anunciar 'título, opción actual'"
     )
+    # Interruptor: título + switch fusionados en un solo nodo
+    assert "MergeSemantics(" in src, "SettingsSwitchRow debe fusionar semántica"
 
     # Tooltip con excludeFromSemantics: true para no duplicar el anuncio de TalkBack
     assert re.search(r"Tooltip\s*\([^)]*excludeFromSemantics:\s*true", src), (
-        "SettingsTabBar Tooltip debe tener excludeFromSemantics: true"
+        "SettingsGlassButton Tooltip debe tener excludeFromSemantics: true"
     )
 
 
@@ -98,16 +97,19 @@ def test_history_selectable_text():
 
 
 def test_teclado_tab_focusability():
-    """4. Visual cards de alineación son focusables con teclado físico e informan selected."""
-    src = read_file(TECLADO_TAB)
+    """4. Menús desplegables (Teclado y resto): opciones focusables con
+    teclado físico (MenuItemButton) que informan cuál está elegida."""
+    src = read_file(SETTINGS_KIT)
 
-    # _SpacebarVisualCards debe usar Semantics con button: true, selected: isSelected
-    assert re.search(r"Semantics\s*\([^)]*button:\s*true[^)]*selected:\s*isSelected", src), (
-        "teclado_tab _SpacebarVisualCards debe tener Semantics(button: true, selected: isSelected)"
+    assert "MenuItemButton(" in src, (
+        "SettingsMenuRow debe usar MenuItemButton (foco y Enter con teclado físico)"
     )
-    # Debe usar InkWell para responder a foco Tab y teclas Enter/Espacio
-    assert re.search(r"InkWell\s*\(.*?onTap:\s*\(\)\s*=>\s*onSelect\(id\)", src, re.DOTALL), (
-        "teclado_tab _SpacebarVisualCards debe usar InkWell para admitir foco de teclado físico"
+    assert re.search(r"Semantics\s*\(\s*selected:\s*o\.value == value", src), (
+        "SettingsMenuRow debe reportar selected en la opción elegida"
+    )
+    # Filas táctiles con InkWell (foco Tab + Enter/Espacio)
+    assert re.search(r"InkWell\(onTap: onTap, child: content\)", src), (
+        "_RowShell debe usar InkWell para admitir foco de teclado físico"
     )
 
 
@@ -186,11 +188,11 @@ def test_negative_mutations():
         "Mutación 1 debería ser detectada por test_card_semantics"
     )
 
-    # Mutación 2: quitar excludeFromSemantics en settings_tab_bar
-    stb = read_file(SETTINGS_TAB_BAR)
-    mutated_stb = stb.replace("excludeFromSemantics: true,", "")
-    assert not re.search(r"Tooltip\s*\([^)]*excludeFromSemantics:\s*true", mutated_stb), (
-        "Mutación 2 debería ser detectada por test_tab_bar_semantics"
+    # Mutación 2: quitar excludeFromSemantics en el kit de Ajustes
+    kit = read_file(SETTINGS_KIT)
+    mutated_kit = kit.replace("excludeFromSemantics: true,", "")
+    assert not re.search(r"Tooltip\s*\([^)]*excludeFromSemantics:\s*true", mutated_kit), (
+        "Mutación 2 debería ser detectada por test_settings_kit_semantics"
     )
 
     # Mutación 3: revertir SelectableText a Text en history_list
@@ -200,10 +202,9 @@ def test_negative_mutations():
         "Mutación 3 debería ser detectada por test_history_selectable_text"
     )
 
-    # Mutación 4: revertir InkWell a GestureDetector en teclado_tab
-    tt = read_file(TECLADO_TAB)
-    mutated_tt = tt.replace("InkWell(", "GestureDetector(")
-    assert not re.search(r"InkWell\s*\(.*?onTap:\s*\(\)\s*=>\s*onSelect\(id\)", mutated_tt, re.DOTALL), (
+    # Mutación 4: revertir InkWell a GestureDetector en las filas del kit
+    mutated_rows = kit.replace("InkWell(onTap: onTap", "GestureDetector(onTap: onTap")
+    assert not re.search(r"InkWell\(onTap: onTap, child: content\)", mutated_rows), (
         "Mutación 4 debería ser detectada por test_teclado_tab_focusability"
     )
 
@@ -234,9 +235,9 @@ def test_negative_mutations():
 def run_all_tests():
     tests = [
         ("1. Semántica de tarjetas (container: true)", test_card_semantics),
-        ("2. Semántica de pestañas (selected, total, excludeFromSemantics)", test_tab_bar_semantics),
+        ("2. Semántica del kit de Ajustes (título+valor, sin duplicados)", test_settings_kit_semantics),
         ("3. Selección de texto en historial (SelectableText)", test_history_selectable_text),
-        ("4. Foco y teclado físico en selector visual (InkWell + Semantics)", test_teclado_tab_focusability),
+        ("4. Foco y teclado físico en menús (MenuItemButton + selected)", test_teclado_tab_focusability),
         ("5. Snippets: accesibilidad swatches y Escape en sheet", test_snippets_tab_accessibility_and_escape),
         ("6. Credenciales: Escape, TextInputAction y AutofillHints", test_credentials_screen_keyboard_and_autofill),
         ("7. Escape en editor y diálogos modales", test_dialogs_and_editor_escape_dismiss),

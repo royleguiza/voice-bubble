@@ -18,9 +18,9 @@ Verifica:
      kBorderRadiusDock/SheetLarge (32.0).
    - snippetPaletteStroke alineado a alpha 0.40 (0x66).
 3. Integración en UI:
-   - settings_tab_bar.dart usa kBorderRadiusDock y kBorderRadiusCardLarge (sin 32 ni 20 hardcodeados).
-   - snippets_tab.dart usa kBorderRadiusCapsule en el drag handle (sin 100 hardcodeado).
-   - teclado_tab.dart usa kBorderRadiusSmall en la tarjeta de alineación (sin 8 hardcodeado).
+   - settings_v2.dart usa kSettingsGroupRadius y kBorderRadiusCapsule (sin 26 ni 100 hardcodeados).
+   - snippets_tab.dart usa kBorderRadiusCapsule en el buscador (sin 100 hardcodeado).
+   - teclado_tab.dart usa kSettingsGroupRadius en la vista previa del teclado.
 4. design.md §12:
    - Valores de kb_surface (#F0F2F2F7 / #F01C1C1E) y kb_key_bg (#F2FFFFFF / #F22C2C2E) alineados.
    - Snippet stroke documentado a ~40% (0.40 / 0x66).
@@ -35,7 +35,7 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GLASS_CONTAINER = os.path.join(BASE_DIR, "app_source", "lib", "ui", "glass_container.dart")
 DESIGN_TOKENS = os.path.join(BASE_DIR, "app_source", "lib", "ui", "design_tokens.dart")
-SETTINGS_TAB_BAR = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "settings_tab_bar.dart")
+SETTINGS_KIT = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "settings_v2.dart")
 SNIPPETS_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "snippets_tab.dart")
 TECLADO_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "teclado_tab.dart")
 DESIGN_MD = os.path.join(BASE_DIR, "design.md")
@@ -123,54 +123,46 @@ def test_design_tokens_definitions():
     )
 
 
-def test_settings_tab_bar_radii_tokens():
-    """3. settings_tab_bar.dart utiliza tokens para el radio del dock y de los items."""
-    src = read_file(SETTINGS_TAB_BAR)
-
-    # Dock exterior: debe usar kBorderRadiusDock o kBorderRadiusSheetLarge
-    assert "borderRadius: kBorderRadiusDock" in src or "borderRadius: kBorderRadiusSheetLarge" in src, (
-        "settings_tab_bar.dart debe usar kBorderRadiusDock / SheetLarge para el dock exterior"
+def test_settings_kit_radii_tokens():
+    """3. Kit de Ajustes 2026 (settings_v2.dart): grupos con kSettingsGroupRadius
+    y cápsulas con kBorderRadiusCapsule, sin radios sueltos."""
+    src = read_file(SETTINGS_KIT)
+    assert "BorderRadius.circular(kSettingsGroupRadius)" in src, (
+        "settings_v2.dart debe usar kSettingsGroupRadius en los grupos"
     )
-    assert "borderRadius: 32," not in src and "borderRadius: 32.0," not in src, (
-        "settings_tab_bar.dart no debe hardcodear 32 para el dock"
+    assert "BorderRadius.circular(26)" not in src, (
+        "settings_v2.dart no debe hardcodear 26 para los grupos"
     )
-
-    # Botones internos: deben usar kBorderRadiusCardLarge, kBorderRadiusPill o kBorderRadiusCard
-    assert "kBorderRadiusCardLarge" in src or "kBorderRadiusPill" in src or "kBorderRadiusCard" in src, (
-        "settings_tab_bar.dart debe usar kBorderRadiusCardLarge/Pill/Card para las pastillas internas"
+    assert "kBorderRadiusCapsule" in src, (
+        "settings_v2.dart debe usar kBorderRadiusCapsule en asas y etiquetas"
     )
-    assert "BorderRadius.circular(20)" not in src, (
-        "settings_tab_bar.dart no debe hardcodear BorderRadius.circular(20)"
+    assert "BorderRadius.circular(100)" not in src, (
+        "settings_v2.dart no debe hardcodear BorderRadius.circular(100)"
     )
 
 
 def test_snippets_tab_radii_and_stroke():
-    """4. snippets_tab.dart usa tokens de radio y comentario de stroke alineado."""
+    """4. snippets_tab.dart usa tokens de radio (buscador en cápsula)."""
     src = read_file(SNIPPETS_TAB)
 
-    # Drag handle usa kBorderRadiusCapsule
     assert "kBorderRadiusCapsule" in src, (
-        "snippets_tab.dart debe usar kBorderRadiusCapsule en el drag handle"
+        "snippets_tab.dart debe usar kBorderRadiusCapsule en el buscador"
     )
     assert "borderRadius: BorderRadius.circular(100)" not in src, (
         "snippets_tab.dart no debe tener BorderRadius.circular(100) hardcodeado"
     )
 
-    # Comentario alineado a ~40%
-    assert "stroke ~40%" in src, "snippets_tab.dart debe documentar stroke ~40%"
-    assert "stroke ~45%" not in src, "snippets_tab.dart aún contiene 'stroke ~45%'"
-
 
 def test_teclado_tab_radii():
-    """5. teclado_tab.dart usa kBorderRadiusSmall en la tarjeta de alineación."""
+    """5. teclado_tab.dart: la vista previa usa kSettingsGroupRadius."""
     src = read_file(TECLADO_TAB)
 
-    alignment_block = src[src.find("Widget _card("):src.find("Widget _card(") + 1200]
-    assert "kBorderRadiusSmall" in alignment_block, (
-        "teclado_tab.dart _card debe usar kBorderRadiusSmall"
+    preview = src[src.find("class KeyboardPreview"):]
+    assert "BorderRadius.circular(kSettingsGroupRadius)" in preview, (
+        "KeyboardPreview debe usar kSettingsGroupRadius"
     )
-    assert "borderRadius: BorderRadius.circular(8)" not in alignment_block, (
-        "teclado_tab.dart _card no debe hardcodear BorderRadius.circular(8)"
+    assert "BorderRadius.circular(26)" not in preview, (
+        "KeyboardPreview no debe hardcodear 26"
     )
 
 
@@ -205,7 +197,7 @@ def test_negative_mutations():
     """7. Mutaciones negativas reales probadas para evitar falsos negativos."""
     glass_src = read_file(GLASS_CONTAINER)
     tokens_src = read_file(DESIGN_TOKENS)
-    tabbar_src = read_file(SETTINGS_TAB_BAR)
+    kit_src = read_file(SETTINGS_KIT)
     snippets_src = read_file(SNIPPETS_TAB)
     teclado_src = read_file(TECLADO_TAB)
     design_src = read_file(DESIGN_MD)
@@ -223,17 +215,17 @@ def test_negative_mutations():
     match3 = re.search(r"snippetPaletteStroke.*?alpha:\s*([0-9\.]+)", mut3, re.DOTALL)
     assert match3 and float(match3.group(1)) == 0.45
 
-    # Mutación 4: settings_tab_bar reintroduce hardcoded 32
-    mut4 = tabbar_src.replace("borderRadius: kBorderRadiusDock,", "borderRadius: 32,")
-    assert "borderRadius: 32," in mut4
+    # Mutación 4: el kit reintroduce el radio 26 suelto
+    mut4 = kit_src.replace("BorderRadius.circular(kSettingsGroupRadius)", "BorderRadius.circular(26)")
+    assert "BorderRadius.circular(kSettingsGroupRadius)" not in mut4
 
     # Mutación 5: snippets_tab reintroduce hardcoded 100
     mut5 = snippets_src.replace("borderRadius: BorderRadius.circular(kBorderRadiusCapsule)", "borderRadius: BorderRadius.circular(100)")
     assert "borderRadius: BorderRadius.circular(100)" in mut5
 
-    # Mutación 6: teclado_tab reintroduce hardcoded 8
-    mut6 = teclado_src.replace("borderRadius: BorderRadius.circular(kBorderRadiusSmall)", "borderRadius: BorderRadius.circular(8)")
-    assert "borderRadius: BorderRadius.circular(8)" in mut6
+    # Mutación 6: la vista previa del teclado reintroduce 26 suelto
+    mut6 = teclado_src.replace("BorderRadius.circular(kSettingsGroupRadius)", "BorderRadius.circular(26)")
+    assert "BorderRadius.circular(26)" in mut6
 
     # Mutación 7: design.md sin excepciones firmadas
     mut7 = design_src.replace("kb_snippet_bar_height", "none").replace("kb_mini_key_height", "none")
@@ -248,9 +240,9 @@ def main():
     tests = [
         ("GlassContainer adaptación reduceTransparency/highContrast", test_glass_container_system_adaptation),
         ("Definición de tokens en design_tokens.dart", test_design_tokens_definitions),
-        ("settings_tab_bar.dart tokens de radio (dock y card)", test_settings_tab_bar_radii_tokens),
-        ("snippets_tab.dart token kBorderRadiusCapsule y stroke", test_snippets_tab_radii_and_stroke),
-        ("teclado_tab.dart token kBorderRadiusSmall", test_teclado_tab_radii),
+        ("settings_v2.dart tokens de radio (grupos y cápsulas)", test_settings_kit_radii_tokens),
+        ("snippets_tab.dart token kBorderRadiusCapsule", test_snippets_tab_radii_and_stroke),
+        ("teclado_tab.dart vista previa con kSettingsGroupRadius", test_teclado_tab_radii),
         ("design.md §12 tokens y excepciones firmadas", test_design_md_alignment_and_exceptions),
         ("Mutaciones negativas contra regresiones", test_negative_mutations),
     ]

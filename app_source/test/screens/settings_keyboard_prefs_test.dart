@@ -1,514 +1,270 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
-import 'package:voice_bubble_stt/services/keyboard_service.dart';
-import 'package:voice_bubble_stt/services/storage_service.dart';
+import 'package:voice_bubble_stt/screens/settings_screen.dart';
 
-import '../helpers/test_app.dart';
+import '../helpers/settings_harness.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  const channel = MethodChannel(FloatingBubbleService.channelName);
-  const keyboardChannel = MethodChannel(KeyboardService.channelName);
+  final h = SettingsHarness();
 
-  late StorageService storageService;
+  setUp(() => h.setUp());
+  tearDown(h.tearDown);
 
-  setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
-    SharedPreferences.setMockInitialValues({});
-    storageService = StorageService();
-
-    messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
-      switch (call.method) {
-        case 'canDrawOverlays':
-          return true;
-        case 'requestOverlayPermission':
-          return true;
-        case 'startBubble':
-          return true;
-        case 'stopBubble':
-          return true;
-        case 'isBubbleRunning':
-          return false;
-        default:
-          return null;
-      }
-    });
-    messenger.setMockMethodCallHandler(keyboardChannel,
-        (MethodCall call) async {
-      switch (call.method) {
-        case 'isKeyboardEnabled':
-          return false;
-        case 'isKeyboardSelected':
-          return false;
-        case 'openKeyboardSettings':
-          return true;
-        default:
-          return null;
-      }
-    });
-  });
-
-  tearDown(() {
-    messenger.setMockMethodCallHandler(channel, null);
-    messenger.setMockMethodCallHandler(keyboardChannel, null);
-  });
-
-  Widget buildTestableWidget(WidgetTester tester) {
-    return buildTestableSettingsScreen(
-      tester,
-      storageService: storageService,
-      keyboardService: KeyboardService(channel: keyboardChannel),
-      physicalSize: const Size(1600, 6000),
-    );
+  Future<void> openTeclado(WidgetTester tester) async {
+    await h.pump(tester);
+    await openPage(tester, 'teclado');
   }
 
-  Finder heightSelector() =>
-      find.byKey(const ValueKey('kb-height-profile-selector'));
+  Future<void> openSonido(WidgetTester tester) async {
+    await openTeclado(tester);
+    await tapKey(tester, 'nav-sonido');
+  }
 
-  Finder spacingSelector() =>
-      find.byKey(const ValueKey('kb-key-spacing-selector'));
+  group('Teclado - tamaño', () {
+    testWidgets('altura Media por defecto; Alta y Muy alta persisten',
+        (tester) async {
+      await openTeclado(tester);
+      expect(rowShows('kb-height-profile-selector', 'Media'), isTrue);
 
-  Set<String> selectedKeySpacing(WidgetTester tester) =>
-      tester.widget<SegmentedButton<String>>(spacingSelector()).selected;
+      await pickOption(tester, 'kb-height-profile-selector', 'alta');
+      expect((await prefs()).getString('kb_height_profile'), 'alta');
 
-  Finder hapticStyleSelector() =>
-      find.byKey(const ValueKey('kb-haptic-style-selector'));
-
-  Set<String> selectedHapticStyle(WidgetTester tester) =>
-      tester.widget<SegmentedButton<String>>(hapticStyleSelector()).selected;
-
-  Set<String> selectedHeightProfile(WidgetTester tester) =>
-      tester.widget<SegmentedButton<String>>(heightSelector()).selected;
-
-  Finder hapticsSwitch() => find.descendant(
-        of: find.byKey(const ValueKey('kb-haptics-switch')),
-        matching: find.byType(Switch),
-      );
-
-  group('SettingsScreen - Altura del teclado', () {
-    testWidgets('muestra Media seleccionada por defecto', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Altura del teclado'), findsOneWidget);
-      expect(find.text('Baja'), findsOneWidget);
-      expect(find.text('Media'), findsOneWidget);
-      expect(find.text('Alta'), findsOneWidget);
-      expect(find.text('Muy alta'), findsOneWidget);
-      expect(selectedHeightProfile(tester), {'media'});
+      await pickOption(tester, 'kb-height-profile-selector', 'muy_alta');
+      expect((await prefs()).getString('kb_height_profile'), 'muy_alta');
+      expect(rowShows('kb-height-profile-selector', 'Muy alta'), isTrue);
     });
 
-    testWidgets('cambiar a Alta persiste en SharedPreferences',
+    testWidgets('altura corrupta en prefs cae a Media sin crash',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Alta'));
-      await tester.pumpAndSettle();
-
-      expect(selectedHeightProfile(tester), {'alta'});
-      // Persistencia verificada desde otra instancia del servicio.
-      expect(await StorageService().getHeightProfile(), 'alta');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_height_profile'), 'alta');
+      h.setUp(prefs: {'kb_height_profile': 'gigante'});
+      await openTeclado(tester);
+      expect(rowShows('kb-height-profile-selector', 'Media'), isTrue);
     });
 
-    testWidgets('cambiar a Muy alta persiste en SharedPreferences',
+    testWidgets('separación Normal por defecto; Amplia y Máxima persisten',
         (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+      await openTeclado(tester);
+      expect(rowShows('kb-key-spacing-selector', 'Normal'), isTrue);
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
+      await pickOption(tester, 'kb-key-spacing-selector', 'amplio');
+      expect((await prefs()).getString('kb_key_spacing'), 'amplio');
 
-      await tester.tap(find.text('Muy alta'));
-      await tester.pumpAndSettle();
-
-      expect(selectedHeightProfile(tester), {'muy_alta'});
-      expect(await StorageService().getHeightProfile(), 'muy_alta');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_height_profile'), 'muy_alta');
+      await pickOption(tester, 'kb-key-spacing-selector', 'extra');
+      expect((await prefs()).getString('kb_key_spacing'), 'extra');
     });
 
-    testWidgets('valor corrupto en prefs cae a Media sin crash',
-        (tester) async {
-      SharedPreferences.setMockInitialValues({'kb_height_profile': 'xxx'});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+    testWidgets('distancia al borde persiste en dp', (tester) async {
+      await openTeclado(tester);
+      expect(rowShows('kb-bottom-elevation-selector', '24 dp'), isTrue);
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(selectedHeightProfile(tester), {'media'});
-      expect(await StorageService().getHeightProfile(), 'media');
+      await pickOption(tester, 'kb-bottom-elevation-selector', 48);
+      expect(await h.storage.getBottomElevationDp(), 48);
     });
   });
 
-  group('SettingsScreen - Vibración del teclado', () {
-    testWidgets('muestra el switch encendido por defecto', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+  group('Teclado - teclas visibles', () {
+    final cases = <String, Future<bool> Function()>{
+      'kb-terminal-row-switch': () => h.storage.loadKeyboardTerminalRowVisible(),
+      'kb-code-key-switch': () => h.storage.loadKeyboardCodeKeyVisible(),
+      'kb-language-key-switch': () => h.storage.loadKeyboardLanguageKeyVisible(),
+      'credenciales-key-visible-switch': () =>
+          h.storage.loadKeyboardCredentialsKeyVisible(),
+    };
+    for (final entry in cases.entries) {
+      testWidgets('${entry.key}: visible por defecto y apagar persiste',
+          (tester) async {
+        await openTeclado(tester);
+        expect(switchValue(tester, entry.key), isTrue);
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
+        await tapKey(tester, entry.key);
 
-      expect(find.text('Vibración'), findsOneWidget);
-      expect(hapticsSwitch(), findsOneWidget);
-      expect(tester.widget<Switch>(hapticsSwitch()).value, isTrue);
-    });
-
-    testWidgets('apagar la vibración persiste en SharedPreferences',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(hapticsSwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(hapticsSwitch()).value, isFalse);
-      // Persistencia verificada desde otra instancia del servicio.
-      expect(await StorageService().getHapticsEnabled(), isFalse);
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('kb_haptics_enabled'), isFalse);
-    });
-
-    testWidgets('refleja el valor previamente guardado', (tester) async {
-      SharedPreferences.setMockInitialValues({'kb_haptics_enabled': false});
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(hapticsSwitch()).value, isFalse);
-    });
-  });
-
-  Finder clipboardImagesSwitch() => find.descendant(
-        of: find.byKey(const ValueKey('kb-clipboard-images-switch')),
-        matching: find.byType(Switch),
-      );
-
-  group('SettingsScreen - espaciado de teclas anti-fantasma', () {
-    testWidgets('muestra Normal seleccionado por defecto', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Espaciado de teclas'), findsOneWidget);
-      // 'Normal' existe dos veces en la página (espaciado + retardo MEJ-05):
-      // se acota al selector de espaciado (regla §9.2-12: por Key, no por copy).
-      final spacing = find.byKey(const ValueKey('kb-key-spacing-selector'));
-      expect(find.descendant(of: spacing, matching: find.text('Compacto')),
-          findsOneWidget);
-      expect(find.descendant(of: spacing, matching: find.text('Normal')),
-          findsOneWidget);
-      expect(find.descendant(of: spacing, matching: find.text('Amplio')),
-          findsOneWidget);
-      expect(find.descendant(of: spacing, matching: find.text('Extra')),
-          findsOneWidget);
-      expect(selectedKeySpacing(tester), {'normal'});
-    });
-
-    testWidgets('elegir Amplio persiste en SharedPreferences',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Amplio'));
-      await tester.pumpAndSettle();
-
-      expect(selectedKeySpacing(tester), {'amplio'});
-      expect(await StorageService().getKeySpacing(), 'amplio');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_key_spacing'), 'amplio');
-    });
-
-    testWidgets('elegir Extra persiste en SharedPreferences',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Extra'));
-      await tester.pumpAndSettle();
-
-      expect(selectedKeySpacing(tester), {'extra'});
-      expect(await StorageService().getKeySpacing(), 'extra');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_key_spacing'), 'extra');
-    });
-  });
-
-  group('SettingsScreen - estilo háptico de teclas', () {
-    testWidgets('muestra Nítido seleccionado por defecto', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Estilo háptico'), findsOneWidget);
-      expect(find.text('Nítido'), findsOneWidget);
-      expect(find.text('Firme'), findsOneWidget);
-      expect(find.text('Suave'), findsOneWidget);
-      expect(selectedHapticStyle(tester), {'nitido'});
-    });
-
-    testWidgets('elegir Firme persiste en SharedPreferences',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('Firme'));
-      await tester.pumpAndSettle();
-
-      expect(selectedHapticStyle(tester), {'firme'});
-      expect(await StorageService().getHapticStyle(), 'firme');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_haptic_style'), 'firme');
-    });
-  });
-
-  group('SettingsScreen - imágenes del portapapeles opt-in (SPK-10)', () {    testWidgets('toggle visible y apagado por defecto', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Imágenes en portapapeles'), findsOneWidget);
-      expect(clipboardImagesSwitch(), findsOneWidget);
-      expect(tester.widget<Switch>(clipboardImagesSwitch()).value, isFalse);
-    });
-
-    testWidgets('encender persiste en SharedPreferences', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(clipboardImagesSwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(clipboardImagesSwitch()).value, isTrue);
-      expect(await StorageService().getClipboardImagesEnabled(), isTrue);
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('kb_clipboard_images_enabled'), isTrue);
-    });
-  });
-
-  group('SettingsScreen - micrófono vibración y sonido (colapsable)', () {
-    Future<void> openMicSection(WidgetTester tester) async {
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Micrófono: vibración y sonido'));
-      await tester.pumpAndSettle();
+        expect(switchValue(tester, entry.key), isFalse);
+        expect(await entry.value(), isFalse);
+      });
     }
 
-    Finder micSwitch(String key) => find.descendant(
-          of: find.byKey(ValueKey(key)),
-          matching: find.byType(Switch),
-        );
+    testWidgets('refleja una tecla oculta guardada antes', (tester) async {
+      h.setUp(prefs: {'kb_terminal_row_visible': false});
+      await openTeclado(tester);
+      expect(switchValue(tester, 'kb-terminal-row-switch'), isFalse);
+    });
+  });
 
-    testWidgets('sección colapsada por defecto', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
+  group('Teclado - escritura', () {
+    testWidgets('gesto de la barra espaciadora persiste', (tester) async {
+      await openTeclado(tester);
+      expect(rowShows('kb-spacebar-trackpad-mode-selector', 'Mantener'), isTrue);
 
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
+      await pickOption(
+          tester, 'kb-spacebar-trackpad-mode-selector', 'gboard_horizontal');
+      expect((await prefs()).getString('kb_spacebar_trackpad_mode'),
+          'gboard_horizontal');
 
-      expect(find.text('Micrófono: vibración y sonido'), findsOneWidget);
-      expect(find.byKey(const ValueKey('kb-mic-haptics-enabled')),
-          findsNothing);
+      await pickOption(tester, 'kb-spacebar-trackpad-mode-selector', 'ios_2d');
+      expect((await prefs()).getString('kb_spacebar_trackpad_mode'), 'ios_2d');
     });
 
-    testWidgets('masters con defaults (háptica ON, sonidos OFF)',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-      await openMicSection(tester);
-
-      expect(
-          tester.widget<Switch>(micSwitch('kb-mic-haptics-enabled')).value,
-          isTrue);
-      expect(tester.widget<Switch>(micSwitch('kb-mic-sounds-enabled')).value,
-          isFalse);
+    testWidgets('posición de la barra espaciadora persiste', (tester) async {
+      await openTeclado(tester);
+      await pickOption(tester, 'kb-spacebar-alignment-selector', 'left');
+      expect(await h.storage.getSpacebarAlignment(), 'left');
     });
 
-    testWidgets('los 4 eventos de vibración existen y prenden por defecto',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-      await openMicSection(tester);
+    testWidgets('micrófono a la izquierda persiste', (tester) async {
+      await openTeclado(tester);
+      expect(switchValue(tester, 'kb-invert-toolbar-switch'), isFalse);
+      await tapKey(tester, 'kb-invert-toolbar-switch');
+      expect(await h.storage.getInvertToolbar(), isTrue);
+    });
 
-      for (final key in [
+    testWidgets('símbolos al mantener: ON y Normal por defecto',
+        (tester) async {
+      await openTeclado(tester);
+      expect(switchValue(tester, 'kb-long-press-symbols-switch'), isTrue);
+      expect(rowShows('kb-long-press-delay-selector', 'Normal'), isTrue);
+    });
+
+    testWidgets('apagar símbolos persiste y oculta la espera', (tester) async {
+      await openTeclado(tester);
+      await tapKey(tester, 'kb-long-press-symbols-switch');
+
+      expect((await prefs()).getBool('kb_long_press_symbols'), isFalse);
+      expect(byKey('kb-long-press-delay-selector'), findsNothing);
+    });
+
+    testWidgets('elegir espera Larga persiste', (tester) async {
+      await openTeclado(tester);
+      await pickOption(tester, 'kb-long-press-delay-selector', 'relajado');
+      expect((await prefs()).getString('kb_long_press_delay'), 'relajado');
+    });
+  });
+
+  group('Teclado - portapapeles (SPK-10)', () {
+    testWidgets('imágenes apagadas por defecto; encender persiste',
+        (tester) async {
+      await openTeclado(tester);
+      expect(switchValue(tester, 'kb-clipboard-images-switch'), isFalse);
+
+      await tapKey(tester, 'kb-clipboard-images-switch');
+
+      expect((await prefs()).getBool('kb_clipboard_images_enabled'), isTrue);
+    });
+  });
+
+  group('Teclado - vista previa', () {
+    testWidgets('refleja altura, teclas y posición del micrófono',
+        (tester) async {
+      await openTeclado(tester);
+      KeyboardPreview preview() =>
+          tester.widget<KeyboardPreview>(byKey('kb-preview'));
+      expect(preview().heightProfile, 'media');
+      expect(preview().showTerminalRow, isTrue);
+      expect(preview().invertToolbar, isFalse);
+
+      await pickOption(tester, 'kb-height-profile-selector', 'alta');
+      await tapKey(tester, 'kb-terminal-row-switch');
+      await tapKey(tester, 'kb-invert-toolbar-switch');
+
+      expect(preview().heightProfile, 'alta');
+      expect(preview().showTerminalRow, isFalse);
+      expect(preview().invertToolbar, isTrue);
+      expect(find.text('esc'), findsNothing);
+    });
+  });
+
+  group('Vibración y sonido', () {
+    testWidgets('vibración de teclas ON y Nítida por defecto', (tester) async {
+      await openSonido(tester);
+      expect(switchValue(tester, 'kb-haptics-switch'), isTrue);
+      expect(rowShows('kb-haptic-style-selector', 'Nítida'), isTrue);
+    });
+
+    testWidgets('elegir intensidad Firme persiste', (tester) async {
+      await openSonido(tester);
+      await pickOption(tester, 'kb-haptic-style-selector', 'firme');
+      expect((await prefs()).getString('kb_haptic_style'), 'firme');
+    });
+
+    testWidgets('apagar la vibración persiste y oculta la intensidad',
+        (tester) async {
+      await openSonido(tester);
+      await tapKey(tester, 'kb-haptics-switch');
+
+      expect((await prefs()).getBool('kb_haptics_enabled'), isFalse);
+      expect(byKey('kb-haptic-style-selector'), findsNothing);
+    });
+
+    testWidgets('micrófono: vibración ON con los 4 eventos, sonidos OFF',
+        (tester) async {
+      await openSonido(tester);
+      expect(switchValue(tester, 'kb-mic-haptics-enabled'), isTrue);
+      for (final k in const [
         'kb-mic-haptic-start',
         'kb-mic-haptic-recording',
         'kb-mic-haptic-paste',
         'kb-mic-haptic-cancel',
       ]) {
-        expect(micSwitch(key), findsOneWidget);
-        expect(tester.widget<Switch>(micSwitch(key)).value, isTrue);
+        expect(switchValue(tester, k), isTrue, reason: k);
       }
+      expect(switchValue(tester, 'kb-mic-sounds-enabled'), isFalse);
+      expect(byKey('kb-mic-start-style'), findsNothing);
     });
 
-    testWidgets('apagar vibrar-al-cancelar persiste', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-      await openMicSection(tester);
-
-      await tester.tap(micSwitch('kb-mic-haptic-cancel'));
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(micSwitch('kb-mic-haptic-cancel')).value,
-          isFalse);
-      expect(await StorageService().getMicHapticCancel(), isFalse);
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('kb_mic_haptic_cancel'), isFalse);
+    testWidgets('apagar vibrar al cancelar persiste', (tester) async {
+      await openSonido(tester);
+      await tapKey(tester, 'kb-mic-haptic-cancel');
+      expect((await prefs()).getBool('kb_mic_haptic_cancel'), isFalse);
     });
 
-    testWidgets('encender sonidos persiste', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-      await openMicSection(tester);
-
-      await tester.tap(micSwitch('kb-mic-sounds-enabled'));
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(micSwitch('kb-mic-sounds-enabled')).value,
-          isTrue);
-      expect(await StorageService().getMicSoundsEnabled(), isTrue);
+    testWidgets('apagar la vibración del micrófono oculta los eventos',
+        (tester) async {
+      await openSonido(tester);
+      await tapKey(tester, 'kb-mic-haptics-enabled');
+      expect(await h.storage.getMicHapticsEnabled(), isFalse);
+      expect(byKey('kb-mic-haptic-start'), findsNothing);
     });
 
-    testWidgets('opciones 1-4 de inicio y fin con default 1', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-      await openMicSection(tester);
+    testWidgets('encender sonidos persiste y muestra tonos (default 3)',
+        (tester) async {
+      await openSonido(tester);
+      await tapKey(tester, 'kb-mic-sounds-enabled');
 
-      expect(find.text('Sonido al iniciar'), findsOneWidget);
-      expect(find.text('Sonido al terminar'), findsOneWidget);
-      final startSel = find.byKey(const ValueKey('kb-mic-start-style'));
-      final stopSel = find.byKey(const ValueKey('kb-mic-stop-style'));
-      expect(startSel, findsOneWidget);
-      expect(stopSel, findsOneWidget);
-      expect(tester.widget<SegmentedButton<String>>(startSel).selected, {'3'});
-      expect(tester.widget<SegmentedButton<String>>(stopSel).selected, {'3'});
+      expect(await h.storage.getMicSoundsEnabled(), isTrue);
+      expect(rowShows('kb-mic-start-style', 'Tono 3'), isTrue);
+      expect(rowShows('kb-mic-stop-style', 'Tono 3'), isTrue);
     });
 
-    testWidgets('elegir opción 2 de inicio persiste', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Micrófono: vibración y sonido'));
-      await tester.pumpAndSettle();
+    testWidgets('elegir tono 2 al empezar persiste', (tester) async {
+      h.setUp(prefs: {'kb_mic_sounds_enabled': true});
+      await openSonido(tester);
 
-      await tester.tap(find.descendant(
-        of: find.byKey(const ValueKey('kb-mic-start-style')),
-        matching: find.text('Opción 2'),
-      ));
-      await tester.pumpAndSettle();
+      await pickOption(tester, 'kb-mic-start-style', '2');
 
-      final startSel = find.byKey(const ValueKey('kb-mic-start-style'));
-      expect(tester.widget<SegmentedButton<String>>(startSel).selected, {'2'});
-      expect(await StorageService().getMicStartStyle(), '2');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_mic_start_style'), '2');
+      expect((await prefs()).getString('kb_mic_start_style'), '2');
+      expect(rowShows('kb-mic-start-style', 'Tono 2'), isTrue);
     });
   });
 
-  group('SettingsScreen - pulsación larga MEJ-05', () {
-    Finder longPressSwitch() => find.descendant(
-          of: find.byKey(const ValueKey('kb-long-press-symbols-switch')),
-          matching: find.byType(Switch),
-        );
-
-    Finder longPressDelaySelector() =>
-        find.byKey(const ValueKey('kb-long-press-delay-selector'));
-
-    testWidgets('muestra switch ON y Normal por defecto', (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Menús de pulsación larga'), findsOneWidget);
-      expect(longPressSwitch(), findsOneWidget);
-      expect(tester.widget<Switch>(longPressSwitch()).value, isTrue);
-      expect(
-          tester
-              .widget<SegmentedButton<String>>(longPressDelaySelector())
-              .selected,
-          {'normal'});
-    });
-
-    testWidgets('apagar menús persiste en SharedPreferences',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(longPressSwitch());
-      await tester.pumpAndSettle();
-
-      expect(tester.widget<Switch>(longPressSwitch()).value, isFalse);
-      expect(await StorageService().getLongPressSymbolsEnabled(), isFalse);
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getBool('kb_long_press_symbols'), isFalse);
-    });
-
-    testWidgets('elegir Relajado persiste en SharedPreferences',
-        (tester) async {
-      await tester.pumpWidget(buildTestableWidget(tester));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('tab-teclado')));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.descendant(
-        of: longPressDelaySelector(),
-        matching: find.text('Relajado'),
-      ));
-      await tester.pumpAndSettle();
+  group('Menú desplegable', () {
+    testWidgets('marca con check la opción elegida', (tester) async {
+      await openTeclado(tester);
+      await tapKey(tester, 'kb-key-spacing-selector');
 
       expect(
-          tester
-              .widget<SegmentedButton<String>>(longPressDelaySelector())
-              .selected,
-          {'relajado'});
-      expect(await StorageService().getLongPressDelay(), 'relajado');
-      final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('kb_long_press_delay'), 'relajado');
+        find.descendant(
+          of: byKey('kb-key-spacing-selector-normal'),
+          matching: find.byIcon(Icons.check_rounded),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: byKey('kb-key-spacing-selector-extra'),
+          matching: find.byIcon(Icons.check_rounded),
+        ),
+        findsNothing,
+      );
     });
   });
 }

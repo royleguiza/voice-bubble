@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-TEST SUITE: REDISENO SETTINGS V2 (laboratorio_ui/settings-redesign-v2.html)
-Verifica al 100% de certeza sobre el código REAL:
-1. Estructura 5 tabs: General fusiona Inicio+Burbuja; sin inicio_tab/burbuja_tab.
-2. Tab bar crystal con las 5 keys (sin tab-inicio/tab-burbuja).
+TEST SUITE: AJUSTES 2026 (prototipo "VoiceBubble · Ajustes 2026", aprobado
+por el dueño el 2026-10-30; reemplaza a settings-redesign-v2).
+Verifica sobre el código REAL:
+1. Estructura: lista raíz estilo iOS + subpáginas (sin dock de pestañas).
+2. Kit único: 5 tipos de fila (nav, interruptor, menú, acción, valor).
 3. Contrato intacto: theme_mode solo-Dart (fuera de bridgeKeys y contrato).
-4. Tokens UI: sin Colors.green/TextStyle sueltos, iconos 18/22/28, crystal.
-5. Keys de conducta preservadas en lib (las que verifican los tests Dart).
-6. About sheet con selector de tema Sistema/Claro/Oscuro.
+4. Tokens UI: sin Colors.green/TextStyle sueltos, iconos 18/22/28.
+5. Keys de conducta preservadas (las que verifican los tests Dart).
+6. Acerca de con textos de contrato; Apariencia Sistema/Claro/Oscuro.
+7. Navegación: Back del sistema sube un nivel (PopScope), sin AppBar.
+8. Rendimiento: solo se construye la página visible; carga en 2 fases.
 """
 
 import os
@@ -26,42 +29,47 @@ def read(rel):
 
 
 print("\n============================================================")
-print(" INICIANDO TEST SUITE: REDISENO SETTINGS V2")
+print(" INICIANDO TEST SUITE: AJUSTES 2026")
 print("============================================================\n")
 
 LIB = "app_source/lib"
-
-# --- 1. Estructura 5 tabs ---
-check("GeneralTab existe",
-      os.path.isfile(os.path.join(WORKSPACE, f"{LIB}/screens/settings/general_tab.dart")))
-check("inicio_tab.dart eliminado",
-      not os.path.isfile(os.path.join(WORKSPACE, f"{LIB}/screens/settings/inicio_tab.dart")))
-check("burbuja_tab.dart eliminado",
-      not os.path.isfile(os.path.join(WORKSPACE, f"{LIB}/screens/settings/burbuja_tab.dart")))
 screen = read(f"{LIB}/screens/settings_screen.dart")
-check("SettingsScreen sin AppBar (v2)", "AppBar(" not in screen)
-check("SettingsScreen con SafeArea", "SafeArea(" in screen)
-check("Sin InicioTab/BurbujaTab en lib",
-      "InicioTab(" not in screen and "BurbujaTab(" not in screen)
-for gone in ["tab-inicio", "tab-burbuja", "inicio-go-burbuja", "inicio-go-teclado"]:
-    check(f"Sin restos de '{gone}' en lib",
-          gone not in read(f"{LIB}/widgets/settings_tab_bar.dart") and gone not in screen,
-          f"quedó {gone}")
+kit = read(f"{LIB}/widgets/settings_v2.dart")
+pages = screen + read(f"{LIB}/screens/settings/general_tab.dart") \
+    + read(f"{LIB}/screens/settings/teclado_tab.dart") \
+    + read(f"{LIB}/screens/settings/trackpad_tab.dart")
 
-# --- 2. Tab bar 5 tabs + crystal ---
-tabbar = read(f"{LIB}/widgets/settings_tab_bar.dart")
-for key in ["tab-general", "tab-teclado", "tab-trackpad", "tab-snippets", "tab-credenciales"]:
-    check(f"Tab bar con key {key}", f"'{key}'" in tabbar, f"falta {key}")
-check("Tab bar usa glass crystal", "crystal: true" in tabbar)
-glass = read(f"{LIB}/ui/glass_container.dart")
-check("GlassContainer con variante crystal", "crystal" in glass and "_blurCrystal" in glass)
-tokens = read(f"{LIB}/ui/design_tokens.dart")
-for tok in ["kSettingsPageTitle", "kSettingsGroupTitle", "kSettingRowTitle",
-            "kSettingRowMinHeight", "kSettingIconSize", "kTileBlue", "kTileGreen",
-            "kTileOrange", "kTileRed", "kTilePurple", "kTileGray", "kTilePink",
-            "kGlassBlurCrystal", "kGlassFillCrystalLight", "kGlassFillCrystalDark",
-            "kGlassBorderCrystalLight", "kGlassBorderCrystalDark", "kWarning"]:
-    check(f"Token v2 {tok}", tok in tokens, f"falta {tok}")
+# --- 1. Estructura ---
+check("Dock de pestañas eliminado",
+      not os.path.isfile(os.path.join(WORKSPACE, f"{LIB}/widgets/settings_tab_bar.dart")))
+check("Sin restos de SettingsTabBar en lib", "SettingsTabBar" not in pages)
+for gone in ["tab-general", "tab-teclado", "tab-trackpad", "tab-snippets",
+             "tab-credenciales", "_builtTabs", "IndexedStack("]:
+    check(f"Sin restos de '{gone}'", gone not in pages, f"quedó {gone}")
+check("SettingsScreen sin AppBar", "AppBar(" not in screen)
+check("SettingsScreen con SafeArea", "SafeArea(" in screen)
+check("Raíz con título grande 'Ajustes'", "SettingsLargeTitle('Ajustes')" in screen)
+for page in ["root", "transcripcion", "ia", "teclado", "sonido", "burbuja",
+             "trackpad", "snippets", "claves", "notas", "acerca"]:
+    check(f"Página {page} en el enum", f"  {page}," in screen)
+for nav in ["transcripcion", "ia", "teclado", "burbuja", "trackpad",
+            "snippets", "claves", "notas"]:
+    check(f"Fila raíz nav-{nav}", f"ValueKey('nav-{nav}')" in screen)
+check("Las páginas son part de la misma librería",
+      all(f"part 'settings/{p}';" in screen
+          for p in ["general_tab.dart", "teclado_tab.dart", "trackpad_tab.dart"]))
+
+# --- 2. Kit único ---
+for cls in ["SettingsSection", "SettingsNavRow", "SettingsSwitchRow",
+            "SettingsMenuRow", "SettingsActionRow", "SettingsValueRow",
+            "SettingsGlassButton", "SettingsSheetFrame", "SettingIconTile"]:
+    check(f"Kit define {cls}", f"class {cls}" in kit)
+check("Interruptor estilo iOS (CupertinoSwitch)", "CupertinoSwitch(" in kit)
+check("Menú desplegable con check (MenuAnchor)", "MenuAnchor(" in kit
+      and "Icons.check_rounded" in kit)
+check("Sin SegmentedButton en Ajustes", "SegmentedButton" not in pages + kit)
+check("Sin SwitchListTile en Ajustes", "SwitchListTile" not in pages + kit)
+check("Sin tarjetas expandibles", "ExpandableSettingsCard" not in pages + kit)
 
 # --- 3. Contrato intacto (theme solo-Dart) ---
 contract = read("docs/contract-keys.txt")
@@ -73,6 +81,12 @@ if m:
     check("theme_mode fuera del puente", "theme_mode" not in m.group(1))
 check("theme_mode con dominio validado",
       "themeModes" in storage and "defaultThemeMode" in storage)
+tokens = read(f"{LIB}/ui/design_tokens.dart")
+for tok in ["kSettingsGroupRadius", "kSettingsGroupGap", "kSettingsLargeTitle",
+            "kSettingsNavTitle", "kSettingsSectionHeader", "kSettingsSecondaryLight",
+            "kSettingsSecondaryDark", "kSwitchOn", "kTintTextLight", "kTintTextDark",
+            "kSettingRowMinHeight", "kSettingIconSize", "kTileIndigo", "kTileYellow"]:
+    check(f"Token {tok}", tok in tokens, f"falta {tok}")
 
 # --- 4. Tokens UI (mirror del job CI) ---
 dart_files = []
@@ -102,42 +116,62 @@ check("Iconos solo 18/22/28", not bad_size, f"fuera de tabla: {bad_size[:5]}")
 
 # --- 5. Keys de conducta preservadas ---
 need_keys = [
-    "api-cta-button", "api-loaded-button", "about-open-button",
-    "bubble-history-switch", "burbuja-overlay-permission-row",
-    "kb-height-profile-selector", "kb-key-spacing-selector",
-    "kb-spacebar-trackpad-mode-selector", "kb-bottom-elevation-selector",
-    "kb-haptic-style-selector", "teclado-go-trackpad",
+    "about-open-button", "theme-selector", "api-key-row", "api-key-input-field",
+    "api-key-save-button", "api-key-cancel-button", "api-key-delete-button",
+    "gemini-key-row", "geminiActionsSwitch", "geminiTestButton",
+    "record-mode-selector", "bubble-active-switch", "bubble-history-switch",
+    "burbuja-overlay-permission-row", "notes-deferred-queue-switch",
+    "widget-mic-position-selector", "kb-preview", "kb-picker-button",
+    "kb-open-settings-button", "kb-height-profile-selector",
+    "kb-key-spacing-selector", "kb-bottom-elevation-selector",
+    "kb-terminal-row-switch", "kb-code-key-switch", "kb-language-key-switch",
+    "credenciales-key-visible-switch", "kb-spacebar-trackpad-mode-selector",
+    "kb-spacebar-alignment-selector", "kb-invert-toolbar-switch",
+    "kb-long-press-symbols-switch", "kb-long-press-delay-selector",
+    "kb-clipboard-images-switch", "kb-haptics-switch", "kb-haptic-style-selector",
+    "kb-mic-haptics-enabled", "kb-mic-sounds-enabled", "kb-mic-start-style",
+    "kb-mic-stop-style", "kb-trackpad-enabled-switch", "kb-trackpad-toolbar-switch",
     "kb-trackpad-sensitivity-slider", "kb-trackpad-accel-curve-selector",
     "kb-trackpad-secondary-click-selector", "kb-trackpad-button-layout-selector",
     "kb-trackpad-scroll-position-selector", "kb-trackpad-scroll-direction-selector",
     "kb-trackpad-pointer-style-selector", "kb-trackpad-haptic-selector",
     "kb-trackpad-auto-return-selector", "snippets-add-button",
-    "snippets-search-field", "snippet-name-field", "snippet-content-field",
-    "credenciales-add-nombre", "credenciales-add-usuario",
-    "credenciales-add-password", "credenciales-add-button",
-    "credenciales-show-user", "experimental-banner-claves",
-    "about-theme-selector",
+    "snippets-search-field", "snippets-reorder-button", "snippet-name-field",
+    "snippet-content-field", "snippet-save-button", "snippet-delete-button",
+    "credenciales-open-add", "credenciales-add-nombre", "credenciales-add-usuario",
+    "credenciales-add-password", "credenciales-add-button", "credenciales-show-user",
+    "settings-back-button",
 ]
 blob = " ".join(open(f, encoding="utf-8").read() for f in dart_files)
 for k in need_keys:
     check(f"Key preservada {k}", f"'{k}'" in blob, f"falta {k}")
 
-# --- 6. About con tema + textos de contrato ---
-check("About con selector de tema", "about-theme-selector" in screen)
-for txt in ["VoiceBubble STT v1.0.0", "Transcripción de voz a texto con Groq Whisper."]:
-    check(f"Contrato About '{txt[:30]}...'", txt in screen)
+# --- 6. Acerca de + apariencia ---
+check("Acerca de con descripción de contrato",
+      "Transcripción de voz a texto con Groq Whisper." in screen)
+check("Acerca de muestra versión y diagnóstico",
+      "'1.0.0'" in screen and "channelErrorCount" in screen)
 for mode in ["'sistema'", "'claro'", "'oscuro'"]:
-    check(f"About ofrece modo {mode}", mode in screen)
+    check(f"Apariencia ofrece modo {mode}", mode in screen)
 
-# --- 7. Navegación v2: sin AppBar, Back del sistema ---
+# --- 7. Navegación ---
+check("Back del sistema sube un nivel (PopScope)",
+      "PopScope(" in screen and "canPop: _stack.length == 1" in screen)
+check("Respeta Reduced Motion en la transición",
+      "MediaQuery.disableAnimationsOf(context)" in screen)
 flow = read("app_source/test/integration/full_flow_test.dart")
 check("Flujo usa Back del sistema (sin AppBar)", "handlePopRoute()" in flow)
 check("Sin arrow_back en flujo", "arrow_back" not in flow)
 
-print("\n============================================================")
-print(f" RESULTADO SUITE SETTINGS-V2: {suite.passed} pasados, {suite.failed} fallidos.")
-print("============================================================\n")
+# --- 8. Rendimiento ---
+check("Solo se construye la página visible",
+      "_buildPage(context, page)" in screen and "_stack.last" in screen)
+check("Carga en dos fases (prefs al instante, bóveda en paralelo)",
+      "_loadPrefsState()" in screen and "_loadSlowState()" in screen)
+check("Espejo STT solo se repara si falta",
+      "isSttMirrorConfigured()" in screen)
 
-if suite.failed > 0:
-    sys.exit(1)
-sys.exit(0)
+print("\n============================================================")
+print(f" RESULTADO SUITE AJUSTES 2026: {suite.passed} pasados, {suite.failed} fallidos.")
+print("============================================================\n")
+sys.exit(suite.exit_code())

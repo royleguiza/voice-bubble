@@ -416,6 +416,90 @@ const Color kTileRed = Color(0xFFFF453A);
 const Color kTilePurple = Color(0xFFBF5AF2);
 const Color kTileGray = Color(0xFF8E8E93);
 const Color kTilePink = Color(0xFFFF375F);
+const Color kTileIndigo = Color(0xFF5856D6);
+const Color kTileYellow = Color(0xFFA66A00);
+
+// ---------------------------------------------------------------------------
+// Ajustes 2026 (lista agrupada estilo iOS 26)
+// ---------------------------------------------------------------------------
+
+/// Radio de los grupos de filas (inset grouped de iOS 26).
+const double kSettingsGroupRadius = 26.0;
+
+/// Separación vertical entre grupos.
+const double kSettingsGroupGap = 28.0;
+
+/// Botón circular de vidrio de la barra superior (volver / agregar).
+const double kSettingsNavButtonSize = 44.0;
+
+/// Altura de la barra superior de las subpáginas.
+const double kSettingsNavBarHeight = 64.0;
+
+/// Título grande de la raíz de Ajustes (34/700).
+const TextStyle kSettingsLargeTitle = TextStyle(
+  fontSize: 34,
+  fontWeight: FontWeight.w700,
+  letterSpacing: -0.6,
+  height: 1.2,
+);
+
+/// Título centrado de la barra de subpágina (17/600).
+const TextStyle kSettingsNavTitle = TextStyle(
+  fontSize: 17,
+  fontWeight: FontWeight.w600,
+  letterSpacing: -0.41,
+);
+
+/// Encabezado de grupo (15/600, sin mayúsculas).
+const TextStyle kSettingsSectionHeader = TextStyle(
+  fontSize: 15,
+  fontWeight: FontWeight.w600,
+  letterSpacing: -0.24,
+);
+
+/// Texto secundario legible (pie de grupo, valor de fila): >= 4.5:1 sobre
+/// el fondo de la pantalla y de las tarjetas, a diferencia de
+/// kLabelSecondary (60% alpha, ~3.9:1).
+const Color kSettingsSecondaryLight = Color(0xFF6C6C70);
+const Color kSettingsSecondaryDark = Color(0xFF9C9CA3);
+
+/// Chevron y asa del sheet (decorativos).
+const Color kSettingsChevronLight = Color(0xFFB4B4B9);
+const Color kSettingsChevronDark = Color(0xFF5A5A5F);
+
+/// Separador fino entre filas de un grupo.
+const Color kSettingsSeparatorLight = Color(0x2E3C3C43); // 18%
+const Color kSettingsSeparatorDark = Color(0x8C545458); // 55%
+
+/// Pista del interruptor apagado / encendido.
+const Color kSwitchOffLight = Color(0xFFE3E3E8);
+const Color kSwitchOffDark = Color(0xFF39393D);
+const Color kSwitchOn = Color(0xFF34C759);
+
+/// Azul de texto (acciones de fila): kAccent da ~4:1 sobre blanco.
+const Color kTintTextLight = Color(0xFF0062CC);
+const Color kTintTextDark = Color(0xFF4DA3FF);
+
+/// Aviso "Falta" en la raíz (naranja legible).
+const Color kSettingsAlertLight = Color(0xFFB25000);
+const Color kSettingsAlertDark = Color(0xFFFF9F0A);
+
+/// Vidrio de los botones circulares y del menú desplegable.
+const Color kSettingsGlassLight = Color(0xC7FFFFFF); // 78%
+const Color kSettingsGlassDark = Color(0xB83A3A3C); // 72%
+const Color kSettingsGlassBorderLight = Color(0x12000000); // 7%
+const Color kSettingsGlassBorderDark = Color(0x24FFFFFF); // 14%
+const Color kSettingsMenuLight = Color(0xFFFAFAFC); // opaco: sin blur, el
+// translúcido deja ver el texto de las filas de abajo.
+const Color kSettingsMenuDark = Color(0xFF2C2C2E);
+
+/// Vista previa del teclado en Ajustes › Teclado.
+const Color kKbPreviewSurfaceLight = Color(0xFFD4D6DC);
+const Color kKbPreviewSurfaceDark = Color(0xFF2C2C2E);
+const Color kKbPreviewKeyLight = Color(0xFFFFFFFF);
+const Color kKbPreviewKeyDark = Color(0xFF5C5C5F);
+const Color kKbPreviewKeyAltLight = Color(0xFFACB0B9);
+const Color kKbPreviewKeyAltDark = Color(0xFF3A3A3C);
 
 /// Glass "Crystal" (variante elegida por el dueño): blur 10, alta
 /// saturación simulada con fill más vivo, borde especular 1.5px y

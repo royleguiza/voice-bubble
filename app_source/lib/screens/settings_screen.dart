@@ -4,21 +4,39 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
 import 'credentials_screen.dart';
-import 'settings/general_tab.dart';
 import 'settings/snippets_tab.dart';
-import 'settings/teclado_tab.dart';
-import 'settings/trackpad_tab.dart';
 import '../services/channel_guard.dart';
 import '../services/storage_service.dart';
 import '../services/gemini_key_store.dart';
 import '../services/gemini_note_service.dart';
 import '../services/widget_service.dart';
+import '../ui/debouncer.dart';
+import '../ui/design_tokens.dart';
 import '../ui/theme_mode.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/floating_trackpad_service.dart';
 import '../services/keyboard_service.dart';
-import '../ui/debouncer.dart';
-import '../widgets/settings_tab_bar.dart';
+import '../widgets/settings_v2.dart';
+
+part 'settings/general_tab.dart';
+part 'settings/teclado_tab.dart';
+part 'settings/trackpad_tab.dart';
+
+/// Páginas de Ajustes. La raíz es una lista estilo Ajustes de iOS y cada
+/// tema abre su propia página (antes: 5 pestañas con listas largas).
+enum SettingsPage {
+  root,
+  transcripcion,
+  ia,
+  teclado,
+  sonido,
+  burbuja,
+  trackpad,
+  snippets,
+  claves,
+  notas,
+  acerca,
+}
 
 class SettingsScreen extends StatefulWidget {
   final StorageService? storageService;
@@ -42,7 +60,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen>
     with WidgetsBindingObserver {
-  int _currentTab = 0;
   final _apiKeyController = TextEditingController();
   late final FlutterSecureStorage _secureStorage;
   late final StorageService _storageService;
@@ -50,16 +67,23 @@ class _SettingsScreenState extends State<SettingsScreen>
   late final FloatingTrackpadService _floatingTrackpadService;
   late final KeyboardService _keyboardService;
 
+  /// Pila de navegación interna: solo se construye la página visible.
+  final List<SettingsPage> _stack = [SettingsPage.root];
+  bool _navForward = true;
+  final _snippetsKey = GlobalKey<SnippetsTabState>();
+  final _credentialsKey = GlobalKey<CredentialsScreenState>();
+
+  /// Clave guardada (fuente de la cola "••••1234" y del Cancelar del sheet).
+  String _storedApiKey = '';
   bool _hasApiKey = false;
   bool _isEditingApiKey = false;
   String? _apiKeyError;
-  bool _showApiDetail = false;
   final _geminiKeyStore = GeminiKeyStore();
   final _geminiApiKeyController = TextEditingController();
+  String _storedGeminiKey = '';
   bool _geminiHasApiKey = false;
   bool _geminiIsEditingApiKey = false;
   String? _geminiApiKeyError;
-  bool _geminiShowApiDetail = false;
   bool _geminiActionsEnabled = true;
   String _recordMode = StorageService.defaultRecordMode;
   bool _isBubbleEnabled = false;
@@ -105,14 +129,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _themeMode = StorageService.defaultThemeMode;
   String _widgetMicPosition = StorageService.defaultWidgetMicPosition;
 
-  /// Tabs ya visitados: la pila es perezosa (solo construye lo visitado)
-  /// pero conserva el estado (lo visitado nunca se desmonta).
-  final Set<int> _builtTabs = {0};
-
-  /// Debouncers por slider para persistencia (prefs + canal nativo).
-  /// El thumb hace setState inmediato; solo el guardado se difiere 150 ms.
-  final Map<String, Debouncer> _sliderDebouncers = {};
-
   @override
   void initState() {
     super.initState();
@@ -130,92 +146,78 @@ class _SettingsScreenState extends State<SettingsScreen>
     // explícita de usar el mic (activar la burbuja, ver _toggleBubble).
   }
 
-  /// Carga inicial de toda la pantalla: las lecturas corren en paralelo y
-  /// aplican UN único setState al terminar (antes: ~10 encadenados al abrir
-  /// Ajustes). Cada lectura captura su propio fallo de frontera de canal y
-  /// conserva el valor por defecto del campo, para que un canal ausente o un
-  /// keystore bloqueado no dejen la pantalla sin estado.
+  /// Carga inicial en dos fases para que Ajustes abra al instante:
+  /// 1. Preferencias planas (ya en memoria, sin I/O): un único setState.
+  /// 2. Lo lento (bóveda cifrada + canales nativos) en paralelo, con su
+  ///    propio setState. Antes las ~40 lecturas iban en serie DETRÁS de dos
+  ///    lecturas del keystore y de una reescritura del espejo STT (escritura
+  ///    cifrada + relectura + 4 commits a disco) en CADA apertura.
+  /// Cada lectura captura su propio fallo de frontera de canal y conserva el
+  /// valor por defecto del campo.
   Future<void> _loadInitialState() async {
-    final apiKey = await _readStoredApiKey();
-    final geminiKey = await _geminiKeyStore.getKey() ?? '';
-    final geminiActions = await _geminiKeyStore.actionsEnabled();
+    final slow = _loadSlowState();
+    await _loadPrefsState();
+    await slow;
+  }
+
+  Future<void> _loadPrefsState() async {
+    final s = _storageService;
     final results = await (
-      _storageService.loadRecordMode(),
-      _readBubbleEnabled(),
-      _readKeyboardStatus(),
-      _storageService.loadKeyboardTerminalRowVisible(),
-      _storageService.loadKeyboardCodeKeyVisible(),
-      _storageService.loadKeyboardLanguageKeyVisible(),
-      _storageService.getHeightProfile(),
-      _storageService.getKeySpacing(),
-      _storageService.getHapticsEnabled(),
+      s.loadRecordMode(),
+      s.loadKeyboardTerminalRowVisible(),
+      s.loadKeyboardCodeKeyVisible(),
+      s.loadKeyboardLanguageKeyVisible(),
+      s.getHeightProfile(),
+      s.getKeySpacing(),
+      s.getHapticsEnabled(),
+      _geminiKeyStore.actionsEnabled(),
     ).wait;
-    // Fuera del record .wait (límite de aridad del SDK): carga aparte.
-    final hapticStyle = await _storageService.getHapticStyle();
-    final micHapticsEnabled = await _storageService.getMicHapticsEnabled();
-    final micHapticStart = await _storageService.getMicHapticStart();
-    final micHapticRecording = await _storageService.getMicHapticRecording();
-    final micHapticPaste = await _storageService.getMicHapticPaste();
-    final micHapticCancel = await _storageService.getMicHapticCancel();
-    final micSoundsEnabled = await _storageService.getMicSoundsEnabled();
-    final micStartStyle = await _storageService.getMicStartStyle();
-    final micStopStyle = await _storageService.getMicStopStyle();
-    final bottomElevation = await _storageService.getBottomElevationDp();
-    final invertToolbar = await _storageService.getInvertToolbar();
-    final spacebarAlign = await _storageService.getSpacebarAlignment();
-    final spacebarTrackpadMode = await _storageService.getSpacebarTrackpadMode();
-    final trackpadEnabled = await _storageService.getTrackpadEnabled();
-    final trackpadToolbarVisible = await _storageService.getTrackpadToolbarVisible();
-    final trackpadButtonLayout = await _storageService.getTrackpadButtonLayout();
-    final trackpadScrollPosition = await _storageService.getTrackpadScrollPosition();
-    final trackpadSensitivity = await _storageService.getTrackpadSensitivity();
-    final trackpadAccelCurve = await _storageService.getTrackpadAccelCurve();
-    final trackpadTapToClick = await _storageService.getTrackpadTapToClick();
-    final trackpadSecondaryClick = await _storageService.getTrackpadSecondaryClick();
-    final trackpadScrollDirection = await _storageService.getTrackpadScrollDirection();
-    final trackpadHaptic = await _storageService.getTrackpadHaptic();
-    final trackpadPointerStyle = await _storageService.getTrackpadPointerStyle();
-    final trackpadAutoReturn = await _storageService.getTrackpadAutoReturn();
-    final bubbleHistory = await _storageService.loadBubbleHistoryEnabled();
-    final notesDeferred =
-        await _storageService.loadNotesDeferredQueueEnabled();
-    final credentialsKeyVisible =
-        await _storageService.loadKeyboardCredentialsKeyVisible();
-    final clipboardImages = await _storageService.getClipboardImagesEnabled();
-    final longPressSymbols = await _storageService.getLongPressSymbolsEnabled();
-    final longPressDelay = await _storageService.getLongPressDelay();
-    final themeMode = await _storageService.loadThemeMode();
-    final widgetMicPos = await _storageService.getWidgetMicPosition();
-    // Espejo D7: mantiene sincronizadas las credenciales del teclado nativo.
-    if (apiKey.isNotEmpty) {
-      try {
-        await _storageService.saveSttMirror(apiKey: apiKey);
-      } catch (_) {}
-    }
+    // Fuera del record .wait (límite de aridad del SDK). Son lecturas de
+    // memoria: los await en serie cuestan un microtask cada uno.
+    final hapticStyle = await s.getHapticStyle();
+    final micHapticsEnabled = await s.getMicHapticsEnabled();
+    final micHapticStart = await s.getMicHapticStart();
+    final micHapticRecording = await s.getMicHapticRecording();
+    final micHapticPaste = await s.getMicHapticPaste();
+    final micHapticCancel = await s.getMicHapticCancel();
+    final micSoundsEnabled = await s.getMicSoundsEnabled();
+    final micStartStyle = await s.getMicStartStyle();
+    final micStopStyle = await s.getMicStopStyle();
+    final bottomElevation = await s.getBottomElevationDp();
+    final invertToolbar = await s.getInvertToolbar();
+    final spacebarAlign = await s.getSpacebarAlignment();
+    final spacebarTrackpadMode = await s.getSpacebarTrackpadMode();
+    final trackpadEnabled = await s.getTrackpadEnabled();
+    final trackpadToolbarVisible = await s.getTrackpadToolbarVisible();
+    final trackpadButtonLayout = await s.getTrackpadButtonLayout();
+    final trackpadScrollPosition = await s.getTrackpadScrollPosition();
+    final trackpadSensitivity = await s.getTrackpadSensitivity();
+    final trackpadAccelCurve = await s.getTrackpadAccelCurve();
+    final trackpadTapToClick = await s.getTrackpadTapToClick();
+    final trackpadSecondaryClick = await s.getTrackpadSecondaryClick();
+    final trackpadScrollDirection = await s.getTrackpadScrollDirection();
+    final trackpadHaptic = await s.getTrackpadHaptic();
+    final trackpadPointerStyle = await s.getTrackpadPointerStyle();
+    final trackpadAutoReturn = await s.getTrackpadAutoReturn();
+    final bubbleHistory = await s.loadBubbleHistoryEnabled();
+    final notesDeferred = await s.loadNotesDeferredQueueEnabled();
+    final credentialsKeyVisible = await s.loadKeyboardCredentialsKeyVisible();
+    final clipboardImages = await s.getClipboardImagesEnabled();
+    final longPressSymbols = await s.getLongPressSymbolsEnabled();
+    final longPressDelay = await s.getLongPressDelay();
+    final themeMode = await s.loadThemeMode();
+    final widgetMicPos = await s.getWidgetMicPosition();
     if (!mounted) return;
     setState(() {
-      _apiKeyController.text = apiKey;
-      _hasApiKey = apiKey.isNotEmpty;
-      _isEditingApiKey = false;
-      _apiKeyError = null;
-      _showApiDetail = false;
-      _geminiApiKeyController.text = geminiKey;
-      _geminiHasApiKey = geminiKey.isNotEmpty;
-      _geminiIsEditingApiKey = false;
-      _geminiApiKeyError = null;
-      _geminiShowApiDetail = false;
-      _geminiActionsEnabled = geminiActions;
       _recordMode = results.$1;
-      _isBubbleEnabled = results.$2;
-      _isKeyboardEnabled = results.$3.$1;
-      _isKeyboardSelected = results.$3.$2;
-      _showTerminalRow = results.$4;
-      _showCodeKey = results.$5;
-      _showLanguageKey = results.$6;
+      _showTerminalRow = results.$2;
+      _showCodeKey = results.$3;
+      _showLanguageKey = results.$4;
+      _heightProfile = results.$5;
+      _keySpacing = results.$6;
+      _hapticsEnabled = results.$7;
+      _geminiActionsEnabled = results.$8;
       _showCredentialsKey = credentialsKeyVisible;
-      _heightProfile = results.$7;
-      _keySpacing = results.$8;
-      _hapticsEnabled = results.$9;
       _hapticStyle = hapticStyle;
       _micHapticsEnabled = micHapticsEnabled;
       _micHapticStart = micHapticStart;
@@ -250,6 +252,78 @@ class _SettingsScreenState extends State<SettingsScreen>
       _widgetMicPosition = widgetMicPos;
     });
   }
+
+  /// Bóveda cifrada y canales nativos, todo en paralelo.
+  Future<void> _loadSlowState() async {
+    final results = await (
+      _readStoredApiKey(),
+      _geminiKeyStore.getKey(),
+      _readBubbleEnabled(),
+      _readKeyboardStatus(),
+    ).wait;
+    final apiKey = results.$1;
+    final geminiKey = results.$2 ?? '';
+    if (mounted) {
+      setState(() {
+        _storedApiKey = apiKey;
+        _apiKeyController.text = apiKey;
+        _hasApiKey = apiKey.isNotEmpty;
+        _isEditingApiKey = false;
+        _apiKeyError = null;
+        _storedGeminiKey = geminiKey;
+        _geminiApiKeyController.text = geminiKey;
+        _geminiHasApiKey = geminiKey.isNotEmpty;
+        _geminiIsEditingApiKey = false;
+        _geminiApiKeyError = null;
+        _isBubbleEnabled = results.$3;
+        _isKeyboardEnabled = results.$4.$1;
+        _isKeyboardSelected = results.$4.$2;
+      });
+    }
+    // Espejo D7 (credenciales del teclado nativo): solo se repara si falta.
+    // Antes se reescribía entero en cada apertura de Ajustes.
+    if (apiKey.isNotEmpty) {
+      try {
+        if (!await _storageService.isSttMirrorConfigured()) {
+          await _storageService.saveSttMirror(apiKey: apiKey);
+        }
+      } catch (_) {}
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Navegación interna
+  // ---------------------------------------------------------------------
+
+  void _go(SettingsPage page) {
+    setState(() {
+      _navForward = true;
+      _stack.add(page);
+    });
+  }
+
+  /// Atrás (botón de la barra o gesto del sistema): primero cierra el sheet
+  /// de clave, después sube un nivel.
+  void _handleBack() {
+    if (_isEditingApiKey) {
+      _cancelApiEdit();
+      return;
+    }
+    if (_geminiIsEditingApiKey) {
+      _cancelGeminiApiEdit();
+      return;
+    }
+    if (_stack.length > 1) {
+      setState(() {
+        _navForward = false;
+        _stack.removeLast();
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Acciones
+  // ---------------------------------------------------------------------
 
   /// Modal de historial de la burbuja clásica (hito B1–B7): el toque largo
   /// la abre solo con el switch ON (aplica al abrir la próxima vez, la
@@ -356,43 +430,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (mounted) setState(() => _longPressDelay = delay);
   }
 
-  String get _longPressDelayHint {
-    switch (_longPressDelay) {
-      case 'rapido':
-        return 'El menú aparece a los 250ms: escritura veloz.';
-      case 'relajado':
-        return 'El menú espera 450ms: evita aperturas accidentales.';
-      default:
-        return 'El menú aparece a los 350ms: equilibrio entre velocidad y precisión.';
-    }
-  }
-
-  String get _heightProfileHint {
-    switch (_heightProfile) {
-      case 'baja':
-        return 'Teclas compactas para dejar más pantalla libre.';
-      case 'alta':
-        return 'Teclas más altas para dictar con menos errores.';
-      case 'muy_alta':
-        return 'Teclas extra altas para máxima comodidad y precisión.';
-      default:
-        return 'Altura equilibrada entre espacio y precisión.';
-    }
-  }
-
-  String get _keySpacingHint {
-    switch (_keySpacing) {
-      case 'compacto':
-        return 'Teclas más juntas para pantallas chicas.';
-      case 'amplio':
-        return 'Más aire entre teclas para evitar pulsaciones vecinas.';
-      case 'extra':
-        return 'Separación máxima: teclas bien aisladas contra toques falsos.';
-      default:
-        return 'Separación equilibrada entre teclas.';
-    }
-  }
-
   Future<void> _toggleHaptics(bool enabled) async {
     await _storageService.setHapticsEnabled(enabled);
     if (mounted) setState(() => _hapticsEnabled = enabled);
@@ -441,17 +478,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _saveMicStopStyle(String v) async {
     await _storageService.setMicStopStyle(v);
     if (mounted) setState(() => _micStopStyle = v);
-  }
-
-  String get _hapticStyleHint {
-    switch (_hapticStyle) {
-      case 'nitido':
-        return 'Clic seco y corto, como botón físico.';
-      case 'suave':
-        return 'Toque leve y discreto.';
-      default:
-        return 'Vibración marcada al pulsar.';
-    }
   }
 
   Future<void> _toggleTrackpadEnabled(bool value) async {
@@ -528,7 +554,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _storageService.setTrackpadAutoReturn(value);
   }
 
-  /// Relectura manual (botón Actualizar) del estado del teclado.
+  /// Relectura del estado del teclado (al volver de los ajustes de Android).
   Future<void> _loadKeyboardStatus() async {
     final status = await _readKeyboardStatus();
     if (mounted) {
@@ -562,12 +588,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
-
-  String get _keyboardStatusText {
-    if (_isKeyboardEnabled && _isKeyboardSelected) return 'Activo';
-    if (_isKeyboardEnabled) return 'Habilitado, falta seleccionarlo';
-    return 'No habilitado';
-  }
+  bool get _isKeyboardActive => _isKeyboardEnabled && _isKeyboardSelected;
 
   Future<void> _openKeyboardSettings() async {
     await _keyboardService.openKeyboardSettings();
@@ -583,141 +604,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (mounted) setState(() => _themeMode = mode);
   }
 
-  /// Acerca de fuera del dock (prototipo v1): sheet informativo invocado
-  /// desde General. Preserva textos de contrato (versión + descripción).
-  Future<void> _showAboutSheet() async {
-    if (!mounted) return;
-    await showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (sheetContext) {
-        var sheetThemeMode = _themeMode;
-        return StatefulBuilder(
-          builder: (modalContext, setModalState) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.mic_rounded,
-                        color: Theme.of(modalContext).colorScheme.primary,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'VoiceBubble STT v1.0.0',
-                          style:
-                              Theme.of(modalContext).textTheme.titleSmall,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded),
-                        tooltip: 'Cerrar',
-                        onPressed: () =>
-                            Navigator.of(modalContext).pop(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Transcripción de voz a texto con Groq Whisper.',
-                    style: Theme.of(modalContext)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(
-                          color: Theme.of(modalContext)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Burbuja flotante + teclado del sistema con dictado. '
-                    'Historial de 20 transcripciones. Sin analytics, sin telemetría. '
-                    'El audio solo viaja a internet cuando tú inicias una transcripción.',
-                    style: Theme.of(modalContext).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'El teclado jamás registra ni guarda lo que escribes. '
-                    'Sin dictado ni snippets en campos de contraseña.',
-                    style: Theme.of(modalContext)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(
-                          color: Theme.of(modalContext)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Diagnóstico',
-                    style:
-                        Theme.of(modalContext).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Errores de fondo/canal: $channelErrorCount',
-                    style: Theme.of(modalContext)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(
-                          color: Theme.of(modalContext)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Apariencia',
-                    style:
-                        Theme.of(modalContext).textTheme.titleSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  SegmentedButton<String>(
-                    key: const ValueKey('about-theme-selector'),
-                    showSelectedIcon: false,
-                    segments: const [
-                      ButtonSegment(
-                          value: 'sistema', label: Text('Sistema')),
-                      ButtonSegment(
-                          value: 'claro', label: Text('Claro')),
-                      ButtonSegment(
-                          value: 'oscuro', label: Text('Oscuro')),
-                    ],
-                    selected: {sheetThemeMode},
-                    onSelectionChanged: (modes) {
-                      setModalState(
-                          () => sheetThemeMode = modes.first);
-                      _saveThemeMode(modes.first);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () =>
-                          Navigator.of(modalContext).pop(),
-                      child: const Text('Entendido'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// Revisión manual del permiso de overlay desde la sección Burbuja.
+  /// Revisión manual del permiso de overlay desde Burbuja flotante.
   /// Reutiliza el flujo de _toggleBubble: abre el ajuste del sistema y,
   /// al volver con permiso concedido, arranca la burbuja en un solo gesto.
   Future<void> _reviewOverlayPermission() async {
@@ -844,17 +731,19 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (mounted) setState(() => _recordMode = mode);
   }
 
+  /// Guarda la clave de Groq desde el sheet. Éxito = cierra el sheet
+  /// (`_isEditingApiKey = false`); error de validación o de guardado = el
+  /// sheet sigue abierto con el mensaje.
   Future<void> _saveApiKey() async {
     final key = _apiKeyController.text.trim();
-    // Validación visible (paridad con prototipo laboratorio-ui v1):
-    // vacía, incompleta (<10) o sin prefijo gsk_.
+    // Validación visible: vacía, incompleta (<10) o sin prefijo gsk_.
     String? error;
     if (key.isEmpty) {
-      error = 'Pega tu API Key para continuar.';
+      error = 'Pegá tu clave para continuar.';
     } else if (key.length < 10) {
-      error = 'Parece incompleta: revisa que la copiaste entera.';
+      error = 'Parece incompleta: revisá que la copiaste entera.';
     } else if (!key.startsWith('gsk_')) {
-      error = 'Formato inesperado: las claves de Groq empiezan con gsk_.';
+      error = 'Las claves de Groq empiezan con gsk_.';
     }
     if (error != null) {
       if (mounted) setState(() => _apiKeyError = error);
@@ -882,22 +771,24 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
     if (!mounted) return;
     setState(() {
+      _storedApiKey = key;
       _hasApiKey = key.isNotEmpty;
       _isEditingApiKey = false;
       _apiKeyError = null;
-      _showApiDetail = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('API key guardada')),
+      const SnackBar(content: Text('Clave guardada')),
     );
   }
 
+  /// Abre el sheet. Con clave guardada el campo arranca vacío (se pega la
+  /// nueva); Cancelar restaura la guardada.
   void _startApiEdit() {
     if (mounted) {
       setState(() {
+        _apiKeyController.clear();
         _isEditingApiKey = true;
         _apiKeyError = null;
-        _showApiDetail = false;
       });
     }
   }
@@ -905,25 +796,32 @@ class _SettingsScreenState extends State<SettingsScreen>
   void _cancelApiEdit() {
     if (mounted) {
       setState(() {
+        _apiKeyController.text = _storedApiKey;
         _isEditingApiKey = false;
         _apiKeyError = null;
       });
     }
   }
 
-  String get _geminiApiKeyTail {
-    final text = _geminiApiKeyController.text.trim();
+  String _tailOf(String key) {
+    final text = key.trim();
     if (text.length < 4) return '••••';
     return '••••${text.substring(text.length - 4)}';
   }
+
+  /// Cola visible de la clave (últimos 4, resto oculto). Nunca expone la
+  /// clave completa en UI.
+  String get _apiKeyTail => _tailOf(_storedApiKey);
+
+  String get _geminiApiKeyTail => _tailOf(_storedGeminiKey);
 
   Future<void> _saveGeminiApiKey() async {
     final key = _geminiApiKeyController.text.trim();
     String? error;
     if (key.isEmpty) {
-      error = 'Pega tu API Key de Google AI Studio para continuar.';
+      error = 'Pegá tu clave de Google AI Studio para continuar.';
     } else if (key.length < 10) {
-      error = 'Parece incompleta: revisa que la copiaste entera.';
+      error = 'Parece incompleta: revisá que la copiaste entera.';
     }
     if (error != null) {
       if (mounted) setState(() => _geminiApiKeyError = error);
@@ -940,22 +838,22 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _geminiKeyStore.setActionsEnabled(_geminiActionsEnabled);
     if (!mounted) return;
     setState(() {
+      _storedGeminiKey = key;
       _geminiHasApiKey = true;
       _geminiIsEditingApiKey = false;
       _geminiApiKeyError = null;
-      _geminiShowApiDetail = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('API key de Gemini guardada')),
+      const SnackBar(content: Text('Clave de Google AI guardada')),
     );
   }
 
   void _startGeminiApiEdit() {
     if (mounted) {
       setState(() {
+        _geminiApiKeyController.clear();
         _geminiIsEditingApiKey = true;
         _geminiApiKeyError = null;
-        _geminiShowApiDetail = false;
       });
     }
   }
@@ -963,6 +861,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   void _cancelGeminiApiEdit() {
     if (mounted) {
       setState(() {
+        _geminiApiKeyController.text = _storedGeminiKey;
         _geminiIsEditingApiKey = false;
         _geminiApiKeyError = null;
       });
@@ -974,24 +873,25 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (!mounted) return;
     _geminiApiKeyController.clear();
     setState(() {
+      _storedGeminiKey = '';
       _geminiHasApiKey = false;
       _geminiIsEditingApiKey = false;
       _geminiApiKeyError = null;
-      _geminiShowApiDetail = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('API key de Gemini eliminada')),
+      const SnackBar(content: Text('Clave de Google AI eliminada')),
     );
   }
 
   Future<void> _testGeminiConnection() async {
-    final key = _geminiApiKeyController.text.trim();
+    final key = _storedGeminiKey.trim();
     if (key.isEmpty) return;
     final ok = await GeminiNoteService(apiKey: key).testConnection();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(ok ? 'Conectado con Gemini' : 'No se pudo conectar: revisa la clave'),
+        content: Text(
+            ok ? 'Conectado con Gemini' : 'No se pudo conectar: revisá la clave'),
       ),
     );
   }
@@ -999,14 +899,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleGeminiActions(bool enabled) async {
     await _geminiKeyStore.setActionsEnabled(enabled);
     if (mounted) setState(() => _geminiActionsEnabled = enabled);
-  }
-
-  /// Cola visible de la key para el botón verde (últimos 4, resto oculto).
-  /// Nunca expone la key completa en UI.
-  String get _apiKeyTail {
-    final text = _apiKeyController.text.trim();
-    if (text.length < 4) return '••••';
-    return '••••${text.substring(text.length - 4)}';
   }
 
   Future<void> _clearApiKey() async {
@@ -1023,13 +915,13 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (!mounted) return;
     _apiKeyController.clear();
     setState(() {
+      _storedApiKey = '';
       _hasApiKey = false;
       _isEditingApiKey = false;
       _apiKeyError = null;
-      _showApiDetail = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('API key eliminada')),
+      const SnackBar(content: Text('Clave eliminada')),
     );
   }
 
@@ -1038,231 +930,407 @@ class _SettingsScreenState extends State<SettingsScreen>
     WidgetsBinding.instance.removeObserver(this);
     _apiKeyController.dispose();
     _geminiApiKeyController.dispose();
-    for (final debouncer in _sliderDebouncers.values) {
-      debouncer.dispose();
-    }
-    _sliderDebouncers.clear();
     super.dispose();
   }
 
-  void _selectTab(int index) {
-    setState(() {
-      _currentTab = index;
-      _builtTabs.add(index);
-    });
-  }
+  // ---------------------------------------------------------------------
+  // Construcción
+  // ---------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        top: true,
-        bottom: false,
-        child: Stack(
-          children: [
-            // Construcción perezosa por tab con estado preservado: solo los
-            // tabs visitados se construyen (antes IndexedStack montaba todo
-            // con sus ~10 lecturas iniciales), y lo visitado nunca se
-            // desmonta, así que inputs y scrolls sobreviven al cambio de tab.
-            // Estructura v2 (laboratorio_ui/settings-redesign-v2.html):
-            // General (Inicio+Burbuja) / Teclado / Trackpad / Snippets /
-            // Claves. Acerca vive como sheet desde General.
-            IndexedStack(
-              index: _currentTab,
-              children: [
-                _builtTabs.contains(0)
-                    ? _buildGeneralTab(context)
-                    : const SizedBox.shrink(),
-                _builtTabs.contains(1)
-                    ? _buildKeyboardTab(context)
-                    : const SizedBox.shrink(),
-                _builtTabs.contains(2)
-                    ? _buildTrackpadTab(context)
-                    : const SizedBox.shrink(),
-                _builtTabs.contains(3)
-                    ? _buildSnippetsTab(context)
-                    : const SizedBox.shrink(),
-                _builtTabs.contains(4)
-                    ? CredentialsScreen(
-                        key: const PageStorageKey<String>('credentials_tab'),
-                        storageService: _storageService,
-                        onSelectTab: _selectTab,
-                        showCredentialsKey: _showCredentialsKey,
-                        onToggleCredentialsKey:
-                            _toggleKeyboardCredentialsKey,
-                      )
-                    : const SizedBox.shrink(),
-              ],
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: SettingsTabBar(
-                selectedIndex: _currentTab,
-                onTabSelected: _selectTab,
+    final p = SettingsPalette.of(context);
+    final page = _stack.last;
+    final sheetOpen = _isEditingApiKey || _geminiIsEditingApiKey;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final slideFrom = _navForward ? 0.12 : -0.12;
+    return PopScope(
+      canPop: _stack.length == 1 && !sheetOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: Scaffold(
+        backgroundColor: p.background,
+        body: SafeArea(
+          bottom: false,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: AnimatedSwitcher(
+                  duration: reduceMotion
+                      ? Duration.zero
+                      : const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: Offset(slideFrom, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: KeyedSubtree(
+                    key: ValueKey(page),
+                    child: _buildPage(context, page),
+                  ),
+                ),
               ),
-            ),
-          ],
+              if (sheetOpen) ...[
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: _handleBack,
+                    child: const ColoredBox(color: kScrimColor),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      8,
+                      0,
+                      8,
+                      8 +
+                          MediaQuery.viewInsetsOf(context).bottom +
+                          MediaQuery.paddingOf(context).bottom,
+                    ),
+                    child: _isEditingApiKey
+                        ? _buildGroqKeySheet(context)
+                        : _buildGeminiKeySheet(context),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// General v2 (rediseño): API Key + grabación + modelo + burbuja +
-  /// acerca. Fusiona Inicio y Burbuja en una superficie agrupada.
-  Widget _buildGeneralTab(BuildContext context) {
-    return GeneralTab(
-      key: const PageStorageKey<String>('general_tab'),
-      hasApiKey: _hasApiKey,
-      isEditingApiKey: _isEditingApiKey,
-      apiKeyController: _apiKeyController,
-      apiKeyError: _apiKeyError,
-      showApiDetail: _showApiDetail,
-      apiKeyTail: _apiKeyTail,
-      onStartApiEdit: _startApiEdit,
-      onCancelApiEdit: _cancelApiEdit,
-      onSaveApiKey: _saveApiKey,
-      onClearApiKey: _clearApiKey,
-      onToggleApiDetail: () {
-        if (mounted) {
-          setState(() => _showApiDetail = !_showApiDetail);
-        }
-      },
-      geminiHasApiKey: _geminiHasApiKey,
-      geminiIsEditingApiKey: _geminiIsEditingApiKey,
-      geminiApiKeyController: _geminiApiKeyController,
-      geminiApiKeyError: _geminiApiKeyError,
-      geminiShowApiDetail: _geminiShowApiDetail,
-      geminiApiKeyTail: _geminiApiKeyTail,
-      onGeminiStartApiEdit: _startGeminiApiEdit,
-      onGeminiCancelApiEdit: _cancelGeminiApiEdit,
-      onGeminiSaveApiKey: _saveGeminiApiKey,
-      onGeminiClearApiKey: _clearGeminiApiKey,
-      onGeminiToggleApiDetail: () {
-        if (mounted) {
-          setState(() => _geminiShowApiDetail = !_geminiShowApiDetail);
-        }
-      },
-      onGeminiTestConnection: _testGeminiConnection,
-      geminiActionsEnabled: _geminiActionsEnabled,
-      onToggleGeminiActions: _toggleGeminiActions,
-      recordMode: _recordMode,
-      onSaveRecordMode: _saveRecordMode,
-      isBubbleEnabled: _isBubbleEnabled,
-      onToggleBubble: _toggleBubble,
-      showBubbleHistory: _showBubbleHistory,
-      onToggleBubbleHistory: _toggleBubbleHistory,
-      notesDeferredQueue: _notesDeferredQueue,
-      onToggleNotesDeferredQueue: _toggleNotesDeferredQueue,
-      onReviewOverlayPermission: _reviewOverlayPermission,
-      onShowAboutSheet: _showAboutSheet,
-      widgetMicPosition: _widgetMicPosition,
-      onWidgetMicPosition: _setWidgetMicPosition,
+  Widget _buildPage(BuildContext context, SettingsPage page) {
+    switch (page) {
+      case SettingsPage.root:
+        return _buildRootPage(context);
+      case SettingsPage.transcripcion:
+        return _buildTranscripcionPage(context);
+      case SettingsPage.ia:
+        return _buildIaPage(context);
+      case SettingsPage.teclado:
+        return _buildTecladoPage(context);
+      case SettingsPage.sonido:
+        return _buildSonidoPage(context);
+      case SettingsPage.burbuja:
+        return _buildBurbujaPage(context);
+      case SettingsPage.trackpad:
+        return _buildTrackpadPage(context);
+      case SettingsPage.notas:
+        return _buildNotasPage(context);
+      case SettingsPage.acerca:
+        return _buildAcercaPage(context);
+      case SettingsPage.snippets:
+        return _subpage(
+          context,
+          title: 'Snippets',
+          trailing: SettingsGlassButton(
+            key: const ValueKey('snippets-add-button'),
+            icon: Icons.add_rounded,
+            tooltip: 'Nuevo snippet',
+            onPressed: () => _snippetsKey.currentState?.openNewSnippet(),
+          ),
+          body: SnippetsTab(
+            key: _snippetsKey,
+            storageService: _storageService,
+          ),
+        );
+      case SettingsPage.claves:
+        return _subpage(
+          context,
+          title: 'Claves',
+          trailing: SettingsGlassButton(
+            key: const ValueKey('credenciales-open-add'),
+            icon: Icons.add_rounded,
+            tooltip: 'Nueva clave',
+            onPressed: () =>
+                _credentialsKey.currentState?.openAddCredential(),
+          ),
+          body: CredentialsScreen(
+            key: _credentialsKey,
+            storageService: _storageService,
+          ),
+        );
+    }
+  }
+
+  /// Lista de grupos con el espaciado estándar entre ellos.
+  Widget _sectionList(
+    BuildContext context, {
+    required String storageKey,
+    required List<Widget> sections,
+    Widget? header,
+  }) {
+    final children = <Widget>[if (header != null) header];
+    for (var i = 0; i < sections.length; i++) {
+      if (i > 0 || header != null) {
+        children.add(const SizedBox(height: kSettingsGroupGap));
+      }
+      children.add(sections[i]);
+    }
+    return ListView(
+      key: PageStorageKey<String>(storageKey),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        header == null ? 8 : 0,
+        16,
+        kSettingsGroupGap + MediaQuery.paddingOf(context).bottom,
+      ),
+      children: children,
     );
   }
 
-
-  Widget _buildKeyboardTab(BuildContext context) {
-    return TecladoTab(
-      key: const PageStorageKey<String>('teclado_tab'),
-      keyboardStatusText: _keyboardStatusText,
-      onLoadKeyboardStatus: _loadKeyboardStatus,
-      showTerminalRow: _showTerminalRow,
-      onToggleTerminalRow: _toggleTerminalRow,
-      showCodeKey: _showCodeKey,
-      onToggleCodeKey: _toggleKeyboardCodeKey,
-      showLanguageKey: _showLanguageKey,
-      onToggleLanguageKey: _toggleKeyboardLanguageKey,
-      clipboardImagesEnabled: _clipboardImagesEnabled,
-      onToggleClipboardImages: _toggleClipboardImages,
-      heightProfile: _heightProfile,
-      onSaveHeightProfile: _saveHeightProfile,
-      heightProfileHint: _heightProfileHint,
-      keySpacing: _keySpacing,
-      onSaveKeySpacing: _saveKeySpacing,
-      keySpacingHint: _keySpacingHint,
-      invertToolbar: _invertToolbar,
-      onToggleInvertToolbar: _toggleInvertToolbar,
-      spacebarAlignment: _spacebarAlignment,
-      onSaveSpacebarAlignment: _saveSpacebarAlignment,
-      spacebarTrackpadMode: _spacebarTrackpadMode,
-      onSaveSpacebarTrackpadMode: _saveSpacebarTrackpadMode,
-      longPressSymbolsEnabled: _longPressSymbolsEnabled,
-      onToggleLongPressSymbols: _toggleLongPressSymbols,
-      longPressDelay: _longPressDelay,
-      onSaveLongPressDelay: _saveLongPressDelay,
-      longPressDelayHint: _longPressDelayHint,
-      bottomElevationDp: _bottomElevationDp,
-      onSaveBottomElevation: _saveBottomElevation,
-      hapticsEnabled: _hapticsEnabled,
-      onToggleHaptics: _toggleHaptics,
-      hapticStyle: _hapticStyle,
-      onSaveHapticStyle: _saveHapticStyle,
-      hapticStyleHint: _hapticStyleHint,
-      micHapticsEnabled: _micHapticsEnabled,
-      onToggleMicHaptics: _toggleMicHaptics,
-      micHapticStart: _micHapticStart,
-      onToggleMicHapticStart: _toggleMicHapticStart,
-      micHapticRecording: _micHapticRecording,
-      onToggleMicHapticRecording: _toggleMicHapticRecording,
-      micHapticPaste: _micHapticPaste,
-      onToggleMicHapticPaste: _toggleMicHapticPaste,
-      micHapticCancel: _micHapticCancel,
-      onToggleMicHapticCancel: _toggleMicHapticCancel,
-      micSoundsEnabled: _micSoundsEnabled,
-      onToggleMicSounds: _toggleMicSounds,
-      micStartStyle: _micStartStyle,
-      onSaveMicStartStyle: _saveMicStartStyle,
-      micStopStyle: _micStopStyle,
-      onSaveMicStopStyle: _saveMicStopStyle,
-      isKeyboardEnabled: _isKeyboardEnabled,
-      isKeyboardSelected: _isKeyboardSelected,
-      onOpenKeyboardSettings: _openKeyboardSettings,
-      onShowInputMethodPicker: _showInputMethodPicker,
-      onSelectTab: _selectTab,
+  /// Subpágina: barra con botón de volver de vidrio, título centrado y
+  /// acción opcional a la derecha.
+  Widget _subpage(
+    BuildContext context, {
+    required String title,
+    List<Widget>? sections,
+    Widget? body,
+    Widget? trailing,
+  }) {
+    final p = SettingsPalette.of(context);
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: kSettingsNavBarHeight,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned(
+                left: 12,
+                child: SettingsGlassButton(
+                  key: const ValueKey('settings-back-button'),
+                  icon: Icons.chevron_left_rounded,
+                  tooltip: 'Volver',
+                  onPressed: _handleBack,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 64),
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: kSettingsNavTitle.copyWith(color: p.label),
+                  ),
+                ),
+              ),
+              if (trailing != null) Positioned(right: 12, child: trailing),
+            ],
+          ),
+        ),
+        Expanded(
+          child: body ??
+              _sectionList(
+                context,
+                storageKey: 'settings_${title.toLowerCase()}',
+                sections: sections!,
+              ),
+        ),
+      ],
     );
   }
 
-  Widget _buildTrackpadTab(BuildContext context) {
-    return TrackpadTab(
-      key: const PageStorageKey<String>('trackpad_tab'),
-      trackpadEnabled: _trackpadEnabled,
-      onToggleTrackpadEnabled: _toggleTrackpadEnabled,
-      trackpadToolbarVisible: _trackpadToolbarVisible,
-      onToggleTrackpadToolbarVisible: _toggleTrackpadToolbarVisible,
-      trackpadButtonLayout: _trackpadButtonLayout,
-      onSaveTrackpadButtonLayout: _saveTrackpadButtonLayout,
-      trackpadScrollPosition: _trackpadScrollPosition,
-      onSaveTrackpadScrollPosition: _saveTrackpadScrollPosition,
-      trackpadSensitivity: _trackpadSensitivity,
-      onTrackpadSensitivitySlider: _onTrackpadSensitivitySlider,
-      trackpadAccelCurve: _trackpadAccelCurve,
-      onSaveTrackpadAccelCurve: _saveTrackpadAccelCurve,
-      trackpadTapToClick: _trackpadTapToClick,
-      onToggleTrackpadTapToClick: _toggleTrackpadTapToClick,
-      trackpadSecondaryClick: _trackpadSecondaryClick,
-      onSaveTrackpadSecondaryClick: _saveTrackpadSecondaryClick,
-      trackpadScrollDirection: _trackpadScrollDirection,
-      onSaveTrackpadScrollDirection: _saveTrackpadScrollDirection,
-      trackpadPointerStyle: _trackpadPointerStyle,
-      onSaveTrackpadPointerStyle: _saveTrackpadPointerStyle,
-      trackpadHaptic: _trackpadHaptic,
-      onSaveTrackpadHaptic: _saveTrackpadHaptic,
-      trackpadAutoReturn: _trackpadAutoReturn,
-      onSaveTrackpadAutoReturn: _saveTrackpadAutoReturn,
+  Widget _buildRootPage(BuildContext context) {
+    final p = SettingsPalette.of(context);
+    final needsSetup = !_hasApiKey || !_isKeyboardActive;
+    return _sectionList(
+      context,
+      storageKey: 'settings_root',
+      header: const SettingsLargeTitle('Ajustes'),
+      sections: [
+        if (needsSetup)
+          SettingsSection(
+            key: const ValueKey('setup-section'),
+            header: 'Terminá de configurar',
+            footer: 'Con esto ya podés dictar en cualquier app.',
+            iconInset: true,
+            children: [
+              if (!_hasApiKey)
+                SettingsNavRow(
+                  key: const ValueKey('setup-groq-row'),
+                  icon: Icons.graphic_eq_rounded,
+                  tile: kTileRed,
+                  title: 'Agregar clave de Groq',
+                  value: 'Falta',
+                  valueColor: p.alert,
+                  onTap: () => _go(SettingsPage.transcripcion),
+                ),
+              if (!_isKeyboardActive)
+                SettingsNavRow(
+                  key: const ValueKey('setup-keyboard-row'),
+                  icon: Icons.keyboard_rounded,
+                  tile: kTileGray,
+                  title: 'Activar el teclado',
+                  value: 'Falta',
+                  valueColor: p.alert,
+                  onTap: () => _go(SettingsPage.teclado),
+                ),
+            ],
+          ),
+        SettingsAppCard(
+          key: const ValueKey('about-open-button'),
+          title: 'VoiceBubble',
+          subtitle: 'Dictado con Groq Whisper',
+          onTap: () => _go(SettingsPage.acerca),
+        ),
+        SettingsSection(
+          iconInset: true,
+          children: [
+            SettingsNavRow(
+              key: const ValueKey('nav-transcripcion'),
+              icon: Icons.graphic_eq_rounded,
+              tile: kTileRed,
+              title: 'Transcripción',
+              value: _hasApiKey ? 'Groq' : 'Sin clave',
+              onTap: () => _go(SettingsPage.transcripcion),
+            ),
+            SettingsNavRow(
+              key: const ValueKey('nav-ia'),
+              icon: Icons.auto_awesome_rounded,
+              tile: kTilePurple,
+              title: 'Inteligencia artificial',
+              value: _geminiHasApiKey
+                  ? (_geminiActionsEnabled ? 'Activa' : 'Oculta')
+                  : 'Opcional',
+              onTap: () => _go(SettingsPage.ia),
+            ),
+          ],
+        ),
+        SettingsSection(
+          header: 'Dónde dictar',
+          iconInset: true,
+          children: [
+            SettingsNavRow(
+              key: const ValueKey('nav-teclado'),
+              icon: Icons.keyboard_rounded,
+              tile: kTileGray,
+              title: 'Teclado',
+              value: _isKeyboardActive ? 'Activo' : 'Inactivo',
+              onTap: () => _go(SettingsPage.teclado),
+            ),
+            SettingsNavRow(
+              key: const ValueKey('nav-burbuja'),
+              icon: Icons.bubble_chart_rounded,
+              tile: kTileBlue,
+              title: 'Burbuja flotante',
+              value: _isBubbleEnabled ? 'Activada' : 'Apagada',
+              onTap: () => _go(SettingsPage.burbuja),
+            ),
+            SettingsNavRow(
+              key: const ValueKey('nav-trackpad'),
+              icon: Icons.touch_app_rounded,
+              tile: kTileIndigo,
+              title: 'Trackpad',
+              value: _trackpadEnabled ? 'Activado' : 'Apagado',
+              onTap: () => _go(SettingsPage.trackpad),
+            ),
+          ],
+        ),
+        SettingsSection(
+          header: 'Tu contenido',
+          iconInset: true,
+          children: [
+            SettingsNavRow(
+              key: const ValueKey('nav-snippets'),
+              icon: Icons.short_text_rounded,
+              tile: kTileOrange,
+              title: 'Snippets',
+              onTap: () => _go(SettingsPage.snippets),
+            ),
+            SettingsNavRow(
+              key: const ValueKey('nav-claves'),
+              icon: Icons.key_rounded,
+              tile: kTileGreen,
+              title: 'Claves',
+              onTap: () => _go(SettingsPage.claves),
+            ),
+            SettingsNavRow(
+              key: const ValueKey('nav-notas'),
+              icon: Icons.sticky_note_2_rounded,
+              tile: kTileYellow,
+              title: 'Notas y widgets',
+              onTap: () => _go(SettingsPage.notas),
+            ),
+          ],
+        ),
+        SettingsSection(
+          iconInset: true,
+          children: [
+            SettingsMenuRow<String>(
+              id: 'theme-selector',
+              icon: Icons.contrast_rounded,
+              tile: kTileGray,
+              title: 'Apariencia',
+              value: _themeMode,
+              options: const [
+                SettingsOption('sistema', 'Automática'),
+                SettingsOption('claro', 'Clara'),
+                SettingsOption('oscuro', 'Oscura'),
+              ],
+              onSelected: _saveThemeMode,
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _buildSnippetsTab(BuildContext context) {
-    return SnippetsTab(
-      key: const PageStorageKey<String>('snippets_tab'),
-      storageService: _storageService,
+  /// Acerca de: identidad, versión, diagnóstico y privacidad.
+  Widget _buildAcercaPage(BuildContext context) {
+    final p = SettingsPalette.of(context);
+    return _subpage(
+      context,
+      title: 'Acerca de',
+      sections: [
+        Column(
+          children: [
+            const SizedBox(height: 8),
+            const SettingsAppIcon(dimension: 88),
+            const SizedBox(height: 14),
+            Text(
+              'VoiceBubble',
+              style: kTextTitle.copyWith(fontSize: 24, color: p.label),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Transcripción de voz a texto con Groq Whisper.',
+              textAlign: TextAlign.center,
+              style: kTextSubhead.copyWith(color: p.secondary),
+            ),
+          ],
+        ),
+        SettingsSection(
+          footer: 'Sin analytics ni telemetría. El audio sale del teléfono '
+              'solo cuando dictás, y el teclado nunca guarda lo que escribís.',
+          children: [
+            const SettingsValueRow(
+              key: ValueKey('about-version'),
+              title: 'Versión',
+              value: '1.0.0',
+            ),
+            const SettingsValueRow(title: 'Motor', value: 'Groq Whisper'),
+            SettingsValueRow(
+              key: const ValueKey('about-channel-errors'),
+              title: 'Errores de canal',
+              value: '$channelErrorCount',
+            ),
+          ],
+        ),
+      ],
     );
   }
-
-  // Acerca v2: ya no es tab. Vive como sheet desde General vía
-  // _showAboutSheet (incluye el selector de tema Sistema/Claro/Oscuro).
-  // Se conserva el contrato de textos (versión + descripción).
 }
-

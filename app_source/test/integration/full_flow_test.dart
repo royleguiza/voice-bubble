@@ -47,7 +47,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(SettingsScreen), findsOneWidget);
-        expect(find.byKey(const ValueKey('tab-general')), findsOneWidget);
+        expect(find.byKey(const ValueKey('nav-transcripcion')), findsOneWidget);
       },
     );
 
@@ -60,9 +60,11 @@ void main() {
         await tester.pumpWidget(wrapHome(home: const SettingsScreen()));
         await tester.pumpAndSettle();
 
-        expect(find.byKey(const ValueKey('api-cta-button')), findsOneWidget);
+        expect(find.byKey(const ValueKey('nav-transcripcion')), findsOneWidget);
 
-        await tester.tap(find.byKey(const ValueKey('api-cta-button')));
+        await tester.tap(find.byKey(const ValueKey('nav-transcripcion')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('api-key-row')));
         await tester.pumpAndSettle();
 
         expect(find.byKey(const ValueKey('api-key-input-field')), findsOneWidget);
@@ -76,7 +78,9 @@ void main() {
         await tester.pumpWidget(wrapHome(home: const SettingsScreen()));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.byKey(const ValueKey('api-cta-button')));
+        await tester.tap(find.byKey(const ValueKey('nav-transcripcion')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('api-key-row')));
         await tester.pumpAndSettle();
 
         await tester.enterText(
@@ -144,7 +148,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(SettingsScreen), findsOneWidget);
 
-        await tester.tap(find.byKey(const ValueKey('api-cta-button')));
+        await tester.tap(find.byKey(const ValueKey('nav-transcripcion')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('api-key-row')));
         await tester.pumpAndSettle();
 
         await tester.enterText(
@@ -157,8 +163,11 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
         expect(find.byType(SnackBar), findsOneWidget);
 
-        // Sin AppBar (v2): Back del sistema (gesto/botón Android, sin
-        // botón visible). handlePopRoute lo despacha al framework.
+        // Back del sistema: primero sube de Transcripción a la raíz de
+        // Ajustes y el segundo sale a Home.
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('nav-transcripcion')), findsOneWidget);
         await tester.binding.handlePopRoute();
         await tester.pumpAndSettle();
 

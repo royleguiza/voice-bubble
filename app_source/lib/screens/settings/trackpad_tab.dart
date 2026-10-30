@@ -1,349 +1,149 @@
-import 'package:flutter/material.dart';
+part of '../settings_screen.dart';
 
-import '../../ui/debouncer.dart';
-import '../../ui/design_tokens.dart';
-import '../../widgets/settings_v2.dart';
-
-/// Tab Trackpad de Ajustes (rediseño v2): superficie + sensibilidad con
-/// chips + interacción + apariencia expandible. Misma conducta, mismos
-/// textos y Keys que v1.
-class TrackpadTab extends StatelessWidget {
-  final bool trackpadEnabled;
-  final ValueChanged<bool> onToggleTrackpadEnabled;
-  final bool trackpadToolbarVisible;
-  final ValueChanged<bool> onToggleTrackpadToolbarVisible;
-  final String trackpadButtonLayout;
-  final ValueChanged<String> onSaveTrackpadButtonLayout;
-  final String trackpadScrollPosition;
-  final ValueChanged<String> onSaveTrackpadScrollPosition;
-  final double trackpadSensitivity;
-  final ValueChanged<double> onTrackpadSensitivitySlider;
-  final String trackpadAccelCurve;
-  final ValueChanged<String> onSaveTrackpadAccelCurve;
-  final bool trackpadTapToClick;
-  final ValueChanged<bool> onToggleTrackpadTapToClick;
-  final String trackpadSecondaryClick;
-  final ValueChanged<String> onSaveTrackpadSecondaryClick;
-  final String trackpadScrollDirection;
-  final ValueChanged<String> onSaveTrackpadScrollDirection;
-  final String trackpadPointerStyle;
-  final ValueChanged<String> onSaveTrackpadPointerStyle;
-  final String trackpadHaptic;
-  final ValueChanged<String> onSaveTrackpadHaptic;
-  final int trackpadAutoReturn;
-  final ValueChanged<int> onSaveTrackpadAutoReturn;
-
-  const TrackpadTab({
-    super.key,
-    required this.trackpadEnabled,
-    required this.onToggleTrackpadEnabled,
-    required this.trackpadToolbarVisible,
-    required this.onToggleTrackpadToolbarVisible,
-    required this.trackpadButtonLayout,
-    required this.onSaveTrackpadButtonLayout,
-    required this.trackpadScrollPosition,
-    required this.onSaveTrackpadScrollPosition,
-    required this.trackpadSensitivity,
-    required this.onTrackpadSensitivitySlider,
-    required this.trackpadAccelCurve,
-    required this.onSaveTrackpadAccelCurve,
-    required this.trackpadTapToClick,
-    required this.onToggleTrackpadTapToClick,
-    required this.trackpadSecondaryClick,
-    required this.onSaveTrackpadSecondaryClick,
-    required this.trackpadScrollDirection,
-    required this.onSaveTrackpadScrollDirection,
-    required this.trackpadPointerStyle,
-    required this.onSaveTrackpadPointerStyle,
-    required this.trackpadHaptic,
-    required this.onSaveTrackpadHaptic,
-    required this.trackpadAutoReturn,
-    required this.onSaveTrackpadAutoReturn,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final variantColor = theme.colorScheme.onSurfaceVariant;
-    final isDark = theme.brightness == Brightness.dark;
-    return ListView(
-      key: const PageStorageKey<String>('trackpad_tab_scroll'),
-      padding: EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        96 + MediaQuery.paddingOf(context).bottom,
-      ),
-      children: [
-        const SettingsPageTitle('Trackpad'),
-        Text(
-          'Modo Trackpad y Puntero Virtual',
-          style: kSettingRowTitle.copyWith(
-            color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-          ),
-        ),
-        const SizedBox(height: 8),
-        SettingsCard(
+/// Página Trackpad: interruptores arriba; el resto de las opciones solo
+/// aparece con el trackpad encendido (no abruma con ajustes inertes).
+extension _TrackpadPage on _SettingsScreenState {
+  Widget _buildTrackpadPage(BuildContext context) {
+    return _subpage(
+      context,
+      title: 'Trackpad',
+      sections: [
+        SettingsSection(
+          footer: 'Un puntero dentro del teclado para mover el cursor con '
+              'precisión. Puntero local: sus clics se quedan dentro del '
+              'teclado.',
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
-                children: [
-                  const SettingIconTile(
-                    icon: Icons.near_me_rounded,
-                    background: kTilePink,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Superficie Táctil Split Wings',
-                      style: kSettingRowTitle.copyWith(
-                        color: isDark
-                            ? kLabelPrimaryDark
-                            : kLabelPrimaryLight,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Controla un puntero virtual en pantalla con aceleración cinemática y botones dedicados para pulgares.',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: variantColor),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Puntero local: no hace clic fuera de su ventana sin accesibilidad (dormida).',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: variantColor),
-                  ),
-                ],
-              ),
-            ),
-            SwitchListTile(
+            SettingsSwitchRow(
               key: const ValueKey('kb-trackpad-enabled-switch'),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16),
-              title: const Text('Activar modo trackpad'),
-              subtitle: Text(
-                'Habilita la capa de trackpad con puntero de mouse en el teclado.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
-              ),
-              value: trackpadEnabled,
-              onChanged: onToggleTrackpadEnabled,
+              title: 'Trackpad',
+              value: _trackpadEnabled,
+              onChanged: _toggleTrackpadEnabled,
             ),
-            if (trackpadEnabled) ...[
-              SwitchListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16),
-                title: const Text('Botón en barra superior'),
-                subtitle: Text(
-                  'Muestra el acceso rápido al trackpad en la barra interactiva del teclado.',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: variantColor),
-                ),
-                value: trackpadToolbarVisible,
-                onChanged: onToggleTrackpadToolbarVisible,
-              ),
-            ],
+            SettingsSwitchRow(
+              key: const ValueKey('kb-trackpad-toolbar-switch'),
+              title: 'Acceso en la barra',
+              value: _trackpadToolbarVisible,
+              onChanged: _toggleTrackpadToolbarVisible,
+            ),
           ],
         ),
-        if (trackpadEnabled) ...[
-          const SettingsGroupTitle('Sensibilidad y Control'),
-          SettingsCard(
+        if (_trackpadEnabled) ...[
+          SettingsSection(
+            header: 'Puntero',
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TrackpadSensitivitySection(
-                      sensitivity: trackpadSensitivity,
-                      onSensitivityChanged: onTrackpadSensitivitySlider,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Curva de Aceleración',
-                      style: kSettingRowTitle.copyWith(
-                        color: isDark
-                            ? kLabelPrimaryDark
-                            : kLabelPrimaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<String>(
-                      key: const ValueKey(
-                          'kb-trackpad-accel-curve-selector'),
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                            value: 'dynamic', label: Text('Dinámica')),
-                        ButtonSegment(
-                            value: 'linear', label: Text('Lineal')),
-                        ButtonSegment(
-                            value: 'precision', label: Text('Precisión')),
-                      ],
-                      selected: {trackpadAccelCurve},
-                      onSelectionChanged: (s) =>
-                          onSaveTrackpadAccelCurve(s.first),
-                    ),
-                  ],
-                ),
+              TrackpadSensitivitySection(
+                sensitivity: _trackpadSensitivity,
+                onSensitivityChanged: _onTrackpadSensitivitySlider,
               ),
-            ],
-          ),
-          const SettingsGroupTitle('Interacción'),
-          SettingsCard(
-            children: [
-              SwitchListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16),
-                title: const Text('Tocar para hacer clic (Tap-to-Click)'),
-                subtitle: Text(
-                  'Un toque rápido en la superficie táctil dispara un clic izquierdo.',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: variantColor),
-                ),
-                value: trackpadTapToClick,
-                onChanged: onToggleTrackpadTapToClick,
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Clic Secundario (Menú contextual)',
-                      style: kSettingRowTitle.copyWith(
-                        color: isDark
-                            ? kLabelPrimaryDark
-                            : kLabelPrimaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<String>(
-                      key: const ValueKey(
-                          'kb-trackpad-secondary-click-selector'),
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                            value: '2fingers', label: Text('2 Dedos')),
-                        ButtonSegment(
-                            value: 'button', label: Text('Botón R')),
-                        ButtonSegment(
-                            value: 'hold', label: Text('Mantener')),
-                      ],
-                      selected: {trackpadSecondaryClick},
-                      onSelectionChanged: (s) =>
-                          onSaveTrackpadSecondaryClick(s.first),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ExpandableSettingsCard(
-            icon: Icons.tune_rounded,
-            iconColor: kTileGray,
-            title: 'Apariencia y Layout',
-            children: [
-              _TrackpadSegmentedBlock(
-                label: 'Distribución de Botones de Clic',
-                selectorKey: 'kb-trackpad-button-layout-selector',
-                options: const {
-                  'top': 'Superiores 50/50',
-                  'wings': 'Laterales (Alas)',
-                },
-                selected: trackpadButtonLayout,
-                onSelected: onSaveTrackpadButtonLayout,
-                hint: trackpadButtonLayout == 'top'
-                    ? 'Botones L y R divididos al 50% arriba con iconos limpios sin texto.'
-                    : 'Botones ergonómicos en columnas laterales para acceso rápido con pulgares.',
-              ),
-              const SizedBox(height: 12),
-              _TrackpadSegmentedBlock(
-                label: 'Posición de la Barra de Scroll',
-                selectorKey: 'kb-trackpad-scroll-position-selector',
-                options: const {
-                  'right': 'Derecha',
-                  'left': 'Izquierda',
-                  'disabled': 'Desactivada',
-                },
-                selected: trackpadScrollPosition,
-                onSelected: onSaveTrackpadScrollPosition,
-                hint:
-                    'Auto-expansión al 100%: cuando el scroll está en un ala o apagado, los botones de clic ocupan toda la altura (200dp).',
-              ),
-              const SizedBox(height: 12),
-              _TrackpadSegmentedBlock(
-                label: 'Dirección de Scroll',
-                selectorKey: 'kb-trackpad-scroll-direction-selector',
-                options: const {
-                  'natural': 'Natural (iOS)',
-                  'standard': 'Estándar (PC)',
-                },
-                selected: trackpadScrollDirection,
-                onSelected: onSaveTrackpadScrollDirection,
-              ),
-              const SizedBox(height: 12),
-              _TrackpadSegmentedBlock(
-                label: 'Estilo Visual del Puntero',
-                selectorKey: 'kb-trackpad-pointer-style-selector',
-                options: const {
-                  'arrow': 'Flecha',
-                  'dot': 'Punto',
-                  'cross': 'Cruz',
-                },
-                selected: trackpadPointerStyle,
-                onSelected: onSaveTrackpadPointerStyle,
-              ),
-              const SizedBox(height: 12),
-              _TrackpadSegmentedBlock(
-                label: 'Vibración Háptica del Trackpad',
-                selectorKey: 'kb-trackpad-haptic-selector',
-                options: const {
-                  'subtle': 'Sutil',
-                  'firm': 'Firme',
-                  'none': 'Ninguna',
-                },
-                selected: trackpadHaptic,
-                onSelected: onSaveTrackpadHaptic,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Auto-retorno al Teclado por Inactividad',
-                style: kSettingRowTitle.copyWith(
-                  color:
-                      isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SegmentedButton<int>(
-                key: const ValueKey('kb-trackpad-auto-return-selector'),
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('Off')),
-                  ButtonSegment(value: 5, label: Text('5s')),
-                  ButtonSegment(value: 15, label: Text('15s')),
-                  ButtonSegment(value: 30, label: Text('30s')),
+              SettingsMenuRow<String>(
+                id: 'kb-trackpad-accel-curve-selector',
+                title: 'Aceleración',
+                value: _trackpadAccelCurve,
+                options: const [
+                  SettingsOption('dynamic', 'Dinámica'),
+                  SettingsOption('linear', 'Lineal'),
+                  SettingsOption('precision', 'Precisión'),
                 ],
-                selected: {trackpadAutoReturn},
-                onSelectionChanged: (s) =>
-                    onSaveTrackpadAutoReturn(s.first),
+                onSelected: _saveTrackpadAccelCurve,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Vuelve a la capa alfabética automáticamente si no se detectan toques tras el tiempo elegido.',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: variantColor),
+              SettingsMenuRow<String>(
+                id: 'kb-trackpad-pointer-style-selector',
+                title: 'Forma',
+                value: _trackpadPointerStyle,
+                options: const [
+                  SettingsOption('arrow', 'Flecha'),
+                  SettingsOption('dot', 'Punto'),
+                  SettingsOption('cross', 'Cruz'),
+                ],
+                onSelected: _saveTrackpadPointerStyle,
+              ),
+            ],
+          ),
+          SettingsSection(
+            header: 'Clic',
+            children: [
+              SettingsSwitchRow(
+                key: const ValueKey('kb-trackpad-tap-to-click-switch'),
+                title: 'Tocar para hacer clic',
+                value: _trackpadTapToClick,
+                onChanged: _toggleTrackpadTapToClick,
+              ),
+              SettingsMenuRow<String>(
+                id: 'kb-trackpad-secondary-click-selector',
+                title: 'Clic secundario',
+                value: _trackpadSecondaryClick,
+                options: const [
+                  SettingsOption('2fingers', 'Dos dedos'),
+                  SettingsOption('button', 'Botón derecho'),
+                  SettingsOption('hold', 'Mantener'),
+                ],
+                onSelected: _saveTrackpadSecondaryClick,
+              ),
+              SettingsMenuRow<String>(
+                id: 'kb-trackpad-button-layout-selector',
+                title: 'Botones',
+                value: _trackpadButtonLayout,
+                options: const [
+                  SettingsOption('top', 'Arriba'),
+                  SettingsOption('wings', 'A los lados'),
+                ],
+                onSelected: _saveTrackpadButtonLayout,
+              ),
+            ],
+          ),
+          SettingsSection(
+            header: 'Desplazamiento',
+            children: [
+              SettingsMenuRow<String>(
+                id: 'kb-trackpad-scroll-position-selector',
+                title: 'Barra de scroll',
+                value: _trackpadScrollPosition,
+                options: const [
+                  SettingsOption('right', 'Derecha'),
+                  SettingsOption('left', 'Izquierda'),
+                  SettingsOption('disabled', 'Oculta'),
+                ],
+                onSelected: _saveTrackpadScrollPosition,
+              ),
+              SettingsMenuRow<String>(
+                id: 'kb-trackpad-scroll-direction-selector',
+                title: 'Dirección',
+                value: _trackpadScrollDirection,
+                options: const [
+                  SettingsOption('natural', 'Natural'),
+                  SettingsOption('standard', 'Invertida'),
+                ],
+                onSelected: _saveTrackpadScrollDirection,
+              ),
+            ],
+          ),
+          SettingsSection(
+            header: 'Otros',
+            footer: 'Vuelve a las letras si no tocás el trackpad durante ese '
+                'tiempo.',
+            children: [
+              SettingsMenuRow<String>(
+                id: 'kb-trackpad-haptic-selector',
+                title: 'Vibración',
+                value: _trackpadHaptic,
+                options: const [
+                  SettingsOption('subtle', 'Sutil'),
+                  SettingsOption('firm', 'Firme'),
+                  SettingsOption('none', 'Ninguna'),
+                ],
+                onSelected: _saveTrackpadHaptic,
+              ),
+              SettingsMenuRow<int>(
+                id: 'kb-trackpad-auto-return-selector',
+                title: 'Volver al teclado',
+                value: _trackpadAutoReturn,
+                options: const [
+                  SettingsOption(0, 'Nunca'),
+                  SettingsOption(5, 'A los 5 s'),
+                  SettingsOption(15, 'A los 15 s'),
+                  SettingsOption(30, 'A los 30 s'),
+                ],
+                onSelected: _saveTrackpadAutoReturn,
               ),
             ],
           ),
@@ -353,67 +153,9 @@ class TrackpadTab extends StatelessWidget {
   }
 }
 
-/// Bloque segmented + hint para el expandible del trackpad.
-class _TrackpadSegmentedBlock extends StatelessWidget {
-  final String label;
-  final String selectorKey;
-  final Map<String, String> options;
-  final String selected;
-  final ValueChanged<String> onSelected;
-  final String? hint;
-
-  const _TrackpadSegmentedBlock({
-    required this.label,
-    required this.selectorKey,
-    required this.options,
-    required this.selected,
-    required this.onSelected,
-    this.hint,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: kSettingRowTitle.copyWith(
-            color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-          ),
-        ),
-        const SizedBox(height: 8),
-        SegmentedButton<String>(
-          key: ValueKey(selectorKey),
-          showSelectedIcon: false,
-          segments: [
-            for (final entry in options.entries)
-              ButtonSegment(value: entry.key, label: Text(entry.value)),
-          ],
-          selected: {selected},
-          onSelectionChanged: (s) => onSelected(s.first),
-        ),
-        if (hint != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            hint!,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-/// Fila de sensibilidad con estado local + debouncer interno (C-33).
-///
-/// El slider actualiza su propio estado local de inmediato para respuesta
-/// táctil sin lag y difiere la persistencia mediante [Debouncer] sin
-/// provocar rebuilds globales de la pantalla de Ajustes.
+/// Fila de velocidad del puntero con estado propio (C-33): el thumb se
+/// redibuja solo aquí y el guardado se difiere 150 ms con [Debouncer], sin
+/// reconstruir toda la pantalla de Ajustes en cada tick.
 class TrackpadSensitivitySection extends StatefulWidget {
   final double sensitivity;
   final ValueChanged<double> onSensitivityChanged;
@@ -433,13 +175,6 @@ class _TrackpadSensitivitySectionState
     extends State<TrackpadSensitivitySection> {
   late double _current;
   late final Debouncer _debouncer;
-
-  static final _sensitivityChips = <double, String>{
-    0.5: '0.5x',
-    1.0: '1.0x',
-    1.5: '1.5x',
-    2.0: '2.0x',
-  };
 
   @override
   void initState() {
@@ -462,16 +197,6 @@ class _TrackpadSensitivitySectionState
     super.dispose();
   }
 
-  double get _snappedSensitivity {
-    var best = _sensitivityChips.keys.first;
-    for (final v in _sensitivityChips.keys) {
-      if ((_current - v).abs() < (_current - best).abs()) {
-        best = v;
-      }
-    }
-    return best;
-  }
-
   void _onChanged(double value) {
     setState(() => _current = value);
     _debouncer.run(() async {
@@ -481,47 +206,63 @@ class _TrackpadSensitivitySectionState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Velocidad del puntero',
-              style: kSettingRowTitle.copyWith(
-                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+    final p = SettingsPalette.of(context);
+    final valueLabel = '${_current.toStringAsFixed(1)}×';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Velocidad',
+                  style: kTextBody.copyWith(color: p.label),
+                ),
               ),
-            ),
-            Text(
-              '${_current.toStringAsFixed(1)}x',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
+              Text(
+                valueLabel,
+                style: kTextBody.copyWith(
+                  color: p.secondary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
-            ),
-          ],
-        ),
-        Slider(
-          key: const ValueKey('kb-trackpad-sensitivity-slider'),
-          value: _current,
-          min: 0.5,
-          max: 2.5,
-          divisions: 20,
-          label: '${_current.toStringAsFixed(1)}x',
-          onChanged: _onChanged,
-        ),
-        const SizedBox(height: 4),
-        Center(
-          child: SliderChips<double>(
-            options: _sensitivityChips,
-            selected: _snappedSensitivity,
-            onSelected: _onChanged,
+            ],
           ),
-        ),
-      ],
+          Row(
+            children: [
+              Text('Lenta', style: kTextFootnote.copyWith(color: p.secondary)),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 4,
+                    activeTrackColor: p.tintFill,
+                    inactiveTrackColor: p.switchOff,
+                    thumbColor: kBgElevatedLight,
+                    overlayColor: p.tintFill.withValues(alpha: 0.12),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 14),
+                    tickMarkShape: SliderTickMarkShape.noTickMark,
+                  ),
+                  child: Slider(
+                    key: const ValueKey('kb-trackpad-sensitivity-slider'),
+                    value: _current,
+                    min: 0.5,
+                    max: 2.5,
+                    divisions: 20,
+                    label: valueLabel,
+                    semanticFormatterCallback: (v) =>
+                        'Velocidad ${v.toStringAsFixed(1)}',
+                    onChanged: _onChanged,
+                  ),
+                ),
+              ),
+              Text('Rápida', style: kTextFootnote.copyWith(color: p.secondary)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

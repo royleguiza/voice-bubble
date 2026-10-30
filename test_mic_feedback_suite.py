@@ -110,14 +110,15 @@ check("VKS micBuzz directo", "override fun micBuzz(" in vks)
 
 # --- 5. UI ---
 tab = read("app_source/lib/screens/settings/teclado_tab.dart")
-check("Sección colapsada por defecto", "initiallyOpen: false" in tab)
+check("Vibración y sonido en subpágina propia (no abruma Teclado)",
+      "ValueKey('nav-sonido')" in tab and "_buildSonidoPage" in tab)
 for key in ["kb-mic-haptics-enabled", "kb-mic-haptic-start",
             "kb-mic-haptic-recording", "kb-mic-haptic-paste",
             "kb-mic-haptic-cancel", "kb-mic-sounds-enabled",
             "kb-mic-start-style", "kb-mic-stop-style"]:
     check(f"UI con key {key}", f"'{key}'" in tab, f"falta {key}")
-v2 = read("app_source/lib/widgets/settings_v2.dart")
-check("Kit soporta initiallyOpen", "initiallyOpen" in v2)
+check("Eventos y tonos solo visibles con su interruptor encendido",
+      "if (_micHapticsEnabled) ...[" in tab and "if (_micSoundsEnabled) ...[" in tab)
 
 # --- 6. Sin logs ---
 for name, src in [("DictationController", dic), ("KeyboardPrefs", prefs)]:

@@ -3658,28 +3658,28 @@ def test_c27_nothing_obscured_and_scroll_contract():
     settings_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings_screen.dart")
     notes_file = os.path.join(base_dir, "app_source", "lib", "screens", "notes_screen.dart")
 
-    tabs = [
-        os.path.join(base_dir, "app_source", "lib", "screens", "settings", "general_tab.dart"),
-        os.path.join(base_dir, "app_source", "lib", "screens", "settings", "teclado_tab.dart"),
-        os.path.join(base_dir, "app_source", "lib", "screens", "settings", "trackpad_tab.dart"),
+    # Ajustes 2026: las listas de Ajustes (settings_screen._sectionList,
+    # Snippets y Claves) usan gap + paddingOf; Notas conserva 96 + paddingOf.
+    settings_lists = [
+        settings_file,
         os.path.join(base_dir, "app_source", "lib", "screens", "settings", "snippets_tab.dart"),
         os.path.join(base_dir, "app_source", "lib", "screens", "credentials_screen.dart"),
-        notes_file,
     ]
-    for tab_path in tabs:
+    for tab_path in settings_lists:
         assert os.path.isfile(tab_path), f"C-27: archivo no existe: {tab_path}"
         with open(tab_path, "r", encoding="utf-8") as f:
             src = f.read()
-        assert "96 + MediaQuery.paddingOf(context).bottom" in src, f"C-27: falta padding 96 + paddingOf en {tab_path}"
+        assert "kSettingsGroupGap + MediaQuery.paddingOf(context).bottom" in src, f"C-27: falta padding gap + paddingOf en {tab_path}"
         assert "PageStorageKey" in src, f"C-27: falta PageStorageKey en {tab_path}"
 
     with open(settings_file, "r", encoding="utf-8") as f:
         s_src = f.read()
-    for k in ["general_tab", "teclado_tab", "trackpad_tab", "snippets_tab", "credentials_tab"]:
-        assert f"PageStorageKey<String>('{k}')" in s_src, f"C-27: settings_screen falta PageStorageKey para {k}"
+    assert "key: PageStorageKey<String>(storageKey)" in s_src, "C-27: settings_screen sin PageStorageKey por página"
 
     with open(notes_file, "r", encoding="utf-8") as f:
         n_src = f.read()
+    assert "96 + MediaQuery.paddingOf(context).bottom" in n_src, "C-27: falta padding 96 + paddingOf en notes_screen"
+    assert "PageStorageKey" in n_src, "C-27: falta PageStorageKey en notes_screen"
     assert "GlassContainer" not in n_src, "C-27: notes_screen contiene GlassContainer inútil sobre FAB"
     assert "floatingActionButton: FloatingActionButton.extended(" in n_src, "C-27: notes_screen no expone FAB directo"
 
@@ -3778,11 +3778,11 @@ def test_c31_system_transparency_and_tokens_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     glass_file = os.path.join(base_dir, "app_source", "lib", "ui", "glass_container.dart")
     tokens_file = os.path.join(base_dir, "app_source", "lib", "ui", "design_tokens.dart")
-    tabbar_file = os.path.join(base_dir, "app_source", "lib", "widgets", "settings_tab_bar.dart")
+    kit_file = os.path.join(base_dir, "app_source", "lib", "widgets", "settings_v2.dart")
 
     assert os.path.isfile(glass_file), f"C-31: glass_container.dart no existe en {glass_file}"
     assert os.path.isfile(tokens_file), f"C-31: design_tokens.dart no existe en {tokens_file}"
-    assert os.path.isfile(tabbar_file), f"C-31: settings_tab_bar.dart no existe en {tabbar_file}"
+    assert os.path.isfile(kit_file), f"C-31: settings_v2.dart no existe en {kit_file}"
 
     with open(glass_file, "r", encoding="utf-8") as f:
         g_src = f.read()
@@ -3798,16 +3798,16 @@ def test_c31_system_transparency_and_tokens_contract():
     assert "kBorderRadiusDock" in t_src or "kBorderRadiusSheetLarge" in t_src, "C-31: design_tokens.dart no define kBorderRadiusDock/SheetLarge"
     assert "kBorderRadiusCardLarge" in t_src or "kBorderRadiusPill" in t_src, "C-31: design_tokens.dart no define kBorderRadiusCardLarge/Pill"
 
-    with open(tabbar_file, "r", encoding="utf-8") as f:
-        tb_src = f.read()
-    assert "borderRadius: 32," not in tb_src, "C-31: settings_tab_bar.dart contiene radio 32 hardcodeado"
-    assert "kBorderRadiusDock" in tb_src or "kBorderRadiusSheetLarge" in tb_src, "C-31: settings_tab_bar.dart no usa token dock/sheet para radio"
+    with open(kit_file, "r", encoding="utf-8") as f:
+        kit_src = f.read()
+    assert "BorderRadius.circular(26)" not in kit_src, "C-31: settings_v2.dart contiene radio 26 hardcodeado"
+    assert "BorderRadius.circular(kSettingsGroupRadius)" in kit_src, "C-31: settings_v2.dart no usa kSettingsGroupRadius"
 
 def test_c32_semantics_and_physical_keyboard_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     nc_file = os.path.join(base_dir, "app_source", "lib", "widgets", "note_card.dart")
     pnt_file = os.path.join(base_dir, "app_source", "lib", "widgets", "pending_note_tile.dart")
-    stb_file = os.path.join(base_dir, "app_source", "lib", "widgets", "settings_tab_bar.dart")
+    kit_file = os.path.join(base_dir, "app_source", "lib", "widgets", "settings_v2.dart")
     hl_file = os.path.join(base_dir, "app_source", "lib", "widgets", "history_list.dart")
     tt_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "teclado_tab.dart")
     cs_file = os.path.join(base_dir, "app_source", "lib", "screens", "credentials_screen.dart")
@@ -3820,17 +3820,15 @@ def test_c32_semantics_and_physical_keyboard_contract():
         pnt = f.read()
     assert "container: true" in pnt and not re.search(r"Semantics\s*\([^)]*button:\s*true", pnt), "C-32: PendingNoteTile debe usar container: true y no button: true"
 
-    with open(stb_file, "r", encoding="utf-8") as f:
-        stb = f.read()
-    assert "pestaña $index de $total" in stb and "excludeFromSemantics: true" in stb, "C-32: SettingsTabBar debe anunciar pestañas y excluir tooltip duplicado"
+    with open(kit_file, "r", encoding="utf-8") as f:
+        kit = f.read()
+    assert "label: '$title, $_currentLabel'" in kit and "excludeFromSemantics: true" in kit, "C-32: el kit de Ajustes debe anunciar título+valor y excluir tooltip duplicado"
 
     with open(hl_file, "r", encoding="utf-8") as f:
         hl = f.read()
     assert "SelectableText(" in hl, "C-32: HistoryList debe usar SelectableText"
 
-    with open(tt_file, "r", encoding="utf-8") as f:
-        tt = f.read()
-    assert re.search(r"Semantics\s*\([^)]*button:\s*true[^)]*selected:\s*isSelected", tt) and "InkWell(" in tt, "C-32: teclado_tab debe tener Semantics(button, selected) e InkWell"
+    assert "MenuItemButton(" in kit and re.search(r"Semantics\s*\(\s*selected:\s*o\.value == value", kit) and "InkWell(onTap: onTap" in kit, "C-32: menús del kit deben ser focusables (MenuItemButton) e informar selected"
 
     with open(cs_file, "r", encoding="utf-8") as f:
         cs = f.read()

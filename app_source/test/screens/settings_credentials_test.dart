@@ -1,250 +1,152 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/credential.dart';
-import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
-import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 
-import '../helpers/test_app.dart';
+import '../helpers/settings_harness.dart';
 
-class _TrackedStorageService extends StorageService {
-  final Completer<void> keyboardCredentialsKeySaved = Completer<void>();
-  final List<VbCredential> _credentials = <VbCredential>[];
-  bool _showUser = false;
+/// Almacenamiento en memoria para credenciales: aísla la bóveda cifrada y
+/// permite verificar que la contraseña nunca vuelve a la UI.
+class _MemoryCredentialStorage extends StorageService {
+  final List<VbCredential> credentials = <VbCredential>[];
+  final Map<String, String> passwords = <String, String>{};
+  bool showUser = false;
 
   @override
   Future<List<VbCredential>> loadCredentials() =>
-      Future<List<VbCredential>>.value(List<VbCredential>.unmodifiable(
-        _credentials,
-      ));
+      Future.value(List<VbCredential>.unmodifiable(credentials));
 
   @override
-  Future<bool> loadCredShowUser() => Future<bool>.value(_showUser);
+  Future<bool> loadCredShowUser() => Future.value(showUser);
+
+  @override
+  Future<void> saveCredShowUser(bool value) async => showUser = value;
 
   @override
   Future<bool> addCredential({
     required String nombre,
     required String usuario,
     required String password,
-  }) {
-    _credentials.add(
-      VbCredential(
-        id: '${_credentials.length + 1}',
-        nombre: nombre,
-        usuario: usuario,
-      ),
-    );
-    return Future<bool>.value(true);
+  }) async {
+    if (nombre.trim().isEmpty || usuario.trim().isEmpty) return false;
+    final id = '${credentials.length + 1}';
+    credentials.add(VbCredential(id: id, nombre: nombre, usuario: usuario));
+    passwords[id] = password;
+    return true;
   }
 
   @override
-  Future<void> saveCredShowUser(bool value) {
-    _showUser = value;
-    return Future<void>.value();
-  }
-
-  @override
-  Future<void> saveKeyboardCredentialsKeyVisible(bool visible) async {
-    try {
-      await super.saveKeyboardCredentialsKeyVisible(visible);
-    } finally {
-      if (!keyboardCredentialsKeySaved.isCompleted) {
-        keyboardCredentialsKeySaved.complete();
-      }
-    }
-  }
-
-  @override
-  Future<bool> deleteCredential(String id) {
-    final previousLength = _credentials.length;
-    _credentials.removeWhere((credential) => credential.id == id);
-    return Future<bool>.value(_credentials.length != previousLength);
+  Future<bool> deleteCredential(String id) async {
+    final before = credentials.length;
+    credentials.removeWhere((c) => c.id == id);
+    passwords.remove(id);
+    return credentials.length != before;
   }
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final messenger =
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-  const channel = MethodChannel(FloatingBubbleService.channelName);
-  const keyboardChannel = MethodChannel(KeyboardService.channelName);
-
-  late _TrackedStorageService storageService;
+  final h = SettingsHarness();
+  late _MemoryCredentialStorage storage;
 
   setUp(() {
-    FlutterSecureStorage.setMockInitialValues({});
-    SharedPreferences.setMockInitialValues({});
-    storageService = _TrackedStorageService();
-
-    messenger.setMockMethodCallHandler(channel, (MethodCall call) async {
-      switch (call.method) {
-        case 'canDrawOverlays':
-          return true;
-        case 'requestOverlayPermission':
-          return true;
-        case 'startBubble':
-          return true;
-        case 'stopBubble':
-          return true;
-        case 'isBubbleRunning':
-          return false;
-        default:
-          return null;
-      }
-    });
-    messenger.setMockMethodCallHandler(keyboardChannel,
-        (MethodCall call) async {
-      switch (call.method) {
-        case 'isKeyboardEnabled':
-          return false;
-        case 'isKeyboardSelected':
-          return false;
-        case 'openKeyboardSettings':
-          return true;
-        default:
-          return null;
-      }
-    });
+    h.setUp();
+    storage = _MemoryCredentialStorage();
   });
+  tearDown(h.tearDown);
 
-  tearDown(() {
-    messenger.setMockMethodCallHandler(channel, null);
-    messenger.setMockMethodCallHandler(keyboardChannel, null);
-  });
-
-  Widget buildTestableWidget(WidgetTester tester) {
-    return buildTestableSettingsScreen(
-      tester,
-      storageService: storageService,
-      keyboardService: KeyboardService(channel: keyboardChannel),
-      physicalSize: const Size(1600, 4800),
-    );
+  Future<void> openClaves(WidgetTester tester) async {
+    await h.pump(tester, storageService: storage);
+    await openPage(tester, 'claves');
   }
 
-  Future<void> openCredencialesTab(WidgetTester tester) async {
-    await tester.pumpWidget(buildTestableWidget(tester));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('tab-credenciales')));
-    await tester.pumpAndSettle();
+  Future<void> addCredential(WidgetTester tester) async {
+    await tapKey(tester, 'credenciales-open-add');
+    await tester.enterText(byKey('credenciales-add-nombre'), 'Banco');
+    await tester.enterText(byKey('credenciales-add-usuario'), 'juan@mail.com');
+    await tester.enterText(byKey('credenciales-add-password'), 's3creta');
+    await tapKey(tester, 'credenciales-add-button');
   }
 
-  group('SettingsScreen - tab Claves (credenciales)', () {
-    testWidgets('el dock tiene Claves y abre su seccion propia',
+  group('Claves (credenciales)', () {
+    testWidgets('sin claves muestra el estado vacío con acción',
         (tester) async {
-      await openCredencialesTab(tester);
+      await openClaves(tester);
 
-      expect(find.text('Claves'), findsWidgets);
-      expect(
-        find.byKey(const ValueKey('credenciales-add-nombre')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('credenciales-add-usuario')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('credenciales-add-password')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('credenciales-add-button')),
-        findsOneWidget,
-      );
-      // Banner experimental por key (no por texto: el copy puede cambiar).
-      expect(
-        find.byKey(const ValueKey('experimental-banner-claves')),
-        findsOneWidget,
-      );
+      expect(find.text('Sin claves guardadas'), findsOneWidget);
+      await tapKey(tester, 'credenciales-empty-add');
+      expect(byKey('credenciales-add-nombre'), findsOneWidget);
     });
 
-    testWidgets('el campo password es obscure y no hay ojo', (tester) async {
-      await openCredencialesTab(tester);
+    testWidgets('la contraseña es oculta y no hay botón de ver',
+        (tester) async {
+      await openClaves(tester);
+      await tapKey(tester, 'credenciales-open-add');
 
-      final field = tester.widget<TextField>(
-        find.byKey(const ValueKey('credenciales-add-password')),
-      );
+      final field = tester.widget<TextField>(find.descendant(
+        of: byKey('credenciales-add-password'),
+        matching: find.byType(TextField),
+      ));
       expect(field.obscureText, isTrue);
       expect(find.byIcon(Icons.visibility), findsNothing);
       expect(find.byIcon(Icons.visibility_off), findsNothing);
     });
 
     testWidgets('guardar agrega y muestra solo el nombre', (tester) async {
-      await openCredencialesTab(tester);
+      await openClaves(tester);
+      await addCredential(tester);
 
-      await tester.enterText(
-        find.byKey(const ValueKey('credenciales-add-nombre')),
-        'Banco',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('credenciales-add-usuario')),
-        'juan@mail.com',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('credenciales-add-password')),
-        's3creta',
-      );
-      await tester.tap(find.byKey(const ValueKey('credenciales-add-button')));
-      await tester.pumpAndSettle();
-
+      expect(byKey('credenciales-add-nombre'), findsNothing);
       expect(find.text('Banco'), findsOneWidget);
-      // Sin showUser: el usuario no se muestra y la pass jamás aparece.
       expect(find.text('juan@mail.com'), findsNothing);
       expect(find.text('s3creta'), findsNothing);
+      expect(storage.passwords['1'], 's3creta');
     });
 
-    testWidgets('el switch revela el usuario y borrar limpia todo',
+    testWidgets('campos vacíos muestran aviso y no cierran el sheet',
         (tester) async {
-      await openCredencialesTab(tester);
+      await openClaves(tester);
+      await tapKey(tester, 'credenciales-open-add');
+      await tapKey(tester, 'credenciales-add-button');
 
-      await tester.enterText(
-        find.byKey(const ValueKey('credenciales-add-nombre')),
-        'Banco',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('credenciales-add-usuario')),
-        'juan@mail.com',
-      );
-      await tester.enterText(
-        find.byKey(const ValueKey('credenciales-add-password')),
-        's3creta',
-      );
-      await tester.tap(find.byKey(const ValueKey('credenciales-add-button')));
-      await tester.pumpAndSettle();
+      expect(byKey('credenciales-add-nombre'), findsOneWidget);
+      expect(find.textContaining('Revisá los campos'), findsOneWidget);
+      expect(storage.credentials, isEmpty);
+    });
 
-      await tester.tap(find.byKey(const ValueKey('credenciales-show-user')));
-      await tester.pumpAndSettle();
+    testWidgets('Mostrar usuario revela el usuario y persiste',
+        (tester) async {
+      await openClaves(tester);
+      await addCredential(tester);
+
+      await tapKey(tester, 'credenciales-show-user');
+
       expect(find.text('juan@mail.com'), findsOneWidget);
-
-      await tester.tap(find.byIcon(Icons.delete_outline).first);
-      await tester.pumpAndSettle();
-      expect(find.text('Banco'), findsNothing);
+      expect(storage.showUser, isTrue);
     });
 
-    testWidgets('el switch de la llave oculta la llavecita del teclado',
+    testWidgets('borrar pide confirmación y limpia la clave', (tester) async {
+      await openClaves(tester);
+      await addCredential(tester);
+
+      await tapKey(tester, 'credenciales-delete-1');
+      expect(find.byType(AlertDialog), findsOneWidget);
+      await tapKey(tester, 'credenciales-confirm-delete');
+
+      expect(find.text('Banco'), findsNothing);
+      expect(storage.credentials, isEmpty);
+      expect(storage.passwords, isEmpty);
+    });
+
+    testWidgets('la llave del teclado se gobierna desde Teclado',
         (tester) async {
-      await openCredencialesTab(tester);
+      await h.pump(tester, storageService: storage);
+      await openPage(tester, 'teclado');
+      expect(switchValue(tester, 'credenciales-key-visible-switch'), isTrue);
 
-      final switchFinder =
-          find.byKey(const ValueKey('credenciales-key-visible-switch'));
-      expect(switchFinder, findsOneWidget);
-      expect(tester.widget<SwitchListTile>(switchFinder).value, isTrue);
+      await tapKey(tester, 'credenciales-key-visible-switch');
 
-      await tester.tap(switchFinder);
-      await tester.runAsync(() async {
-        await storageService.keyboardCredentialsKeySaved.future;
-        final preferences = await SharedPreferences.getInstance();
-        expect(preferences.getBool('kb_credentials_key_visible'), isFalse);
-      });
-      await tester.pump();
-      expect(
-        tester.widget<SwitchListTile>(switchFinder).value,
-        isFalse,
-      );
+      expect((await prefs()).getBool('kb_credentials_key_visible'), isFalse);
     });
   });
 }

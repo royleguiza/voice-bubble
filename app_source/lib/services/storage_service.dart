@@ -1051,6 +1051,9 @@ class StorageService {
     return hasKey && published;
   }
 
+  /// Presencia publicada del espejo STT (sin tocar la bóveda cifrada).
+  Future<bool> isSttMirrorConfigured() => _getBool(sttKeyConfiguredKey, false);
+
   Future<String> getSttUrl() => _getString(_sttUrlKey, CloudSttService.endpoint);
   Future<void> setSttUrl(String url) => _setString(_sttUrlKey, url);
 

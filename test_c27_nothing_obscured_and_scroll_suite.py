@@ -7,18 +7,13 @@ Suite de verificación para el Contrato C-27:
 
 Requisitos verificados:
 1. Padding dinámico contra navegación por 3 botones:
-   - 96 + paddingOf(context).bottom en ListView de:
-     * general_tab.dart
-     * teclado_tab.dart
-     * trackpad_tab.dart
-     * snippets_tab.dart
-     * credentials_screen.dart
-     * notes_screen.dart
+   - kSettingsGroupGap + paddingOf(context).bottom en los ListView de Ajustes
+     (settings_screen._sectionList, snippets_tab, credentials_screen) y
+     96 + paddingOf(context).bottom en notes_screen.dart.
    - Cero padding porcentual fijo (no se usa size.height * % para el bottom).
-2. Preservación del estado de scroll entre pestañas:
-   - PageStorageKey asignada por cada tab en settings_screen.dart
-     (general_tab, teclado_tab, trackpad_tab, snippets_tab, credentials_tab).
-   - PageStorageKey en cada ListView de las pestañas y de notes_screen.
+2. Preservación del estado de scroll por página:
+   - PageStorageKey por página en settings_screen._sectionList.
+   - PageStorageKey en los ListView de Snippets, Claves y notes_screen.
 3. Despeje visual del FAB en notas:
    - Eliminado el GlassContainer innecesario sobre el FAB opaco en notes_screen.dart.
    - Cero ocurrencias de GlassContainer en notes_screen.dart.
@@ -30,25 +25,20 @@ import sys
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings_screen.dart")
-SETTINGS_TAB_BAR = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "settings_tab_bar.dart")
-GENERAL_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "general_tab.dart")
-TECLADO_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "teclado_tab.dart")
-TRACKPAD_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "trackpad_tab.dart")
 SNIPPETS_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "snippets_tab.dart")
 CREDENTIALS_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "credentials_screen.dart")
 NOTES_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "notes_screen.dart")
 
+# Ajustes 2026: las páginas de lista se arman en settings_screen
+# (_sectionList); Snippets y Claves tienen su propio ListView.
+SETTINGS_PAD = "kSettingsGroupGap + MediaQuery.paddingOf(context).bottom"
 TAB_FILES = [
-    ("GeneralTab", GENERAL_TAB),
-    ("TecladoTab", TECLADO_TAB),
-    ("TrackpadTab", TRACKPAD_TAB),
+    ("SettingsScreen (_sectionList)", SETTINGS_SCREEN),
     ("SnippetsTab", SNIPPETS_TAB),
     ("CredentialsScreen", CREDENTIALS_SCREEN),
 ]
 
 def test_files_exist():
-    assert os.path.isfile(SETTINGS_SCREEN), "settings_screen.dart no existe"
-    assert os.path.isfile(SETTINGS_TAB_BAR), "settings_tab_bar.dart no existe"
     for name, path in TAB_FILES:
         assert os.path.isfile(path), f"{name} no existe en {path}"
     assert os.path.isfile(NOTES_SCREEN), "notes_screen.dart no existe"
@@ -57,8 +47,8 @@ def test_dynamic_bottom_padding_in_tabs():
     for name, path in TAB_FILES:
         with open(path, "r", encoding="utf-8") as f:
             src = f.read()
-        assert "96 + MediaQuery.paddingOf(context).bottom" in src, (
-            f"{name} no utiliza '96 + MediaQuery.paddingOf(context).bottom'"
+        assert SETTINGS_PAD in src, (
+            f"{name} no utiliza '{SETTINGS_PAD}'"
         )
         assert "size.height *" not in src, f"{name} utiliza padding porcentual indebido"
 
@@ -73,17 +63,12 @@ def test_dynamic_bottom_padding_in_notes():
 def test_page_storage_keys_in_settings():
     with open(SETTINGS_SCREEN, "r", encoding="utf-8") as f:
         src = f.read()
-    expected_keys = [
-        "general_tab",
-        "teclado_tab",
-        "trackpad_tab",
-        "snippets_tab",
-        "credentials_tab",
-    ]
-    for k in expected_keys:
-        assert f"PageStorageKey<String>('{k}')" in src, (
-            f"settings_screen.dart no asigna PageStorageKey para '{k}'"
-        )
+    # Cada página guarda su scroll con su propia PageStorageKey.
+    assert "key: PageStorageKey<String>(storageKey)" in src, (
+        "_sectionList no asigna PageStorageKey por página"
+    )
+    for k in ["settings_root", "settings_${title.toLowerCase()}"]:
+        assert f"'{k}'" in src, f"settings_screen.dart no usa la clave '{k}'"
 
 def test_page_storage_keys_in_listviews():
     for name, path in TAB_FILES:
@@ -106,17 +91,15 @@ def test_glass_container_removed_from_notes_fab():
     )
 
 def test_negative_mutations():
-    # 1. Quitar paddingOf(context).bottom de general_tab.dart
-    with open(GENERAL_TAB, "r", encoding="utf-8") as f:
-        gt_src = f.read()
-    mut_gt = gt_src.replace("96 + MediaQuery.paddingOf(context).bottom", "96")
-    assert "96 + MediaQuery.paddingOf(context).bottom" not in mut_gt
-
-    # 2. Quitar PageStorageKey de settings_screen.dart
+    # 1. Quitar paddingOf(context).bottom de settings_screen.dart
     with open(SETTINGS_SCREEN, "r", encoding="utf-8") as f:
         ss_src = f.read()
+    mut_pad = ss_src.replace(SETTINGS_PAD, "kSettingsGroupGap")
+    assert SETTINGS_PAD not in mut_pad
+
+    # 2. Quitar PageStorageKey de settings_screen.dart
     mut_ss = ss_src.replace("PageStorageKey", "ValueKey")
-    assert "PageStorageKey<String>('general_tab')" not in mut_ss
+    assert "key: PageStorageKey<String>(storageKey)" not in mut_ss
 
     # 3. Reintroducir GlassContainer sobre FAB en notes_screen.dart
     with open(NOTES_SCREEN, "r", encoding="utf-8") as f:
@@ -128,11 +111,11 @@ def test_negative_mutations():
     mut_ns_pad = ns_src.replace("96 + MediaQuery.paddingOf(context).bottom", "96")
     assert "96 + MediaQuery.paddingOf(context).bottom" not in mut_ns_pad
 
-    # 5. Quitar PageStorageKey de teclado_tab.dart
-    with open(TECLADO_TAB, "r", encoding="utf-8") as f:
-        tt_src = f.read()
-    mut_tt = tt_src.replace("PageStorageKey", "Key")
-    assert "PageStorageKey" not in mut_tt
+    # 5. Quitar PageStorageKey de snippets_tab.dart
+    with open(SNIPPETS_TAB, "r", encoding="utf-8") as f:
+        st_src = f.read()
+    mut_st = st_src.replace("PageStorageKey", "Key")
+    assert "PageStorageKey" not in mut_st
 
 def main():
     print("=" * 60)
@@ -141,9 +124,9 @@ def main():
 
     checks = [
         ("Archivos objetivo existen", test_files_exist),
-        ("Padding 96 + paddingOf.bottom en 5 pestañas de Ajustes", test_dynamic_bottom_padding_in_tabs),
+        ("Padding gap + paddingOf.bottom en páginas de Ajustes", test_dynamic_bottom_padding_in_tabs),
         ("Padding 96 + paddingOf.bottom en notas", test_dynamic_bottom_padding_in_notes),
-        ("PageStorageKey por tab en IndexedStack de Ajustes", test_page_storage_keys_in_settings),
+        ("PageStorageKey por página de Ajustes", test_page_storage_keys_in_settings),
         ("PageStorageKey en cada ListView de pestañas y notas", test_page_storage_keys_in_listviews),
         ("Vidrio inútil erradicado sobre FAB opaco en notas", test_glass_container_removed_from_notes_fab),
         ("Mutaciones negativas (5/5 detectadas)", test_negative_mutations),
