@@ -52,4 +52,7 @@
     <color name="dock_tool_pressed">#1FFFFFFF</color>
     <color name="dock_track">#33FFFFFF</color>
     <color name="dock_handle">#99F5F5F7</color>
+    <color name="dock_pad">#42767680</color>
+    <color name="dock_pad_line">#0FFFFFFF</color>
+    <color name="dock_hint">#99EBEBF5</color>
 </resources>

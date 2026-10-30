@@ -41,6 +41,18 @@ object PointerProtocol {
     const val STATUS_DISABLED = "disabled"
     const val STATUS_READY = "ready"
 
+    /** Respuesta del complemento a un clic: confirma que Android lo hizo. */
+    const val HOST_PACKAGE = "com.royleguiza.voicebubblestt"
+    const val ACTION_RESULT = "com.royleguiza.voicebubble.puntero.ACTION_RESULT"
+    const val EXTRA_SEQ = "seq"
+    const val EXTRA_RESULT = "result"
+    const val RESULT_DONE = "done"
+    const val RESULT_CANCELLED = "cancelled"
+    const val RESULT_REJECTED = "rejected"
+
+    /** Si no llega respuesta en este tiempo (tras el gesto), el complemento no está escuchando. */
+    const val ACK_TIMEOUT_MS = 1200L
+
     data class Command(val op: String, val x: Float, val y: Float, val dy: Float = 0f) {
         /** Cuánto dura el gesto en pantalla: las ventanas propias se apartan ese tiempo. */
         fun durationMs(): Long = when (op) {
@@ -100,5 +112,19 @@ object PointerProtocol {
         !installed -> STATUS_MISSING
         !enabled -> STATUS_DISABLED
         else -> STATUS_READY
+    }
+
+    /** ¿Esta orden pide confirmación? Solo los clics (el scroll llega a 60 Hz). */
+    fun wantsAck(op: String): Boolean = op == OP_TAP || op == OP_LONG_PRESS
+
+    /**
+     * Qué decirle a la persona según la respuesta del complemento.
+     * null = salió bien (no hay nada que avisar). [result] null = no respondió.
+     */
+    fun resultMessage(result: String?): String? = when (result) {
+        RESULT_DONE -> null
+        RESULT_CANCELLED -> "Android interrumpió el clic. Probá de nuevo."
+        RESULT_REJECTED -> "VoiceBubble Puntero no pudo hacer el clic. Apagalo y volvé a prenderlo en Accesibilidad."
+        else -> "VoiceBubble Puntero no responde. Apagalo y volvé a prenderlo en Accesibilidad."
     }
 }

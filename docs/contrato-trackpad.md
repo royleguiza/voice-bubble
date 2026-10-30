@@ -12,6 +12,12 @@
   Puntero. Panel abajo o ventana flotante (`pointer_open_mode`). Un toque en
   la línea de arriba lo cierra; la línea se acorta mientras corre el cierre
   automático (`kb_trackpad_auto_return`).
+  - Superficie única como el prototipo (`FloatingPadView`, gestos en
+    `PadGestures`): deslizar mueve, tocar = clic, mantener = clic largo,
+    dos dedos o la guía fina de la derecha = desplazar. Sin botones de mouse.
+  - Puntero (`PointerOverlayManager`): flecha fina con sombra; la punta está
+    en coordenadas de pantalla completa y el clic va a la punta tal como se
+    ve dibujada (`getLocationOnScreen`).
 - **Trackpad del teclado** (`TrackpadBridge`): capa dentro del teclado
   propio, independiente de la barra.
 
@@ -30,6 +36,10 @@
   panel, barra) se vuelven transparentes e intocables durante el gesto:
   Android 12+ bloquea toques bajo overlays de otra app con más de 80 % de
   opacidad (`OverlayPassThrough`).
+- Cada clic lleva un número (`EXTRA_SEQ`). El complemento responde
+  (`ACTION_RESULT`, solo a VoiceBubble y con el mismo permiso de firma) si
+  Android lo hizo, lo interrumpió o lo rechazó. Si no responde en
+  `ACK_TIMEOUT_MS`, el trackpad avisa que hay que apagarlo y prenderlo.
 - Sin complemento (o con su Accesibilidad apagada) **el puntero se mueve
   pero no hace clic** en otras apps: `PointerLink` devuelve false y el
   trackpad avisa una vez cómo activarlo. El teclado cae a teclas locales
@@ -43,6 +53,8 @@
 
 ## Límites conocidos
 
+- El botón de accesibilidad de Android ("Combinación de accesibilidad") del
+  complemento lo prende y apaga: no es el puntero. Conviene dejarlo apagado.
 - Desenfoque real del vidrio: Android 12+ y solo en rectángulos
   redondeados (burbuja, abanico, trackpad). La barra del borde, por su
   cuello cóncavo, usa vidrio lechoso propio.

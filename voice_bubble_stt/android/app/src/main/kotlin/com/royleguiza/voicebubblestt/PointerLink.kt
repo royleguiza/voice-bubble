@@ -1,9 +1,12 @@
 package com.royleguiza.voicebubblestt
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -27,6 +30,65 @@ object PointerLink {
 
     /** Margen para dar tiempo a que el sistema aplique el "apartar ventanas". */
     private const val CLEAR_LEAD_MS = 48L
+
+    // --- Confirmación de clics (ver PointerProtocol.ACTION_RESULT) ---
+    private var seq = 0
+    private var pendingSeq = 0
+    private var onProblem: ((String) -> Unit)? = null
+    private var receiver: BroadcastReceiver? = null
+    private val ackTimeout = Runnable {
+        if (pendingSeq != 0) {
+            pendingSeq = 0
+            report(PointerProtocol.resultMessage(null))
+        }
+    }
+
+    /**
+     * Escucha las respuestas del complemento mientras el trackpad está abierto.
+     * [problem] recibe un texto listo para mostrar cuando un clic no se hizo.
+     */
+    fun listen(context: Context, problem: (String) -> Unit) {
+        onProblem = problem
+        if (receiver != null) return
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action != PointerProtocol.ACTION_RESULT) return
+                val got = intent.getIntExtra(PointerProtocol.EXTRA_SEQ, 0)
+                if (got == 0 || got != pendingSeq) return
+                pendingSeq = 0
+                main.removeCallbacks(ackTimeout)
+                report(PointerProtocol.resultMessage(intent.getStringExtra(PointerProtocol.EXTRA_RESULT)))
+            }
+        }
+        val filter = IntentFilter(PointerProtocol.ACTION_RESULT)
+        try {
+            val app = context.applicationContext
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                app.registerReceiver(r, filter, PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED)
+            } else {
+                app.registerReceiver(r, filter, PointerProtocol.PERMISSION_POINTER, null)
+            }
+            receiver = r
+        } catch (_: Exception) {}
+    }
+
+    fun stopListening(context: Context) {
+        onProblem = null
+        pendingSeq = 0
+        main.removeCallbacks(ackTimeout)
+        val r = receiver ?: return
+        receiver = null
+        try {
+            context.applicationContext.unregisterReceiver(r)
+        } catch (_: Exception) {}
+    }
+
+    private fun report(message: String?) {
+        if (message == null) return
+        try {
+            onProblem?.invoke(message)
+        } catch (_: Exception) {}
+    }
 
     fun isInstalled(context: Context): Boolean = try {
         context.packageManager.getPackageInfo(PointerProtocol.COMPANION_PACKAGE, 0)
@@ -68,23 +130,33 @@ object PointerLink {
     private fun dispatch(context: Context, cmd: PointerProtocol.Command?): Boolean {
         if (cmd == null || !isEnabled(context)) return false
         val app = context.applicationContext
+        // Solo se espera respuesta si alguien la escucha (el trackpad flotante).
+        val ackSeq = if (receiver != null && PointerProtocol.wantsAck(cmd.op)) {
+            seq = if (seq >= 1_000_000) 1 else seq + 1
+            seq
+        } else {
+            0
+        }
         val intent = Intent(PointerProtocol.ACTION_POINTER).apply {
             setPackage(PointerProtocol.COMPANION_PACKAGE)
             putExtra(PointerProtocol.EXTRA_OP, cmd.op)
             putExtra(PointerProtocol.EXTRA_X, cmd.x)
             putExtra(PointerProtocol.EXTRA_Y, cmd.y)
             putExtra(PointerProtocol.EXTRA_DY, cmd.dy)
+            putExtra(PointerProtocol.EXTRA_SEQ, ackSeq)
+        }
+        val lead = if (OverlayPassThrough.clear(cmd, CLEAR_LEAD_MS)) CLEAR_LEAD_MS else 0L
+        if (ackSeq != 0) {
+            pendingSeq = ackSeq
+            main.removeCallbacks(ackTimeout)
+            main.postDelayed(ackTimeout, lead + cmd.durationMs() + PointerProtocol.ACK_TIMEOUT_MS)
         }
         val send = Runnable {
             try {
                 app.sendBroadcast(intent)
             } catch (_: Exception) {}
         }
-        if (OverlayPassThrough.clear(cmd, CLEAR_LEAD_MS)) {
-            main.postDelayed(send, CLEAR_LEAD_MS)
-        } else {
-            send.run()
-        }
+        if (lead > 0) main.postDelayed(send, lead) else send.run()
         return true
     }
 

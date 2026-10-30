@@ -78,6 +78,10 @@ class FloatingTrackpadService : Service() {
     private var extended = false
     private val handler = Handler(Looper.getMainLooper())
     private var lastNoCompanionHint = 0L
+    private var lastProblemHint = 0L
+    private var padView: FloatingPadView? = null
+    private var autoReturnSeconds = 0
+    private val idleClose = Runnable { closePanel() }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -89,6 +93,7 @@ class FloatingTrackpadService : Service() {
         }
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         pointerManager = PointerOverlayManager(this)
+        PointerLink.listen(this) { showProblem(it) }
         isRunning = true
     }
 
@@ -178,16 +183,14 @@ class FloatingTrackpadService : Service() {
         }
         pointerManager?.resetBottomLimit()
         pointerManager?.show()
+        startIdle()
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun buildPanel() {
         val prefs = getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-        val scrollPos = prefs.getString("flutter.kb_trackpad_scroll_position", "right") ?: "right"
-        val tapClick = prefs.getBoolean("flutter.kb_trackpad_tap_to_click", true)
-        val secClick = prefs.getString("flutter.kb_trackpad_secondary_click", "2fingers") ?: "2fingers"
         val scrollDir = prefs.getString("flutter.kb_trackpad_scroll_direction", "natural") ?: "natural"
-        val autoReturn = try {
+        autoReturnSeconds = try {
             when (val raw = prefs.all["flutter.kb_trackpad_auto_return"]) {
                 is Number -> raw.toInt()
                 is String -> raw.toIntOrNull() ?: 0
@@ -215,7 +218,6 @@ class FloatingTrackpadService : Service() {
         } catch (_: Exception) {
             "subtle"
         }
-        val buttonLayout = prefs.getString("flutter.kb_trackpad_button_layout", "top") ?: "top"
 
         pointerManager?.apply {
             sensitivity = sens
@@ -233,45 +235,39 @@ class FloatingTrackpadService : Service() {
         handle.setOnTouchListener(HandleTouch())
         root.addView(handle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (34 * d).roundToInt()))
 
-        val tp = VirtualTrackpadView(
+        // Superficie única como el prototipo HTML (sin botones ni grilla).
+        val pad = FloatingPadView(
             context = this,
-            scrollPosition = scrollPos,
-            tapToClick = tapClick,
-            secondaryClickMode = secClick,
-            scrollDirection = scrollDir,
-            autoReturnSeconds = autoReturn,
-            trackpadHeightPx = (196 * d).roundToInt(),
-            buttonLayout = buttonLayout,
-            theme = "glass",
-            listener = object : VirtualTrackpadView.TrackpadListener {
-                override fun onPointerMove(dx: Float, dy: Float) {
+            naturalScroll = scrollDir != "traditional",
+            listener = object : FloatingPadView.Listener {
+                override fun onMove(dx: Float, dy: Float) {
                     pointerManager?.moveBy(dx, dy)
                     updateGhost()
                 }
 
-                override fun onLeftClick() {
+                override fun onTap() {
                     pointerManager?.triggerClickFeedback()
                     val pos = pointerManager?.getPosition() ?: return
                     if (!PointerLink.tap(this@FloatingTrackpadService, pos.first, pos.second)) hintNoCompanion()
                 }
 
-                override fun onRightClick() {
-                    pointerManager?.triggerClickFeedback()
+                override fun onLongPress() {
+                    pointerManager?.triggerClickFeedback(long = true)
                     val pos = pointerManager?.getPosition() ?: return
                     if (!PointerLink.longPress(this@FloatingTrackpadService, pos.first, pos.second)) hintNoCompanion()
                 }
 
-                override fun onScroll(deltaY: Float) {
+                override fun onScroll(gestureDy: Float) {
                     val pos = pointerManager?.getPosition() ?: return
-                    PointerLink.scroll(this@FloatingTrackpadService, pos.first, pos.second, deltaY)
+                    if (!PointerLink.scroll(this@FloatingTrackpadService, pos.first, pos.second, gestureDy)) hintNoCompanion()
                 }
 
-                override fun onAutoReturn() {
-                    closePanel()
+                override fun onTouchStart() {
+                    cancelIdle()
                 }
 
-                override fun onIdleCountdown(totalMs: Long) {
-                    handleView?.startCountdown(totalMs)
+                override fun onTouchEnd() {
+                    startIdle()
                 }
 
                 override fun performHaptic(isFirm: Boolean) {
@@ -279,7 +275,8 @@ class FloatingTrackpadService : Service() {
                 }
             },
         )
-        root.addView(tp, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        root.addView(pad, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        padView = pad
 
         container = root
         handleView = handle
@@ -314,6 +311,30 @@ class FloatingTrackpadService : Service() {
         }
         try {
             Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {}
+    }
+
+    /** Cierre automático al soltar (kb_trackpad_auto_return; 0 = queda abierto). */
+    private fun startIdle() {
+        handler.removeCallbacks(idleClose)
+        val ms = autoReturnSeconds * 1000L
+        if (ms <= 0) return
+        handleView?.startCountdown(ms)
+        handler.postDelayed(idleClose, ms)
+    }
+
+    private fun cancelIdle() {
+        handler.removeCallbacks(idleClose)
+        handleView?.cancelCountdown()
+    }
+
+    /** El complemento avisó que un clic no se hizo (o no respondió). */
+    private fun showProblem(message: String) {
+        val now = SystemClock.uptimeMillis()
+        if (now - lastProblemHint < 6000L) return
+        lastProblemHint = now
+        try {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         } catch (_: Exception) {}
     }
 
@@ -369,7 +390,7 @@ class FloatingTrackpadService : Service() {
                     wx0 = win.x
                     wy0 = win.y
                     dragged = false
-                    handleView?.cancelCountdown()
+                    cancelIdle()
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = e.rawX - x0
@@ -407,10 +428,12 @@ class FloatingTrackpadService : Service() {
         super.onConfigurationChanged(newConfig)
         panelWindow?.refreshTheme()
         handleView?.refreshPalette()
+        padView?.refreshPalette()
     }
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        PointerLink.stopListening(this)
         handleView?.cancelCountdown()
         pointerManager?.destroy()
         pointerManager = null
@@ -418,6 +441,7 @@ class FloatingTrackpadService : Service() {
         panelWindow = null
         container = null
         handleView = null
+        padView = null
         isRunning = false
         super.onDestroy()
     }

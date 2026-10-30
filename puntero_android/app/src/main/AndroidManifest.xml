@@ -4,6 +4,11 @@
     <permission
         android:name="com.royleguiza.voicebubble.puntero.permission.POINTER"
         android:protectionLevel="signature"/>
+    <!-- Para confirmarle a VoiceBubble cómo terminó cada clic. -->
+    <uses-permission android:name="com.royleguiza.voicebubble.puntero.permission.POINTER"/>
+    <queries>
+        <package android:name="com.royleguiza.voicebubblestt"/>
+    </queries>
 
     <application
         android:label="@string/app_name"

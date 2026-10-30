@@ -114,6 +114,7 @@ jobs:
           gradle --no-daemon :app:testDebugUnitTest
           --tests com.royleguiza.voicebubblestt.DockGeometryTest
           --tests com.royleguiza.voicebubblestt.PointerProtocolTest
+          --tests com.royleguiza.voicebubblestt.PadGesturesTest
 
       - name: Protocolo del puntero idéntico en las dos apps
         run: |

@@ -40,9 +40,10 @@ class PunteroService : AccessibilityService() {
                 intent.getFloatExtra(PointerProtocol.EXTRA_Y, Float.NaN),
                 intent.getFloatExtra(PointerProtocol.EXTRA_DY, 0f),
             ) ?: return
+            val seq = intent.getIntExtra(PointerProtocol.EXTRA_SEQ, 0)
             when (cmd.op) {
-                PointerProtocol.OP_TAP -> press(cmd.x, cmd.y, PointerProtocol.TAP_MS)
-                PointerProtocol.OP_LONG_PRESS -> press(cmd.x, cmd.y, PointerProtocol.LONG_PRESS_MS)
+                PointerProtocol.OP_TAP -> press(cmd.x, cmd.y, PointerProtocol.TAP_MS, seq)
+                PointerProtocol.OP_LONG_PRESS -> press(cmd.x, cmd.y, PointerProtocol.LONG_PRESS_MS, seq)
                 PointerProtocol.OP_SCROLL -> scroll.add(cmd.x, cmd.y, cmd.dy)?.let { dispatchScroll(it) }
             }
         }
@@ -72,13 +73,28 @@ class PunteroService : AccessibilityService() {
         return resources.displayMetrics.heightPixels.toFloat()
     }
 
-    private fun press(x: Float, y: Float, durationMs: Long) {
+    private fun press(x: Float, y: Float, durationMs: Long, seq: Int) {
         scroll.reset()
         val path = Path().apply {
             moveTo(x, y)
             lineTo(x, y)
         }
-        dispatch(path, durationMs, null)
+        val ok = dispatch(path, durationMs, null) { done ->
+            reply(seq, if (done) PointerProtocol.RESULT_DONE else PointerProtocol.RESULT_CANCELLED)
+        }
+        if (!ok) reply(seq, PointerProtocol.RESULT_REJECTED)
+    }
+
+    /** Le confirma a VoiceBubble cómo terminó el clic (solo apps con la misma firma lo reciben). */
+    private fun reply(seq: Int, result: String) {
+        if (seq <= 0) return
+        try {
+            val intent = Intent(PointerProtocol.ACTION_RESULT)
+                .setPackage(PointerProtocol.HOST_PACKAGE)
+                .putExtra(PointerProtocol.EXTRA_SEQ, seq)
+                .putExtra(PointerProtocol.EXTRA_RESULT, result)
+            sendBroadcast(intent, PointerProtocol.PERMISSION_POINTER)
+        } catch (_: Exception) {}
     }
 
     private fun dispatchScroll(dy: Float) {
@@ -96,7 +112,12 @@ class PunteroService : AccessibilityService() {
         if (!dispatch(path, PointerProtocol.SCROLL_MS, done)) scroll.reset()
     }
 
-    private fun dispatch(path: Path, durationMs: Long, onEnd: (() -> Unit)?): Boolean {
+    private fun dispatch(
+        path: Path,
+        durationMs: Long,
+        onEnd: (() -> Unit)?,
+        onResult: ((Boolean) -> Unit)? = null,
+    ): Boolean {
         return try {
             val gesture = GestureDescription.Builder()
                 .addStroke(GestureDescription.StrokeDescription(path, 0L, durationMs))
@@ -105,10 +126,12 @@ class PunteroService : AccessibilityService() {
                 gesture,
                 object : GestureResultCallback() {
                     override fun onCompleted(gestureDescription: GestureDescription?) {
+                        onResult?.invoke(true)
                         onEnd?.invoke()
                     }
 
                     override fun onCancelled(gestureDescription: GestureDescription?) {
+                        onResult?.invoke(false)
                         onEnd?.invoke()
                     }
                 },

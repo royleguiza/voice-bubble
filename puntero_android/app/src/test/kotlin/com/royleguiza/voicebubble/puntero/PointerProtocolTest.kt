@@ -85,4 +85,28 @@ class PointerProtocolTest {
         // Rectángulo vacío nunca.
         assertFalse(PointerProtocol.pathHits(tap, 100, 100, 100, 100))
     }
+
+    @Test
+    fun `solo los clics piden confirmacion`() {
+        assertTrue(PointerProtocol.wantsAck(PointerProtocol.OP_TAP))
+        assertTrue(PointerProtocol.wantsAck(PointerProtocol.OP_LONG_PRESS))
+        assertFalse(PointerProtocol.wantsAck(PointerProtocol.OP_SCROLL))
+    }
+
+    @Test
+    fun `mensaje segun la respuesta del complemento`() {
+        assertEquals(null, PointerProtocol.resultMessage(PointerProtocol.RESULT_DONE))
+        assertTrue(PointerProtocol.resultMessage(PointerProtocol.RESULT_CANCELLED)!!.contains("interrumpió"))
+        assertTrue(PointerProtocol.resultMessage(PointerProtocol.RESULT_REJECTED)!!.contains("Accesibilidad"))
+        // Sin respuesta (o desconocida): el complemento no está escuchando.
+        assertTrue(PointerProtocol.resultMessage(null)!!.contains("no responde"))
+        assertTrue(PointerProtocol.resultMessage("raro")!!.contains("no responde"))
+    }
+
+    @Test
+    fun `la respuesta va solo a VoiceBubble`() {
+        assertEquals("com.royleguiza.voicebubblestt", PointerProtocol.HOST_PACKAGE)
+        assertTrue(PointerProtocol.ACTION_RESULT.startsWith(PointerProtocol.COMPANION_PACKAGE))
+        assertTrue(PointerProtocol.ACK_TIMEOUT_MS in 500L..3000L)
+    }
 }
