@@ -163,21 +163,21 @@ check("Manifest sin servicio de accesibilidad (perfil anti-Play-Protect)",
 
 # --- 9. Rotación con popup abierto: dismiss seguro, sin recreación ---
 # La Activity declara configChanges de orientación (el sistema NO la
-# recrea al rotar) y todo setState/popup tras await va tras `mounted`;
-# el AnimationController del popup se libera en dispose().
+# recrea al rotar) y todo setState/animación tras await va tras `mounted`;
+# el AnimationController de la nota nueva se libera en dispose().
 home_screen = read("app_source/lib/screens/home_screen.dart")
 check("Activity sobrevive a la rotación (configChanges con orientation)",
       'android:configChanges="orientation|keyboardHidden|keyboard|screenSize' in manifest_txt,
       "Falta orientation en configChanges: rotar recrearía la Activity")
-check("Popup de resultado tras await solo toca UI si mounted",
-      "if (mounted) {" in home_screen and "_popupCtrl.forward(from: 0)" in home_screen,
-      "El popup post-transcripción no está tras guarda mounted")
-check("Popup usa SnackBar de error con reintento (rotación no pierde el audio)",
+check("Resaltado de la nota nueva tras await solo toca UI si mounted",
+      "if (!mounted) return;" in home_screen and "_newNoteCtrl.forward(from: 0)" in home_screen,
+      "La animación post-transcripción no está tras guarda mounted")
+check("Error de transcripción con SnackBar y reintento (rotación no pierde el audio)",
       "label: 'Reintentar'" in home_screen and "_pendingAudioPath" in home_screen,
       "Falta el camino de reintento tras error")
-check("AnimationController del popup se libera en dispose",
-      "_popupCtrl.dispose();" in home_screen,
-      "Falta _popupCtrl.dispose()")
+check("AnimationController de la nota nueva se libera en dispose",
+      "_newNoteCtrl.dispose();" in home_screen,
+      "Falta _newNoteCtrl.dispose()")
 
 # --- 10. Sección Snippets en la modal (swipe lateral en la rayita) ---
 check("Secciones Historial/Snippets con constantes y umbral 48 dp",

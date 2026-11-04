@@ -50,7 +50,8 @@ KT_TEST = os.path.join(
 )
 CLOUD = os.path.join(APP, "lib", "services", "cloud_stt_service.dart")
 QUEUE = os.path.join(APP, "lib", "services", "pending_note_queue.dart")
-NOTES_SCREEN = os.path.join(APP, "lib", "screens", "notes_screen.dart")
+# Inicio 2026: dictar a nota y los pendientes viven en la pantalla principal.
+NOTES_SCREEN = os.path.join(APP, "lib", "screens", "home_screen.dart")
 PENDING_TILE = os.path.join(APP, "lib", "widgets", "pending_note_tile.dart")
 AUDIO_ROW = os.path.join(APP, "lib", "widgets", "note_audio_row.dart")
 WAV_TEST = os.path.join(APP, "test", "services", "wav_integrity_test.dart")
@@ -116,11 +117,11 @@ class TestC45OfflinePendingFixSuite(unittest.TestCase):
 
     def test_06_transcribir_primero_en_notas(self):
         src = read_file(NOTES_SCREEN)
-        stop = src.index("Future<void> _stopAndSave()")
+        stop = src.index("Future<void> _transcribeIntoNote(")
         transcribe_pos = src.index("_transcriptionService.transcribe(", stop)
         keep_pos = src.index("keepCopyForNote(path)", stop)
         self.assertLess(transcribe_pos, keep_pos,
-                        "_stopAndSave: transcribir antes de conservar")
+                        "_transcribeIntoNote: transcribir antes de conservar")
         pend = src.index("Future<void> _transcribePending(")
         transcribe_p = src.index("_transcriptionService.transcribe(", pend)
         promote_p = src.index("promoteToKept(item)", pend)

@@ -521,7 +521,8 @@ void main() {
       recordButton.onHoldStart!();
       await recordingCompleted;
       await tester.pump();
-      expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
+      // En mantener la pastilla no lleva ■: se termina soltando.
+      expect(find.byKey(const ValueKey('recordPill')), findsOneWidget);
       expect(bundleA.recorder.startCount, 1);
 
       final idleCountBefore = bundleA.bubble.idleUpdateCount;

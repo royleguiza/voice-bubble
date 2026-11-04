@@ -329,39 +329,60 @@ ThemeData buildDarkTheme() {
 }
 
 // ---------------------------------------------------------------------------
-// Home v2 – Layout & Motion (Hito 2)
+// Inicio 2026 – Notas como pantalla principal + burbuja de dictado
+// (laboratorio_ui/inicio-notas.html)
 // ---------------------------------------------------------------------------
 
-/// Diámetro del botón de grabar principal.
-const double kRecordButtonSize = 104.0;
+/// Diámetro de la burbuja de dictado en reposo (design.md §6: ≥ 72).
+const double kRecordButtonSize = 76.0;
 
-/// Tamaño del glifo dentro del botón de grabar.
-const double kRecordIconSize = 42.0;
+/// Tamaño del glifo del micrófono dentro de la burbuja.
+const double kRecordIconSize = 32.0;
 
-/// Ancho máximo de la tarjeta emergente de transcripción.
-const double kPopupMaxWidth = 480.0;
+/// Alto de la burbuja convertida en pastilla mientras graba.
+const double kRecordPillHeight = 68.0;
 
-/// Altura máxima de la tarjeta emergente como fracción del alto de pantalla.
-const double kPopupMaxHeightFactor = 0.35;
+/// Ancho máximo de la pastilla de grabación.
+const double kRecordPillMaxWidth = 340.0;
 
-/// Altura máxima del sheet de historial como fracción del alto de pantalla.
-const double kHistorySheetMaxFactor = 0.90;
+/// Separación entre la burbuja y el borde inferior (sobre el inset del sistema).
+const double kRecordDockBottomGap = 24.0;
 
-/// Altura inicial (y primer snap) del sheet de historial (se despliega al 90%).
-const double kHistorySheetInitialFactor = 0.90;
+/// Espacio libre al pie de las listas para que la última tarjeta no quede
+/// debajo de la burbuja: alto de la burbuja + su separación + aire.
+const double kRecordDockClearance =
+    kRecordButtonSize + kRecordDockBottomGap + 48.0;
 
-/// Fracción del alto del body desde el borde inferior hasta el cluster
-/// del botón de grabar. 0.32 sitúa todo el botón (Ø104) y el texto de estado
-/// en la zona óptima de alcance del pulgar (bajado un 10% adicional).
-const double kRecordClusterBottomFactor = 0.32;
+/// Título grande de la pantalla principal (design.md §5, Large Title).
+const TextStyle kTextLargeTitle = TextStyle(
+  fontSize: 34,
+  fontWeight: FontWeight.w700,
+  height: 41 / 34,
+  letterSpacing: 0.2,
+);
 
-/// Holgura extra sobre el inset del sistema para el pill de historial.
-/// 72.0 dp asegura que el botón quede totalmente despegado de la barra de
-/// navegación por gestos de Android para evitar toques accidentales con el sistema.
-const double kHistoryPillBottomGap = 72.0;
+/// Desplazamiento a partir del cual aparece la barra compacta superior.
+const double kLargeTitleCollapseOffset = 44.0;
 
-/// Duración de expansión de la tarjeta emergente.
-const Duration kAnimPopupExpand = Duration(milliseconds: 320);
+/// Relleno de controles de contenido (segmentado, buscador): gris de sistema.
+const Color kFillLight = Color(0x1F767680); // rgba(118,118,128,.12)
+const Color kFillDark = Color(0x3D767680); // rgba(118,118,128,.24)
+
+/// Pastilla seleccionada del segmentado en oscuro (en claro es kBgElevatedLight).
+const Color kSegmentThumbDark = Color(0xFF636366);
+
+/// Sombra de la pastilla seleccionada del segmentado.
+const BoxShadow kSegmentThumbShadow = BoxShadow(
+  color: Color(0x1F000000),
+  blurRadius: 8,
+  offset: Offset(0, 3),
+);
+
+/// Radio de las tarjetas de nota en la lista principal.
+const double kBorderRadiusNoteCard = 18.0;
+
+/// Duración del resaltado de una nota recién dictada.
+const Duration kAnimNewNote = Duration(milliseconds: 1400);
 
 /// SPK-24: una curva por trabajo. Enter-scale con overshoot suave;
 /// decoración/fades sin overshoot; exit instantáneo (ver botón).

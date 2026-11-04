@@ -12,7 +12,7 @@ Verifica:
    - Conserva ValueKey('kb-trackpad-sensitivity-slider') en Slider.
 2. SettingsScreen sin rebuilds globales en slider (settings_screen.dart):
    - _onTrackpadSensitivitySlider actualiza _trackpadSensitivity y persiste sin setState().
-3. Identidad de elementos y ValueKey en listas (notes_screen.dart, history_list.dart):
+3. Identidad de elementos y ValueKey en listas (home_screen.dart = notas, history_list.dart):
    - Transcription.id para estabilidad de keys.
    - ValueKey(t.id) en ListTile de HistoryList.
    - ValueKey(n.id) en NoteCard dentro del ListView de NotesScreen.
@@ -32,7 +32,8 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TRACKPAD_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "trackpad_tab.dart")
 SETTINGS_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings_screen.dart")
-NOTES_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "notes_screen.dart")
+# Inicio 2026: la lista de notas vive en la pantalla principal.
+NOTES_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "home_screen.dart")
 NOTE_CARD = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "note_card.dart")
 HISTORY_LIST = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "history_list.dart")
 TRANSCRIPTION_MODEL = os.path.join(BASE_DIR, "app_source", "lib", "models", "transcription.dart")
@@ -122,7 +123,7 @@ def test_value_keys_on_notes_and_history():
 
     # NotesScreen NoteCard key
     assert re.search(r"NoteCard\s*\([^)]*key:\s*ValueKey\([^)]*id\)", notes_src), (
-        "NotesScreen debe asignar key: ValueKey(n.id) en cada NoteCard para estabilidad ante borrado"
+        "La lista de notas debe asignar key: ValueKey(n.id) en cada NoteCard para estabilidad ante borrado"
     )
 
 
@@ -197,7 +198,7 @@ def test_negative_mutations():
             test_settings_screen_no_global_rebuild_on_slider,
         ),
         (
-            "ValueKey removido de NoteCard en NotesScreen",
+            "ValueKey removido de NoteCard en la lista de notas",
             NOTES_SCREEN,
             lambda s: re.sub(r"key:\s*ValueKey\([^)]+\),?", "", s),
             test_value_keys_on_notes_and_history,

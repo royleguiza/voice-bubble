@@ -137,7 +137,9 @@ class TestC24StorageAndNotesHonestReporting(unittest.TestCase):
         with open(self.notes_svc_path, "r", encoding="utf-8") as f:
             self.notes_svc_src = f.read()
 
-        self.notes_screen_path = os.path.join(APP_SOURCE, "screens", "notes_screen.dart")
+        # Las notas son la pantalla principal (Inicio 2026): el guardado de
+        # dictados y pendientes vive en home_screen.dart.
+        self.notes_screen_path = os.path.join(APP_SOURCE, "screens", "home_screen.dart")
         with open(self.notes_screen_path, "r", encoding="utf-8") as f:
             self.notes_screen_src = f.read()
 
@@ -177,7 +179,7 @@ class TestC24StorageAndNotesHonestReporting(unittest.TestCase):
         self.assertIn("catch (_) {}", self.transcription_svc_src)
 
     def test_notes_screen_surfaces_error_on_save_failure(self):
-        """notes_screen.dart muestra SnackBar de error si addFromTranscription falla."""
+        """home_screen.dart (notas) muestra SnackBar de error si addFromTranscription falla."""
         self.assertIn("ScaffoldMessenger.of(context).showSnackBar(", self.notes_screen_src)
         self.assertIn("Nota no guardada; el audio se conserva", self.notes_screen_src)
         # Comprobar que "Nota guardada" solo se ejecuta bajo rama if (ok)

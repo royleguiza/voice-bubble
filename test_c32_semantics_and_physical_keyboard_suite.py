@@ -41,7 +41,8 @@ TECLADO_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings",
 SNIPPETS_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "snippets_tab.dart")
 CREDENTIALS_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "credentials_screen.dart")
 NOTE_EDITOR_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "note_editor_screen.dart")
-NOTES_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "notes_screen.dart")
+# Inicio 2026: los diálogos de notas viven en la pantalla principal.
+NOTES_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "home_screen.dart")
 
 
 def read_file(path):
@@ -162,7 +163,7 @@ def test_credentials_screen_keyboard_and_autofill():
 
 
 def test_dialogs_and_editor_escape_dismiss():
-    """7. note_editor_screen y diálogos de notes_screen con Escape."""
+    """7. note_editor_screen y diálogos de notas (home_screen) con Escape."""
     nes = read_file(NOTE_EDITOR_SCREEN)
     ns = read_file(NOTES_SCREEN)
 
@@ -170,11 +171,17 @@ def test_dialogs_and_editor_escape_dismiss():
     assert "CallbackShortcuts(" in nes, "note_editor_screen debe tener CallbackShortcuts"
     assert "LogicalKeyboardKey.escape" in nes, "note_editor_screen debe bindear LogicalKeyboardKey.escape"
 
-    # notes_screen dialogs
-    assert "LogicalKeyboardKey.escape" in ns, "notes_screen debe bindear LogicalKeyboardKey.escape en diálogos"
-    assert ns.count("LogicalKeyboardKey.escape") >= 2, (
-        "notes_screen debe bindear LogicalKeyboardKey.escape tanto en _discardPending como en _deleteNoteAudio"
+    # Diálogos de notas (pantalla principal): un único _confirm con Escape,
+    # usado tanto por _discardPending como por _deleteNoteAudio.
+    confirm = ns[ns.index("Future<bool> _confirm("):]
+    confirm = confirm[:confirm.index("\n  }\n")]
+    assert "LogicalKeyboardKey.escape" in confirm, (
+        "_confirm debe bindear LogicalKeyboardKey.escape (cierra con false)"
     )
+    for fn in ("Future<void> _discardPending(", "Future<void> _deleteNoteAudio("):
+        body = ns[ns.index(fn):]
+        body = body[:body.index("\n  }\n")]
+        assert "_confirm(" in body, f"{fn.split('(')[0]} debe confirmar con _confirm (Escape)"
 
 
 def test_negative_mutations():

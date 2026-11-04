@@ -28,7 +28,8 @@ print(" INICIANDO TEST SUITE: COLA DIFERIDA NOTAS (C1-C7)")
 print("============================================================\n")
 
 QUEUE = "app_source/lib/services/pending_note_queue.dart"
-NOTES = "app_source/lib/screens/notes_screen.dart"
+# Inicio 2026: las notas (y su cola) viven en la pantalla principal.
+NOTES = "app_source/lib/screens/home_screen.dart"
 STORAGE = "app_source/lib/services/storage_service.dart"
 GENERAL = "app_source/lib/screens/settings/general_tab.dart"
 SETTINGS = "app_source/lib/screens/settings_screen.dart"
@@ -67,7 +68,7 @@ check("Eviction fallida queda reclamada para preservation",
       and "_deleteAudio" in q)
 
 # --- 2. Hook notes_screen ---
-check("notes_screen.dart importa cola", "pending_note_queue" in read(NOTES))
+check("home_screen.dart (notas) importa cola", "pending_note_queue" in read(NOTES))
 notes = read(NOTES)
 check("Hook solo isRetryable", "isRetryable" in notes)
 check("Flag gate en encolar", "_deferredQueueEnabled" in notes)
@@ -77,7 +78,7 @@ check("UI lista pendingNotesList", "pendingNotesList" in notes)
 check("Mensaje audio guardado en Notas", "audio guardado en Notas" in notes)
 check("Discard con confirmación", "_discardPending" in notes)
 check("No encola sin flag OFF path (comportamiento error actual)",
-      "retryable && _deferredQueueEnabled" in notes)
+      re.search(r"retryable\s*&&\s*_deferredQueueEnabled", notes) is not None)
 
 # --- 3. Flag ---
 st = read(STORAGE)
@@ -131,14 +132,16 @@ card_row = read("app_source/lib/widgets/note_audio_row.dart")
 check("Cola re-lee prefs nativas (reload contra caché Dart)",
       "prefs.reload()" in q)
 check("Notas refresca al volver del fondo (observer)",
-      "didChangeAppLifecycleState" in notes and "_refreshFromWidget" in notes)
+      "didChangeAppLifecycleState" in notes and "_loadNotes()" in
+      notes[notes.index("void didChangeAppLifecycleState"):][:400])
 check("Dependencia audioplayers para reproducir",
       "audioplayers" in pub)
 check("Fila de audio con reproducir/detener (perezoso, sin red)",
       "notePlayAudio-" in card_row and "DeviceFileSource" in card_row
       and "onPlayerComplete" in card_row
-      and "Audio original conservado" in card_row
-      and "noteDeleteAudio-" in card_row)
+      and "Escuchar audio" in card_row
+      # Borrar el audio pasó al menú de la nota (con confirmación).
+      and "NoteAction.deleteAudio" in read("app_source/lib/widgets/home_chrome.dart"))
 check("Test widget de la fila de audio existe",
       os.path.isfile(os.path.join(WORKSPACE, "app_source/test/widgets/note_audio_row_test.dart")))
 

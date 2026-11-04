@@ -70,15 +70,23 @@ void main() {
     });
   });
 
-  group('Home v2 layout tokens', () {
-    test('history sheet can expand to 90% with 90% initial factor', () {
-      expect(kHistorySheetMaxFactor, 0.90);
-      expect(kHistorySheetInitialFactor, 0.90);
+  group('Inicio 2026 layout tokens', () {
+    test('la burbuja de dictado respeta el mínimo de design.md (≥ 72)', () {
+      expect(kRecordButtonSize, greaterThanOrEqualTo(72.0));
+      expect(kRecordPillHeight, lessThan(kRecordButtonSize));
+      expect(kRecordPillMaxWidth, greaterThan(kRecordButtonSize));
     });
 
-    test('record cluster sits above the gesture inset', () {
-      expect(kRecordClusterBottomFactor, 0.32);
-      expect(kHistoryPillBottomGap, 72.0);
+    test('las listas dejan lugar libre para la burbuja', () {
+      expect(
+        kRecordDockClearance,
+        greaterThan(kRecordButtonSize + kRecordDockBottomGap),
+      );
+    });
+
+    test('el título grande es Large Title (34 bold)', () {
+      expect(kTextLargeTitle.fontSize, 34);
+      expect(kTextLargeTitle.fontWeight, FontWeight.w700);
     });
   });
 

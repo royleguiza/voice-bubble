@@ -1482,8 +1482,6 @@ def _contrato_c05():
         dart = f.read()
     with open("app_source/lib/screens/home_screen.dart", "r", encoding="utf-8") as f:
         home = f.read()
-    with open("app_source/lib/screens/notes_screen.dart", "r", encoding="utf-8") as f:
-        notes = f.read()
     with open(
         "voice_bubble_stt/android/app/src/test/kotlin/com/royleguiza/voicebubblestt/MicrophoneClaimTest.kt",
         "r",
@@ -2362,7 +2360,8 @@ def _contrato_c05():
         "'=> _activeClaim == 0') el teardown de Home/Notas corta antes de "
         "liberar y el microfono queda tomado para todo el proceso"
     )
-    for source, name in ((home, "home_screen"), (notes, "notes_screen")):
+    # Inicio 2026: Notas es la pantalla principal; un solo teardown que vigilar.
+    for source, name in ((home, "home_screen"),):
         assert "releaseMicrophoneClaim()" in _sin_comentarios(source), (
             f"{name} debe liberar el claim en su teardown (metodo sin llamadores)"
         )
@@ -2432,36 +2431,20 @@ def _contrato_c05():
     assert h_start.index("if (!mounted)") < h_start.index("_transcriptionService.startRecording(path)"), (
         "Una pantalla destruida no puede tomar el microfono"
     )
-    n_dictate = _codigo(
-        notes[notes.index("Future<void> _dictateNew"):notes.index("Future<void> _stopAndSave")]
+    # El corte de Home vuelve a idle si el recorder o el canal lanzan: con el
+    # estado visual colgado, la burbuja queda en 'grabando' y el segundo
+    # toque abre un segundo AudioRecord (antes se exigía en Notas).
+    h_stop = _codigo(
+        home[home.index("Future<void> _stopRecording"):home.index("Future<void> _retryPending")]
     )
-    assert n_dictate.index("_publishBubbleState(BubbleVisualState.recording)") < n_dictate.index(
-        "_transcriptionService.startRecording(path)"
-    ), (
-        "Notas debe publicar el estado visual ANTES de pedir el microfono, por "
-        "el mismo contrato que la burbuja"
+    # Catch EXTERIOR (sangría del cuerpo del método) hasta su finally.
+    outer = h_stop[h_stop.index("\n    } catch (e) {"):]
+    catch_stop, finally_stop = outer.split("\n    } finally {", 1)
+    assert "BubbleVisualState.idle" in catch_stop, (
+        "El catch exterior del corte de Home debe publicar idle"
     )
-    catch_notas = _cuerpo_del_bloque(n_dictate, "catch", "notes_screen._dictateNew")
-    assert "BubbleVisualState.idle" in catch_notas, (
-        "Notas debe volver a idle cuando el arranque no succeeds: con el "
-        "rechazo del claim, la pantalla se queda en 'grabando' sin grabar. Se "
-        "exige DENTRO del catch, no en el resto del metodo: publicado solo en "
-        "la rama de pantalla destruida, el catch compila vacio y el guard lo "
-        "daba por vivo"
-    )
-    assert n_dictate.index("if (!mounted)") < n_dictate.index(
-        "_transcriptionService.startRecording(path)"
-    ), "Una pantalla destruida no puede tomar el microfono"
-    n_stop = _codigo(
-        notes[notes.index("Future<void> _stopAndSave"):notes.index("Future<void> _transcribePending")]
-    )
-    assert "finally {" in n_stop and "_publishBubbleState(BubbleVisualState.idle)" in n_stop, (
-        "El corte de Notas debe publicar idle en su finally: con el estado "
-        "visual colgado, el boton queda en 'grabando' y el segundo toque abre un "
-        "segundo AudioRecord"
-    )
-    assert "floatingBubbleService" in _codigo(notes), (
-        "Notas debe operar sobre la burbuja flotante"
+    assert "_isStoppingRecording = false;" in finally_stop, (
+        "El finally del corte de Home debe soltar _isStoppingRecording"
     )
 
     # 6) Pruebas de carrera reales, certificadas por su CUERPO.
@@ -2602,14 +2585,14 @@ def _contrato_c05():
     pruebas_ui = (
         "Home publica el estado visual antes de tomar el claim",
         "Home no arranca con el microfono tomado y vuelve a idle",
-        "Notas toma el claim tras publicar el estado visual",
-        "Notas no arranca con el microfono tomado",
+        "Home: el segundo toque corta, libera el claim y vuelve a idle",
+        # Inicio 2026: Notas es la pantalla principal; los casos de Notas que
+        # repetían a los de Home se fusionaron en ellos.
         "Home libera el microfono si desaparece grabando",
         "Home libera el claim aunque el recorder no pueda cerrar",
-        "Notas libera el microfono si desaparece grabando",
         "Home no toma el microfono si desaparece durante el arranque",
         "Home no deja el microfono tomado si desaparece con recorder.start en vuelo",
-        "Notas libera el microfono si el segundo toque llega con recorder.start en vuelo",
+        "Home corta en cuanto termina el arranque si el segundo toque llega con recorder.start en vuelo",
     )
     cuerpos_ui = {}
     cuerpos_ui_texto = {}
@@ -2629,19 +2612,13 @@ def _contrato_c05():
                 "expect(order, isNot(contains('start')));",
                 "expect(order.last, 'bubble:idle');",
             ),
-            "Notas toma el claim tras publicar el estado visual": (
+            "Home: el segundo toque corta, libera el claim y vuelve a idle": (
                 "expect(order, ['bubble:recording', 'claim', 'start']);",
-                # Estado real de captura y localizacion por Key (§9.2-12): atar
-                # la raiz al copy del boton ("Detener") hacia al guard una
-                # violation de la regla y lo tumbaba un renombre legitimo.
+                # Estado real de captura y localizacion por Key (§9.2-12).
                 "expect(gate.isClaimed, isTrue);",
-                "await tester.tap(find.byKey(const ValueKey('notesMicFab')));",
-            ),
-            "Notas no arranca con el microfono tomado": (
-                "expect(order, isNot(contains('start')));",
+                "expect(gate.isClaimed, isFalse);",
                 "expect(order.last, 'bubble:idle');",
-                "expect(gate.isClaimed, isTrue);",
-                "await tester.tap(find.byKey(const ValueKey('notesMicFab')));",
+                "await tester.tap(find.byKey(const ValueKey('recordButton')));",
             ),
             "Home libera el microfono si desaparece grabando": (
                 "expect(order, contains('stop'));",
@@ -2649,9 +2626,6 @@ def _contrato_c05():
             ),
             "Home libera el claim aunque el recorder no pueda cerrar": (
                 "expect(gate.isClaimed, isFalse);",
-            ),
-            "Notas libera el microfono si desaparece grabando": (
-                "expect(order, contains('stop'));",
             ),
             "Home no toma el microfono si desaparece durante el arranque": (
                 "expect(order, ['bubble:recording', 'bubble:idle']);",
@@ -2662,8 +2636,9 @@ def _contrato_c05():
                 "expect(gate.isClaimed, isFalse);",
                 "expect(gate.claim(), isNot(0));",
             ),
-            "Notas libera el microfono si el segundo toque llega con recorder.start en vuelo": (
+            "Home corta en cuanto termina el arranque si el segundo toque llega con recorder.start en vuelo": (
                 "expect(recorder.starts, 1);",
+                "expect(order, contains('stop'));",
                 "expect(gate.claim(), isNot(0));",
             ),
         },
@@ -3524,7 +3499,8 @@ def test_c24_visible_errors_contract():
     widget_file = os.path.join(base, "app_source", "lib", "services", "widget_service.dart")
     storage_file = os.path.join(base, "app_source", "lib", "services", "storage_service.dart")
     trans_file = os.path.join(base, "app_source", "lib", "services", "transcription_service.dart")
-    notes_scr = os.path.join(base, "app_source", "lib", "screens", "notes_screen.dart")
+    # Inicio 2026: el guardado de notas vive en la pantalla principal.
+    notes_scr = os.path.join(base, "app_source", "lib", "screens", "home_screen.dart")
     editor_scr = os.path.join(base, "app_source", "lib", "screens", "note_editor_screen.dart")
 
     assert os.path.isfile(cstt_file), "C-24: cloud_stt_service.dart no existe"
@@ -3564,7 +3540,7 @@ def test_c24_visible_errors_contract():
 
     with open(notes_scr, "r", encoding="utf-8") as f:
         notes_src = f.read()
-    assert "Nota no guardada; el audio se conserva" in notes_src, "C-24: notes_screen no avisa fallo de guardado"
+    assert "Nota no guardada; el audio se conserva" in notes_src, "C-24: la pantalla de notas no avisa fallo de guardado"
 
     with open(editor_scr, "r", encoding="utf-8") as f:
         editor_src = f.read()
@@ -3658,7 +3634,7 @@ def test_c26_talkback_hold_recording_contract():
 def test_c27_nothing_obscured_and_scroll_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     settings_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings_screen.dart")
-    notes_file = os.path.join(base_dir, "app_source", "lib", "screens", "notes_screen.dart")
+    notes_file = os.path.join(base_dir, "app_source", "lib", "screens", "home_screen.dart")
 
     # Ajustes 2026: las listas de Ajustes (settings_screen._sectionList,
     # Snippets y Claves) usan gap + paddingOf; Notas conserva 96 + paddingOf.
@@ -3680,19 +3656,23 @@ def test_c27_nothing_obscured_and_scroll_contract():
 
     with open(notes_file, "r", encoding="utf-8") as f:
         n_src = f.read()
-    assert "96 + MediaQuery.paddingOf(context).bottom" in n_src, "C-27: falta padding 96 + paddingOf en notes_screen"
-    assert "PageStorageKey" in n_src, "C-27: falta PageStorageKey en notes_screen"
-    assert "GlassContainer" not in n_src, "C-27: notes_screen contiene GlassContainer inútil sobre FAB"
-    assert "floatingActionButton: FloatingActionButton.extended(" in n_src, "C-27: notes_screen no expone FAB directo"
+    assert "kRecordDockClearance + MediaQuery.paddingOf(context).bottom" in n_src, (
+        "C-27: la lista de notas no deja lugar libre bajo la burbuja + paddingOf"
+    )
+    assert "PageStorageKey<String>('home_notes_scroll')" in n_src, "C-27: falta PageStorageKey en notas"
+    fab = n_src[n_src.index("floatingActionButton:"):]
+    assert "RecordButton(" in fab, "C-27: el slot del FAB debe ser la burbuja de dictado"
+    assert "FloatingActionButton.extended" not in n_src, "C-27: FAB opaco compitiendo con la burbuja"
 
 def test_c28_sheet_scroll_and_touch_targets_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     snippets_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "snippets_tab.dart")
-    popup_file = os.path.join(base_dir, "app_source", "lib", "widgets", "transcription_popup.dart")
+    # El popup se retiró (la nota nueva es el resultado): copiar vive en la tarjeta.
+    popup_file = os.path.join(base_dir, "app_source", "lib", "widgets", "note_card.dart")
     audio_file = os.path.join(base_dir, "app_source", "lib", "widgets", "note_audio_row.dart")
 
     assert os.path.isfile(snippets_file), "C-28: snippets_tab.dart no existe"
-    assert os.path.isfile(popup_file), "C-28: transcription_popup.dart no existe"
+    assert os.path.isfile(popup_file), "C-28: note_card.dart no existe"
     assert os.path.isfile(audio_file), "C-28: note_audio_row.dart no existe"
 
     with open(snippets_file, "r", encoding="utf-8") as f:
@@ -3709,15 +3689,16 @@ def test_c28_sheet_scroll_and_touch_targets_contract():
 
     with open(popup_file, "r", encoding="utf-8") as f:
         p_src = f.read()
-    assert "minHeight: 44" in p_src, "C-28: transcription_popup sin minHeight 44"
-    assert "minWidth: 44" in p_src, "C-28: transcription_popup botón copiar sin minWidth 44"
-    assert "height: 36" not in p_src, "C-28: transcription_popup retiene height 36"
+    assert "minWidth: 44, minHeight: 44" in p_src[p_src.index("noteCopy-"):][:600], (
+        "C-28: copiar de la tarjeta sin 44x44 dp"
+    )
+    assert "height: 36" not in p_src, "C-28: note_card retiene height 36"
 
     with open(audio_file, "r", encoding="utf-8") as f:
         a_src = f.read()
-    assert "TextButton" in a_src, "C-28: note_audio_row 'Borrar audio' no es TextButton"
-    assert "minimumSize: const Size(44, 44)" in a_src or "minimumSize: Size(44, 44)" in a_src, (
-        "C-28: note_audio_row 'Borrar audio' sin minimumSize 44x44"
+    play = a_src[a_src.index("notePlayAudio-"):]
+    assert "vertical: 8" in play and "height: 28" in play, (
+        "C-28: la pastilla de audio debe ir en un área táctil de 44 dp"
     )
 
 def test_c29_bubble_clamping_contract():
@@ -3850,7 +3831,7 @@ def test_c33_no_rebuilds_and_keys_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     tt_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings", "trackpad_tab.dart")
     ss_file = os.path.join(base_dir, "app_source", "lib", "screens", "settings_screen.dart")
-    ns_file = os.path.join(base_dir, "app_source", "lib", "screens", "notes_screen.dart")
+    ns_file = os.path.join(base_dir, "app_source", "lib", "screens", "home_screen.dart")
     nc_file = os.path.join(base_dir, "app_source", "lib", "widgets", "note_card.dart")
     hl_file = os.path.join(base_dir, "app_source", "lib", "widgets", "history_list.dart")
     rc_file = os.path.join(base_dir, "app_source", "lib", "controllers", "recording_controller.dart")

@@ -7,7 +7,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
-import 'package:voice_bubble_stt/screens/notes_screen.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/pending_note_queue.dart';
@@ -146,7 +145,7 @@ void main() {
     );
   }
 
-  group('HomeScreen y NotesScreen compiten por el mismo claim', () {
+  group('HomeScreen compite por el mismo claim que teclado y burbuja', () {
     testWidgets('Home publica el estado visual antes de tomar el claim',
         (tester) async {
       final order = <String>[];
@@ -198,7 +197,7 @@ void main() {
       expect(gate.isClaimed, isTrue);
     });
 
-    testWidgets('Notas toma el claim tras publicar el estado visual',
+    testWidgets('Home: el segundo toque corta, libera el claim y vuelve a idle',
         (tester) async {
       final order = <String>[];
       final gate = _SharedMicGate(order);
@@ -207,22 +206,23 @@ void main() {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(MaterialApp(
-        home: NotesScreen(
+        home: HomeScreen(
           transcriptionService: buildService(gate, recorder),
+          storageService: StorageService(),
           pendingQueue: PendingNoteQueue(),
           floatingBubbleService: _OrderBubbleService(order),
         ),
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(order, ['bubble:recording', 'claim', 'start']);
       expect(gate.isClaimed, isTrue);
-      expect(find.text('Detener'), findsOneWidget);
+      expect(find.byKey(const ValueKey('recordPill')), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       for (var i = 0; i < 8; i++) {
         await tester.pump(const Duration(milliseconds: 150));
       }
@@ -231,32 +231,6 @@ void main() {
       expect(order.last, 'bubble:idle');
     });
 
-    testWidgets('Notas no arranca con el microfono tomado', (tester) async {
-      final order = <String>[];
-      final gate = _SharedMicGate(order);
-      final recorder = _OrderRecorder(order);
-      gate.claim();
-      order.clear();
-      tester.view.physicalSize = const Size(1600, 4800);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(
-        home: NotesScreen(
-          transcriptionService: buildService(gate, recorder),
-          pendingQueue: PendingNoteQueue(),
-          floatingBubbleService: _OrderBubbleService(order),
-        ),
-      ));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('notesMicFab')));
-      await tester.pump(const Duration(milliseconds: 400));
-
-      expect(order, isNot(contains('start')));
-      expect(order.last, 'bubble:idle');
-      expect(find.text('Dictar'), findsOneWidget);
-      expect(gate.isClaimed, isTrue);
-    });
   });
 
   group('Teardown de UI: una pantalla muerta no deja el microfono tomado',
@@ -322,39 +296,6 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(gate.isClaimed, isFalse);
-      expect(service.hasMicrophoneClaim, isFalse);
-    });
-
-    testWidgets('Notas libera el microfono si desaparece grabando',
-        (tester) async {
-      final order = <String>[];
-      final gate = _SharedMicGate(order);
-      final recorder = _OrderRecorder(order);
-      tester.view.physicalSize = const Size(1600, 4800);
-      tester.view.devicePixelRatio = 2.0;
-      addTearDown(tester.view.reset);
-      final service = buildService(gate, recorder);
-      await tester.pumpWidget(MaterialApp(
-        home: NotesScreen(
-          transcriptionService: service,
-          pendingQueue: PendingNoteQueue(),
-          floatingBubbleService: _OrderBubbleService(order),
-        ),
-      ));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('notesMicFab')));
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(gate.isClaimed, isTrue);
-
-      await tester.pumpWidget(
-        const MaterialApp(home: SizedBox.shrink()),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      expect(order, contains('stop'));
       expect(gate.isClaimed, isFalse);
       expect(service.hasMicrophoneClaim, isFalse);
     });
@@ -433,7 +374,7 @@ void main() {
     });
 
     testWidgets(
-        'Notas libera el microfono si el segundo toque llega con recorder.start en vuelo',
+        'Home corta en cuanto termina el arranque si el segundo toque llega con recorder.start en vuelo',
         (tester) async {
       final order = <String>[];
       final gate = _SharedMicGate(order);
@@ -443,29 +384,33 @@ void main() {
       addTearDown(tester.view.reset);
       final service = buildService(gate, recorder);
       await tester.pumpWidget(MaterialApp(
-        home: NotesScreen(
+        home: HomeScreen(
           transcriptionService: service,
+          storageService: StorageService(),
           pendingQueue: PendingNoteQueue(),
           floatingBubbleService: _OrderBubbleService(order),
         ),
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pump(const Duration(milliseconds: 400));
       expect(recorder.starts, 1);
       expect(service.hasMicrophoneClaim, isTrue);
-      expect(find.text('Detener'), findsOneWidget);
+      expect(find.byKey(const ValueKey('recordPill')), findsOneWidget);
 
-      await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pump();
       await tester.pump();
-      expect(order, contains('stop'));
-      expect(gate.isClaimed, isFalse);
+      // Home no corta un recorder a medio abrir: anota el pedido y corta
+      // apenas start() termina (_shouldStopAfterStart).
+      expect(order, isNot(contains('stop')));
 
       recorder.startGate.complete();
-      await tester.pump();
-      await tester.pump();
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 150));
+      }
+      expect(order, contains('stop'));
 
       expect(gate.isClaimed, isFalse);
       expect(service.hasMicrophoneClaim, isFalse);

@@ -36,15 +36,20 @@ void main() {
   }
 
   group('HomeScreen', () {
-    testWidgets('renders AppBar with "VoiceBubble STT" title', (tester) async {
+    testWidgets('abre en Notas: título grande con la key estable', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('homeTitleText')), findsOneWidget);
-      expect(find.byType(AppBar), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('homeTitleText'))).data,
+        'Notas',
+      );
+      // Sin AppBar: el título grande se desplaza con la lista.
+      expect(find.byType(AppBar), findsNothing);
     });
 
-    testWidgets('shows settings icon in AppBar', (tester) async {
+    testWidgets('muestra el botón de Ajustes', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
@@ -58,11 +63,15 @@ void main() {
       expect(find.byKey(const ValueKey('recordButton')), findsOneWidget);
     });
 
-    testWidgets('shows "Listo para transcribir" text initially', (tester) async {
+    testWidgets('la línea de estado existe y en reposo no dice nada', (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
       expect(find.byKey(const ValueKey('homeStatusText')), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('homeStatusText'))).data,
+        isEmpty,
+      );
     });
 
     testWidgets('shows mic icon in record button initially', (tester) async {
@@ -95,19 +104,58 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      // El anillo pulsante es infinito: pump fijo, no settle.
+      // La pastilla anima el pulso y la onda: pump fijo, no settle.
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
     });
 
-    testWidgets('AppBar title is centered', (tester) async {
+    testWidgets('el selector cambia a Historial y el título lo acompaña',
+        (tester) async {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      final appBar = tester.widget<AppBar>(find.byType(AppBar));
-      expect(appBar.centerTitle, isTrue);
+      await tester.tap(find.byKey(const ValueKey('home-tab-historial')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('homeTitleText'))).data,
+        'Historial',
+      );
+      expect(find.byKey(const ValueKey('history-empty-message')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('home-tab-notas')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('homeTitleText'))).data,
+        'Notas',
+      );
+    });
+
+    testWidgets('sin notas muestra la bienvenida, no una lista vacía',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('notesEmpty')), findsOneWidget);
+    });
+
+    testWidgets('✕ en la pastilla descarta: vuelve a reposo sin transcribir',
+        (tester) async {
+      await tester.pumpWidget(buildTestableWidget());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('recordButton')));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byKey(const ValueKey('recordPill')), findsOneWidget);
+      // El ✕ se destapa recién con la pastilla abierta (morph de 350 ms).
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.tap(find.byKey(const ValueKey('recordCancelButton')));
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(find.byKey(const ValueKey('recordIdle')), findsOneWidget);
+      expect(find.byKey(const ValueKey('recordProcessing')), findsNothing);
     });
 
     testWidgets('shows stop icon when recording and tapped again', (tester) async {
@@ -115,7 +163,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
-      // El anillo pulsante es infinito: pump fijo, no settle.
+      // La pastilla anima el pulso y la onda: pump fijo, no settle.
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
@@ -170,6 +218,21 @@ void main() {
     });
   });
 
+  /// Fondo y vuelta por la secuencia real de Android. Saltar de paused a
+  /// resumed directo lo rechaza el AppLifecycleListener del buscador.
+  void cycleBackgroundAndBack(WidgetTester tester) {
+    for (final state in const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+  }
+
   group('Refresco del historial al volver a la app', () {
     testWidgets(
         'un dictado escrito por el teclado en segundo plano aparece tras resumed',
@@ -178,15 +241,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Estado inicial: historial vacio.
-      await tester.tap(find.text('Historial'));
+      await tester.tap(find.byKey(const ValueKey('home-tab-historial')));
       await tester.pumpAndSettle();
       expect(find.text('No hay transcripciones aun'), findsOneWidget);
-
-      // Cerrar el sheet para reabrirlo despues del ciclo de vida.
-      final sheetContext =
-          tester.element(find.text('No hay transcripciones aun'));
-      Navigator.of(sheetContext).pop();
-      await tester.pumpAndSettle();
 
       // Simular la escritura externa del teclado en SharedPreferences
       // mientras la app esta de fondo.
@@ -200,18 +257,10 @@ void main() {
       ]);
 
       // Ciclo de vida paused -> resumed: dispara didChangeAppLifecycleState.
-      addTearDown(() {
-        tester.binding
-            .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      });
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-      tester.binding
-          .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      cycleBackgroundAndBack(tester);
       await tester.pumpAndSettle();
 
-      // El nuevo dictado debe verse al abrir el historial.
-      await tester.tap(find.text('Historial'));
-      await tester.pumpAndSettle();
+      // El nuevo dictado aparece en la pestaña sin reiniciar la app.
 
       expect(find.textContaining('dictado externo del teclado'),
           findsOneWidget);
@@ -223,19 +272,13 @@ void main() {
       await tester.pumpWidget(buildTestableWidget());
       await tester.pumpAndSettle();
 
-      addTearDown(() {
-        tester.binding
-            .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      });
-      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
-      tester.binding
-          .handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      cycleBackgroundAndBack(tester);
       await tester.pumpAndSettle();
 
-      expect(find.text('VoiceBubble STT'), findsOneWidget);
-      expect(find.text('Listo para transcribir'), findsOneWidget);
+      expect(find.byKey(const ValueKey('homeTitleText')), findsOneWidget);
+      expect(find.byKey(const ValueKey('recordIdle')), findsOneWidget);
 
-      await tester.tap(find.text('Historial'));
+      await tester.tap(find.byKey(const ValueKey('home-tab-historial')));
       await tester.pumpAndSettle();
       expect(find.text('No hay transcripciones aun'), findsOneWidget);
     });

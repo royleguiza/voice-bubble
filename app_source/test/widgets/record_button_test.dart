@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voice_bubble_stt/ui/design_tokens.dart';
 import 'package:voice_bubble_stt/widgets/record_button.dart';
 
 Widget buildTestWidget({
@@ -35,7 +36,7 @@ void main() {
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
     });
 
-    testWidgets('estado transcribing muestra spinner y no dispara acciones',
+    testWidgets('estado transcribing muestra los puntos y no dispara acciones',
         (tester) async {
       var pressed = false;
       await tester.pumpWidget(buildTestWidget(
@@ -44,7 +45,7 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.byKey(const ValueKey('recordProcessing')), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       expect(pressed, isFalse);
@@ -83,26 +84,100 @@ void main() {
       expect(ended, 1);
     });
 
-    testWidgets('estado recording no desborda el boton (sin overflow amarillo)',
+    testWidgets('grabando se estira en pastilla sin overflow amarillo',
         (tester) async {
       await tester.pumpWidget(buildTestWidget(state: RecordButtonState.recording));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 800));
-
       expect(tester.takeException(), isNull);
       final size = tester.getSize(find.byKey(const ValueKey('recordButton')));
-      expect(size.width, 104.0);
-      expect(size.height, 104.0);
+      expect(size.width, kRecordPillMaxWidth);
+      expect(size.height, kRecordPillHeight);
+      expect(find.byKey(const ValueKey('recordElapsed')), findsOneWidget);
     });
 
-    testWidgets('tamano del boton es kRecordButtonSize (104)', (tester) async {
-      await tester.pumpWidget(buildTestWidget());
-      // El gesto de pulsos puede programar frames; pumpAndSettle acotado.
-      await tester.pump(const Duration(milliseconds: 100));
+    testWidgets('la pastilla no desborda en pantallas angostas (320 dp)',
+        (tester) async {
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(buildTestWidget(state: RecordButtonState.recording));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(tester.takeException(), isNull);
+      expect(tester.getSize(find.byKey(const ValueKey('recordButton'))).width,
+          lessThanOrEqualTo(320));
+    });
 
+    testWidgets('en reposo es un círculo de kRecordButtonSize', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pump(const Duration(milliseconds: 100));
       final size = tester.getSize(find.byKey(const ValueKey('recordButton')));
-      expect(size.width, 104.0);
-      expect(size.height, 104.0);
+      expect(size.width, kRecordButtonSize);
+      expect(size.height, kRecordButtonSize);
+    });
+
+    testWidgets('✕ descarta sin detener (onCancel, no onPressed)',
+        (tester) async {
+      var cancelled = 0;
+      var pressed = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: RecordButton(
+            key: const ValueKey('recordButton'),
+            state: RecordButtonState.recording,
+            onPressed: () => pressed++,
+            onCancel: () => cancelled++,
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 800));
+      await tester.tap(find.byKey(const ValueKey('recordCancelButton')));
+      expect(cancelled, 1);
+      expect(pressed, 0);
+    });
+
+    testWidgets('modo mantener: sin ✕ ni ■ (el dedo está en la burbuja)',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: RecordButton(
+            key: const ValueKey('recordButton'),
+            state: RecordButtonState.recording,
+            onHoldStart: () {},
+            onHoldEnd: () {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 800));
+      expect(find.byKey(const ValueKey('recordCancelButton')), findsNothing);
+      expect(find.byIcon(Icons.stop_rounded), findsNothing);
+    });
+
+    testWidgets('la onda consulta el nivel real del micrófono mientras graba',
+        (tester) async {
+      var polls = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: RecordButton(
+            key: const ValueKey('recordButton'),
+            state: RecordButtonState.recording,
+            onPressed: () {},
+            levelSource: () async {
+              polls++;
+              return 0.6;
+            },
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(polls, greaterThan(2));
+      // Al salir de recording deja de consultar (sin timers colgados).
+      await tester.pumpWidget(buildTestWidget());
+      final before = polls;
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(polls, before);
     });
 
     testWidgets('C-26: Semantics en modo idle hold tiene label Mantené para grabar y accion longPress',

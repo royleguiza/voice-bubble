@@ -32,6 +32,10 @@
     <!-- Icono adaptive / splash (H5-T3): azul iOS de marca (design.md) -->
     <color name="ic_launcher_background">#FF007AFF</color>
 
+    <!-- Arranque (Inicio 2026): el mismo fondo de la app (bgBase de
+         design.md), así el paso a la primera pantalla no se nota. -->
+    <color name="splash_background">#FFF2F2F7</color>
+
     <!-- Paleta de snippets (design.md §12): solo 6 ids fijos.
          Fondo teñido ~20% (0x33) + stroke ~40% (0x66) sobre el tema. -->
     <color name="snippet_fill_azul">#33007AFF</color>

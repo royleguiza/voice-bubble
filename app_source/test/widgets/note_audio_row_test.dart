@@ -12,45 +12,32 @@ void main() {
   }
 
   group('NoteAudioRow', () {
-    testWidgets('muestra reproducir y borrar audio', (tester) async {
-      var deleted = false;
-      await tester.pumpWidget(wrap(NoteAudioRow(
-        audioPath: '/tmp/notes_audio/x.wav',
-        noteId: 'n1',
-        onDeleteAudio: () => deleted = true,
-      )));
+    testWidgets('pastilla con reproducir y la duración del WAV',
+        (tester) async {
+      // 16 kHz mono 16 bits = 32000 B/s: 44 B de cabecera + 38 s.
+      final dir = Directory.systemTemp.createTempSync('note_audio_len_');
+      final path = '${dir.path}/x.wav';
+      File(path).writeAsBytesSync(
+          List<int>.filled(44 + 38 * NoteAudioRow.bytesPerSecond, 0));
+      await tester.pumpWidget(wrap(NoteAudioRow(audioPath: path, noteId: 'n1')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Audio original conservado'), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('notePlayAudio-n1')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('noteDeleteAudio-n1')),
-        findsOneWidget,
-      );
-
-      await tester.tap(find.byKey(const ValueKey('noteDeleteAudio-n1')));
-      await tester.pumpAndSettle();
-      expect(deleted, isTrue);
+      expect(find.byKey(const ValueKey('notePlayAudio-n1')), findsOneWidget);
+      expect(find.text('0:38'), findsOneWidget);
+      // Borrar el audio vive en el menú de la nota, no en la tarjeta.
+      expect(find.byKey(const ValueKey('noteDeleteAudio-n1')), findsNothing);
+      if (dir.existsSync()) dir.deleteSync(recursive: true);
     });
 
-    testWidgets('sin callback no muestra borrar audio', (tester) async {
+    testWidgets('el área táctil mide al menos 44 dp de alto', (tester) async {
       await tester.pumpWidget(wrap(const NoteAudioRow(
         audioPath: '/tmp/notes_audio/x.wav',
         noteId: 'n2',
       )));
       await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const ValueKey('notePlayAudio-n2')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('noteDeleteAudio-n2')),
-        findsNothing,
-      );
+      final size = tester.getSize(find.byKey(const ValueKey('notePlayAudio-n2')));
+      expect(size.height, greaterThanOrEqualTo(44));
     });
 
     testWidgets('archivo inexistente avisa sin crashear', (tester) async {

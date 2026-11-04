@@ -119,6 +119,20 @@ class TranscriptionService {
   /// Claim vivo de este servicio (false = microfono libre para los demas).
   bool get hasMicrophoneClaim => _activeClaim != 0;
 
+  /// Nivel de entrada en vivo, 0..1, para dibujar la onda mientras se graba.
+  /// Mapea dBFS (-50 silencio … 0 saturado) a una escala lineal. Nunca lanza:
+  /// sin grabación o sin plugin devuelve 0 (la onda queda plana, no inventa).
+  Future<double> currentLevel() async {
+    try {
+      final amp = await _recorder.getAmplitude();
+      final db = amp.current;
+      if (db.isNaN || db.isInfinite) return 0;
+      return ((db + 50) / 50).clamp(0.0, 1.0);
+    } catch (_) {
+      return 0;
+    }
+  }
+
   /// Transcribe el audio en [audioPath] con el motor cloud.
   ///
   /// En éxito el llamador decide si borra el archivo temporal. En fallo lo

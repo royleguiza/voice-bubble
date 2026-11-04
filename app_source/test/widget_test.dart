@@ -25,8 +25,12 @@ void main() {
       await tester.pumpWidget(const VoiceBubbleApp());
       await tester.pumpAndSettle();
 
-      // Estado inicial: texto de bienvenida y botón con icono de micrófono
-      expect(find.text('Listo para transcribir'), findsOneWidget);
+      // Estado inicial: abre en Notas con la burbuja en reposo.
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('homeTitleText'))).data,
+        'Notas',
+      );
+      expect(find.byKey(const ValueKey('recordIdle')), findsOneWidget);
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
       expect(find.byIcon(Icons.stop_rounded), findsNothing);
 
@@ -34,8 +38,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       await tester.pump(const Duration(milliseconds: 400));
 
-      // Verificación: estado grabando activo
-      expect(find.text('Grabando...'), findsOneWidget);
+      // Verificación: la burbuja se estiró en pastilla de grabación.
+      expect(find.byKey(const ValueKey('recordPill')), findsOneWidget);
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
 
@@ -46,7 +50,7 @@ void main() {
       }
 
       // Verificación: grabación detenida, vuelve al estado inicial
-      expect(find.text('Grabando...'), findsNothing);
+      expect(find.byKey(const ValueKey('recordPill')), findsNothing);
       expect(find.byIcon(Icons.mic_rounded), findsOneWidget);
     });
   });

@@ -27,7 +27,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings_screen.dart")
 SNIPPETS_TAB = os.path.join(BASE_DIR, "app_source", "lib", "screens", "settings", "snippets_tab.dart")
 CREDENTIALS_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "credentials_screen.dart")
-NOTES_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "notes_screen.dart")
+# Inicio 2026: las notas son la pantalla principal (home_screen.dart) y la
+# burbuja de dictado flota en el slot del FAB.
+NOTES_SCREEN = os.path.join(BASE_DIR, "app_source", "lib", "screens", "home_screen.dart")
+NOTES_PAD = "kRecordDockClearance + MediaQuery.paddingOf(context).bottom"
 
 # Ajustes 2026: las páginas de lista se arman en settings_screen
 # (_sectionList); Snippets y Claves tienen su propio ListView.
@@ -41,7 +44,7 @@ TAB_FILES = [
 def test_files_exist():
     for name, path in TAB_FILES:
         assert os.path.isfile(path), f"{name} no existe en {path}"
-    assert os.path.isfile(NOTES_SCREEN), "notes_screen.dart no existe"
+    assert os.path.isfile(NOTES_SCREEN), "home_screen.dart no existe"
 
 def test_dynamic_bottom_padding_in_tabs():
     for name, path in TAB_FILES:
@@ -55,10 +58,10 @@ def test_dynamic_bottom_padding_in_tabs():
 def test_dynamic_bottom_padding_in_notes():
     with open(NOTES_SCREEN, "r", encoding="utf-8") as f:
         src = f.read()
-    assert "96 + MediaQuery.paddingOf(context).bottom" in src, (
-        "notes_screen.dart no utiliza '96 + MediaQuery.paddingOf(context).bottom'"
-    )
-    assert "size.height *" not in src, "notes_screen.dart utiliza padding porcentual indebido"
+    # La última tarjeta nunca queda debajo de la burbuja: lugar libre
+    # = burbuja + separación + aire, más el inset real del sistema.
+    assert NOTES_PAD in src, f"home_screen.dart no utiliza '{NOTES_PAD}'"
+    assert "size.height *" not in src, "home_screen.dart utiliza padding porcentual indebido"
 
 def test_page_storage_keys_in_settings():
     with open(SETTINGS_SCREEN, "r", encoding="utf-8") as f:
@@ -78,16 +81,24 @@ def test_page_storage_keys_in_listviews():
 
     with open(NOTES_SCREEN, "r", encoding="utf-8") as f:
         notes_src = f.read()
-    assert "PageStorageKey" in notes_src, "notes_screen.dart no asigna PageStorageKey en su ListView"
+    for k in ("home_notes_scroll", "home_history_scroll"):
+        assert f"PageStorageKey<String>('{k}')" in notes_src, (
+            f"home_screen.dart no guarda el scroll de su pestaña con PageStorageKey '{k}'"
+        )
 
 def test_glass_container_removed_from_notes_fab():
+    # Antes: vidrio inútil sobre un FAB opaco. Ahora el slot del FAB lleva
+    # la burbuja de dictado, que ES vidrio (capa funcional, design.md §2),
+    # y no hay un FAB opaco aparte compitiendo con ella.
     with open(NOTES_SCREEN, "r", encoding="utf-8") as f:
         src = f.read()
-    assert "GlassContainer" not in src, (
-        "notes_screen.dart aún contiene GlassContainer envolviendo el FAB u otros elementos"
+    fab = src[src.index("floatingActionButton:"):]
+    assert "RecordButton(" in fab, "el slot del FAB debe ser la burbuja de dictado"
+    assert "FloatingActionButton.extended" not in src, (
+        "home_screen.dart no debe sumar un FAB opaco además de la burbuja"
     )
-    assert "floatingActionButton: FloatingActionButton.extended(" in src, (
-        "notes_screen.dart no expone FloatingActionButton.extended de forma directa"
+    assert "GlassContainer(" not in fab[:fab.index("RecordButton(")], (
+        "la burbuja ya es vidrio: no se envuelve en otro GlassContainer"
     )
 
 def test_negative_mutations():
@@ -101,15 +112,16 @@ def test_negative_mutations():
     mut_ss = ss_src.replace("PageStorageKey", "ValueKey")
     assert "key: PageStorageKey<String>(storageKey)" not in mut_ss
 
-    # 3. Reintroducir GlassContainer sobre FAB en notes_screen.dart
+    # 3. Envolver la burbuja en otro vidrio en home_screen.dart
     with open(NOTES_SCREEN, "r", encoding="utf-8") as f:
         ns_src = f.read()
-    mut_ns = ns_src.replace("floatingActionButton: FloatingActionButton.extended", "floatingActionButton: GlassContainer(child: FloatingActionButton.extended")
-    assert "GlassContainer" in mut_ns
+    mut_ns = ns_src.replace("floatingActionButton: Padding(", "floatingActionButton: GlassContainer(child: Padding(")
+    fab = mut_ns[mut_ns.index("floatingActionButton:"):]
+    assert "GlassContainer(" in fab[:fab.index("RecordButton(")]
 
-    # 4. Revertir padding en notes_screen a 96 fijo
-    mut_ns_pad = ns_src.replace("96 + MediaQuery.paddingOf(context).bottom", "96")
-    assert "96 + MediaQuery.paddingOf(context).bottom" not in mut_ns_pad
+    # 4. Revertir el lugar libre de la lista a un número fijo
+    mut_ns_pad = ns_src.replace(NOTES_PAD, "96")
+    assert NOTES_PAD not in mut_ns_pad
 
     # 5. Quitar PageStorageKey de snippets_tab.dart
     with open(SNIPPETS_TAB, "r", encoding="utf-8") as f:
@@ -125,10 +137,10 @@ def main():
     checks = [
         ("Archivos objetivo existen", test_files_exist),
         ("Padding gap + paddingOf.bottom en páginas de Ajustes", test_dynamic_bottom_padding_in_tabs),
-        ("Padding 96 + paddingOf.bottom en notas", test_dynamic_bottom_padding_in_notes),
+        ("Lugar libre bajo la burbuja + paddingOf.bottom en notas", test_dynamic_bottom_padding_in_notes),
         ("PageStorageKey por página de Ajustes", test_page_storage_keys_in_settings),
         ("PageStorageKey en cada ListView de pestañas y notas", test_page_storage_keys_in_listviews),
-        ("Vidrio inútil erradicado sobre FAB opaco en notas", test_glass_container_removed_from_notes_fab),
+        ("Burbuja de vidrio única en el slot del FAB (sin FAB opaco)", test_glass_container_removed_from_notes_fab),
         ("Mutaciones negativas (5/5 detectadas)", test_negative_mutations),
     ]
 

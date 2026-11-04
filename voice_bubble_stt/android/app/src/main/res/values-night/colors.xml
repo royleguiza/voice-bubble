@@ -30,6 +30,9 @@
     <!-- Icono adaptive / splash (H5-T3): azul iOS variante oscura (design.md) -->
     <color name="ic_launcher_background">#FF0A84FF</color>
 
+    <!-- Arranque (Inicio 2026): bgBase oscuro de design.md. -->
+    <color name="splash_background">#FF000000</color>
+
     <!-- Paleta de snippets - modo oscuro (mismos 6 ids que claro). -->
     <color name="snippet_fill_azul">#330A84FF</color>
     <color name="snippet_stroke_azul">#660A84FF</color>

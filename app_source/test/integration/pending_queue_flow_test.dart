@@ -7,7 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
-import 'package:voice_bubble_stt/screens/notes_screen.dart';
+import 'package:voice_bubble_stt/screens/home_screen.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/pending_note_queue.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
@@ -204,7 +204,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: KeyedSubtree(
         key: UniqueKey(),
-        child: NotesScreen(
+        child: HomeScreen(
           transcriptionService: service,
           pendingQueue: queue,
         ),
@@ -235,17 +235,17 @@ void main() {
     final queue = PendingNoteQueue();
     await pumpNotes(tester, service, queue);
 
-    expect(find.byKey(const ValueKey('notesMicFab')), findsOneWidget);
+    expect(find.byKey(const ValueKey('recordButton')), findsOneWidget);
     expect(find.byKey(const ValueKey('pendingNotesList')), findsNothing);
 
     // Grabar y detener → fallo de red → encolar.
-    await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+    await tester.tap(find.byKey(const ValueKey('recordButton')));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Detener'), findsOneWidget,
+    expect(find.byKey(const ValueKey('recordPill')), findsOneWidget,
         reason: 'el primer toque debe abrir la captura');
     expect(recorder.startCount, 1,
         reason: 'el claim C-05 debe dejar pasar el start al recorder');
-    await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+    await tester.tap(find.byKey(const ValueKey('recordButton')));
     await pumpUntilFound(tester, find.textContaining('audio guardado en Notas'));
 
     expect(
@@ -312,13 +312,13 @@ void main() {
     final queue = PendingNoteQueue();
     await pumpNotes(tester, service, queue);
 
-    await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+    await tester.tap(find.byKey(const ValueKey('recordButton')));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Detener'), findsOneWidget,
+    expect(find.byKey(const ValueKey('recordPill')), findsOneWidget,
         reason: 'el primer toque debe abrir la captura');
     expect(recorder.startCount, 1,
         reason: 'el claim C-05 debe dejar pasar el start al recorder');
-    await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+    await tester.tap(find.byKey(const ValueKey('recordButton')));
     await pumpUntilFound(tester, find.textContaining('Error:'));
 
     expect(find.byKey(const ValueKey('pendingNotesList')), findsNothing);
@@ -344,10 +344,10 @@ void main() {
     final queue = PendingNoteQueue();
     await pumpNotes(tester, service, queue);
 
-    expect(find.byKey(const ValueKey('notesStatus')), findsOneWidget);
+    expect(find.byKey(const ValueKey('notesUnavailable')), findsOneWidget);
     expect(find.text('Notas no disponibles'), findsOneWidget);
-    expect(find.text('Sin notas'), findsNothing);
-    expect(find.text('0 / 50'), findsNothing);
+    // Lectura corrupta ≠ "no hay notas": nunca la bienvenida de lista vacía.
+    expect(find.byKey(const ValueKey('notesEmpty')), findsNothing);
   });
 
   testWidgets('auth no encola aunque el flag esté ON', (tester) async {
@@ -366,9 +366,9 @@ void main() {
     final queue = PendingNoteQueue();
     await pumpNotes(tester, service, queue);
 
-    await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+    await tester.tap(find.byKey(const ValueKey('recordButton')));
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.byKey(const ValueKey('notesMicFab')));
+    await tester.tap(find.byKey(const ValueKey('recordButton')));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 150));
     }

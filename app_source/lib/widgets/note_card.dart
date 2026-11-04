@@ -1,128 +1,153 @@
 import 'package:flutter/material.dart';
+
+import '../helpers/note_groups.dart';
 import '../models/voice_note.dart';
 import '../ui/design_tokens.dart';
+import 'app_icons.dart';
 import 'note_audio_row.dart';
 
+/// Tarjeta de nota de la lista principal (capa de contenido: sin vidrio).
+///
+/// Título en una línea, dos líneas de texto, hora y pastilla de audio. Tocar
+/// abre el editor; mantener abre el menú de acciones (copiar, borrar audio,
+/// eliminar). Copiar también queda a un toque, porque es lo que más se usa.
 class NoteCard extends StatelessWidget {
   final VoiceNote note;
   final VoidCallback onTap;
-  final VoidCallback? onDelete;
+  final VoidCallback? onLongPress;
   final VoidCallback? onCopy;
-  final VoidCallback? onDeleteAudio;
+
+  /// 1 → 0 al aparecer una nota recién dictada: anillo de acento que se
+  /// desvanece. Null en las demás.
+  final Animation<double>? highlight;
 
   const NoteCard({
     super.key,
     required this.note,
     required this.onTap,
-    this.onDelete,
+    this.onLongPress,
     this.onCopy,
-    this.onDeleteAudio,
+    this.highlight,
   });
-
-  String _format(DateTime dt) {
-    final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes}m';
-    if (diff.inHours < 24) return 'hace ${diff.inHours}h';
-    if (diff.inDays == 1) return 'ayer';
-    if (diff.inDays < 7) return 'hace ${diff.inDays}d';
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}';
-  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
-    return Semantics(
-      container: true,
-      label: 'Nota: ${note.titulo.isEmpty ? 'Sin título' : note.titulo}',
-      child: Material(
-        color: isDark ? kBgSecondaryDark : kBgSecondaryLight,
-        borderRadius: BorderRadius.circular(kBorderRadiusCard),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(kBorderRadiusCard),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(kBorderRadiusCard),
-              border: Border.all(
-                color: isDark ? kSeparatorDark : kSeparatorLight,
-                width: 0.5,
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        note.titulo.isEmpty ? 'Sin título' : note.titulo,
+    final accent = isDark ? kAccentDark : kAccentLight;
+    final untitled = note.titulo.trim().isEmpty;
+    final radius = BorderRadius.circular(kBorderRadiusNoteCard);
+
+    final card = Material(
+      color: isDark ? kBgElevatedDark : kBgSecondaryLight,
+      borderRadius: radius,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 6, 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        untitled ? 'Sin título' : note.titulo,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: kTextSubhead.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-                          fontStyle: note.titulo.isEmpty ? FontStyle.italic : FontStyle.normal,
+                        style: kTextBody.copyWith(
+                          fontWeight:
+                              untitled ? FontWeight.w500 : FontWeight.w600,
+                          color: untitled ? secondary : primary,
+                          height: 22 / 17,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        note.cuerpo,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: kTextFootnote.copyWith(color: secondary),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        _format(note.updatedAt),
-                        style: kTextCaption.copyWith(color: secondary),
-                      ),
-                      if (note.hasAudio) ...[
-                        const SizedBox(height: 6),
-                        NoteAudioRow(
-                          key: ValueKey('audio_${note.id}'),
-                          audioPath: note.audioPath!,
-                          noteId: note.id,
-                          onDeleteAudio: onDeleteAudio,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (onCopy != null)
-                  IconButton(
-                    tooltip: 'Copiar contenido',
-                    icon: Icon(Icons.copy_rounded, size: 18, color: secondary),
-                    onPressed: onCopy,
-                    visualDensity: VisualDensity.compact,
-                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                  ),
-                if (onDelete != null)
-                  IconButton(
-                    tooltip: 'Borrar',
-                    icon: Icon(Icons.close_rounded, size: 18, color: secondary),
-                    onPressed: onDelete,
-                    visualDensity: VisualDensity.compact,
-                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                  )
-                else if (onCopy == null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, right: 6),
-                    child: Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: secondary,
                     ),
                   ),
-              ],
-            ),
+                  if (onCopy != null)
+                    IconButton(
+                      key: ValueKey('noteCopy-${note.id}'),
+                      tooltip: 'Copiar texto',
+                      icon: Icon(Icons.copy_rounded,
+                          size: AppIcons.small, color: secondary),
+                      onPressed: onCopy,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 44, minHeight: 44),
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: Text(
+                  note.cuerpo,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      kTextSubhead.copyWith(color: secondary, height: 20 / 15),
+                ),
+              ),
+              SizedBox(
+                height: 44,
+                child: Row(
+                  children: [
+                    Text(
+                      noteTimeLabel(note.updatedAt),
+                      style: kTextFootnote.copyWith(
+                        color: secondary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                    if (note.hasAudio) ...[
+                      const SizedBox(width: 10),
+                      NoteAudioRow(
+                        key: ValueKey('audio_${note.id}'),
+                        audioPath: note.audioPath!,
+                        noteId: note.id,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
+    );
+
+    final highlighted = highlight == null
+        ? card
+        : AnimatedBuilder(
+            animation: highlight!,
+            builder: (context, child) => DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(
+                  color: accent.withValues(alpha: highlight!.value),
+                  width: 2,
+                ),
+              ),
+              child: child,
+            ),
+            child: card,
+          );
+
+    return Semantics(
+      container: true,
+      label: 'Nota: ${untitled ? 'Sin título' : note.titulo}',
+      hint: 'Mantené presionado para más acciones',
+      child: highlighted,
     );
   }
 }
