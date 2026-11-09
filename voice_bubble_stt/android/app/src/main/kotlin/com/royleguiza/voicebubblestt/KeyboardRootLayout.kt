@@ -19,7 +19,8 @@ import android.widget.LinearLayout
  * Ahora [onMeasure] recalcula el relleno con los insets actuales antes de
  * medir, y si el listener trae un valor distinto fuerza una medición nueva
  * en el siguiente cuadro. La altura de la ventana y el relleno no pueden
- * desincronizarse.
+ * desincronizarse. La elevación se lee en vivo: cambiarla en Ajustes se
+ * refleja en la próxima medición, sin recrear la vista.
  */
 class KeyboardRootLayout(context: Context) : LinearLayout(context) {
 
