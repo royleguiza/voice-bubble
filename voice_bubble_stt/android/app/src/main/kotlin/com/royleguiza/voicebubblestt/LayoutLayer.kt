@@ -339,35 +339,40 @@ class LayoutLayer(
 
     /**
      * Con targetSdk edge-to-edge la ventana del teclado se extiende bajo la
-     * barra de gestos y los botones del sistema. Se aplica el inset de
-     * navegacion como padding inferior para que la fila inferior quede
-     * siempre por encima.
+     * barra de gestos y los botones del sistema. El relleno inferior (barra
+     * + elevación de Ajustes) lo aplica [KeyboardRootLayout] en cada
+     * medición, así la fila inferior nunca queda cortada (ver esa clase).
      */
-    fun applyBottomInsets() {
-        val padH = host.dimenPx(R.dimen.kb_row_padding_h)
-        val padV = host.dimenPx(R.dimen.kb_row_padding_v)
-        host.rootView().setOnApplyWindowInsetsListener { view, insets ->
-            val bottom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                insets.getInsets(
-                    WindowInsets.Type.navigationBars()
-                        or WindowInsets.Type.displayCutout(),
-                ).bottom
-            } else {
-                @Suppress("DEPRECATION")
-                insets.systemWindowInsetBottom
-            }
-            val elevationPx = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP,
-                host.bottomElevationDp().coerceIn(0, 64).toFloat(),
-                host.rootView().resources.displayMetrics,
-            ).toInt()
-            view.setPadding(padH, padV, padH, padV + bottom + elevationPx)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                WindowInsets.CONSUMED
-            } else {
-                @Suppress("DEPRECATION")
-                insets.consumeSystemWindowInsets()
-            }
+    fun applyBottomInsets(root: KeyboardRootLayout) {
+        root.padH = host.dimenPx(R.dimen.kb_row_padding_h)
+        root.padV = host.dimenPx(R.dimen.kb_row_padding_v)
+        root.bottomPaddingFor = { insets -> navBottomPx(insets) + elevationPx() }
+    }
+
+    private fun elevationPx(): Int = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
+        host.bottomElevationDp().coerceIn(0, 64).toFloat(),
+        host.rootView().resources.displayMetrics,
+    ).toInt()
+
+    /**
+     * Alto de la barra del sistema bajo el teclado. Se toma el mayor entre
+     * el valor visible y el que ignora visibilidad: el visible puede valer
+     * 0 un instante (barra transitoria, apps inmersivas) y hacer saltar la
+     * altura del teclado.
+     */
+    private fun navBottomPx(insets: WindowInsets?): Int {
+        if (insets == null) return 0
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val types = WindowInsets.Type.navigationBars() or
+                WindowInsets.Type.displayCutout()
+            maxOf(
+                insets.getInsets(types).bottom,
+                insets.getInsetsIgnoringVisibility(types).bottom,
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            insets.systemWindowInsetBottom
         }
     }
 }

@@ -59,7 +59,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // --- Preferencias de aspecto (K5-T2/T3, puente Flutter) ---
     private lateinit var trackpad: TrackpadBridge
 
-    private lateinit var root: LinearLayout
+    private lateinit var root: KeyboardRootLayout
 
     // AT-A9: vista vigente devuelta al sistema por onCreateInputView. Los
     // avisos la comparan por identidad antes de tocar root, porque
@@ -127,21 +127,13 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         layout = LayoutLayer(keys, this)
         spacebar = SpacebarLayer(this, handler, this)
         editor = EditEngine(this, { if (::snippets.isInitialized) snippets else null }, this)
-        root = LinearLayout(this)
-        root.orientation = LinearLayout.VERTICAL
+        root = KeyboardRootLayout(this)
         root.setBackgroundResource(R.drawable.kb_surface_bg)
-        layout.applyBottomInsets()
+        layout.applyBottomInsets(root)
         rebuild()
         inputView = root
         return root
     }
-
-    /**
-     * Con targetSdk edge-to-edge la ventana del teclado se extiende bajo la
-     * barra de gestos y los botones del sistema. Se aplica el inset de
-     * navegacion como padding inferior para que la fila inferior quede
-     * siempre por encima.
-     */
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
