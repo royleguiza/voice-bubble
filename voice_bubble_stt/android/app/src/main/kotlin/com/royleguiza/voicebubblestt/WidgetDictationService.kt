@@ -185,7 +185,7 @@ class WidgetDictationService(
         }
         return builder.setContentTitle("VoiceBubble")
             .setContentText(text)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.kb_ic_mic)
             .setOngoing(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .build()

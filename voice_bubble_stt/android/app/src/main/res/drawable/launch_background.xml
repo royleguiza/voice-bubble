@@ -1,22 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Arranque VoiceBubble (Inicio 2026, Android 9–11): fondo de la app
-     (bgBase claro/oscuro vía values/values-night) con el ícono chico al
-     centro, igual que el arranque del sistema en Android 12+ (values-v31).
-     Antes la pantalla completa era azul de marca y el salto a la app se
-     notaba. El item width/height/gravity requiere API 23+ (minSdk 28). -->
+<!-- Arranque VoiceBubble (Android 9–11): fondo de la app (bgBase
+     claro/oscuro vía values/values-night) con el ícono redondo al centro,
+     igual que el arranque del sistema en Android 12+ (values-v31, que usa
+     el ícono adaptativo). El item width/height/gravity requiere API 23+. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_background" />
     <item
         android:width="96dp"
         android:height="96dp"
-        android:gravity="center">
-        <shape android:shape="oval">
-            <solid android:color="@color/ic_launcher_background" />
-        </shape>
-    </item>
-    <item
-        android:width="108dp"
-        android:height="108dp"
         android:gravity="center"
-        android:drawable="@drawable/ic_launcher_foreground" />
+        android:drawable="@drawable/ic_launcher_splash" />
 </layer-list>

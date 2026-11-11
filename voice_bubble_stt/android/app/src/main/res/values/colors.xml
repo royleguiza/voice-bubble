@@ -30,7 +30,7 @@
     <color name="bubble_legend_bg">#FFFFFFFF</color>
 
     <!-- Icono adaptive / splash (H5-T3): azul iOS de marca (design.md) -->
-    <color name="ic_launcher_background">#FF007AFF</color>
+    <color name="ic_launcher_background">#FF000000</color>
 
     <!-- Arranque (Inicio 2026): el mismo fondo de la app (bgBase de
          design.md), así el paso a la primera pantalla no se nota. -->
