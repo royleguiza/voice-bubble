@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Entrada de la ventana de edición del widget: sube apenas y aparece. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/decelerate_cubic"
+    android:shareInterpolator="true">
+    <translate
+        android:duration="220"
+        android:fromYDelta="6%"
+        android:toYDelta="0" />
+    <alpha
+        android:duration="180"
+        android:fromAlpha="0.0"
+        android:toAlpha="1.0" />
+</set>

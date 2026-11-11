@@ -69,6 +69,28 @@ check("widget: sin slot investigar", "btn_gemini_investigar" not in suite.read("
 check("cuerpo con tope amplio (200k)", "maxCuerpoLength = 200000" in suite.read("app_source/lib/services/notes_service.dart"))
 check("editor: no muestra botones sin key", "_geminiReady" in editor and "_loadGeminiState" in editor)
 
+# 4b. Widget: IA directa desde el widget, sin abrir la app
+KT_DIR = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/"
+kt_client = suite.read(KT_DIR + "GeminiNoteClient.kt")
+kt_widget = suite.read(KT_DIR + "WidgetNoteEditActivity.kt")
+check("widget: cliente Gemini nativo existe", bool(kt_client))
+check("widget: header x-goog-api-key", "x-goog-api-key" in kt_client)
+check("widget: key nunca en la URL", "?key=" not in kt_client)
+check("widget: misma clave segura que Dart", 'SECURE_KEY = "kb_gemini_api_key_v1"' in kt_client)
+check("widget: mismo modelo que Dart", 'MODEL = "gemini-3.5-flash"' in kt_client and "gemini-3.5-flash" in service)
+check("widget: timeout 30s", "TIMEOUT_MS = 30_000" in kt_client)
+check("widget: thinkingLevel minimal", "thinkingLevel" in kt_client)
+check("widget: sin temperature", "temperature" not in kt_client)
+for frase in ["Máximo 6 palabras y 60 caracteres", "Sin comillas, sin punto final, sin emojis",
+              "Si la nota no tiene tema claro", "<= 30%", "NO inventes datos ni conclusiones",
+              "Usá viñetas cortas para los puntos clave"]:
+    check(f"widget: prompt espejo de Dart ({frase[:24]})", frase in kt_client and frase in service)
+check("widget: no abre la app para IA", "gemini_$action" not in kt_widget and "widget_action" not in kt_widget)
+check("widget: título y resumen corren en el widget", "runGemini(GEMINI_TITULO)" in kt_widget and "runGemini(GEMINI_RESUMIR)" in kt_widget)
+check("widget: resumen con Descartar/Reemplazar", '"Descartar", "Reemplazar"' in kt_widget)
+check("widget: indicador de carga en botones IA", "progress_gemini_titulo" in kt_widget and "progress_gemini_resumir" in kt_widget)
+check("widget: sin claves reales en Kotlin", re.search(r"AQ\.[A-Za-z0-9_-]{20,}", kt_client) is None)
+
 # 5. Ajustes
 check("general: segunda ApiKeyCard gemini", "geminiHasApiKey" in general)
 check("general: fila de clave Google AI", "ValueKey('gemini-key-row')" in general)

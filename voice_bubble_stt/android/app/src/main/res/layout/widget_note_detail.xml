@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nota abierta dentro del propio widget: leer, copiar, título y resumen
+     con IA sin abrir ninguna ventana. Solo "Editar" abre la hoja con teclado. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_glass_bg"
+    android:orientation="vertical"
+    android:paddingTop="6dp"
+    android:paddingStart="10dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <FrameLayout
+            android:id="@+id/widget_detail_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/widget_pill_bg"
+            android:contentDescription="Volver a la lista">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@drawable/widget_ic_back" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widget_detail_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Sin título"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/kb_label"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/widget_detail_meta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="10sp"
+                android:textColor="@color/kb_label_secondary"
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/widget_detail_edit"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/widget_pill_bg"
+            android:contentDescription="Editar nota">
+
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_edit" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Estado de la acción en curso (IA, copiado, errores). -->
+    <TextView
+        android:id="@+id/widget_detail_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/widget_pill_bg"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:text=""
+        android:textSize="11sp"
+        android:textColor="@color/kb_label"
+        android:maxLines="3"
+        android:ellipsize="end"
+        android:visibility="gone" />
+
+    <ListView
+        android:id="@+id/widget_detail_body"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="6dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:clipToPadding="false"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="0dp"
+        android:requiresFadingEdge="vertical"
+        android:fadingEdgeLength="24dp"
+        android:scrollbars="vertical" />
+
+    <TextView
+        android:id="@+id/widget_detail_empty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="Nota vacía"
+        android:textSize="11sp"
+        android:textColor="@color/kb_label_secondary"
+        android:visibility="gone" />
+
+    <!-- Acciones de la nota. -->
+    <LinearLayout
+        android:id="@+id/widget_detail_actions"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <FrameLayout
+            android:id="@+id/widget_detail_copy"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_pill_bg"
+            android:contentDescription="Copiar contenido">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/widget_ic_copy" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/widget_detail_ai_title"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_pill_bg"
+            android:contentDescription="Generar título con IA">
+
+            <ImageView
+                android:id="@+id/widget_detail_ai_title_icon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/widget_ic_title" />
+
+            <ProgressBar
+                android:id="@+id/widget_detail_ai_title_progress"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/kb_label"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/widget_detail_ai_summary"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_pill_bg"
+            android:contentDescription="Resumir con IA">
+
+            <ImageView
+                android:id="@+id/widget_detail_ai_summary_icon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/widget_ic_restructure" />
+
+            <ProgressBar
+                android:id="@+id/widget_detail_ai_summary_progress"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/kb_label"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Vista previa del resumen: Descartar / Reemplazar (como en la app). -->
+    <LinearLayout
+        android:id="@+id/widget_detail_summary_actions"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_detail_summary_discard"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_pill_bg"
+            android:gravity="center"
+            android:text="Descartar"
+            android:textSize="13sp"
+            android:textColor="@color/kb_label_secondary" />
+
+        <TextView
+            android:id="@+id/widget_detail_summary_apply"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_pill_accent_bg"
+            android:gravity="center"
+            android:text="Reemplazar"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/kb_label_on_accent" />
+    </LinearLayout>
+
+    <!-- Audio sin transcribir: se abre la hoja para escucharlo. -->
+    <TextView
+        android:id="@+id/widget_detail_open_pending"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/widget_pill_accent_bg"
+        android:gravity="center"
+        android:text="Escuchar y transcribir"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="@color/kb_label_on_accent"
+        android:visibility="gone" />
+</LinearLayout>

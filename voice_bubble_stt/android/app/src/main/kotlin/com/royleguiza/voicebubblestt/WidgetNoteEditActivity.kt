@@ -24,6 +24,12 @@ import org.json.JSONArray
 class WidgetNoteEditActivity : Activity() {
 
     companion object {
+        private const val GEMINI_TITULO = "titulo"
+        private const val GEMINI_RESUMIR = "resumir"
+
+        // = NotesService.maxTituloLength en Dart.
+        private const val MAX_TITLE_CHARS = 80
+
         private val UUID_REGEX =
             Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
@@ -63,6 +69,7 @@ class WidgetNoteEditActivity : Activity() {
     private var deleteAvailable = false
     private var pendingMode = false
     private val transcribeInProgress = AtomicBoolean(false)
+    private val geminiInProgress = AtomicBoolean(false)
 
     // C-40: expansión del cuerpo por arrastre del tirador.
     private var cachedBodyMinPx = 0
@@ -154,21 +161,8 @@ class WidgetNoteEditActivity : Activity() {
         findViewById<View>(R.id.btn_save).setOnClickListener {
             requestSave(titleEt.text.toString(), bodyEt.text.toString())
         }
-        fun launchGemini(action: String) {
-            val id = noteId
-            if (id == null) {
-                Toast.makeText(this, "Guardá la nota primero", Toast.LENGTH_SHORT).show()
-                return
-            }
-            val intent = android.content.Intent(this, MainActivity::class.java).apply {
-                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
-                putExtra("widget_action", "gemini_$action")
-                putExtra("note_id", id)
-            }
-            startActivity(intent)
-        }
-        findViewById<View>(R.id.btn_gemini_titulo).setOnClickListener { launchGemini("titulo") }
-        findViewById<View>(R.id.btn_gemini_resumir).setOnClickListener { launchGemini("resumir") }
+        findViewById<View>(R.id.btn_gemini_titulo).setOnClickListener { runGemini(GEMINI_TITULO) }
+        findViewById<View>(R.id.btn_gemini_resumir).setOnClickListener { runGemini(GEMINI_RESUMIR) }
         findViewById<View>(R.id.btn_delete).setOnClickListener { confirmDelete() }
 
         val editingId = noteId
@@ -178,16 +172,29 @@ class WidgetNoteEditActivity : Activity() {
             return
         }
 
-        setEditorState(writable = false, ready = false, deletable = false)
+        findViewById<TextView>(R.id.overlay_title).text = "Editar nota"
+        // Desde la vista de lectura del widget la nota ya está en memoria:
+        // se muestra al instante y el teclado sube en el mismo gesto (sin
+        // tarjeta vacía ni salto). Igual se verifica contra el disco.
+        val cached = WidgetReader.cachedNote(editingId)
+        if (cached != null) {
+            titleEt.setText(cached.titulo)
+            bodyEt.setText(cached.cuerpo)
+            setEditorState(writable = true, ready = true, deletable = true)
+            focusEditor()
+        } else {
+            setEditorState(writable = false, ready = false, deletable = false)
+        }
         BackgroundWork.executeWithResult(
             { loadExistingNote(editingId) },
             { result ->
+                if (isFinishing || isDestroyed) return@executeWithResult
                 if (result == null) {
-                    showExistingUnavailable()
+                    if (cached == null) showExistingUnavailable()
                     return@executeWithResult
                 }
                 when (WidgetNoteEditActivity.resolveExistingNoteState(result.snapshot, editingId)) {
-                    ExistingNoteUiState.UNAVAILABLE -> showExistingUnavailable()
+                    ExistingNoteUiState.UNAVAILABLE -> if (cached == null) showExistingUnavailable()
                     ExistingNoteUiState.NOT_FOUND -> {
                         Toast.makeText(this, "La nota ya no existe", Toast.LENGTH_SHORT).show()
                         finish()
@@ -195,13 +202,22 @@ class WidgetNoteEditActivity : Activity() {
                     ExistingNoteUiState.READY -> {
                         val loaded = result.note
                         if (loaded == null) {
-                            showExistingUnavailable()
+                            if (cached == null) showExistingUnavailable()
                             return@executeWithResult
                         }
-                        titleEt.setText(loaded.titulo)
-                        bodyEt.setText(loaded.cuerpo)
-                        setEditorState(writable = true, ready = true, deletable = true)
-                        focusEditor()
+                        val untouched = cached == null || (
+                            titleEt.text.toString() == cached.titulo &&
+                                bodyEt.text.toString() == cached.cuerpo
+                            )
+                        // Solo se pisa si el usuario todavía no tocó nada.
+                        if (untouched && (cached == null || loaded != cached)) {
+                            titleEt.setText(loaded.titulo)
+                            bodyEt.setText(loaded.cuerpo)
+                        }
+                        if (cached == null) {
+                            setEditorState(writable = true, ready = true, deletable = true)
+                            focusEditor()
+                        }
                     }
                 }
             },
@@ -219,6 +235,11 @@ class WidgetNoteEditActivity : Activity() {
                     WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
             )
         } catch (_: Exception) {}
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            setupKeyboardFollow()
+            setupExpandableBody()
+            return
+        }
         try {
             val root = findViewById<View>(R.id.overlay_root)
             val side = root.paddingLeft
@@ -232,6 +253,76 @@ class WidgetNoteEditActivity : Activity() {
             }
         } catch (_: Exception) {}
         setupExpandableBody()
+    }
+
+    /**
+     * Android 11+: la tarjeta sube pegada al teclado cuadro a cuadro en vez
+     * de saltar cuando la ventana se redimensiona. La ventana dibuja detrás
+     * de las barras y el relleno se calcula con los insets reales; durante
+     * la animación del teclado la tarjeta se traslada con su progreso.
+     */
+    @android.annotation.TargetApi(android.os.Build.VERSION_CODES.R)
+    private fun setupKeyboardFollow() {
+        try {
+            window.setDecorFitsSystemWindows(false)
+            val root = findViewById<View>(R.id.overlay_root)
+            val card = findViewById<View>(R.id.note_card)
+            val side = root.paddingLeft
+            val types = android.view.WindowInsets.Type.systemBars() or
+                android.view.WindowInsets.Type.displayCutout()
+            root.setOnApplyWindowInsetsListener { view, insets ->
+                val bars = insets.getInsets(types)
+                val ime = insets.getInsets(android.view.WindowInsets.Type.ime())
+                view.setPadding(side, bars.top, side, maxOf(bars.bottom, ime.bottom))
+                recomputeBodyMax()
+                insets
+            }
+            root.setWindowInsetsAnimationCallback(
+                object : android.view.WindowInsetsAnimation.Callback(
+                    android.view.WindowInsetsAnimation.Callback.DISPATCH_MODE_STOP,
+                ) {
+                    private var startBottom = 0
+                    private var delta = 0f
+
+                    private fun cardBottom(): Int {
+                        val loc = IntArray(2)
+                        card.getLocationInWindow(loc)
+                        return loc[1] + card.height
+                    }
+
+                    override fun onPrepare(animation: android.view.WindowInsetsAnimation) {
+                        startBottom = cardBottom()
+                    }
+
+                    override fun onStart(
+                        animation: android.view.WindowInsetsAnimation,
+                        bounds: android.view.WindowInsetsAnimation.Bounds,
+                    ): android.view.WindowInsetsAnimation.Bounds {
+                        // Ya está maquetada en su posición final: arranca
+                        // desde donde estaba y acompaña al teclado.
+                        delta = (startBottom - cardBottom()).toFloat()
+                        card.translationY = delta
+                        return bounds
+                    }
+
+                    override fun onProgress(
+                        insets: android.view.WindowInsets,
+                        running: MutableList<android.view.WindowInsetsAnimation>,
+                    ): android.view.WindowInsets {
+                        val ime = running.firstOrNull {
+                            it.typeMask and android.view.WindowInsets.Type.ime() != 0
+                        } ?: return insets
+                        card.translationY = delta * (1f - ime.interpolatedFraction)
+                        return insets
+                    }
+
+                    override fun onEnd(animation: android.view.WindowInsetsAnimation) {
+                        card.translationY = 0f
+                        delta = 0f
+                    }
+                },
+            )
+        } catch (_: Exception) {}
     }
 
     /** Máximo del cuerpo: lo visible menos el cromo de la tarjeta. */
@@ -360,6 +451,18 @@ class WidgetNoteEditActivity : Activity() {
     private fun focusEditor() {
         val bodyEt = findViewById<EditText>(R.id.edit_body)
         bodyEt.requestFocus()
+        // Cursor al final: se sigue escribiendo donde terminó la nota.
+        try {
+            bodyEt.setSelection(bodyEt.text.length)
+        } catch (_: Exception) {}
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            // Pide el teclado ya, aunque la ventana todavía esté entrando:
+            // sube junto con la tarjeta en una sola animación.
+            try {
+                window.insetsController?.show(android.view.WindowInsets.Type.ime())
+                return
+            } catch (_: Exception) {}
+        }
         try {
             val input = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
             input.showSoftInput(bodyEt, InputMethodManager.SHOW_IMPLICIT)
@@ -1137,6 +1240,204 @@ class WidgetNoteEditActivity : Activity() {
                 }
             },
         )
+    }
+
+    private sealed class GeminiOutcome {
+        object MissingKey : GeminiOutcome()
+        data class Ok(val text: String) : GeminiOutcome()
+        data class Failed(val message: String) : GeminiOutcome()
+    }
+
+    /**
+     * Título o resumen con Gemini desde el propio widget, sin abrir la app.
+     * Título: se escribe en el campo y, si la nota ya existe, se guarda.
+     * Resumen: vista previa con Descartar / Reemplazar (igual que la app).
+     */
+    private fun runGemini(action: String) {
+        if (!editorWritable || pendingMode) return
+        val bodyEt = findViewById<EditText>(R.id.edit_body)
+        val texto = bodyEt.text.toString().trim()
+        if (texto.isEmpty()) {
+            Toast.makeText(this, "Escribí o dictá la nota primero", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!geminiInProgress.compareAndSet(false, true)) return
+        setGeminiBusy(action, true)
+        BackgroundWork.executeWithResult(
+            {
+                val key = GeminiNoteClient.readKey(this)
+                if (key == null) {
+                    GeminiOutcome.MissingKey
+                } else {
+                    try {
+                        val client = GeminiNoteClient(key)
+                        val text = if (action == GEMINI_TITULO) client.sugerirTitulo(texto) else client.resumir(texto)
+                        if (text.isBlank()) GeminiOutcome.Failed("Respuesta vacía del modelo") else GeminiOutcome.Ok(text)
+                    } catch (e: GeminiNoteClient.GeminiError) {
+                        GeminiOutcome.Failed(e.message ?: "Error de IA")
+                    } catch (_: Exception) {
+                        GeminiOutcome.Failed("Error inesperado")
+                    }
+                }
+            },
+            { outcome ->
+                geminiInProgress.set(false)
+                if (isFinishing || isDestroyed) return@executeWithResult
+                setGeminiBusy(action, false)
+                when (outcome) {
+                    null, is GeminiOutcome.MissingKey -> Toast.makeText(
+                        this,
+                        "Falta la clave de Google AI: agregala en Ajustes de la app",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                    is GeminiOutcome.Failed -> showGlassDialog("Error de IA", outcome.message, "Cerrar")
+                    is GeminiOutcome.Ok -> if (action == GEMINI_TITULO) {
+                        applyGeminiTitle(outcome.text)
+                    } else {
+                        showGlassDialog("Resumen de la nota", outcome.text, "Descartar", "Reemplazar") {
+                            bodyEt.setText(outcome.text)
+                            bodyEt.setSelection(bodyEt.text.length)
+                            persistQuietly()
+                        }
+                    }
+                }
+            },
+        )
+    }
+
+    private fun applyGeminiTitle(title: String) {
+        val titleEt = findViewById<EditText>(R.id.edit_title)
+        val max = MAX_TITLE_CHARS
+        titleEt.setText(if (title.length > max) title.substring(0, max) else title)
+        titleEt.setSelection(titleEt.text.length)
+        persistQuietly()
+        Toast.makeText(this, "Título generado", Toast.LENGTH_SHORT).show()
+    }
+
+    /** Guarda sin cerrar el editor (solo notas existentes, como la app). */
+    private fun persistQuietly() {
+        val id = noteId ?: return
+        val titulo = findViewById<EditText>(R.id.edit_title).text.toString()
+        val cuerpo = findViewById<EditText>(R.id.edit_body).text.toString()
+        if (cuerpo.isBlank()) return
+        BackgroundWork.execute {
+            if (NoteStore(this).saveNote(id, titulo, cuerpo) == NoteSaveResult.SAVED) {
+                refreshNoteWidgets()
+            }
+        }
+    }
+
+    private fun setGeminiBusy(action: String, busy: Boolean) {
+        val (icon, progress) = if (action == GEMINI_TITULO) {
+            R.id.icon_gemini_titulo to R.id.progress_gemini_titulo
+        } else {
+            R.id.icon_gemini_resumir to R.id.progress_gemini_resumir
+        }
+        findViewById<View>(icon)?.visibility = if (busy) View.INVISIBLE else View.VISIBLE
+        findViewById<View>(progress)?.visibility = if (busy) View.VISIBLE else View.GONE
+        findViewById<View>(R.id.btn_gemini_titulo)?.isEnabled = !busy
+        findViewById<View>(R.id.btn_gemini_resumir)?.isEnabled = !busy
+    }
+
+    /** Diálogo de vidrio con el mismo estilo que el de eliminar. */
+    private fun showGlassDialog(
+        title: String,
+        message: String,
+        dismissLabel: String,
+        actionLabel: String? = null,
+        onAction: (() -> Unit)? = null,
+    ) {
+        try {
+            val density = resources.displayMetrics.density
+            val pad = (14 * density).toInt()
+            val dialog = android.app.Dialog(this)
+            dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+            dialog.window?.setBackgroundDrawable(
+                android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT),
+            )
+            val box = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setBackgroundResource(R.drawable.widget_glass_inner)
+                setPadding(pad, pad, pad, pad)
+            }
+            box.addView(
+                android.widget.TextView(this).apply {
+                    text = title
+                    setTextColor(ContextCompat.getColor(context, R.color.kb_label))
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                },
+            )
+            val scroll = android.widget.ScrollView(this)
+            scroll.addView(
+                android.widget.TextView(this).apply {
+                    text = message
+                    setTextIsSelectable(true)
+                    setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setPadding(0, (8 * density).toInt(), 0, pad)
+                },
+            )
+            val maxScroll = (resources.displayMetrics.heightPixels * 0.5f).toInt()
+            box.addView(
+                scroll,
+                android.widget.LinearLayout.LayoutParams(
+                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                    android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                ),
+            )
+            scroll.post {
+                if (scroll.height > maxScroll) {
+                    scroll.layoutParams = scroll.layoutParams.apply { height = maxScroll }
+                }
+            }
+            val row = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.END
+            }
+            val dismiss = android.widget.TextView(this).apply {
+                text = dismissLabel
+                gravity = android.view.Gravity.CENTER
+                setPadding(pad, pad, pad, pad)
+                setBackgroundResource(R.drawable.widget_note_card_bg)
+                setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+                setOnClickListener { dialog.dismiss() }
+            }
+            val dismissParams = android.widget.LinearLayout.LayoutParams(
+                0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
+            )
+            if (actionLabel != null) dismissParams.rightMargin = pad / 2
+            row.addView(dismiss, dismissParams)
+            if (actionLabel != null) {
+                val action = android.widget.TextView(this).apply {
+                    text = actionLabel
+                    gravity = android.view.Gravity.CENTER
+                    setPadding(pad, pad, pad, pad)
+                    setBackgroundResource(R.drawable.kb_key_accent)
+                    setTextColor(ContextCompat.getColor(context, R.color.kb_label_on_accent))
+                    setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                    setOnClickListener {
+                        dialog.dismiss()
+                        onAction?.invoke()
+                    }
+                }
+                row.addView(
+                    action,
+                    android.widget.LinearLayout.LayoutParams(
+                        0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
+                    ),
+                )
+            }
+            box.addView(row)
+            dialog.setContentView(box)
+            dialog.window?.setLayout(
+                resources.displayMetrics.widthPixels - (48 * density).toInt(),
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            )
+            dialog.show()
+        } catch (_: Exception) {}
     }
 
     private fun setMutationBusy(busy: Boolean) {

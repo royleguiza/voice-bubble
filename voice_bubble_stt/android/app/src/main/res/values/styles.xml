@@ -30,6 +30,21 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">0.60</item>
-        <item name="android:windowAnimationStyle">@style/VoiceHistoryPopupAnimation</item>
+        <item name="android:windowAnimationStyle">@style/WidgetEditAnimation</item>
+    </style>
+
+    <!-- Abrir/cerrar la edición del widget como una hoja suave, no como
+         otra app que se lanza (sin el zoom del launcher). -->
+    <style name="WidgetEditAnimation">
+        <item name="android:activityOpenEnterAnimation">@anim/widget_edit_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/widget_edit_hold</item>
+        <item name="android:activityCloseEnterAnimation">@anim/widget_edit_hold</item>
+        <item name="android:activityCloseExitAnimation">@anim/widget_edit_exit</item>
+        <item name="android:taskOpenEnterAnimation">@anim/widget_edit_enter</item>
+        <item name="android:taskOpenExitAnimation">@anim/widget_edit_hold</item>
+        <item name="android:taskCloseEnterAnimation">@anim/widget_edit_hold</item>
+        <item name="android:taskCloseExitAnimation">@anim/widget_edit_exit</item>
+        <item name="android:windowEnterAnimation">@anim/widget_edit_enter</item>
+        <item name="android:windowExitAnimation">@anim/widget_edit_exit</item>
     </style>
 </resources>

@@ -335,10 +335,20 @@
                     android:contentDescription="Generar título con IA">
 
                     <ImageView
+                        android:id="@+id/icon_gemini_titulo"
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:layout_gravity="center"
                         android:src="@drawable/widget_ic_title" />
+
+                    <ProgressBar
+                        android:id="@+id/progress_gemini_titulo"
+                        style="?android:attr/progressBarStyleSmall"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:indeterminateTint="@color/kb_label"
+                        android:visibility="gone" />
                 </FrameLayout>
             </LinearLayout>
 
@@ -357,10 +367,20 @@
                     android:contentDescription="Resumir con IA">
 
                     <ImageView
+                        android:id="@+id/icon_gemini_resumir"
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:layout_gravity="center"
                         android:src="@drawable/widget_ic_restructure" />
+
+                    <ProgressBar
+                        android:id="@+id/progress_gemini_resumir"
+                        style="?android:attr/progressBarStyleSmall"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:indeterminateTint="@color/kb_label"
+                        android:visibility="gone" />
                 </FrameLayout>
             </LinearLayout>
 

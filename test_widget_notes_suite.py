@@ -454,12 +454,29 @@ check("Separacion real entre tarjetas (divider ListView, no margenes muertos)",
 check("Difuminado vertical avisa mas tarjetas (fading edge sistema)",
       'android:requiresFadingEdge="vertical"' in _list_block
       and 'android:fadingEdgeLength=' in _list_block)
-# Tap abre la nota: plantilla MUTABLE (fill-in) + modal nunca vacia en silencio
-_prov_tpl = prov.split('rowTemplatePi')[1][:600] if 'rowTemplatePi' in prov else ""
+# Tap abre la nota DENTRO del widget: plantilla MUTABLE (fill-in) hacia el
+# receptor NO exportado del lector; el resto de PIs siguen IMMUTABLE.
+READER = PROVIDER.parent / "WidgetReader.kt"
+reader = READER.read_text() if READER.exists() else ""
+_reader_tpl = reader.split('fun rowTemplatePi')[1][:900] if 'fun rowTemplatePi' in reader else ""
 check("Plantilla de tap MUTABLE (fill-in note_id/pending_id llega)",
-      'FLAG_MUTABLE' in _prov_tpl and 'WidgetNoteEditActivity' in prov)
+      'FLAG_MUTABLE' in _reader_tpl and 'WidgetReaderReceiver::class.java' in _reader_tpl
+      and 'WidgetReader.rowTemplatePi' in prov)
 check("PIs directos siguen IMMUTABLE (solo la plantilla es mutable)",
-      prov.count('FLAG_IMMUTABLE') >= 4 and 'FLAG_MUTABLE' in prov)
+      prov.count('FLAG_IMMUTABLE') >= 4 and reader.count('FLAG_MUTABLE') == 1
+      and reader.count('FLAG_IMMUTABLE') >= 3 and 'FLAG_MUTABLE' not in prov)
+check("Receptor del lector no exportado",
+      re.search(r'android:name="\.WidgetReaderReceiver"\s+android:exported="false"',
+                (ROOT / "voice_bubble_stt/android/app/src/main/AndroidManifest.xml").read_text()) is not None)
+check("Lector: editar abre la hoja con la nota ya en memoria",
+      'cachedNote(' in reader and 'WidgetReader.cachedNote(editingId)' in act)
+for _lay in ("widget_note_detail.xml", "widget_detail_paragraph.xml"):
+    _tags = {el.tag for el in ET.parse(RES / "layout" / _lay).iter()}
+    check(f"{_lay}: solo vistas permitidas en RemoteViews", _tags <= ALLOWED_REMOTEVIEWS,
+          f"no permitidas: {_tags - ALLOWED_REMOTEVIEWS}")
+check("Hoja: el teclado acompaña la tarjeta (sin salto)",
+      'setWindowInsetsAnimationCallback' in act and 'interpolatedFraction' in act)
+
 # Tacho en la modal: junto a la X, solo editando, con confirmacion
 _del_btn = over.split('@+id/btn_delete"')[1].split('</FrameLayout>')[0] if '@+id/btn_delete"' in over else ""
 check("Tacho junto a la X (48dp, fondo campo, icono propio)",

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Un párrafo de la nota abierta dentro del widget (lista con scroll). -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_detail_paragraph"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp"
+    android:paddingBottom="8dp"
+    android:text=""
+    android:textSize="13sp"
+    android:lineSpacingExtra="2dp"
+    android:textColor="@color/kb_label" />

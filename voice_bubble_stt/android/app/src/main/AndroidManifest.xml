@@ -80,6 +80,15 @@
             android:name=".WidgetNotesListService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
+        <!-- Nota abierta dentro del widget: acciones (no exportado: solo
+             nuestros PendingIntent) y texto con scroll. -->
+        <receiver
+            android:name=".WidgetReaderReceiver"
+            android:exported="false" />
+        <service
+            android:name=".WidgetNoteDetailService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
         <activity
             android:name=".WidgetNoteEditActivity"
             android:theme="@style/WidgetEditTheme"

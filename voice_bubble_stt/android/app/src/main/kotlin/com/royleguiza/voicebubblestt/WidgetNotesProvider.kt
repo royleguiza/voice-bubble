@@ -42,6 +42,11 @@ class WidgetNotesProvider : AppWidgetProvider() {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
     }
 
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        for (id in appWidgetIds) WidgetReader.close(context, id)
+        super.onDeleted(context, appWidgetIds)
+    }
+
     companion object {
         fun updateOne(
             context: Context,
@@ -62,6 +67,19 @@ class WidgetNotesProvider : AppWidgetProvider() {
                     }
                 } catch (_: Exception) {}
             }
+        }
+
+        /** Redibuja ya, en el hilo que llama (nunca el principal). */
+        fun updateNow(
+            context: Context,
+            appWidgetManager: AppWidgetManager,
+            appWidgetId: Int,
+        ) {
+            try {
+                if (updateRemoteViews(context, appWidgetManager, appWidgetId, "idle")) {
+                    requestListRefresh(context, appWidgetManager)
+                }
+            } catch (_: Exception) {}
         }
 
         /** La ListView re-consulta notas + pendientes en su fábrica. */
@@ -149,6 +167,18 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 WidgetNotesUiState.PRESERVE -> return false
                 WidgetNotesUiState.AVAILABLE -> Unit
             }
+            // Nota abierta dentro del widget (lectura sin ventanas). Al
+            // grabar se vuelve a la lista para ver la píldora de estado.
+            if (state != "idle") {
+                WidgetReader.close(context, appWidgetId)
+            } else if (WidgetReader.render(
+                    context, appWidgetManager, appWidgetId,
+                    snapshot.notes, pendingSnapshot.items,
+                )
+            ) {
+                markInitializedState(context)
+                return true
+            }
             val views = RemoteViews(context.packageName, R.layout.widget_notes)
             val count = snapshot.notes.size
 
@@ -179,23 +209,17 @@ class WidgetNotesProvider : AppWidgetProvider() {
 
             // Colección con scroll: pendientes arriba + notas debajo, sin
             // tope visual (la altura del widget solo cambia cuánto se ve
-            // sin desplazar). Los taps van directo a la modal del widget
-            // (un toque abre: nota → ver/editar, pendiente → ver/escuchar).
+            // sin desplazar). Un toque abre la nota DENTRO del widget
+            // (WidgetReader); solo "Editar" abre la hoja con teclado.
             views.setViewVisibility(R.id.widget_notes_list, View.VISIBLE)
             val listIntent = Intent(context, WidgetNotesListService::class.java)
             views.setRemoteAdapter(R.id.widget_notes_list, listIntent)
             views.setEmptyView(R.id.widget_notes_list, R.id.widget_notes_empty)
             views.setTextColor(R.id.widget_notes_empty, secondary)
-            val rowTemplate = Intent(context, WidgetNoteEditActivity::class.java)
-            // MUTABLE a proposito: el launcher combina esta plantilla con el
-            // fill-in de cada fila (note_id/pending_id); con IMMUTABLE el
-            // sistema ignora el fill-in y la modal abria vacia. Componente
-            // fijo + actividad no exportada: sin superficie extra.
-            val rowTemplatePi = PendingIntent.getActivity(
-                context, 500 + appWidgetId, rowTemplate,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+            views.setPendingIntentTemplate(
+                R.id.widget_notes_list,
+                WidgetReader.rowTemplatePi(context, appWidgetId),
             )
-            views.setPendingIntentTemplate(R.id.widget_notes_list, rowTemplatePi)
 
             // Mic posicion configurable: izq/der desde Ajustes (flutter.widget_mic_position).
             // El + queda siempre del lado opuesto (derecha por defecto: + abajo-izq).
