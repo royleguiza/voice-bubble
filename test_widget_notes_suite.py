@@ -72,8 +72,8 @@ check("Sin círculos blancos en botones de reposo",
 # F2: X roja directa sobre la píldora, sin círculo blanco
 cancel_block = xml.split('@+id/widget_cancel')[1].split('/>')[0] if '@+id/widget_cancel' in xml else ""
 check("X de grabación sin círculo blanco", "@drawable/widget_mic_bg" not in cancel_block)
-check("X de grabación en rojo",
-      "#FFFF3B30" in cancel_block or "widget_ic_x" in cancel_block and "#FFFF3B30" in (RES / "drawable/widget_ic_x.xml").read_text())
+check("X de grabación en rojo (danger)",
+      "@color/hz_danger" in cancel_block or "widget_ic_x" in cancel_block and "@color/hz_danger" in (RES / "drawable/widget_ic_x.xml").read_text())
 check("Cancel es ImageView directo (sin FrameLayout)", "<ImageView" in xml.split('<LinearLayout\n            android:id="@+id/widget_rec_pill"')[0][-400:] or True)
 # F3: iconos normalizados (mismo marco, mismo glifo, simétricos)
 def inner_icon(view_id):
@@ -494,7 +494,7 @@ check("Fila de botones sin espaciadores fijos (reparto por peso)",
 check("Icono tacho existe, trazo grueso y rojo peligro",
       (RES / "drawable/widget_ic_delete.xml").exists()
       and 'M3,6h18' in (RES / "drawable/widget_ic_delete.xml").read_text()
-      and '#FFFF3B30' in (RES / "drawable/widget_ic_delete.xml").read_text())
+      and '@color/hz_danger' in (RES / "drawable/widget_ic_delete.xml").read_text())
 _t_del = (RES / "drawable/widget_ic_delete.xml").read_text()
 _m_del = re.search(r'strokeWidth="([\d.]+)"', _t_del)
 check("Trazo grueso widget_ic_delete", _m_del is not None and float(_m_del.group(1)) >= 3.0, _t_del[:120])

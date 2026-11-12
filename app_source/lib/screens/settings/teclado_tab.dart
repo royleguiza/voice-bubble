@@ -424,7 +424,7 @@ class KeyboardPreview extends StatelessWidget {
       '',
       16,
       accent,
-      kLabelPrimaryDark,
+      kOnEmber,
       18,
       icon: Icons.keyboard_return_rounded,
     );
@@ -443,7 +443,7 @@ class KeyboardPreview extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
-      child: const Icon(Icons.mic_rounded, size: 18, color: kLabelPrimaryDark),
+      child: const Icon(Icons.mic_rounded, size: 18, color: kOnEmber),
     );
     final clip = _tool(Icons.content_paste_rounded, fg);
     final toolbar = invertToolbar

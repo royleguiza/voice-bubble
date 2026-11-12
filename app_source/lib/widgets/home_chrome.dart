@@ -225,7 +225,7 @@ class HomeEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = isDark ? kAccentDark : kAccentLight;
+    final accent = isDark ? kTintTextDark : kTintTextLight;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 56, 24, 0),
       child: Column(
@@ -282,7 +282,7 @@ Future<NoteAction?> showNoteActions(
       final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
       final primary = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
       final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
-      final accent = isDark ? kAccentDark : kAccentLight;
+      final accent = isDark ? kTintTextDark : kTintTextLight;
 
       Widget action(NoteAction a, IconData icon, String label,
           {bool muted = false}) {

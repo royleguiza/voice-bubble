@@ -204,7 +204,7 @@ if os.path.isfile(vtv_kt_path):
     check("VirtualTrackpadView acota altura vía onMeasure con MeasureSpec.EXACTLY", "MeasureSpec.EXACTLY" in vtv_content and "onMeasure" in vtv_content)
     check("VirtualTrackpadView contraste accesible en clic izquierdo (acento primario)", "isPrimary" in vtv_content and "kb_key_bg_accent" in vtv_content)
     check("VirtualTrackpadView contraste accesible en clic derecho (neutro sólido)", "CLIC" in vtv_content and "DER" in vtv_content and ("3C3C43" in vtv_content or "EBEBF5" in vtv_content))
-    check("VirtualTrackpadView feedback visual de contraste en scroll strip", "pressedBgColor" in vtv_content and ("26007AFF" in vtv_content or "330A84FF" in vtv_content))
+    check("VirtualTrackpadView feedback visual de contraste en scroll strip", "pressedBgColor" in vtv_content and ("26F27A14" in vtv_content or "33FF8A1F" in vtv_content))
     check("VirtualTrackpadView soporta modo dual de botones (top vs wings)", 'buttonLayout == "wings"' in vtv_content and "setupTopButtonsLayout" in vtv_content)
     check("VirtualTrackpadView usa iconos de mouse vectoriales ic_mouse_left e ic_mouse_right", "ic_mouse_left" in vtv_content and "ic_mouse_right" in vtv_content)
     check("VirtualTrackpadView soporta scroll quitado con 100% de ancho", '"none"' in vtv_content)
@@ -367,7 +367,7 @@ for d_name, d_path in [
         elif d_name == "ic_copy.xml":
             check("ic_copy.xml rectángulo frontal (M 9,9…)", "M 9,9 H 19 V 21 H 9 Z" in d_text)
         elif d_name == "ic_check.xml":
-            check("ic_check.xml trazo verde #FF30D158", 'android:strokeColor="#FF30D158"' in d_text)
+            check("ic_check.xml trazo verde ok (@color/hz_ok)", 'android:strokeColor="@color/hz_ok"' in d_text)
             check("ic_check.xml tick (M 4,12…)", "M 4,12 L 9,17 L 20,6" in d_text)
 
 check("AndroidManifest declara permiso VIBRATE (háptica trackpad/píldora)",

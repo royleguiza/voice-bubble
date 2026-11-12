@@ -660,7 +660,7 @@ class SnippetsLayer(
             if (mode == SnippetMode.DELETE) R.drawable.kb_key_danger else R.drawable.kb_key_bg,
         )
         (btnDeleteView as? ImageView)?.setColorFilter(
-            if (mode == SnippetMode.DELETE) ContextCompat.getColor(service, R.color.kb_label_on_accent)
+            if (mode == SnippetMode.DELETE) ContextCompat.getColor(service, R.color.kb_label_on_danger)
             else ContextCompat.getColor(service, R.color.kb_label),
         )
     }
@@ -894,7 +894,7 @@ class SnippetsLayer(
 
         val desc = TextView(service).apply {
             text = snippet.nombre
-            setTextColor(ContextCompat.getColor(service, R.color.kb_recording))
+            setTextColor(ContextCompat.getColor(service, R.color.kb_danger))
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
             setPadding(0, pad / 2, 0, pad * 2)
         }
@@ -926,7 +926,7 @@ class SnippetsLayer(
             gravity = Gravity.CENTER
             setPadding(pad * 2, pad, pad * 2, pad)
             setBackgroundResource(R.drawable.kb_key_danger)
-            setTextColor(ContextCompat.getColor(service, R.color.kb_label_on_accent))
+            setTextColor(ContextCompat.getColor(service, R.color.kb_label_on_danger))
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
             setTypeface(null, Typeface.BOLD)
             setOnClickListener {

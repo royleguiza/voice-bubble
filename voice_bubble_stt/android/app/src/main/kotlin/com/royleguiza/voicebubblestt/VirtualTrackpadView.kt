@@ -407,7 +407,7 @@ class VirtualTrackpadView(
         }
 
         val activeBgColor = if (isPrimary) {
-            if (night) 0x330A84FF.toInt() else 0x26007AFF.toInt() // #330A84FF / #26007AFF
+            if (night) 0x33FF8A1F.toInt() else 0x26F27A14.toInt() // #33FF8A1F / #26F27A14
         } else {
             pressedBgColor
         }
@@ -559,24 +559,24 @@ class VirtualTrackpadView(
             get() = if (theme == "glass") {
                 if (isNight) 0x9910121A.toInt() else 0xB3F2F4F8.toInt() // #9910121A / #B3F2F4F8
             } else {
-                if (isNight) 0x140F172A.toInt() else 0x0F007AFF.toInt() // #140F172A / #0F007AFF
+                if (isNight) 0x140F172A.toInt() else 0x0FF27A14.toInt() // #140F172A / #0FF27A14
             }
 
         private val strokeNormalColor: Int
             get() = if (theme == "glass") {
                 if (isNight) 0x33FFFFFF.toInt() else 0x26000000.toInt() // #33FFFFFF / #26000000
             } else {
-                if (isNight) 0x4738BDF8.toInt() else 0x66007AFF.toInt() // #4738BDF8 / #66007AFF
+                if (isNight) 0x47FF8A1F.toInt() else 0x66F27A14.toInt() // #47FF8A1F / #66F27A14
             }
 
         private val strokeActiveColor: Int
-            get() = if (isNight) 0x8038BDF8.toInt() else 0xCC007AFF.toInt() // #8038BDF8 / #CC007AFF
+            get() = if (isNight) 0x80FF8A1F.toInt() else 0xCCF27A14.toInt() // #80FF8A1F / #CCF27A14
 
         private val gridColor: Int
             get() = if (theme == "glass") {
                 if (isNight) 0x1AFFFFFF.toInt() else 0x1A000000.toInt() // #1AFFFFFF / #1A000000
             } else {
-                if (isNight) 0x0D38BDF8.toInt() else 0x26007AFF.toInt() // #0D38BDF8 / #26007AFF
+                if (isNight) 0x0DFF8A1F.toInt() else 0x26F27A14.toInt() // #0DFF8A1F / #26F27A14
             }
 
         private val surfaceBg = GradientDrawable().apply {
@@ -734,7 +734,7 @@ class VirtualTrackpadView(
         private val stripBgColor: Int
             get() = if (isNight) 0x1A1C1C1E.toInt() else 0x14000000.toInt() // #1A1C1C1E / #14000000
         private val pressedBgColor: Int
-            get() = if (isNight) 0x330A84FF.toInt() else 0x26007AFF.toInt() // #330A84FF / #26007AFF
+            get() = if (isNight) 0x33FF8A1F.toInt() else 0x26F27A14.toInt() // #33FF8A1F / #26F27A14
         private val strokeColor: Int
             get() = if (isNight) 0x33FFFFFF.toInt() else 0x26000000.toInt() // #33FFFFFF / #26000000
         private val handleColor: Int

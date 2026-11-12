@@ -3754,8 +3754,9 @@ def test_c30_contrast_and_accessible_tokens_contract():
 
     assert "0xFF1A7A2E" in t_src, "C-30: kTileGreen no fue oscurecido a 0xFF1A7A2E"
     assert "0xFF9A5B00" in t_src, "C-30: kTileOrange no fue oscurecido a 0xFF9A5B00"
-    assert "onPrimary: kLabelPrimaryDark" in t_src, "C-30: buildLightTheme no usa kLabelPrimaryDark en onPrimary"
-    assert "onPrimary: kLabelPrimaryLight" in t_src, "C-30: buildDarkTheme no usa kLabelPrimaryLight en onPrimary"
+    # Horizonte: primary = brasa, su texto es on-ember (token) en ambos modos.
+    assert t_src.count("onPrimary: kOnEmber") == 2, "C-30: buildLight/DarkTheme no usan kOnEmber en onPrimary"
+    assert "onPrimary: Colors." not in t_src, "C-30: onPrimary con color crudo"
 
     with open(settings_file, "r", encoding="utf-8") as f:
         s_src = f.read()
@@ -3779,13 +3780,15 @@ def test_c31_system_transparency_and_tokens_contract():
 
     with open(glass_file, "r", encoding="utf-8") as f:
         g_src = f.read()
-    assert "_blurReduced" in g_src, "C-31: GlassContainer no define _blurReduced"
+    # Horizonte: superficie sólida, sin desenfoque (design.md §7).
+    assert "BackdropFilter" not in g_src and "ImageFilter" not in g_src, "C-31: GlassContainer vuelve a desenfocar"
+    assert "kGlassBorderWidthAccessible" in g_src, "C-31: GlassContainer sin borde accesible de 2px"
     assert "accessibleNavigationOf" in g_src or "reduceTransparency" in g_src, "C-31: GlassContainer no consulta reduceTransparency/accessibleNavigationOf"
     assert "highContrastOf" in g_src or "highContrast" in g_src, "C-31: GlassContainer no consulta highContrastOf"
 
     with open(tokens_file, "r", encoding="utf-8") as f:
         t_src = f.read()
-    assert "kGlassBlurReduced" in t_src, "C-31: design_tokens.dart no define kGlassBlurReduced"
+    assert "kGlassBlur" not in t_src, "C-31: design_tokens.dart reintroduce tokens de desenfoque"
     assert "kGlassBorderWidthAccessible" in t_src, "C-31: design_tokens.dart no define kGlassBorderWidthAccessible"
     assert "kBorderRadiusSmall" in t_src, "C-31: design_tokens.dart no define kBorderRadiusSmall"
     assert "kBorderRadiusDock" in t_src or "kBorderRadiusSheetLarge" in t_src, "C-31: design_tokens.dart no define kBorderRadiusDock/SheetLarge"

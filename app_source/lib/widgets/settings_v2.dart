@@ -614,7 +614,7 @@ class SettingsGlassButton extends StatelessWidget {
               child: Icon(
                 icon,
                 size: 22,
-                color: prominent ? kLabelPrimaryDark : p.label,
+                color: prominent ? kOnEmber : p.label,
               ),
             ),
           ),
@@ -765,7 +765,7 @@ class SettingsEmptyState extends StatelessWidget {
             key: actionKey,
             style: FilledButton.styleFrom(
               backgroundColor: p.tintFill,
-              foregroundColor: kLabelPrimaryDark,
+              foregroundColor: kOnEmber,
               minimumSize: const Size(0, 44),
               padding: const EdgeInsets.symmetric(horizontal: 22),
               shape: const StadiumBorder(),

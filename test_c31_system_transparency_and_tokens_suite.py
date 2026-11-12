@@ -5,15 +5,15 @@ test_c31_system_transparency_and_tokens_suite.py
 Auditoría C-31: Transparencia del sistema + tokens [D]
 
 Verifica:
-1. GlassContainer (glass_container.dart):
+1. GlassContainer (glass_container.dart) — Horizonte: superficie sólida:
+   - Sin desenfoque: ni BackdropFilter ni ImageFilter (antes: blur 2px accesible).
    - Soporte para reducir transparencia (reduceTransparency o accessibleNavigationOf).
    - Soporte para alto contraste (highContrast o highContrastOf).
-   - Modo accesible: blur reducido a 2px (kGlassBlurReduced / _blurReduced).
    - Modo accesible: borde reforzado a 2px (kGlassBorderWidthAccessible / borderWidth = 2.0).
-   - Modo accesible: fill opaco (kBgElevatedDark / kBgElevatedLight o black/white puro).
-   - Modo accesible: desactiva el highlight specular gradient sobre superficie opaca.
+   - Fill opaco (kBgElevatedDark / kBgElevatedLight o black/white puro).
+   - Sin highlight especular (foregroundDecoration) sobre la superficie.
 2. Tokens de diseño (design_tokens.dart):
-   - Presencia de kGlassBlurReduced (2.0) y kGlassBorderWidthAccessible (2.0).
+   - Sin tokens kGlassBlur*; kGlassBorderWidthAccessible (2.0) y kSurfaceBorderWidth (1.0).
    - Presencia de tokens de radio: kBorderRadiusSmall (8.0), kBorderRadiusCardLarge/Pill (20.0),
      kBorderRadiusDock/SheetLarge (32.0).
    - snippetPaletteStroke alineado a alpha 0.40 (0x66).
@@ -22,7 +22,7 @@ Verifica:
    - snippets_tab.dart usa kBorderRadiusCapsule en el buscador (sin 100 hardcodeado).
    - teclado_tab.dart usa kSettingsGroupRadius en la vista previa del teclado.
 4. design.md §12:
-   - Valores de kb_surface (#F0F2F2F7 / #F01C1C1E) y kb_key_bg (#F2FFFFFF / #F22C2C2E) alineados.
+   - Valores de kb_surface (#FFE3E4ED / #FF0E1016) y kb_key_bg (#FFFFFFFF / #FF1E212D) alineados.
    - Snippet stroke documentado a ~40% (0.40 / 0x66).
    - Excepciones firmadas documentadas para kb_snippet_bar_height (28dp) y kb_mini_key_height (40dp).
 5. Batería de mutaciones negativas para garantizar detección contra regresiones.
@@ -61,12 +61,12 @@ def test_glass_container_system_adaptation():
         "GlassContainer debe consultar MediaQuery.highContrastOf o admitir highContrast"
     )
 
-    # Verificación de blur 2px
-    assert "_blurReduced" in src, "GlassContainer debe definir _blurReduced"
-    assert "kGlassBlurReduced" in src or "2.0" in src, "GlassContainer debe usar blur 2.0"
+    # Horizonte: superficie sólida, prohibido el desenfoque (antes exigía blur 2px)
+    assert "BackdropFilter" not in src, "GlassContainer no debe usar BackdropFilter (Horizonte: sin blur)"
+    assert "ImageFilter" not in src, "GlassContainer no debe usar ImageFilter (Horizonte: sin blur)"
 
     # Verificación de borde 2px
-    assert "kGlassBorderWidthAccessible" in src or "2.0" in src, (
+    assert "kGlassBorderWidthAccessible" in src, (
         "GlassContainer debe usar borde 2px para alto contraste / reduccion de transparencia"
     )
 
@@ -74,9 +74,13 @@ def test_glass_container_system_adaptation():
     assert "kBgElevatedDark" in src or "0xFF1C1C1E" in src, "GlassContainer debe usar fondo opaco elevado en oscuro"
     assert "kBgElevatedLight" in src or "0xFFFFFFFF" in src, "GlassContainer debe usar fondo opaco elevado en claro"
 
-    # Verificación de que no muestra highlight specular cuando es accesible (opaco)
-    assert "!isAccessible" in src or "isAccessible ? null" in src or "foregroundDecoration: (crystal && !isAccessible)" in src, (
-        "GlassContainer no debe aplicar gradiente specular si la superficie es opaca (accesible)"
+    # Sin highlight especular: la superficie es sólida siempre (antes: solo en accesible)
+    assert "foregroundDecoration" not in src and "LinearGradient" not in src, (
+        "GlassContainer no debe aplicar gradiente especular sobre la superficie sólida"
+    )
+    # Borde normal de 1 px con token y 2 px en accesible
+    assert "isAccessible ? kGlassBorderWidthAccessible : kSurfaceBorderWidth" in src, (
+        "GlassContainer debe usar borde line 1px y 2px en modo accesible"
     )
 
 
@@ -84,9 +88,10 @@ def test_design_tokens_definitions():
     """2. design_tokens.dart define tokens de accesibilidad y escala completa de radios."""
     src = read_file(DESIGN_TOKENS)
 
-    # Tokens de accesibilidad de glass
-    assert re.search(r"const\s+double\s+kGlassBlurReduced\s*=\s*2\.0\s*;", src), (
-        "Falta constante kGlassBlurReduced = 2.0 en design_tokens.dart"
+    # Horizonte: sin tokens de desenfoque; borde de superficie 1px
+    assert "kGlassBlur" not in src, "design_tokens.dart no debe definir tokens kGlassBlur* (Horizonte: sin blur)"
+    assert re.search(r"const\s+double\s+kSurfaceBorderWidth\s*=\s*1\.0\s*;", src), (
+        "Falta constante kSurfaceBorderWidth = 1.0 en design_tokens.dart"
     )
     assert re.search(r"const\s+double\s+kGlassBorderWidthAccessible\s*=\s*2\.0\s*;", src), (
         "Falta constante kGlassBorderWidthAccessible = 2.0 en design_tokens.dart"
@@ -172,11 +177,15 @@ def test_design_md_alignment_and_exceptions():
     dimens = read_file(DIMENS_XML)
     colors = read_file(COLORS_XML)
 
-    # kb_surface y kb_key_bg
-    assert "#F0F2F2F7" in src, "design.md §12 debe documentar kb_surface claro #F0F2F2F7"
-    assert "#F01C1C1E" in src, "design.md §12 debe documentar kb_surface oscuro #F01C1C1E"
-    assert "#F2FFFFFF" in src, "design.md §12 debe documentar kb_key_bg claro #F2FFFFFF"
-    assert "#F22C2C2E" in src, "design.md §12 debe documentar kb_key_bg oscuro #F22C2C2E"
+    # kb_surface y kb_key_bg (Horizonte: sólidos) documentados y alineados con colors.xml
+    night = read_file(COLORS_XML.replace(os.sep + "values" + os.sep, os.sep + "values-night" + os.sep))
+    assert "#E3E4ED" in src, "design.md §12 debe documentar kb_surface claro #E3E4ED"
+    assert "#0E1016" in src, "design.md §12 debe documentar kb_surface oscuro #0E1016"
+    assert "#1E212D" in src, "design.md §12 debe documentar kb_key_bg oscuro #1E212D"
+    assert '<color name="kb_surface">#FFE3E4ED</color>' in colors, "colors.xml kb_surface claro desalineado"
+    assert '<color name="kb_key_bg">#FFFFFFFF</color>' in colors, "colors.xml kb_key_bg claro desalineado"
+    assert '<color name="kb_surface">#FF0E1016</color>' in night, "values-night kb_surface desalineado"
+    assert '<color name="kb_key_bg">#FF1E212D</color>' in night, "values-night kb_key_bg desalineado"
 
     # Snippet stroke
     assert "stroke ~40%" in src, "design.md §12 debe documentar stroke ~40%"
@@ -202,9 +211,9 @@ def test_negative_mutations():
     teclado_src = read_file(TECLADO_TAB)
     design_src = read_file(DESIGN_MD)
 
-    # Mutación 1: GlassContainer no reduce blur en modo accesible
-    mut1 = glass_src.replace("_blurReduced", "_blurLarge")
-    assert "_blurReduced" not in mut1
+    # Mutación 1: GlassContainer vuelve a desenfocar (BackdropFilter)
+    mut1 = glass_src.replace("return ClipRRect(", "return BackdropFilter(filter: ImageFilter.blur(), child: ClipRRect(", 1)
+    assert "BackdropFilter" in mut1 and "BackdropFilter" not in glass_src
 
     # Mutación 2: GlassContainer ignora reduceTransparency
     mut2 = glass_src.replace("accessibleNavigationOf", "disabledNav")

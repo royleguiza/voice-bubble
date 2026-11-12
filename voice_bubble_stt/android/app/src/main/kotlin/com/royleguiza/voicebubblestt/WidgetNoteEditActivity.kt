@@ -1162,7 +1162,7 @@ class WidgetNoteEditActivity : Activity() {
                 gravity = android.view.Gravity.CENTER
                 setPadding(pad, pad, pad, pad)
                 setBackgroundResource(R.drawable.kb_key_danger)
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label_on_accent))
+                setTextColor(ContextCompat.getColor(context, R.color.kb_label_on_danger))
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
                 typeface = android.graphics.Typeface.DEFAULT_BOLD
                 setOnClickListener {

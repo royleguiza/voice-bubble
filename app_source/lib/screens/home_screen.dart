@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -1057,37 +1056,25 @@ class _HomeScreenState extends State<HomeScreen>
                 duration: motionSafe
                     ? const Duration(milliseconds: 200)
                     : Duration.zero,
-                child: ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: kGlassBlurLarge,
-                      sigmaY: kGlassBlurLarge,
-                    ),
-                    child: Container(
-                      padding: EdgeInsets.only(top: insets.top),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: bg.withValues(
-                          alpha: MediaQuery.accessibleNavigationOf(context)
-                              ? 1
-                              : 0.78,
-                        ),
-                        border: Border(
-                          bottom: BorderSide(
-                            color: isDark ? kSeparatorDark : kSeparatorLight,
-                            width: 0.5,
-                          ),
-                        ),
+                // Horizonte: barra sólida (sin desenfoque), fondo opaco.
+                child: Container(
+                  padding: EdgeInsets.only(top: insets.top),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: bg,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isDark ? kSeparatorDark : kSeparatorLight,
+                        width: 0.5,
                       ),
-                      child: ExcludeSemantics(
-                        child: Text(
-                          title,
-                          style: kTextBody.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color:
-                                isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
-                          ),
-                        ),
+                    ),
+                  ),
+                  child: ExcludeSemantics(
+                    child: Text(
+                      title,
+                      style: kTextBody.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
                       ),
                     ),
                   ),
@@ -1154,7 +1141,7 @@ class _HomeScreenState extends State<HomeScreen>
                 style: kTextFootnote.copyWith(
                   fontWeight: FontWeight.w500,
                   color: _pendingAudioPath != null && !_isRecording
-                      ? (isDark ? kRecordingDark : kRecording)
+                      ? (isDark ? kEmberTextDark : kEmberTextLight)
                       : labelSecondary,
                 ),
               ),

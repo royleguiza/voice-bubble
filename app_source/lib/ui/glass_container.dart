@@ -1,24 +1,26 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'design_tokens.dart';
 
-/// Contenedor Liquid Glass reutilizable (design.md §7.1: nadie arma glass a mano).
+/// Superficie sólida reutilizable (Horizonte, design.md §7).
 ///
-/// Aplica blur + fill translúcido según brightness del tema, borde especular
-/// 1px y sombra de profundidad. [small] selecciona la variante de elementos
-/// chicos (blur 12 / sombra corta) vs grandes (blur 24 / sombra profunda).
+/// Conserva el nombre y la API del antiguo contenedor de vidrio para no
+/// tocar los call sites, pero ya no desenfoca: Horizonte prohíbe el blur en
+/// la app. Pinta superficie (surf) + borde de línea (line) de 1 px.
+/// [small] y [crystal] se aceptan por compatibilidad y no cambian el
+/// aspecto: todas las superficies son iguales.
 ///
-/// Accesibilidad (C-31 / design.md §9): se adapta a las preferencias del sistema
-/// de reducción de transparencia (`accessibleNavigationOf`) y alto contraste
-/// (`highContrastOf`). Cuando alguna de ellas está activa, el fill se vuelve
-/// opaco, el blur se reduce a 2px y el borde se refuerza a 2px.
+/// Accesibilidad (C-31 / design.md §9): con alto contraste
+/// (`highContrastOf`) el fondo pasa a blanco/negro puro y el borde a
+/// fg con 2 px; con transparencia reducida (`accessibleNavigationOf`) el
+/// borde se refuerza a 2 px. La superficie ya es opaca en todos los casos.
 class GlassContainer extends StatelessWidget {
   final Widget child;
   final double borderRadius;
+
+  /// Compatibilidad: variante chica/grande del vidrio retirado.
   final bool small;
 
-  /// Variante "Crystal" (settings-redesign-v2): blur 10, fill vivo,
-  /// borde 1.5px y highlight diagonal. Rige tab bar y sheets.
+  /// Compatibilidad: variante "Crystal" del vidrio retirado.
   final bool crystal;
   final EdgeInsetsGeometry? padding;
 
@@ -41,111 +43,36 @@ class GlassContainer extends StatelessWidget {
     this.highContrast,
   });
 
-  /// Filtros compartidos: ImageFilter.blur crea un objeto nativo por
-  /// construcción y GlassContainer se reconstruye en cada frame de
-  /// animaciones y por cada carácter del form de snippets. Reutilizar
-  /// instancias elimina ese costo GPU sin cambiar el efecto visual.
-  static final ImageFilter _blurSmall = ImageFilter.blur(
-    sigmaX: kGlassBlurSmall,
-    sigmaY: kGlassBlurSmall,
-  );
-  static final ImageFilter _blurLarge = ImageFilter.blur(
-    sigmaX: kGlassBlurLarge,
-    sigmaY: kGlassBlurLarge,
-  );
-  static final ImageFilter _blurCrystal = ImageFilter.blur(
-    sigmaX: kGlassBlurCrystal,
-    sigmaY: kGlassBlurCrystal,
-  );
-  static final ImageFilter _blurReduced = ImageFilter.blur(
-    sigmaX: kGlassBlurReduced,
-    sigmaY: kGlassBlurReduced,
-  );
-
-  ImageFilter get _filter =>
-      crystal ? _blurCrystal : (small ? _blurSmall : _blurLarge);
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isHighContrast =
-        highContrast ?? MediaQuery.highContrastOf(context);
+    final isHighContrast = highContrast ?? MediaQuery.highContrastOf(context);
     final isReduceTransparency =
         reduceTransparency ?? MediaQuery.accessibleNavigationOf(context);
     final bool isAccessible = isHighContrast || isReduceTransparency;
 
-    final ImageFilter filter = isAccessible ? _blurReduced : _filter;
-
     final Color fill;
     final Color borderColor;
-    final double borderWidth;
-    final BoxShadow shadow;
     if (isHighContrast) {
       fill = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
-      borderColor = isDark ? const Color(0xFFFFFFFF) : const Color(0xFF000000);
-      borderWidth = kGlassBorderWidthAccessible;
-      shadow = small
-          ? (isDark ? kGlassShadowSmallDark : kGlassShadowSmallLight)
-          : (isDark ? kGlassShadowDark : kGlassShadowLight);
-    } else if (isReduceTransparency) {
-      fill = isDark ? kBgElevatedDark : kBgElevatedLight;
-      borderColor =
-          isDark ? kGlassBorderCrystalDark : kGlassBorderCrystalLight;
-      borderWidth = kGlassBorderWidthAccessible;
-      shadow = small
-          ? (isDark ? kGlassShadowSmallDark : kGlassShadowSmallLight)
-          : (isDark ? kGlassShadowDark : kGlassShadowLight);
-    } else if (crystal) {
-      fill = isDark ? kGlassFillCrystalDark : kGlassFillCrystalLight;
-      borderColor =
-          isDark ? kGlassBorderCrystalDark : kGlassBorderCrystalLight;
-      borderWidth = 1.5;
-      shadow = isDark ? kGlassShadowCrystalDark : kGlassShadowCrystalLight;
+      borderColor = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
     } else {
-      fill = isDark
-          ? Colors.black.withValues(alpha: kGlassOpacityDark)
-          : Colors.white.withValues(alpha: kGlassOpacityLight);
+      fill = isDark ? kBgElevatedDark : kBgElevatedLight;
       borderColor = isDark ? kGlassBorderDark : kGlassBorderLight;
-      borderWidth = 1.0;
-      shadow = small
-          ? (isDark ? kGlassShadowSmallDark : kGlassShadowSmallLight)
-          : (isDark ? kGlassShadowDark : kGlassShadowLight);
     }
+    final double borderWidth =
+        isAccessible ? kGlassBorderWidthAccessible : kSurfaceBorderWidth;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: filter,
-        child: Container(
-          padding: padding,
-          foregroundDecoration: (crystal && !isAccessible)
-              ? BoxDecoration(
-                  // Highlight superior simétrico (no diagonal): la misma
-                  // luz en todo el ancho para que el dock se vea parejo
-                  // de izquierda a derecha en claro y oscuro.
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.center,
-                    colors: [
-                      isDark ? kGlassHighlightDark : kGlassHighlightLight,
-                      Colors.transparent,
-                    ],
-                    stops: const [0.0, 0.35],
-                  ),
-                  borderRadius: BorderRadius.circular(borderRadius),
-                )
-              : null,
-          decoration: BoxDecoration(
-            color: fill,
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(
-              color: borderColor,
-              width: borderWidth,
-            ),
-            boxShadow: [shadow],
-          ),
-          child: child,
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: Border.all(color: borderColor, width: borderWidth),
         ),
+        child: child,
       ),
     );
   }

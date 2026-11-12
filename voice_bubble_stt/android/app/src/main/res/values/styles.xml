@@ -31,6 +31,8 @@
         <item name="android:backgroundDimEnabled">true</item>
         <item name="android:backgroundDimAmount">0.60</item>
         <item name="android:windowAnimationStyle">@style/WidgetEditAnimation</item>
+        <!-- Horizonte: Inter como familia de lectura de la hoja de edición. -->
+        <item name="android:fontFamily">@font/inter</item>
     </style>
 
     <!-- Abrir/cerrar la edición del widget como una hoja suave, no como

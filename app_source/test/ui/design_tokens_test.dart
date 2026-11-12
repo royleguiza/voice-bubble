@@ -5,56 +5,82 @@ import 'package:voice_bubble_stt/ui/design_tokens.dart';
 import 'package:voice_bubble_stt/widgets/history_list.dart';
 
 void main() {
-  group('Color constants', () {
-    test('kAccentLight has correct color value', () {
-      expect(kAccentLight, const Color(0xFF007AFF));
+  group('Color constants (Horizonte)', () {
+    test('kAccent = brasa (relleno de acciones primarias)', () {
+      expect(kAccentLight, const Color(0xFFF27A14));
+      expect(kAccentDark, const Color(0xFFFF8A1F));
     });
 
-    test('kAccentDark has correct color value', () {
-      expect(kAccentDark, const Color(0xFF0A84FF));
+    test('kRecording = brasa (grabar ya no es rojo)', () {
+      expect(kRecording, const Color(0xFFF27A14));
+      expect(kRecordingDark, const Color(0xFFFF8A1F));
+      expect(kRecording, kEmberLight);
+      expect(kRecordingDark, kEmberDark);
     });
 
-    test('kRecording has correct color value', () {
-      expect(kRecording, const Color(0xFFFF3B30));
+    test('el rojo queda solo para borrar (danger)', () {
+      expect(kDangerLight, const Color(0xFFC8372B));
+      expect(kDangerDark, const Color(0xFFFF6A5C));
+      expect(kRecording, isNot(kDangerLight));
+      expect(kAccentLight, isNot(kDangerLight));
     });
 
-    test('kRecordingDark has correct color value', () {
-      expect(kRecordingDark, const Color(0xFFFF453A));
+    test('brasa de texto, suave, on-ember, destello, agujero y plasma', () {
+      expect(kEmberTextLight, const Color(0xFFB84A06));
+      expect(kEmberTextDark, const Color(0xFFFF9A3D));
+      expect(kEmberSoftLight, const Color(0xFFFBE4CF));
+      expect(kEmberSoftDark, const Color(0xFF3A2410));
+      expect(kOnEmber, const Color(0xFF1A0E00));
+      expect(kHot, const Color(0xFFFFC766));
+      expect(kHoleLight, const Color(0xFF05060A));
+      expect(kHoleDark, const Color(0xFF000000));
+      expect(kOnHole, const Color(0xFFFFE9CF));
+      expect(kPlasmaLight, const Color(0xFF3557C8));
+      expect(kPlasmaDark, const Color(0xFF8FB0FF));
+      expect(kOkLight, const Color(0xFF1F8A4C));
+      expect(kOkDark, const Color(0xFF5FD38D));
+    });
+
+    test('teclado: kb, key y key2', () {
+      expect(kKbLight, const Color(0xFFE3E4ED));
+      expect(kKbDark, const Color(0xFF0E1016));
+      expect(kKeyLight, const Color(0xFFFFFFFF));
+      expect(kKeyDark, const Color(0xFF1E212D));
+      expect(kKey2Light, const Color(0xFFCDCFDC));
+      expect(kKey2Dark, const Color(0xFF151821));
     });
 
     test('background colors are correctly defined', () {
-      expect(kBgBaseLight, const Color(0xFFF2F2F7));
-      expect(kBgBaseDark, const Color(0xFF000000));
+      expect(kBgBaseLight, const Color(0xFFEEEEF4));
+      expect(kBgBaseDark, const Color(0xFF08090E));
       expect(kBgElevatedLight, const Color(0xFFFFFFFF));
-      expect(kBgElevatedDark, const Color(0xFF1C1C1E));
+      expect(kBgElevatedDark, const Color(0xFF12141C));
       expect(kBgSecondaryLight, const Color(0xFFFFFFFF));
-      expect(kBgSecondaryDark, const Color(0xFF2C2C2E));
+      expect(kBgSecondaryDark, const Color(0xFF1B1E2A));
+      expect(kFillLight, const Color(0xFFE3E4ED));
+      expect(kFillDark, const Color(0xFF1B1E2A));
     });
 
     test('label colors are correctly defined', () {
-      expect(kLabelPrimaryLight, const Color(0xFF000000));
-      expect(kLabelPrimaryDark, const Color(0xFFFFFFFF));
-      expect(kLabelSecondaryLight, const Color(0x993C3C43));
-      expect(kLabelSecondaryDark, const Color(0x99EBEBF5));
-      expect(kLabelTertiaryLight, const Color(0x4D3C3C43));
-      expect(kLabelTertiaryDark, const Color(0x4DEBEBF5));
+      expect(kLabelPrimaryLight, const Color(0xFF10121A));
+      expect(kLabelPrimaryDark, const Color(0xFFF2F0EC));
+      expect(kLabelSecondaryLight, const Color(0xFF5C6072));
+      expect(kLabelSecondaryDark, const Color(0xFF9A9DAB));
+      expect(kLabelTertiaryLight, const Color(0x995C6072));
+      expect(kLabelTertiaryDark, const Color(0x999A9DAB));
     });
 
     test('separators are correctly defined', () {
-      expect(kSeparatorLight, const Color(0x4A3C3C43));
-      expect(kSeparatorDark, const Color(0x99545458));
+      expect(kSeparatorLight, const Color(0xFFD5D7E2));
+      expect(kSeparatorDark, const Color(0xFF262A38));
     });
   });
 
-  group('Glass tokens and shadows', () {
-    test('opacities and blurs are within expected ranges', () {
-      expect(kGlassOpacityLight, 0.65);
-      expect(kGlassOpacityDark, 0.45);
-      expect(kGlassBlurLarge, 24.0);
-      expect(kGlassBlurSmall, 12.0);
-      expect(kGlassBlurReduced, 2.0);
-      expect(kGlassBorderLight, const Color(0x8CFFFFFF));
-      expect(kGlassBorderDark, const Color(0x2EFFFFFF));
+  group('Superficie sólida (sin vidrio) y sombras', () {
+    test('borde line de 1 px y 2 px accesible', () {
+      expect(kGlassBorderLight, kSeparatorLight);
+      expect(kGlassBorderDark, kSeparatorDark);
+      expect(kSurfaceBorderWidth, 1.0);
       expect(kGlassBorderWidthAccessible, 2.0);
     });
 
@@ -101,6 +127,12 @@ void main() {
       expect(kBorderRadiusSheetLarge, 32.0);
       expect(kBorderRadiusCapsule, 100.0);
     });
+
+    test('radios Horizonte: tecla 7, tarjeta 14, hoja 22', () {
+      expect(kRadiusKey, 7.0);
+      expect(kRadiusCard, 14.0);
+      expect(kRadiusSheet, 22.0);
+    });
   });
 
   group('Snippet palette tokens', () {
@@ -108,6 +140,32 @@ void main() {
       final stroke = snippetPaletteStroke('azul', isDark: false);
       expect(stroke, isNotNull);
       expect(stroke!.a, closeTo(0.40, 0.01));
+    });
+
+    test('snippet palette: mismos 6 ids con valores Horizonte', () {
+      expect(
+          snippetPaletteBase('azul', isDark: false), const Color(0xFF3557C8));
+      expect(snippetPaletteBase('azul', isDark: true), const Color(0xFF8FB0FF));
+      expect(
+          snippetPaletteBase('verde', isDark: false), const Color(0xFF1F8A4C));
+      expect(
+          snippetPaletteBase('verde', isDark: true), const Color(0xFF5FD38D));
+      expect(
+          snippetPaletteBase('rojo', isDark: false), const Color(0xFFC8372B));
+      expect(snippetPaletteBase('rojo', isDark: true), const Color(0xFFFF6A5C));
+      expect(snippetPaletteBase('naranja', isDark: false),
+          const Color(0xFFD9750F));
+      expect(
+          snippetPaletteBase('naranja', isDark: true), const Color(0xFFFFA24A));
+      expect(snippetPaletteBase('violeta', isDark: false),
+          const Color(0xFF8B4FD0));
+      expect(
+          snippetPaletteBase('violeta', isDark: true), const Color(0xFFC79BFF));
+      expect(
+          snippetPaletteBase('gris', isDark: false), const Color(0xFF7B7E8C));
+      expect(snippetPaletteBase('gris', isDark: true), const Color(0xFF9A9DAB));
+      expect(snippetPaletteBase('otro', isDark: false), isNull);
+      expect(snippetPaletteBase(null, isDark: true), isNull);
     });
 
     test('snippet palette fill has 0.20 alpha per design.md §12', () {
@@ -127,6 +185,17 @@ void main() {
       expect(kTextFootnote.fontSize, 13);
       expect(kTextCaption.fontSize, 12);
     });
+
+    test('familias Horizonte: Sora títulos, Inter lectura, JetBrains Mono', () {
+      expect(kFontDisplay, 'Sora');
+      expect(kFontBody, 'Inter');
+      expect(kFontMono, 'JetBrainsMono');
+      expect(kTextTitle.fontFamily, kFontDisplay);
+      expect(kTextLargeTitle.fontFamily, kFontDisplay);
+      expect(kTextMono.fontFamily, kFontMono);
+      // El cuerpo hereda Inter del tema (no fija familia propia).
+      expect(kTextBody.fontFamily, isNull);
+    });
   });
 
   group('buildLightTheme', () {
@@ -140,6 +209,12 @@ void main() {
       expect(theme.dividerColor, kSeparatorLight);
       expect(theme.cardTheme.color, kBgSecondaryLight);
       expect(theme.cardTheme.elevation, 0);
+      expect(theme.colorScheme.primary, kEmberLight);
+      expect(theme.colorScheme.onPrimary, kOnEmber);
+      expect(theme.colorScheme.error, kDangerLight);
+      expect(theme.textTheme.bodyMedium?.fontFamily, kFontBody);
+      expect(theme.textTheme.headlineMedium?.fontFamily, kFontDisplay);
+      expect(theme.textTheme.titleLarge?.fontFamily, kFontDisplay);
     });
   });
 
@@ -154,6 +229,11 @@ void main() {
       expect(theme.dividerColor, kSeparatorDark);
       expect(theme.cardTheme.color, kBgSecondaryDark);
       expect(theme.cardTheme.elevation, 0);
+      expect(theme.colorScheme.primary, kEmberDark);
+      expect(theme.colorScheme.onPrimary, kOnEmber);
+      expect(theme.colorScheme.error, kDangerDark);
+      expect(theme.textTheme.bodyMedium?.fontFamily, kFontBody);
+      expect(theme.textTheme.headlineMedium?.fontFamily, kFontDisplay);
     });
   });
 
@@ -162,7 +242,8 @@ void main() {
       final light = buildLightTheme();
       final dark = buildDarkTheme();
       expect(light, isNot(equals(dark)));
-      expect(light.colorScheme.primary, isNot(equals(dark.colorScheme.primary)));
+      expect(
+          light.colorScheme.primary, isNot(equals(dark.colorScheme.primary)));
     });
   });
 

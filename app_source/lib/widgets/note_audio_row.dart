@@ -138,7 +138,7 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
-    final accent = isDark ? kAccentDark : kAccentLight;
+    final accent = isDark ? kTintTextDark : kTintTextLight;
     if (_missing || _corrupt) {
       return Text(
         _missing

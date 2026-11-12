@@ -1,61 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Tokens Liquid Glass del teclado - modo oscuro (design.md §12) -->
-    <color name="kb_surface">#F01C1C1E</color>
-    <color name="kb_key_bg">#F22C2C2E</color>
-    <color name="kb_key_bg_alt">#FF3A3A3C</color>
-    <color name="kb_key_bg_accent">#FF0A84FF</color>
-    <color name="kb_label">#FFFFFFFF</color>
-    <color name="kb_label_secondary">#99EBEBF5</color>
-    <color name="kb_label_on_accent">#FFFFFFFF</color>
-    <color name="kb_key_pressed">#FF48484A</color>
-    <color name="kb_key_stroke">#FF48484A</color>
-    <color name="kb_accent_pressed">#FF0069DB</color>
-    <color name="kb_recording">#FFFF453A</color>
-    <color name="kb_recording_pressed">#FFD70015</color>
+    <!-- Paleta Horizonte - modo oscuro (design.md §4). -->
+    <color name="hz_bg">#FF08090E</color>
+    <color name="hz_surf">#FF12141C</color>
+    <color name="hz_surf2">#FF1B1E2A</color>
+    <color name="hz_line">#FF262A38</color>
+    <color name="hz_fg">#FFF2F0EC</color>
+    <color name="hz_fg2">#FF9A9DAB</color>
+    <color name="hz_ember">#FFFF8A1F</color>
+    <color name="hz_ember_t">#FFFF9A3D</color>
+    <color name="hz_ember_soft">#FF3A2410</color>
+    <color name="hz_on_ember">#FF1A0E00</color>
+    <color name="hz_hot">#FFFFC766</color>
+    <color name="hz_plasma">#FF8FB0FF</color>
+    <color name="hz_danger">#FFFF6A5C</color>
+    <color name="hz_ok">#FF5FD38D</color>
+    <color name="hz_hole">#FF000000</color>
+    <color name="hz_on_hole">#FFFFE9CF</color>
 
-    <!-- Burbuja flotante (Hito 3): mismos neutros que claro; rojo y azul
-         derivados de las variantes noche del teclado. -->
-    <color name="bubble_idle_bg">#CC1C1C1E</color>
+    <!-- Tokens del teclado - modo oscuro (design.md §12). -->
+    <color name="kb_surface">#FF0E1016</color>
+    <color name="kb_key_bg">#FF1E212D</color>
+    <color name="kb_key_bg_alt">#FF151821</color>
+    <color name="kb_key_bg_accent">@color/hz_ember</color>
+    <color name="kb_label">@color/hz_fg</color>
+    <color name="kb_label_secondary">@color/hz_fg2</color>
+    <color name="kb_label_on_accent">@color/hz_on_ember</color>
+    <color name="kb_key_pressed">#FF262A38</color>
+    <color name="kb_key_stroke">#FF262A38</color>
+    <color name="kb_accent_pressed">#FFE5761A</color>
+    <color name="kb_recording">@color/hz_ember</color>
+    <color name="kb_recording_pressed">#FFE5761A</color>
+    <!-- Borrar / destructivo: único rojo. Texto sobre él: on-ember en oscuro
+         (el blanco no llega a 4.5:1 sobre #FF6A5C). -->
+    <color name="kb_danger">@color/hz_danger</color>
+    <color name="kb_danger_pressed">#FFE85A4D</color>
+    <color name="kb_label_on_danger">#FF1A0E00</color>
+
+    <!-- Burbuja flotante (Hito 3): mismos neutros que claro; brasa
+         derivada de las variantes noche. -->
+    <color name="bubble_idle_bg">#CC12141C</color>
     <color name="bubble_idle_border">#4DFFFFFF</color>
     <color name="bubble_active_border">#80FFFFFF</color>
-    <color name="bubble_recording_bg">#E6FF453A</color>
-    <color name="bubble_transcribing_bg">#D90A84FF</color>
+    <color name="bubble_recording_bg">#E6FF8A1F</color>
+    <color name="bubble_transcribing_bg">#D9B84A06</color>
 
-    <!-- Modal de historial: glass oscuro (igual que la burbuja). -->
-    <color name="bubble_modal_bg">#CC1C1C1E</color>
-    <color name="bubble_modal_border">#4DFFFFFF</color>
-    <color name="bubble_legend_bg">#FF1C1C1E</color>
+    <!-- Modal de historial: oscura (igual que la burbuja). -->
+    <color name="bubble_modal_bg">#F208090E</color>
+    <color name="bubble_modal_border">@color/hz_line</color>
+    <color name="bubble_legend_bg">@color/hz_surf</color>
 
-    <!-- Icono adaptive / splash (H5-T3): azul iOS variante oscura (design.md) -->
+    <!-- Icono adaptive / splash (H5-T3): el agujero negro del ícono. -->
     <color name="ic_launcher_background">#FF000000</color>
 
-    <!-- Arranque (Inicio 2026): bgBase oscuro de design.md. -->
-    <color name="splash_background">#FF000000</color>
+    <!-- Arranque (Inicio 2026): bg oscuro de design.md. -->
+    <color name="splash_background">@color/hz_bg</color>
 
     <!-- Paleta de snippets - modo oscuro (mismos 6 ids que claro). -->
-    <color name="snippet_fill_azul">#330A84FF</color>
-    <color name="snippet_stroke_azul">#660A84FF</color>
-    <color name="snippet_fill_verde">#3330D158</color>
-    <color name="snippet_stroke_verde">#6630D158</color>
-    <color name="snippet_fill_rojo">#33FF453A</color>
-    <color name="snippet_stroke_rojo">#66FF453A</color>
-    <color name="snippet_fill_naranja">#33FF9F0A</color>
-    <color name="snippet_stroke_naranja">#66FF9F0A</color>
-    <color name="snippet_fill_violeta">#33BF5AF2</color>
-    <color name="snippet_stroke_violeta">#66BF5AF2</color>
-    <color name="snippet_fill_gris">#338E8E93</color>
-    <color name="snippet_stroke_gris">#668E8E93</color>
-    <!-- Barra flotante de vidrio: valores de noche. -->
-    <color name="dock_glass_tint">#6B3A3A40</color>
-    <color name="dock_glass_frosted">#E62C2C30</color>
-    <color name="dock_glass_highlight">#38FFFFFF</color>
-    <color name="dock_glass_line">#1AFFFFFF</color>
-    <color name="dock_label">#FFF5F5F7</color>
+    <color name="snippet_fill_azul">#338FB0FF</color>
+    <color name="snippet_stroke_azul">#668FB0FF</color>
+    <color name="snippet_fill_verde">#335FD38D</color>
+    <color name="snippet_stroke_verde">#665FD38D</color>
+    <color name="snippet_fill_rojo">#33FF6A5C</color>
+    <color name="snippet_stroke_rojo">#66FF6A5C</color>
+    <color name="snippet_fill_naranja">#33FFA24A</color>
+    <color name="snippet_stroke_naranja">#66FFA24A</color>
+    <color name="snippet_fill_violeta">#33C79BFF</color>
+    <color name="snippet_stroke_violeta">#66C79BFF</color>
+    <color name="snippet_fill_gris">#339A9DAB</color>
+    <color name="snippet_stroke_gris">#669A9DAB</color>
+    <!-- Barra flotante: valores de noche (paleta Horizonte). -->
+    <color name="dock_glass_tint">#B312141C</color>
+    <color name="dock_glass_frosted">#F212141C</color>
+    <color name="dock_glass_highlight">#26FFFFFF</color>
+    <color name="dock_glass_line">@color/hz_line</color>
+    <color name="dock_label">@color/hz_fg</color>
     <color name="dock_tool_pressed">#1FFFFFFF</color>
     <color name="dock_track">#33FFFFFF</color>
-    <color name="dock_handle">#99F5F5F7</color>
-    <color name="dock_pad">#42767680</color>
-    <color name="dock_pad_line">#0FFFFFFF</color>
-    <color name="dock_hint">#99EBEBF5</color>
+    <color name="dock_handle">#999A9DAB</color>
+    <color name="dock_pad">@color/hz_surf2</color>
+    <color name="dock_pad_line">@color/hz_line</color>
+    <color name="dock_hint">@color/hz_fg2</color>
 </resources>

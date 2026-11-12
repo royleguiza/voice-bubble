@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Métricas Liquid Glass del teclado (design.md §12) -->
+<!-- Métricas Horizonte del teclado (design.md §12) -->
 <resources>
     <dimen name="kb_key_height">48dp</dimen>
     <!-- Fila única del modo mini (MEJ-12): compacta, por debajo del alto
@@ -8,7 +8,8 @@
     <dimen name="kb_key_gap">6dp</dimen>
     <dimen name="kb_key_gap_h">4dp</dimen>
     <dimen name="kb_key_gap_v">6dp</dimen>
-    <dimen name="kb_key_radius">8dp</dimen>
+    <!-- Horizonte: tecla 7 dp. -->
+    <dimen name="kb_key_radius">7dp</dimen>
     <dimen name="kb_key_stroke_width">1dp</dimen>
     <dimen name="kb_surface_radius">16dp</dimen>
     <dimen name="kb_key_text_size">20sp</dimen>

@@ -75,9 +75,10 @@ jobs:
       - name: Sincronizar fuente (app_source -> voice_bubble_stt)
         run: |
           cp app_source/pubspec.yaml app_source/pubspec.lock app_source/analysis_options.yaml voice_bubble_stt/
-          rm -rf voice_bubble_stt/lib voice_bubble_stt/test
+          rm -rf voice_bubble_stt/lib voice_bubble_stt/test voice_bubble_stt/fonts
           cp -r app_source/lib voice_bubble_stt/
           cp -r app_source/test voice_bubble_stt/
+          cp -r app_source/fonts voice_bubble_stt/
 
       - name: Pub get
         working-directory: voice_bubble_stt

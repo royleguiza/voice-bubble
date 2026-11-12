@@ -1,66 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Tokens Liquid Glass del teclado - modo claro (design.md §12) -->
-    <color name="kb_surface">#F0F2F2F7</color>
-    <color name="kb_key_bg">#F2FFFFFF</color>
-    <color name="kb_key_bg_alt">#FFD6D6DC</color>
-    <color name="kb_key_stroke">#FFC5C5C9</color>
-    <color name="kb_key_bg_accent">#FF007AFF</color>
-    <color name="kb_label">#FF000000</color>
-    <color name="kb_label_secondary">#993C3C43</color>
-    <color name="kb_label_on_accent">#FFFFFFFF</color>
-    <color name="kb_key_pressed">#FFD1D1D6</color>
-    <color name="kb_accent_pressed">#FF0062CC</color>
-    <color name="kb_recording">#FFFF3B30</color>
-    <color name="kb_recording_pressed">#FFD70015</color>
+    <!-- Paleta Horizonte - modo claro (design.md §4). Fuente única de los
+         valores nativos: los tokens de abajo apuntan acá cuando coinciden. -->
+    <color name="hz_bg">#FFEEEEF4</color>
+    <color name="hz_surf">#FFFFFFFF</color>
+    <color name="hz_surf2">#FFE3E4ED</color>
+    <color name="hz_line">#FFD5D7E2</color>
+    <color name="hz_fg">#FF10121A</color>
+    <color name="hz_fg2">#FF5C6072</color>
+    <color name="hz_ember">#FFF27A14</color>
+    <color name="hz_ember_t">#FFB84A06</color>
+    <color name="hz_ember_soft">#FFFBE4CF</color>
+    <color name="hz_on_ember">#FF1A0E00</color>
+    <color name="hz_hot">#FFFFC766</color>
+    <color name="hz_plasma">#FF3557C8</color>
+    <color name="hz_danger">#FFC8372B</color>
+    <color name="hz_ok">#FF1F8A4C</color>
+    <color name="hz_hole">#FF05060A</color>
+    <color name="hz_on_hole">#FFFFE9CF</color>
 
-    <!-- Burbuja flotante (Hito 3): translucidez glass sobre apps ajenas.
-         Derivados de kb_recording / kb_key_bg_accent con alfa propio. -->
-    <color name="bubble_idle_bg">#CC1C1C1E</color>
+    <!-- Tokens del teclado - modo claro (design.md §12). Superficies sólidas. -->
+    <color name="kb_surface">#FFE3E4ED</color>
+    <color name="kb_key_bg">#FFFFFFFF</color>
+    <color name="kb_key_bg_alt">#FFCDCFDC</color>
+    <color name="kb_key_stroke">#FFC3C5D3</color>
+    <color name="kb_key_bg_accent">@color/hz_ember</color>
+    <color name="kb_label">@color/hz_fg</color>
+    <color name="kb_label_secondary">@color/hz_fg2</color>
+    <color name="kb_label_on_accent">@color/hz_on_ember</color>
+    <color name="kb_key_pressed">#FFCDCFDC</color>
+    <color name="kb_accent_pressed">#FFD96A0E</color>
+    <!-- Grabando = brasa (decisión del dueño): el rojo queda para borrar. -->
+    <color name="kb_recording">@color/hz_ember</color>
+    <color name="kb_recording_pressed">#FFD96A0E</color>
+    <!-- Borrar / destructivo: único rojo. Texto sobre él: blanco en claro. -->
+    <color name="kb_danger">@color/hz_danger</color>
+    <color name="kb_danger_pressed">#FFA82D23</color>
+    <color name="kb_label_on_danger">#FFFFFFFF</color>
+
+    <!-- Burbuja flotante (Hito 3) sobre apps ajenas, sin vidrio.
+         Derivados de kb_recording / brasa con alfa propio. -->
+    <color name="bubble_idle_bg">#CC12141C</color>
     <color name="bubble_idle_border">#4DFFFFFF</color>
     <color name="bubble_active_border">#80FFFFFF</color>
-    <color name="bubble_recording_bg">#E6FF3B30</color>
-    <color name="bubble_transcribing_bg">#D9007AFF</color>
+    <color name="bubble_recording_bg">#E6F27A14</color>
+    <color name="bubble_transcribing_bg">#D9B84A06</color>
 
-    <!-- Modal de historial (B1–B7 + Snippets): glass CLARO en tema claro.
+    <!-- Modal de historial (B1–B7 + Snippets): fondo claro en tema claro.
          La burbuja sigue oscura siempre; la modal sí adapta para que las
          tarjetas claras tengan contraste (defecto detectado en laboratorio). -->
-    <color name="bubble_modal_bg">#D9FFFFFF</color>
-    <color name="bubble_modal_border">#2E3C3C43</color>
-    <color name="bubble_legend_bg">#FFFFFFFF</color>
+    <color name="bubble_modal_bg">#F2EEEEF4</color>
+    <color name="bubble_modal_border">@color/hz_line</color>
+    <color name="bubble_legend_bg">@color/hz_surf</color>
 
-    <!-- Icono adaptive / splash (H5-T3): azul iOS de marca (design.md) -->
+    <!-- Icono adaptive / splash (H5-T3): el agujero negro del ícono. -->
     <color name="ic_launcher_background">#FF000000</color>
 
-    <!-- Arranque (Inicio 2026): el mismo fondo de la app (bgBase de
+    <!-- Arranque (Inicio 2026): el mismo fondo de la app (bg de
          design.md), así el paso a la primera pantalla no se nota. -->
-    <color name="splash_background">#FFF2F2F7</color>
+    <color name="splash_background">@color/hz_bg</color>
 
     <!-- Paleta de snippets (design.md §12): solo 6 ids fijos.
          Fondo teñido ~20% (0x33) + stroke ~40% (0x66) sobre el tema. -->
-    <color name="snippet_fill_azul">#33007AFF</color>
-    <color name="snippet_stroke_azul">#66007AFF</color>
-    <color name="snippet_fill_verde">#33248A3D</color>
-    <color name="snippet_stroke_verde">#66248A3D</color>
-    <color name="snippet_fill_rojo">#33FF3B30</color>
-    <color name="snippet_stroke_rojo">#66FF3B30</color>
-    <color name="snippet_fill_naranja">#33FF9F0A</color>
-    <color name="snippet_stroke_naranja">#66FF9F0A</color>
-    <color name="snippet_fill_violeta">#33BF5AF2</color>
-    <color name="snippet_stroke_violeta">#66BF5AF2</color>
-    <color name="snippet_fill_gris">#338E8E93</color>
-    <color name="snippet_stroke_gris">#668E8E93</color>
-    <!-- Barra flotante de vidrio (prototipo "Burbuja de puntero", 2026-10-30).
-         tint: sobre desenfoque real (Android 12+); frosted: vidrio lechoso sin desenfoque. -->
-    <color name="dock_glass_tint">#80FFFFFF</color>
-    <color name="dock_glass_frosted">#EBF7F7FA</color>
+    <color name="snippet_fill_azul">#333557C8</color>
+    <color name="snippet_stroke_azul">#663557C8</color>
+    <color name="snippet_fill_verde">#331F8A4C</color>
+    <color name="snippet_stroke_verde">#661F8A4C</color>
+    <color name="snippet_fill_rojo">#33C8372B</color>
+    <color name="snippet_stroke_rojo">#66C8372B</color>
+    <color name="snippet_fill_naranja">#33D9750F</color>
+    <color name="snippet_stroke_naranja">#66D9750F</color>
+    <color name="snippet_fill_violeta">#338B4FD0</color>
+    <color name="snippet_stroke_violeta">#668B4FD0</color>
+    <color name="snippet_fill_gris">#337B7E8C</color>
+    <color name="snippet_stroke_gris">#667B7E8C</color>
+    <!-- Barra flotante (prototipo "Burbuja de puntero", 2026-10-30).
+         tint: sobre desenfoque real (Android 12+); frosted: sin desenfoque.
+         Fase 0 Horizonte: solo colores de la paleta; la estructura (y el
+         desenfoque de ventana) se revisa en la fase de la burbuja. -->
+    <color name="dock_glass_tint">#B3FFFFFF</color>
+    <color name="dock_glass_frosted">#F2FFFFFF</color>
     <color name="dock_glass_highlight">#B3FFFFFF</color>
-    <color name="dock_glass_line">#1A000000</color>
-    <color name="dock_label">#FF111114</color>
+    <color name="dock_glass_line">@color/hz_line</color>
+    <color name="dock_label">@color/hz_fg</color>
     <color name="dock_tool_pressed">#14000000</color>
     <color name="dock_track">#29000000</color>
-    <color name="dock_handle">#80111114</color>
-    <color name="dock_pad">#24767680</color>
-    <color name="dock_pad_line">#0D000000</color>
-    <color name="dock_hint">#993C3C43</color>
+    <color name="dock_handle">#805C6072</color>
+    <color name="dock_pad">@color/hz_surf2</color>
+    <color name="dock_pad_line">@color/hz_line</color>
+    <color name="dock_hint">@color/hz_fg2</color>
 </resources>

@@ -3,13 +3,13 @@
     <item android:state_pressed="true">
         <shape>
             <corners android:radius="@dimen/kb_key_radius" />
-            <solid android:color="@color/kb_recording_pressed" />
+            <solid android:color="@color/kb_danger_pressed" />
         </shape>
     </item>
     <item>
         <shape>
             <corners android:radius="@dimen/kb_key_radius" />
-            <solid android:color="@color/kb_recording" />
+            <solid android:color="@color/kb_danger" />
         </shape>
     </item>
 </selector>

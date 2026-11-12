@@ -92,7 +92,7 @@ check("Dibujable kb_chip_edit existe",
 check("Dibujable kb_chip_delete existe",
       os.path.isfile(os.path.join(
           WORKSPACE, "voice_bubble_stt/android/app/src/main/res/drawable/kb_chip_delete.xml")))
-for dw, color in [("kb_chip_edit.xml", "kb_key_bg_accent"), ("kb_chip_delete.xml", "kb_recording")]:
+for dw, color in [("kb_chip_edit.xml", "kb_key_bg_accent"), ("kb_chip_delete.xml", "kb_danger")]:
     raw = read(f"voice_bubble_stt/android/app/src/main/res/drawable/{dw}")
     check(f"{dw} punteado", "dashWidth" in raw and "dashGap" in raw, f"sin dash en {dw}")
     check(f"{dw} trazo {color}", color in raw)

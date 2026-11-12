@@ -354,7 +354,7 @@ class _RecordingContent extends StatelessWidget {
                           ],
                         ),
                         child: const Icon(Icons.stop_rounded,
-                            size: AppIcons.large, color: Colors.white),
+                            size: AppIcons.large, color: kOnEmber),
                       ),
                     ] else
                       const SizedBox(width: 4),

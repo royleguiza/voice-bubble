@@ -277,7 +277,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             ),
             TextButton(
               key: const ValueKey('noteEditorDeleteConfirm'),
-              style: TextButton.styleFrom(foregroundColor: kRecording),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(ctx).colorScheme.error,
+              ),
               onPressed: () => Navigator.of(ctx).pop(true),
               child: const Text('Eliminar'),
             ),
@@ -316,7 +318,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     final primary = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     final tertiary = isDark ? kLabelTertiaryDark : kLabelTertiaryLight;
-    final accent = isDark ? kAccentDark : kAccentLight;
+    final accent = isDark ? kTintTextDark : kTintTextLight;
     final insets = MediaQuery.paddingOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final toolbarGap = keyboard > 0 ? 8.0 : insets.bottom + 12;
@@ -437,7 +439,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                           key: const ValueKey('noteEditorTitleCounter'),
                           style: kTextCaption.copyWith(
                             color: titleLen >= NotesService.maxTituloLength
-                                ? kRecording
+                                ? (isDark ? kEmberTextDark : kEmberTextLight)
                                 : secondary,
                             fontFeatures: const [
                               FontFeature.tabularFigures()
@@ -533,7 +535,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                               key: const ValueKey('noteEditorDeleteButton'),
                               icon: Icons.delete_outline_rounded,
                               tooltip: 'Eliminar nota',
-                              color: isDark ? kRecordingDark : kRecording,
+                              color: isDark ? kDangerDark : kDangerLight,
                               onPressed: _delete,
                             ),
                           ],
@@ -632,7 +634,7 @@ class _SaveButton extends StatelessWidget {
                 Icons.check_rounded,
                 size: AppIcons.medium,
                 color: enabled
-                    ? Colors.white
+                    ? kOnEmber
                     : (isDark ? kLabelTertiaryDark : kLabelTertiaryLight),
               ),
             ),

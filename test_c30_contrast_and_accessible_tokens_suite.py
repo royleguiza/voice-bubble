@@ -12,8 +12,9 @@ Requisitos verificados:
    - kTileOrange oscurecido (0xFF9A5B00) pasa de 2.06:1 a > 5.0:1.
    - Todos los 7 kTile (Blue, Green, Orange, Red, Purple, Gray, Pink) superan 3.0:1.
 2. Adopción de tokens de texto sin primitivos crudos:
-   - buildLightTheme: onPrimary, onError, onSecondary, onTertiary usan kLabelPrimaryDark.
-   - buildDarkTheme: onPrimary, onSecondary, onTertiary usan kLabelPrimaryLight.
+   - Horizonte: onPrimary usa kOnEmber (texto sobre brasa) en ambos temas.
+   - buildLightTheme: onError, onSecondary, onTertiary usan kLabelPrimaryDark.
+   - buildDarkTheme: onSecondary, onTertiary usan kLabelPrimaryLight.
    - Cero Colors.white o Colors.black crudos en las definiciones onPrimary/onSecondary/onTertiary.
 3. Accesibilidad en SettingIconTile:
    - El glifo del icono usa kLabelPrimaryDark.
@@ -95,7 +96,7 @@ def test_theme_on_primary_uses_tokens():
     assert light_start != -1, "No se encontró buildLightTheme en design_tokens.dart"
     light_code = src[light_start:light_start + 1200]
 
-    assert "onPrimary: kLabelPrimaryDark" in light_code, "buildLightTheme debe usar kLabelPrimaryDark en onPrimary"
+    assert "onPrimary: kOnEmber" in light_code, "buildLightTheme debe usar kOnEmber (texto sobre brasa) en onPrimary"
     assert "onError: kLabelPrimaryDark" in light_code, "buildLightTheme debe usar kLabelPrimaryDark en onError"
     assert "onSecondary: kLabelPrimaryDark" in light_code, "buildLightTheme debe usar kLabelPrimaryDark en onSecondary"
     assert "onTertiary: kLabelPrimaryDark" in light_code, "buildLightTheme debe usar kLabelPrimaryDark en onTertiary"
@@ -106,7 +107,7 @@ def test_theme_on_primary_uses_tokens():
     assert dark_start != -1, "No se encontró buildDarkTheme en design_tokens.dart"
     dark_code = src[dark_start:dark_start + 1200]
 
-    assert "onPrimary: kLabelPrimaryLight" in dark_code, "buildDarkTheme debe usar kLabelPrimaryLight en onPrimary"
+    assert "onPrimary: kOnEmber" in dark_code, "buildDarkTheme debe usar kOnEmber (texto sobre brasa) en onPrimary"
     assert "onSecondary: kLabelPrimaryLight" in dark_code, "buildDarkTheme debe usar kLabelPrimaryLight en onSecondary"
     assert "onTertiary: kLabelPrimaryLight" in dark_code, "buildDarkTheme debe usar kLabelPrimaryLight en onTertiary"
     assert "onPrimary: Colors.black" not in dark_code, "buildDarkTheme retiene Colors.black crudo en onPrimary"
@@ -169,7 +170,7 @@ def test_negative_mutations():
     assert mut2_cr < 3.0, f"Mutación 2 debe fallar la guarda de contraste (< 3.0): {mut2_cr:.2f}:1"
 
     # Mutación 3: Regresar onPrimary a Colors.white en buildLightTheme
-    mut3 = tokens_src.replace("onPrimary: kLabelPrimaryDark", "onPrimary: Colors.white")
+    mut3 = tokens_src.replace("onPrimary: kOnEmber", "onPrimary: Colors.white", 1)
     light_start = mut3.find("ThemeData buildLightTheme()")
     light_code = mut3[light_start:light_start + 1200]
     assert "onPrimary: Colors.white" in light_code, "Mutación 3 falló al aplicar"
