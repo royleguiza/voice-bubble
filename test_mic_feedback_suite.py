@@ -217,18 +217,18 @@ check("Teclado: geometría única en HorizonView (centro del cronómetro, mini p
       and "timer.translationX = pillHorizon.timerCenterXPx - w / 2f" in dic
       and "timer.addOnLayoutChangeListener" in dic)
 check("Teclado: mini píldora difuminada hz_hole por degradado radial (sin blur) y partículas atenuadas",
-      "RadialGradient(" in hz and "MINI_FEATHER_DP = 9f" in hz and "miniPaint" in draw
+      "RadialGradient(" in hz and "MINI_FEATHER_DP = 5f" in hz and "miniPaint" in draw
       and "timerClearance(px[i], py[i], cy)" in draw
       and "BlurMaskFilter" not in hz and "RenderEffect" not in hz and "MaskFilter" not in hz)
-check("Teclado: extremo derecho con degradado transparente -> hz_hole bajo la ✕ (22 dp)",
-      "END_FADE_DP = 22f" in hz and "LinearGradient(" in hz and "endPaint" in draw
-      and "HorizonView.endFadeWidthPx(" in dic and "cancel.minimumWidth = dp(44f)" in dic
+check("Teclado: halo circular hz_hole (20 dp) centrado en la ✕, recortado dentro del borde",
+      "CANCEL_HALO_DP = 20f" in hz and "haloPaint" in draw and "innerClip" in draw
+      and "endPaint" not in hz and "LinearGradient" not in hz and "cancel.minimumWidth = dp(44f)" in dic
       and 'cancel.text = "✕"' in dic)
 check("Teclado: sin Paint/Shader nuevos en onDraw (pool de 60)",
       "Paint(" not in draw and "Gradient(" not in draw and "MAX_PARTICLES = 60" in hz)
-check("Teclado: partículas terminan antes de la ✕ (campo con margen derecho)",
+check("Teclado: partículas nacen en el centro de la ✕ (campo hasta su centro)",
       "var particleEndInsetPx: Float" in hz and "fieldRight(" in draw
-      and "pillHorizon.particleEndInsetPx = inset" in dic)
+      and "pillHorizon.particleEndInsetPx = inset" in dic and "cancel.width / 2f" in dic)
 check("Teclado: halo y anillo dibujan con las mismas constantes de la geometría",
       "r * (HALO_MIN_K + kk * HALO_GROW_K)" in hz and "(RING_MIN_DP + RING_GROW_DP * kk) * dp" in hz)
 for desc in ['"grabando dictado"', '"procesando"', '"dictar"', '"micrófono ocupado"']:

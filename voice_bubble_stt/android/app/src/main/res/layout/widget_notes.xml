@@ -119,7 +119,7 @@
                 android:tint="@color/hz_on_hole" />
         </FrameLayout>
 
-        <LinearLayout
+        <FrameLayout
             android:id="@+id/widget_rec_pill"
             android:layout_width="0dp"
             android:layout_height="48dp"
@@ -127,33 +127,33 @@
             android:layout_marginStart="6dp"
             android:layout_marginEnd="6dp"
             android:background="@drawable/widget_rec_bar_bg"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="2dp"
-            android:paddingEnd="2dp"
+            android:padding="2dp"
             android:visibility="gone">
 
-            <!-- Elemento decorativo visual: el estado de grabación se anuncia en widget_rec_label.
-                 Voz del widget (Horizonte fase 4): RemoteViews no admite vistas propias
-                 ni dibujo por cuadro, así que cada variante es un ProgressBar
-                 indeterminado con un AnimatedVectorDrawable en bucle (el sistema lo anima
-                 solo). Agujero a la izquierda y partículas que caen en él dentro de su
-                 propio cuadro de 88 dp: nunca pasan por encima del cronómetro ni de la X.
-                 El servicio solo alterna la variante visible (goteo / medio / fuerte)
-                 cuando cambia el nivel; pensando = anillo girando; sin animaciones del
-                 sistema = anillo estático. -->
+            <!-- Elemento decorativo (la voz animada). Sin texto visible: el estado (grabando / procesando / guardado) se
+                 anuncia por contentDescription de widget_voice_box (lo fija el provider).
+                 Voz del widget: RemoteViews no admite vistas propias ni dibujo por
+                 cuadro, así que cada variante es un ProgressBar indeterminado con un
+                 AnimatedVectorDrawable en bucle (el sistema lo anima solo).
+                 Capas (de abajo arriba): campo de partículas a TODO el ancho de la
+                 píldora (grabando: nacen a la derecha, bajo la X, y viajan a la
+                 izquierda hacia el agujero; pensando: rayitas nacen en el agujero y
+                 van a la derecha) -> agujero fijo de 44dp (no se estira) -> cronómetro
+                 centrado con respaldo oscuro difuso -> X con halo oscuro circular.
+                 El padding de 2dp deja libre el borde de brasa. -->
             <FrameLayout
                 android:id="@+id/widget_voice_box"
-                android:layout_width="88dp"
+                android:layout_width="match_parent"
                 android:layout_height="44dp"
-                android:contentDescription="@null">
+                android:layout_gravity="center_vertical"
+                android:contentDescription="Grabando">
 
                 <ProgressBar
                     android:id="@+id/widget_voice_low"
-                    android:layout_width="88dp"
+                    android:layout_width="match_parent"
                     android:layout_height="44dp"
-                    android:minWidth="88dp"
-                    android:maxWidth="88dp"
+                    android:minWidth="0dp"
+                    android:maxWidth="2000dp"
                     android:minHeight="44dp"
                     android:maxHeight="44dp"
                     android:indeterminate="true"
@@ -164,10 +164,10 @@
 
                 <ProgressBar
                     android:id="@+id/widget_voice_mid"
-                    android:layout_width="88dp"
+                    android:layout_width="match_parent"
                     android:layout_height="44dp"
-                    android:minWidth="88dp"
-                    android:maxWidth="88dp"
+                    android:minWidth="0dp"
+                    android:maxWidth="2000dp"
                     android:minHeight="44dp"
                     android:maxHeight="44dp"
                     android:indeterminate="true"
@@ -178,10 +178,10 @@
 
                 <ProgressBar
                     android:id="@+id/widget_voice_high"
-                    android:layout_width="88dp"
+                    android:layout_width="match_parent"
                     android:layout_height="44dp"
-                    android:minWidth="88dp"
-                    android:maxWidth="88dp"
+                    android:minWidth="0dp"
+                    android:maxWidth="2000dp"
                     android:minHeight="44dp"
                     android:maxHeight="44dp"
                     android:indeterminate="true"
@@ -192,10 +192,10 @@
 
                 <ProgressBar
                     android:id="@+id/widget_voice_think"
-                    android:layout_width="88dp"
+                    android:layout_width="match_parent"
                     android:layout_height="44dp"
-                    android:minWidth="88dp"
-                    android:maxWidth="88dp"
+                    android:minWidth="0dp"
+                    android:maxWidth="2000dp"
                     android:minHeight="44dp"
                     android:maxHeight="44dp"
                     android:indeterminate="true"
@@ -203,47 +203,41 @@
                     android:indeterminateDrawable="@drawable/widget_voice_think"
                     android:contentDescription="@null"
                     android:visibility="gone" />
-
-                <ImageView
-                    android:id="@+id/widget_voice_static"
-                    android:layout_width="88dp"
-                    android:layout_height="44dp"
-                    android:src="@drawable/widget_voice_static"
-                    android:contentDescription="@null"
-                    android:visibility="gone" />
             </FrameLayout>
+
+            <ImageView
+                android:id="@+id/widget_voice_static"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="start|center_vertical"
+                android:src="@drawable/widget_voice_static"
+                android:contentDescription="@null" />
 
             <Chronometer
                 android:id="@+id/widget_chrono"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="2dp"
+                android:layout_gravity="center"
+                android:background="@drawable/widget_rec_halo"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
                 android:textSize="12sp"
                 android:fontFamily="@font/jetbrains_mono"
                 android:textFontWeight="500"
                 android:textColor="@color/hz_on_hole" />
 
-            <TextView
-                android:id="@+id/widget_rec_label"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Grabando"
-                android:textSize="12sp"
-                android:textColor="@color/hz_on_hole"
-                android:fontFamily="@font/inter"
-                android:textFontWeight="500"
-                android:gravity="center_vertical"
-                android:paddingStart="6dp" />
-
             <ImageView
                 android:id="@+id/widget_cancel"
                 android:layout_width="44dp"
                 android:layout_height="44dp"
+                android:layout_gravity="end|center_vertical"
+                android:background="@drawable/widget_rec_halo"
                 android:src="@drawable/widget_ic_x"
                 android:padding="12dp"
                 android:contentDescription="Cancelar grabación" />
-        </LinearLayout>
+        </FrameLayout>
 
         <FrameLayout
             android:id="@+id/widget_notes_add_right"

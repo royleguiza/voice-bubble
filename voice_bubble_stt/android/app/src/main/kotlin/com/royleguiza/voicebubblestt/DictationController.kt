@@ -334,8 +334,8 @@ class DictationController(
         pill.addView(cancel, cancelLp)
 
         // Geometría única en HorizonView: se recalcula con el alto y ancho
-        // vivos de la pastilla (perfiles de altura y modo mini). La ✕ reserva
-        // su ancho + el degradado; el cronómetro se coloca donde HorizonView
+        // vivos de la pastilla (perfiles de altura y modo mini). La ✕ se
+        // indica por su centro (las partículas nacen ahí, bajo su halo); el cronómetro se coloca donde HorizonView
         // indica.
         val placeTimer = {
             val w = timer.width.toFloat()
@@ -345,7 +345,7 @@ class DictationController(
             }
         }
         pill.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            val inset = cancel.width + HorizonView.endFadeWidthPx(service.resources.displayMetrics.density)
+            val inset = cancel.width / 2f
             if (pillHorizon.particleEndInsetPx != inset) pillHorizon.particleEndInsetPx = inset
             placeTimer()
         }

@@ -48,7 +48,9 @@ check("+ a la izquierda del mic en el XML", pos_add < pos_mic)
 check("Header sin + (solo Notas + contador)",
       '@+id/widget_notes_add' in xml and xml.index('@+id/widget_notes_add') > xml.index('@+id/widget_notes_list'))
 check("Existe píldora de grabación", '@+id/widget_rec_pill' in xml)
-check("Existe label de píldora", '@+id/widget_rec_label' in xml)
+check("Píldora sin texto visible (sin label; estado por contentDescription)",
+      '@+id/widget_rec_label' not in xml and "widget_rec_label" not in PROVIDER.read_text()
+      and "setContentDescription(" in PROVIDER.read_text())
 check("Existe add espejo para modo mic-izq", '@+id/widget_notes_add_right' in xml)
 
 def dp_of(view_id, attr="layout_width"):
@@ -89,7 +91,8 @@ check("Contenedor sólido: hz_bg + borde 1dp hz_line + radio 22",
       and 'android:radius="22dp"' in _wbg)
 # Fondos (los íconos llevan fillColor #00000000 de trazo, que no es vidrio).
 _widget_drawables = sorted(f for f in (RES / "drawable").glob("widget_*.xml")
-                           if not f.name.startswith("widget_ic_"))
+                           if not f.name.startswith("widget_ic_")
+                           and f.name != "widget_rec_halo.xml")  # halo: degradado a transparente a propósito (no es vidrio)
 _alpha_hex = [f.name for f in _widget_drawables
               if re.search(r'#(?![Ff]{2})[0-9A-Fa-f]{2}[0-9A-Fa-f]{6}\b', f.read_text())]
 check("Drawables del widget sin colores translúcidos (sin vidrio)", not _alpha_hex, str(_alpha_hex))
@@ -125,21 +128,36 @@ for _n in ("low", "mid", "high"):
     _t = _avd(_n)
     _counts[_n] = _t.count('<group android:name="g')
     _tiers_ok = (_tiers_ok and "<animated-vector" in _t and 'android:repeatCount="infinite"' in _t
-                 and "@color/hz_hole" in _t and "@color/hz_ember" in _t and "@color/hz_hot" in _t
+                 and "@color/hz_ember" in _t and "@color/hz_hot" in _t
+                 and 'name="hole"' not in _t and 'android:viewportWidth="300"' in _t
                  and "android:startOffset=" in _t
                  and f'android:indeterminateDrawable="@drawable/widget_voice_{_n}"' in xml
                  and f'@+id/widget_voice_{_n}"' in xml)
 check("Tres variantes de voz (goteo/medio/fuerte) como ProgressBar + AVD en bucle",
-      _tiers_ok and _counts["low"] < _counts["mid"] < _counts["high"] <= 18, str(_counts))
-check("Pensando = anillo girando; sin animaciones = anillo estático",
-      'android:propertyName="rotation"' in _avd("think")
+      _tiers_ok and _counts["low"] < _counts["mid"] < _counts["high"] <= 40, str(_counts))
+check("Pensando = rayitas del agujero hacia la derecha; sin animaciones = solo agujero fijo",
+      'android:propertyName="translateX"' in _avd("think") and "<animated-vector" in _avd("think")
       and 'android:indeterminateDrawable="@drawable/widget_voice_think"' in xml
       and "@+id/widget_voice_static" in xml and "<animated-vector" not in _avd("static")
       and "ANIMATOR_DURATION_SCALE" in _prov_src)
-_box = xml.split('@+id/widget_voice_box"')[1].split("</FrameLayout>")[0] if '@+id/widget_voice_box"' in xml else ""
-check("Partículas en su propio cuadro, antes del cronómetro y la X (zona libre)",
-      _box != "" and xml.index('@+id/widget_voice_box"') < xml.index('@+id/widget_chrono"') < xml.index('@+id/widget_cancel"')
-      and 'android:layout_width="88dp"' in _box)
+_pill = xml.split('@+id/widget_rec_pill"')[1].split('@+id/widget_notes_add_right"')[0] if '@+id/widget_rec_pill"' in xml else ""
+_box = _pill.split('@+id/widget_voice_box"')[1].split("</FrameLayout>")[0] if '@+id/widget_voice_box"' in _pill else ""
+check("Píldora FrameLayout con padding (borde de brasa libre)",
+      xml.index('<FrameLayout\n            android:id="@+id/widget_rec_pill"') >= 0
+      and 'android:padding="2dp"' in _pill.split("<FrameLayout")[0] + _pill.split(">")[0])
+check("Campo de partículas a todo el ancho de la píldora (no caja de 88dp), bajo el agujero, cronómetro y X",
+      _box != "" and 'android:layout_width="88dp"' not in _box
+      and _box.count('android:layout_width="match_parent"') >= 4
+      and _pill.index('@+id/widget_voice_box"') < _pill.index('@+id/widget_voice_static"')
+      < _pill.index('@+id/widget_chrono"') < _pill.index('@+id/widget_cancel"'))
+check("Agujero fijo de 44dp (no se estira) y cronómetro/X con halo oscuro",
+      'android:layout_width="44dp"' in _pill.split('@+id/widget_voice_static"')[1].split("/>")[0]
+      and "@drawable/widget_rec_halo" in _pill.split('@+id/widget_chrono"')[1].split("/>")[0]
+      and "@drawable/widget_rec_halo" in _pill.split('@+id/widget_cancel"')[1].split("/>")[0]
+      and 'viewportWidth="44"' in _avd("static"))
+check("Estado accesible en contentDescription del campo (no texto visible)",
+      "R.id.widget_voice_box," in _prov_src and "setContentDescription(" in _prov_src
+      and "<TextView" not in _pill)
 check("Cambio de variante solo por nivel, con histéresis y ≤ ~3 por segundo",
       "fun offer(level: Float, nowMs: Long): WidgetVoiceTier?" in _voice_level
       and "if (next == tier) return null" in _voice_level

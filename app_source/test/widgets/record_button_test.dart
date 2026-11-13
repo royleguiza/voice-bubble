@@ -539,8 +539,9 @@ void main() {
           expect((center - g.center).distance, lessThan(0.01));
           expect(radius, closeTo(g.radius, 0.01));
           // Alcance pintado (halo o anillo) nunca mayor que el máximo.
+          // (el halo del ✕ no cuenta: es del ✕, no del agujero)
           final painted = canvas.circles
-              .where((c) => c.$2 >= 2)
+              .where((c) => c.$2 >= 2 && (c.$1 - center).distance < g.radius)
               .map((c) => (c.$1 - center).distance + c.$2)
               .reduce((a, b) => a > b ? a : b);
           expect(painted, lessThanOrEqualTo(g.outerExtent + 0.01));
@@ -589,7 +590,7 @@ void main() {
           expect(capsule.left - (g.center.dx + g.outerExtent),
               greaterThanOrEqualTo(HoleGeometry.timerGap - 0.01));
           expect(capsule.right + HoleGeometry.timerFade,
-              lessThanOrEqualTo(cancel.left));
+              lessThanOrEqualTo(cancel.center.dx - HoleGeometry.cancelHalo));
           // El ✕ conserva su área táctil.
           expect(cancel.width, greaterThanOrEqualTo(44));
           expect(cancel.height, greaterThanOrEqualTo(44));
@@ -626,7 +627,7 @@ void main() {
           final dy = [core.top - box.bottom, box.top - core.bottom, 0.0]
               .reduce((a, b) => a > b ? a : b);
           final d = (dx * dx + dy * dy);
-          if (d < 4.5 * 4.5) {
+          if (d < (HoleGeometry.timerFade / 2) * (HoleGeometry.timerFade / 2)) {
             nearCore++;
             if (alpha >= 0) {
               expect(alpha, lessThanOrEqualTo(0.6),
@@ -661,8 +662,8 @@ void main() {
     });
 
     testWidgets(
-        'el ✕ lleva un degradado del color del agujero y las partículas '
-        'nacen antes de él', (tester) async {
+        'el ✕ lleva un halo circular recortado dentro de la pastilla y las '
+        'partículas nacen en su centro', (tester) async {
       screenWidth(tester, 411);
       await tester.pumpWidget(pillAt(textScale: 1, level: () async => 1.0));
       await tester.pump(const Duration(milliseconds: 400));
@@ -670,8 +671,8 @@ void main() {
       final cancel =
           localRect(tester, find.byKey(const ValueKey('recordCancelButton')));
       expect(scene.cancelRect, isNotNull);
-      expect(scene.right, cancel.left - HoleGeometry.cancelFadeLead);
-      // El degradado (con shader) se pinta y cubre hasta el borde derecho.
+      expect(scene.right, closeTo(cancel.center.dx, 0.01));
+      // Ya no hay rectángulo con degradado que tape el borde derecho.
       final canvas = _ExtentCanvas();
       final paint = tester.widget<CustomPaint>(horizon);
       paint.painter!.paint(canvas, tester.getSize(horizon));
@@ -679,10 +680,16 @@ void main() {
           .where((c) => c.invocation.memberName == #drawRect)
           .where((c) =>
               (c.invocation.positionalArguments[1] as Paint).shader != null);
-      expect(fades, hasLength(1));
-      final r = fades.single.invocation.positionalArguments[0] as Rect;
-      expect(r.left, cancel.left - HoleGeometry.cancelFadeLead);
-      expect(r.right, tester.getSize(horizon).width);
+      expect(fades, isEmpty);
+      // El halo es un círculo con shader, recortado a la pastilla.
+      expect(
+          canvas.invocations.where((c) =>
+              c.invocation.memberName == #drawCircle &&
+              (c.invocation.positionalArguments[2] as Paint).shader != null &&
+              c.invocation.positionalArguments[1] == 1.0),
+          isNotEmpty);
+      expect(canvas.invocations.where((c) =>
+          c.invocation.memberName == #clipRRect), isNotEmpty);
     });
 
     testWidgets(

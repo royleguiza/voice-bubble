@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Voz del widget sin animaciones del sistema: anillo estático (design.md §14). -->
+<!-- Agujero fijo de 44dp (capa izquierda de la píldora, nunca se estira):
+     anillo de brasa sobre fondo agujero. Va por encima del campo de partículas,
+     así que las partículas "caen" debajo de él. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="88dp" android:height="44dp"
-    android:viewportWidth="88" android:viewportHeight="44">
+    android:width="44dp" android:height="44dp"
+    android:viewportWidth="44" android:viewportHeight="44">
     <path android:name="hole" android:fillColor="@color/hz_hole"
         android:strokeColor="@color/hz_ember" android:strokeWidth="2"
         android:pathData="M11,22a11,11 0 1,0 22,0a11,11 0 1,0 -22,0z" />

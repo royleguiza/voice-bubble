@@ -455,15 +455,15 @@ class HoleGeometry {
   static const double timerPadV = 3;
 
   /// Ancho del borde difuminado de la mini píldora (hacia afuera).
-  static const double timerFade = 9;
+  static const double timerFade = 5;
 
   /// Margen del ✕ al borde derecho del contenido.
   static const double cancelEdge = 10;
 
-  /// El degradado que lleva al ✕ empieza esta distancia a la izquierda de
-  /// su área táctil y es opaco (color del agujero) [cancelFade] más allá.
-  static const double cancelFadeLead = 12;
-  static const double cancelFade = 22;
+  /// Radio del halo circular (color del agujero, opaco al centro y
+  /// transparente en el borde) centrado en el ✕. Las partículas nacen en
+  /// su centro y el tiempo no lo invade.
+  static const double cancelHalo = 20;
 
   /// Borde izquierdo del tiempo (fuera del halo máximo).
   double get timerLeft => center.dx + outerExtent + timerGap;
@@ -481,7 +481,7 @@ class HoleGeometry {
         timerLeft,
         cancel == null
             ? size.width - cancelEdge
-            : cancel.left - cancelFadeLead - zonePad,
+            : cancel.center.dx - cancelHalo - zonePad,
       );
 
   /// Mini píldora del tiempo: el texto [text] más su holgura, centrada en
@@ -626,11 +626,11 @@ class HorizonScene extends ChangeNotifier {
     this.size = size;
     timerRect = timer;
     cancelRect = cancel;
-    _right = cancel == null ? null : cancel.left - HoleGeometry.cancelFadeLead;
+    _right = cancel?.center.dx;
     if (_seedPending) _seed();
   }
 
-  /// Borde derecho del recorrido de las partículas.
+  /// Extremo derecho del recorrido: el centro del ✕ (o el borde sin ✕).
   double get right => _right ?? size.width;
 
   void _seed() {
@@ -683,8 +683,8 @@ class HorizonScene extends ChangeNotifier {
         _acc -= 1;
         final i = _freeSlot();
         if (i < 0) break;
-        _x[i] = right + 4;
-        _y[i] = h * (0.12 + _rng.nextDouble() * 0.76);
+        _x[i] = right;
+        _y[i] = h * (0.2 + _rng.nextDouble() * 0.6);
         _s[i] = 0.55 + _rng.nextDouble() * 0.9;
         _kind[i] = _rng.nextDouble() < 0.45
             ? _glyph0 + _rng.nextInt(_glyphs.length)
@@ -709,8 +709,8 @@ class HorizonScene extends ChangeNotifier {
       if (kind == _line) {
         _x[i] += dt *
             (26 + 70 * _s[i]) *
-            math.max(0.25, 1 - (_x[i] - cx) / (w * 0.9));
-        if (_lineAlpha(i, cx, r, w) <= 0 && _x[i] >= cx + r + 16) {
+            math.max(0.25, 1 - (_x[i] - cx) / (right * 0.9));
+        if (_lineAlpha(i, cx, r, right) <= 0 && _x[i] >= cx + r + 16) {
           _kind[i] = _inactive;
         }
       } else {
@@ -734,7 +734,7 @@ class HorizonScene extends ChangeNotifier {
 
   double _lineAlpha(int i, double cx, double r, double w) =>
       math.min(1.0, (_x[i] - cx - r) / 14) *
-      math.max(0.0, 1 - (_x[i] - cx) / (w * 0.86));
+      ((w - _x[i]) / 24).clamp(0.0, 1.0);
 
   static const List<String> _glyphs = ['0', '1', '{', '}'];
 }
@@ -771,7 +771,7 @@ class HorizonPainter extends CustomPainter {
         final x = scene._x[i];
         final y = scene._y[i];
         if (kind == HorizonScene._line) {
-          final a = scene._lineAlpha(i, cx, r, w).clamp(0.0, 1.0);
+          final a = scene._lineAlpha(i, cx, r, right).clamp(0.0, 1.0);
           res.stroke
             ..color = res.tint(0, a)
             ..strokeWidth = 2;
@@ -781,7 +781,7 @@ class HorizonPainter extends CustomPainter {
         }
         final d = ((x - cx) / (right - cx)).clamp(0.0, 1.0);
         var a = math.min(1.0, 0.25 + d * 0.9) *
-            ((right - x) / 20 + 0.2).clamp(0.0, 1.0);
+            ((right - x) / HoleGeometry.cancelHalo).clamp(0.0, 1.0);
         if (a <= 0.02) continue;
         final colorIdx = d < 0.18 ? 2 : (d < 0.45 ? 1 : 0);
         final k = 0.45 + 0.55 * d;
@@ -843,7 +843,7 @@ class HorizonPainter extends CustomPainter {
     final timer = scene.timerRect;
     if (live && timer != null) _timerPill(canvas, res, timer);
     final cancel = scene.cancelRect;
-    if (cancel != null) _cancelFade(canvas, res, cancel, size);
+    if (cancel != null) _cancelHalo(canvas, res, cancel, size);
     _ringGlow(canvas, res, g, k);
     if (scene.phase == VoicePhase.thinking) {
       _spinArc(canvas, res, cx, cy, r, live ? scene.clock : 0);
@@ -881,26 +881,46 @@ class HorizonPainter extends CustomPainter {
     }
   }
 
-  // Degradado horizontal que lleva al ✕ (se rearma solo si cambia).
-  double? _fadeLeft;
-  bool? _fadeDark;
-  final Paint _fadePaint = Paint()..style = PaintingStyle.fill;
+  // Halo circular del ✕ (shader unitario; se rearma solo si cambia el color)
+  // y recorte interior que lo mantiene dentro de la pastilla.
+  bool? _haloDark;
+  final Paint _haloPaint = Paint()..style = PaintingStyle.fill;
+  Size? _clipFor;
+  RRect? _clipRRect;
 
-  /// Del transparente al color del agujero, sobre el que va el ✕; opaco
-  /// hasta el borde derecho.
-  void _cancelFade(
+  /// Halo del color del agujero centrado en el ✕: opaco al centro y
+  /// transparente en el borde. Va recortado al lienzo (redondeado), de
+  /// modo que nunca cubre el borde de brasa.
+  void _cancelHalo(
       Canvas canvas, _PainterResources res, Rect cancel, Size size) {
-    final x0 = cancel.left - HoleGeometry.cancelFadeLead;
-    if (_fadeLeft != x0 || _fadeDark != isDark) {
-      _fadeLeft = x0;
-      _fadeDark = isDark;
-      _fadePaint.shader = ui.Gradient.linear(
-        Offset(x0, 0),
-        Offset(x0 + HoleGeometry.cancelFade, 0),
-        [res.hole.withValues(alpha: 0), res.hole],
+    if (_haloDark != isDark) {
+      _haloDark = isDark;
+      _haloPaint.shader = ui.Gradient.radial(
+        Offset.zero,
+        1,
+        [
+          res.hole,
+          res.hole,
+          res.hole.withValues(alpha: 0.4),
+          res.hole.withValues(alpha: 0),
+        ],
+        const [0, 0.5, 0.78, 1],
       );
     }
-    canvas.drawRect(Rect.fromLTRB(x0, 0, size.width, size.height), _fadePaint);
+    if (_clipFor != size) {
+      _clipFor = size;
+      _clipRRect = RRect.fromRectAndRadius(
+          Offset.zero & size, Radius.circular(size.height / 2));
+    }
+    final c = cancel.center;
+    // Con pastillas bajas el halo no excede la mitad del alto.
+    final rad = math.min(HoleGeometry.cancelHalo, size.height / 2);
+    canvas.save();
+    canvas.clipRRect(_clipRRect!);
+    canvas.translate(c.dx, c.dy);
+    canvas.scale(rad);
+    canvas.drawCircle(Offset.zero, 1, _haloPaint);
+    canvas.restore();
   }
 
   void _ringGlow(

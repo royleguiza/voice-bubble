@@ -116,8 +116,8 @@ class WidgetNotesProvider : AppWidgetProvider() {
 
         /**
          * Muestra UNA sola vista de voz: grabando = la variante del nivel
-         * [tier]; procesando = anillo girando; guardado/pendiente o sin
-         * animaciones del sistema = anillo estático. Solo visibilidades: el
+         * [tier]; procesando = rayitas que salen del agujero;
+         * guardado/pendiente o sin animaciones del sistema = solo el agujero fijo. Solo visibilidades: el
          * movimiento lo hace el AnimatedVectorDrawable (sin bitmaps por cuadro).
          */
         private fun applyVoiceVisual(context: Context, views: RemoteViews, state: String, tier: WidgetVoiceTier) {
@@ -128,7 +128,8 @@ class WidgetNotesProvider : AppWidgetProvider() {
             }
             val thinking = state == "transcribing" && !still
             views.setViewVisibility(R.id.widget_voice_think, if (thinking) View.VISIBLE else View.GONE)
-            views.setViewVisibility(R.id.widget_voice_static, if (!recording && !thinking) View.VISIBLE else View.GONE)
+            // El agujero (widget_voice_static) es una capa fija siempre visible:
+            // en guardado/pendiente/sin animaciones queda solo él.
         }
 
         /**
@@ -247,7 +248,6 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setTextColor(R.id.widget_notes_count, secondary)
             views.setTextColor(R.id.widget_pending_count, secondary)
             views.setTextColor(R.id.widget_chrono, onHole)
-            views.setTextColor(R.id.widget_rec_label, onHole)
 
             val pending = pendingSnapshot.items.size
             if (pending > 0) {
@@ -327,8 +327,9 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 R.id.widget_cancel,
                 if (recording) View.VISIBLE else View.GONE,
             )
-            views.setTextViewText(
-                R.id.widget_rec_label,
+            // Sin texto visible: el estado se anuncia como descripción accesible.
+            views.setContentDescription(
+                R.id.widget_voice_box,
                 when (state) {
                     "transcribing" -> "Procesando"
                     "saved" -> "Nota guardada"
@@ -356,7 +357,6 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_rec_pill, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_voice_box, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_chrono, dictatePi)
-            views.setOnClickPendingIntent(R.id.widget_rec_label, dictatePi)
 
             val cancelIntent = Intent(context, WidgetDictationService::class.java).apply {
                 action = WidgetDictationService.ACTION_CANCEL
