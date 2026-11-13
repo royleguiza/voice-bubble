@@ -12,6 +12,7 @@ import '../services/pending_note_queue.dart';
 import '../models/transcription.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
+import '../ui/horizon_intro.dart';
 import '../ui/transcription_feedback.dart';
 import '../helpers/note_groups.dart';
 import 'settings_screen.dart';
@@ -1003,18 +1004,43 @@ class _HomeScreenState extends State<HomeScreen>
   /// Abre Configuración y, al volver, recarga clave, modo y cola (la app
   /// los cachea para grabar/transcribir sin releer el keystore en cada uso).
   Future<void> _openSettings() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SettingsScreen(
-          storageService: _storageService,
-          floatingBubbleService: _floatingBubbleService,
-        ),
+    final route = MaterialPageRoute<void>(
+      builder: (_) => SettingsScreen(
+        storageService: _storageService,
+        floatingBubbleService: _floatingBubbleService,
       ),
     );
+    await Navigator.push(context, route);
+    // Animación corta de vuelta a Inicio (design.md §15): arranca sin esperar
+    // a la recarga de abajo.
+    unawaited(_playReturnIntro(route));
     await _loadApiKey();
     await _loadRecordMode();
     await _loadNotes();
+  }
+
+  /// Espera a que la transición de salida de [route] termine (la capa va
+  /// debajo de la ruta de Ajustes mientras se desliza) y reproduce la vuelta.
+  Future<void> _playReturnIntro(ModalRoute<void> route) async {
+    final intro = HorizonIntroScope.maybeOf(context);
+    if (intro == null) return;
+    final anim = route.animation;
+    if (anim != null && anim.status != AnimationStatus.dismissed) {
+      final settled = Completer<void>();
+      void onStatus(AnimationStatus status) {
+        if (status == AnimationStatus.dismissed && !settled.isCompleted) {
+          settled.complete();
+        }
+      }
+
+      anim.addStatusListener(onStatus);
+      try {
+        await settled.future;
+      } finally {
+        anim.removeStatusListener(onStatus);
+      }
+    }
+    if (mounted) intro.playReturn();
   }
 
   void _selectTab(int tab) {
@@ -1040,6 +1066,33 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final intro = HorizonIntroScope.maybeOf(context);
+    return PopScope(
+      // «Atrás» que cerraría la app se reemplaza por la animación de salida
+      // (design.md §15). Con búsqueda, grabación o transcripción en curso, o
+      // sin animación (reducir movimiento, TalkBack, sin host) todo queda
+      // como antes: el framework cierra la app sin pasar por acá.
+      canPop: intro == null || !_exitAnimationApplies(context),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) intro?.requestExit();
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  /// Hay algo en curso que «atrás» no debe pisar con la animación de salida.
+  bool get _busyForExit =>
+      _query.trim().isNotEmpty ||
+      _isRecording ||
+      _isStartingRecording ||
+      _isStoppingRecording ||
+      _isTranscribing ||
+      _isTranscribingPending;
+
+  bool _exitAnimationApplies(BuildContext context) =>
+      !_busyForExit && HorizonIntro.allowedIn(context);
+
+  Widget _buildScaffold(BuildContext context) {
     final insets = MediaQuery.paddingOf(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final labelSecondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;

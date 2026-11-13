@@ -532,8 +532,15 @@ const Duration kAnimMorph = Duration(milliseconds: 350);
 // Arranque y fondos (design.md §15)
 // ---------------------------------------------------------------------------
 
-/// Arranque, fase 1: el agujero grande traga símbolos en espiral.
-const Duration kIntroSwallow = Duration(milliseconds: 700);
+/// Arranque en frío, fase 1: el agujero grande traga símbolos en espiral.
+const Duration kIntroSwallow = Duration(milliseconds: 1300);
+
+/// Fase 1 de la versión corta (al volver de Ajustes a Inicio).
+const Duration kIntroSwallowReturn = Duration(milliseconds: 600);
+
+/// Salida de la app con «atrás» desde Inicio: la entrada invertida, en una
+/// sola fase (el agujero crece desde el botón y el fondo cubre Inicio).
+const Duration kIntroExit = Duration(milliseconds: 500);
 
 /// Arranque, fase 2: el agujero se achica y aterriza en el botón de dictar
 /// mientras el fondo de la capa se desvanece y aparece Inicio.
