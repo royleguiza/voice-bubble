@@ -1119,19 +1119,20 @@ class WidgetNoteEditActivity : Activity() {
             )
             val box = android.widget.LinearLayout(this).apply {
                 orientation = android.widget.LinearLayout.VERTICAL
-                setBackgroundResource(R.drawable.widget_glass_inner)
+                setBackgroundResource(R.drawable.widget_sheet_bg)
                 setPadding(pad, pad, pad, pad)
             }
             val title = android.widget.TextView(this).apply {
                 text = "¿Eliminar nota?"
                 setTextColor(ContextCompat.getColor(context, R.color.kb_label))
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                typeface = KbFonts.display(context)
             }
             box.addView(title)
             val description = android.widget.TextView(this).apply {
                 text = "Se borra la nota y su audio. No se puede deshacer."
                 setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
+                typeface = KbFonts.body(context)
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
                 setPadding(0, (8 * density).toInt(), 0, pad)
             }
@@ -1147,8 +1148,8 @@ class WidgetNoteEditActivity : Activity() {
                 text = "Cancelar"
                 gravity = android.view.Gravity.CENTER
                 setPadding(pad, pad, pad, pad)
-                setBackgroundResource(R.drawable.widget_note_card_bg)
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
+                setBackgroundResource(R.drawable.widget_secondary_bg)
+                setTextColor(ContextCompat.getColor(context, R.color.kb_label))
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
                 setOnClickListener { dialog.dismiss() }
             }
@@ -1164,7 +1165,7 @@ class WidgetNoteEditActivity : Activity() {
                 setBackgroundResource(R.drawable.kb_key_danger)
                 setTextColor(ContextCompat.getColor(context, R.color.kb_label_on_danger))
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                typeface = KbFonts.body(context, strong = true)
                 setOnClickListener {
                     dialog.dismiss()
                     requestDelete()
@@ -1339,7 +1340,7 @@ class WidgetNoteEditActivity : Activity() {
         findViewById<View>(R.id.btn_gemini_resumir)?.isEnabled = !busy
     }
 
-    /** Diálogo de vidrio con el mismo estilo que el de eliminar. */
+    /** Diálogo sólido (hoja bg + line) con el mismo estilo que el de eliminar. */
     private fun showGlassDialog(
         title: String,
         message: String,
@@ -1357,7 +1358,7 @@ class WidgetNoteEditActivity : Activity() {
             )
             val box = android.widget.LinearLayout(this).apply {
                 orientation = android.widget.LinearLayout.VERTICAL
-                setBackgroundResource(R.drawable.widget_glass_inner)
+                setBackgroundResource(R.drawable.widget_sheet_bg)
                 setPadding(pad, pad, pad, pad)
             }
             box.addView(
@@ -1365,7 +1366,7 @@ class WidgetNoteEditActivity : Activity() {
                     text = title
                     setTextColor(ContextCompat.getColor(context, R.color.kb_label))
                     setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
-                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                    typeface = KbFonts.display(context)
                 },
             )
             val scroll = android.widget.ScrollView(this)
@@ -1374,6 +1375,7 @@ class WidgetNoteEditActivity : Activity() {
                     text = message
                     setTextIsSelectable(true)
                     setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
+                    typeface = KbFonts.body(context)
                     setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
                     setPadding(0, (8 * density).toInt(), 0, pad)
                 },
@@ -1399,8 +1401,8 @@ class WidgetNoteEditActivity : Activity() {
                 text = dismissLabel
                 gravity = android.view.Gravity.CENTER
                 setPadding(pad, pad, pad, pad)
-                setBackgroundResource(R.drawable.widget_note_card_bg)
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
+                setBackgroundResource(R.drawable.widget_secondary_bg)
+                setTextColor(ContextCompat.getColor(context, R.color.kb_label))
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
                 setOnClickListener { dialog.dismiss() }
             }
@@ -1414,10 +1416,10 @@ class WidgetNoteEditActivity : Activity() {
                     text = actionLabel
                     gravity = android.view.Gravity.CENTER
                     setPadding(pad, pad, pad, pad)
-                    setBackgroundResource(R.drawable.kb_key_accent)
+                    setBackgroundResource(R.drawable.widget_primary_bg)
                     setTextColor(ContextCompat.getColor(context, R.color.kb_label_on_accent))
                     setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-                    typeface = android.graphics.Typeface.DEFAULT_BOLD
+                    typeface = KbFonts.body(context, strong = true)
                     setOnClickListener {
                         dialog.dismiss()
                         onAction?.invoke()

@@ -137,7 +137,7 @@ Compilación ~4–5 min, tests JVM ~1.5 min. `--offline` funciona mientras la ca
 
 ## 8. Anti-patrones prohibidos
 
-- ❌ Usar vidrio o desenfoque fuera de la excepción del widget (Liquid Glass ya no rige; ver Horizonte en `design.md` §2), un segundo acento además de la brasa, o hardcodear colores fuera de los tokens de `design.md`.
+- ❌ Usar vidrio o desenfoque en cualquier superficie, widget incluido (Liquid Glass ya no rige; ver Horizonte en `design.md` §2 y §14), un segundo acento además de la brasa, o hardcodear colores fuera de los tokens de `design.md`.
 - ❌ Toggle de tema claro/oscuro dentro de la app (seguir el sistema, siempre).
 - ❌ Añadir features fuera del alcance del README (la app hace UNA cosa).
 - ❌ Avanzar de hito sin criterios de aceptación completos.

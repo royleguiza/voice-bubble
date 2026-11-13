@@ -61,7 +61,8 @@ check("Seleccion de diagonal con goLeft/goUp y clamp coerceIn",
       "goLeft" in kt and "goUp" in kt and "coerceIn" in kt)
 check("Morph reversible al origen (originX/originY/originSize)",
       "originX" in kt and "originY" in kt and "originSize" in kt)
-check("Radio morph 32dp<->20dp como el lab", "20f * density" in kt)
+# Horizonte fase 4: la tarjeta abierta tiene radio 18 (antes 20).
+check("Radio morph burbuja<->18dp (Horizonte)", "MODAL_RADIUS_DP = 18f" in kt and "MODAL_RADIUS_DP * density" in kt)
 check("Reduced Motion via ANIMATOR_DURATION_SCALE", "ANIMATOR_DURATION_SCALE" in kt)
 check("Overlay TYPE_APPLICATION_OVERLAY + FLAG_NOT_FOCUSABLE",
       "TYPE_APPLICATION_OVERLAY" in kt and "FLAG_NOT_FOCUSABLE" in kt)
@@ -79,6 +80,24 @@ check("Mic estilo kb_ic_mic abajo-derecha + rayita Contraer",
       "kb_ic_mic" in kt and '"Contraer"' in kt)
 check("Haptico al seleccionar (VIRTUAL_KEY tolerante)", "VIRTUAL_KEY" in kt)
 check("Vacio elegante Sin transcripciones", "Sin transcripciones todav" in cards)
+
+# --- 3b. Aspecto Horizonte (fase 4) ---
+_lits = re.findall(r"0x[0-9A-Fa-f]{6,8}|Color\.(?:WHITE|BLACK|GRAY|GREEN|RED|parseColor|rgb|argb)",
+                   kt + history + read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/BubbleHistoryInteractions.kt"))
+check("Historial sin grises iOS ni verdes literales (todo por tokens hz_*)", not _lits, f"literales: {_lits}")
+check("Selección/confirmación en brasa suave + borde brasa (no verde)",
+      "R.color.hz_ember_soft" in history and "R.color.hz_ember" in history and "238636" not in cards + kt)
+check("Hora en mono en columna fija de 44 dp (sin inventarla si falta)",
+      "TIME_COLUMN_DP = 44" in history and "KbFonts.mono(context)" in history
+      and "if (!time.isNullOrEmpty())" in history and "localTime(timestamp)" in kt)
+check("Texto de fila en Inter y separador hz_line",
+      "KbFonts.body(context)" in history and "R.color.hz_line" in history and "Gravity.BOTTOM" in history)
+check("Título 'Historial de transcripciones' con etiqueta de grupo (mono, mayúsculas, fg2)",
+      '"Historial de transcripciones"' in kt and "isAllCaps = true" in kt and "R.color.hz_fg2" in kt
+      and "KbFonts.mono(context, KeyFactory.MONO_LABEL_WEIGHT)" in kt)
+check("Micrófono del pie = agujero (hole + anillo brasa, glifo on-hole)",
+      "R.color.hz_hole" in kt and "R.color.hz_on_hole" in kt)
+check("Copiar de fila con target de 44 dp", "val s = (44 * density).toInt()" in history)
 
 # --- 4. Wiring en FloatingBubbleService ---
 # Barra flotante (2026-10-30): el toque largo vive en DockController (barra y burbuja).

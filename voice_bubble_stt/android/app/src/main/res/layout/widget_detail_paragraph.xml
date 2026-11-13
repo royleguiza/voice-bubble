@@ -9,5 +9,6 @@
     android:paddingBottom="8dp"
     android:text=""
     android:textSize="13sp"
-    android:lineSpacingExtra="2dp"
+    android:fontFamily="@font/inter"
+    android:lineSpacingMultiplier="1.5"
     android:textColor="@color/kb_label" />

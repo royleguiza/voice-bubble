@@ -5,9 +5,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.Configuration
-import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.provider.Settings
@@ -46,6 +45,8 @@ class BubbleHistoryController(
         private const val MODAL_W_DP = 300
         private const val MODAL_H_DP = 400
         private const val MORPH_MS = 320L
+        /** Radio de la tarjeta abierta (Horizonte fase 4: 18f * density). */
+        private const val MODAL_RADIUS_DP = 18f
         private const val LONG_PRESS_MS = 450L
         private const val SWIPE_ARM_DP = 48
         private const val SWIPE_MAX_DP = 72
@@ -80,6 +81,7 @@ class BubbleHistoryController(
     private var cardsList: LinearLayout? = null
     private var copyAllBtn: ImageView? = null
     private var handleLabel: TextView? = null
+    private var titleLabel: TextView? = null
     private var morphAnimator: ValueAnimator? = null
     private var originX = 0
     private var originY = 0
@@ -270,8 +272,8 @@ class BubbleHistoryController(
             return
         }
         val bg = bgDrawable
-        val startR = if (opening) BUBBLE_DP * density / 2f else 20f * density
-        val endR = if (opening) 20f * density else BUBBLE_DP * density / 2f
+        val startR = if (opening) BUBBLE_DP * density / 2f else MODAL_RADIUS_DP * density
+        val endR = if (opening) MODAL_RADIUS_DP * density else BUBBLE_DP * density / 2f
         if (opening) {
             cardsList?.alpha = 0f
         }
@@ -320,11 +322,11 @@ class BubbleHistoryController(
         val bg = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = BUBBLE_DP * density / 2f
-            // Glass adaptativo por tema (values-night en oscuro): en claro
-            // las tarjetas claras necesitan fondo claro para tener contraste.
+            // Horizonte: tarjeta sólida bg + borde line de 1 dp (tokens
+            // claro/noche), sin translucidez ni desenfoque.
             setColor(ContextCompat.getColor(context, R.color.bubble_modal_bg))
             setStroke(
-                (1.5f * density).toInt(),
+                maxOf(1, density.toInt()),
                 ContextCompat.getColor(context, R.color.bubble_modal_border)
             )
         }
@@ -333,7 +335,6 @@ class BubbleHistoryController(
     }
 
     private fun buildOverlay(modalW: Int, modalH: Int) {
-        val dark = isDarkUi()
         val root = FrameLayout(context).apply {
             background = modalBackground()
             // Compactar al tocar fuera (requiere WATCH_OUTSIDE_TOUCH en la
@@ -354,6 +355,18 @@ class BubbleHistoryController(
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
+        // Título de la sección con estilo de etiqueta de grupo (mono en
+        // mayúsculas con tracking, fg2; design.md §13).
+        val title = groupLabel(sectionTitle()).apply {
+            val padH = (14 * density).toInt()
+            setPadding(padH, (14 * density).toInt(), padH, (2 * density).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
+        titleLabel = title
+        column.addView(title)
         val scroll = ScrollView(context).apply {
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
@@ -363,7 +376,7 @@ class BubbleHistoryController(
         val list = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             val pad = (12 * density).toInt()
-            setPadding(pad, (14 * density).toInt(), pad, (4 * density).toInt())
+            setPadding(pad, (4 * density).toInt(), pad, (4 * density).toInt())
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
@@ -397,10 +410,8 @@ class BubbleHistoryController(
                     setImageResource(R.drawable.ic_copy)
                 } catch (_: Throwable) {}
             }
-            setColorFilter(if (dark) Color.WHITE else 0xFF1C1C1E.toInt()) // #1C1C1E
-            background = circleBackground(
-                if (dark) 0xFF3A3A3C.toInt() else 0xFFE4E4E8.toInt() // #3A3A3C / #E4E4E8
-            )
+            setColorFilter(ContextCompat.getColor(context, R.color.hz_fg))
+            background = iconButtonBackground()
             val pad = (13 * density).toInt()
             setPadding(pad, pad, pad, pad)
             contentDescription = "Copiar seleccionados"
@@ -475,21 +486,13 @@ class BubbleHistoryController(
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = 10f * density
-                setColor(if (dark) 0xFF8E8E93.toInt() else 0xFFAEAEB2.toInt()) // #FF8E8E93 / #FFAEAEB2
+                // Agarradera en línea sólida (design.md §13 «Hojas»).
+                setColor(ContextCompat.getColor(context, R.color.hz_line))
             }
         }
         handleWrap.addView(handleBar)
         // Etiqueta de sección bajo la rayita: siempre dice dónde se está.
-        val darkNow = dark
-        val sectionLabel = TextView(context).apply {
-            text = "Historial"
-            setTextColor(if (darkNow) 0xFFAEAEB2.toInt() else 0xFF6E6E73.toInt()) // #FFAEAEB2 / #FF6E6E73
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            typeface = Typeface.DEFAULT_BOLD
-            isAllCaps = true
-            try {
-                letterSpacing = 0.06f
-            } catch (_: Throwable) {}
+        val sectionLabel = groupLabel("Historial").apply {
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -510,10 +513,9 @@ class BubbleHistoryController(
                     setImageResource(R.drawable.kb_ic_mic)
                 } catch (_: Throwable) {}
             }
-            setColorFilter(ContextCompat.getColor(context, R.color.kb_recording))
-            background = circleBackground(
-                if (dark) 0xFF3A3A3C.toInt() else 0xFFE4E4E8.toInt() // #3A3A3C / #E4E4E8
-            )
+            // El micrófono es el agujero: hole + anillo brasa, glifo on-hole.
+            setColorFilter(ContextCompat.getColor(context, R.color.hz_on_hole))
+            background = holeBackground()
             val pad = (12 * density).toInt()
             setPadding(pad, pad, pad, pad)
             contentDescription = "Dictar"
@@ -531,12 +533,41 @@ class BubbleHistoryController(
         overlay = root
     }
 
-    private fun circleBackground(color: Int): GradientDrawable {
+    /** Botón de ícono circular sólido: surf + borde line (design.md §13). */
+    private fun iconButtonBackground(): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.OVAL
-            setColor(color)
+            setColor(ContextCompat.getColor(context, R.color.hz_surf))
+            setStroke(maxOf(1, density.toInt()), ContextCompat.getColor(context, R.color.hz_line))
         }
     }
+
+    /** El agujero del micrófono: hole con anillo brasa de 2 dp. */
+    private fun holeBackground(): GradientDrawable {
+        return GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(ContextCompat.getColor(context, R.color.hz_hole))
+            setStroke((2 * density).toInt(), ContextCompat.getColor(context, R.color.hz_ember))
+        }
+    }
+
+    /** Etiqueta de grupo: JetBrains Mono 500 en mayúsculas con tracking, fg2. */
+    private fun groupLabel(value: String): TextView {
+        return TextView(context).apply {
+            text = value
+            setTextColor(ContextCompat.getColor(context, R.color.hz_fg2))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
+            typeface = KbFonts.mono(context, KeyFactory.MONO_LABEL_WEIGHT)
+            isAllCaps = true
+            try {
+                letterSpacing = 0.14f
+            } catch (_: Throwable) {}
+            maxLines = 1
+        }
+    }
+
+    private fun sectionTitle(): String =
+        if (section == SECTION_HISTORY) "Historial de transcripciones" else "Snippets"
 
     private fun populateCards() {
         val list = cardsList ?: return
@@ -585,6 +616,9 @@ class BubbleHistoryController(
     }
 
     private fun paintSectionLabel() {
+        try {
+            titleLabel?.text = sectionTitle()
+        } catch (_: Throwable) {}
         val lbl = handleLabel ?: return
         val text = if (section == SECTION_HISTORY) "Historial" else "Snippets"
         if (reducedMotion()) {
@@ -728,7 +762,7 @@ class BubbleHistoryController(
         if (!isShowing) return
         val list = cardsList ?: return
         if (items.isEmpty()) {
-            list.addView(HistoryCardView.emptyView(context, density, isDarkUi()))
+            list.addView(HistoryCardView.emptyView(context, density))
             return
         }
         for (obj in items) {
@@ -747,18 +781,33 @@ class BubbleHistoryController(
         }
     }
 
-    private fun cardBackground(selected: Boolean, dark: Boolean): GradientDrawable =
-        HistoryCardView.cardBackground(density, selected, dark)
+    private fun cardBackground(selected: Boolean): Drawable =
+        HistoryCardView.cardBackground(context, density, selected)
 
-    private fun copyBackgroundFor(dark: Boolean): GradientDrawable =
-        HistoryCardView.copyBackground(density, dark)
+    private fun copyBackgroundFor(): GradientDrawable =
+        HistoryCardView.copyBackground(density)
+
+    /**
+     * Hora local (HH:mm) del registro: el repositorio entrega el instante
+     * canónico ISO-8601. Si no se puede leer, la fila va sin hora.
+     */
+    private fun localTime(timestamp: String): String? = try {
+        TranscriptionHistoryLogic.parseTimestamp(timestamp)
+            ?.atZone(java.time.ZoneId.systemDefault())
+            ?.format(timeFormatter)
+    } catch (_: Throwable) {
+        null
+    }
+
+    private val timeFormatter: java.time.format.DateTimeFormatter =
+        java.time.format.DateTimeFormatter.ofPattern("HH:mm", java.util.Locale.ROOT)
 
     private fun buildCard(text: String, timestamp: String): View {
         val dark = isDarkUi()
         val key = selectionKey(timestamp, text)
         keyToText[key] = text
         return HistoryCardView.buildCard(
-            context, density, dark, text, key,
+            context, density, text, key, localTime(timestamp),
             onCopy = { iv ->
                 try {
                     copyToClipboard(text)
@@ -791,7 +840,7 @@ class BubbleHistoryController(
             selected = selected,
             mainHandler = mainHandler,
             paintBackground = paintBackground,
-            defaultCardBackground = { sel, isDark -> cardBackground(selected = sel, dark = isDark) },
+            defaultCardBackground = { sel, _ -> cardBackground(selected = sel) },
             onTapAction = { tView, txt -> handleCardTap(tView, txt) },
             onSelectionChanged = { refreshCopyAll() }
         )
@@ -844,7 +893,6 @@ class BubbleHistoryController(
             if (ordered.isEmpty()) return
             copyToClipboard(ordered.joinToString("\n"))
             val btn = copyAllBtn ?: return
-            val dark = isDarkUi()
             try {
                 btn.setImageDrawable(ContextCompat.getDrawable(context, R.drawable.ic_check))
             } catch (_: Throwable) {
@@ -852,10 +900,11 @@ class BubbleHistoryController(
                     btn.setImageResource(R.drawable.ic_check)
                 } catch (_: Throwable) {}
             }
-            btn.setColorFilter(Color.WHITE)
+            // Confirmación (Horizonte): brasa con check on-ember.
+            btn.setColorFilter(ContextCompat.getColor(context, R.color.hz_on_ember))
             btn.background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0xFF238636.toInt()) // #FF238636
+                setColor(ContextCompat.getColor(context, R.color.hz_ember))
             }
             mainHandler.postDelayed({
                 try {
@@ -865,10 +914,8 @@ class BubbleHistoryController(
                         btn.setImageResource(R.drawable.ic_copy)
                     } catch (_: Throwable) {}
                 }
-                btn.setColorFilter(if (dark) Color.WHITE else 0xFF1C1C1E.toInt()) // #1C1C1E
-                btn.background = circleBackground(
-                    if (dark) 0xFF3A3A3C.toInt() else 0xFFE4E4E8.toInt() // #3A3A3C / #E4E4E8
-                )
+                btn.setColorFilter(ContextCompat.getColor(context, R.color.hz_fg))
+                btn.background = iconButtonBackground()
                 selected.clear()
                 resetCardSelections()
                 refreshCopyAll()
@@ -893,7 +940,7 @@ class BubbleHistoryController(
                         density, dark, false, keyToColor[tag], context,
                     )
                 } else {
-                    cardBackground(selected = false, dark = dark)
+                    cardBackground(selected = false)
                 }
             }
         } catch (_: Throwable) {}
@@ -906,7 +953,7 @@ class BubbleHistoryController(
             density = density,
             mainHandler = mainHandler,
             context = context,
-            copyBackgroundFor = { isDark -> copyBackgroundFor(isDark) }
+            copyBackgroundFor = { copyBackgroundFor() }
         )
     }
 

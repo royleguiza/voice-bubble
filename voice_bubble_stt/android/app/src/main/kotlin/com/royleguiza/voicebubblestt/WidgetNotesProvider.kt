@@ -96,6 +96,57 @@ class WidgetNotesProvider : AppWidgetProvider() {
 
         private const val INITIALIZED_KEY = "voice_notes_widget_initialized"
 
+        /** ProgressBar (AVD en bucle) de cada nivel de voz. */
+        private val VOICE_TIER_VIEWS = mapOf(
+            WidgetVoiceTier.LOW to R.id.widget_voice_low,
+            WidgetVoiceTier.MID to R.id.widget_voice_mid,
+            WidgetVoiceTier.HIGH to R.id.widget_voice_high,
+        )
+
+        /** Animaciones del sistema desactivadas (Reducir movimiento): anillo estático. */
+        private fun animationsDisabled(context: Context): Boolean = try {
+            android.provider.Settings.Global.getFloat(
+                context.contentResolver,
+                android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,
+                1f,
+            ) == 0f
+        } catch (_: Exception) {
+            false
+        }
+
+        /**
+         * Muestra UNA sola vista de voz: grabando = la variante del nivel
+         * [tier]; procesando = anillo girando; guardado/pendiente o sin
+         * animaciones del sistema = anillo estático. Solo visibilidades: el
+         * movimiento lo hace el AnimatedVectorDrawable (sin bitmaps por cuadro).
+         */
+        private fun applyVoiceVisual(context: Context, views: RemoteViews, state: String, tier: WidgetVoiceTier) {
+            val still = animationsDisabled(context)
+            val recording = state == "recording" && !still
+            for ((t, id) in VOICE_TIER_VIEWS) {
+                views.setViewVisibility(id, if (recording && t == tier) View.VISIBLE else View.GONE)
+            }
+            val thinking = state == "transcribing" && !still
+            views.setViewVisibility(R.id.widget_voice_think, if (thinking) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_voice_static, if (!recording && !thinking) View.VISIBLE else View.GONE)
+        }
+
+        /**
+         * Cambio de nivel mientras graba: actualización PARCIAL (solo las
+         * visibilidades de las variantes). La llama el servicio únicamente
+         * cuando la compuerta [WidgetVoiceTierGate] reporta un nivel nuevo.
+         */
+        internal fun updateVoiceTier(context: Context, tier: WidgetVoiceTier) {
+            try {
+                val manager = AppWidgetManager.getInstance(context)
+                val ids = manager.getAppWidgetIds(ComponentName(context, WidgetNotesProvider::class.java))
+                if (ids.isEmpty()) return
+                val views = RemoteViews(context.packageName, R.layout.widget_notes)
+                applyVoiceVisual(context, views, "recording", tier)
+                manager.partiallyUpdateAppWidget(ids, views)
+            } catch (_: Exception) {}
+        }
+
         internal fun resolveState(
             snapshot: NoteStoreLoad,
             pendingSnapshot: WidgetPendingSnapshot,
@@ -187,13 +238,16 @@ class WidgetNotesProvider : AppWidgetProvider() {
             // del sistema resuelve el valor vigente sin hex duplicados.
             val primary = ContextCompat.getColor(context, R.color.kb_label)
             val secondary = ContextCompat.getColor(context, R.color.kb_label_secondary)
+            // La píldora de estado es el agujero (fondo hole): su texto va
+            // en on-hole en claro y en oscuro.
+            val onHole = ContextCompat.getColor(context, R.color.hz_on_hole)
 
             views.setTextViewText(R.id.widget_notes_count, "$count / ${NoteStore.MAX_NOTES}")
             views.setTextColor(R.id.widget_notes_title, primary)
             views.setTextColor(R.id.widget_notes_count, secondary)
             views.setTextColor(R.id.widget_pending_count, secondary)
-            views.setTextColor(R.id.widget_chrono, primary)
-            views.setTextColor(R.id.widget_rec_label, primary)
+            views.setTextColor(R.id.widget_chrono, onHole)
+            views.setTextColor(R.id.widget_rec_label, onHole)
 
             val pending = pendingSnapshot.items.size
             if (pending > 0) {
@@ -231,7 +285,8 @@ class WidgetNotesProvider : AppWidgetProvider() {
             val recording = state == "recording"
 
             // Píldora de estado estilo teclado: en reposo no hay texto (solo
-            // + y mic); la píldora roja aparece al grabar/procesar/guardar.
+            // + y el agujero); la píldora agujero (anillo brasa, estática)
+            // aparece al grabar/procesar/guardar.
             // "pending" = offline encolado: el audio quedó guardado para
             // transcribirlo desde la app. Tap en el centro detiene y envía,
             // X cancela.
@@ -261,10 +316,9 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 R.id.widget_bottom_spacer,
                 if (pillVisible) View.GONE else View.VISIBLE,
             )
-            views.setViewVisibility(
-                R.id.widget_rec_dot,
-                if (recording) View.VISIBLE else View.GONE,
-            )
+            // Voz del widget: variante animada según el estado (al grabar
+            // arranca en goteo; el servicio la cambia por nivel).
+            applyVoiceVisual(context, views, state, WidgetVoiceLevel.liveTier)
             views.setViewVisibility(
                 R.id.widget_chrono,
                 if (recording) View.VISIBLE else View.GONE,
@@ -300,7 +354,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_notes_mic_left, dictatePi)
             // Centro de la píldora detiene y envía (igual que el teclado).
             views.setOnClickPendingIntent(R.id.widget_rec_pill, dictatePi)
-            views.setOnClickPendingIntent(R.id.widget_rec_dot, dictatePi)
+            views.setOnClickPendingIntent(R.id.widget_voice_box, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_chrono, dictatePi)
             views.setOnClickPendingIntent(R.id.widget_rec_label, dictatePi)
 

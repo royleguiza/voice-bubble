@@ -3,7 +3,7 @@ package com.royleguiza.voicebubblestt
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.graphics.Color
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.view.HapticFeedbackConstants
@@ -20,14 +20,6 @@ import kotlin.math.abs
  * Extraído de BubbleHistoryController (C-25) para aislar la interacción táctil y el portapapeles.
  */
 object BubbleHistoryInteractions {
-
-    // Colores canónicos para feedback táctil y visual (constantes de color directas)
-    private const val COLOR_SUCCESS_FILL = 0xFF238636.toInt()
-    private const val COLOR_SUCCESS_STROKE = 0xFF3FB950.toInt()
-    private const val COLOR_DARK_ICON = 0xFF1C1C1E.toInt()
-    private const val COLOR_LIGHT_ICON = 0xFF3C3C43.toInt()
-    private const val COLOR_DARK_CIRCLE = 0xFF3A3A3C.toInt()
-    private const val COLOR_LIGHT_CIRCLE = 0xFFE4E4E8.toInt()
 
     fun copyToClipboard(context: Context, text: String): Boolean {
         return try {
@@ -56,12 +48,13 @@ object BubbleHistoryInteractions {
                     btn.setImageResource(R.drawable.ic_check)
                 } catch (_: Throwable) {}
             }
-            btn.setColorFilter(Color.WHITE)
+            // Copiado (Horizonte): brasa suave + borde brasa, check en ember-t.
+            btn.setColorFilter(ContextCompat.getColor(context, R.color.hz_ember_t))
             btn.background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = 8f * density
-                setColor(COLOR_SUCCESS_FILL)
-                setStroke((1f * density).toInt(), COLOR_SUCCESS_STROKE)
+                cornerRadius = 10f * density
+                setColor(ContextCompat.getColor(context, R.color.hz_ember_soft))
+                setStroke((1f * density).toInt(), ContextCompat.getColor(context, R.color.hz_ember))
             }
             mainHandler.postDelayed({
                 try {
@@ -71,7 +64,7 @@ object BubbleHistoryInteractions {
                         btn.setImageResource(R.drawable.ic_copy)
                     } catch (_: Throwable) {}
                 }
-                btn.setColorFilter(if (dark) Color.WHITE else COLOR_LIGHT_ICON)
+                btn.setColorFilter(ContextCompat.getColor(context, R.color.hz_fg2))
                 btn.background = copyBackgroundFor(dark)
             }, 1200)
         } catch (_: Throwable) {}
@@ -88,7 +81,7 @@ object BubbleHistoryInteractions {
         selected: MutableSet<String>,
         mainHandler: Handler,
         paintBackground: ((selected: Boolean) -> Unit)?,
-        defaultCardBackground: (Boolean, Boolean) -> GradientDrawable,
+        defaultCardBackground: (Boolean, Boolean) -> Drawable,
         onTapAction: (TextView, String) -> Unit,
         onSelectionChanged: () -> Unit,
     ) {

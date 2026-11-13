@@ -113,6 +113,7 @@ internal fun Context.dimen(resId: Int): Int = resources.getDimensionPixelSize(re
 internal object KbFonts {
     private var inter: Typeface? = null
     private var mono: Typeface? = null
+    private var sora: Typeface? = null
 
     private fun interFamily(ctx: Context): Typeface =
         inter ?: (
@@ -139,6 +140,19 @@ internal object KbFonts {
     /** JetBrains Mono: 400 regular, 500 medium, 700 bold (sintetizado). */
     fun mono(ctx: Context, weight: Int = 400): Typeface =
         Typeface.create(monoFamily(ctx), weight, false)
+
+    private fun soraFamily(ctx: Context): Typeface =
+        sora ?: (
+            try {
+                ResourcesCompat.getFont(ctx, R.font.sora)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.DEFAULT_BOLD
+            ).also { sora = it }
+
+    /** Sora para títulos (burbuja, widget): 600 semibold o 700 bold. */
+    fun display(ctx: Context, weight: Int = 600): Typeface =
+        Typeface.create(soraFamily(ctx), weight, false)
 }
 
 internal fun Context.reducedMotion(): Boolean =

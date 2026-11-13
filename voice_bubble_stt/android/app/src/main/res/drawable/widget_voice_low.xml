@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERADO por gen_widget_voice.py (fase 4, fuera del repo). Voz del widget:
+     ProgressBar indeterminado -> AnimatedVectorDrawable en bucle (RemoteViews
+     no admite vistas propias ni dibujo por cuadro). Variante: low. -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector android:width="88dp" android:height="44dp"
+            android:viewportWidth="88" android:viewportHeight="44">
+            <group android:name="g0" android:translateX="86" android:translateY="20.57">
+                <path android:name="p0" android:fillColor="@color/hz_on_hole" android:fillAlpha="0"
+                    android:pathData="M-3,-0.8h6v1.6h-6z" />
+            </group>
+            <group android:name="g1" android:translateX="86" android:translateY="20.97">
+                <path android:name="p1" android:fillColor="@color/hz_on_hole" android:fillAlpha="0"
+                    android:pathData="M-1.6,0a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0z" />
+            </group>
+            <group android:name="g2" android:translateX="86" android:translateY="12.54">
+                <path android:name="p2" android:fillColor="@color/hz_on_hole" android:fillAlpha="0"
+                    android:pathData="M-1.6,0a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0z" />
+            </group>
+            <group android:name="g3" android:translateX="86" android:translateY="30.79">
+                <path android:name="p3" android:fillColor="@color/hz_on_hole" android:fillAlpha="0"
+                    android:pathData="M-1.6,0a1.6,1.6 0 1,0 3.2,0a1.6,1.6 0 1,0 -3.2,0z" />
+            </group>
+            <group android:name="g4" android:translateX="86" android:translateY="9.72">
+                <path android:name="p4" android:fillColor="@color/hz_on_hole" android:fillAlpha="0"
+                    android:pathData="M-3,-0.8h6v1.6h-6z" />
+            </group>
+            <group android:name="g5" android:translateX="86" android:translateY="8.26">
+                <path android:name="p5" android:fillColor="@color/hz_on_hole" android:fillAlpha="0"
+                    android:pathData="M-3,-0.8h6v1.6h-6z" />
+            </group>
+            <path android:name="hole" android:fillColor="@color/hz_hole"
+                android:strokeColor="@color/hz_ember" android:strokeWidth="2"
+                android:pathData="M11,22a11,11 0 1,0 22,0a11,11 0 1,0 -22,0z" />
+        </vector>
+    </aapt:attr>
+    <target android:name="g0">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="160"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="translateX" android:valueType="floatType"
+                        android:valueFrom="86" android:valueTo="22" />
+                    <propertyValuesHolder android:propertyName="translateY" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="20.57" />
+                        <keyframe android:fraction="0.45" android:value="20.93" />
+                        <keyframe android:fraction="1" android:value="22" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="scaleX" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                    <propertyValuesHolder android:propertyName="scaleY" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="p0">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="160"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="fillColor" android:valueType="colorType">
+                        <keyframe android:fraction="0" android:value="@color/hz_on_hole" />
+                        <keyframe android:fraction="0.55" android:value="@color/hz_ember" />
+                        <keyframe android:fraction="0.85" android:value="@color/hz_hot" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="fillAlpha" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="0" />
+                        <keyframe android:fraction="0.15" android:value="1" />
+                        <keyframe android:fraction="0.85" android:value="1" />
+                        <keyframe android:fraction="1" android:value="0" />
+                    </propertyValuesHolder>
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="g1">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="535"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="translateX" android:valueType="floatType"
+                        android:valueFrom="86" android:valueTo="22" />
+                    <propertyValuesHolder android:propertyName="translateY" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="20.97" />
+                        <keyframe android:fraction="0.45" android:value="21.23" />
+                        <keyframe android:fraction="1" android:value="22" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="scaleX" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                    <propertyValuesHolder android:propertyName="scaleY" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="p1">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="535"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="fillColor" android:valueType="colorType">
+                        <keyframe android:fraction="0" android:value="@color/hz_on_hole" />
+                        <keyframe android:fraction="0.55" android:value="@color/hz_ember" />
+                        <keyframe android:fraction="0.85" android:value="@color/hz_hot" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="fillAlpha" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="0" />
+                        <keyframe android:fraction="0.15" android:value="1" />
+                        <keyframe android:fraction="0.85" android:value="1" />
+                        <keyframe android:fraction="1" android:value="0" />
+                    </propertyValuesHolder>
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="g2">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="975"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="translateX" android:valueType="floatType"
+                        android:valueFrom="86" android:valueTo="22" />
+                    <propertyValuesHolder android:propertyName="translateY" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="12.54" />
+                        <keyframe android:fraction="0.45" android:value="14.9" />
+                        <keyframe android:fraction="1" android:value="22" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="scaleX" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                    <propertyValuesHolder android:propertyName="scaleY" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="p2">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="975"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="fillColor" android:valueType="colorType">
+                        <keyframe android:fraction="0" android:value="@color/hz_on_hole" />
+                        <keyframe android:fraction="0.55" android:value="@color/hz_ember" />
+                        <keyframe android:fraction="0.85" android:value="@color/hz_hot" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="fillAlpha" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="0" />
+                        <keyframe android:fraction="0.15" android:value="1" />
+                        <keyframe android:fraction="0.85" android:value="1" />
+                        <keyframe android:fraction="1" android:value="0" />
+                    </propertyValuesHolder>
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="g3">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="1352"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="translateX" android:valueType="floatType"
+                        android:valueFrom="86" android:valueTo="22" />
+                    <propertyValuesHolder android:propertyName="translateY" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="30.79" />
+                        <keyframe android:fraction="0.45" android:value="28.59" />
+                        <keyframe android:fraction="1" android:value="22" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="scaleX" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                    <propertyValuesHolder android:propertyName="scaleY" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="p3">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="1352"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="fillColor" android:valueType="colorType">
+                        <keyframe android:fraction="0" android:value="@color/hz_on_hole" />
+                        <keyframe android:fraction="0.55" android:value="@color/hz_ember" />
+                        <keyframe android:fraction="0.85" android:value="@color/hz_hot" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="fillAlpha" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="0" />
+                        <keyframe android:fraction="0.15" android:value="1" />
+                        <keyframe android:fraction="0.85" android:value="1" />
+                        <keyframe android:fraction="1" android:value="0" />
+                    </propertyValuesHolder>
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="g4">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="1853"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="translateX" android:valueType="floatType"
+                        android:valueFrom="86" android:valueTo="22" />
+                    <propertyValuesHolder android:propertyName="translateY" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="9.72" />
+                        <keyframe android:fraction="0.45" android:value="12.79" />
+                        <keyframe android:fraction="1" android:value="22" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="scaleX" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                    <propertyValuesHolder android:propertyName="scaleY" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="p4">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="1853"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="fillColor" android:valueType="colorType">
+                        <keyframe android:fraction="0" android:value="@color/hz_on_hole" />
+                        <keyframe android:fraction="0.55" android:value="@color/hz_ember" />
+                        <keyframe android:fraction="0.85" android:value="@color/hz_hot" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="fillAlpha" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="0" />
+                        <keyframe android:fraction="0.15" android:value="1" />
+                        <keyframe android:fraction="0.85" android:value="1" />
+                        <keyframe android:fraction="1" android:value="0" />
+                    </propertyValuesHolder>
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="g5">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="2333"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="translateX" android:valueType="floatType"
+                        android:valueFrom="86" android:valueTo="22" />
+                    <propertyValuesHolder android:propertyName="translateY" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="8.26" />
+                        <keyframe android:fraction="0.45" android:value="11.69" />
+                        <keyframe android:fraction="1" android:value="22" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="scaleX" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                    <propertyValuesHolder android:propertyName="scaleY" android:valueType="floatType"
+                        android:valueFrom="1.25" android:valueTo="0.45" />
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+    <target android:name="p5">
+        <aapt:attr name="android:animation">
+            <objectAnimator android:duration="2600" android:startOffset="2333"
+                    android:repeatCount="infinite" android:repeatMode="restart"
+                    android:interpolator="@android:interpolator/accelerate_quad">
+                    <propertyValuesHolder android:propertyName="fillColor" android:valueType="colorType">
+                        <keyframe android:fraction="0" android:value="@color/hz_on_hole" />
+                        <keyframe android:fraction="0.55" android:value="@color/hz_ember" />
+                        <keyframe android:fraction="0.85" android:value="@color/hz_hot" />
+                    </propertyValuesHolder>
+                    <propertyValuesHolder android:propertyName="fillAlpha" android:valueType="floatType">
+                        <keyframe android:fraction="0" android:value="0" />
+                        <keyframe android:fraction="0.15" android:value="1" />
+                        <keyframe android:fraction="0.85" android:value="1" />
+                        <keyframe android:fraction="1" android:value="0" />
+                    </propertyValuesHolder>
+                </objectAnimator>
+        </aapt:attr>
+    </target>
+</animated-vector>

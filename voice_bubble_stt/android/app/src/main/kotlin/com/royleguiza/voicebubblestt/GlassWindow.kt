@@ -5,42 +5,33 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.view.ContextThemeWrapper
 import android.view.MotionEvent
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
-import androidx.core.content.ContextCompat
-import java.util.function.Consumer
 
 /**
- * Ventana flotante de vidrio (barra, burbuja, abanico y trackpad).
+ * Ventana flotante de la barra, la burbuja, el abanico y el trackpad.
  *
- * Por qué un Dialog y no WindowManager.addView: el desenfoque real de lo que
- * hay detrás (Window.setBackgroundBlurRadius, Android 12+) solo existe para
- * ventanas con objeto Window. El Dialog se muestra como TYPE_APPLICATION_OVERLAY,
+ * Horizonte (fase 4): superficie sólida, SIN desenfoque. La ventana es
+ * transparente y la vista dibuja su propia superficie (dock_surface +
+ * borde dock_line de 1 dp, o el agujero del micrófono). El nombre queda
+ * por compatibilidad con los contratos que lo citan.
+ *
+ * Por qué un Dialog y no WindowManager.addView: se conserva la ventana con
+ * objeto Window que ya resolvía flags, recortes e insets (sin cambiar
+ * gestos ni geometría). El Dialog se muestra como TYPE_APPLICATION_OVERLAY,
  * sin foco y sin bloquear toques fuera de su rectángulo. Sin
  * FLAG_LAYOUT_NO_LIMITS (C-29): la barra/burbuja nunca sale de la pantalla;
  * además DockController limita cada posición a la zona segura.
- *
- * - [cornerRadiusPx] != null: el sistema desenfoca el fondo dentro de un
- *   rectángulo redondeado (Android solo desenfoca formas así). La vista
- *   dibuja el contenido; el tinte del vidrio lo pone el fondo de la ventana.
- * - [cornerRadiusPx] == null o sin soporte (Android 9–11, ahorro de batería,
- *   equipos que lo apagan): la vista dibuja vidrio lechoso por su cuenta.
- *   [onBlurChanged] le avisa cuál de los dos casos aplica.
  */
 class GlassWindow(
     context: Context,
     private val content: View,
-    private val cornerRadiusPx: Float?,
-    private val onBlurChanged: (Boolean) -> Unit = {},
 ) : OverlayPassThrough.Handle {
 
-    private val appContext = context.applicationContext
-    private val wm = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     /** Toque fuera de la ventana (requiere [setWatchOutside]). */
     var onOutsideTouch: (() -> Unit)? = null
 
@@ -57,7 +48,6 @@ class GlassWindow(
     private var shown = false
     private var passThrough = false
     private var touchable = true
-    private var blurListener: Consumer<Boolean>? = null
 
     var x = 0
         private set
@@ -66,10 +56,6 @@ class GlassWindow(
     var width = 0
         private set
     var height = 0
-        private set
-
-    /** Desenfoque real activo ahora mismo. */
-    var blurActive = false
         private set
 
     init {
@@ -104,57 +90,15 @@ class GlassWindow(
         }
     }
 
-    /** Tinte del vidrio sobre el desenfoque (token claro/noche). */
-    private fun glassTint(): Int = ContextCompat.getColor(content.context, R.color.dock_glass_tint)
-
-    private fun applyBlur() {
-        val radius = cornerRadiusPx
-        val supported = radius != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            try {
-                wm.isCrossWindowBlurEnabled
-            } catch (_: Exception) {
-                false
-            }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (supported && radius != null) {
-                window.setBackgroundDrawable(
-                    GradientDrawable().apply {
-                        shape = GradientDrawable.RECTANGLE
-                        cornerRadius = radius
-                        setColor(glassTint())
-                    },
-                )
-                window.setBackgroundBlurRadius((24 * appContext.resources.displayMetrics.density).toInt())
-            } else {
-                window.setBackgroundBlurRadius(0)
-                window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            }
-        }
-        if (blurActive != supported) {
-            blurActive = supported
-            onBlurChanged(supported)
-        } else if (!shown) {
-            onBlurChanged(supported)
-        }
-    }
-
     fun show(x: Int, y: Int, w: Int, h: Int) {
         setBounds(x, y, w, h)
         if (shown) return
-        applyBlur()
         try {
             host.show()
             shown = true
         } catch (_: Exception) {
             shown = false
             return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && cornerRadiusPx != null) {
-            val l = Consumer<Boolean> { applyBlur() }
-            try {
-                wm.addCrossWindowBlurEnabledListener(l)
-                blurListener = l
-            } catch (_: Exception) {}
         }
         OverlayPassThrough.register(this)
     }
@@ -247,22 +191,13 @@ class GlassWindow(
         updateFlags()
     }
 
-    /** Releer tema claro/oscuro (cambia el tinte del vidrio). */
+    /** Releer tema claro/oscuro: la vista repinta su superficie con los tokens vigentes. */
     fun refreshTheme() {
-        if (shown) applyBlur()
         content.invalidate()
     }
 
     fun dismiss() {
         OverlayPassThrough.unregister(this)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            blurListener?.let {
-                try {
-                    wm.removeCrossWindowBlurEnabledListener(it)
-                } catch (_: Exception) {}
-            }
-        }
-        blurListener = null
         if (shown) {
             try {
                 host.dismiss()

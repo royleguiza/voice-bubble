@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Nota abierta dentro del propio widget: leer, copiar, título y resumen
-     con IA sin abrir ninguna ventana. Solo "Editar" abre la hoja con teclado. -->
+     con IA sin abrir ninguna ventana. Solo "Editar" abre la hoja con teclado.
+     Horizonte (design.md §14): volver/editar como botones de ícono
+     circulares sólidos, título Sora, fecha mono, cuerpo Inter; abajo tres
+     botones parejos surf2 radio 10 (IA en ember-t). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_glass_bg"
+    android:background="@drawable/widget_bg"
     android:orientation="vertical"
-    android:paddingTop="6dp"
-    android:paddingStart="10dp"
-    android:paddingEnd="10dp"
-    android:paddingBottom="10dp">
+    android:paddingTop="12dp"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="12dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,9 +22,9 @@
 
         <FrameLayout
             android:id="@+id/widget_detail_back"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/widget_pill_bg"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/widget_icon_btn_bg"
             android:contentDescription="Volver a la lista">
 
             <ImageView
@@ -45,7 +48,8 @@
                 android:layout_height="wrap_content"
                 android:text="Sin título"
                 android:textSize="14sp"
-                android:textStyle="bold"
+                android:fontFamily="@font/sora"
+                android:textFontWeight="600"
                 android:textColor="@color/kb_label"
                 android:maxLines="2"
                 android:ellipsize="end" />
@@ -54,8 +58,10 @@
                 android:id="@+id/widget_detail_meta"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
                 android:text=""
                 android:textSize="10sp"
+                android:fontFamily="@font/jetbrains_mono"
                 android:textColor="@color/kb_label_secondary"
                 android:maxLines="1"
                 android:ellipsize="end" />
@@ -63,9 +69,9 @@
 
         <FrameLayout
             android:id="@+id/widget_detail_edit"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/widget_pill_bg"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/widget_icon_btn_bg"
             android:contentDescription="Editar nota">
 
             <ImageView
@@ -82,13 +88,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/widget_pill_bg"
+        android:background="@drawable/widget_secondary_bg"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
         android:text=""
-        android:textSize="11sp"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter"
         android:textColor="@color/kb_label"
         android:maxLines="3"
         android:ellipsize="end"
@@ -116,7 +123,8 @@
         android:layout_weight="1"
         android:gravity="center"
         android:text="Nota vacía"
-        android:textSize="11sp"
+        android:textSize="12sp"
+        android:fontFamily="@font/inter"
         android:textColor="@color/kb_label_secondary"
         android:visibility="gone" />
 
@@ -134,7 +142,7 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:background="@drawable/widget_pill_bg"
+            android:background="@drawable/widget_secondary_bg"
             android:contentDescription="Copiar contenido">
 
             <ImageView
@@ -150,7 +158,7 @@
             android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:background="@drawable/widget_pill_bg"
+            android:background="@drawable/widget_secondary_bg"
             android:contentDescription="Generar título con IA">
 
             <ImageView
@@ -166,7 +174,7 @@
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:layout_gravity="center"
-                android:indeterminateTint="@color/kb_label"
+                android:indeterminateTint="@color/hz_ember_t"
                 android:visibility="gone" />
         </FrameLayout>
 
@@ -176,7 +184,7 @@
             android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:background="@drawable/widget_pill_bg"
+            android:background="@drawable/widget_secondary_bg"
             android:contentDescription="Resumir con IA">
 
             <ImageView
@@ -212,11 +220,13 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:background="@drawable/widget_pill_bg"
+            android:background="@drawable/widget_secondary_bg"
             android:gravity="center"
             android:text="Descartar"
             android:textSize="13sp"
-            android:textColor="@color/kb_label_secondary" />
+            android:fontFamily="@font/inter"
+            android:textFontWeight="500"
+            android:textColor="@color/kb_label" />
 
         <TextView
             android:id="@+id/widget_detail_summary_apply"
@@ -224,11 +234,12 @@
             android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:background="@drawable/widget_pill_accent_bg"
+            android:background="@drawable/widget_primary_bg"
             android:gravity="center"
             android:text="Reemplazar"
             android:textSize="13sp"
-            android:textStyle="bold"
+            android:fontFamily="@font/inter"
+            android:textFontWeight="600"
             android:textColor="@color/kb_label_on_accent" />
     </LinearLayout>
 
@@ -238,11 +249,12 @@
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:layout_marginTop="8dp"
-        android:background="@drawable/widget_pill_accent_bg"
+        android:background="@drawable/widget_primary_bg"
         android:gravity="center"
         android:text="Escuchar y transcribir"
         android:textSize="13sp"
-        android:textStyle="bold"
+        android:fontFamily="@font/inter"
+        android:textFontWeight="600"
         android:textColor="@color/kb_label_on_accent"
         android:visibility="gone" />
 </LinearLayout>

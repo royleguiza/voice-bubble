@@ -194,6 +194,20 @@ check("Teclado: vistas de voz detenidas al destruir/descartar",
 check("Teclado: cronómetro mono sobre fondo propio",
       "R.font.jetbrains_mono" in dic and "kb_mic_timer_bg" in dic)
 check("Teclado: reposo = agujero", "HoleDrawable(service)" in dic)
+# Fase 4 (feedback del dueño): cronómetro despegado del agujero y partículas
+# fuera de la ✕, con la geometría de HorizonView (sin márgenes mágicos).
+check("Teclado: cronómetro a ≥ 8 dp del agujero con anillo máximo y halo",
+      "fun accretionHoleRightPx(heightPx: Float, density: Float): Float" in hz
+      and "r * (HALO_MIN_K + HALO_GROW_K)" in hz and "(RING_MIN_DP + RING_GROW_DP)" in hz
+      and "HorizonView.accretionHoleRightPx(pillHeightPx, density) + TIMER_HOLE_GAP_DP * density" in dic
+      and "internal const val TIMER_HOLE_GAP_DP = 8f" in dic
+      and "timerLp.marginStart = dp(30f)" not in dic
+      and "pill.addOnLayoutChangeListener" in dic)
+check("Teclado: partículas terminan antes de la ✕ (campo con margen derecho)",
+      "var particleEndInsetPx: Float" in hz and "fieldRight(" in draw
+      and "pillHorizon.particleEndInsetPx = inset.toFloat()" in dic)
+check("Teclado: halo y anillo dibujan con las mismas constantes de la geometría",
+      "r * (HALO_MIN_K + kk * HALO_GROW_K)" in hz and "(RING_MIN_DP + RING_GROW_DP * kk) * dp" in hz)
 for desc in ['"grabando dictado"', '"procesando"', '"dictar"', '"micrófono ocupado"']:
     check(f"Accesibilidad intacta: {desc}", desc in dic)
 pill = read(f"{RES}/drawable/kb_mic_pill.xml")

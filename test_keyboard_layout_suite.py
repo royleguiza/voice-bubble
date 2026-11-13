@@ -249,9 +249,8 @@ for name in ("ToolbarLayer", "KeyFactory", "LayoutLayer", "SnippetsLayer", "Snip
 # Limpieza de tokens.
 check("kb_recording_pressed retirado (sin uso)",
       "kb_recording_pressed" not in colors_l and "kb_recording_pressed" not in colors_n)
-check("bubble_transcribing_bg derivado del ember-t vigente (#B04706, alfa D9)",
-      '<color name="bubble_transcribing_bg">#D9B04706</color>' in colors_l
-      and '<color name="bubble_transcribing_bg">#D9B04706</color>' in colors_n)
+check("bubble_transcribing_bg retirado (sin uso; Horizonte fase 4)",
+      "bubble_transcribing_bg" not in colors_l and "bubble_transcribing_bg" not in colors_n)
 check("CI corre VoiceLevelTest",
       "--tests com.royleguiza.voicebubblestt.VoiceLevelTest" in read(".github/workflows/android.yml"))
 

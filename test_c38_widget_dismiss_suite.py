@@ -110,7 +110,8 @@ class TestC38WidgetDismissSuite(unittest.TestCase):
         self.assertIn('android:id="@+id/btn_cancel"', xml)
         self.assertIn('android:id="@+id/btn_save"', xml)
         self.assertIn('android:id="@+id/btn_copy"', xml)
-        self.assertIn("@drawable/widget_glass_inner", xml,
+        # Horizonte fase 4: la tarjeta es la hoja sólida (antes widget_glass_inner).
+        self.assertIn("@drawable/widget_sheet_bg", xml,
                        "La tarjeta conserva su fondo")
         # C-46: 6 de botonera + 2 de la barra player expandible.
         self.assertEqual(xml.count('android:layout_width="48dp"'), 12,

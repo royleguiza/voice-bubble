@@ -40,6 +40,7 @@ check("Sin <View> pelado (causa del 'No se puede mostrar')",
       not re.search(r"<View[\s>]", LAYOUT.read_text()))
 
 xml = LAYOUT.read_text()
+NOTE_ITEM_EARLY = (RES / "layout/widget_note_item.xml").read_text()
 # Orden: + antes que mic (abajo-izq / abajo-der)
 pos_add = xml.index('android:id="@+id/widget_notes_add"')
 pos_mic = xml.index('android:id="@+id/widget_notes_mic"')
@@ -60,15 +61,103 @@ check("Mic circular (52dp) mayor que píldora (48dp)", mic == 52 and pill_h == 4
 cancel = dp_of("widget_cancel")
 check("Botón cancelar >= 44dp", (cancel or 0) >= 44, f"cancel={cancel}")
 
-# F1: reposo estilo pill glass (como el contador), sin círculos blancos
+# F1 (Horizonte fase 4): el mic en reposo es el agujero (hole + anillo
+# brasa) y el + un botón de ícono circular sólido (surf + line).
 def bg_of(view_id):
     m = re.search(r'@\+id/%s".*?android:background="([^"]+)"' % view_id, xml, re.S)
     return m.group(1) if m else None
 
-check("Mic en reposo con fondo pill glass", bg_of("widget_notes_mic") == "@drawable/widget_pill_bg", str(bg_of("widget_notes_mic")))
-check("+ en reposo con fondo pill glass", bg_of("widget_notes_add") == "@drawable/widget_pill_bg", str(bg_of("widget_notes_add")))
+_hole = (RES / "drawable/widget_hole_bg.xml").read_text()
+_ibtn = (RES / "drawable/widget_icon_btn_bg.xml").read_text()
+check("Mic en reposo = agujero (hole + anillo brasa)",
+      bg_of("widget_notes_mic") == "@drawable/widget_hole_bg"
+      and bg_of("widget_notes_mic_left") == "@drawable/widget_hole_bg"
+      and 'android:shape="oval"' in _hole and "@color/hz_hole" in _hole and "@color/hz_ember" in _hole,
+      str(bg_of("widget_notes_mic")))
+check("+ en reposo = botón de ícono circular sólido (surf + line)",
+      bg_of("widget_notes_add") == "@drawable/widget_icon_btn_bg"
+      and bg_of("widget_notes_add_right") == "@drawable/widget_icon_btn_bg"
+      and 'android:shape="oval"' in _ibtn and "@color/hz_surf" in _ibtn and "@color/hz_line" in _ibtn,
+      str(bg_of("widget_notes_add")))
 check("Sin círculos blancos en botones de reposo",
       "widget_mic_bg" not in xml.split('@+id/widget_bottom_bar')[1] if '@+id/widget_bottom_bar' in xml else False)
+# Horizonte fase 4: widget sólido (sin vidrio), fuentes y tintes legibles.
+_wbg = (RES / "drawable/widget_bg.xml").read_text()
+check("Contenedor sólido: hz_bg + borde 1dp hz_line + radio 22",
+      'android:background="@drawable/widget_bg"' in xml
+      and "@color/hz_bg" in _wbg and 'android:width="1dp" android:color="@color/hz_line"' in _wbg
+      and 'android:radius="22dp"' in _wbg)
+# Fondos (los íconos llevan fillColor #00000000 de trazo, que no es vidrio).
+_widget_drawables = sorted(f for f in (RES / "drawable").glob("widget_*.xml")
+                           if not f.name.startswith("widget_ic_"))
+_alpha_hex = [f.name for f in _widget_drawables
+              if re.search(r'#(?![Ff]{2})[0-9A-Fa-f]{2}[0-9A-Fa-f]{6}\b', f.read_text())]
+check("Drawables del widget sin colores translúcidos (sin vidrio)", not _alpha_hex, str(_alpha_hex))
+check("Sin variantes nocturnas de vidrio (tokens claro/noche)",
+      not list((RES).glob("drawable-night/widget_*.xml")))
+_detail = (RES / "layout/widget_note_detail.xml").read_text()
+check("Fuentes Horizonte en el widget (Sora títulos, Inter lectura, mono horas)",
+      '@font/sora' in xml and '@font/jetbrains_mono' in xml
+      and '@font/sora' in NOTE_ITEM_EARLY and '@font/inter' in NOTE_ITEM_EARLY and '@font/jetbrains_mono' in NOTE_ITEM_EARLY
+      and '@font/sora' in _detail and '@font/jetbrains_mono' in _detail
+      and '@font/inter' in (RES / "layout/widget_detail_paragraph.xml").read_text())
+check("Íconos del widget sobre superficie en ember-t (no brasa de relleno)",
+      "@color/kb_key_bg_accent" not in xml and "@color/hz_ember_t" in xml)
+check("Lector: copiar · IA · resumen parejos surf2 radio 10, IA en ember-t",
+      _detail.count('android:background="@drawable/widget_secondary_bg"') >= 4
+      and "@color/hz_surf2" in (RES / "drawable/widget_secondary_bg.xml").read_text()
+      and "@color/hz_ember_t" in (RES / "drawable/widget_ic_title.xml").read_text()
+      and 'android:background="@drawable/widget_primary_bg"' in _detail)
+check("Píldora de grabación = agujero con anillo brasa, texto on-hole",
+      "@color/hz_hole" in (RES / "drawable/widget_rec_bar_bg.xml").read_text()
+      and "@color/hz_ember" in (RES / "drawable/widget_rec_bar_bg.xml").read_text()
+      and "R.color.hz_on_hole" in PROVIDER.read_text())
+
+# Voz animada en el widget (pedido del dueño): AVD en ProgressBar, por niveles.
+_svc_src = SERVICE.read_text()
+_prov_src = PROVIDER.read_text()
+_voice_level = (KT / "WidgetVoiceLevel.kt").read_text()
+def _avd(name):
+    return (RES / f"drawable/widget_voice_{name}.xml").read_text()
+_tiers_ok = True
+_counts = {}
+for _n in ("low", "mid", "high"):
+    _t = _avd(_n)
+    _counts[_n] = _t.count('<group android:name="g')
+    _tiers_ok = (_tiers_ok and "<animated-vector" in _t and 'android:repeatCount="infinite"' in _t
+                 and "@color/hz_hole" in _t and "@color/hz_ember" in _t and "@color/hz_hot" in _t
+                 and "android:startOffset=" in _t
+                 and f'android:indeterminateDrawable="@drawable/widget_voice_{_n}"' in xml
+                 and f'@+id/widget_voice_{_n}"' in xml)
+check("Tres variantes de voz (goteo/medio/fuerte) como ProgressBar + AVD en bucle",
+      _tiers_ok and _counts["low"] < _counts["mid"] < _counts["high"] <= 18, str(_counts))
+check("Pensando = anillo girando; sin animaciones = anillo estático",
+      'android:propertyName="rotation"' in _avd("think")
+      and 'android:indeterminateDrawable="@drawable/widget_voice_think"' in xml
+      and "@+id/widget_voice_static" in xml and "<animated-vector" not in _avd("static")
+      and "ANIMATOR_DURATION_SCALE" in _prov_src)
+_box = xml.split('@+id/widget_voice_box"')[1].split("</FrameLayout>")[0] if '@+id/widget_voice_box"' in xml else ""
+check("Partículas en su propio cuadro, antes del cronómetro y la X (zona libre)",
+      _box != "" and xml.index('@+id/widget_voice_box"') < xml.index('@+id/widget_chrono"') < xml.index('@+id/widget_cancel"')
+      and 'android:layout_width="88dp"' in _box)
+check("Cambio de variante solo por nivel, con histéresis y ≤ ~3 por segundo",
+      "fun offer(level: Float, nowMs: Long): WidgetVoiceTier?" in _voice_level
+      and "if (next == tier) return null" in _voice_level
+      and "if (nowMs - lastSwitchMs < WidgetVoiceLevel.MIN_SWITCH_MS) return null" in _voice_level
+      and int(re.search(r"MIN_SWITCH_MS = (\d+)L", _voice_level).group(1)) >= 333
+      and "if (next != null) {" in _svc_src and "WidgetNotesProvider.updateVoiceTier(" in _svc_src
+      and "speechClient.currentLevel()" in _svc_src
+      and "partiallyUpdateAppWidget(ids, views)" in _prov_src)
+check("Sondeo de nivel detenido al parar, cancelar y destruir",
+      _svc_src.count("stopVoiceLevelPoll()") >= 5)
+_widget_kt = "".join((KT / n).read_text() for n in (
+    "WidgetNotesProvider.kt", "WidgetNotesListService.kt", "WidgetReader.kt",
+    "WidgetDictationService.kt", "WidgetVoiceLevel.kt"))
+check("Sin bitmaps por cuadro en el widget (setImageViewBitmap prohibido)",
+      "setImageViewBitmap" not in _widget_kt)
+check("JVM cubre histéresis y límite de frecuencia",
+      "widgetVoiceTierUsesHysteresis" in NATIVE_TEST.read_text()
+      and "widgetVoiceGateOnlyReportsChangesAtMostThreePerSecond" in NATIVE_TEST.read_text())
 # F2: X roja directa sobre la píldora, sin círculo blanco
 cancel_block = xml.split('@+id/widget_cancel')[1].split('/>')[0] if '@+id/widget_cancel' in xml else ""
 check("X de grabación sin círculo blanco", "@drawable/widget_mic_bg" not in cancel_block)
@@ -97,15 +186,21 @@ check("Overlay sin texto oscuro hardcodeado (contraste noche)",
       "#0B1220" not in over and "#6B7A90" not in over)
 check("Overlay con colores adaptativos claro/oscuro",
       "@color/kb_label" in over and "@color/kb_label_secondary" in over)
-check("Tarjeta overlay menos cristal (glass_inner 90%)",
-      'android:background="@drawable/widget_glass_inner"' in over.split('layout_gravity="bottom"')[1][:600])
-check("Botones overlay opacos (fondo campo)",
-      over.count('@+id/btn_cancel') >= 1 and 'widget_note_card_bg' in over.split('@+id/btn_cancel')[1][:500]
-      and 'widget_note_card_bg' in over.split('@+id/btn_save')[1][:500])
-for _icon, _min in [("widget_ic_x", 2.8), ("widget_ic_check", 3.0)]:
+check("Tarjeta overlay = hoja sólida (bg + line, sin vidrio)",
+      'android:background="@drawable/widget_sheet_bg"' in over.split('layout_gravity="bottom"')[1][:600])
+check("Botones overlay sólidos (surf + line) y guardar en brasa",
+      over.count('@+id/btn_cancel') >= 1 and 'widget_sheet_btn_bg' in over.split('@+id/btn_cancel')[1][:500]
+      and 'widget_primary_bg' in over.split('@+id/btn_save')[1][:500])
+# Horizonte: íconos con trazo 1.8 redondeado (antes "trazo grueso" 2.8-3.2).
+def _stroke_18(_icon):
     _t = (RES / f"drawable/{_icon}.xml").read_text()
-    _m = re.search(r'strokeWidth="([\d.]+)"', _t)
-    check(f"Trazo grueso {_icon}", _m is not None and float(_m.group(1)) >= _min, _t[:120])
+    _w = re.findall(r'strokeWidth="([\d.]+)"', _t)
+    return (bool(_w) and set(_w) == {"1.8"}
+            and _t.count('strokeLineCap="round"') == len(_w)
+            and _t.count('strokeLineJoin="round"') == len(_w)), _t[:120]
+for _icon in ("widget_ic_x", "widget_ic_check"):
+    _ok, _t = _stroke_18(_icon)
+    check(f"Trazo Horizonte 1.8 redondeado {_icon}", _ok, _t)
 check("Overlay sobre el teclado (insets + resize)",
       "overlay_root" in act and "systemWindowInsetBottom" in act and "SOFT_INPUT_ADJUST_RESIZE" in act)
 check("Márgenes laterales iguales (12dp)", 'paddingStart="12dp"' in over and 'paddingEnd="12dp"' in over)
@@ -128,10 +223,11 @@ check("Overlay pendiente oculta guardar/copiar y muestra play",
       and 'overlay_title' in over
       and 'R.id.slot_save' in act and 'R.id.slot_copy' in act and 'R.id.slot_play' in act
       and 'View.GONE' in act)
-for _icon, _min in [("widget_ic_play", 2.8), ("widget_ic_pause", 3.0)]:
-    _t = (RES / f"drawable/{_icon}.xml").read_text()
-    _m = re.search(r'strokeWidth="([\d.]+)"', _t)
-    check(f"Trazo grueso {_icon}", _m is not None and float(_m.group(1)) >= _min, _t[:120])
+_ok, _t = _stroke_18("widget_ic_pause")
+check("Trazo Horizonte 1.8 redondeado widget_ic_pause", _ok, _t)
+_t = (RES / "drawable/widget_ic_play.xml").read_text()
+check("Play relleno del set P en ember-t (widget_ic_play)",
+      'android:fillColor="@color/hz_ember_t"' in _t and "M7,4l13,8 -13,8z" in _t, _t[:120])
 check("Foco directo en contenido + teclado auto", "bodyEt.requestFocus()" in act and "SOFT_INPUT_STATE_VISIBLE" in act)
 check("Sin MainActivity en overlay", "Intent(context, MainActivity" not in act and "Intent(this, MainActivity" not in act)
 check("Labels de accesibilidad en + y mic",
@@ -302,7 +398,9 @@ check("Píldora visible también al procesar/guardar",
 check("Título visible con placeholder",
       'android:hint="Sin título"' in over and 'edit_title_wrap' in over
       and 'visibility="gone"' not in over.split('edit_title_wrap')[1][:300])
-check("Botones con fondo del campo", over.count('@drawable/widget_note_card_bg') >= 3)
+check("Botones de ícono parejos sólidos (surf + line, radio 10)",
+      over.count('@drawable/widget_sheet_btn_bg') >= 3
+      and '<corners android:radius="10dp" />' in (RES / "drawable/widget_sheet_btn_bg.xml").read_text())
 check("Cierre al tocar fuera", "setFinishOnTouchOutside(true)" in act)
 check("Reutiliza instancia (onNewIntent)", "onNewIntent" in act)
 
@@ -479,9 +577,9 @@ check("Hoja: el teclado acompaña la tarjeta (sin salto)",
 
 # Tacho en la modal: junto a la X, solo editando, con confirmacion
 _del_btn = over.split('@+id/btn_delete"')[1].split('</FrameLayout>')[0] if '@+id/btn_delete"' in over else ""
-check("Tacho junto a la X (48dp, fondo campo, icono propio)",
+check("Tacho junto a la X (48dp, botón sólido, icono propio)",
       '@+id/btn_delete' in over and '48dp' in _del_btn
-      and 'widget_note_card_bg' in _del_btn and 'widget_ic_delete' in _del_btn)
+      and 'widget_sheet_btn_bg' in _del_btn and 'widget_ic_delete' in _del_btn)
 check("Tacho oculto por defecto (solo editando existente)",
       '@+id/slot_delete' in over
       and 'android:visibility="gone"' in over.split('@+id/slot_delete"')[1].split('>')[0])
@@ -491,21 +589,20 @@ check("Botonera equitativa (slots de igual peso, sin huecos indebidos)",
       and 'btn_delete_gap' not in over and 'btn_play_gap' not in over)
 check("Fila de botones sin espaciadores fijos (reparto por peso)",
       '<Space' not in over.split('layout_marginTop="10dp"')[1])
-check("Icono tacho existe, trazo grueso y rojo peligro",
+check("Icono tacho existe (path trash del set P) y rojo peligro",
       (RES / "drawable/widget_ic_delete.xml").exists()
-      and 'M3,6h18' in (RES / "drawable/widget_ic_delete.xml").read_text()
+      and 'M5,7h14M10,7V4h4v3M7,7l1,13h8l1,-13' in (RES / "drawable/widget_ic_delete.xml").read_text()
       and '@color/hz_danger' in (RES / "drawable/widget_ic_delete.xml").read_text())
-_t_del = (RES / "drawable/widget_ic_delete.xml").read_text()
-_m_del = re.search(r'strokeWidth="([\d.]+)"', _t_del)
-check("Trazo grueso widget_ic_delete", _m_del is not None and float(_m_del.group(1)) >= 3.0, _t_del[:120])
+_ok_del, _t_del = _stroke_18("widget_ic_delete")
+check("Trazo Horizonte 1.8 redondeado widget_ic_delete", _ok_del, _t_del)
 check("Tacho solo en edicion (nota nueva y pendiente sin borrar)",
       'R.id.btn_delete' in act
       and 'setOnClickListener { confirmDelete() }' in act
       and 'deletable = false' in act
       and 'deletable = true' in act)
-check("Borrado con confirmacion estilo glass (sin cartel negro generico)",
+check("Borrado con confirmacion en hoja sólida (sin cartel negro generico)",
       '¿Eliminar nota?' in act and 'confirmDelete' in act and 'requestDelete' in act
-      and 'AlertDialog' not in act and 'widget_glass_inner' in act
+      and 'AlertDialog' not in act and 'widget_sheet_bg' in act
       and 'kb_key_danger' in act)
 check("Borrado solo limpia WAV tras commit NoteStore verificado",
       'when (val result = NoteStore(this).deleteNote(id))' in act

@@ -77,6 +77,7 @@ class WidgetDictationService(
     private var autoStopRunnable: Runnable? = null
     private var savedResetRunnable: Runnable? = null
     private var pendingResetRunnable: Runnable? = null
+    private var voicePollRunnable: Runnable? = null
     private var soundPool: SoundPool? = null
     private var soundStart = 0
     private var soundStop = 0
@@ -98,6 +99,7 @@ class WidgetDictationService(
     }
 
     override fun onDestroy() {
+        stopVoiceLevelPoll()
         autoStopRunnable?.let { mainHandler.removeCallbacks(it) }
         savedResetRunnable?.let { mainHandler.removeCallbacks(it) }
         pendingResetRunnable?.let { mainHandler.removeCallbacks(it) }
@@ -222,6 +224,7 @@ class WidgetDictationService(
     private fun cancelRecording() {
         if (!isRecording) return
         isRecording = false
+        stopVoiceLevelPoll()
         playMicSound("cancel")
         autoStopRunnable?.let { mainHandler.removeCallbacks(it) }
         try {
@@ -306,6 +309,7 @@ class WidgetDictationService(
         }
         isRecording = true
         playMicSound("start")
+        startVoiceLevelPoll(speechClient)
         BackgroundWork.execute {
             val ok = try {
                 speechClient.startRecording()
@@ -315,6 +319,7 @@ class WidgetDictationService(
             if (!ok) {
                 BackgroundWork.postMain {
                     isRecording = false
+                    stopVoiceLevelPoll()
                     isBusy = false
                     releaseMicrophone()
                     updateWidgetsState("idle")
@@ -334,6 +339,7 @@ class WidgetDictationService(
     private fun stopAndTranscribe() {
         if (!isRecording) return
         isRecording = false
+        stopVoiceLevelPoll()
         playMicSound("stop")
         updateWidgetsState("transcribing")
         val speechClient = client ?: run {
@@ -668,6 +674,38 @@ class WidgetDictationService(
         } catch (_: Exception) {
             EvictionCleanupResult.FAILED
         }
+    }
+
+    /**
+     * Voz del widget por niveles (design.md §14): lee el nivel del mismo
+     * VoiceLevelMeter que alimenta la captura (lectura volátil, sin tocar
+     * el flujo de audio) y solo cuando la compuerta reporta un nivel nuevo
+     * (histéresis, ≤ ~3 cambios/s) hace una actualización parcial que
+     * alterna la variante visible. Nada por cuadro.
+     */
+    private fun startVoiceLevelPoll(speechClient: SpeechToTextClient) {
+        stopVoiceLevelPoll()
+        val gate = WidgetVoiceTierGate(android.os.SystemClock.uptimeMillis())
+        WidgetVoiceLevel.liveTier = WidgetVoiceTier.LOW
+        val runnable = object : Runnable {
+            override fun run() {
+                if (!isRecording) return
+                val next = gate.offer(speechClient.currentLevel(), android.os.SystemClock.uptimeMillis())
+                if (next != null) {
+                    WidgetVoiceLevel.liveTier = next
+                    WidgetNotesProvider.updateVoiceTier(this@WidgetDictationService, next)
+                }
+                mainHandler.postDelayed(this, WidgetVoiceLevel.POLL_MS)
+            }
+        }
+        voicePollRunnable = runnable
+        mainHandler.postDelayed(runnable, WidgetVoiceLevel.POLL_MS)
+    }
+
+    private fun stopVoiceLevelPoll() {
+        voicePollRunnable?.let { mainHandler.removeCallbacks(it) }
+        voicePollRunnable = null
+        WidgetVoiceLevel.liveTier = WidgetVoiceTier.LOW
     }
 
     private fun updateWidgetsState(state: String) {

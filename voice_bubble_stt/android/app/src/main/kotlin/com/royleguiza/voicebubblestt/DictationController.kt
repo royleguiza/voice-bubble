@@ -54,6 +54,15 @@ data class MicFeedback(
 /** Micrófono ocupado (la burbuja graba): el agujero de reposo atenuado. */
 internal const val MIC_BUSY_ALPHA = 0.5f
 
+/** Aire libre entre el agujero de la pastilla (con halo) y el cronómetro. */
+internal const val TIMER_HOLE_GAP_DP = 8f
+
+/** Separación entre el fin del campo de partículas y la ✕ de cancelar. */
+internal const val PARTICLE_CANCEL_GAP_DP = 4f
+
+/** Alto de pastilla previo al primer layout (el de la barra). */
+internal const val MIC_HEIGHT_FALLBACK_DP = ToolbarLayer.MIC_HEIGHT_DP
+
 class DictationController(
     private val service: InputMethodService,
     private val handler: Handler,
@@ -299,7 +308,7 @@ class DictationController(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.START or Gravity.CENTER_VERTICAL,
         )
-        timerLp.marginStart = dp(30f)
+        timerLp.marginStart = timerStartPx(dp(MIC_HEIGHT_FALLBACK_DP).toFloat())
         pill.addView(timer, timerLp)
 
         // Botón cancelar ✕
@@ -325,6 +334,22 @@ class DictationController(
         }
         pill.addView(cancel, cancelLp)
 
+        // Aire real entre el agujero y el cronómetro, y campo de partículas
+        // que termina antes de la ✕: se recalcula con el alto vivo de la
+        // pastilla (perfiles de altura y modo mini).
+        pill.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
+            val start = timerStartPx((bottom - top).toFloat())
+            val lpNow = timer.layoutParams as? FrameLayout.LayoutParams
+            if (lpNow != null && lpNow.marginStart != start) {
+                lpNow.marginStart = start
+                timer.post { timer.layoutParams = lpNow }
+            }
+            val inset = cancel.width + dp(PARTICLE_CANCEL_GAP_DP)
+            if (pillHorizon.particleEndInsetPx != inset.toFloat()) {
+                pillHorizon.particleEndInsetPx = inset.toFloat()
+            }
+        }
+
         container.addView(pill)
 
         micKeyView = container
@@ -343,6 +368,18 @@ class DictationController(
     private fun dp(value: Float): Int = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, value, service.resources.displayMetrics,
     ).toInt()
+
+    /**
+     * Inicio del cronómetro en la pastilla de [pillHeightPx]: borde máximo
+     * del agujero de HorizonView (anillo más grueso y halo a volumen
+     * máximo) + [TIMER_HOLE_GAP_DP] libres.
+     */
+    private fun timerStartPx(pillHeightPx: Float): Int {
+        val density = service.resources.displayMetrics.density
+        return kotlin.math.ceil(
+            HorizonView.accretionHoleRightPx(pillHeightPx, density) + TIMER_HOLE_GAP_DP * density,
+        ).toInt()
+    }
 
     /** Eventos de feedback del micrófono (hápticas + sonidos UI). */
     private enum class MicEvent { START, STOP, PASTE, CANCEL }

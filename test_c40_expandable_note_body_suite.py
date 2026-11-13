@@ -56,7 +56,8 @@ class TestC40ExpandableNoteBodySuite(unittest.TestCase):
         self.assertIn("@drawable/widget_grabber_pill", handle)
         self.assertTrue(os.path.exists(PILL), "La píldora debe existir")
         pill = read_file(PILL)
-        self.assertIn("@color/kb_label_secondary", pill,
+        # Horizonte fase 4: agarradera en línea sólida (design.md §13 «Hojas»).
+        self.assertIn("@color/hz_line", pill,
                       "Color del token del sistema")
         body_tag = xml.split('@+id/edit_body"')[0].split("<com.royleguiza")[-1]
         body_tag += xml.split('@+id/edit_body"')[1].split("/>")[0]
@@ -105,7 +106,8 @@ class TestC40ExpandableNoteBodySuite(unittest.TestCase):
         self.assertEqual(xml.count('android:layout_width="48dp"'), 12,
                          "10 botones de 48dp: 6 de la botonera clasica + 4 de la "
                          "fila del pendiente (cerrar, descartar, transcribir, play)")
-        self.assertIn("@drawable/widget_glass_inner", xml)
+        # Horizonte fase 4: hoja sólida (antes widget_glass_inner).
+        self.assertIn("@drawable/widget_sheet_bg", xml)
         self.assertIn('android:clickable="true"', xml)
         act = read_file(ACTIVITY)
         self.assertNotIn("Log.", act)

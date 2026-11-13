@@ -1,7 +1,6 @@
 package com.royleguiza.voicebubblestt
 
 import android.content.Context
-import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -17,6 +16,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import kotlin.math.abs
 
 /**
@@ -69,9 +69,6 @@ class VirtualTrackpadView(
     private val wingWidthPx = (68 * density).toInt()
     private val gapPx = (4 * density).toInt()
     private val effectiveHeightPx: Int = if (trackpadHeightPx > 0) trackpadHeightPx else (210 * density).toInt()
-
-    private val isNight: Boolean
-        get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
     private val handler = Handler(Looper.getMainLooper())
     private val autoReturnRunnable = Runnable {
@@ -374,40 +371,40 @@ class VirtualTrackpadView(
         weight: Float,
         onClick: () -> Unit
     ): View {
-        val night = isNight
         val isGlass = (theme == "glass")
 
+        // Horizonte: superficies sólidas por token (claro/noche los resuelve el recurso).
         val normalBgColor = if (isGlass) {
-            if (night) 0xB31C1D26.toInt() else 0xB3E2E6EF.toInt() // #B31C1D26 / #B3E2E6EF
+            ContextCompat.getColor(context, R.color.kb_key_bg_alt)
         } else {
             ContextCompat.getColor(context, R.color.kb_key_bg)
         }
 
         val strokeColor = if (isGlass) {
-            if (night) 0x33FFFFFF.toInt() else 0x26000000.toInt() // #33FFFFFF / #26000000
+            ContextCompat.getColor(context, R.color.hz_line)
         } else {
             ContextCompat.getColor(context, R.color.kb_key_stroke)
         }
 
         val pressedBgColor = ContextCompat.getColor(context, R.color.kb_key_pressed)
 
-        // Contraste óptimo accesible:
-        // Clic Izquierdo (isPrimary = true): Azul acento accesible (kb_key_bg_accent).
-        // Clic Derecho (isPrimary = false): Neutro sólido (#FFEBEBF5 en noche, #FF3C3C43 en claro).
+        // Contraste accesible (texto sobre superficie, design.md §3):
+        // Clic Izquierdo (isPrimary = true): brasa como texto = hz_ember_t.
+        // Clic Derecho (isPrimary = false): neutro sólido hz_fg.
         val subtitleColor = if (isPrimary) {
-            ContextCompat.getColor(context, R.color.kb_key_bg_accent)
+            ContextCompat.getColor(context, R.color.hz_ember_t)
         } else {
-            if (night) 0xFFEBEBF5.toInt() else 0xFF3C3C43.toInt() // #FFEBEBF5 / #FF3C3C43
+            ContextCompat.getColor(context, R.color.hz_fg)
         }
 
         val strokeActiveColor = if (isPrimary) {
             ContextCompat.getColor(context, R.color.kb_key_bg_accent)
         } else {
-            if (night) 0xFF8E8E93.toInt() else 0xFF636366.toInt() // #8E8E93 / #636366
+            ContextCompat.getColor(context, R.color.hz_fg2)
         }
 
         val activeBgColor = if (isPrimary) {
-            if (night) 0x33FF8A1F.toInt() else 0x26F27A14.toInt() // #33FF8A1F / #26F27A14
+            ContextCompat.getColor(context, R.color.hz_ember_soft)
         } else {
             pressedBgColor
         }
@@ -552,31 +549,32 @@ class VirtualTrackpadView(
             }
         }
 
-        private val isNight: Boolean
-            get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        // Horizonte: superficie sólida (tecla) con línea; el tema no-"glass"
+        // conserva su tinte de brasa como derivado del token (alfa propio).
+        private fun token(res: Int): Int = ContextCompat.getColor(context, res)
 
         private val surfaceBgColor: Int
             get() = if (theme == "glass") {
-                if (isNight) 0x9910121A.toInt() else 0xB3F2F4F8.toInt() // #9910121A / #B3F2F4F8
+                token(R.color.kb_key_bg)
             } else {
-                if (isNight) 0x140F172A.toInt() else 0x0FF27A14.toInt() // #140F172A / #0FF27A14
+                ColorUtils.setAlphaComponent(token(R.color.hz_ember), 0x14)
             }
 
         private val strokeNormalColor: Int
             get() = if (theme == "glass") {
-                if (isNight) 0x33FFFFFF.toInt() else 0x26000000.toInt() // #33FFFFFF / #26000000
+                token(R.color.hz_line)
             } else {
-                if (isNight) 0x47FF8A1F.toInt() else 0x66F27A14.toInt() // #47FF8A1F / #66F27A14
+                ColorUtils.setAlphaComponent(token(R.color.hz_ember), 0x66)
             }
 
         private val strokeActiveColor: Int
-            get() = if (isNight) 0x80FF8A1F.toInt() else 0xCCF27A14.toInt() // #80FF8A1F / #CCF27A14
+            get() = token(R.color.hz_ember)
 
         private val gridColor: Int
             get() = if (theme == "glass") {
-                if (isNight) 0x1AFFFFFF.toInt() else 0x1A000000.toInt() // #1AFFFFFF / #1A000000
+                token(R.color.hz_line)
             } else {
-                if (isNight) 0x0DFF8A1F.toInt() else 0x26F27A14.toInt() // #0DFF8A1F / #26F27A14
+                ColorUtils.setAlphaComponent(token(R.color.hz_ember), 0x26)
             }
 
         private val surfaceBg = GradientDrawable().apply {
@@ -728,15 +726,12 @@ class VirtualTrackpadView(
         private var lastTouchY = 0f
         private var accumulatedDelta = 0f
 
-        private val isNight: Boolean
-            get() = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-
         private val stripBgColor: Int
-            get() = if (isNight) 0x1A1C1C1E.toInt() else 0x14000000.toInt() // #1A1C1C1E / #14000000
+            get() = ContextCompat.getColor(context, R.color.kb_key_bg_alt)
         private val pressedBgColor: Int
-            get() = if (isNight) 0x33FF8A1F.toInt() else 0x26F27A14.toInt() // #33FF8A1F / #26F27A14
+            get() = ContextCompat.getColor(context, R.color.hz_ember_soft)
         private val strokeColor: Int
-            get() = if (isNight) 0x33FFFFFF.toInt() else 0x26000000.toInt() // #33FFFFFF / #26000000
+            get() = ContextCompat.getColor(context, R.color.hz_line)
         private val handleColor: Int
             get() = ContextCompat.getColor(context, R.color.kb_key_bg_accent)
 

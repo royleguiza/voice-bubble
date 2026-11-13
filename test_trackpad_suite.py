@@ -157,7 +157,10 @@ if os.path.isfile(ftp_kt_path):
     check("FloatingTrackpadService se abre desde la barra (ACTION_OPEN con ancla)", "fun open(context: Context, anchorX: Int, anchorY: Int)" in ftp_content and "ACTION_OPEN ->" in ftp_content)
     check("FloatingTrackpadService sin burbuja propia (al cerrar termina)", "withEndAction { stopSelf() }" in ftp_content and "snapBubbleToEdge" not in ftp_content)
     check("FloatingTrackpadService abre panel abajo o ventana flotante", "MODE_PANEL" in ftp_content and "MODE_WINDOW" in ftp_content and "PREF_OPEN_MODE" in ftp_content)
-    check("FloatingTrackpadService en vidrio (GlassWindow con desenfoque)", "GlassWindow(this, root, cornerRadiusPx = 30 * d)" in ftp_content)
+    # Horizonte fase 4: sin desenfoque; el panel pinta su superficie sólida.
+    check("FloatingTrackpadService con superficie sólida (GlassWindow sin desenfoque)",
+          "GlassWindow(this, root)" in ftp_content and "cornerRadiusPx" not in ftp_content
+          and "R.color.dock_surface" in ftp_content and "R.color.dock_line" in ftp_content)
     check("FloatingTrackpadService usa la superficie única del prototipo (FloatingPadView, sin botones)", "FloatingPadView(" in ftp_content and "VirtualTrackpadView(" not in ftp_content)
     check("FloatingTrackpadService despacha tap/clic largo/scroll por PointerLink", "PointerLink.tap(" in ftp_content and "PointerLink.longPress(" in ftp_content and "PointerLink.scroll(" in ftp_content)
     check("La línea: un toque cierra, sin botón ×", "if (e.actionMasked == MotionEvent.ACTION_UP) closePanel()" in ftp_content and '"×"' not in ftp_content)
@@ -203,8 +206,11 @@ if os.path.isfile(vtv_kt_path):
     check("VirtualTrackpadView cancela pulsación de botón si el toque sale del área", "inside" in vtv_content)
     check("VirtualTrackpadView acota altura vía onMeasure con MeasureSpec.EXACTLY", "MeasureSpec.EXACTLY" in vtv_content and "onMeasure" in vtv_content)
     check("VirtualTrackpadView contraste accesible en clic izquierdo (acento primario)", "isPrimary" in vtv_content and "kb_key_bg_accent" in vtv_content)
-    check("VirtualTrackpadView contraste accesible en clic derecho (neutro sólido)", "CLIC" in vtv_content and "DER" in vtv_content and ("3C3C43" in vtv_content or "EBEBF5" in vtv_content))
-    check("VirtualTrackpadView feedback visual de contraste en scroll strip", "pressedBgColor" in vtv_content and ("26F27A14" in vtv_content or "33FF8A1F" in vtv_content))
+    # Horizonte fase 4: los literales pasaron a tokens hz_* (mismos roles).
+    check("VirtualTrackpadView contraste accesible en clic derecho (neutro sólido)", "CLIC" in vtv_content and "DER" in vtv_content and "R.color.hz_fg)" in vtv_content)
+    check("VirtualTrackpadView feedback visual de contraste en scroll strip", "pressedBgColor" in vtv_content and "R.color.hz_ember_soft" in vtv_content)
+    check("VirtualTrackpadView sin colores literales (tokens hz_*/kb_*)",
+          not re.findall(r"0x[0-9A-Fa-f]{8}\.toInt\(\)", vtv_content))
     check("VirtualTrackpadView soporta modo dual de botones (top vs wings)", 'buttonLayout == "wings"' in vtv_content and "setupTopButtonsLayout" in vtv_content)
     check("VirtualTrackpadView usa iconos de mouse vectoriales ic_mouse_left e ic_mouse_right", "ic_mouse_left" in vtv_content and "ic_mouse_right" in vtv_content)
     check("VirtualTrackpadView soporta scroll quitado con 100% de ancho", '"none"' in vtv_content)

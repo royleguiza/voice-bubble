@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Hoja de edición del widget (Horizonte fase 4, design.md §14): hoja
+     sólida bg + line radio 22 con agarradera line, campos surf + line
+     radio 12 y botones de ícono parejos surf + line radio 10; guardar es el
+     único en brasa (check on-ember). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/overlay_root"
     android:layout_width="match_parent"
@@ -15,12 +19,11 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:layout_marginBottom="12dp"
-        android:background="@drawable/widget_glass_inner"
+        android:background="@drawable/widget_sheet_bg"
         android:clickable="true"
         android:focusable="true"
         android:orientation="vertical"
-        android:padding="14dp"
-        android:elevation="16dp">
+        android:padding="14dp">
 
         <!-- C-40: tirador para ampliar solo el cuerpo de la nota.
              Zona táctil de 48dp; la píldora visual es sutil. -->
@@ -35,7 +38,6 @@
                 android:layout_width="36dp"
                 android:layout_height="4dp"
                 android:layout_gravity="center"
-                android:alpha="0.4"
                 android:background="@drawable/widget_grabber_pill" />
         </FrameLayout>
 
@@ -44,8 +46,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Nueva nota"
-            android:textSize="15sp"
-            android:textStyle="bold"
+            android:textSize="17sp"
+            android:fontFamily="@font/sora"
+            android:textFontWeight="600"
             android:textColor="@color/kb_label" />
 
         <LinearLayout
@@ -60,10 +63,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="Sin título"
-                android:textSize="13sp"
+                android:textSize="15sp"
+                android:fontFamily="@font/inter"
+                android:textFontWeight="600"
                 android:textColor="@color/kb_label"
                 android:textColorHint="@color/kb_label_secondary"
-                android:background="@drawable/widget_note_card_bg"
+                android:background="@drawable/widget_field_bg"
                 android:padding="11dp"
                 android:maxLines="1"
                 android:inputType="text" />
@@ -75,10 +80,12 @@
             android:layout_height="120dp"
             android:layout_marginTop="10dp"
             android:hint="Escribir nota…"
-            android:textSize="13sp"
+            android:textSize="14sp"
+            android:fontFamily="@font/inter"
+            android:lineSpacingMultiplier="1.4"
             android:textColor="@color/kb_label"
             android:textColorHint="@color/kb_label_secondary"
-            android:background="@drawable/widget_note_card_bg"
+            android:background="@drawable/widget_field_bg"
             android:padding="11dp"
             android:gravity="top"
             android:inputType="textMultiLine" />
@@ -111,21 +118,22 @@
                     android:id="@+id/pending_cancel"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Cancelar">
 
                     <ImageView
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/widget_ic_x" />
+                        android:src="@drawable/widget_ic_x"
+                        android:tint="@color/hz_fg2" />
                 </FrameLayout>
 
                 <FrameLayout
                     android:id="@+id/pending_delete"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Eliminar nota">
 
                     <ImageView
@@ -155,7 +163,7 @@
                     android:id="@+id/btn_player_main"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Reproducir audio">
 
                     <ImageView
@@ -173,22 +181,24 @@
                     android:layout_gravity="center_vertical"
                     android:gravity="center"
                     android:text="00:00 / 00:00"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
+                    android:textSize="14sp"
+                    android:fontFamily="@font/jetbrains_mono"
+                    android:textFontWeight="500"
                     android:textColor="@color/kb_label" />
 
                 <FrameLayout
                     android:id="@+id/btn_player_close"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Cerrar reproductor">
 
                     <ImageView
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/widget_ic_x" />
+                        android:src="@drawable/widget_ic_x"
+                        android:tint="@color/hz_fg2" />
                 </FrameLayout>
             </LinearLayout>
 
@@ -204,7 +214,7 @@
                 android:id="@+id/pending_transcribe"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="@drawable/widget_note_card_bg"
+                android:background="@drawable/widget_sheet_btn_bg"
                 android:contentDescription="Transcribir ahora"
                 android:visibility="gone">
 
@@ -239,14 +249,15 @@
                     android:id="@+id/btn_cancel"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Cancelar">
 
                     <ImageView
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/widget_ic_x" />
+                        android:src="@drawable/widget_ic_x"
+                        android:tint="@color/hz_fg2" />
                 </FrameLayout>
             </LinearLayout>
 
@@ -262,7 +273,7 @@
                     android:id="@+id/btn_delete"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Eliminar nota">
 
                     <ImageView
@@ -285,7 +296,7 @@
                     android:id="@+id/btn_play"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Reproducir audio">
 
                     <ImageView
@@ -309,7 +320,7 @@
                     android:id="@+id/btn_transcribe"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Transcribir ahora">
 
                     <ImageView
@@ -331,7 +342,7 @@
                     android:id="@+id/btn_gemini_titulo"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Generar título con IA">
 
                     <ImageView
@@ -347,7 +358,7 @@
                         android:layout_width="22dp"
                         android:layout_height="22dp"
                         android:layout_gravity="center"
-                        android:indeterminateTint="@color/kb_label"
+                        android:indeterminateTint="@color/hz_ember_t"
                         android:visibility="gone" />
                 </FrameLayout>
             </LinearLayout>
@@ -363,7 +374,7 @@
                     android:id="@+id/btn_gemini_resumir"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Resumir con IA">
 
                     <ImageView
@@ -395,7 +406,7 @@
                     android:id="@+id/btn_copy"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_sheet_btn_bg"
                     android:contentDescription="Copiar contenido">
 
                     <ImageView
@@ -417,7 +428,7 @@
                     android:id="@+id/btn_save"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/widget_note_card_bg"
+                    android:background="@drawable/widget_primary_bg"
                     android:contentDescription="Guardar nota">
 
                     <ImageView

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El micrófono del widget es el agujero: círculo hole con anillo de
+     brasa (design.md §3). RemoteViews no admite vistas propias, así que el
+     agujero es un drawable y el glifo un ImageView en on-hole. Estático:
+     el widget no se anima por cuadro. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/hz_hole" />
+    <stroke android:width="2dp" android:color="@color/hz_ember" />
+</shape>

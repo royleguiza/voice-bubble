@@ -44,10 +44,9 @@
     <color name="bubble_idle_border">#4DFFFFFF</color>
     <color name="bubble_active_border">#80FFFFFF</color>
     <color name="bubble_recording_bg">#E6FF8A1F</color>
-    <color name="bubble_transcribing_bg">#D9B04706</color>
 
-    <!-- Modal de historial: oscura (igual que la burbuja). -->
-    <color name="bubble_modal_bg">#F208090E</color>
+    <!-- Historial flotante: tarjeta sólida bg + borde line (fase 4). -->
+    <color name="bubble_modal_bg">@color/hz_bg</color>
     <color name="bubble_modal_border">@color/hz_line</color>
     <color name="bubble_legend_bg">@color/hz_surf</color>
 
@@ -76,15 +75,19 @@
     <color name="snippet_stroke_violeta">#66C79BFF</color>
     <color name="snippet_fill_gris">#339A9DAB</color>
     <color name="snippet_stroke_gris">#669A9DAB</color>
-    <!-- Barra flotante: valores de noche (paleta Horizonte). -->
-    <color name="dock_glass_tint">#B312141C</color>
-    <color name="dock_glass_frosted">#F212141C</color>
-    <color name="dock_glass_highlight">#26FFFFFF</color>
-    <color name="dock_glass_line">@color/hz_line</color>
-    <color name="dock_label">@color/hz_fg</color>
-    <color name="dock_tool_pressed">#1FFFFFFF</color>
-    <color name="dock_track">#33FFFFFF</color>
-    <color name="dock_handle">#999A9DAB</color>
+    <!-- Barra flotante y burbuja (Horizonte fase 4): superficie sólida
+         hz_surf + borde hz_line de 1 dp, sin desenfoque de ventana. Íconos
+         en fg2; herramienta activa en brasa suave + ember-t (como la barra
+         del teclado); presionada en surf2. El micrófono es el agujero
+         (HorizonView, modo CORONA). -->
+    <color name="dock_surface">@color/hz_surf</color>
+    <color name="dock_line">@color/hz_line</color>
+    <color name="dock_label">@color/hz_fg2</color>
+    <color name="dock_tool_pressed">@color/hz_surf2</color>
+    <color name="dock_tool_active">@color/hz_ember_soft</color>
+    <color name="dock_tool_active_icon">@color/hz_ember_t</color>
+    <color name="dock_track">@color/hz_line</color>
+    <color name="dock_handle">@color/hz_fg2</color>
     <color name="dock_pad">@color/hz_surf2</color>
     <color name="dock_pad_line">@color/hz_line</color>
     <color name="dock_hint">@color/hz_fg2</color>

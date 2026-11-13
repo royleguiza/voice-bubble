@@ -134,7 +134,7 @@ object SnippetsCardView {
                 } catch (_: Throwable) {}
             }
             setColorFilter(ContextCompat.getColor(context, R.color.hz_fg2))
-            background = HistoryCardView.copyBackground(density, dark)
+            background = HistoryCardView.copyBackground(density)
             val pad = (7 * density).toInt()
             setPadding(pad, pad, pad, pad)
             val sz = (36 * density).toInt()
@@ -154,7 +154,7 @@ object SnippetsCardView {
                 } catch (_: Throwable) {}
             }
             setColorFilter(ContextCompat.getColor(context, R.color.hz_fg2))
-            background = HistoryCardView.copyBackground(density, dark)
+            background = HistoryCardView.copyBackground(density)
             val pad = (7 * density).toInt()
             setPadding(pad, pad, pad, pad)
             val sz = (36 * density).toInt()

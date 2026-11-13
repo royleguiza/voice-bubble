@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Acción primaria (Reemplazar, Escuchar y transcribir, guardar): relleno
+     brasa con texto/ícono on-ember, radio 10. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
-            <corners android:radius="100dp" />
+            <corners android:radius="10dp" />
             <solid android:color="@color/kb_accent_pressed" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <corners android:radius="100dp" />
-            <solid android:color="@color/kb_key_bg_accent" />
+            <corners android:radius="10dp" />
+            <solid android:color="@color/hz_ember" />
         </shape>
     </item>
 </selector>

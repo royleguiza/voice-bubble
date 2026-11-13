@@ -9,8 +9,9 @@ Verifica:
    está grabando (aunque isBusy siga en alto del START); el START sigue
    blindado por isBusy; una sola subida de isBusy a primer nivel.
 2. MicrophoneClaimTest cubre la regresión (STOP honrado grabando).
-3. Velo de la modal: dim 0.60 y tarjeta nocturna al 70% para que el
-   texto de atrás no se confunda con el de la nota.
+3. Velo de la modal: dim 0.60 y tarjeta opaca (Horizonte fase 4: hoja
+   sólida hz_bg en claro y noche, antes 70% nocturna) para que el texto de
+   atrás no se confunda con el de la nota.
 4. Diseño intacto y mutaciones negativas.
 """
 
@@ -33,8 +34,9 @@ TEST = os.path.join(
     "kotlin", "com", "royleguiza", "voicebubblestt", "MicrophoneClaimTest.kt",
 )
 STYLES = os.path.join(RES, "values", "styles.xml")
-NIGHT_CARD = os.path.join(RES, "drawable-night", "widget_glass_inner.xml")
-DAY_CARD = os.path.join(RES, "drawable", "widget_glass_inner.xml")
+NIGHT_CARD = os.path.join(RES, "drawable-night", "widget_sheet_bg.xml")
+DAY_CARD = os.path.join(RES, "drawable", "widget_sheet_bg.xml")
+COLORS = [os.path.join(RES, "values", "colors.xml"), os.path.join(RES, "values-night", "colors.xml")]
 
 
 def read_file(path):
@@ -65,13 +67,15 @@ class TestC41WidgetStopAndVeilSuite(unittest.TestCase):
         self.assertIsNotNone(m, "El tema debe fijar dim")
         self.assertGreaterEqual(float(m.group(1)), 0.55,
                                 "Dim suficiente para apagar el fondo")
-        night = read_file(NIGHT_CARD)
-        m2 = re.search(r"#([0-9A-Fa-f]{8})", night)
-        self.assertIsNotNone(m2)
-        self.assertGreaterEqual(int(m2.group(1)[:2], 16), 0x99,
-                                "Tarjeta nocturna al 70% o más")
+        # Horizonte: la tarjeta es opaca en los dos modos (token hz_bg,
+        # sin variante nocturna translúcida).
+        self.assertFalse(os.path.exists(NIGHT_CARD), "Sin variante nocturna translúcida")
         day = read_file(DAY_CARD)
-        self.assertIn("#E6FFFFFF", day, "Tarjeta diurna intacta")
+        self.assertIn('<solid android:color="@color/hz_bg" />', day, "Tarjeta sólida por token")
+        for path in COLORS:
+            m2 = re.search(r'<color name="hz_bg">#([0-9A-Fa-f]{8})</color>', read_file(path))
+            self.assertIsNotNone(m2)
+            self.assertEqual(m2.group(1)[:2].upper(), "FF", "Tarjeta opaca (alfa FF)")
 
     def test_04_sin_logs_y_mutaciones(self):
         self.assertNotIn("Log.", read_file(SVC))

@@ -26,7 +26,7 @@ Verifica:
 6. Pre-check POST_NOTIFICATIONS en FGS y tokenización visual:
    - WidgetDictationService.kt implementa hasNotificationPermission y blinda startForeground con try/catch.
    - La barra flotante (DockViews.kt, dibuja lo que antes dibujaba FloatingBubbleService)
-     usa el token R.color.kb_label_on_accent y nunca Color.WHITE.
+     usa tokens (R.color.dock_surface, Horizonte fase 4) y nunca Color.WHITE.
 7. Batería de mutaciones negativas para garantizar detección contra regresiones.
 """
 
@@ -172,8 +172,10 @@ def test_widget_fgs_precheck_and_tokens():
     assert "Color.WHITE" not in bubble, (
         "La barra flotante no debe contener Color.WHITE hardcodeado en vistas canvas"
     )
-    assert "R.color.kb_label_on_accent" in bubble, (
-        "La barra flotante debe utilizar el token R.color.kb_label_on_accent"
+    # Horizonte fase 4: el micrófono es el agujero (sin glifo sobre brasa);
+    # la superficie sólida sale del token dock_surface.
+    assert "R.color.dock_surface" in bubble, (
+        "La barra flotante debe utilizar el token R.color.dock_surface"
     )
 
 

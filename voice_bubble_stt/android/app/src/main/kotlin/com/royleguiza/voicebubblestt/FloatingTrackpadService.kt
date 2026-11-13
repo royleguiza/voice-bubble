@@ -290,12 +290,18 @@ class FloatingTrackpadService : Service() {
 
         container = root
         handleView = handle
-        panelWindow = GlassWindow(this, root, cornerRadiusPx = 30 * d) { blur ->
-            root.background = if (blur) null else android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = 30 * d
-                setColor(androidx.core.content.ContextCompat.getColor(this@FloatingTrackpadService, R.color.dock_glass_frosted))
-                setStroke((1 * d).roundToInt(), androidx.core.content.ContextCompat.getColor(this@FloatingTrackpadService, R.color.dock_glass_line))
-            }
+        applyPanelSurface()
+        panelWindow = GlassWindow(this, root)
+    }
+
+    /** Superficie sólida del panel (Horizonte, sin desenfoque): surf + borde line de 1 dp. */
+    private fun applyPanelSurface() {
+        val root = container ?: return
+        val d = resources.displayMetrics.density
+        root.background = android.graphics.drawable.GradientDrawable().apply {
+            cornerRadius = 30 * d
+            setColor(androidx.core.content.ContextCompat.getColor(this@FloatingTrackpadService, R.color.dock_surface))
+            setStroke((1 * d).roundToInt(), androidx.core.content.ContextCompat.getColor(this@FloatingTrackpadService, R.color.dock_line))
         }
     }
 
@@ -437,6 +443,7 @@ class FloatingTrackpadService : Service() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        applyPanelSurface()
         panelWindow?.refreshTheme()
         handleView?.refreshPalette()
         padView?.refreshPalette()

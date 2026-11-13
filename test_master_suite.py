@@ -3769,7 +3769,9 @@ def test_c30_contrast_and_accessible_tokens_contract():
     with open(widget_file, "r", encoding="utf-8") as f:
         w_src = f.read()
     assert "#007AFF" not in w_src, "C-30: widget_notes.xml retiene #007AFF hardcodeado"
-    assert "@color/kb_key_bg_accent" in w_src, "C-30: widget_notes.xml no usa @color/kb_key_bg_accent"
+    # Horizonte fase 4: íconos sobre superficie clara en ember-t, nunca la brasa de relleno (2.77:1).
+    assert "@color/hz_ember_t" in w_src, "C-30: widget_notes.xml no usa @color/hz_ember_t para los íconos"
+    assert "@color/kb_key_bg_accent" not in w_src, "C-30: widget_notes.xml tiñe íconos con la brasa de relleno"
 
 def test_c31_system_transparency_and_tokens_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -3944,7 +3946,8 @@ def test_c35_logs_deletion_widget_errors_contract():
     # La burbuja la dibuja DockViews.kt desde 2026-10-30.
     with open(os.path.join(os.path.dirname(bubble_file), "DockViews.kt"), "r", encoding="utf-8") as f:
         bubble += f.read()
-    assert "Color.WHITE" not in bubble and "R.color.kb_label_on_accent" in bubble, "C-35: barra flotante con Color.WHITE o sin token"
+    # Horizonte fase 4: superficie sólida por token y micrófono agujero (sin glifo sobre brasa).
+    assert "Color.WHITE" not in bubble and "R.color.dock_surface" in bubble, "C-35: barra flotante con Color.WHITE o sin token"
 
 def test_c36_sincerar_muertos_contract():
     base_dir = os.path.dirname(os.path.abspath(__file__))

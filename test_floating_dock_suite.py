@@ -10,7 +10,9 @@ código real:
 3. Complemento mínimo: gestos sí, lectura de pantalla no, sin telemetría.
 4. Barra: dos formas (borde/burbuja), conversión por gesto, herramientas
    micrófono/puntero, historial con toque largo, gesto Atrás protegido.
-5. Vidrio: desenfoque real con Window (Android 12+) y vidrio lechoso sin él.
+5. Superficie sólida (Horizonte fase 4): sin desenfoque de ventana; las
+   vistas pintan dock_surface + borde dock_line y el micrófono es el
+   agujero con HorizonView en modo CORONA.
 6. Trackpad: sin ×, la línea cierra y muestra la cuenta; clics por el
    complemento; nuestras ventanas se apartan durante el gesto.
 7. Dart/Ajustes: forma, herramientas, estado del complemento, sin
@@ -134,15 +136,40 @@ check("La barra se cierra sola al estar inactiva", "EDGE_IDLE_MS" in dock and "r
 check("Gesto Atrás protegido (tope 200 dp)", "GESTURE_EXCLUSION_MAX_DP = 200f" in geo and "setGestureExclusion(" in dock)
 check("Ajustes recarga la barra viva", '"reloadDock"' in main and "fun reloadDock(): Boolean" in fbs)
 check("Íconos dibujados (sin glifos)", "fun drawMic(" in views and "fun drawPointer(" in views)
-check("Colores por tokens claro/noche", "R.color.dock_glass_frosted" in views and "Color.WHITE" not in views)
-for c in ("dock_glass_tint", "dock_glass_frosted", "dock_glass_highlight", "dock_label"):
+check("Colores por tokens claro/noche", "R.color.dock_surface" in views and "R.color.dock_line" in views and "Color.WHITE" not in views)
+for c in ("dock_surface", "dock_line", "dock_label", "dock_tool_pressed", "dock_tool_active", "dock_tool_active_icon"):
     check(f"Token {c} en claro y noche",
           f'name="{c}"' in read("voice_bubble_stt/android/app/src/main/res/values/colors.xml")
           and f'name="{c}"' in read("voice_bubble_stt/android/app/src/main/res/values-night/colors.xml"))
 
-# --- 5. Vidrio ---
-check("Desenfoque real vía Window (Android 12+)", "setBackgroundBlurRadius(" in glass and "isCrossWindowBlurEnabled" in glass)
-check("Sin desenfoque: vidrio lechoso propio", "onBlurChanged(supported)" in glass and "frosted = !blur" in dock)
+# --- 5. Superficie sólida (Horizonte fase 4: sin blur) ---
+BLUR_APIS = ("setBackgroundBlurRadius", "isCrossWindowBlurEnabled", "CrossWindowBlurEnabledListener",
+             "blurBehindRadius", "FLAG_BLUR_BEHIND", "createBlurEffect", "BlurMaskFilter")
+def has_blur(src):
+    return any(api in src for api in BLUR_APIS)
+check("Sin desenfoque en ventanas flotantes (GlassWindow, barra, burbuja, trackpad)",
+      not any(has_blur(src) for src in (glass, views, dock, fbs, ftp)))
+check("GlassWindow sin vidrio: ventana transparente, sin radio de desenfoque ni aviso de blur",
+      "class GlassWindow(\n    context: Context,\n    private val content: View,\n)" in glass
+      and "cornerRadiusPx" not in glass and "onBlurChanged" not in glass and "frosted" not in dock + views)
+check("Superficie sólida propia: dock_surface + borde dock_line de 1 dp",
+      "fill.color = palette.surface" in views and "stroke.color = palette.line" in views
+      and "stroke.strokeWidth = 1f * d" in views
+      and '<color name="dock_surface">@color/hz_surf</color>' in read("voice_bubble_stt/android/app/src/main/res/values/colors.xml")
+      and '<color name="dock_line">@color/hz_line</color>' in read("voice_bubble_stt/android/app/src/main/res/values/colors.xml"))
+check("Micrófono = agujero con HorizonView CORONA y fases del dictado",
+      views.count("HorizonView(context, HorizonView.Mode.CORONA)") == 2
+      and '"recording" -> HorizonView.Phase.RECORDING' in views
+      and '"transcribing" -> HorizonView.Phase.THINKING' in views
+      and "horizon.setPhase(horizonPhaseOf(value))" in views
+      and "palette.hole" in views and "palette.ember" in views)
+check("Corona detenida al destruir la barra (ciclo de vida)",
+      "edgeView.horizon.setPhase(HorizonView.Phase.IDLE)" in dock
+      and "bubbleView.horizon.setPhase(HorizonView.Phase.IDLE)" in dock)
+check("Herramienta activa en brasa suave + ember-t (como la barra del teclado)",
+      "edgeView.pointerActive = open" in dock and "palette.active" in views and "palette.activeIcon" in views)
+check("Trackpad flotante con superficie sólida que sigue el tema",
+      "applyPanelSurface()" in ftp and "R.color.dock_surface" in ftp and "R.color.dock_line" in ftp)
 check("Ventanas sin foco ni bloqueo fuera", "FLAG_NOT_FOCUSABLE" in glass and "FLAG_NOT_TOUCH_MODAL" in glass)
 check("Ventana overlay", "TYPE_APPLICATION_OVERLAY" in glass)
 
@@ -219,6 +246,11 @@ mut_cfg = pun_cfg.replace('canRetrieveWindowContent="false"', 'canRetrieveWindow
 check("Mutación: lectura de pantalla se detecta", 'android:canRetrieveWindowContent="false"' not in mut_cfg)
 mut_link = link.replace("if (cmd == null || !isEnabled(context)) return false", "if (cmd == null) return false")
 check("Mutación: despacho sin complemento se detecta", "!isEnabled(context)" not in mut_link)
+mut_glass = glass.replace("    fun show(x: Int, y: Int, w: Int, h: Int) {",
+                          "    fun show(x: Int, y: Int, w: Int, h: Int) {\n        window.setBackgroundBlurRadius(24)", 1)
+check("Mutación: reintroducir el blur de GlassWindow se detecta", mut_glass != glass and has_blur(mut_glass))
+mut_views = views.replace("fill.color = palette.surface", "fill.color = palette.pressed")
+check("Mutación: barra sin superficie sólida se detecta", "fill.color = palette.surface" not in mut_views)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE BARRA FLOTANTE: {suite.passed} pasados, {suite.failed} fallidos.")

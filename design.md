@@ -49,7 +49,7 @@ El ícono de la app es un agujero negro con un disco de acreción naranja. Horiz
 
 **Reglas duras:**
 
-- **Prohibido el desenfoque** (`BackdropFilter`, `ImageFilter.blur`, blur de ventana) en la app, el teclado y la burbuja. Única excepción: el **widget** de pantalla de inicio, que flota sobre el fondo de pantalla del usuario y puede conservar translucidez (sin depender de ella para la legibilidad).
+- **Prohibido el desenfoque** (`BackdropFilter`, `ImageFilter.blur`, blur de ventana como `setBackgroundBlurRadius`) en la app, el teclado, la burbuja y el widget. Sin excepciones: desde la fase 4 el **widget** también es sólido (decisión del dueño), ver §14.
 - `GlassContainer` conserva su nombre y su API por compatibilidad, pero pinta **surf + borde line de 1 px** (ver §7).
 - No apilar superficies del mismo nivel sin línea entre ellas.
 
@@ -157,7 +157,7 @@ Escala (tamaños vigentes):
 | Buscador y campo de formulario | 12 dp | `kRadiusField` |
 | Agujero y botones de ícono | círculo | — |
 
-`kSettingsGroupRadius` ya vale `kRadiusCard` (14). Los radios históricos (`kBorderRadius*`) siguen en las superficies que aún no se rehicieron (burbuja, widget); cada fase los migra a la escala de arriba.
+`kSettingsGroupRadius` ya vale `kRadiusCard` (14). Burbuja y widget ya usan la escala de arriba (fase 4, §14; el historial flotante usa 18 por nacer de la burbuja). De los tokens Dart históricos, `kBorderRadiusCapsule` y `kBorderRadiusCard` todavía tienen uso en pantallas; el resto de `kBorderRadius*` y los `kGlassShadow*` solo siguen vivos por contratos de tests.
 
 ### Controles
 
@@ -209,9 +209,10 @@ El nivel de entrada real (RMS → dB → 0..1 con piso de ruido, ataque rápido 
 | Animación | Dónde | Grabando | Pensando |
 |---|---|---|---|
 | **A · Acreción** | Pastilla del teclado y pastilla de dictado de la app | Agujero a la izquierda con anillo cuyo grosor y halo siguen el volumen (destello `hot` con volumen alto); entran por la derecha puntos, rayas y 0/1/{/} en mono que convergen al agujero (más y más rápido cuanto más fuerte; goteo mínimo en silencio), color on-hole → brasa → destello al acercarse | Nada entra; arco con cola gira sobre el anillo y salen renglones hacia la derecha que se frenan y desvanecen |
-| **C · Corona** | Burbuja flotante, widget y teclado mini sin pastilla | ~44 espigas radiales cuya longitud sigue el volumen | Arco giratorio |
+| **C · Corona** | Burbuja y barra flotante, teclado mini sin pastilla | ~44 espigas radiales cuya longitud sigue el volumen | Arco giratorio |
 
-- Fondo siempre `hole` (también en claro); partículas en on-hole/brasa/destello. El cronómetro va en mono sobre su propio fondo `hole`.
+- Fondo siempre `hole` (también en claro); partículas en on-hole/brasa/destello. El cronómetro va en mono sobre su propio fondo `hole`, a ≥ 8 dp del borde máximo del agujero (anillo más grueso y halo a volumen máximo, `HorizonView.accretionHoleRightPx`); las partículas nacen a la izquierda de la ✕ (`particleEndInsetPx`) y pasan por detrás del fondo del cronómetro.
+- **Widget** (RemoteViews, sin vistas propias ni dibujo por cuadro): versión A en `AnimatedVectorDrawable` dentro de un `ProgressBar` indeterminado, por niveles (ver §14).
 - Presupuesto: ≤ 60 partículas en pastilla, pool fijo, sin asignaciones por cuadro; el animador se detiene fuera de grabando/pensando o con la vista oculta.
 - Reducir movimiento / animaciones del sistema desactivadas: anillo fijo cuyo grosor sigue el volumen, sin partículas, espigas ni arco.
 
@@ -361,3 +362,43 @@ Maqueta: `laboratorio_ui/horizonte.html`, bloque «app». Etiqueta de grupo = `k
 | **Snippets** | Marca vertical de 3 dp con el color del snippet al borde izquierdo (sin color = sin marca), nombre Inter 600, texto en mono fg2 en una línea; pie con el contador en mono; «Ordenar» como acción de texto ember-t. |
 | **Hojas** | Fondo bg, radio superior 22, borde line, agarradera line, sin sombra (el velo las separa). Cerrar = ícono circular sólido; guardar = círculo brasa (atenuado mientras guarda). Campos `.fld`: caja surf + line radio 12, etiqueta mono en mayúsculas arriba y valor abajo (texto de snippet y contraseña en mono). Selector de color: círculos sólidos y anillo solo en el elegido. Eliminar = texto danger, sin caja. |
 | **Pantallas vacías** | Sin notas, sin historial, sin claves, sin snippets: `SymbolField` (tres renglones quietos de 0 1 { } [ ] < > · en mono, fg2 al 50 %) sobre el título y la ayuda. Decorativo (fuera de la semántica), sin animación; nunca detrás de una lista con contenido ni en «sin resultados». |
+
+---
+
+## 14. Widget y burbuja (Horizonte, fase 4)
+
+Maqueta: `laboratorio_ui/horizonte.html`, bloque «widget y burbuja» (Widget · lista, Widget · lectura, Burbuja · historial). Mismas reglas que la app: superficies sólidas, un acento, el micrófono es el agujero. **Sin desenfoque ni translucidez en ningún lado.**
+
+### Widget de notas (RemoteViews)
+
+RemoteViews no admite vistas propias ni dibujo por cuadro: todo es drawable XML (`shape`/`selector`/`animated-vector`) + `ImageView`/`TextView`/`ProgressBar`, y las fuentes van por `android:fontFamily="@font/…"` en el layout (minSdk 28). Nunca `setImageViewBitmap` por cuadro.
+
+| Pieza | Regla | Recurso |
+|---|---|---|
+| Contenedor (lista y lector) | `hz_bg` sólido, borde 1 dp `hz_line`, radio 22 | `widget_bg` |
+| Encabezado | «Notas» Sora 600; contador `15 / 50` y pendientes en mono fg2, sin pastilla | — |
+| Tarjeta de nota | La de la app: `hz_surf` + line, radio 14; título Sora 600, cuerpo Inter 2 líneas fg2, fecha mono fg2, marca de audio ember-t | `widget_note_card_bg`, `widget_ic_audio` |
+| Audio pendiente | La misma tarjeta con un agujero chico y el estado en ember-t | `widget_hole_bg` |
+| «+» | Botón de ícono circular sólido (surf + line), glifo ember-t | `widget_icon_btn_bg` |
+| Micrófono | **Agujero**: círculo `hz_hole` con anillo `hz_ember` de 2 dp, glifo on-hole | `widget_hole_bg` |
+| Grabando / procesando / guardado | Píldora agujero (`hz_hole` + anillo brasa de 1.5 dp), tiempo en mono on-hole, X de cancelar (danger). A la izquierda, en su propio cuadro de 88 × 44 dp (las partículas nunca pasan sobre el cronómetro ni la X), la **voz animada**: `ProgressBar` indeterminado con un `AnimatedVectorDrawable` en bucle (agujero + 6/11/16 partículas que caen a él, claro → brasa → destello, inicios desfasados). Tres variantes por nivel (goteo / medio / fuerte); el servicio solo alterna la visible con `partiallyUpdateAppWidget` cuando cambia el nivel (histéresis, ≤ ~3 cambios/s, `WidgetVoiceLevel`). Procesando = anillo girando; guardado/pendiente o animaciones del sistema desactivadas = anillo estático. AVD generados por script (fuera del repo) | `widget_rec_bar_bg`, `widget_voice_{low,mid,high,think,static}` |
+| Lector | Volver y editar como botones de ícono circulares (44 dp); título Sora 600, fecha mono, cuerpo Inter con interlineado 1.5; abajo copiar · título IA · resumen como botones parejos `hz_surf2` radio 10 (IA en ember-t) | `widget_secondary_bg`, `widget_ic_title` |
+| IA: resultado | Primario (Reemplazar, Escuchar y transcribir) en brasa con texto on-ember; secundario (Descartar) surf2 | `widget_primary_bg`, `widget_secondary_bg` |
+| Íconos sobre superficie clara | `hz_ember_t` (nunca `kb_key_bg_accent`/ember como glifo fino: 2.77:1 en claro) | — |
+
+### Hoja de edición del widget
+
+Hoja sólida `hz_bg` + line, radio 22, sin sombra (la separa el velo), agarradera `hz_line`. Título («Nueva nota» / «Editar nota» / «Audio sin transcribir») en Sora 600. Campos como en la app: `hz_surf` + line, radio 12, Inter (título semibold). Fila de acciones como botones de ícono parejos (`hz_surf` + line, radio 10): cancelar (fg2), borrar (danger), título IA (ember-t), resumen, copiar y **guardar como único botón brasa** con check on-ember. Diálogos de confirmación: misma hoja; secundario surf2, primario brasa, eliminar danger.
+
+### Burbuja y barra flotante
+
+- Ventana transparente sin blur (`GlassWindow` conserva el nombre); la vista pinta `dock_surface` (`hz_surf`) + borde `dock_line` (`hz_line`) de 1 dp.
+- El micrófono (burbuja con una herramienta, burbuja dictando, lugar del micrófono en la barra abierta) es el agujero: disco `hz_hole` con anillo brasa de 2 dp y un `HorizonView` en modo `CORONA` encima, con las fases reposo / grabando / pensando del dictado. El animador se detiene solo con la vista oculta o desacoplada.
+- Nivel de voz: el dictado de la burbuja graba en Dart; mientras no exista un puente de nivel Dart → Kotlin la corona recibe nivel 0 (espigas mínimas), sin inventar volumen.
+- Las demás herramientas (puntero, concentrador) son íconos fg2; activa (trackpad abierto) = `hz_ember_soft` + `hz_ember_t`; presionada = `hz_surf2`. En el abanico, cada herramienta es un botón circular sólido (el micrófono, un agujero).
+- Gestos, arrastre, geometría y tamaños no cambian.
+
+### Historial flotante de la burbuja
+
+Tarjeta sólida `hz_bg` + borde `hz_line`, radio 18 (nace de la burbuja). Título «Historial de transcripciones» / «Snippets» con la etiqueta de grupo (mono 500 en mayúsculas con tracking, fg2). Cada fila: hora en mono fg2 en una columna fija de 44 dp (`HistoryCardView.TIME_COLUMN_DP`), texto Inter fg, copiar como ícono fg2 (target 44 dp) y separador `hz_line`. Selección y copiado: `hz_ember_soft` + borde `hz_ember` (check ember-t); copiar-todo confirmado = círculo brasa con check on-ember. El micrófono del pie es el agujero; la agarradera, una línea `hz_line`.
+

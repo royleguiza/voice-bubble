@@ -19,10 +19,13 @@ Requisitos verificados:
    - El glifo usa el color de ícono de la paleta: fg2, fg con alto contraste.
    - La paleta consulta MediaQuery.highContrastOf(context).
 4. Layout nativo del widget (widget_notes.xml):
-   - Cero ocurrencias de #007AFF hardcodeado; usa @color/kb_key_bg_accent adaptable.
-   - Elementos decorativos (widget_rec_dot) documentados.
-5. Fondos glass del widget (widget_glass_bg.xml):
-   - Bordes delimitados con contraste >= 3:1 en modo claro y noche.
+   - Cero ocurrencias de #007AFF hardcodeado; los íconos sobre superficie
+     clara usan @color/hz_ember_t (Horizonte fase 4: la brasa de relleno
+     kb_key_bg_accent da 2.77:1 sobre blanco y no se usa como tinte).
+   - Elementos decorativos (la voz animada del widget) documentados.
+5. Fondo del widget (widget_bg.xml, Horizonte fase 4: sólido, sin vidrio):
+   - Superficie opaca hz_bg con borde delimitado de 1dp hz_line; claro y
+     noche los resuelven los tokens (sin variante drawable-night).
 6. Batería de mutaciones negativas (5/5 detectadas al 100%).
 """
 
@@ -36,12 +39,14 @@ SETTINGS_V2 = os.path.join(BASE_DIR, "app_source", "lib", "widgets", "settings_v
 WIDGET_NOTES_LAYOUT = os.path.join(
     BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "res", "layout", "widget_notes.xml"
 )
-WIDGET_GLASS_BG_LIGHT = os.path.join(
-    BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "res", "drawable", "widget_glass_bg.xml"
+WIDGET_BG = os.path.join(
+    BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "res", "drawable", "widget_bg.xml"
 )
-WIDGET_GLASS_BG_NIGHT = os.path.join(
-    BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "res", "drawable-night", "widget_glass_bg.xml"
+WIDGET_BG_NIGHT = os.path.join(
+    BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "res", "drawable-night", "widget_bg.xml"
 )
+COLORS_LIGHT = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "res", "values", "colors.xml")
+COLORS_NIGHT = os.path.join(BASE_DIR, "voice_bubble_stt", "android", "app", "src", "main", "res", "values-night", "colors.xml")
 
 def wcag_relative_luminance(hex_code):
     clean = hex_code.strip().lstrip("#").upper()
@@ -64,8 +69,7 @@ def test_files_exist():
     assert os.path.isfile(DESIGN_TOKENS), f"design_tokens.dart no existe en {DESIGN_TOKENS}"
     assert os.path.isfile(SETTINGS_V2), f"settings_v2.dart no existe en {SETTINGS_V2}"
     assert os.path.isfile(WIDGET_NOTES_LAYOUT), f"widget_notes.xml no existe en {WIDGET_NOTES_LAYOUT}"
-    assert os.path.isfile(WIDGET_GLASS_BG_LIGHT), f"widget_glass_bg.xml no existe en {WIDGET_GLASS_BG_LIGHT}"
-    assert os.path.isfile(WIDGET_GLASS_BG_NIGHT), f"widget_glass_bg.xml no existe en {WIDGET_GLASS_BG_NIGHT}"
+    assert os.path.isfile(WIDGET_BG), f"widget_bg.xml no existe en {WIDGET_BG}"
 
 def _token_hex(src, name):
     m = re.search(rf"const Color {name} = Color\(0xFF([0-9A-Fa-f]{{6}})\);", src)
@@ -131,24 +135,30 @@ def test_widget_notes_layout_tints_and_decoratives():
     with open(WIDGET_NOTES_LAYOUT, "r", encoding="utf-8") as f:
         src = f.read()
 
-    assert "#007AFF" not in src, "widget_notes.xml no debe tener #007AFF hardcodeado (usar @color/kb_key_bg_accent)"
-    assert "@color/kb_key_bg_accent" in src, "widget_notes.xml debe usar @color/kb_key_bg_accent para los tints"
+    assert "#007AFF" not in src, "widget_notes.xml no debe tener #007AFF hardcodeado (usar tokens)"
+    assert "@color/hz_ember_t" in src, "widget_notes.xml debe usar @color/hz_ember_t para los íconos sobre superficie"
+    assert "@color/kb_key_bg_accent" not in src, (
+        "widget_notes.xml no debe teñir íconos con la brasa de relleno (2.77:1 sobre blanco)"
+    )
     assert "decorativo" in src.lower() or "decorative" in src.lower(), (
-        "widget_notes.xml debe documentar elementos decorativos (ej. widget_rec_dot)"
+        "widget_notes.xml debe documentar elementos decorativos (ej. la voz animada)"
     )
 
-def test_widget_glass_bg_stroke():
-    with open(WIDGET_GLASS_BG_LIGHT, "r", encoding="utf-8") as f:
-        light_src = f.read()
-    with open(WIDGET_GLASS_BG_NIGHT, "r", encoding="utf-8") as f:
-        night_src = f.read()
-
-    assert 'android:width="1dp"' in light_src or 'android:width="0.5dp"' in light_src, (
-        "drawable/widget_glass_bg.xml debe tener stroke definido"
+def test_widget_bg_solid_stroke():
+    """Horizonte: fondo sólido por tokens con borde de 1dp (sin vidrio)."""
+    with open(WIDGET_BG, "r", encoding="utf-8") as f:
+        src = f.read()
+    assert '<solid android:color="@color/hz_bg" />' in src, "widget_bg.xml debe ser hz_bg sólido (token)"
+    assert '<stroke android:width="1dp" android:color="@color/hz_line" />' in src, (
+        "widget_bg.xml debe tener borde de 1dp hz_line"
     )
-    assert 'android:width="1dp"' in night_src or 'android:width="0.5dp"' in night_src, (
-        "drawable-night/widget_glass_bg.xml debe tener stroke definido"
-    )
+    assert not os.path.exists(WIDGET_BG_NIGHT), "Sin variante drawable-night: los tokens resuelven claro/noche"
+    for path in (COLORS_LIGHT, COLORS_NIGHT):
+        with open(path, "r", encoding="utf-8") as f:
+            colors = f.read()
+        for name in ("hz_bg", "hz_line"):
+            m = re.search(rf'<color name="{name}">#([0-9A-Fa-f]{{8}})</color>', colors)
+            assert m and m.group(1)[:2].upper() == "FF", f"{name} debe ser opaco en {path}"
 
 def test_negative_mutations():
     with open(DESIGN_TOKENS, "r", encoding="utf-8") as f:
@@ -174,9 +184,9 @@ def test_negative_mutations():
     light_code = mut3[light_start:light_start + 1200]
     assert "onPrimary: Colors.white" in light_code, "Mutación 3 falló al aplicar"
 
-    # Mutación 4: Reintroducir #007AFF hardcodeado en widget_notes.xml
-    mut4 = widget_src.replace("@color/kb_key_bg_accent", "#007AFF")
-    assert "#007AFF" in mut4, "Mutación 4 falló al aplicar"
+    # Mutación 4: volver a teñir con la brasa de relleno (2.77:1) en widget_notes.xml
+    mut4 = widget_src.replace("@color/hz_ember_t", "@color/kb_key_bg_accent")
+    assert "@color/kb_key_bg_accent" in mut4 and "@color/hz_ember_t" not in mut4, "Mutación 4 falló al aplicar"
 
     # Mutación 5: Quitar highContrast del ícono de fila / paleta
     mut5 = settings_src.replace("highContrast", "/* no high contrast */")
@@ -189,7 +199,7 @@ def run_all_tests():
         test_theme_on_primary_uses_tokens,
         test_setting_icon_tile_contrast_and_fallback,
         test_widget_notes_layout_tints_and_decoratives,
-        test_widget_glass_bg_stroke,
+        test_widget_bg_solid_stroke,
         test_negative_mutations,
     ]
     for t in tests:

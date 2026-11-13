@@ -60,6 +60,17 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
 
     var levelSource: LevelSource? = null
 
+    /**
+     * Margen derecho libre de partículas (A): lo ocupa un control encima
+     * (la ✕ de cancelar). Las partículas nacen a su izquierda con fundido
+     * de entrada y los renglones de pensando se apagan antes de llegar.
+     */
+    var particleEndInsetPx: Float = 0f
+        set(value) {
+            field = value.coerceAtLeast(0f)
+            invalidate()
+        }
+
     var phase: Phase = Phase.IDLE
         private set
 
@@ -228,11 +239,11 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
             return
         }
         val h = height.toFloat()
-        val w = width.toFloat()
-        if (w <= 0f || h <= 0f) return
-        val r = h * 0.3f
+        if (width <= 0 || h <= 0f) return
+        val r = h * HOLE_RADIUS_K
         val cx = h * 0.5f + dp
         val cy = h * 0.5f
+        val w = fieldRight(width.toFloat(), cx, r)
         when (phase) {
             Phase.RECORDING -> {
                 spawnAcc += dt * (5f + 90f * vol)
@@ -281,6 +292,10 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
         }
     }
 
+    /** Borde derecho del campo de partículas: el ancho menos [particleEndInsetPx]. */
+    private fun fieldRight(viewW: Float, cx: Float, r: Float): Float =
+        max(cx + r * 3f, viewW - particleEndInsetPx)
+
     private fun freeSlot(): Int {
         for (i in 0 until MAX_PARTICLES) if (!pactive[i]) return i
         return -1
@@ -303,12 +318,13 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
         if (mode == Mode.ACCRETION) drawAccretion(canvas, w, h, live) else drawCorona(canvas, w, h, live)
     }
 
-    private fun drawAccretion(canvas: Canvas, w: Float, h: Float, live: Boolean) {
+    private fun drawAccretion(canvas: Canvas, viewW: Float, h: Float, live: Boolean) {
         val save = canvas.save()
         canvas.clipPath(clip)
-        val r = h * 0.3f
+        val r = h * HOLE_RADIUS_K
         val cx = h * 0.5f + dp
         val cy = h * 0.5f
+        val w = fieldRight(viewW, cx, r)
         if (live) {
             for (i in 0 until MAX_PARTICLES) {
                 if (!pactive[i]) continue
@@ -396,7 +412,7 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
     private fun ringGlow(canvas: Canvas, x: Float, y: Float, r: Float, k: Float) {
         val kk = k.coerceIn(0f, 1f)
         if (r <= 0f) return
-        val outer = r * (1.6f + kk * 1.6f)
+        val outer = r * (HALO_MIN_K + kk * HALO_GROW_K)
         glowMatrix.setScale(outer, outer)
         glowMatrix.postTranslate(x, y)
         glowShader.setLocalMatrix(glowMatrix)
@@ -407,7 +423,7 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
         canvas.drawCircle(x, y, r, fill)
         stroke.color = if (kk > 0.5f) colorHot else colorEmber
         stroke.alpha = 255
-        stroke.strokeWidth = (1.2f + 2.2f * kk) * dp
+        stroke.strokeWidth = (RING_MIN_DP + RING_GROW_DP * kk) * dp
         canvas.drawCircle(x, y, r, stroke)
     }
 
@@ -438,6 +454,30 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
     }
 
     companion object {
+        /** Radio del agujero de A respecto del alto de la pastilla. */
+        const val HOLE_RADIUS_K = 0.3f
+        /** Halo de A: radio exterior = r * (HALO_MIN_K + nivel * HALO_GROW_K). */
+        const val HALO_MIN_K = 1.6f
+        const val HALO_GROW_K = 1.6f
+        /** Grosor del anillo de A en dp: RING_MIN_DP + nivel * RING_GROW_DP. */
+        const val RING_MIN_DP = 1.2f
+        const val RING_GROW_DP = 2.2f
+
+        /**
+         * Borde derecho (px, desde la izquierda de la vista) que puede
+         * alcanzar el agujero de A en una pastilla de [heightPx]: el mayor
+         * entre el anillo con su grosor máximo y el halo a volumen máximo.
+         * Lo usa quien ubica controles al lado (cronómetro) para dejar aire
+         * real calculado desde esta geometría.
+         */
+        fun accretionHoleRightPx(heightPx: Float, density: Float): Float {
+            val r = heightPx * HOLE_RADIUS_K
+            val cx = heightPx * 0.5f + density
+            val ring = r + (RING_MIN_DP + RING_GROW_DP) * density / 2f
+            val halo = r * (HALO_MIN_K + HALO_GROW_K)
+            return cx + max(ring, halo)
+        }
+
         /** Tope de partículas en la pastilla (pool fijo). */
         const val MAX_PARTICLES = 60
         const val SPIKES = 44

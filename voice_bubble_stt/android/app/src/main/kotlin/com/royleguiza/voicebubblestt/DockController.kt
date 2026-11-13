@@ -104,10 +104,9 @@ internal class DockController(
         bubbleX = state.getFloat("bubble_x_frac", 0.8f) * sw
         bubbleY = state.getFloat("bubble_y_frac", 0.45f) * sh
 
-        edgeWindow = GlassWindow(context, edgeView, cornerRadiusPx = null)
-        bubbleWindow = GlassWindow(context, bubbleView, cornerRadiusPx = bubbleSize / 2f) { blur ->
-            bubbleView.frosted = !blur
-        }
+        // Superficie sólida (Horizonte): las vistas pintan su fondo; sin desenfoque.
+        edgeWindow = GlassWindow(context, edgeView)
+        bubbleWindow = GlassWindow(context, bubbleView)
         edgeView.setOnTouchListener(EdgeTouch())
         bubbleView.setOnTouchListener(BubbleTouch())
         bubbleWindow?.onOutsideTouch = {
@@ -158,6 +157,7 @@ internal class DockController(
     fun setTrackpadOpen(open: Boolean) {
         if (trackpadOpen == open) return
         trackpadOpen = open
+        edgeView.pointerActive = open
         if (open) closeArc()
         bubbleWindow?.setVisible(!hidden && !open && form == DockGeometry.Form.BUBBLE)
     }
@@ -175,6 +175,10 @@ internal class DockController(
         handler.removeCallbacksAndMessages(null)
         openAnimator?.cancel()
         closeArc()
+        // La corona se detiene sola al desacoplarse; IDLE explícito por si
+        // la ventana no llegó a mostrarse.
+        edgeView.horizon.setPhase(HorizonView.Phase.IDLE)
+        bubbleView.horizon.setPhase(HorizonView.Phase.IDLE)
         edgeWindow?.dismiss()
         bubbleWindow?.dismiss()
         edgeWindow = null
@@ -411,7 +415,7 @@ internal class DockController(
             val (tx, ty) = centers[i]
             val orb = ToolOrbView(context, tool)
             orb.contentDescription = if (tool == DockGeometry.Tool.MIC) "Dictar" else "Abrir trackpad"
-            val win = GlassWindow(context, orb, cornerRadiusPx = arcSize / 2f) { blur -> orb.frosted = !blur }
+            val win = GlassWindow(context, orb)
             orb.setOnTouchListener { v, e ->
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {

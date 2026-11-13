@@ -809,6 +809,43 @@ class WidgetNotesBehaviorTest {
         }
     }
 
+    // --- Voz del widget por niveles (Horizonte fase 4) ---
+
+    @Test
+    fun widgetVoiceTierUsesHysteresis() {
+        assertEquals(WidgetVoiceTier.LOW, WidgetVoiceLevel.nextTier(WidgetVoiceTier.LOW, 0.2f))
+        assertEquals(WidgetVoiceTier.MID, WidgetVoiceLevel.nextTier(WidgetVoiceTier.LOW, 0.3f))
+        // Entre MID_DOWN y MID_UP se queda donde estaba (sin parpadeo).
+        assertEquals(WidgetVoiceTier.MID, WidgetVoiceLevel.nextTier(WidgetVoiceTier.MID, 0.18f))
+        assertEquals(WidgetVoiceTier.LOW, WidgetVoiceLevel.nextTier(WidgetVoiceTier.MID, 0.1f))
+        assertEquals(WidgetVoiceTier.HIGH, WidgetVoiceLevel.nextTier(WidgetVoiceTier.MID, 0.7f))
+        assertEquals(WidgetVoiceTier.HIGH, WidgetVoiceLevel.nextTier(WidgetVoiceTier.HIGH, 0.5f))
+        assertEquals(WidgetVoiceTier.MID, WidgetVoiceLevel.nextTier(WidgetVoiceTier.HIGH, 0.4f))
+        assertEquals(WidgetVoiceTier.LOW, WidgetVoiceLevel.nextTier(WidgetVoiceTier.HIGH, 0f))
+    }
+
+    @Test
+    fun widgetVoiceGateOnlyReportsChangesAtMostThreePerSecond() {
+        val gate = WidgetVoiceTierGate(startMs = 0L)
+        // Mismo nivel: nada que actualizar.
+        assertNull(gate.offer(0.05f, 1_000L))
+        // Cambio real: se reporta una vez.
+        assertEquals(WidgetVoiceTier.HIGH, gate.offer(0.9f, 1_100L))
+        // Otro cambio antes de MIN_SWITCH_MS: se descarta.
+        assertNull(gate.offer(0.0f, 1_100L + WidgetVoiceLevel.MIN_SWITCH_MS - 1))
+        assertEquals(WidgetVoiceTier.HIGH, gate.tier)
+        assertEquals(WidgetVoiceTier.LOW, gate.offer(0.0f, 1_100L + WidgetVoiceLevel.MIN_SWITCH_MS))
+        // Un nivel que oscila cada cuadro produce como mucho ~3 cambios por segundo.
+        var changes = 0
+        var t = 10_000L
+        repeat(60) { i ->
+            if (gate.offer(if (i % 2 == 0) 0.95f else 0.0f, t) != null) changes++
+            t += 16L
+        }
+        assertTrue("cambios en ~1 s: $changes", changes <= 3)
+        assertTrue(WidgetVoiceLevel.MIN_SWITCH_MS >= 333L)
+    }
+
     private fun noteIndex(audioPath: String): String {
         val now = "2026-09-25T10:00:00Z"
         val note = JSONObject()

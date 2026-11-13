@@ -109,7 +109,8 @@ class TestC39WidgetPendingTranscribeSuite(unittest.TestCase):
                          "12 botones de 48dp: 8 de la botonera clasica + 4 de la "
                          "fila del pendiente (cerrar, descartar, transcribir, play)")
         self.assertIn('android:id="@+id/player_bar"', xml)
-        self.assertIn("@drawable/widget_glass_inner", xml)
+        # Horizonte fase 4: hoja sólida (antes widget_glass_inner).
+        self.assertIn("@drawable/widget_sheet_bg", xml)
         for path in (ACTIVITY, STORE):
             src = read_file(path)
             self.assertNotIn("Log.", src, f"{os.path.basename(path)} sin logs")

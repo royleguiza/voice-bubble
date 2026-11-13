@@ -46,12 +46,10 @@
     <color name="bubble_idle_border">#4DFFFFFF</color>
     <color name="bubble_active_border">#80FFFFFF</color>
     <color name="bubble_recording_bg">#E6F27A14</color>
-    <color name="bubble_transcribing_bg">#D9B04706</color>
 
-    <!-- Modal de historial (B1–B7 + Snippets): fondo claro en tema claro.
-         La burbuja sigue oscura siempre; la modal sí adapta para que las
-         tarjetas claras tengan contraste (defecto detectado en laboratorio). -->
-    <color name="bubble_modal_bg">#F2EEEEF4</color>
+    <!-- Historial flotante de la burbuja (B1–B7 + Snippets), Horizonte
+         fase 4: tarjeta sólida bg + borde line, sin translucidez. -->
+    <color name="bubble_modal_bg">@color/hz_bg</color>
     <color name="bubble_modal_border">@color/hz_line</color>
     <color name="bubble_legend_bg">@color/hz_surf</color>
 
@@ -83,18 +81,19 @@
     <color name="snippet_stroke_violeta">#668B4FD0</color>
     <color name="snippet_fill_gris">#337B7E8C</color>
     <color name="snippet_stroke_gris">#667B7E8C</color>
-    <!-- Barra flotante (prototipo "Burbuja de puntero", 2026-10-30).
-         tint: sobre desenfoque real (Android 12+); frosted: sin desenfoque.
-         Fase 0 Horizonte: solo colores de la paleta; la estructura (y el
-         desenfoque de ventana) se revisa en la fase de la burbuja. -->
-    <color name="dock_glass_tint">#B3FFFFFF</color>
-    <color name="dock_glass_frosted">#F2FFFFFF</color>
-    <color name="dock_glass_highlight">#B3FFFFFF</color>
-    <color name="dock_glass_line">@color/hz_line</color>
-    <color name="dock_label">@color/hz_fg</color>
-    <color name="dock_tool_pressed">#14000000</color>
-    <color name="dock_track">#29000000</color>
-    <color name="dock_handle">#805C6072</color>
+    <!-- Barra flotante y burbuja (Horizonte fase 4): superficie sólida
+         hz_surf + borde hz_line de 1 dp, sin desenfoque de ventana. Íconos
+         en fg2; herramienta activa en brasa suave + ember-t (como la barra
+         del teclado); presionada en surf2. El micrófono es el agujero
+         (HorizonView, modo CORONA). -->
+    <color name="dock_surface">@color/hz_surf</color>
+    <color name="dock_line">@color/hz_line</color>
+    <color name="dock_label">@color/hz_fg2</color>
+    <color name="dock_tool_pressed">@color/hz_surf2</color>
+    <color name="dock_tool_active">@color/hz_ember_soft</color>
+    <color name="dock_tool_active_icon">@color/hz_ember_t</color>
+    <color name="dock_track">@color/hz_line</color>
+    <color name="dock_handle">@color/hz_fg2</color>
     <color name="dock_pad">@color/hz_surf2</color>
     <color name="dock_pad_line">@color/hz_line</color>
     <color name="dock_hint">@color/hz_fg2</color>
