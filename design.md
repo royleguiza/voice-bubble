@@ -154,9 +154,10 @@ Escala (tamaños vigentes):
 | Tecla | 7 dp | `kRadiusKey` / `kb_key_radius` |
 | Tarjeta | 14 dp | `kRadiusCard` |
 | Hoja (sheet) | 22 dp | `kRadiusSheet` |
+| Buscador y campo de formulario | 12 dp | `kRadiusField` |
 | Agujero y botones de ícono | círculo | — |
 
-Los radios históricos (`kBorderRadius*`, `kSettingsGroupRadius`) siguen vigentes en las pantallas que aún no se rehicieron; cada fase del rediseño los migra a la escala de arriba.
+`kSettingsGroupRadius` ya vale `kRadiusCard` (14). Los radios históricos (`kBorderRadius*`) siguen en las superficies que aún no se rehicieron (burbuja, widget); cada fase los migra a la escala de arriba.
 
 ### Controles
 
@@ -340,3 +341,23 @@ Paneles: buscador de snippets sobre `kb_key_bg` (dentro del teclado `hz_surf2` c
 - Campos de contraseña: micrófono oculto, snippets deshabilitados, cero sugerencias visuales. La burbuja tampoco inyecta jamás ahí: solo portapapeles neutro (Hito 4 BLOQUEADO 2026-09-05, perfil anti-Play-Protect; spec archivada en `plan-hito4-burbuja-hibrida.md` §6).
 - Prohibido por alcance (anti-patrones `docs/archive/teclado-voice.md` §8): temas, emojis, autocorrector predictivo, glide typing, portapapeles multinivel.
 - Burbuja (2 caminos vigentes): sin componentes nuevos. El feedback por camino (`Insertado en el campo` / `Copiado al portapapeles`) reutiliza Snackbar Material existente e i18n es/en; Reduced Motion = texto estático sin rebote. El tercer camino híbrido (HB2+, `Pegado` por accesibilidad con tercer teclado) quedó BLOQUEADO 2026-09-05 por perfil anti-Play-Protect: archivado, no vigente (ver `plan-hito4-burbuja-hibrida.md` §6).
+
+---
+
+## 13. Componentes de la app (Horizonte, fase 3)
+
+Maqueta: `laboratorio_ui/horizonte.html`, bloque «app». Etiqueta de grupo = `kTextGroupLabel` (JetBrains Mono 500, mayúsculas con tracking, fg2); el lector de pantalla lee el texto sin forzar mayúsculas (`semanticsLabel`) salvo en las secciones de Inicio, que ya se anunciaban así.
+
+| Componente | Regla |
+|---|---|
+| **Inicio** | Título grande Sora 700 (`kTextLargeTitle`). Ajustes = botón de ícono circular sólido (surf + line, sin halo). El agujero de dictar va abajo al centro y la lista se desvanece al color de fondo con un degradado (sin desenfoque). |
+| **Pestañas Notas / Historial** | Texto sin caja sobre una línea inferior line: Sora 600, contador en mono; la activa en fg con subrayado brasa de 2 dp (`kHomeTabUnderline`), la otra en fg2. Alto táctil 44 (`kHomeTabHeight`). |
+| **Buscador** | Relleno surf2, radio 12, sin borde (foco: borde brasa de 1 px). |
+| **Encabezado de grupo** | «HOY», «AYER», «ESTA SEMANA»… con la etiqueta de grupo. |
+| **Tarjeta de nota** | surf + line 1 px, radio 14, sin sombra. Título Sora 600 (`kTextCardTitle`), cuerpo 2 líneas en fg2, fila meta: hora en mono, chip de audio (fondo ember-soft, ícono y duración ember-t, duración en mono) y copiar como ícono fg2 a la derecha. La tarjeta de audio pendiente es la misma tarjeta con su estado en ember-t. |
+| **Historial** | Agrupado por día (Hoy / Ayer / «6 nov») en la presentación. Filas sueltas sobre el fondo con separador line: hora sola en mono en una columna fija (`kHistoryTimeColumn`), texto Inter, copiar a la derecha. |
+| **Editor de nota** | Volver = ícono circular sólido; guardar = círculo brasa con check on-ember (surf2 atenuado sin cambios). Meta en mono + chip de audio, título Sora 700, cuerpo Inter con interlineado 1.6. Barra inferior en pastilla sólida (surf + line): pegar, copiar, IA en ember-t, borrar en danger. |
+| **Lista de Ajustes** | Grupos como lista sólida (surf + line, radio 14) con separadores line a todo el ancho. Íconos de línea en fg2 sin pastilla (fg con alto contraste); el valor de la fila en mono a la derecha: ember-t si está encendido/activo, fg2 si está apagado o es neutro. Interruptores en brasa. La fila «VoiceBubble» lleva un agujero chico (hole + anillo brasa + micrófono on-hole). Sin sombras: los menús desplegables son surf + line. |
+| **Snippets** | Marca vertical de 3 dp con el color del snippet al borde izquierdo (sin color = sin marca), nombre Inter 600, texto en mono fg2 en una línea; pie con el contador en mono; «Ordenar» como acción de texto ember-t. |
+| **Hojas** | Fondo bg, radio superior 22, borde line, agarradera line, sin sombra (el velo las separa). Cerrar = ícono circular sólido; guardar = círculo brasa (atenuado mientras guarda). Campos `.fld`: caja surf + line radio 12, etiqueta mono en mayúsculas arriba y valor abajo (texto de snippet y contraseña en mono). Selector de color: círculos sólidos y anillo solo en el elegido. Eliminar = texto danger, sin caja. |
+| **Pantallas vacías** | Sin notas, sin historial, sin claves, sin snippets: `SymbolField` (tres renglones quietos de 0 1 { } [ ] < > · en mono, fg2 al 50 %) sobre el título y la ayuda. Decorativo (fuera de la semántica), sin animación; nunca detrás de una lista con contenido ni en «sin resultados». |

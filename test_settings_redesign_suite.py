@@ -62,8 +62,12 @@ check("Las páginas son part de la misma librería",
 # --- 2. Kit único ---
 for cls in ["SettingsSection", "SettingsNavRow", "SettingsSwitchRow",
             "SettingsMenuRow", "SettingsActionRow", "SettingsValueRow",
-            "SettingsGlassButton", "SettingsSheetFrame", "SettingIconTile"]:
+            "SettingsGlassButton", "SettingsSheetFrame", "SettingsGroupLabel"]:
     check(f"Kit define {cls}", f"class {cls}" in kit)
+# Horizonte: íconos de línea en fg2, sin pastillas de color.
+check("Sin pastillas de ícono (SettingIconTile)", "SettingIconTile" not in kit)
+check("Ícono de fila en un solo color (fg2 / fg en alto contraste)",
+      "class _RowIcon" in kit and "highContrast ? label : secondary" in kit)
 check("Interruptor estilo iOS (CupertinoSwitch)", "CupertinoSwitch(" in kit)
 check("Menú desplegable con check (MenuAnchor)", "MenuAnchor(" in kit
       and "Icons.check_rounded" in kit)
@@ -85,8 +89,9 @@ tokens = read(f"{LIB}/ui/design_tokens.dart")
 for tok in ["kSettingsGroupRadius", "kSettingsGroupGap", "kSettingsLargeTitle",
             "kSettingsNavTitle", "kSettingsSectionHeader", "kSettingsSecondaryLight",
             "kSettingsSecondaryDark", "kSwitchOn", "kTintTextLight", "kTintTextDark",
-            "kSettingRowMinHeight", "kSettingIconSize", "kTileIndigo", "kTileYellow"]:
+            "kSettingRowMinHeight", "kSettingIconSize", "kRadiusField", "kTextGroupLabel"]:
     check(f"Token {tok}", tok in tokens, f"falta {tok}")
+check("Sin tokens kTile* (pastillas retiradas)", "kTile" not in tokens)
 
 # --- 4. Tokens UI (mirror del job CI) ---
 dart_files = []

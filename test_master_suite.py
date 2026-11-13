@@ -3752,16 +3752,19 @@ def test_c30_contrast_and_accessible_tokens_contract():
     with open(tokens_file, "r", encoding="utf-8") as f:
         t_src = f.read()
 
-    assert "0xFF1A7A2E" in t_src, "C-30: kTileGreen no fue oscurecido a 0xFF1A7A2E"
-    assert "0xFF9A5B00" in t_src, "C-30: kTileOrange no fue oscurecido a 0xFF9A5B00"
+    # Horizonte (fase 3): sin pastillas kTile*; el ícono de fila es de línea
+    # en fg2 sobre surf, que cumple >= 3:1 (design.md §4: 6.23 / 6.81).
+    assert "kTile" not in t_src, "C-30: quedan pastillas de color kTile*"
+    assert "const Color kHzFg2Light = Color(0xFF5C6072);" in t_src, "C-30: fg2 claro cambió (contraste de íconos)"
+    assert "const Color kHzFg2Dark = Color(0xFF9A9DAB);" in t_src, "C-30: fg2 oscuro cambió (contraste de íconos)"
     # Horizonte: primary = brasa, su texto es on-ember (token) en ambos modos.
     assert t_src.count("onPrimary: kOnEmber") == 2, "C-30: buildLight/DarkTheme no usan kOnEmber en onPrimary"
     assert "onPrimary: Colors." not in t_src, "C-30: onPrimary con color crudo"
 
     with open(settings_file, "r", encoding="utf-8") as f:
         s_src = f.read()
-    assert "kLabelPrimaryDark" in s_src, "C-30: SettingIconTile no usa kLabelPrimaryDark"
-    assert "highContrast" in s_src, "C-30: SettingIconTile no soporta fallback de alto contraste"
+    assert "Color get icon => highContrast ? label : secondary;" in s_src, "C-30: el ícono de fila no va en fg2 / fg con alto contraste"
+    assert "MediaQuery.highContrastOf(context)" in s_src, "C-30: el kit de Ajustes no soporta alto contraste"
 
     with open(widget_file, "r", encoding="utf-8") as f:
         w_src = f.read()

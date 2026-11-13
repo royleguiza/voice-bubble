@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../ui/design_tokens.dart';
-import '../ui/glass_container.dart';
+import '../ui/symbol_field.dart';
 import 'app_icons.dart';
 
 /// Piezas visuales de la pantalla principal (Notas + Historial): selector
 /// de pestañas, buscador, encabezados de sección, estado vacío y menú de
 /// acciones de una nota. Sin lógica: la pantalla decide qué hacer.
 
-/// Selector segmentado "Notas | Historial" (capa de contenido).
+/// Pestañas de texto "Notas | Historial" (Horizonte): sin caja; la activa
+/// va en fg con subrayado de brasa y la otra en fg2. El contador va en mono.
 class HomeSegmented extends StatelessWidget {
   final int index;
   final int notesCount;
@@ -27,84 +28,71 @@ class HomeSegmented extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final motionSafe = !MediaQuery.of(context).disableAnimations;
-    final track = isDark ? kFillDark : kFillLight;
-    final thumb = isDark ? kSegmentThumbDark : kBgElevatedLight;
+    final duration =
+        motionSafe ? const Duration(milliseconds: 200) : Duration.zero;
     final primary = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
+    final ember = isDark ? kEmberDark : kEmberLight;
+    final line = isDark ? kSeparatorDark : kSeparatorLight;
 
-    Widget segment(int i, String label, int count, String key) {
+    Widget tab(int i, String label, int count, String key) {
       final selected = i == index;
-      return Expanded(
-        child: Semantics(
-          selected: selected,
-          button: true,
-          label: '$label, $count',
-          excludeSemantics: true,
-          child: InkWell(
-            key: ValueKey(key),
-            borderRadius: BorderRadius.circular(kBorderRadiusSmall),
-            onTap: selected ? null : () => onChanged(i),
-            child: Center(
-              child: Text.rich(
-                TextSpan(children: [
-                  TextSpan(
-                    text: label,
-                    style: kTextFootnote.copyWith(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: primary,
-                    ),
-                  ),
-                  TextSpan(
-                    text: '  $count',
-                    style: kTextFootnote.copyWith(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: secondary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ]),
+      final color = selected ? primary : secondary;
+      return Semantics(
+        selected: selected,
+        button: true,
+        label: '$label, $count',
+        excludeSemantics: true,
+        child: InkWell(
+          key: ValueKey(key),
+          onTap: selected ? null : () => onChanged(i),
+          child: AnimatedContainer(
+            duration: duration,
+            curve: kCurveFade,
+            height: kHomeTabHeight,
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: selected ? ember : ember.withValues(alpha: 0),
+                  width: kHomeTabUnderline,
+                ),
               ),
+            ),
+            alignment: Alignment.center,
+            child: Text.rich(
+              TextSpan(children: [
+                TextSpan(
+                  text: label,
+                  style: kTextSubhead.copyWith(
+                    fontFamily: kFontDisplay,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                    color: color,
+                  ),
+                ),
+                TextSpan(
+                  text: '  $count',
+                  style: kTextMono.copyWith(fontSize: 12, color: color),
+                ),
+              ]),
             ),
           ),
         ),
       );
     }
 
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.all(2),
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: track,
-        borderRadius: BorderRadius.circular(10),
+        border: Border(
+          bottom: BorderSide(color: line, width: kSurfaceBorderWidth),
+        ),
       ),
-      child: Stack(
+      child: Row(
         children: [
-          AnimatedAlign(
-            duration:
-                motionSafe ? const Duration(milliseconds: 320) : Duration.zero,
-            curve: kCurveEnter,
-            alignment:
-                index == 0 ? Alignment.centerLeft : Alignment.centerRight,
-            child: FractionallySizedBox(
-              widthFactor: 0.5,
-              heightFactor: 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: thumb,
-                  borderRadius: BorderRadius.circular(kBorderRadiusSmall),
-                  boxShadow: const [kSegmentThumbShadow],
-                ),
-              ),
-            ),
-          ),
-          Row(
-            children: [
-              segment(0, 'Notas', notesCount, 'home-tab-notas'),
-              segment(1, 'Historial', historyCount, 'home-tab-historial'),
-            ],
-          ),
+          tab(0, 'Notas', notesCount, 'home-tab-notas'),
+          const SizedBox(width: 22),
+          tab(1, 'Historial', historyCount, 'home-tab-historial'),
         ],
       ),
     );
@@ -130,7 +118,7 @@ class HomeSearchField extends StatelessWidget {
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     final fill = isDark ? kFillDark : kFillLight;
     return SizedBox(
-      height: 40,
+      height: 44,
       child: TextField(
         key: const ValueKey('homeSearchField'),
         controller: controller,
@@ -161,17 +149,17 @@ class HomeSearchField extends StatelessWidget {
           filled: true,
           fillColor: fill,
           isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(kRadiusField),
             borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(kRadiusField),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(kRadiusField),
             borderSide: BorderSide(
               color: isDark ? kAccentDark : kAccentLight,
               width: 1,
@@ -183,7 +171,8 @@ class HomeSearchField extends StatelessWidget {
   }
 }
 
-/// Encabezado de sección de la lista ("HOY", "AYER", "OCTUBRE"…).
+/// Encabezado de grupo de la lista ("HOY", "AYER", "OCTUBRE"…): mono en
+/// mayúsculas con tracking, fg2 (maqueta `.grp`).
 class HomeSectionHeader extends StatelessWidget {
   final String label;
 
@@ -195,12 +184,10 @@ class HomeSectionHeader extends StatelessWidget {
     return Semantics(
       header: true,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
+        padding: const EdgeInsets.fromLTRB(2, 18, 2, 8),
         child: Text(
           label.toUpperCase(),
-          style: kTextFootnote.copyWith(
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.4,
+          style: kTextGroupLabel.copyWith(
             color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
           ),
         ),
@@ -209,7 +196,9 @@ class HomeSectionHeader extends StatelessWidget {
   }
 }
 
-/// Estado vacío o mensaje centrado de la lista.
+/// Estado vacío o mensaje centrado de la lista. Con [showGlyph] (lista
+/// realmente vacía) lleva el campo de símbolos encima; los avisos (sin
+/// resultados, cargando) van sin él.
 class HomeEmptyState extends StatelessWidget {
   final String title;
   final String message;
@@ -225,28 +214,21 @@ class HomeEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = isDark ? kTintTextDark : kTintTextLight;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 56, 24, 0),
       child: Column(
         children: [
           if (showGlyph) ...[
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: isDark ? 0.18 : 0.10),
-                borderRadius: BorderRadius.circular(22),
-              ),
-              child: Icon(Icons.graphic_eq_rounded,
-                  size: AppIcons.large, color: accent),
-            ),
-            const SizedBox(height: 18),
+            const SymbolField(),
+            const SizedBox(height: 14),
           ],
           Text(
             title,
             textAlign: TextAlign.center,
             style: kTextTitle.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
               color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
             ),
           ),
@@ -255,6 +237,7 @@ class HomeEmptyState extends StatelessWidget {
             message,
             textAlign: TextAlign.center,
             style: kTextSubhead.copyWith(
+              height: 1.4,
               color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,
             ),
           ),
@@ -267,7 +250,8 @@ class HomeEmptyState extends StatelessWidget {
 /// Acciones del menú de una nota.
 enum NoteAction { open, copy, deleteAudio, delete }
 
-/// Menú de acciones de una nota: hoja de vidrio desde abajo.
+/// Menú de acciones de una nota: hoja sólida desde abajo (surf, radio
+/// superior 22, agarradera line). Borrar va en danger; el resto, neutro.
 Future<NoteAction?> showNoteActions(
   BuildContext context, {
   required String heading,
@@ -282,13 +266,19 @@ Future<NoteAction?> showNoteActions(
       final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
       final primary = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
       final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
-      final accent = isDark ? kTintTextDark : kTintTextLight;
+      final danger = isDark ? kDangerDark : kDangerLight;
+      final line = isDark ? kSeparatorDark : kSeparatorLight;
+      final highContrast = MediaQuery.highContrastOf(sheetContext);
+      final surface = highContrast
+          ? (isDark ? kHighContrastSurfaceDark : kHighContrastSurfaceLight)
+          : (isDark ? kBgElevatedDark : kBgElevatedLight);
+      final border = highContrast ? primary : line;
 
       Widget action(NoteAction a, IconData icon, String label,
-          {bool muted = false}) {
+          {bool destructive = false}) {
         return InkWell(
           key: ValueKey('noteAction-${a.name}'),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(kRadiusCard),
           onTap: () => Navigator.of(sheetContext).pop(a),
           child: SizedBox(
             height: 52,
@@ -296,13 +286,14 @@ Future<NoteAction?> showNoteActions(
               children: [
                 const SizedBox(width: 16),
                 Icon(icon,
-                    size: AppIcons.medium, color: muted ? secondary : accent),
+                    size: AppIcons.medium,
+                    color: destructive ? danger : secondary),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
                     label,
-                    style:
-                        kTextBody.copyWith(color: muted ? secondary : primary),
+                    style: kTextBody.copyWith(
+                        color: destructive ? danger : primary),
                   ),
                 ),
               ],
@@ -311,21 +302,37 @@ Future<NoteAction?> showNoteActions(
         );
       }
 
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-        child: GlassContainer(
-          borderRadius: kBorderRadiusSheetLarge,
-          small: false,
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(kRadiusSheet),
+          ),
+          border: Border(
+            top: BorderSide(
+              color: border,
+              width: highContrast
+                  ? kGlassBorderWidthAccessible
+                  : kSurfaceBorderWidth,
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            8,
+            8,
+            8,
+            8 + MediaQuery.paddingOf(sheetContext).bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 36,
-                height: 5,
-                margin: const EdgeInsets.only(top: 2, bottom: 10),
+                height: 4,
+                margin: const EdgeInsets.only(top: 2, bottom: 12),
                 decoration: BoxDecoration(
-                  color: isDark ? kLabelTertiaryDark : kLabelTertiaryLight,
+                  color: line,
                   borderRadius: BorderRadius.circular(kBorderRadiusCapsule),
                 ),
               ),
@@ -344,10 +351,10 @@ Future<NoteAction?> showNoteActions(
               if (hasAudio)
                 action(NoteAction.deleteAudio, Icons.music_off_rounded,
                     'Borrar audio, conservar texto',
-                    muted: true),
+                    destructive: true),
               action(NoteAction.delete, Icons.delete_outline_rounded,
                   'Eliminar nota',
-                  muted: true),
+                  destructive: true),
             ],
           ),
         ),

@@ -54,7 +54,7 @@ class GlassContainer extends StatelessWidget {
     final Color fill;
     final Color borderColor;
     if (isHighContrast) {
-      fill = isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
+      fill = isDark ? kHighContrastSurfaceDark : kHighContrastSurfaceLight;
       borderColor = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
     } else {
       fill = isDark ? kBgElevatedDark : kBgElevatedLight;

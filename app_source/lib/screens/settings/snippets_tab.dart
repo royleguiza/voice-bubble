@@ -192,7 +192,6 @@ class SnippetsTabState extends State<SnippetsTab> {
         ],
         if (_loaded && _snippets.isEmpty)
           SettingsEmptyState(
-            icon: Icons.short_text_rounded,
             title: 'Sin snippets',
             message: 'Guardá textos que usás seguido y pegalos con un toque '
                 'desde el teclado.',
@@ -213,6 +212,7 @@ class SnippetsTabState extends State<SnippetsTab> {
           SettingsSection(
             footer: '${_snippets.length} de ${StorageService.maxSnippets} · '
                 'Se insertan con un toque desde el teclado.',
+            monoFooter: true,
             children: [
               for (final s in visible)
                 _SnippetRow(
@@ -228,15 +228,21 @@ class SnippetsTabState extends State<SnippetsTab> {
             ],
           ),
           if (_snippets.length > 1 && q.isEmpty) ...[
-            const SizedBox(height: kSettingsGroupGap),
-            SettingsSection(
-              children: [
-                SettingsActionRow(
-                  key: const ValueKey('snippets-reorder-button'),
-                  title: _reorderMode ? 'Listo' : 'Ordenar',
-                  onTap: () => setState(() => _reorderMode = !_reorderMode),
+            const SizedBox(height: 12),
+            // "Ordenar" es una acción de texto en ember-t, sin caja.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const ValueKey('snippets-reorder-button'),
+                onPressed: () => setState(() => _reorderMode = !_reorderMode),
+                style: TextButton.styleFrom(
+                  foregroundColor: p.tintText,
+                  minimumSize: const Size(44, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  textStyle: kTextBody.copyWith(fontWeight: FontWeight.w600),
                 ),
-              ],
+                child: Text(_reorderMode ? 'Listo' : 'Ordenar'),
+              ),
             ),
           ],
         ],
@@ -245,7 +251,7 @@ class SnippetsTabState extends State<SnippetsTab> {
   }
 }
 
-/// Buscador en cápsula gris (estilo iOS).
+/// Buscador: relleno surf2, radio 12 (maqueta `.srch`).
 class _SearchField extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
@@ -255,10 +261,10 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = SettingsPalette.of(context);
     return Container(
-      height: 40,
+      height: 44,
       decoration: BoxDecoration(
-        color: p.switchOff,
-        borderRadius: BorderRadius.circular(kBorderRadiusCapsule),
+        color: p.field,
+        borderRadius: BorderRadius.circular(kRadiusField),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
@@ -287,8 +293,9 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-/// Fila de snippet: punto de color, nombre y vista previa de una línea.
-/// En modo Ordenar muestra ↑↓ en lugar del chevron.
+/// Fila de snippet: marca vertical de 3 dp con el color del snippet al
+/// borde izquierdo, nombre en Inter 600 y el texto en mono fg2 en una
+/// línea. En modo Ordenar muestra ↑↓ en lugar del chevron.
 class _SnippetRow extends StatelessWidget {
   final Snippet snippet;
   final bool reorderMode;
@@ -311,7 +318,7 @@ class _SnippetRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = SettingsPalette.of(context);
-    final dot = snippetPaletteBase(snippet.color, isDark: p.isDark);
+    final tick = snippetPaletteBase(snippet.color, isDark: p.isDark);
     final preview = snippet.contenido.replaceAll('\n', ' ');
     return InkWell(
       key: ValueKey('snippet-edit-${snippet.id}'),
@@ -319,18 +326,19 @@ class _SnippetRow extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 64),
         child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 8, reorderMode ? 4 : 16, 8),
+          padding: EdgeInsets.fromLTRB(12, 8, reorderMode ? 4 : 16, 8),
           child: Row(
             children: [
+              // Sin color = sin marca (como el chip del teclado).
               Container(
-                width: 10,
-                height: 10,
+                width: 3,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: dot ?? p.chevron,
-                  shape: BoxShape.circle,
+                  color: tick ?? p.card,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Semantics(
                   button: !reorderMode,
@@ -343,14 +351,17 @@ class _SnippetRow extends StatelessWidget {
                         snippet.nombre,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: kTextBody.copyWith(color: p.label),
+                        style: kTextBody.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: p.label,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         preview,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: kTextSubhead.copyWith(color: p.secondary),
+                        style: kTextMono.copyWith(color: p.secondary),
                       ),
                     ],
                   ),
@@ -512,8 +523,8 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
             Navigator.of(context).maybePop(),
       },
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-            8, 0, 8, 8 + MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: ConstrainedBox(
           constraints: BoxConstraints(
             maxHeight: MediaQuery.sizeOf(context).height * 0.90,
@@ -526,6 +537,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
             // Deshabilitado mientras se guarda para evitar dobles submits
             // con read-modify-write concurrentes.
             onSave: _submitting ? null : _submit,
+            showSave: true,
             children: [
               Flexible(
                 child: SingleChildScrollView(
@@ -546,6 +558,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                             key: const ValueKey('snippet-content-field'),
                             label: 'Texto',
                             hint: 'Lo que se va a insertar',
+                            mono: true,
                             controller: _contenidoController,
                             minLines: 3,
                             maxLines: 6,
@@ -557,7 +570,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                        padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
                         child: Align(
                           alignment: Alignment.centerRight,
                           child: ValueListenableBuilder<int>(
@@ -567,10 +580,9 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                                   length > widget.maxContentLength;
                               return Text(
                                 '$length / ${widget.maxContentLength}',
-                                style: kTextCaption.copyWith(
-                                  color: overLimit
-                                      ? Theme.of(context).colorScheme.error
-                                      : p.secondary,
+                                style: kTextMono.copyWith(
+                                  fontSize: 12,
+                                  color: overLimit ? p.danger : p.secondary,
                                 ),
                               );
                             },
@@ -578,20 +590,13 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Semantics(
-                        header: true,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Color',
-                            style:
-                                kSettingsSectionHeader.copyWith(color: p.label),
-                          ),
-                        ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: SettingsGroupLabel('Color'),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -615,25 +620,20 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                       ),
                       if (_generalError != null)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
                           child: Text(
                             _generalError!,
-                            style: kTextFootnote.copyWith(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
+                            style: kTextFootnote.copyWith(color: p.danger),
                           ),
                         ),
                       if (_isEditing && widget.onDelete != null) ...[
-                        const SizedBox(height: 16),
-                        SettingsSheetCard(
-                          children: [
-                            SettingsActionRow(
-                              key: const ValueKey('snippet-delete-button'),
-                              title: 'Eliminar snippet',
-                              destructive: true,
-                              onTap: _delete,
-                            ),
-                          ],
+                        const SizedBox(height: 8),
+                        // "Eliminar snippet" como texto danger, sin caja.
+                        SettingsActionRow(
+                          key: const ValueKey('snippet-delete-button'),
+                          title: 'Eliminar snippet',
+                          destructive: true,
+                          onTap: _delete,
                         ),
                       ],
                     ],
@@ -648,7 +648,9 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
   }
 }
 
-/// Swatch circular de la paleta de snippets (6 ids + sin color).
+/// Swatch circular de la paleta de snippets (6 ids + sin color): círculo
+/// sólido de 24 dp dentro de un área táctil de 44 dp; solo el elegido lleva
+/// anillo, separado del círculo por un respiro.
 class _ColorSwatch extends StatelessWidget {
   final bool selected;
   final Color? base;
@@ -666,7 +668,7 @@ class _ColorSwatch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = SettingsPalette.of(context);
-    final fill = base ?? p.switchOff;
+    final fill = base ?? p.field;
     return Tooltip(
       message: label,
       excludeFromSemantics: true,
@@ -682,19 +684,30 @@ class _ColorSwatch extends StatelessWidget {
             child: Container(
               width: 44,
               height: 44,
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? (base ?? p.secondary) : Colors.transparent,
-                  width: 2.5,
-                ),
-              ),
+              padding: const EdgeInsets.all(6),
               child: Container(
-                decoration: BoxDecoration(color: fill, shape: BoxShape.circle),
-                child: base == null
-                    ? Icon(Icons.block_rounded, size: 18, color: p.secondary)
-                    : null,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected
+                        ? (base ?? p.secondary)
+                        : p.sheet.withValues(alpha: 0),
+                    width: 2,
+                  ),
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: fill,
+                    shape: BoxShape.circle,
+                    border: base == null
+                        ? Border.all(color: p.border, width: p.borderWidth)
+                        : null,
+                  ),
+                  child: base == null
+                      ? Icon(Icons.block_rounded, size: 18, color: p.secondary)
+                      : null,
+                ),
               ),
             ),
           ),

@@ -150,14 +150,13 @@ extension _TecladoPages on _SettingsScreenState {
           ],
         ),
         SettingsSection(
-          iconInset: true,
           children: [
             SettingsNavRow(
               key: const ValueKey('nav-sonido'),
-              icon: Icons.volume_up_rounded,
-              tile: kTilePink,
+              icon: Icons.volume_up_outlined,
               title: 'Vibración y sonido',
               value: _hapticsEnabled ? 'Activados' : 'Sin vibración',
+              valueActive: _hapticsEnabled,
               onTap: () => _go(SettingsPage.sonido),
             ),
           ],
@@ -434,18 +433,25 @@ class KeyboardPreview extends StatelessWidget {
       _ => [...mods, space, enter],
     });
 
+    // Barra del teclado (fase 2): íconos sueltos en fg2, sin caja.
+    final toolColor = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     final tools = <Widget>[
-      _tool(Icons.short_text_rounded, fg),
-      if (showCredentialsKey) _tool(Icons.key_rounded, fg),
-      if (showTrackpadKey) _tool(Icons.touch_app_rounded, fg),
+      _tool(Icons.short_text_rounded, toolColor),
+      if (showCredentialsKey) _tool(Icons.key_rounded, toolColor),
+      if (showTrackpadKey) _tool(Icons.touch_app_rounded, toolColor),
     ];
+    // Micrófono del teclado = el agujero con anillo de brasa (fase 2).
     final mic = Container(
       width: 32,
       height: 32,
-      decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
-      child: const Icon(Icons.mic_rounded, size: 18, color: kOnEmber),
+      decoration: BoxDecoration(
+        color: isDark ? kHoleDark : kHoleLight,
+        shape: BoxShape.circle,
+        border: Border.all(color: accent, width: 1.5),
+      ),
+      child: const Icon(Icons.mic_rounded, size: 18, color: kOnHole),
     );
-    final clip = _tool(Icons.content_paste_rounded, fg);
+    final clip = _tool(Icons.content_paste_rounded, toolColor);
     final toolbar = invertToolbar
         ? [mic, ...tools, clip]
         : [clip, ...tools, mic];
@@ -486,15 +492,18 @@ class KeyboardPreview extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: row[i].color,
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark
-                                  ? const Color(0x80000000)
-                                  : const Color(0x47000000),
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(kRadiusKey),
+                          // Línea inferior de 1 dp como la tecla nativa
+                          // (kb_key_shadow): en claro, kb_key_stroke; en
+                          // oscuro la tecla va plana.
+                          boxShadow: isDark
+                              ? null
+                              : const [
+                                  BoxShadow(
+                                    color: kKeyStrokeLight,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
                         ),
                         child: row[i].icon != null
                             ? Icon(

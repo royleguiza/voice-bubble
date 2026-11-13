@@ -276,6 +276,7 @@ extension _GeneralPages on _SettingsScreenState {
               controller: controller,
               hint: hint,
               obscure: true,
+              mono: true,
               autofocus: true,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => onSave(),
@@ -284,23 +285,20 @@ extension _GeneralPages on _SettingsScreenState {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
           child: Text(
             help,
             style: kTextFootnote.copyWith(color: p.secondary, height: 1.35),
           ),
         ),
         if (onDelete != null) ...[
-          const SizedBox(height: 16),
-          SettingsSheetCard(
-            children: [
-              SettingsActionRow(
-                key: deleteKey,
-                title: 'Eliminar clave',
-                destructive: true,
-                onTap: onDelete,
-              ),
-            ],
+          const SizedBox(height: 8),
+          // Destructivo como texto danger, sin caja.
+          SettingsActionRow(
+            key: deleteKey,
+            title: 'Eliminar clave',
+            destructive: true,
+            onTap: onDelete,
           ),
         ],
       ],

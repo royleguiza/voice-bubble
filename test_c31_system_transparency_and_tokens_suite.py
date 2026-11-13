@@ -19,7 +19,7 @@ Verifica:
    - snippetPaletteStroke alineado a alpha 0.40 (0x66).
 3. Integración en UI:
    - settings_v2.dart usa kSettingsGroupRadius y kBorderRadiusCapsule (sin 26 ni 100 hardcodeados).
-   - snippets_tab.dart usa kBorderRadiusCapsule en el buscador (sin 100 hardcodeado).
+   - snippets_tab.dart usa kRadiusField en el buscador (sin 12 hardcodeado).
    - teclado_tab.dart usa kSettingsGroupRadius en la vista previa del teclado.
 4. design.md §12:
    - Valores de kb_surface (#FFE3E4ED / #FF0E1016) y kb_key_bg (#FFFFFFFF / #FF1E212D) alineados.
@@ -147,11 +147,14 @@ def test_settings_kit_radii_tokens():
 
 
 def test_snippets_tab_radii_and_stroke():
-    """4. snippets_tab.dart usa tokens de radio (buscador en cápsula)."""
+    """4. snippets_tab.dart usa tokens de radio (buscador Horizonte, radio 12)."""
     src = read_file(SNIPPETS_TAB)
 
-    assert "kBorderRadiusCapsule" in src, (
-        "snippets_tab.dart debe usar kBorderRadiusCapsule en el buscador"
+    assert "borderRadius: BorderRadius.circular(kRadiusField)" in src, (
+        "snippets_tab.dart debe usar kRadiusField en el buscador"
+    )
+    assert "BorderRadius.circular(12)" not in src, (
+        "snippets_tab.dart no debe tener el radio 12 hardcodeado"
     )
     assert "borderRadius: BorderRadius.circular(100)" not in src, (
         "snippets_tab.dart no debe tener BorderRadius.circular(100) hardcodeado"
@@ -229,8 +232,8 @@ def test_negative_mutations():
     assert "BorderRadius.circular(kSettingsGroupRadius)" not in mut4
 
     # Mutación 5: snippets_tab reintroduce hardcoded 100
-    mut5 = snippets_src.replace("borderRadius: BorderRadius.circular(kBorderRadiusCapsule)", "borderRadius: BorderRadius.circular(100)")
-    assert "borderRadius: BorderRadius.circular(100)" in mut5
+    mut5 = snippets_src.replace("borderRadius: BorderRadius.circular(kRadiusField)", "borderRadius: BorderRadius.circular(12)")
+    assert "BorderRadius.circular(12)" in mut5
 
     # Mutación 6: la vista previa del teclado reintroduce 26 suelto
     mut6 = teclado_src.replace("BorderRadius.circular(kSettingsGroupRadius)", "BorderRadius.circular(26)")
@@ -250,7 +253,7 @@ def main():
         ("GlassContainer adaptación reduceTransparency/highContrast", test_glass_container_system_adaptation),
         ("Definición de tokens en design_tokens.dart", test_design_tokens_definitions),
         ("settings_v2.dart tokens de radio (grupos y cápsulas)", test_settings_kit_radii_tokens),
-        ("snippets_tab.dart token kBorderRadiusCapsule", test_snippets_tab_radii_and_stroke),
+        ("snippets_tab.dart token kRadiusField", test_snippets_tab_radii_and_stroke),
         ("teclado_tab.dart vista previa con kSettingsGroupRadius", test_teclado_tab_radii),
         ("design.md §12 tokens y excepciones firmadas", test_design_md_alignment_and_exceptions),
         ("Mutaciones negativas contra regresiones", test_negative_mutations),

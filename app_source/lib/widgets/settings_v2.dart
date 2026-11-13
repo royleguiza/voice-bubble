@@ -2,46 +2,65 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../ui/design_tokens.dart';
+import '../ui/symbol_field.dart';
 
-/// Kit visual de Ajustes 2026 (prototipo "VoiceBubble · Ajustes 2026").
+/// Kit visual de Ajustes (Horizonte, maqueta "Ajustes" de
+/// laboratorio_ui/horizonte.html).
 ///
-/// Un solo lenguaje para toda la sección, estilo Ajustes de iOS 26:
-/// grupos con esquinas de 26, filas de 52 dp y solo cinco tipos de fila:
+/// Un solo lenguaje para toda la sección: grupos como lista sólida (surf +
+/// borde line, radio 14) con separadores line, encabezados en mono
+/// mayúsculas, íconos de línea en fg2 sin pastilla y el valor de cada fila
+/// en mono (ember-t si está encendido/activo, fg2 si no). Tipos de fila:
 /// - [SettingsNavRow]: entra a otra página (chevron).
-/// - [SettingsSwitchRow]: sí / no (interruptor).
+/// - [SettingsSwitchRow]: sí / no (interruptor en brasa).
 /// - [SettingsMenuRow]: elegir una opción (menú desplegable con check).
-/// - [SettingsActionRow]: ejecutar algo (texto azul o rojo).
+/// - [SettingsActionRow]: ejecutar algo (texto ember-t o danger).
 /// - [SettingsValueRow]: dato de solo lectura.
 /// La conducta y el estado viven en las páginas; aquí solo presentación.
 
-/// Colores de la sección resueltos según el brillo del tema.
+/// Colores de la sección resueltos según el brillo del tema y el alto
+/// contraste del sistema (design.md §9: superficie pura y borde fg de 2 px).
 class SettingsPalette {
   final bool isDark;
+  final bool highContrast;
 
-  const SettingsPalette._(this.isDark);
+  const SettingsPalette._(this.isDark, this.highContrast);
 
-  factory SettingsPalette.of(BuildContext context) =>
-      SettingsPalette._(Theme.of(context).brightness == Brightness.dark);
+  factory SettingsPalette.of(BuildContext context) => SettingsPalette._(
+        Theme.of(context).brightness == Brightness.dark,
+        MediaQuery.highContrastOf(context),
+      );
 
   Color get background => isDark ? kBgBaseDark : kBgBaseLight;
-  Color get card => isDark ? kBgElevatedDark : kBgElevatedLight;
+  Color get card => highContrast
+      ? (isDark ? kHighContrastSurfaceDark : kHighContrastSurfaceLight)
+      : (isDark ? kBgElevatedDark : kBgElevatedLight);
   Color get label => isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
   Color get secondary =>
       isDark ? kSettingsSecondaryDark : kSettingsSecondaryLight;
   Color get chevron => isDark ? kSettingsChevronDark : kSettingsChevronLight;
   Color get separator =>
       isDark ? kSettingsSeparatorDark : kSettingsSeparatorLight;
+
+  /// Borde de grupos, campos y botones: line (fg con alto contraste).
+  Color get border => highContrast ? label : separator;
+  double get borderWidth =>
+      highContrast ? kGlassBorderWidthAccessible : kSurfaceBorderWidth;
+
+  /// Ícono de línea de una fila: fg2 (fg con alto contraste).
+  Color get icon => highContrast ? label : secondary;
+  Color get field => isDark ? kFillDark : kFillLight;
   Color get switchOff => isDark ? kSwitchOffDark : kSwitchOffLight;
   Color get tintText => isDark ? kTintTextDark : kTintTextLight;
   Color get tintFill => isDark ? kAccentDark : kAccentLight;
   Color get alert => isDark ? kSettingsAlertDark : kSettingsAlertLight;
   Color get success => isDark ? kSuccessDark : kSuccessLight;
-  Color get glass => isDark ? kSettingsGlassDark : kSettingsGlassLight;
-  Color get glassBorder =>
-      isDark ? kSettingsGlassBorderDark : kSettingsGlassBorderLight;
+  Color get danger => isDark ? kDangerDark : kDangerLight;
+  Color get glass => card;
+  Color get glassBorder => border;
   Color get menu => isDark ? kSettingsMenuDark : kSettingsMenuLight;
-  Color get sheet => isDark ? kBgElevatedDark : kBgBaseLight;
-  Color get sheetCard => isDark ? kBgSecondaryDark : kBgElevatedLight;
+  Color get sheet => background;
+  Color get sheetCard => card;
 }
 
 /// Título grande de la raíz ("Ajustes").
@@ -53,7 +72,7 @@ class SettingsLargeTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 56, 4, 12),
+      padding: const EdgeInsets.fromLTRB(2, 56, 2, 12),
       child: Semantics(
         header: true,
         child: Text(
@@ -67,22 +86,43 @@ class SettingsLargeTitle extends StatelessWidget {
   }
 }
 
-/// Grupo de filas: encabezado opcional, tarjeta redondeada con separadores
-/// finos y una línea de pie opcional.
+/// Etiqueta de grupo: mono en mayúsculas, fg2. El lector de pantalla lee
+/// el texto original (sin mayúsculas forzadas).
+class SettingsGroupLabel extends StatelessWidget {
+  final String text;
+
+  const SettingsGroupLabel(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      child: Text(
+        text.toUpperCase(),
+        semanticsLabel: text,
+        style: kSettingsSectionHeader.copyWith(
+          color: SettingsPalette.of(context).secondary,
+        ),
+      ),
+    );
+  }
+}
+
+/// Grupo de filas: encabezado opcional, lista sólida (surf + line) con
+/// separadores line y una línea de pie opcional.
 class SettingsSection extends StatelessWidget {
   final String? header;
   final String? footer;
   final List<Widget> children;
 
-  /// Sangría del separador: 60 cuando las filas llevan pastilla de icono
-  /// (el separador arranca en el texto, como iOS), 16 si no.
-  final bool iconInset;
+  /// Pie en mono (contadores, "9 de 50 · …").
+  final bool monoFooter;
 
   const SettingsSection({
     super.key,
     this.header,
     this.footer,
-    this.iconInset = false,
+    this.monoFooter = false,
     required this.children,
   });
 
@@ -93,10 +133,7 @@ class SettingsSection extends StatelessWidget {
     for (var i = 0; i < children.length; i++) {
       rows.add(children[i]);
       if (i < children.length - 1) {
-        rows.add(Padding(
-          padding: EdgeInsets.only(left: iconInset ? 60 : 16),
-          child: Container(height: 0.5, color: p.separator),
-        ));
+        rows.add(Container(height: kSurfaceBorderWidth, color: p.separator));
       }
     }
     return Column(
@@ -104,19 +141,14 @@ class SettingsSection extends StatelessWidget {
       children: [
         if (header != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Semantics(
-              header: true,
-              child: Text(
-                header!,
-                style: kSettingsSectionHeader.copyWith(color: p.label),
-              ),
-            ),
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+            child: SettingsGroupLabel(header!),
           ),
         Material(
           color: p.card,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(kSettingsGroupRadius),
+            side: BorderSide(color: p.border, width: p.borderWidth),
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -126,10 +158,13 @@ class SettingsSection extends StatelessWidget {
         ),
         if (footer != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
             child: Text(
               footer!,
-              style: kTextFootnote.copyWith(color: p.secondary, height: 1.35),
+              style: monoFooter
+                  ? kTextMono.copyWith(
+                      fontSize: 12, color: p.secondary, height: 1.4)
+                  : kTextFootnote.copyWith(color: p.secondary, height: 1.35),
             ),
           ),
       ],
@@ -137,38 +172,34 @@ class SettingsSection extends StatelessWidget {
   }
 }
 
-/// Pastilla de icono 30x30 de fila (tinte sólido, glifo blanco).
-class SettingIconTile extends StatelessWidget {
+/// Ícono de línea de una fila: un solo color (fg2), sin pastilla.
+class _RowIcon extends StatelessWidget {
   final IconData icon;
-  final Color background;
 
-  const SettingIconTile({
-    super.key,
-    required this.icon,
-    required this.background,
-  });
+  const _RowIcon(this.icon);
 
   @override
   Widget build(BuildContext context) {
-    final highContrast = MediaQuery.highContrastOf(context);
-    final border = highContrast
-        ? Border.all(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black,
-            width: 1.5,
-          )
-        : null;
-
-    return Container(
+    return SizedBox(
       width: kSettingIconSize,
-      height: kSettingIconSize,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(kSettingIconRadius),
-        border: border,
-      ),
-      child: Icon(icon, color: kLabelPrimaryDark, size: 18),
+      child: Icon(icon, size: 22, color: SettingsPalette.of(context).icon),
+    );
+  }
+}
+
+/// Valor de una fila, en mono a la derecha: ember-t si está encendido o
+/// activo, fg2 si está apagado o es neutro.
+class _RowValue extends StatelessWidget {
+  final String text;
+  final Color color;
+
+  const _RowValue(this.text, {required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: kTextMono.copyWith(fontSize: 14, color: color),
     );
   }
 }
@@ -201,7 +232,7 @@ class _RowShell extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
         child: Row(
           children: [
-            if (leading != null) ...[leading!, const SizedBox(width: 14)],
+            if (leading != null) ...[leading!, const SizedBox(width: 12)],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,16 +265,17 @@ class _RowShell extends StatelessWidget {
   }
 }
 
-Widget? _tile(IconData? icon, Color? tile) =>
-    icon == null ? null : SettingIconTile(icon: icon, background: tile!);
+Widget? _icon(IconData? icon) => icon == null ? null : _RowIcon(icon);
 
-/// Entra a otra página: valor actual en gris + chevron.
+/// Entra a otra página: valor actual en mono + chevron.
 class SettingsNavRow extends StatelessWidget {
   final String title;
   final String? value;
   final Color? valueColor;
+
+  /// Valor encendido/activo: se pinta en ember-t (si no, fg2).
+  final bool valueActive;
   final IconData? icon;
-  final Color? tile;
   final VoidCallback onTap;
 
   const SettingsNavRow({
@@ -251,8 +283,8 @@ class SettingsNavRow extends StatelessWidget {
     required this.title,
     this.value,
     this.valueColor,
+    this.valueActive = false,
     this.icon,
-    this.tile,
     required this.onTap,
   });
 
@@ -265,16 +297,17 @@ class SettingsNavRow extends StatelessWidget {
       label: hasValue ? '$title, $value' : title,
       excludeSemantics: true,
       child: _RowShell(
-        leading: _tile(icon, tile),
+        leading: _icon(icon),
         title: title,
         onTap: onTap,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (hasValue)
-              Text(
+              _RowValue(
                 value!,
-                style: kTextBody.copyWith(color: valueColor ?? p.secondary),
+                color: valueColor ??
+                    (valueActive ? p.tintText : p.secondary),
               ),
             const SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded, size: 22, color: p.chevron),
@@ -292,7 +325,6 @@ class SettingsSwitchRow extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
   final String? badge;
   final IconData? icon;
-  final Color? tile;
 
   const SettingsSwitchRow({
     super.key,
@@ -301,7 +333,6 @@ class SettingsSwitchRow extends StatelessWidget {
     required this.onChanged,
     this.badge,
     this.icon,
-    this.tile,
   });
 
   @override
@@ -310,7 +341,7 @@ class SettingsSwitchRow extends StatelessWidget {
     final onChanged = this.onChanged;
     return MergeSemantics(
       child: _RowShell(
-        leading: _tile(icon, tile),
+        leading: _icon(icon),
         title: title,
         onTap: onChanged == null ? null : () => onChanged(!value),
         trailing: Row(
@@ -323,7 +354,7 @@ class SettingsSwitchRow extends StatelessWidget {
             CupertinoSwitch(
               value: value,
               onChanged: onChanged,
-              activeTrackColor: kSwitchOn,
+              activeTrackColor: p.tintFill,
               inactiveTrackColor: p.switchOff,
             ),
           ],
@@ -333,7 +364,7 @@ class SettingsSwitchRow extends StatelessWidget {
   }
 }
 
-/// Etiqueta chica gris ("Beta").
+/// Etiqueta chica en mono sobre relleno surf2 ("Beta").
 class SettingsBadge extends StatelessWidget {
   final String text;
 
@@ -345,13 +376,14 @@ class SettingsBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: p.switchOff,
+        color: p.field,
         borderRadius: BorderRadius.circular(kBorderRadiusCapsule),
       ),
       child: Text(
         text,
-        style: kTextCaption.copyWith(
-          fontWeight: FontWeight.w600,
+        style: kTextMono.copyWith(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
           color: p.secondary,
         ),
       ),
@@ -382,7 +414,6 @@ class SettingsMenuRow<T> extends StatelessWidget {
   final List<SettingsOption<T>> options;
   final ValueChanged<T> onSelected;
   final IconData? icon;
-  final Color? tile;
 
   SettingsMenuRow({
     required this.id,
@@ -391,7 +422,6 @@ class SettingsMenuRow<T> extends StatelessWidget {
     required this.options,
     required this.onSelected,
     this.icon,
-    this.tile,
   }) : super(key: ValueKey(id));
 
   String get _currentLabel {
@@ -410,13 +440,13 @@ class SettingsMenuRow<T> extends StatelessWidget {
         alignment: AlignmentDirectional.bottomEnd,
         backgroundColor: WidgetStatePropertyAll(p.menu),
         surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        elevation: const WidgetStatePropertyAll(12),
-        shadowColor: const WidgetStatePropertyAll(Color(0x55000000)),
+        // Horizonte: menú plano (surf + line), sin sombra.
+        elevation: const WidgetStatePropertyAll(0),
         padding: const WidgetStatePropertyAll(EdgeInsets.all(6)),
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-            side: BorderSide(color: p.glassBorder, width: 0.5),
+            borderRadius: BorderRadius.circular(kRadiusCard),
+            side: BorderSide(color: p.border, width: p.borderWidth),
           ),
         ),
       ),
@@ -431,7 +461,9 @@ class SettingsMenuRow<T> extends StatelessWidget {
                 EdgeInsets.symmetric(horizontal: 10),
               ),
               shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(kRadiusField),
+                ),
               ),
             ),
             leadingIcon: SizedBox(
@@ -444,7 +476,7 @@ class SettingsMenuRow<T> extends StatelessWidget {
                 ? null
                 : Text(
                     o.detail!,
-                    style: kTextSubhead.copyWith(color: p.secondary),
+                    style: kTextMono.copyWith(color: p.secondary),
                   ),
             child: Semantics(
               selected: o.value == value,
@@ -457,14 +489,14 @@ class SettingsMenuRow<T> extends StatelessWidget {
         label: '$title, $_currentLabel',
         excludeSemantics: true,
         child: _RowShell(
-          leading: _tile(icon, tile),
+          leading: _icon(icon),
           title: title,
           onTap: () =>
               controller.isOpen ? controller.close() : controller.open(),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_currentLabel, style: kTextBody.copyWith(color: p.secondary)),
+              _RowValue(_currentLabel, color: p.secondary),
               const SizedBox(width: 4),
               Icon(Icons.unfold_more_rounded, size: 18, color: p.secondary),
             ],
@@ -475,7 +507,7 @@ class SettingsMenuRow<T> extends StatelessWidget {
   }
 }
 
-/// Ejecuta algo: texto azul (o rojo si es destructivo), sin chevron.
+/// Ejecuta algo: texto ember-t (danger si es destructivo), sin chevron.
 class SettingsActionRow extends StatelessWidget {
   final String title;
   final VoidCallback? onTap;
@@ -491,9 +523,7 @@ class SettingsActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = SettingsPalette.of(context);
-    final color = destructive
-        ? Theme.of(context).colorScheme.error
-        : p.tintText;
+    final color = destructive ? p.danger : p.tintText;
     return Semantics(
       button: true,
       child: _RowShell(
@@ -524,16 +554,13 @@ class SettingsValueRow extends StatelessWidget {
     return MergeSemantics(
       child: _RowShell(
         title: title,
-        trailing: Text(
-          value,
-          style: kTextBody.copyWith(color: valueColor ?? p.secondary),
-        ),
+        trailing: _RowValue(value, color: valueColor ?? p.secondary),
       ),
     );
   }
 }
 
-/// Estado confirmado (check verde + título + aclaración).
+/// Estado confirmado (check de línea en ok + título + aclaración).
 class SettingsStatusRow extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -549,18 +576,10 @@ class SettingsStatusRow extends StatelessWidget {
     final p = SettingsPalette.of(context);
     return MergeSemantics(
       child: _RowShell(
-        leading: Container(
+        leading: SizedBox(
           width: kSettingIconSize,
-          height: kSettingIconSize,
-          decoration: const BoxDecoration(
-            color: kTileGreen,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.check_rounded,
-            size: 18,
-            color: kLabelPrimaryDark,
-          ),
+          child: Icon(Icons.check_circle_outline_rounded,
+              size: 22, color: p.success),
         ),
         title: title,
         subtitle: subtitle,
@@ -570,13 +589,15 @@ class SettingsStatusRow extends StatelessWidget {
   }
 }
 
-/// Botón circular de vidrio (volver, agregar, cerrar y guardar del sheet).
+/// Botón de ícono circular sólido (volver, agregar, cerrar y guardar de
+/// la hoja): surf + borde line, sin sombra.
 class SettingsGlassButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
 
-  /// Relleno azul con glifo blanco (acción principal, p. ej. Guardar).
+  /// Relleno brasa con glifo on-ember (acción principal, p. ej. Guardar).
+  /// Sin [onPressed] queda atenuado en surf2.
   final bool prominent;
 
   const SettingsGlassButton({
@@ -590,6 +611,16 @@ class SettingsGlassButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = SettingsPalette.of(context);
+    final enabled = onPressed != null;
+    final Color fill;
+    final Color glyph;
+    if (prominent) {
+      fill = enabled ? p.tintFill : p.field;
+      glyph = enabled ? kOnEmber : p.chevron;
+    } else {
+      fill = p.glass;
+      glyph = p.label;
+    }
     return Tooltip(
       message: tooltip,
       excludeFromSemantics: true,
@@ -597,25 +628,19 @@ class SettingsGlassButton extends StatelessWidget {
         button: true,
         label: tooltip,
         child: Material(
-          color: prominent ? p.tintFill : p.glass,
+          color: fill,
           shape: CircleBorder(
             side: prominent
                 ? BorderSide.none
-                : BorderSide(color: p.glassBorder, width: 0.5),
+                : BorderSide(color: p.glassBorder, width: p.borderWidth),
           ),
-          elevation: prominent ? 0 : 2,
-          shadowColor: const Color(0x33000000),
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onPressed,
             child: SizedBox(
               width: kSettingsNavButtonSize,
               height: kSettingsNavButtonSize,
-              child: Icon(
-                icon,
-                size: 22,
-                color: prominent ? kOnEmber : p.label,
-              ),
+              child: Icon(icon, size: 22, color: glyph),
             ),
           ),
         ),
@@ -624,7 +649,8 @@ class SettingsGlassButton extends StatelessWidget {
   }
 }
 
-/// Tarjeta de identidad de la app en la raíz (abre Acerca de).
+/// Fila de identidad de la app en la raíz (abre Acerca de): agujero chico
+/// + "VoiceBubble" + subtítulo en mono, como lista sólida.
 class SettingsAppCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -648,33 +674,32 @@ class SettingsAppCard extends StatelessWidget {
         color: p.card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kSettingsGroupRadius),
+          side: BorderSide(color: p.border, width: p.borderWidth),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
             child: Row(
               children: [
-                const SettingsAppIcon(dimension: 60),
-                const SizedBox(width: 14),
+                const SettingsAppIcon(dimension: 44),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         title,
-                        style: kTextTitle.copyWith(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.4,
-                          color: p.label,
-                        ),
+                        style: kTextCardTitle.copyWith(color: p.label),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: kTextSubhead.copyWith(color: p.secondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: kTextMono.copyWith(
+                            fontSize: 12, color: p.secondary),
                       ),
                     ],
                   ),
@@ -689,7 +714,8 @@ class SettingsAppCard extends StatelessWidget {
   }
 }
 
-/// Icono de la app (cuadrado redondeado azul con micrófono).
+/// Ícono de la app: el agujero (hole) con anillo de brasa y micrófono
+/// on-hole (design.md §3). Decorativo: la fila ya se anuncia.
 class SettingsAppIcon extends StatelessWidget {
   final double dimension;
 
@@ -697,25 +723,30 @@ class SettingsAppIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: dimension,
       height: dimension,
       decoration: BoxDecoration(
-        color: kTileBlue,
-        borderRadius: BorderRadius.circular(dimension * 0.26),
+        color: isDark ? kHoleDark : kHoleLight,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isDark ? kEmberDark : kEmberLight,
+          width: dimension >= 64 ? 2.5 : 2,
+        ),
       ),
       child: Icon(
         Icons.mic_rounded,
-        color: kLabelPrimaryDark,
-        size: dimension * 0.5,
+        color: kOnHole,
+        size: dimension * 0.46,
       ),
     );
   }
 }
 
-/// Estado vacío dentro de un grupo (icono, título, texto y botón).
+/// Estado vacío de una lista de Ajustes (sin claves, sin snippets): campo
+/// de símbolos quieto, título, ayuda y botón primario en brasa.
 class SettingsEmptyState extends StatelessWidget {
-  final IconData icon;
   final String title;
   final String message;
   final String actionLabel;
@@ -724,7 +755,6 @@ class SettingsEmptyState extends StatelessWidget {
 
   const SettingsEmptyState({
     super.key,
-    required this.icon,
     required this.title,
     required this.message,
     required this.actionLabel,
@@ -735,22 +765,19 @@ class SettingsEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = SettingsPalette.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      decoration: BoxDecoration(
-        color: p.card,
-        borderRadius: BorderRadius.circular(kSettingsGroupRadius),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Column(
         children: [
-          Icon(icon, size: 28, color: p.secondary),
-          const SizedBox(height: 12),
+          const SymbolField(),
+          const SizedBox(height: 14),
           Text(
             title,
             textAlign: TextAlign.center,
             style: kTextTitle.copyWith(
               fontSize: 20,
               fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
               color: p.label,
             ),
           ),
@@ -758,9 +785,9 @@ class SettingsEmptyState extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: kTextSubhead.copyWith(color: p.secondary, height: 1.35),
+            style: kTextSubhead.copyWith(color: p.secondary, height: 1.4),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           FilledButton(
             key: actionKey,
             style: FilledButton.styleFrom(
@@ -780,14 +807,19 @@ class SettingsEmptyState extends StatelessWidget {
   }
 }
 
-/// Hoja inferior flotante (iOS 26): asa, barra con cerrar / título /
-/// guardar, contenido y acción destructiva opcional al pie.
+/// Hoja inferior sólida (Horizonte): fondo bg, radio superior 22, borde
+/// line, agarradera line, barra con cerrar / título / guardar en brasa y
+/// el contenido debajo. Sin sombra: el velo (scrim) ya la separa.
 class SettingsSheetFrame extends StatelessWidget {
   final String title;
   final Key? closeKey;
   final VoidCallback onClose;
   final Key? saveKey;
   final VoidCallback? onSave;
+
+  /// Hay botón de guardar aunque [onSave] sea null (queda atenuado, p. ej.
+  /// mientras se guarda).
+  final bool showSave;
   final List<Widget> children;
 
   const SettingsSheetFrame({
@@ -797,6 +829,7 @@ class SettingsSheetFrame extends StatelessWidget {
     required this.onClose,
     this.saveKey,
     this.onSave,
+    this.showSave = false,
     required this.children,
   });
 
@@ -806,13 +839,19 @@ class SettingsSheetFrame extends StatelessWidget {
     return Material(
       color: p.sheet,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(40),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(kRadiusSheet),
+        ),
+        side: BorderSide(color: p.border, width: p.borderWidth),
       ),
       clipBehavior: Clip.antiAlias,
-      elevation: 16,
-      shadowColor: const Color(0x55000000),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          8,
+          16,
+          20 + MediaQuery.paddingOf(context).bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -820,14 +859,14 @@ class SettingsSheetFrame extends StatelessWidget {
             Center(
               child: Container(
                 width: 36,
-                height: 5,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: p.chevron,
+                  color: p.separator,
                   borderRadius: BorderRadius.circular(kBorderRadiusCapsule),
                 ),
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Row(
               children: [
                 SettingsGlassButton(
@@ -843,7 +882,7 @@ class SettingsSheetFrame extends StatelessWidget {
                     style: kSettingsNavTitle.copyWith(color: p.label),
                   ),
                 ),
-                if (onSave != null)
+                if (onSave != null || showSave)
                   SettingsGlassButton(
                     key: saveKey,
                     icon: Icons.check_rounded,
@@ -855,7 +894,7 @@ class SettingsSheetFrame extends StatelessWidget {
                   const SizedBox(width: kSettingsNavButtonSize),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             ...children,
           ],
         ),
@@ -864,12 +903,15 @@ class SettingsSheetFrame extends StatelessWidget {
   }
 }
 
-/// Campo de texto dentro de una tarjeta del sheet (etiqueta chica arriba).
+/// Campo de la hoja (maqueta `.fld`): caja surf + line con la etiqueta en
+/// mono mayúsculas arriba y el valor abajo. [mono] escribe el valor en
+/// monoespaciada (texto de un snippet, contraseña).
 class SettingsSheetField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String? hint;
   final bool obscure;
+  final bool mono;
   final int minLines;
   final int maxLines;
   final TextInputAction? textInputAction;
@@ -885,6 +927,7 @@ class SettingsSheetField extends StatelessWidget {
     required this.controller,
     this.hint,
     this.obscure = false,
+    this.mono = false,
     this.minLines = 1,
     this.maxLines = 1,
     this.textInputAction,
@@ -898,8 +941,22 @@ class SettingsSheetField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = SettingsPalette.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+    final valueStyle = mono || obscure
+        ? kTextMono.copyWith(fontSize: 15, color: p.label, height: 1.4)
+        : kTextBody.copyWith(color: p.label);
+    // La etiqueta flotante se dibuja al 75 %: 16 → 12 sp visibles.
+    final labelStyle = kTextGroupLabel.copyWith(
+      fontSize: 16,
+      letterSpacing: 2,
+      color: p.secondary,
+    );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
+      decoration: BoxDecoration(
+        color: p.card,
+        borderRadius: BorderRadius.circular(kRadiusField),
+        border: Border.all(color: p.border, width: p.borderWidth),
+      ),
       child: TextField(
         controller: controller,
         obscureText: obscure,
@@ -913,16 +970,22 @@ class SettingsSheetField extends StatelessWidget {
         autofillHints: autofillHints,
         onSubmitted: onSubmitted,
         onChanged: onChanged,
-        style: kTextBody.copyWith(color: p.label),
+        cursorColor: p.tintText,
+        style: valueStyle,
         decoration: InputDecoration(
-          labelText: label,
+          label: Text(label.toUpperCase(), semanticsLabel: label),
           hintText: hint,
           errorText: errorText,
           floatingLabelBehavior: FloatingLabelBehavior.always,
-          labelStyle: kTextFootnote.copyWith(color: p.secondary),
+          labelStyle: labelStyle,
+          floatingLabelStyle: labelStyle,
+          hintStyle: valueStyle.copyWith(color: p.chevron),
+          errorStyle: kTextFootnote.copyWith(color: p.danger),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
           isDense: true,
           filled: false,
         ),
@@ -931,7 +994,9 @@ class SettingsSheetField extends StatelessWidget {
   }
 }
 
-/// Tarjeta que agrupa campos del sheet con separadores.
+/// Columna de campos de la hoja, separados por un respiro (cada campo ya
+/// es su propia caja). Una acción suelta (p. ej. "Eliminar snippet") se
+/// lee como texto danger, sin caja.
 class SettingsSheetCard extends StatelessWidget {
   final List<Widget> children;
 
@@ -939,25 +1004,14 @@ class SettingsSheetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = SettingsPalette.of(context);
     final rows = <Widget>[];
     for (var i = 0; i < children.length; i++) {
+      if (i > 0) rows.add(const SizedBox(height: 10));
       rows.add(children[i]);
-      if (i < children.length - 1) {
-        rows.add(Padding(
-          padding: const EdgeInsets.only(left: 16),
-          child: Container(height: 0.5, color: p.separator),
-        ));
-      }
     }
-    return Material(
-      color: p.sheetCard,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: rows,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
     );
   }
 }

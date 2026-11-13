@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 import '../ui/design_tokens.dart';
 import 'app_icons.dart';
 
-/// Pastilla de audio conservado en una nota: "▶ 0:38".
+/// Pastilla de audio conservado en una nota: "▶ 0:38" (fondo ember-soft,
+/// ícono y duración en ember-t, duración en mono).
 ///
 /// Reproduce el WAV original guardado en `notes_audio/` con un player
 /// creado solo al tocar (perezoso: construir el widget no toca canales
@@ -138,7 +139,9 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
-    final accent = isDark ? kTintTextDark : kTintTextLight;
+    // Chip de audio Horizonte: fondo ember-soft, ícono y duración ember-t.
+    final accent = isDark ? kEmberTextDark : kEmberTextLight;
+    final chip = isDark ? kEmberSoftDark : kEmberSoftLight;
     if (_missing || _corrupt) {
       return Text(
         _missing
@@ -167,7 +170,7 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
             height: 28,
             padding: const EdgeInsets.fromLTRB(6, 0, 10, 0),
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: isDark ? 0.18 : 0.10),
+              color: chip,
               borderRadius: BorderRadius.circular(kBorderRadiusCapsule),
             ),
             child: Row(
@@ -181,10 +184,10 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
                 const SizedBox(width: 4),
                 Text(
                   duration ?? 'Audio',
-                  style: kTextCaption.copyWith(
+                  style: kTextMono.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                     color: accent,
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],

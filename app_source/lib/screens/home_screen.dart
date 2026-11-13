@@ -1065,15 +1065,14 @@ class _HomeScreenState extends State<HomeScreen>
                     border: Border(
                       bottom: BorderSide(
                         color: isDark ? kSeparatorDark : kSeparatorLight,
-                        width: 0.5,
+                        width: kSurfaceBorderWidth,
                       ),
                     ),
                   ),
                   child: ExcludeSemantics(
                     child: Text(
                       title,
-                      style: kTextBody.copyWith(
-                        fontWeight: FontWeight.w600,
+                      style: kSettingsNavTitle.copyWith(
                         color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
                       ),
                     ),
@@ -1082,6 +1081,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
+          // Ajustes: botón de ícono circular sólido (surf + line, sin halo).
           Positioned(
             top: insets.top + 6,
             right: 12,
@@ -1099,7 +1099,7 @@ class _HomeScreenState extends State<HomeScreen>
                     child: SizedBox(
                       width: 44,
                       height: 44,
-                      child: Icon(Icons.settings_outlined, size: 22),
+                      child: Icon(Icons.tune_rounded, size: 22),
                     ),
                   ),
                 ),
@@ -1199,7 +1199,7 @@ class _HomeScreenState extends State<HomeScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 6),
             child: Semantics(
               header: true,
               child: Text(
@@ -1217,7 +1217,7 @@ class _HomeScreenState extends State<HomeScreen>
             historyCount: _transcriptionService.history.length,
             onChanged: _selectTab,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           HomeSearchField(
             controller: _searchCtrl,
             hint: _tab == 0
@@ -1355,26 +1355,52 @@ class _HomeScreenState extends State<HomeScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final items = _filteredHistory;
     final searching = _query.trim().isNotEmpty;
+
+    // Agrupado por día solo en la presentación: el orden es el del
+    // repositorio (más nuevo primero) y cada corrida de un mismo día abre
+    // un encabezado. La fila lleva solo la hora.
+    final groups = <(String, List<Transcription>)>[];
+    for (final t in items) {
+      final label = historyDayLabel(t.timestamp);
+      if (groups.isEmpty || groups.last.$1 != label) {
+        groups.add((label, <Transcription>[]));
+      }
+      groups.last.$2.add(t);
+    }
+
+    final Widget body;
+    if (searching && items.isEmpty) {
+      body = HomeEmptyState(
+        showGlyph: false,
+        title: 'Sin resultados',
+        message: 'Nada coincide con “$_query”.',
+      );
+    } else if (items.isEmpty) {
+      body = HistoryList(transcriptions: items, embedded: true);
+    } else {
+      body = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (label, group) in groups) ...[
+            HomeSectionHeader(label, key: ValueKey('historyGroup-$label')),
+            HistoryList(transcriptions: group, embedded: true),
+          ],
+        ],
+      );
+    }
+
     return CustomScrollView(
       key: const PageStorageKey<String>('home_history_scroll'),
       controller: _historyScroll,
       slivers: [
         SliverToBoxAdapter(child: _buildHeader(context, title, top)),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          sliver: SliverToBoxAdapter(
-            child: searching && items.isEmpty
-                ? HomeEmptyState(
-                    showGlyph: false,
-                    title: 'Sin resultados',
-                    message: 'Nada coincide con “$_query”.',
-                  )
-                : HistoryList(transcriptions: items, embedded: true),
-          ),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+          sliver: SliverToBoxAdapter(child: body),
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 12, 28, 0),
+            padding: const EdgeInsets.fromLTRB(28, 16, 28, 0),
             child: Text(
               'Las últimas ${StorageService.maxItems} transcripciones de la app, '
               'la burbuja y el teclado. Las más viejas se borran solas.',

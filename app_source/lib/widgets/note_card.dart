@@ -6,10 +6,12 @@ import '../ui/design_tokens.dart';
 import 'app_icons.dart';
 import 'note_audio_row.dart';
 
-/// Tarjeta de nota de la lista principal (capa de contenido: sin vidrio).
+/// Tarjeta de nota de la lista principal (Horizonte: superficie surf con
+/// borde line de 1 px, radio 14, sin sombra).
 ///
-/// Título en una línea, dos líneas de texto, hora y pastilla de audio. Tocar
-/// abre el editor; mantener abre el menú de acciones (copiar, borrar audio,
+/// Título en Sora, dos líneas de texto en fg2 y una fila meta con la hora
+/// en mono, la pastilla de audio y copiar a la derecha. Tocar abre el
+/// editor; mantener abre el menú de acciones (copiar, borrar audio,
 /// eliminar). Copiar también queda a un toque, porque es lo que más se usa.
 class NoteCard extends StatelessWidget {
   final VoiceNote note;
@@ -33,62 +35,52 @@ class NoteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final highContrast = MediaQuery.highContrastOf(context);
     final primary = isDark ? kLabelPrimaryDark : kLabelPrimaryLight;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     final accent = isDark ? kAccentDark : kAccentLight;
     final untitled = note.titulo.trim().isEmpty;
-    final radius = BorderRadius.circular(kBorderRadiusNoteCard);
+    final radius = BorderRadius.circular(kRadiusCard);
+    final surface = highContrast
+        ? (isDark ? kHighContrastSurfaceDark : kHighContrastSurfaceLight)
+        : (isDark ? kBgElevatedDark : kBgElevatedLight);
 
     final card = Material(
-      color: isDark ? kBgElevatedDark : kBgSecondaryLight,
-      borderRadius: radius,
+      color: surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: BorderSide(
+          color: highContrast
+              ? primary
+              : (isDark ? kSeparatorDark : kSeparatorLight),
+          width: highContrast
+              ? kGlassBorderWidthAccessible
+              : kSurfaceBorderWidth,
+        ),
+      ),
       child: InkWell(
         borderRadius: radius,
         onTap: onTap,
         onLongPress: onLongPress,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 6, 4),
+          padding: const EdgeInsets.fromLTRB(16, 14, 4, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        untitled ? 'Sin título' : note.titulo,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: kTextBody.copyWith(
-                          fontWeight:
-                              untitled ? FontWeight.w500 : FontWeight.w600,
-                          color: untitled ? secondary : primary,
-                          height: 22 / 17,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (onCopy != null)
-                    IconButton(
-                      key: ValueKey('noteCopy-${note.id}'),
-                      tooltip: 'Copiar texto',
-                      icon: Icon(Icons.copy_rounded,
-                          size: AppIcons.small, color: secondary),
-                      onPressed: onCopy,
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 44, minHeight: 44),
-                      style: IconButton.styleFrom(
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                ],
-              ),
               Padding(
-                padding: const EdgeInsets.only(right: 10),
+                padding: const EdgeInsets.only(right: 12),
+                child: Text(
+                  untitled ? 'Sin título' : note.titulo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: kTextCardTitle.copyWith(
+                    color: untitled ? secondary : primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
                 child: Text(
                   note.cuerpo,
                   maxLines: 2,
@@ -103,10 +95,7 @@ class NoteCard extends StatelessWidget {
                   children: [
                     Text(
                       noteTimeLabel(note.updatedAt),
-                      style: kTextFootnote.copyWith(
-                        color: secondary,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                      style: kTextMono.copyWith(fontSize: 12, color: secondary),
                     ),
                     if (note.hasAudio) ...[
                       const SizedBox(width: 10),
@@ -116,6 +105,21 @@ class NoteCard extends StatelessWidget {
                         noteId: note.id,
                       ),
                     ],
+                    const Spacer(),
+                    if (onCopy != null)
+                      IconButton(
+                        key: ValueKey('noteCopy-${note.id}'),
+                        tooltip: 'Copiar texto',
+                        icon: Icon(Icons.copy_rounded,
+                            size: AppIcons.small, color: secondary),
+                        onPressed: onCopy,
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 44, minHeight: 44),
+                        style: IconButton.styleFrom(
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
                   ],
                 ),
               ),

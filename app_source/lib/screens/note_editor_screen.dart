@@ -15,8 +15,9 @@ import '../widgets/app_icons.dart';
 import '../widgets/note_audio_row.dart';
 
 /// Editor de una nota: hoja limpia (sin cajas ni etiquetas) con el mismo
-/// lenguaje que Inicio — fondo base, botones de vidrio circulares arriba y
-/// una barra de vidrio flotante abajo con acciones solo de icono.
+/// lenguaje que Inicio — fondo base, botones de ícono circulares sólidos
+/// arriba (volver; guardar en brasa) y una barra sólida en pastilla abajo
+/// con acciones solo de ícono (IA en ember-t, borrar en danger).
 ///
 /// Volver atrás guarda los cambios (como Notas de iOS); el ✓ guarda y cierra.
 class NoteEditorScreen extends StatefulWidget {
@@ -336,13 +337,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     final titleStyle = kTextTitle.copyWith(
       fontSize: 28,
       height: 34 / 28,
-      letterSpacing: 0.2,
+      letterSpacing: -0.6,
       color: primary,
     );
     final bodyStyle = kTextBody.copyWith(
       fontSize: 18,
-      height: 1.5,
-      letterSpacing: -0.3,
+      height: 1.6,
+      letterSpacing: -0.2,
       color: primary,
     );
 
@@ -377,13 +378,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                         Text(
                           _metaLabel(),
                           key: const ValueKey('noteEditorMeta'),
-                          style: kTextFootnote.copyWith(
-                            color: secondary,
-                            fontWeight: FontWeight.w500,
-                            fontFeatures: const [
-                              FontFeature.tabularFigures()
-                            ],
-                          ),
+                          style: kTextMono.copyWith(color: secondary),
                         ),
                         if (note != null && note.hasAudio) ...[
                           const SizedBox(width: 10),
@@ -437,13 +432,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                         child: Text(
                           '$titleLen/${NotesService.maxTituloLength}',
                           key: const ValueKey('noteEditorTitleCounter'),
-                          style: kTextCaption.copyWith(
+                          style: kTextMono.copyWith(
+                            fontSize: 12,
                             color: titleLen >= NotesService.maxTituloLength
                                 ? (isDark ? kEmberTextDark : kEmberTextLight)
                                 : secondary,
-                            fontFeatures: const [
-                              FontFeature.tabularFigures()
-                            ],
                           ),
                         ),
                       ),
@@ -467,7 +460,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   ],
                 ),
               ),
-              // Barra superior: volver y guardar, de vidrio como Inicio.
+              // Barra superior: volver (sólido) y guardar (brasa).
               Positioned(
                 top: insets.top + 6,
                 left: 12,
@@ -488,7 +481,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   onPressed: _save,
                 ),
               ),
-              // Barra de acciones flotante (sigue al teclado).
+              // Barra de acciones: pastilla sólida surf + line (sigue al
+              // teclado).
               Positioned(
                 left: 0,
                 right: 0,
@@ -530,7 +524,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                                   : () => _runGemini('resumir'),
                             ),
                           if (note != null) ...[
-                            _ToolbarDivider(color: tertiary),
+                            _ToolbarDivider(
+                              color: isDark ? kSeparatorDark : kSeparatorLight,
+                            ),
                             _ToolButton(
                               key: const ValueKey('noteEditorDeleteButton'),
                               icon: Icons.delete_outline_rounded,
@@ -553,7 +549,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   }
 }
 
-/// Botón circular de vidrio de 44 dp (mismo que Configuración en Inicio).
+/// Botón de ícono circular sólido de 44 dp (mismo que Ajustes en Inicio).
 class _GlassCircleButton extends StatelessWidget {
   final IconData icon;
   final double iconSize;
@@ -594,7 +590,8 @@ class _GlassCircleButton extends StatelessWidget {
   }
 }
 
-/// ✓ de guardar: círculo de acento cuando hay cambios; apagado si no.
+/// ✓ de guardar: círculo brasa con check on-ember cuando hay cambios;
+/// atenuado (surf2) si no.
 class _SaveButton extends StatelessWidget {
   final bool enabled;
   final VoidCallback onPressed;

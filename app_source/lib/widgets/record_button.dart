@@ -647,7 +647,8 @@ class _PainterResources {
   _PainterResources._(this.isDark)
       : hole = isDark ? kHoleDark : kHoleLight,
         palette = [kOnHole, isDark ? kEmberDark : kEmberLight, kHot] {
-    final bases = [...palette, const Color(0xFF000000)];
+    // Negro opaco = máscara de opacidad del halo (mismo valor que hole).
+    final bases = [...palette, kHoleDark];
     for (var c = 0; c < bases.length; c++) {
       for (var l = 0; l <= _alphaSteps; l++) {
         _tints[c * (_alphaSteps + 1) + l] =
@@ -680,7 +681,7 @@ class _PainterResources {
 
   /// Colores de la paleta con opacidad cuantizada, precalculados.
   final List<Color> _tints =
-      List<Color>.filled(4 * (_alphaSteps + 1), const Color(0x00000000));
+      List<Color>.filled(4 * (_alphaSteps + 1), Colors.transparent);
 
   Color tint(int colorIdx, double alpha) =>
       _tints[colorIdx * (_alphaSteps + 1) +

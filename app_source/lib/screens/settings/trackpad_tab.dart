@@ -33,6 +33,7 @@ extension _TrackpadPage on _SettingsScreenState {
               key: const ValueKey('pointer-companion-row'),
               title: 'VoiceBubble Puntero',
               value: statusLabel,
+              valueActive: status == FloatingTrackpadService.pointerReady,
               valueColor: status == FloatingTrackpadService.pointerReady
                   ? null
                   : SettingsPalette.of(context).alert,
@@ -275,10 +276,7 @@ class _TrackpadSensitivitySectionState
               ),
               Text(
                 valueLabel,
-                style: kTextBody.copyWith(
-                  color: p.secondary,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+                style: kTextMono.copyWith(fontSize: 14, color: p.tintText),
               ),
             ],
           ),

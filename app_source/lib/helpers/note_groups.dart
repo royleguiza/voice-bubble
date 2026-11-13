@@ -1,5 +1,6 @@
 /// Etiquetas de fecha de la lista de notas: secciones (Hoy, Ayer, Esta
-/// semana, Octubre…) y la hora o fecha corta que muestra cada tarjeta.
+/// semana, Octubre…) y la hora o fecha corta que muestra cada tarjeta. El
+/// Historial agrupa por día (Hoy, Ayer, 6 nov) y cada fila lleva la hora.
 ///
 /// Funciones puras con `now` inyectable para testearlas sin reloj real.
 library;
@@ -40,13 +41,30 @@ String noteGroupLabel(DateTime t, {DateTime? now}) {
   return t.year == ref.year ? label : '$label ${t.year}';
 }
 
-/// Hora (hoy y ayer) o fecha corta "28 oct" (más viejo) de una tarjeta.
-String noteTimeLabel(DateTime t, {DateTime? now}) {
-  final ref = now ?? DateTime.now();
-  if (_daysAgo(t, ref) <= 1) {
-    return '${t.hour.toString().padLeft(2, '0')}:'
-        '${t.minute.toString().padLeft(2, '0')}';
-  }
+String _hourMinute(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:'
+    '${t.minute.toString().padLeft(2, '0')}';
+
+String _shortDate(DateTime t, DateTime ref) {
   final short = '${t.day} ${_months[t.month - 1].substring(0, 3)}';
   return t.year == ref.year ? short : '$short ${t.year}';
 }
+
+/// Hora (hoy y ayer) o fecha corta "28 oct" (más viejo) de una tarjeta.
+String noteTimeLabel(DateTime t, {DateTime? now}) {
+  final ref = now ?? DateTime.now();
+  if (_daysAgo(t, ref) <= 1) return _hourMinute(t);
+  return _shortDate(t, ref);
+}
+
+/// Grupo de un día del Historial: "Hoy", "Ayer" o la fecha corta "6 nov"
+/// (con el año si no es el actual).
+String historyDayLabel(DateTime t, {DateTime? now}) {
+  final ref = now ?? DateTime.now();
+  final days = _daysAgo(t, ref);
+  if (days == 0) return 'Hoy';
+  if (days == 1) return 'Ayer';
+  return _shortDate(t, ref);
+}
+
+/// Hora sola "16:49" de una fila del Historial (el día lo da el grupo).
+String historyTimeLabel(DateTime t) => _hourMinute(t);

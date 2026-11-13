@@ -32,4 +32,18 @@ void main() {
       expect(noteTimeLabel(DateTime(2025, 3, 2), now: now), '2 mar 2025');
     });
   });
+
+  group('historyDayLabel / historyTimeLabel', () {
+    test('agrupa por día: hoy, ayer y fecha corta', () {
+      expect(historyDayLabel(DateTime(2026, 11, 4, 0, 5), now: now), 'Hoy');
+      expect(historyDayLabel(DateTime(2026, 11, 3, 23, 59), now: now), 'Ayer');
+      expect(historyDayLabel(DateTime(2026, 10, 30, 8), now: now), '30 oct');
+      expect(historyDayLabel(DateTime(2025, 3, 2), now: now), '2 mar 2025');
+    });
+
+    test('la fila lleva solo la hora en 24 h', () {
+      expect(historyTimeLabel(DateTime(2026, 10, 30, 8, 5)), '08:05');
+      expect(historyTimeLabel(DateTime(2026, 11, 4, 16, 49)), '16:49');
+    });
+  });
 }

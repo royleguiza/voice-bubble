@@ -160,19 +160,30 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
+    // Horizonte: misma tarjeta que una nota (surf + line, radio 14); el
+    // estado "sin transcribir" se marca en ember-t.
+    final status = isDark ? kEmberTextDark : kEmberTextLight;
+    final highContrast = MediaQuery.highContrastOf(context);
+    final radius = BorderRadius.circular(kRadiusCard);
     return Semantics(
       container: true,
       label: 'Audio sin transcribir, ${_format(widget.item.createdAt)}',
       child: Material(
-        color: isDark ? kBgSecondaryDark : kBgSecondaryLight,
-        borderRadius: BorderRadius.circular(kBorderRadiusCard),
+        color: highContrast
+            ? (isDark ? kHighContrastSurfaceDark : kHighContrastSurfaceLight)
+            : (isDark ? kBgElevatedDark : kBgElevatedLight),
+        borderRadius: radius,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(kBorderRadiusCard),
+            borderRadius: radius,
             border: Border.all(
-              color: isDark ? kSeparatorDark : kSeparatorLight,
-              width: 0.5,
+              color: highContrast
+                  ? (isDark ? kLabelPrimaryDark : kLabelPrimaryLight)
+                  : (isDark ? kSeparatorDark : kSeparatorLight),
+              width: highContrast
+                  ? kGlassBorderWidthAccessible
+                  : kSurfaceBorderWidth,
             ),
           ),
           child: Column(
@@ -183,23 +194,18 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
                   Icon(
                     Icons.cloud_off_rounded,
                     size: 18,
-                    color: secondary,
+                    color: status,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'Audio sin transcribir',
-                      style: kTextSubhead.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? kLabelPrimaryDark
-                            : kLabelPrimaryLight,
-                      ),
+                      style: kTextCardTitle.copyWith(color: status),
                     ),
                   ),
                   Text(
                     _format(widget.item.createdAt),
-                    style: kTextCaption.copyWith(color: secondary),
+                    style: kTextMono.copyWith(fontSize: 12, color: secondary),
                   ),
                 ],
               ),
@@ -336,10 +342,7 @@ class _PlayerStage extends StatelessWidget {
                 key: clockKey,
                 softWrap: false,
                 overflow: TextOverflow.clip,
-                style: kTextSubhead.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
+                style: kTextMono.copyWith(fontWeight: FontWeight.w500),
               ),
             ),
           ),

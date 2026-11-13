@@ -6,19 +6,18 @@ Suite de verificación para el Contrato C-30:
 "Contraste que se lee [D]"
 
 Requisitos verificados:
-1. Ratios WCAG 2.1 en pastillas de iconos (kTile*):
-   - Gráfico/Icono: ratio de contraste >= 3.0:1 contra blanco (kLabelPrimaryDark).
-   - kTileGreen oscurecido (0xFF1A7A2E) pasa de 2.02:1 a > 5.0:1.
-   - kTileOrange oscurecido (0xFF9A5B00) pasa de 2.06:1 a > 5.0:1.
-   - Todos los 7 kTile (Blue, Green, Orange, Red, Purple, Gray, Pink) superan 3.0:1.
+1. Ratios WCAG 2.1 en los íconos de fila de Ajustes (Horizonte, fase 3):
+   - Las pastillas de color (kTile*) se retiraron: el ícono es de línea en
+     fg2 sobre surf, sin fondo.
+   - Gráfico/Icono: fg2 sobre surf >= 3.0:1 en claro y en oscuro.
 2. Adopción de tokens de texto sin primitivos crudos:
    - Horizonte: onPrimary usa kOnEmber (texto sobre brasa) en ambos temas.
    - buildLightTheme: onError, onSecondary, onTertiary usan kLabelPrimaryDark.
    - buildDarkTheme: onSecondary, onTertiary usan kLabelPrimaryLight.
    - Cero Colors.white o Colors.black crudos en las definiciones onPrimary/onSecondary/onTertiary.
-3. Accesibilidad en SettingIconTile:
-   - El glifo del icono usa kLabelPrimaryDark.
-   - Soporte para MediaQuery.highContrastOf(context) con borde de alto contraste.
+3. Accesibilidad en el ícono de fila (_RowIcon + SettingsPalette):
+   - El glifo usa el color de ícono de la paleta: fg2, fg con alto contraste.
+   - La paleta consulta MediaQuery.highContrastOf(context).
 4. Layout nativo del widget (widget_notes.xml):
    - Cero ocurrencias de #007AFF hardcodeado; usa @color/kb_key_bg_accent adaptable.
    - Elementos decorativos (widget_rec_dot) documentados.
@@ -68,24 +67,23 @@ def test_files_exist():
     assert os.path.isfile(WIDGET_GLASS_BG_LIGHT), f"widget_glass_bg.xml no existe en {WIDGET_GLASS_BG_LIGHT}"
     assert os.path.isfile(WIDGET_GLASS_BG_NIGHT), f"widget_glass_bg.xml no existe en {WIDGET_GLASS_BG_NIGHT}"
 
+def _token_hex(src, name):
+    m = re.search(rf"const Color {name} = Color\(0xFF([0-9A-Fa-f]{{6}})\);", src)
+    assert m, f"No se encontró definición de {name} en design_tokens.dart"
+    return m.group(1)
+
 def test_tile_colors_contrast_ratio():
+    """Horizonte: sin pastillas kTile*; ícono de línea fg2 sobre surf >= 3:1."""
     with open(DESIGN_TOKENS, "r", encoding="utf-8") as f:
         src = f.read()
 
-    white_lum = wcag_relative_luminance("FFFFFF")
-    tile_names = ["kTileBlue", "kTileGreen", "kTileOrange", "kTileRed", "kTilePurple", "kTileGray", "kTilePink"]
-
-    for name in tile_names:
-        m = re.search(rf"const Color {name} = Color\(0xFF([0-9A-Fa-f]{{6}})\);", src)
-        assert m, f"No se encontró definición de {name} en design_tokens.dart"
-        hex_val = m.group(1)
-        lum = wcag_relative_luminance(hex_val)
-        cr = wcag_contrast_ratio(white_lum, lum)
-        assert cr >= 3.0, f"Token {name} (#{hex_val}) no cumple contraste gráfico WCAG >= 3.0:1 (obtenido: {cr:.2f}:1)"
-
-    # Verificación puntual de los tokens corregidos en C-30
-    assert "0xFF1A7A2E" in src, "kTileGreen debe ser 0xFF1A7A2E para contraste > 5:1"
-    assert "0xFF9A5B00" in src, "kTileOrange debe ser 0xFF9A5B00 para contraste > 5:1"
+    assert "kTile" not in src, "Las pastillas de color kTile* deben haberse retirado"
+    for fg2, surf in (("kHzFg2Light", "kHzSurfLight"), ("kHzFg2Dark", "kHzSurfDark")):
+        cr = wcag_contrast_ratio(
+            wcag_relative_luminance(_token_hex(src, fg2)),
+            wcag_relative_luminance(_token_hex(src, surf)),
+        )
+        assert cr >= 3.0, f"Ícono de fila {fg2} sobre {surf} no cumple 3.0:1 (obtenido: {cr:.2f}:1)"
 
 def test_theme_on_primary_uses_tokens():
     with open(DESIGN_TOKENS, "r", encoding="utf-8") as f:
@@ -116,14 +114,17 @@ def test_setting_icon_tile_contrast_and_fallback():
     with open(SETTINGS_V2, "r", encoding="utf-8") as f:
         src = f.read()
 
-    tile_start = src.find("class SettingIconTile")
-    assert tile_start != -1, "No se encontró SettingIconTile en settings_v2.dart"
-    tile_code = src[tile_start:tile_start + 1200]
-
-    assert "color: kLabelPrimaryDark" in tile_code, "SettingIconTile debe usar kLabelPrimaryDark para el glifo"
-    assert "color: Colors.white" not in tile_code, "SettingIconTile retiene Colors.white crudo"
-    assert "highContrast" in tile_code or "highContrastOf" in tile_code, (
-        "SettingIconTile debe consultar MediaQuery.highContrastOf(context)"
+    assert "class SettingIconTile" not in src, "La pastilla SettingIconTile debe haberse retirado"
+    icon_start = src.find("class _RowIcon")
+    assert icon_start != -1, "No se encontró _RowIcon en settings_v2.dart"
+    icon_code = src[icon_start:icon_start + 600]
+    assert "SettingsPalette.of(context).icon" in icon_code, "_RowIcon debe usar el color de ícono de la paleta"
+    assert "Colors.white" not in src and "Colors.black" not in src, "settings_v2 retiene Colors.white/black crudos"
+    assert "Color get icon => highContrast ? label : secondary;" in src, (
+        "El ícono debe ir en fg2 y pasar a fg con alto contraste"
+    )
+    assert "MediaQuery.highContrastOf(context)" in src, (
+        "SettingsPalette debe consultar MediaQuery.highContrastOf(context)"
     )
 
 def test_widget_notes_layout_tints_and_decoratives():
@@ -157,17 +158,15 @@ def test_negative_mutations():
     with open(WIDGET_NOTES_LAYOUT, "r", encoding="utf-8") as f:
         widget_src = f.read()
 
-    white_lum = wcag_relative_luminance("FFFFFF")
+    surf_lum = wcag_relative_luminance("FFFFFF")
 
-    # Mutación 1: Regresar kTileGreen al color viejo (30D158)
-    mut1_lum = wcag_relative_luminance("30D158")
-    mut1_cr = wcag_contrast_ratio(white_lum, mut1_lum)
+    # Mutación 1: ícono de fila con un gris demasiado claro (#C8CAD3) sobre surf blanco
+    mut1_cr = wcag_contrast_ratio(surf_lum, wcag_relative_luminance("C8CAD3"))
     assert mut1_cr < 3.0, f"Mutación 1 debe fallar la guarda de contraste (< 3.0): {mut1_cr:.2f}:1"
 
-    # Mutación 2: Regresar kTileOrange al color viejo (FF9F0A)
-    mut2_lum = wcag_relative_luminance("FF9F0A")
-    mut2_cr = wcag_contrast_ratio(white_lum, mut2_lum)
-    assert mut2_cr < 3.0, f"Mutación 2 debe fallar la guarda de contraste (< 3.0): {mut2_cr:.2f}:1"
+    # Mutación 2: reintroducir una pastilla kTile*
+    mut2 = tokens_src + "\nconst Color kTileGreen = Color(0xFF30D158);\n"
+    assert "kTile" in mut2, "Mutación 2 falló al aplicar"
 
     # Mutación 3: Regresar onPrimary a Colors.white en buildLightTheme
     mut3 = tokens_src.replace("onPrimary: kOnEmber", "onPrimary: Colors.white", 1)
@@ -179,7 +178,7 @@ def test_negative_mutations():
     mut4 = widget_src.replace("@color/kb_key_bg_accent", "#007AFF")
     assert "#007AFF" in mut4, "Mutación 4 falló al aplicar"
 
-    # Mutación 5: Quitar highContrast de SettingIconTile
+    # Mutación 5: Quitar highContrast del ícono de fila / paleta
     mut5 = settings_src.replace("highContrast", "/* no high contrast */")
     assert "highContrastOf" not in mut5 and "highContrast" not in mut5, "Mutación 5 falló al aplicar"
 

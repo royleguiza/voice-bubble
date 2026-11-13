@@ -119,7 +119,6 @@ class CredentialsScreenState extends State<CredentialsScreen> {
         const SizedBox(height: kSettingsGroupGap),
         if (_loaded && _credentials.isEmpty)
           SettingsEmptyState(
-            icon: Icons.key_rounded,
             title: 'Sin claves guardadas',
             message: 'Guardá usuario y contraseña para rellenarlos desde la '
                 'llave del teclado.',
@@ -132,6 +131,7 @@ class CredentialsScreenState extends State<CredentialsScreen> {
             header: 'Guardadas',
             footer: '${_credentials.length} de ${StorageService.maxCredentials}'
                 ' · La contraseña nunca se muestra.',
+            monoFooter: true,
             children: [
               for (final cred in _credentials)
                 _CredentialRow(
@@ -172,13 +172,20 @@ class _CredentialRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(cred.nombre, style: kTextBody.copyWith(color: p.label)),
+                    Text(
+                      cred.nombre,
+                      style: kTextBody.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: p.label,
+                      ),
+                    ),
+                    // El usuario va en mono, como en el teclado.
                     if (showUser)
                       Text(
                         cred.usuario,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: kTextSubhead.copyWith(color: p.secondary),
+                        style: kTextMono.copyWith(color: p.secondary),
                       ),
                   ],
                 ),
@@ -252,8 +259,8 @@ class _CredentialFormSheetState extends State<_CredentialFormSheet> {
             Navigator.of(context).maybePop(),
       },
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-            8, 0, 8, 8 + MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: AutofillGroup(
           child: SettingsSheetFrame(
             title: 'Nueva clave',
@@ -261,6 +268,7 @@ class _CredentialFormSheetState extends State<_CredentialFormSheet> {
             onClose: () => Navigator.of(context).pop(),
             saveKey: const ValueKey('credenciales-add-button'),
             onSave: _saving ? null : _save,
+            showSave: true,
             children: [
               SettingsSheetCard(
                 children: [
@@ -286,6 +294,7 @@ class _CredentialFormSheetState extends State<_CredentialFormSheet> {
                     hint: 'Solo se escribe, nunca se muestra',
                     controller: _passController,
                     obscure: true,
+                    mono: true,
                     textInputAction: TextInputAction.done,
                     autofillHints: const [AutofillHints.password],
                     onSubmitted: (_) => _save(),
@@ -293,15 +302,13 @@ class _CredentialFormSheetState extends State<_CredentialFormSheet> {
                 ],
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
                 child: Text(
                   _error ??
                       'Se guarda cifrada. El teclado la rellena solo en '
                           'campos de contraseña.',
                   style: kTextFootnote.copyWith(
-                    color: _error == null
-                        ? p.secondary
-                        : Theme.of(context).colorScheme.error,
+                    color: _error == null ? p.secondary : p.danger,
                     height: 1.35,
                   ),
                 ),

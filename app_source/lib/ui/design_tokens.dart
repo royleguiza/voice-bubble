@@ -78,6 +78,14 @@ const Color kKeyDark = Color(0xFF1E212D);
 const Color kKey2Light = Color(0xFFCDCFDC);
 const Color kKey2Dark = Color(0xFF151821);
 
+/// Línea inferior de 1 dp de la tecla en claro (`kb_key_stroke`); en oscuro
+/// la tecla no lleva línea (design.md §12, Métricas).
+const Color kKeyStrokeLight = Color(0xFFC3C5D3);
+
+/// Alto contraste (design.md §9): superficie blanco/negro puro.
+const Color kHighContrastSurfaceLight = Color(0xFFFFFFFF);
+const Color kHighContrastSurfaceDark = Color(0xFF000000);
+
 // ---------------------------------------------------------------------------
 // Accent & Semantic Colors (nombres históricos, valores Horizonte)
 // ---------------------------------------------------------------------------
@@ -225,6 +233,9 @@ const double kRadiusKey = 7.0;
 const double kRadiusCard = 14.0;
 const double kRadiusSheet = 22.0;
 
+/// Buscadores y campos de formulario (maqueta `.srch` / `.fld`).
+const double kRadiusField = 12.0;
+
 /// Small elements, badges, key previews, indicator borders (8px).
 const double kBorderRadiusSmall = 8.0;
 
@@ -302,6 +313,25 @@ const TextStyle kTextMono = TextStyle(
   fontSize: 13,
   fontWeight: FontWeight.w400,
   letterSpacing: 0.0,
+);
+
+/// Etiqueta de grupo y de campo: mono en mayúsculas con tracking, en fg2
+/// (maqueta `.grp` / `.fld label`). El texto se pasa ya en mayúsculas.
+const TextStyle kTextGroupLabel = TextStyle(
+  fontFamily: kFontMono,
+  fontSize: 12,
+  fontWeight: FontWeight.w500,
+  letterSpacing: 1.6,
+  height: 1.2,
+);
+
+/// Título de tarjeta de nota (Sora 600).
+const TextStyle kTextCardTitle = TextStyle(
+  fontFamily: kFontDisplay,
+  fontSize: 17,
+  fontWeight: FontWeight.w600,
+  height: 1.3,
+  letterSpacing: -0.2,
 );
 
 // SPK-14: 3 roles con nombre para énfasis (prohíbe TextStyle suelto).
@@ -467,7 +497,7 @@ const TextStyle kTextLargeTitle = TextStyle(
   fontSize: 34,
   fontWeight: FontWeight.w700,
   height: 41 / 34,
-  letterSpacing: 0.2,
+  letterSpacing: -0.8,
 );
 
 /// Desplazamiento a partir del cual aparece la barra compacta superior.
@@ -477,18 +507,14 @@ const double kLargeTitleCollapseOffset = 44.0;
 const Color kFillLight = kHzSurf2Light;
 const Color kFillDark = kHzSurf2Dark;
 
-/// Pastilla seleccionada del segmentado en oscuro (en claro es kBgElevatedLight).
-const Color kSegmentThumbDark = kHzLineDark;
+/// Alto táctil de las pestañas de texto Notas | Historial.
+const double kHomeTabHeight = 44.0;
 
-/// Sombra de la pastilla seleccionada del segmentado.
-const BoxShadow kSegmentThumbShadow = BoxShadow(
-  color: Color(0x1F000000),
-  blurRadius: 8,
-  offset: Offset(0, 3),
-);
+/// Grosor del subrayado de brasa de la pestaña activa.
+const double kHomeTabUnderline = 2.0;
 
-/// Radio de las tarjetas de nota en la lista principal.
-const double kBorderRadiusNoteCard = 18.0;
+/// Columna fija de la hora en las filas del Historial.
+const double kHistoryTimeColumn = 44.0;
 
 /// Duración del resaltado de una nota recién dictada.
 const Duration kAnimNewNote = Duration(milliseconds: 1400);
@@ -533,29 +559,16 @@ const TextStyle kSettingRowTitle = TextStyle(
 /// Altura mínima de fila de ajuste.
 const double kSettingRowMinHeight = 52.0;
 
-/// Pastilla de icono de fila: 30x30, radio 8.
+/// Columna del ícono de línea de una fila (Horizonte: sin pastilla de
+/// color; el glifo va en fg2, design.md §13).
 const double kSettingIconSize = 30.0;
-const double kSettingIconRadius = 8.0;
-const double kSettingIconGlyph = 16.0;
-
-/// Tintes de pastilla de icono (idénticos en claro/oscuro, como el lab).
-/// Ajustados a contraste >= 3:1 con glifo blanco (C-30).
-const Color kTileBlue = Color(0xFF0A84FF);
-const Color kTileGreen = Color(0xFF1A7A2E);
-const Color kTileOrange = Color(0xFF9A5B00);
-const Color kTileRed = Color(0xFFFF453A);
-const Color kTilePurple = Color(0xFFBF5AF2);
-const Color kTileGray = Color(0xFF8E8E93);
-const Color kTilePink = Color(0xFFFF375F);
-const Color kTileIndigo = Color(0xFF5856D6);
-const Color kTileYellow = Color(0xFFA66A00);
 
 // ---------------------------------------------------------------------------
 // Ajustes 2026 (lista agrupada estilo iOS 26)
 // ---------------------------------------------------------------------------
 
-/// Radio de los grupos de filas (inset grouped de iOS 26).
-const double kSettingsGroupRadius = 26.0;
+/// Radio de los grupos de filas: lista sólida surf + line (= tarjeta).
+const double kSettingsGroupRadius = kRadiusCard;
 
 /// Separación vertical entre grupos.
 const double kSettingsGroupGap = 28.0;
@@ -583,12 +596,8 @@ const TextStyle kSettingsNavTitle = TextStyle(
   letterSpacing: -0.41,
 );
 
-/// Encabezado de grupo (15/600, sin mayúsculas).
-const TextStyle kSettingsSectionHeader = TextStyle(
-  fontSize: 15,
-  fontWeight: FontWeight.w600,
-  letterSpacing: -0.24,
-);
+/// Encabezado de grupo = etiqueta de grupo (mono en mayúsculas, fg2).
+const TextStyle kSettingsSectionHeader = kTextGroupLabel;
 
 /// Texto secundario legible (pie de grupo, valor de fila) = fg2:
 /// >= 4.5:1 sobre bg y surf en ambos modos.

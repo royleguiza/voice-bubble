@@ -1069,16 +1069,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                     child: const ColoredBox(color: kScrimColor),
                   ),
                 ),
+                // Hoja sólida pegada al borde inferior; el propio marco suma
+                // el inset de navegación y acá va el del teclado.
                 Align(
                   alignment: Alignment.bottomCenter,
                   child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      8,
-                      0,
-                      8,
-                      8 +
-                          MediaQuery.viewInsetsOf(context).bottom +
-                          MediaQuery.paddingOf(context).bottom,
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.viewInsetsOf(context).bottom,
                     ),
                     child: _isEditingApiKey
                         ? _buildGroqKeySheet(context)
@@ -1241,13 +1238,11 @@ class _SettingsScreenState extends State<SettingsScreen>
             key: const ValueKey('setup-section'),
             header: 'Terminá de configurar',
             footer: 'Con esto ya podés dictar en cualquier app.',
-            iconInset: true,
             children: [
               if (!_hasApiKey)
                 SettingsNavRow(
                   key: const ValueKey('setup-groq-row'),
                   icon: Icons.graphic_eq_rounded,
-                  tile: kTileRed,
                   title: 'Agregar clave de Groq',
                   value: 'Falta',
                   valueColor: p.alert,
@@ -1257,7 +1252,6 @@ class _SettingsScreenState extends State<SettingsScreen>
                 SettingsNavRow(
                   key: const ValueKey('setup-keyboard-row'),
                   icon: Icons.keyboard_rounded,
-                  tile: kTileGray,
                   title: 'Activar el teclado',
                   value: 'Falta',
                   valueColor: p.alert,
@@ -1272,94 +1266,85 @@ class _SettingsScreenState extends State<SettingsScreen>
           onTap: () => _go(SettingsPage.acerca),
         ),
         SettingsSection(
-          iconInset: true,
           children: [
             SettingsNavRow(
               key: const ValueKey('nav-transcripcion'),
               icon: Icons.graphic_eq_rounded,
-              tile: kTileRed,
               title: 'Transcripción',
               value: _hasApiKey ? 'Groq' : 'Sin clave',
               onTap: () => _go(SettingsPage.transcripcion),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-ia'),
-              icon: Icons.auto_awesome_rounded,
-              tile: kTilePurple,
+              icon: Icons.auto_awesome_outlined,
               title: 'Inteligencia artificial',
               value: _geminiHasApiKey
                   ? (_geminiActionsEnabled ? 'Activa' : 'Oculta')
                   : 'Opcional',
+              valueActive: _geminiHasApiKey && _geminiActionsEnabled,
               onTap: () => _go(SettingsPage.ia),
             ),
           ],
         ),
         SettingsSection(
           header: 'Dónde dictar',
-          iconInset: true,
           children: [
             SettingsNavRow(
               key: const ValueKey('nav-teclado'),
-              icon: Icons.keyboard_rounded,
-              tile: kTileGray,
+              icon: Icons.keyboard_outlined,
               title: 'Teclado',
               value: _isKeyboardActive ? 'Activo' : 'Inactivo',
+              valueActive: _isKeyboardActive,
               onTap: () => _go(SettingsPage.teclado),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-burbuja'),
-              icon: Icons.bubble_chart_rounded,
-              tile: kTileBlue,
+              icon: Icons.radio_button_unchecked_rounded,
               title: 'Barra flotante',
               value: _isBubbleEnabled ? 'Activada' : 'Apagada',
+              valueActive: _isBubbleEnabled,
               onTap: () => _go(SettingsPage.burbuja),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-trackpad'),
-              icon: Icons.touch_app_rounded,
-              tile: kTileIndigo,
+              icon: Icons.touch_app_outlined,
               title: 'Trackpad',
               value: _trackpadEnabled || _dockToolPointer
                   ? 'Activado'
                   : 'Apagado',
+              valueActive: _trackpadEnabled || _dockToolPointer,
               onTap: () => _go(SettingsPage.trackpad),
             ),
           ],
         ),
         SettingsSection(
           header: 'Tu contenido',
-          iconInset: true,
           children: [
             SettingsNavRow(
               key: const ValueKey('nav-snippets'),
-              icon: Icons.short_text_rounded,
-              tile: kTileOrange,
+              icon: Icons.code_rounded,
               title: 'Snippets',
               onTap: () => _go(SettingsPage.snippets),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-claves'),
-              icon: Icons.key_rounded,
-              tile: kTileGreen,
+              icon: Icons.key_outlined,
               title: 'Claves',
               onTap: () => _go(SettingsPage.claves),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-notas'),
-              icon: Icons.sticky_note_2_rounded,
-              tile: kTileYellow,
+              icon: Icons.sticky_note_2_outlined,
               title: 'Notas y widgets',
               onTap: () => _go(SettingsPage.notas),
             ),
           ],
         ),
         SettingsSection(
-          iconInset: true,
           children: [
             SettingsMenuRow<String>(
               id: 'theme-selector',
               icon: Icons.contrast_rounded,
-              tile: kTileGray,
               title: 'Apariencia',
               value: _themeMode,
               options: const [

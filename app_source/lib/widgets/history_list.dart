@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/transcription.dart';
 import '../ui/design_tokens.dart';
+import '../helpers/note_groups.dart';
+import '../ui/symbol_field.dart';
 import '../ui/transcription_feedback.dart';
 import 'app_icons.dart';
 
@@ -12,8 +14,9 @@ class HistoryList extends StatelessWidget {
   final ScrollController? scrollController;
 
   /// Integrada en la página principal: sin scroll propio (la página
-  /// desplaza todo) y agrupada en una tarjeta. Son 20 filas como máximo
-  /// (FIFO), así que construirlas todas no cuesta.
+  /// desplaza todo), filas con la hora sola en mono y separadores line; la
+  /// pantalla las agrupa por día. Son 20 filas como máximo (FIFO), así que
+  /// construirlas todas no cuesta.
   final bool embedded;
 
   const HistoryList({
@@ -63,22 +66,28 @@ class HistoryList extends StatelessWidget {
   Widget _buildEmbedded(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
+    final line = isDark ? kSeparatorDark : kSeparatorLight;
     if (transcriptions.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 64),
-        child: Center(
-          child: Text(
-            'No hay transcripciones aun',
-            key: const ValueKey('history-empty-message'),
-            style: kTextSubhead.copyWith(color: secondary),
-          ),
+        padding: const EdgeInsets.symmetric(vertical: 56),
+        child: Column(
+          children: [
+            const SymbolField(),
+            const SizedBox(height: 14),
+            Text(
+              'No hay transcripciones aun',
+              key: const ValueKey('history-empty-message'),
+              textAlign: TextAlign.center,
+              style: kTextSubhead.copyWith(color: secondary),
+            ),
+          ],
         ),
       );
     }
+    // Horizonte: filas sueltas sobre el fondo, separadas por line (sin
+    // tarjeta). La fecha la da el encabezado del grupo del día.
     return Material(
-      color: isDark ? kBgElevatedDark : kBgSecondaryLight,
-      borderRadius: BorderRadius.circular(kBorderRadiusNoteCard),
-      clipBehavior: Clip.antiAlias,
+      type: MaterialType.transparency,
       child: ListView.separated(
         shrinkWrap: true,
         primary: false,
@@ -86,10 +95,9 @@ class HistoryList extends StatelessWidget {
         padding: EdgeInsets.zero,
         itemCount: transcriptions.length,
         separatorBuilder: (_, __) => Divider(
-          height: 0.5,
-          thickness: 0.5,
-          indent: 16,
-          color: isDark ? kSeparatorDark : kSeparatorLight,
+          height: kSurfaceBorderWidth,
+          thickness: kSurfaceBorderWidth,
+          color: line,
         ),
         itemBuilder: (context, index) =>
             _tile(context, transcriptions[index], embedded: true),
@@ -98,27 +106,51 @@ class HistoryList extends StatelessWidget {
   }
 
   Widget _tile(BuildContext context, Transcription t, {bool embedded = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     return ListTile(
       key: ValueKey(t.id),
       // Motor Cloud único: sin motor Local no hay rama de ícono.
+      // Integrada: la hora sola en mono, en una columna fija.
       leading: embedded
-          ? null
+          ? SizedBox(
+              width: kHistoryTimeColumn,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text(
+                  historyTimeLabel(t.timestamp),
+                  style: kTextMono.copyWith(fontSize: 12, color: secondary),
+                ),
+              ),
+            )
           : Icon(
               Icons.cloud,
               size: AppIcons.medium,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
+      minLeadingWidth: embedded ? kHistoryTimeColumn : null,
+      horizontalTitleGap: embedded ? 10 : null,
+      titleAlignment: embedded ? ListTileTitleAlignment.top : null,
       title: SelectableText(
         t.text,
         maxLines: 2,
+        style: embedded
+            ? kTextSubhead.copyWith(
+                height: 20 / 15,
+                color: isDark ? kLabelPrimaryDark : kLabelPrimaryLight,
+              )
+            : null,
       ),
-      subtitle: Text(
-        formatTranscriptionTimestamp(t.timestamp),
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
+      subtitle: embedded
+          ? null
+          : Text(
+              formatTranscriptionTimestamp(t.timestamp),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
       trailing: IconButton(
         key: ValueKey('copy_btn_${t.id}'),
-        icon: const Icon(Icons.copy_rounded, size: 18),
+        icon: Icon(Icons.copy_rounded,
+            size: AppIcons.small, color: embedded ? secondary : null),
         tooltip: copyTooltipMessage,
         onPressed: () async {
           // Fallo de clipboard clasificado: avisa de portapapeles, no
@@ -137,7 +169,7 @@ class HistoryList extends StatelessWidget {
         },
       ),
       contentPadding: embedded
-          ? const EdgeInsets.fromLTRB(16, 2, 6, 2)
+          ? const EdgeInsets.fromLTRB(2, 4, 0, 4)
           : const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
     );
   }
