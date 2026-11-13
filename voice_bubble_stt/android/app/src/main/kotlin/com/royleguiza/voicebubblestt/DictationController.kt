@@ -670,8 +670,9 @@ class DictationController(
                         if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
                         if (isRetryableError(message) && lastDictationSlot != null) {
-                            val retryMsg = if (host.isSpanish()) "$message Toca para reintentar." else "$message Tap to retry."
-                            host.showNotice(retryMsg, onClick = { retryLastDictation() })
+                            // Sin "Toca para reintentar": lo dice la acción "Reintentar" de la
+                            // cápsula (toda la cápsula reintenta) y así entra en una línea.
+                            host.showNotice(message, onClick = { retryLastDictation() })
                         } else {
                             lastDictationSlot = null
                             host.showNotice(message)
@@ -730,8 +731,9 @@ class DictationController(
                         if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
                         if (isRetryableError(message) && lastDictationSlot != null) {
-                            val retryMsg = if (host.isSpanish()) "$message Toca para reintentar." else "$message Tap to retry."
-                            host.showNotice(retryMsg, onClick = { retryLastDictation() })
+                            // Sin "Toca para reintentar": lo dice la acción "Reintentar" de la
+                            // cápsula (toda la cápsula reintenta) y así entra en una línea.
+                            host.showNotice(message, onClick = { retryLastDictation() })
                         } else {
                             lastDictationSlot = null
                             host.showNotice(message)

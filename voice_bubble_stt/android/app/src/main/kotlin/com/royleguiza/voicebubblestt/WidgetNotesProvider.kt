@@ -128,6 +128,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
             }
             val thinking = state == "transcribing" && !still
             views.setViewVisibility(R.id.widget_voice_think, if (thinking) View.VISIBLE else View.GONE)
+            views.setViewVisibility(R.id.widget_voice_spin, if (thinking) View.VISIBLE else View.GONE)
             // El agujero (widget_voice_static) es una capa fija siempre visible:
             // en guardado/pendiente/sin animaciones queda solo él.
         }

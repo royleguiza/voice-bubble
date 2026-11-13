@@ -246,7 +246,7 @@ def test_mutations():
     check("Mutación 4 (retryLastDictation regraba audio): detectada", "startRecording" in mut4)
 
     # Mutación 5: Reintento automático en onError (sin intervención del usuario)
-    mut5 = finish_fn.replace("host.showNotice(retryMsg, onClick = { retryLastDictation() })", "retryLastDictation()")
+    mut5 = finish_fn.replace("host.showNotice(message, onClick = { retryLastDictation() })", "retryLastDictation()")
     check("Mutación 5 (reintento automático no autorizado): detectada", "retryLastDictation()" in mut5 and "onClick =" not in mut5)
 
 test_mutations()

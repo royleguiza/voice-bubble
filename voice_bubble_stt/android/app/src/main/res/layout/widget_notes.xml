@@ -213,6 +213,22 @@
                 android:src="@drawable/widget_voice_static"
                 android:contentDescription="@null" />
 
+            <!-- Pensando: arco que gira sobre el agujero (como spinArc de HorizonView). -->
+            <ProgressBar
+                android:id="@+id/widget_voice_spin"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="start|center_vertical"
+                android:minWidth="44dp"
+                android:maxWidth="44dp"
+                android:minHeight="44dp"
+                android:maxHeight="44dp"
+                android:indeterminate="true"
+                android:indeterminateOnly="true"
+                android:indeterminateDrawable="@drawable/widget_voice_spin"
+                android:contentDescription="@null"
+                android:visibility="gone" />
+
             <Chronometer
                 android:id="@+id/widget_chrono"
                 android:layout_width="wrap_content"

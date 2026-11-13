@@ -182,8 +182,8 @@ class StatusLayer(
             actionLabel = if (c.onClick != null) c.actionLabel else null,
             multilineRadiusPx = dp(MULTILINE_RADIUS_DP).toFloat(),
         )
-        // Tocar la cápsula ejecuta su acción si la tiene: los mensajes de
-        // reintento dicen "Toca para reintentar" y deben seguir cumpliéndolo.
+        // Tocar la cápsula ejecuta su acción si la tiene (p. ej. reintentar):
+        // toda la cápsula es objetivo táctil, no solo la etiqueta de acción.
         cap.setOnClickListener {
             hideAnimated()
             if (c.onClick != null) c.onClick.invoke()

@@ -135,6 +135,17 @@ for _n in ("low", "mid", "high"):
                  and f'@+id/widget_voice_{_n}"' in xml)
 check("Tres variantes de voz (goteo/medio/fuerte) como ProgressBar + AVD en bucle",
       _tiers_ok and _counts["low"] < _counts["mid"] < _counts["high"] <= 40, str(_counts))
+# Paridad con HorizonView (teclado/app): glifos mono 0 1 { } en trazo, que
+# cambian a brasa/hot cerca del agujero; pensando = rayitas blancas + arco.
+_g = _avd("high")
+check("Widget grabando con glifos 0/1/{/} en trazo (paridad con teclado y app)",
+      _g.count('android:strokeColor="@color/hz_on_hole"') >= 8
+      and 'android:propertyName="strokeColor"' in _g and 'android:propertyName="fillColor"' in _g)
+check("Widget pensando: rayitas blancas y arco girando sobre el agujero",
+      '@color/hz_on_hole' in _avd("think") and '@color/hz_hot' not in _avd("think")
+      and 'android:propertyName="rotation"' in _avd("spin")
+      and 'android:indeterminateDrawable="@drawable/widget_voice_spin"' in xml
+      and "R.id.widget_voice_spin" in _prov_src)
 check("Pensando = rayitas del agujero hacia la derecha; sin animaciones = solo agujero fijo",
       'android:propertyName="translateX"' in _avd("think") and "<animated-vector" in _avd("think")
       and 'android:indeterminateDrawable="@drawable/widget_voice_think"' in xml
