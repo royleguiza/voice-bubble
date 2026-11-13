@@ -26,7 +26,7 @@ void main() {
     });
 
     test('brasa de texto, suave, on-ember, destello, agujero y plasma', () {
-      expect(kEmberTextLight, const Color(0xFFB84A06));
+      expect(kEmberTextLight, const Color(0xFFB04706));
       expect(kEmberTextDark, const Color(0xFFFF9A3D));
       expect(kEmberSoftLight, const Color(0xFFFBE4CF));
       expect(kEmberSoftDark, const Color(0xFF3A2410));
@@ -37,7 +37,7 @@ void main() {
       expect(kOnHole, const Color(0xFFFFE9CF));
       expect(kPlasmaLight, const Color(0xFF3557C8));
       expect(kPlasmaDark, const Color(0xFF8FB0FF));
-      expect(kOkLight, const Color(0xFF1F8A4C));
+      expect(kOkLight, const Color(0xFF1E874A));
       expect(kOkDark, const Color(0xFF5FD38D));
     });
 
@@ -147,7 +147,7 @@ void main() {
           snippetPaletteBase('azul', isDark: false), const Color(0xFF3557C8));
       expect(snippetPaletteBase('azul', isDark: true), const Color(0xFF8FB0FF));
       expect(
-          snippetPaletteBase('verde', isDark: false), const Color(0xFF1F8A4C));
+          snippetPaletteBase('verde', isDark: false), const Color(0xFF1E874A));
       expect(
           snippetPaletteBase('verde', isDark: true), const Color(0xFF5FD38D));
       expect(

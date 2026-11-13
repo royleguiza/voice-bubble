@@ -9,13 +9,13 @@
     <color name="hz_fg">#FF10121A</color>
     <color name="hz_fg2">#FF5C6072</color>
     <color name="hz_ember">#FFF27A14</color>
-    <color name="hz_ember_t">#FFB84A06</color>
+    <color name="hz_ember_t">#FFB04706</color>
     <color name="hz_ember_soft">#FFFBE4CF</color>
     <color name="hz_on_ember">#FF1A0E00</color>
     <color name="hz_hot">#FFFFC766</color>
     <color name="hz_plasma">#FF3557C8</color>
     <color name="hz_danger">#FFC8372B</color>
-    <color name="hz_ok">#FF1F8A4C</color>
+    <color name="hz_ok">#FF1E874A</color>
     <color name="hz_hole">#FF05060A</color>
     <color name="hz_on_hole">#FFFFE9CF</color>
 
@@ -64,8 +64,8 @@
          Fondo teñido ~20% (0x33) + stroke ~40% (0x66) sobre el tema. -->
     <color name="snippet_fill_azul">#333557C8</color>
     <color name="snippet_stroke_azul">#663557C8</color>
-    <color name="snippet_fill_verde">#331F8A4C</color>
-    <color name="snippet_stroke_verde">#661F8A4C</color>
+    <color name="snippet_fill_verde">#331E874A</color>
+    <color name="snippet_stroke_verde">#661E874A</color>
     <color name="snippet_fill_rojo">#33C8372B</color>
     <color name="snippet_stroke_rojo">#66C8372B</color>
     <color name="snippet_fill_naranja">#33D9750F</color>

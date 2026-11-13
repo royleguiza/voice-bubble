@@ -29,7 +29,7 @@
 | minSdkVersion | **28** |
 | targetSdkVersion | La más actual disponible al crear el proyecto |
 | Idioma de la UI | Español e inglés (mínimo) |
-| Diseño | Apple **Liquid Glass**, claro + oscuro → ver `design.md` |
+| Diseño | **Horizonte** (reemplaza a Liquid Glass): superficies sólidas, acento único brasa, micrófono agujero negro; claro + oscuro → ver `design.md` |
 | Alcance dual | Burbuja (existente) + **teclado del sistema nativo Kotlin** — decisiones D1–D9 aprobadas en `docs/archive/teclado-voice.md` §3 (2026-08-22) |
 | Seeds de snippets | SÍ, 5 ejemplos precargados editables/borrables (`docs/archive/teclado-voice.md`, K4 tarea 7) |
 
@@ -41,7 +41,7 @@ Estas decisiones están documentadas en `docs/archive/plan.md` (Hito 0). Si alg�
 voice-bubble/                  ← raíz del repo git
 ├── README.md                  ← spec funcional del producto
 ├── docs/archive/plan.md       ← plan de ejecución por hitos (histórico; LA FUENTE DE VERDAD del qué y cuándo en su momento)
-├── design.md                  ← sistema de diseño Liquid Glass (LA FUENTE DE VERDAD del cómo se ve)
+├── design.md                  ← sistema de diseño Horizonte (LA FUENTE DE VERDAD del cómo se ve)
 ├── docs/archive/teclado-voice.md ← plan del teclado del sistema (T0–K5, histórico)
 ├── docs/archive/MEJORAS-SEPTIEMBRE.md ← backlog de mejoras (MEJ-01 a MEJ-24, histórico)
 ├── docs/archive/plan-clipboard.md ← bandeja de portapapeles (MEJ-01 / MEJ-08, histórico)
@@ -126,7 +126,7 @@ Ver `INSTALL.md` §4 para la lista vigente y su justificación (única fuente de
 
 ## 8. Anti-patrones prohibidos
 
-- ❌ Usar Liquid Glass fuera de la capa funcional, o hardcodear colores fuera de los tokens de `design.md`.
+- ❌ Usar vidrio o desenfoque fuera de la excepción del widget (Liquid Glass ya no rige; ver Horizonte en `design.md` §2), un segundo acento además de la brasa, o hardcodear colores fuera de los tokens de `design.md`.
 - ❌ Toggle de tema claro/oscuro dentro de la app (seguir el sistema, siempre).
 - ❌ Añadir features fuera del alcance del README (la app hace UNA cosa).
 - ❌ Avanzar de hito sin criterios de aceptación completos.

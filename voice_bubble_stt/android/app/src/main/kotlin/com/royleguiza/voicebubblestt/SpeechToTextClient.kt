@@ -278,6 +278,12 @@ class SpeechToTextClient(
 
     fun isCapturing(): Boolean = capturing
 
+    /** Fase 1 "Voz": nivel de entrada 0..1 que escribe el hilo de captura. */
+    private val levelMeter = VoiceLevelMeter()
+
+    /** Nivel vivo para la UI: lectura volátil, apta para cada cuadro en el main. */
+    fun currentLevel(): Float = if (capturing) levelMeter.level else 0f
+
     fun hasMicPermission(): Boolean =
         ContextCompat.checkSelfPermission(
             context, Manifest.permission.RECORD_AUDIO,
@@ -306,6 +312,7 @@ class SpeechToTextClient(
                 return false
             }
             pcmBuffer.reset()
+            levelMeter.reset()
             cancelRequested = false
             audioRecord = rec
             rec.startRecording()
@@ -325,12 +332,15 @@ class SpeechToTextClient(
             val n = try { rec.read(buf, 0, buf.size) } catch (_: Exception) { -1 }
             if (n > 0) {
                 synchronized(pcmBuffer) { pcmBuffer.write(buf, 0, n) }
+                // Solo lectura del mismo buffer, sin copiar ni asignar.
+                levelMeter.feed(buf, n)
             } else if (n < 0) {
                 break
             }
         }
         try { rec.stop() } catch (_: Exception) {}
         try { rec.release() } catch (_: Exception) {}
+        levelMeter.reset()
     }
 
     /** Detiene la captura y devuelve el WAV completo (cabecera RIFF + PCM).

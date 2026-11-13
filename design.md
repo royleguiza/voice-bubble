@@ -86,13 +86,13 @@ Prohibido hardcodear colores en widgets o vistas: siempre por token.
 | texto (fg) | `#10121A` | `#F2F0EC` | `kHzFg*` / `kLabelPrimary*` | `hz_fg` | Texto principal |
 | texto 2 (fg2) | `#5C6072` | `#9A9DAB` | `kHzFg2*` / `kLabelSecondary*` | `hz_fg2` | Metadatos, hints |
 | brasa (ember) | `#F27A14` | `#FF8A1F` | `kEmber*` / `kAccent*` / `kRecording*` | `hz_ember` | Relleno de acción primaria y grabando |
-| brasa texto (ember-t) | `#B84A06` | `#FF9A3D` | `kEmberText*` / `kTintText*` | `hz_ember_t` | Texto/ícono brasa sobre superficie |
+| brasa texto (ember-t) | `#B04706` | `#FF9A3D` | `kEmberText*` / `kTintText*` | `hz_ember_t` | Texto/ícono brasa sobre superficie |
 | brasa suave (ember-soft) | `#FBE4CF` | `#3A2410` | `kEmberSoft*` | `hz_ember_soft` | Fondo de chip / estado activo |
 | sobre brasa (on-ember) | `#1A0E00` | `#1A0E00` | `kOnEmber` | `hz_on_ember` | Texto sobre relleno brasa |
 | destello (hot) | `#FFC766` | `#FFC766` | `kHot` / `kWarning` | `hz_hot` | Brillo del disco, avisos intermedios |
 | enlace/info (plasma) | `#3557C8` | `#8FB0FF` | `kPlasma*` | `hz_plasma` | Enlaces, información |
 | borrar (danger) | `#C8372B` | `#FF6A5C` | `kDanger*` | `hz_danger` | Solo destructivo |
-| listo (ok) | `#1F8A4C` | `#5FD38D` | `kOk*` / `kSuccess*` | `hz_ok` | Confirmaciones |
+| listo (ok) | `#1E874A` | `#5FD38D` | `kOk*` / `kSuccess*` | `hz_ok` | Confirmaciones |
 | agujero (hole) | `#05060A` | `#000000` | `kHole*` | `hz_hole` | Micrófono |
 | sobre agujero (on-hole) | `#FFE9CF` | `#FFE9CF` | `kOnHole` | `hz_on_hole` | Glifo del micrófono |
 | teclado fondo (kb) | `#E3E4ED` | `#0E1016` | `kKb*` | `kb_surface` | Fondo del teclado |
@@ -107,7 +107,9 @@ Derivados (no son paleta nueva): terciario = fg2 al 60% (`kLabelTertiary*`, plac
 |---|---|---|
 | fg / bg | 16.17 | 17.48 |
 | fg2 / surf | 6.23 | 6.81 |
-| ember-t / surf | 5.22 | 8.70 |
+| ember-t / surf | 5.60 | 8.70 |
+| ember-t / ember-soft | 4.56 | 6.91 |
+| ok / surf | 4.55 | 9.79 |
 | on-ember / ember | 6.84 | 8.05 |
 | on-hole / hole | 17.18 | 17.81 |
 
@@ -197,7 +199,20 @@ Reglas:
 
 - Transiciones fluidas, morphing entre estados del mismo elemento; nada aparece con cortes secos.
 - Duraciones: micro-interacciones 150–250 ms; morphing 350–500 ms.
-- Estados: Reposo (agujero) → Grabando (anillo brasa pulsante) → Transcribiendo (puntos) → Resultado.
+- Estados: Reposo (agujero: anillo fino + glifo on-hole) → Grabando (voz viva, ver abajo) → Transcribiendo (arco giratorio + renglones) → Resultado.
+
+### Voz: el micrófono reacciona al volumen
+
+El nivel de entrada real (RMS → dB → 0..1 con piso de ruido, ataque rápido y caída lenta) mueve el agujero. Dos animaciones, mismas reglas en Flutter y nativo (maqueta: `laboratorio_ui/horizonte.html`, `drawA`/`drawC`):
+
+| Animación | Dónde | Grabando | Pensando |
+|---|---|---|---|
+| **A · Acreción** | Pastilla del teclado y pastilla de dictado de la app | Agujero a la izquierda con anillo cuyo grosor y halo siguen el volumen (destello `hot` con volumen alto); entran por la derecha puntos, rayas y 0/1/{/} en mono que convergen al agujero (más y más rápido cuanto más fuerte; goteo mínimo en silencio), color on-hole → brasa → destello al acercarse | Nada entra; arco con cola gira sobre el anillo y salen renglones hacia la derecha que se frenan y desvanecen |
+| **C · Corona** | Burbuja flotante, widget y teclado mini sin pastilla | ~44 espigas radiales cuya longitud sigue el volumen | Arco giratorio |
+
+- Fondo siempre `hole` (también en claro); partículas en on-hole/brasa/destello. El cronómetro va en mono sobre su propio fondo `hole`.
+- Presupuesto: ≤ 60 partículas en pastilla, pool fijo, sin asignaciones por cuadro; el animador se detiene fuera de grabando/pensando o con la vista oculta.
+- Reducir movimiento / animaciones del sistema desactivadas: anillo fijo cuyo grosor sigue el volumen, sin partículas, espigas ni arco.
 
 ---
 
@@ -260,8 +275,8 @@ Además:
 | `kb_label` | `@color/hz_fg` | `@color/hz_fg` | Glifos de teclas |
 | `kb_label_secondary` | `@color/hz_fg2` | `@color/hz_fg2` | Hints de capa superior |
 | `kb_label_on_accent` | `@color/hz_on_ember` `#1A0E00` | `#1A0E00` | Texto/glifo sobre brasa (Enter, grabando) |
-| `kb_recording` | `@color/hz_ember` | `@color/hz_ember` | Pastilla/anillo del micrófono grabando (**brasa**, ya no rojo) |
-| `kb_recording_pressed` | `#FFD96A0E` | `#FFE5761A` | Pastilla grabando presionada |
+| `kb_recording` | `@color/hz_ember` | `@color/hz_ember` | Acento grabando (**brasa**, ya no rojo) en burbuja y barra; la pastilla del teclado es `hz_hole` + anillo `hz_ember` (`kb_mic_pill`, §8) |
+| `kb_recording_pressed` | `#FFD96A0E` | `#FFE5761A` | Sin uso desde la fase 1 (la pastilla presionada cambia el anillo a `hz_hot`); retirar en la limpieza de tokens |
 | `kb_danger` | `@color/hz_danger` `#C8372B` | `#FF6A5C` | Borrar snippet, chip en modo borrado (único rojo) |
 | `kb_danger_pressed` | `#FFA82D23` | `#FFE85A4D` | Borrar presionado |
 | `kb_label_on_danger` | `#FFFFFFFF` | `#FF1A0E00` | Texto sobre `kb_danger` (≥ 4.5:1 en ambos modos) |
@@ -273,7 +288,7 @@ Solo **6 ids fijos** (nunca color libre; los ids no cambian). El chip/card usa *
 | id | Base claro | Base oscuro |
 |---|---|---|
 | `azul` | `#3557C8` | `#8FB0FF` |
-| `verde` | `#1F8A4C` | `#5FD38D` |
+| `verde` | `#1E874A` | `#5FD38D` |
 | `rojo` | `#C8372B` | `#FF6A5C` |
 | `naranja` | `#D9750F` | `#FFA24A` |
 | `violeta` | `#8B4FD0` | `#C79BFF` |
@@ -302,8 +317,8 @@ Las familias `@font/inter`, `@font/sora` y `@font/jetbrains_mono` están disponi
 ### Movimiento
 
 - Cambio de capa (letras ↔ código ↔ snippets): crossfade + slide sutil 150–200 ms.
-- Micrófono: anillo brasa pulsante solo mientras graba; procesando = puntos.
-- Reduced Motion: crossfades directos sin rebote y anillo estático (igual que §9).
+- Micrófono: reposo = agujero (`hz_hole` + anillo brasa + glifo on-hole); grabando = pastilla A (Acreción) con cronómetro mono y ✕; procesando = A en modo pensando. Vista nativa `HorizonView` (modos `ACCRETION`/`CORONA`, §8).
+- Reduced Motion: crossfades directos sin rebote y anillo estático cuyo grosor sigue el volumen (igual que §9).
 
 ### Reglas específicas del teclado
 

@@ -1,8 +1,6 @@
 package com.royleguiza.voicebubblestt
 
-import android.animation.ObjectAnimator
 import android.content.Context
-import android.graphics.Typeface
 import android.inputmethodservice.InputMethodService
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -24,6 +22,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 
 /**
  * Dictado por voz (SPK-05, módulo 5 de N): tecla mic, máquina de estados,
@@ -80,9 +79,9 @@ class DictationController(
     private var micKeyView: View? = null
     private var micNormalView: ImageView? = null
     private var micProcView: View? = null
-    private var micProcDots: List<View> = emptyList()
+    private var micProcHorizon: HorizonView? = null
     private var micPillView: View? = null
-    private var micPillDot: TextView? = null
+    private var micPillHorizon: HorizonView? = null
     private var micPillTimer: TextView? = null
     private var micPillCancel: TextView? = null
     private var timeoutRunnable: Runnable? = null
@@ -96,7 +95,6 @@ class DictationController(
     private var soundCancel = 0
     private var transcriptionGeneration = 0
     private var focusRequest: AudioFocusRequest? = null
-    private var pulseAnimators: List<ObjectAnimator> = emptyList()
     private var dictationStartPending = false
     @Volatile
     private var microphoneClaimToken = 0L
@@ -152,17 +150,21 @@ class DictationController(
         stopRecordingTimer()
         stopMicTicker()
         releaseMicSounds()
-        pulseAnimators.forEach { it.cancel() }
-        pulseAnimators = emptyList()
+        stopVoiceAnimations()
         cancelDictationIfActive()
     }
 
     /** Rebuild suelta las vistas: parar timer/UI y olvidarlas (la grabación sigue). */
     fun onViewsDiscarded() {
         stopRecordingTimer()
-        pulseAnimators.forEach { it.cancel() }
-        pulseAnimators = emptyList()
+        stopVoiceAnimations()
         clearViews()
+    }
+
+    /** Detiene los cuadros de las vistas de voz (fase 1): sin animador colgado. */
+    private fun stopVoiceAnimations() {
+        micPillHorizon?.setPhase(HorizonView.Phase.IDLE)
+        micProcHorizon?.setPhase(HorizonView.Phase.IDLE)
     }
 
     /** Olvida las vistas del mic (campo de contraseña o rebuild). */
@@ -170,9 +172,9 @@ class DictationController(
         micKeyView = null
         micNormalView = null
         micProcView = null
-        micProcDots = emptyList()
+        micProcHorizon = null
         micPillView = null
-        micPillDot = null
+        micPillHorizon = null
         micPillTimer = null
         micPillCancel = null
     }
@@ -189,17 +191,19 @@ class DictationController(
         lp.setMargins(m, 0, m, 0)
         container.layoutParams = lp
 
-        // Vista normal en reposo / ocupado (icono vectorial kb_ic_mic)
+        // Vista normal en reposo / ocupado: el agujero (Horizonte) con el
+        // glifo kb_ic_mic en on-hole; ocupado vuelve a tecla alt atenuada.
         val normal = ImageView(service)
-        normal.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        normal.scaleType = ImageView.ScaleType.FIT_CENTER
         normal.setImageResource(R.drawable.kb_ic_mic)
         normal.isClickable = true
         normal.isFocusable = true
         normal.minimumWidth = 0
         normal.minimumHeight = 0
-        normal.setPadding(0, 0, 0, 0)
-        normal.setBackgroundResource(R.drawable.kb_key_bg)
-        normal.setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
+        val glyphPad = dp(8f)
+        normal.setPadding(0, glyphPad, 0, glyphPad)
+        normal.background = HoleDrawable(service)
+        normal.setColorFilter(ContextCompat.getColor(service, R.color.hz_on_hole))
         normal.layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
@@ -218,11 +222,15 @@ class DictationController(
         )
         container.addView(normal)
 
-        // Vista de procesamiento / transcripción (3 puntos suspensivos pulsantes)
-        val proc = LinearLayout(service)
-        proc.orientation = LinearLayout.HORIZONTAL
-        proc.gravity = Gravity.CENTER
-        proc.setBackgroundResource(R.drawable.kb_key_alt)
+        // Nivel vivo del micrófono: lectura volátil del hilo de captura
+        // (SpeechToTextClient.currentLevel), una vez por cuadro.
+        val level = HorizonView.LevelSource {
+            if (::sttClient.isInitialized) sttClient.currentLevel() else 0f
+        }
+
+        // Vista de procesamiento: pastilla A en modo pensando (arco + renglones).
+        val proc = FrameLayout(service)
+        proc.setBackgroundResource(R.drawable.kb_mic_pill)
         proc.isClickable = true
         proc.isFocusable = true
         proc.setOnClickListener {
@@ -233,34 +241,16 @@ class DictationController(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
         )
-        val dotSizePx = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 5f, service.resources.displayMetrics,
-        ).toInt()
-        val dotGapPx = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 4f, service.resources.displayMetrics,
-        ).toInt()
-        val dots = mutableListOf<View>()
-        for (i in 0 until 3) {
-            val dot = View(service)
-            dot.setBackgroundResource(R.drawable.kb_proc_dot)
-            val dotLp = LinearLayout.LayoutParams(dotSizePx, dotSizePx)
-            if (i > 0) {
-                dotLp.leftMargin = dotGapPx
-            }
-            proc.addView(dot, dotLp)
-            dots.add(dot)
-        }
+        val procHorizon = HorizonView(service, HorizonView.Mode.ACCRETION)
+        proc.addView(
+            procHorizon,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
+        )
         container.addView(proc)
 
-        // Vista pastilla (M4 Pill) en grabación
-        val pill = LinearLayout(service)
-        pill.orientation = LinearLayout.HORIZONTAL
-        pill.gravity = Gravity.CENTER_VERTICAL
+        // Vista pastilla (M4 Pill) en grabación: A (Acreción) + cronómetro + ✕
+        val pill = FrameLayout(service)
         pill.setBackgroundResource(R.drawable.kb_mic_pill)
-        val padH = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 12f, service.resources.displayMetrics,
-        ).toInt()
-        pill.setPadding(padH, 0, padH, 0)
         pill.isClickable = true
         pill.isFocusable = true
         pill.layoutParams = FrameLayout.LayoutParams(
@@ -279,55 +269,52 @@ class DictationController(
             },
         )
 
-        // Punto pulsante ●
-        val dot = TextView(service)
-        dot.text = "●"
-        dot.gravity = Gravity.CENTER
-        dot.setTextColor(ContextCompat.getColor(service, R.color.kb_label_on_accent))
-        dot.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 10f)
-        val dotLp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
+        val pillHorizon = HorizonView(service, HorizonView.Mode.ACCRETION)
+        pillHorizon.levelSource = level
+        pill.addView(
+            pillHorizon,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
         )
-        pill.addView(dot, dotLp)
 
-        // Cronómetro en vivo
+        // Cronómetro en vivo: mono sobre su propio fondo negro (las
+        // partículas pasan por detrás sin taparlo).
+        val onHole = ContextCompat.getColor(service, R.color.hz_on_hole)
         val timer = TextView(service)
         timer.text = "0:00"
-        timer.gravity = Gravity.CENTER_VERTICAL
-        timer.setTextColor(ContextCompat.getColor(service, R.color.kb_label_on_accent))
-        timer.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13f)
-        timer.setTypeface(null, Typeface.BOLD)
-        val timerLp = LinearLayout.LayoutParams(
-            0,
+        timer.gravity = Gravity.CENTER
+        timer.setTextColor(onHole)
+        timer.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+        timer.typeface = try {
+            ResourcesCompat.getFont(service, R.font.jetbrains_mono)
+        } catch (_: Exception) {
+            null
+        } ?: android.graphics.Typeface.MONOSPACE
+        timer.setBackgroundResource(R.drawable.kb_mic_timer_bg)
+        timer.setPadding(dp(5f), dp(1f), dp(5f), dp(1f))
+        val timerLp = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
-            1f,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            Gravity.START or Gravity.CENTER_VERTICAL,
         )
-        val timerMargin = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 6f, service.resources.displayMetrics,
-        ).toInt()
-        timerLp.setMargins(timerMargin, 0, timerMargin, 0)
+        timerLp.marginStart = dp(30f)
         pill.addView(timer, timerLp)
 
         // Botón cancelar ✕
         val cancel = TextView(service)
         cancel.text = "✕"
         cancel.gravity = Gravity.CENTER
-        cancel.setTextColor(ContextCompat.getColor(service, R.color.kb_label_on_accent))
+        cancel.setTextColor(onHole)
+        cancel.alpha = 0.8f
         cancel.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
-        cancel.setTypeface(null, Typeface.BOLD)
         cancel.isClickable = true
         cancel.isFocusable = true
-        cancel.minimumWidth = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 44f, service.resources.displayMetrics,
-        ).toInt()
-        val cancelPad = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, 8f, service.resources.displayMetrics,
-        ).toInt()
+        cancel.minimumWidth = dp(44f)
+        val cancelPad = dp(8f)
         cancel.setPadding(cancelPad, 0, cancelPad, 0)
-        val cancelLp = LinearLayout.LayoutParams(
+        val cancelLp = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
+            Gravity.END or Gravity.CENTER_VERTICAL,
         )
         cancel.setOnClickListener {
             host.pressHaptic(cancel)
@@ -340,15 +327,19 @@ class DictationController(
         micKeyView = container
         micNormalView = normal
         micProcView = proc
-        micProcDots = dots
+        micProcHorizon = procHorizon
         micPillView = pill
-        micPillDot = dot
+        micPillHorizon = pillHorizon
         micPillTimer = timer
         micPillCancel = cancel
 
         applyMicVisual()
         return container
     }
+
+    private fun dp(value: Float): Int = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP, value, service.resources.displayMetrics,
+    ).toInt()
 
     /** Eventos de feedback del micrófono (hápticas + sonidos UI). */
     private enum class MicEvent { START, STOP, PASTE, CANCEL }
@@ -829,18 +820,15 @@ class DictationController(
     }
 
     private fun applyMicVisual() {
-        pulseAnimators.forEach { it.cancel() }
-        pulseAnimators = emptyList()
-
         val container = micKeyView ?: return
         val normal = micNormalView
         val proc = micProcView
         val pill = micPillView
-        val dot = micPillDot
-        val timer = micPillTimer
         val parentRow = container.parent as? ViewGroup
 
         val isRecording = (micState == MicState.RECORDING)
+        // Pensando también es pastilla: A necesita ancho para los renglones.
+        val isPill = isRecording || micState == MicState.PROCESSING
         val rm = service.reducedMotion()
 
         if (!rm && parentRow != null) {
@@ -860,121 +848,61 @@ class DictationController(
         }
 
         val lp = container.layoutParams as? LinearLayout.LayoutParams
-        if (isRecording) {
-            // Ya no ocultamos la barra espaciadora porque el mic no está en la misma fila!
-            if (lp != null && lp.weight != 5.0f) {
-                lp.weight = 5.0f // Un peso más grande para empujar y comprimir a los demás iconos suavemente
-                container.layoutParams = lp
-            }
-            container.background = null
-            normal?.visibility = View.GONE
-            proc?.visibility = View.GONE
-            pill?.visibility = View.VISIBLE
-            container.contentDescription = if (host.isSpanish()) "grabando dictado" else "recording dictation"
+        val weight = if (isPill) 5.0f else 1.0f
+        if (lp != null && lp.weight != weight) {
+            // Un peso más grande empuja y comprime a los demás íconos suavemente.
+            lp.weight = weight
+            container.layoutParams = lp
+        }
+        container.background = null
 
-            val elapsed = (SystemClock.elapsedRealtime() - recordingStartMs) / 1000
-            micPillTimer?.text = String.format("%d:%02d", elapsed / 60, elapsed % 60)
-            if (recordingTimerRunnable == null) {
-                startRecordingTimer()
-            }
+        // Fase de las vistas de voz: el animador de cada una arranca/para solo.
+        micPillHorizon?.setPhase(if (isRecording) HorizonView.Phase.RECORDING else HorizonView.Phase.IDLE)
+        micProcHorizon?.setPhase(
+            if (micState == MicState.PROCESSING) HorizonView.Phase.THINKING else HorizonView.Phase.IDLE,
+        )
 
-            if (dot != null) {
-                dot.scaleX = 1f
-                dot.scaleY = 1f
-                dot.alpha = 1f
-                if (!rm) {
-                    val sx = ObjectAnimator.ofFloat(dot, View.SCALE_X, 1f, 1.35f)
-                    val sy = ObjectAnimator.ofFloat(dot, View.SCALE_Y, 1f, 1.35f)
-                    val alpha = ObjectAnimator.ofFloat(dot, View.ALPHA, 1f, 0.4f)
-                    listOf(sx, sy, alpha).forEach { a ->
-                        a.repeatCount = ObjectAnimator.INFINITE
-                        a.repeatMode = ObjectAnimator.REVERSE
-                        a.duration = 600
-                        a.start()
-                    }
-                    pulseAnimators = listOf(sx, sy, alpha)
+        when (micState) {
+            MicState.RECORDING -> {
+                normal?.visibility = View.GONE
+                proc?.visibility = View.GONE
+                pill?.visibility = View.VISIBLE
+                container.contentDescription = if (host.isSpanish()) "grabando dictado" else "recording dictation"
+
+                val elapsed = (SystemClock.elapsedRealtime() - recordingStartMs) / 1000
+                micPillTimer?.text = String.format("%d:%02d", elapsed / 60, elapsed % 60)
+                if (recordingTimerRunnable == null) {
+                    startRecordingTimer()
                 }
             }
-        } else {
-            if (lp != null && lp.weight != 1.0f) {
-                lp.weight = 1.0f
-                container.layoutParams = lp
+            MicState.IDLE -> {
+                pill?.visibility = View.GONE
+                proc?.visibility = View.GONE
+                normal?.visibility = View.VISIBLE
+                if (normal?.background !is HoleDrawable) normal?.background = HoleDrawable(service)
+                normal?.setImageResource(R.drawable.kb_ic_mic)
+                normal?.setColorFilter(ContextCompat.getColor(service, R.color.hz_on_hole))
+                normal?.alpha = 1f
+                normal?.contentDescription = if (host.isSpanish()) "dictar" else "dictate"
+                container.contentDescription = if (host.isSpanish()) "dictar" else "dictate"
             }
-            pill?.visibility = View.GONE
-
-            when (micState) {
-                MicState.IDLE -> {
-                    container.background = null
-                    proc?.visibility = View.GONE
-                    normal?.visibility = View.VISIBLE
-                    normal?.setBackgroundResource(R.drawable.kb_key_bg)
-                    normal?.setImageResource(R.drawable.kb_ic_mic)
-                    normal?.setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
-                    normal?.alpha = 1f
-                    normal?.contentDescription = if (host.isSpanish()) "dictar" else "dictate"
-                    container.contentDescription = if (host.isSpanish()) "dictar" else "dictate"
-                }
-                MicState.PROCESSING -> {
-                    normal?.visibility = View.GONE
-                    proc?.visibility = View.VISIBLE
-                    proc?.setBackgroundResource(R.drawable.kb_key_alt)
-                    container.setBackgroundResource(R.drawable.kb_key_alt)
-                    proc?.contentDescription = if (host.isSpanish()) "procesando" else "processing"
-                    container.contentDescription = if (host.isSpanish()) "procesando" else "processing"
-
-                    if (!rm) {
-                        val animators = mutableListOf<ObjectAnimator>()
-                        micProcDots.forEachIndexed { index, dotView ->
-                            dotView.scaleX = 0.8f
-                            dotView.scaleY = 0.8f
-                            dotView.alpha = 0.25f
-
-                            val alphaAnim = ObjectAnimator.ofFloat(dotView, View.ALPHA, 0.25f, 1.0f).apply {
-                                duration = 540L
-                                startDelay = index * 180L
-                                repeatCount = ObjectAnimator.INFINITE
-                                repeatMode = ObjectAnimator.REVERSE
-                            }
-                            val scaleXAnim = ObjectAnimator.ofFloat(dotView, View.SCALE_X, 0.8f, 1.25f).apply {
-                                duration = 540L
-                                startDelay = index * 180L
-                                repeatCount = ObjectAnimator.INFINITE
-                                repeatMode = ObjectAnimator.REVERSE
-                            }
-                            val scaleYAnim = ObjectAnimator.ofFloat(dotView, View.SCALE_Y, 0.8f, 1.25f).apply {
-                                duration = 540L
-                                startDelay = index * 180L
-                                repeatCount = ObjectAnimator.INFINITE
-                                repeatMode = ObjectAnimator.REVERSE
-                            }
-                            alphaAnim.start()
-                            scaleXAnim.start()
-                            scaleYAnim.start()
-                            animators.add(alphaAnim)
-                            animators.add(scaleXAnim)
-                            animators.add(scaleYAnim)
-                        }
-                        pulseAnimators = animators
-                    } else {
-                        micProcDots.forEach { dotView ->
-                            dotView.scaleX = 1.0f
-                            dotView.scaleY = 1.0f
-                            dotView.alpha = 1.0f
-                        }
-                    }
-                }
-                MicState.BUSY -> {
-                    container.background = null
-                    proc?.visibility = View.GONE
-                    normal?.visibility = View.VISIBLE
-                    normal?.setBackgroundResource(R.drawable.kb_key_alt)
-                    normal?.setImageResource(R.drawable.kb_ic_mic)
-                    normal?.setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
-                    normal?.alpha = 0.5f
-                    normal?.contentDescription = if (host.isSpanish()) "micrófono ocupado" else "microphone busy"
-                    container.contentDescription = if (host.isSpanish()) "micrófono ocupado" else "microphone busy"
-                }
-                MicState.RECORDING -> { /* no-op */ }
+            MicState.PROCESSING -> {
+                pill?.visibility = View.GONE
+                normal?.visibility = View.GONE
+                proc?.visibility = View.VISIBLE
+                proc?.contentDescription = if (host.isSpanish()) "procesando" else "processing"
+                container.contentDescription = if (host.isSpanish()) "procesando" else "processing"
+            }
+            MicState.BUSY -> {
+                pill?.visibility = View.GONE
+                proc?.visibility = View.GONE
+                normal?.visibility = View.VISIBLE
+                normal?.setBackgroundResource(R.drawable.kb_key_alt)
+                normal?.setImageResource(R.drawable.kb_ic_mic)
+                normal?.setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
+                normal?.alpha = 0.5f
+                normal?.contentDescription = if (host.isSpanish()) "micrófono ocupado" else "microphone busy"
+                container.contentDescription = if (host.isSpanish()) "micrófono ocupado" else "microphone busy"
             }
         }
     }

@@ -38,7 +38,7 @@ const Color kEmberLight = Color(0xFFF27A14);
 const Color kEmberDark = Color(0xFFFF8A1F);
 
 /// Brasa para texto e íconos (ember-t): cumple contraste sobre superficie.
-const Color kEmberTextLight = Color(0xFFB84A06);
+const Color kEmberTextLight = Color(0xFFB04706);
 const Color kEmberTextDark = Color(0xFFFF9A3D);
 
 /// Brasa suave (ember-soft): fondo de chip / estado activo.
@@ -60,7 +60,7 @@ const Color kDangerLight = Color(0xFFC8372B);
 const Color kDangerDark = Color(0xFFFF6A5C);
 
 /// Listo / éxito (ok).
-const Color kOkLight = Color(0xFF1F8A4C);
+const Color kOkLight = Color(0xFF1E874A);
 const Color kOkDark = Color(0xFF5FD38D);
 
 /// Agujero (hole): el micrófono es un objeto negro puro con anillo brasa.

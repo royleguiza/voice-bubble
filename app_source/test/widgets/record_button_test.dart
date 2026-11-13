@@ -36,7 +36,7 @@ void main() {
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
     });
 
-    testWidgets('estado transcribing muestra los puntos y no dispara acciones',
+    testWidgets('estado transcribing muestra el agujero pensando y no dispara acciones',
         (tester) async {
       var pressed = false;
       await tester.pumpWidget(buildTestWidget(
@@ -46,6 +46,8 @@ void main() {
       await tester.pump();
 
       expect(find.byKey(const ValueKey('recordProcessing')), findsOneWidget);
+      // Pensando = arco + renglones sobre el agujero (fase 1), no puntos.
+      expect(find.byKey(const ValueKey('recordHorizon')), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       expect(pressed, isFalse);
@@ -229,6 +231,121 @@ void main() {
       expect(semantics.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
 
       handle.dispose();
+    });
+
+    HorizonScene sceneOf(WidgetTester tester) {
+      final paint = tester.widget<CustomPaint>(
+          find.byKey(const ValueKey('recordHorizon')));
+      return (paint.painter! as HorizonPainter).scene;
+    }
+
+    Widget recordingWith({
+      required Future<double> Function() level,
+      bool disableAnimations = false,
+      RecordButtonState state = RecordButtonState.recording,
+    }) {
+      return MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(disableAnimations: disableAnimations),
+          child: Scaffold(
+            body: RecordButton(
+              key: const ValueKey('recordButton'),
+              state: state,
+              onPressed: () {},
+              levelSource: level,
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('fase 1: reposo es el agujero (negro + anillo brasa)',
+        (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      final box = tester.widget<AnimatedContainer>(find.descendant(
+          of: find.byKey(const ValueKey('recordButton')),
+          matching: find.byType(AnimatedContainer)));
+      final deco = box.decoration! as BoxDecoration;
+      expect(deco.color, kHoleLight);
+      expect((deco.border! as Border).top.color, kEmberLight);
+      final icon = tester.widget<Icon>(find.byIcon(Icons.mic_rounded));
+      expect(icon.color, kOnHole);
+      // Sin lienzo animado en reposo.
+      expect(find.byKey(const ValueKey('recordHorizon')), findsNothing);
+    });
+
+    testWidgets('fase 1: el volumen alto llena la pastilla, con tope de pool',
+        (tester) async {
+      await tester.pumpWidget(recordingWith(level: () async => 1.0));
+      for (var i = 0; i < 60; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final scene = sceneOf(tester);
+      expect(scene.vol, greaterThan(0.9));
+      expect(scene.activeParticles, greaterThan(5));
+      expect(scene.activeParticles,
+          lessThanOrEqualTo(HorizonScene.maxParticles));
+    });
+
+    testWidgets('fase 1: en silencio queda solo un goteo', (tester) async {
+      await tester.pumpWidget(recordingWith(level: () async => 0.0));
+      for (var i = 0; i < 60; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final scene = sceneOf(tester);
+      expect(scene.vol, lessThan(0.05));
+      expect(scene.activeParticles, lessThanOrEqualTo(8));
+    });
+
+    testWidgets('fase 1: el ticker se detiene al volver a reposo',
+        (tester) async {
+      await tester.pumpWidget(recordingWith(level: () async => 0.5));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.binding.hasScheduledFrame, isTrue);
+      final state = tester.state(find.byKey(const ValueKey('recordButton')));
+      // Mismo árbol, otro estado: el State sobrevive y debe parar su ticker.
+      await tester.pumpWidget(recordingWith(
+          level: () async => 0.5, state: RecordButtonState.idle));
+      expect(tester.state(find.byKey(const ValueKey('recordButton'))),
+          same(state));
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      // Pensando vuelve a animar; al terminar, se detiene otra vez.
+      await tester.pumpWidget(recordingWith(
+          level: () async => 0.5, state: RecordButtonState.transcribing));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.binding.hasScheduledFrame, isTrue);
+      await tester.pumpWidget(recordingWith(
+          level: () async => 0.5, state: RecordButtonState.idle));
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+
+    testWidgets('fase 1: reducir movimiento = anillo fijo sin partículas',
+        (tester) async {
+      await tester.pumpWidget(
+          recordingWith(level: () async => 0.7, disableAnimations: true));
+      await tester.pump(const Duration(milliseconds: 300));
+      final scene = sceneOf(tester);
+      expect(scene.animated, isFalse);
+      expect(scene.activeParticles, 0);
+      // El grosor del anillo sigue el volumen real.
+      expect(scene.vol, closeTo(0.7, 0.001));
+      // Sin cuadros de animación pendientes (solo el sondeo del nivel).
+      expect(tester.binding.hasScheduledFrame, isFalse);
+    });
+
+    testWidgets('fase 1: pensando no absorbe partículas, saca renglones',
+        (tester) async {
+      await tester.pumpWidget(recordingWith(
+          level: () async => 1.0, state: RecordButtonState.transcribing));
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final scene = sceneOf(tester);
+      expect(scene.phase, VoicePhase.thinking);
+      expect(scene.vol, 0);
+      expect(scene.activeParticles, greaterThan(0));
     });
   });
 }
