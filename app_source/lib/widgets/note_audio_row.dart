@@ -38,6 +38,12 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
   bool _missing = false;
   bool _corrupt = false;
 
+  /// Duración leída una vez por ruta: la tarjeta se reconstruye al entrar
+  /// en pantalla o al cambiar la lista y no debe repetir el stat() en cada
+  /// build mientras se desplaza.
+  String? _durationCache;
+  String? _durationPath;
+
   bool get _fileExists {
     try {
       return File(widget.audioPath).existsSync();
@@ -150,7 +156,11 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
         style: kTextCaption.copyWith(color: secondary),
       );
     }
-    final duration = _durationLabel;
+    if (_durationPath != widget.audioPath) {
+      _durationPath = widget.audioPath;
+      _durationCache = _durationLabel;
+    }
+    final duration = _durationCache;
     return Semantics(
       button: true,
       label: _playing

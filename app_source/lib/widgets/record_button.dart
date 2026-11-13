@@ -91,7 +91,7 @@ class _RecordButtonState extends State<RecordButton>
   }
 
   void _syncAnimations() {
-    final motionSafe = !MediaQuery.of(context).disableAnimations;
+    final motionSafe = !MediaQuery.disableAnimationsOf(context);
     final phase = _isRecording
         ? VoicePhase.recording
         : _isTranscribing
@@ -111,6 +111,9 @@ class _RecordButtonState extends State<RecordButton>
       _startedAt = DateTime.now();
       _elapsedText = '0:00';
       _ticker = Timer.periodic(_tick, (_) => _onTick());
+      // Primera lectura ya, sin esperar el primer período: el anillo y el
+      // goteo arrancan con el nivel real lo antes posible.
+      scheduleMicrotask(() => unawaited(_onTick()));
     } else if (!_isRecording && _ticker != null) {
       _ticker?.cancel();
       _ticker = null;
@@ -173,7 +176,7 @@ class _RecordButtonState extends State<RecordButton>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final motionSafe = !MediaQuery.of(context).disableAnimations;
+    final motionSafe = !MediaQuery.disableAnimationsOf(context);
     final semanticLabel = _isRecording
         ? 'Detener grabación'
         : _isTranscribing
@@ -225,6 +228,9 @@ class _RecordButtonState extends State<RecordButton>
               child: _FadeIn(
                 key: ValueKey(widget.state),
                 enabled: motionSafe,
+                // Grabando se ve desde el primer cuadro (la pastilla que se
+                // abre ya es la transición); el resto entra desde cero.
+                begin: _isRecording ? 0.5 : 0,
                 child: isPill
                     ? _PillContent(
                         key: ValueKey(
@@ -281,8 +287,6 @@ class _PillContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hole = isDark ? kHoleDark : kHoleLight;
-    // El agujero ocupa la izquierda (centro en h/2 + 1, radio 0.3 h).
-    const holeBox = kRecordPillHeight;
     // Mientras la pastilla se abre, el contenido se recorta desde el CENTRO:
     // bajo el dedo quedan las partículas (tocar = terminar) y el ✕ aparece
     // recién en el borde cuando la pastilla ya se estiró.
@@ -305,56 +309,67 @@ class _PillContent extends StatelessWidget {
                 ),
               ),
               if (recording)
-                Row(
+                // Mismo tamaño que el lienzo: el ■ va al centro exacto del
+                // agujero y el tiempo y el ✕ fijan las zonas sin partículas
+                // (HoleGeometry es la única fuente de centro y radio).
+                CustomMultiChildLayout(
+                  delegate: _PillLayout(scene),
                   children: [
-                    SizedBox(
-                      width: holeBox,
-                      child: showControls
-                          ? const Icon(Icons.stop_rounded,
-                              size: AppIcons.medium, color: kOnHole)
-                          : null,
-                    ),
+                    if (showControls)
+                      LayoutId(
+                        id: _PillLayout.stop,
+                        child: const Icon(Icons.stop_rounded,
+                            size: AppIcons.medium, color: kOnHole),
+                      ),
                     // Tiempo en mono sobre su propio fondo negro: las
-                    // partículas pasan por detrás sin taparlo.
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: hole,
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 7, vertical: 2),
-                        child: Text(
-                          elapsed,
-                          key: const ValueKey('recordElapsed'),
-                          style: kTextMono.copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                            color: kOnHole,
-                            fontFeatures: const [FontFeature.tabularFigures()],
+                    // partículas no se pintan en su franja.
+                    LayoutId(
+                      id: _PillLayout.timer,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: hole,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          child: Text(
+                            elapsed,
+                            key: const ValueKey('recordElapsed'),
+                            maxLines: 1,
+                            softWrap: false,
+                            style: kTextMono.copyWith(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: kOnHole,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures()
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    const Spacer(),
                     if (showControls && onCancel != null)
-                      Semantics(
-                        button: true,
-                        label: 'Descartar grabación',
-                        child: InkResponse(
-                          key: const ValueKey('recordCancelButton'),
-                          onTap: onCancel,
-                          radius: 22,
-                          child: SizedBox(
-                            width: 44,
-                            height: 44,
-                            child: Icon(Icons.close_rounded,
-                                size: AppIcons.medium,
-                                color: kOnHole.withValues(alpha: 0.8)),
+                      LayoutId(
+                        id: _PillLayout.cancel,
+                        child: Semantics(
+                          button: true,
+                          label: 'Descartar grabación',
+                          child: InkResponse(
+                            key: const ValueKey('recordCancelButton'),
+                            onTap: onCancel,
+                            radius: 22,
+                            child: SizedBox(
+                              width: 44,
+                              height: 44,
+                              child: Icon(Icons.close_rounded,
+                                  size: AppIcons.medium,
+                                  color: kOnHole.withValues(alpha: 0.8)),
+                            ),
                           ),
                         ),
                       ),
-                    const SizedBox(width: 10),
                   ],
                 ),
             ],
@@ -365,18 +380,114 @@ class _PillContent extends StatelessWidget {
   }
 }
 
+/// Coloca ■, tiempo y ✕ sobre el lienzo con la geometría del pintor y le
+/// pasa a la escena las franjas reservadas (tiempo y ✕) y el borde por el
+/// que entran las partículas.
+class _PillLayout extends MultiChildLayoutDelegate {
+  final HorizonScene scene;
+
+  _PillLayout(this.scene);
+
+  static const String stop = 'stop';
+  static const String timer = 'timer';
+  static const String cancel = 'cancel';
+
+  /// Margen del ✕ al borde derecho del contenido.
+  static const double edge = 10;
+
+  @override
+  void performLayout(Size size) {
+    final g = HoleGeometry.of(size);
+    final loose = BoxConstraints.loose(size);
+    if (hasChild(stop)) {
+      final s = layoutChild(stop, loose);
+      positionChild(stop, g.center - Offset(s.width / 2, s.height / 2));
+    }
+    Rect? cancelRect;
+    if (hasChild(cancel)) {
+      final s = layoutChild(cancel, loose);
+      final topLeft =
+          Offset(size.width - edge - s.width, g.center.dy - s.height / 2);
+      positionChild(cancel, topLeft);
+      cancelRect = topLeft & s;
+    }
+    Rect? timerRect;
+    if (hasChild(timer)) {
+      final left = g.timerLeft;
+      final right = (cancelRect?.left ?? size.width) - HoleGeometry.zonePad;
+      final s = layoutChild(
+        timer,
+        BoxConstraints(
+          maxWidth: math.max(0.0, right - left),
+          maxHeight: size.height,
+        ),
+      );
+      final topLeft = Offset(left, g.center.dy - s.height / 2);
+      positionChild(timer, topLeft);
+      timerRect = topLeft & s;
+    }
+    scene.setZones(size, timer: timerRect, cancel: cancelRect);
+  }
+
+  @override
+  bool shouldRelayout(covariant _PillLayout old) => old.scene != scene;
+}
+
+/// Geometría del agujero de la pastilla: única fuente de centro y radio
+/// para el pintor (anillo, halo, partículas) y para el layout (■ centrado,
+/// tiempo fuera del halo).
+@immutable
+class HoleGeometry {
+  final Offset center;
+  final double radius;
+
+  const HoleGeometry._(this.center, this.radius);
+
+  /// Agujero a la izquierda del lienzo de alto h: centro (h/2 + 1, h/2),
+  /// radio 0.3 h (maqueta `drawA`).
+  factory HoleGeometry.of(Size size) {
+    final h = size.height;
+    return HoleGeometry._(Offset(h * 0.5 + 1, h * 0.5), h * 0.3);
+  }
+
+  /// Grosor del anillo para el volumen k (0..1).
+  static double strokeFor(double k) => 1.2 + 2.2 * k;
+
+  /// Halo para el volumen k: radio exterior del degradado.
+  double haloFor(double k) => radius * (1.6 + 1.6 * k);
+
+  /// Alcance máximo del anillo: el mayor entre el halo con volumen 1 y el
+  /// anillo con su grosor máximo.
+  double get outerExtent => math.max(haloFor(1), radius + strokeFor(1) / 2);
+
+  /// Separación mínima entre el borde exterior del anillo y el tiempo.
+  static const double timerGap = 8;
+
+  /// Margen de las franjas sin partículas alrededor del tiempo y del ✕.
+  static const double zonePad = 4;
+
+  /// Borde izquierdo del tiempo.
+  double get timerLeft => center.dx + outerExtent + timerGap;
+}
+
 /// Fundido de entrada corto para el contenido de cada estado.
 class _FadeIn extends StatelessWidget {
   final bool enabled;
+  final double begin;
   final Widget child;
 
-  const _FadeIn({super.key, required this.enabled, required this.child});
+  const _FadeIn({
+    super.key,
+    required this.enabled,
+    this.begin = 0,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     if (!enabled) return child;
     return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
+      tween: Tween(begin: begin, end: 1),
       duration: const Duration(milliseconds: 220),
       curve: kCurveFade,
       builder: (context, t, child) => Opacity(opacity: t, child: child),
@@ -423,8 +534,24 @@ class HorizonScene extends ChangeNotifier {
   /// Reloj de la animación en segundos.
   double clock = 0;
 
-  /// Tamaño del lienzo (lo fija el pintor).
+  /// Tamaño del lienzo (lo fijan el layout de la pastilla y el pintor).
   Size size = Size.zero;
+
+  /// Franjas horizontales [izq, der] donde no se pintan partículas: el
+  /// tiempo (con su fondo) y el ✕. Las fija el layout de la pastilla.
+  (double, double)? timerBand;
+  (double, double)? cancelBand;
+
+  /// Borde derecho del recorrido: las partículas entran desde acá (a la
+  /// izquierda del ✕ si lo hay). Null = ancho del lienzo.
+  double? _right;
+
+  /// Al empezar a grabar se siembra un goteo ya visible en el primer
+  /// cuadro, sin esperar el primer nivel ni el recorrido desde el borde.
+  bool _seedPending = false;
+
+  /// Partículas sembradas al empezar a grabar.
+  static const int seedCount = 3;
 
   int get activeParticles {
     var n = 0;
@@ -438,7 +565,14 @@ class HorizonScene extends ChangeNotifier {
     if (next == phase && animated == this.animated) return;
     phase = next;
     this.animated = animated;
-    _acc = 0;
+    // Grabando: la primera gota entra en el primer paso con tiempo.
+    _acc = next == VoicePhase.recording ? 1 : 0;
+    _seedPending = next == VoicePhase.recording && animated;
+    if (next != VoicePhase.recording) {
+      timerBand = null;
+      cancelBand = null;
+      _right = null;
+    }
     if (next == VoicePhase.idle || !animated) {
       _kind.fillRange(0, maxParticles, _inactive);
     }
@@ -457,26 +591,69 @@ class HorizonScene extends ChangeNotifier {
     }
   }
 
+  /// Zonas reservadas del layout de la pastilla (coordenadas del lienzo).
+  void setZones(Size size, {Rect? timer, Rect? cancel}) {
+    this.size = size;
+    const pad = HoleGeometry.zonePad;
+    timerBand = timer == null ? null : (timer.left - pad, timer.right + pad);
+    cancelBand =
+        cancel == null ? null : (cancel.left - pad, cancel.right + pad);
+    _right = cancel == null ? null : cancel.left - pad;
+    if (_seedPending) _seed();
+  }
+
+  /// Borde derecho del recorrido de las partículas.
+  double get right => _right ?? size.width;
+
+  void _seed() {
+    final w = size.width;
+    final h = size.height;
+    if (w <= 0 || h <= 0 || phase != VoicePhase.recording || !animated) return;
+    _seedPending = false;
+    final g = HoleGeometry.of(size);
+    final from = timerBand?.$2 ?? g.timerLeft;
+    final to = right - 6;
+    // Una en el halo (cae enseguida) y el resto entre el tiempo y el borde.
+    final xs = [
+      g.center.dx + g.radius + (g.timerLeft - g.center.dx - g.radius) * 0.6,
+      if (to > from) from + (to - from) * 0.3,
+      if (to > from) from + (to - from) * 0.75,
+    ];
+    for (var n = 0; n < xs.length && n < seedCount; n++) {
+      final i = _freeSlot();
+      if (i < 0) break;
+      _x[i] = xs[n];
+      _y[i] = g.center.dy + (_rng.nextDouble() - 0.5) * h * 0.4;
+      _s[i] = 0.55 + _rng.nextDouble() * 0.9;
+      _kind[i] = n == 1 ? _glyph0 + _rng.nextInt(_glyphs.length) : _dot;
+    }
+  }
+
   void step(double dt) {
     clock += dt;
     vol += (_target - vol) * math.min(1.0, dt * 14);
     final w = size.width;
     final h = size.height;
-    if (w > 0 && h > 0) _advance(dt, w, h);
+    if (w > 0 && h > 0) {
+      if (_seedPending) _seed();
+      _advance(dt, w, h);
+    }
     notifyListeners();
   }
 
   void _advance(double dt, double w, double h) {
-    final r = h * 0.3;
-    final cx = h * 0.5 + 1;
-    final cy = h * 0.5;
+    final g = HoleGeometry.of(size);
+    final r = g.radius;
+    final cx = g.center.dx;
+    final cy = g.center.dy;
+    final right = this.right;
     if (phase == VoicePhase.recording) {
       _acc += dt * (5 + 90 * vol);
       while (_acc > 1) {
         _acc -= 1;
         final i = _freeSlot();
         if (i < 0) break;
-        _x[i] = w + 4;
+        _x[i] = right + 4;
         _y[i] = h * (0.12 + _rng.nextDouble() * 0.76);
         _s[i] = 0.55 + _rng.nextDouble() * 0.9;
         _kind[i] = _rng.nextDouble() < 0.45
@@ -507,7 +684,7 @@ class HorizonScene extends ChangeNotifier {
           _kind[i] = _inactive;
         }
       } else {
-        final d = (_x[i] - cx) / (w - cx);
+        final d = (_x[i] - cx) / (right - cx);
         _x[i] -= dt * (50 + 330 * vol) * _s[i] * (0.55 + 0.45 * d);
         final near = 1 - d;
         _y[i] += (cy - _y[i]) * math.min(1.0, dt * (1.2 + 6 * near * near));
@@ -550,9 +727,11 @@ class HorizonPainter extends CustomPainter {
     final h = size.height;
     if (w < 4 || h < 4) return;
     final res = _PainterResources.of(isDark);
-    final r = h * 0.3;
-    final cx = h * 0.5 + 1;
-    final cy = h * 0.5;
+    final g = HoleGeometry.of(size);
+    final r = g.radius;
+    final cx = g.center.dx;
+    final cy = g.center.dy;
+    final right = scene.right;
     final live = scene.animated;
 
     if (live) {
@@ -569,24 +748,45 @@ class HorizonPainter extends CustomPainter {
           canvas.drawLine(Offset(x, y), Offset(x + scene._len[i], y), res.stroke);
           continue;
         }
-        final d = ((x - cx) / (w - cx)).clamp(0.0, 1.0);
-        final a = math.min(1.0, 0.25 + d * 0.9) *
-            ((w - x) / 20 + 0.2).clamp(0.0, 1.0);
+        final d = ((x - cx) / (right - cx)).clamp(0.0, 1.0);
+        var a = math.min(1.0, 0.25 + d * 0.9) *
+            ((right - x) / 20 + 0.2).clamp(0.0, 1.0);
         if (a <= 0.02) continue;
         final colorIdx = d < 0.18 ? 2 : (d < 0.45 ? 1 : 0);
         final k = 0.45 + 0.55 * d;
-        if (kind == HorizonScene._dot || kind == HorizonScene._dash) {
+        final isGlyph = kind != HorizonScene._dot && kind != HorizonScene._dash;
+        final fontSize = h * 0.2 * k + 3;
+        final scale = fontSize / _glyphBase;
+        TextPainter? tp;
+        // Extensión horizontal de la partícula: fuera de las franjas del
+        // tiempo y del ✕, con un fundido corto al acercarse a ellas.
+        final double x0;
+        final double x1;
+        if (kind == HorizonScene._dot) {
+          x0 = x - 1.5 * k;
+          x1 = x + 1.5 * k;
+        } else if (kind == HorizonScene._dash) {
+          x0 = x;
+          x1 = x + 8 * k;
+        } else {
+          tp = res.glyph(kind - HorizonScene._glyph0, colorIdx, a);
+          x0 = x;
+          x1 = x + tp.width * scale;
+        }
+        a *= _zoneFade(x0, x1, scene.timerBand) *
+            _zoneFade(x0, x1, scene.cancelBand);
+        if (a <= 0.02) continue;
+        if (!isGlyph) {
           res.fill.color = res.tint(colorIdx, a);
           if (kind == HorizonScene._dot) {
             canvas.drawCircle(Offset(x, y), 1.5 * k, res.fill);
           } else {
             canvas.drawRect(
-                Rect.fromLTRB(x, y - 0.8 * k, x + 8 * k, y + 0.8 * k), res.fill);
+                Rect.fromLTRB(x, y - 0.8 * k, x + 8 * k, y + 0.8 * k),
+                res.fill);
           }
         } else {
-          final fontSize = h * 0.2 * k + 3;
-          final tp = res.glyph(kind - HorizonScene._glyph0, colorIdx, a);
-          final scale = fontSize / _glyphBase;
+          tp = res.glyph(kind - HorizonScene._glyph0, colorIdx, a);
           canvas.save();
           canvas.translate(x, y + 3 - tp.height * 0.8 * scale);
           canvas.scale(scale);
@@ -601,16 +801,31 @@ class HorizonPainter extends CustomPainter {
       VoicePhase.thinking => 0.25,
       VoicePhase.idle => 0.0,
     };
-    _ringGlow(canvas, res, cx, cy, r, k);
+    _ringGlow(canvas, res, g, k);
     if (scene.phase == VoicePhase.thinking) {
       _spinArc(canvas, res, cx, cy, r, live ? scene.clock : 0);
     }
   }
 
-  void _ringGlow(Canvas canvas, _PainterResources res, double x, double y,
-      double r, double k) {
+  /// Distancia de fundido junto a una franja reservada.
+  static const double _zoneFadeWidth = 6;
+
+  /// 0 si [x0, x1] pisa la franja; sube a 1 a [_zoneFadeWidth] de ella.
+  static double _zoneFade(double x0, double x1, (double, double)? band) {
+    if (band == null) return 1;
+    final (left, right) = band;
+    if (x1 >= left && x0 <= right) return 0;
+    final gap = x1 < left ? left - x1 : x0 - right;
+    return (gap / _zoneFadeWidth).clamp(0.0, 1.0);
+  }
+
+  void _ringGlow(
+      Canvas canvas, _PainterResources res, HoleGeometry g, double k) {
+    final x = g.center.dx;
+    final y = g.center.dy;
+    final r = g.radius;
     final kk = k.clamp(0.0, 1.0);
-    final outer = r * (1.6 + kk * 1.6);
+    final outer = g.haloFor(kk);
     res.glow.color = res.tint(_PainterResources.black, 0.35 + 0.5 * kk);
     canvas.save();
     canvas.translate(x, y);
@@ -621,7 +836,7 @@ class HorizonPainter extends CustomPainter {
     canvas.drawCircle(Offset(x, y), r, res.fill);
     res.stroke
       ..color = kk > 0.5 ? kHot : res.palette[1]
-      ..strokeWidth = 1.2 + 2.2 * kk;
+      ..strokeWidth = HoleGeometry.strokeFor(kk);
     canvas.drawCircle(Offset(x, y), r, res.stroke);
   }
 

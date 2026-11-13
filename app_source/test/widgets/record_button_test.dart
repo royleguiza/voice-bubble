@@ -1,8 +1,66 @@
+import 'dart:async';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/ui/design_tokens.dart';
 import 'package:voice_bubble_stt/widgets/record_button.dart';
+
+/// Lienzo que registra, en coordenadas del lienzo de la pastilla, los
+/// círculos (agujero, anillo, halo) y la extensión horizontal de cada
+/// partícula (rayas y glifos; los puntos son círculos chicos).
+class _ExtentCanvas extends TestRecordingCanvas {
+  final List<(Offset, double)> _stack = [];
+  Offset _t = Offset.zero;
+  double _s = 1;
+
+  final List<(Offset, double)> circles = [];
+  final List<(double, double)> particles = [];
+
+  Offset _map(Offset p) => _t + p * _s;
+
+  @override
+  void save() {
+    _stack.add((_t, _s));
+    super.save();
+  }
+
+  @override
+  void restore() {
+    final (t, s) = _stack.removeLast();
+    _t = t;
+    _s = s;
+    super.restore();
+  }
+
+  @override
+  void translate(double dx, double dy) => _t += Offset(dx, dy) * _s;
+
+  @override
+  void scale(double sx, [double? sy]) => _s *= sx;
+
+  @override
+  void drawCircle(Offset c, double radius, Paint paint) {
+    final center = _map(c);
+    final r = radius * _s;
+    circles.add((center, r));
+    if (r < 2) particles.add((center.dx - r, center.dx + r));
+    super.drawCircle(c, radius, paint);
+  }
+
+  @override
+  void drawRect(Rect rect, Paint paint) {
+    particles.add((_map(rect.topLeft).dx, _map(rect.bottomRight).dx));
+    super.drawRect(rect, paint);
+  }
+
+  @override
+  void drawParagraph(ui.Paragraph paragraph, Offset offset) {
+    final x = _map(offset).dx;
+    particles.add((x, x + paragraph.maxIntrinsicWidth * _s));
+  }
+}
 
 Widget buildTestWidget({
   RecordButtonState state = RecordButtonState.idle,
@@ -346,6 +404,191 @@ void main() {
       expect(scene.phase, VoicePhase.thinking);
       expect(scene.vol, 0);
       expect(scene.activeParticles, greaterThan(0));
+    });
+
+    // ---------------------------------------------------------------
+    // Geometría de la pastilla: ■ centrado y zonas sin partículas
+    // ---------------------------------------------------------------
+
+    Widget pillAt({
+      required double textScale,
+      Future<double> Function()? level,
+      bool holdMode = false,
+    }) {
+      return MaterialApp(
+        home: Builder(
+          builder: (context) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(textScale)),
+            child: Scaffold(
+              body: RecordButton(
+                key: const ValueKey('recordButton'),
+                state: RecordButtonState.recording,
+                onPressed: () {},
+                onCancel: holdMode ? null : () {},
+                onHoldStart: holdMode ? () {} : null,
+                onHoldEnd: holdMode ? () {} : null,
+                levelSource: level,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    void screenWidth(WidgetTester tester, double width) {
+      tester.view.physicalSize = Size(width, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+    }
+
+    final horizon = find.byKey(const ValueKey('recordHorizon'));
+
+    _ExtentCanvas paintPill(WidgetTester tester) {
+      final paint = tester.widget<CustomPaint>(horizon);
+      final canvas = _ExtentCanvas();
+      paint.painter!.paint(canvas, tester.getSize(horizon));
+      return canvas;
+    }
+
+    /// Agujero tal como lo pinta el pintor: el círculo grande más chico
+    /// (el halo y el anillo comparten centro; el agujero es el menor).
+    (Offset, double) paintedHole(_ExtentCanvas canvas) {
+      final big = canvas.circles.where((c) => c.$2 >= 2).toList()
+        ..sort((a, b) => a.$2.compareTo(b.$2));
+      return big.first;
+    }
+
+    Rect localRect(WidgetTester tester, Finder f) =>
+        tester.getRect(f).shift(-tester.getTopLeft(horizon));
+
+    Finder timerBox() => find
+        .ancestor(
+          of: find.byKey(const ValueKey('recordElapsed')),
+          matching: find.byType(DecoratedBox),
+        )
+        .first;
+
+    for (final width in [320.0, 411.0, 800.0]) {
+      for (final scale in [1.0, 2.0]) {
+        testWidgets(
+            'el ■ queda en el centro exacto del agujero pintado '
+            '(ancho $width, texto x$scale)', (tester) async {
+          screenWidth(tester, width);
+          await tester.pumpWidget(
+              pillAt(textScale: scale, level: () async => 0.4));
+          await tester.pump(const Duration(milliseconds: 800));
+          expect(tester.takeException(), isNull);
+
+          final (center, _) = paintedHole(paintPill(tester));
+          final holeGlobal = tester.getTopLeft(horizon) + center;
+          final stop = tester.getCenter(find.byIcon(Icons.stop_rounded));
+          expect((stop - holeGlobal).distance, lessThanOrEqualTo(0.5),
+              reason: 'centro del ■ $stop vs agujero $holeGlobal');
+        });
+
+        testWidgets(
+            'el tiempo queda a ≥ 8 dp del anillo y su halo máximos '
+            '(ancho $width, texto x$scale)', (tester) async {
+          screenWidth(tester, width);
+          await tester.pumpWidget(
+              pillAt(textScale: scale, level: () async => 1.0));
+          for (var i = 0; i < 60; i++) {
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          expect(tester.takeException(), isNull);
+          final canvas = paintPill(tester);
+          final (center, radius) = paintedHole(canvas);
+          final g = HoleGeometry.of(tester.getSize(horizon));
+          // El pintor usa la misma geometría que el layout.
+          expect((center - g.center).distance, lessThan(0.01));
+          expect(radius, closeTo(g.radius, 0.01));
+          // Alcance pintado (halo o anillo) nunca mayor que el máximo.
+          final painted = canvas.circles
+              .where((c) => c.$2 >= 2)
+              .map((c) => (c.$1 - center).distance + c.$2)
+              .reduce((a, b) => a > b ? a : b);
+          expect(painted, lessThanOrEqualTo(g.outerExtent + 0.01));
+          final timer = localRect(tester, timerBox());
+          expect(timer.left - (center.dx + g.outerExtent),
+              greaterThanOrEqualTo(8 - 0.01));
+          // Y no pisa el ✕.
+          final cancel = localRect(
+              tester, find.byKey(const ValueKey('recordCancelButton')));
+          expect(timer.right, lessThanOrEqualTo(cancel.left));
+        });
+      }
+    }
+
+    testWidgets('las partículas no se pintan sobre el tiempo ni sobre el ✕',
+        (tester) async {
+      screenWidth(tester, 411);
+      await tester.pumpWidget(pillAt(textScale: 1, level: () async => 1.0));
+      await tester.pump(const Duration(milliseconds: 400));
+      final timer = localRect(tester, timerBox());
+      final cancel =
+          localRect(tester, find.byKey(const ValueKey('recordCancelButton')));
+      var seen = 0;
+      // Varias muestras con la pastilla llena (volumen alto).
+      for (var frame = 0; frame < 90; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (frame % 6 != 0) continue;
+        for (final (x0, x1) in paintPill(tester).particles) {
+          seen++;
+          for (final zone in [timer, cancel]) {
+            expect(x1 < zone.left || x0 > zone.right, isTrue,
+                reason: 'partícula [$x0, $x1] sobre la zona $zone');
+          }
+        }
+      }
+      expect(seen, greaterThan(20), reason: 'la prueba debe ver partículas');
+    });
+
+    testWidgets('modo mantener: sin ✕, el tiempo igual queda libre',
+        (tester) async {
+      screenWidth(tester, 411);
+      await tester.pumpWidget(
+          pillAt(textScale: 1, level: () async => 1.0, holdMode: true));
+      await tester.pump(const Duration(milliseconds: 400));
+      final timer = localRect(tester, timerBox());
+      for (var frame = 0; frame < 60; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (frame % 6 != 0) continue;
+        for (final (x0, x1) in paintPill(tester).particles) {
+          expect(x1 < timer.left || x0 > timer.right, isTrue);
+        }
+      }
+    });
+
+    testWidgets(
+        'al empezar a grabar, la pastilla y el goteo se ven en el primer '
+        'cuadro, sin esperar el nivel', (tester) async {
+      await tester.pumpWidget(buildTestWidget());
+      // Nivel que no llega nunca: el goteo no depende de la primera lectura.
+      final never = Completer<double>();
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: RecordButton(
+            key: const ValueKey('recordButton'),
+            state: RecordButtonState.recording,
+            onPressed: () {},
+            onCancel: () {},
+            levelSource: () => never.future,
+          ),
+        ),
+      ));
+      // Un solo cuadro del estado grabando.
+      final scene = sceneOf(tester);
+      expect(scene.activeParticles, greaterThan(0));
+      final opacity = tester.widget<Opacity>(find
+          .ancestor(of: horizon, matching: find.byType(Opacity))
+          .first);
+      expect(opacity.opacity, greaterThan(0));
+      final particles = paintPill(tester).particles;
+      expect(particles, isNotEmpty);
+      // Sin timers colgados: volver a reposo corta el sondeo.
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pump(const Duration(milliseconds: 300));
     });
   });
 }

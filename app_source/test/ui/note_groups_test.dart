@@ -46,4 +46,58 @@ void main() {
       expect(historyTimeLabel(DateTime(2026, 11, 4, 16, 49)), '16:49');
     });
   });
+
+  group('groupRows / GroupedRowsMemo', () {
+    List<GroupedRow<DateTime>> build(List<DateTime> items) => groupRows(
+          items,
+          groupOf: (t) => noteGroupLabel(t, now: now),
+          timeOf: (t) => noteTimeLabel(t, now: now),
+        );
+
+    test('índices planos: encabezado por grupo y espacio entre ítems', () {
+      final rows = build([
+        DateTime(2026, 11, 4, 10),
+        DateTime(2026, 11, 4, 9),
+        DateTime(2026, 11, 3, 8),
+      ]);
+      expect(rows.map((r) => r.runtimeType.toString().split('<').first), [
+        'GroupHeaderRow',
+        'GroupItemRow',
+        'GroupGapRow',
+        'GroupItemRow',
+        'GroupHeaderRow',
+        'GroupItemRow',
+      ]);
+      expect((rows[0] as GroupHeaderRow).label, 'Hoy');
+      expect((rows[1] as GroupItemRow).timeLabel, '10:00');
+      expect((rows[4] as GroupHeaderRow).label, 'Ayer');
+    });
+
+    test('memo: recalcula solo si cambian datos, búsqueda o día', () {
+      final memo = GroupedRowsMemo<DateTime>(idOf: (t) => t);
+      final a = DateTime(2026, 11, 4, 10);
+      final b = DateTime(2026, 11, 3, 8);
+      final data = [a, b];
+      List<GroupedRow<DateTime>> resolve(List<DateTime> src, String q,
+              [DateTime? day]) =>
+          memo.resolve(src, q, now: day ?? now, build: () => build(src));
+
+      final first = resolve(data, '');
+      expect(memo.computeCount, 1);
+      // Otra lista con los mismos elementos (copia): reutiliza.
+      expect(identical(resolve(List.of(data), ''), first), isTrue);
+      expect(memo.computeCount, 1);
+      expect(memo.indexOf(a), 1);
+      expect(memo.indexOf(b), 3);
+      // Búsqueda distinta, elemento distinto, otro largo u otro día.
+      resolve(data, 'x');
+      expect(memo.computeCount, 2);
+      resolve([DateTime(2026, 11, 4, 10), b], 'x');
+      expect(memo.computeCount, 3);
+      resolve([a], 'x');
+      expect(memo.computeCount, 4);
+      resolve([a], 'x', DateTime(2026, 11, 5, 0, 1));
+      expect(memo.computeCount, 5);
+    });
+  });
 }

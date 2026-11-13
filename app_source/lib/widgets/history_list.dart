@@ -105,7 +105,12 @@ class HistoryList extends StatelessWidget {
     );
   }
 
-  Widget _tile(BuildContext context, Transcription t, {bool embedded = false}) {
+  static Widget _tile(
+    BuildContext context,
+    Transcription t, {
+    bool embedded = false,
+    String? timeLabel,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     return ListTile(
@@ -118,7 +123,7 @@ class HistoryList extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(top: 3),
                 child: Text(
-                  historyTimeLabel(t.timestamp),
+                  timeLabel ?? historyTimeLabel(t.timestamp),
                   style: kTextMono.copyWith(fontSize: 12, color: secondary),
                 ),
               ),
@@ -134,6 +139,10 @@ class HistoryList extends StatelessWidget {
       title: SelectableText(
         t.text,
         maxLines: 2,
+        // Integrada: el texto recortado a 2 renglones no se desplaza por
+        // dentro. Si no, con más de 2 renglones el EditableText gana el
+        // arrastre vertical y la página no se mueve (tirones en Historial).
+        scrollPhysics: embedded ? const NeverScrollableScrollPhysics() : null,
         style: embedded
             ? kTextSubhead.copyWith(
                 height: 20 / 15,
@@ -171,6 +180,31 @@ class HistoryList extends StatelessWidget {
       contentPadding: embedded
           ? const EdgeInsets.fromLTRB(2, 4, 0, 4)
           : const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+    );
+  }
+}
+
+/// Fila del Historial integrada en Inicio, suelta para un sliver perezoso
+/// (la pantalla arma encabezados de día, filas y separadores en índices
+/// planos). [timeLabel] llega ya formateada para no recalcularla por cuadro.
+class HistoryTile extends StatelessWidget {
+  final Transcription transcription;
+  final String? timeLabel;
+
+  const HistoryTile({super.key, required this.transcription, this.timeLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    // Material propio: el ripple del ListTile y del botón copiar se dibuja
+    // en la fila, como cuando las filas vivían dentro de HistoryList.
+    return Material(
+      type: MaterialType.transparency,
+      child: HistoryList._tile(
+        context,
+        transcription,
+        embedded: true,
+        timeLabel: timeLabel,
+      ),
     );
   }
 }

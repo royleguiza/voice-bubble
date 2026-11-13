@@ -97,7 +97,16 @@ class _HomeScreenState extends State<HomeScreen>
   String _query = '';
   final _notesScroll = ScrollController();
   final _historyScroll = ScrollController();
-  bool _scrolled = false;
+
+  /// Título grande fuera de pantalla → barra compacta visible. Va en un
+  /// notifier y no en setState: cruzar el umbral al desplazar reconstruye
+  /// solo la barra, nunca la lista ni la pantalla.
+  final ValueNotifier<bool> _scrolled = ValueNotifier<bool>(false);
+
+  /// Filas planas (encabezados + ítems) memoizadas: se recalculan solo si
+  /// cambian los datos, la búsqueda o el día, no en cada build.
+  final _noteRows = GroupedRowsMemo<VoiceNote>(idOf: (n) => n.id);
+  final _historyRows = GroupedRowsMemo<Transcription>(idOf: (t) => t.id);
 
   /// Nota recién dictada: se resalta con un anillo que se desvanece.
   String? _freshNoteId;
@@ -145,8 +154,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _onScroll() {
     final c = _tab == 0 ? _notesScroll : _historyScroll;
-    final scrolled = c.hasClients && c.offset > kLargeTitleCollapseOffset;
-    if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
+    _scrolled.value = c.hasClients && c.offset > kLargeTitleCollapseOffset;
   }
 
   Future<void> _handleBubbleTap() async {
@@ -279,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {}
   }
 
-  bool get motionSafe => !MediaQuery.of(context).disableAnimations;
+  bool get motionSafe => !MediaQuery.disableAnimationsOf(context);
 
   RecordButtonState get _buttonState {
     if (_isTranscribing || _isStoppingRecording) {
@@ -972,6 +980,7 @@ class _HomeScreenState extends State<HomeScreen>
     _searchCtrl.dispose();
     _notesScroll.dispose();
     _historyScroll.dispose();
+    _scrolled.dispose();
     super.dispose();
   }
 
@@ -1017,9 +1026,8 @@ class _HomeScreenState extends State<HomeScreen>
   // UI
   // ---------------------------------------------------------------------------
 
-  List<Transcription> get _filteredHistory {
+  List<Transcription> _filterHistory(List<Transcription> all) {
     final q = _query.trim().toLowerCase();
-    final all = _transcriptionService.history;
     if (q.isEmpty) return all;
     return all.where((t) => t.text.toLowerCase().contains(q)).toList();
   }
@@ -1049,13 +1057,19 @@ class _HomeScreenState extends State<HomeScreen>
             right: 0,
             top: 0,
             height: topBarHeight,
-            child: IgnorePointer(
-              ignoring: !_scrolled,
-              child: AnimatedOpacity(
-                opacity: _scrolled ? 1 : 0,
-                duration: motionSafe
-                    ? const Duration(milliseconds: 200)
-                    : Duration.zero,
+            child: RepaintBoundary(
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _scrolled,
+                builder: (context, scrolled, bar) => IgnorePointer(
+                  ignoring: !scrolled,
+                  child: AnimatedOpacity(
+                    opacity: scrolled ? 1 : 0,
+                    duration: motionSafe
+                        ? const Duration(milliseconds: 200)
+                        : Duration.zero,
+                    child: bar,
+                  ),
+                ),
                 // Horizonte: barra sólida (sin desenfoque), fondo opaco.
                 child: Container(
                   padding: EdgeInsets.only(top: insets.top),
@@ -1112,14 +1126,17 @@ class _HomeScreenState extends State<HomeScreen>
             right: 0,
             bottom: 0,
             height: insets.bottom + kRecordDockClearance,
+            // Capa propia: el degradado no se vuelve a grabar con la lista.
             child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [bg.withValues(alpha: 0), bg],
-                    stops: const [0, 0.72],
+              child: RepaintBoundary(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [bg.withValues(alpha: 0), bg],
+                      stops: const [0, 0.72],
+                    ),
                   ),
                 ),
               ),
@@ -1147,40 +1164,43 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(height: 6),
-            RecordButton(
-              key: const ValueKey('recordButton'),
-              state: _buttonState,
-              levelSource: _transcriptionService.currentLevel,
-              onCancel: isHold ? null : _discardRecording,
-              onPressed: _recordMode == StorageService.defaultRecordMode
-                  ? _toggleRecording
-                  : () async {
-                      if (_isRecording || _isStartingRecording) {
-                        await _stopRecording();
-                      } else {
-                        unawaited(
-                          SemanticsService.sendAnnouncement(
-                            View.of(context),
-                            'Mantené para grabar',
-                            TextDirection.ltr,
-                          ),
-                        );
+            // Capa propia: los cuadros de la pastilla no repintan el resto.
+            RepaintBoundary(
+              child: RecordButton(
+                key: const ValueKey('recordButton'),
+                state: _buttonState,
+                levelSource: _transcriptionService.currentLevel,
+                onCancel: isHold ? null : _discardRecording,
+                onPressed: _recordMode == StorageService.defaultRecordMode
+                    ? _toggleRecording
+                    : () async {
+                        if (_isRecording || _isStartingRecording) {
+                          await _stopRecording();
+                        } else {
+                          unawaited(
+                            SemanticsService.sendAnnouncement(
+                              View.of(context),
+                              'Mantené para grabar',
+                              TextDirection.ltr,
+                            ),
+                          );
+                        }
+                      },
+                onHoldStart: _recordMode == StorageService.recordModeHold
+                    ? () {
+                        _holdStartedAt = DateTime.now();
+                        _startRecording(asNote: true);
                       }
-                    },
-              onHoldStart: _recordMode == StorageService.recordModeHold
-                  ? () {
-                      _holdStartedAt = DateTime.now();
-                      _startRecording(asNote: true);
-                    }
-                  : null,
-              onHoldEnd: _recordMode == StorageService.recordModeHold
-                  ? () async {
-                      await _cancelHoldIfTooShort();
-                      if (_isRecording || _isStartingRecording) {
-                        await _stopRecording();
+                    : null,
+                onHoldEnd: _recordMode == StorageService.recordModeHold
+                    ? () async {
+                        await _cancelHoldIfTooShort();
+                        if (_isRecording || _isStartingRecording) {
+                          await _stopRecording();
+                        }
                       }
-                    }
-                  : null,
+                    : null,
+              ),
             ),
             const SizedBox(height: kRecordDockBottomGap - 16),
           ],
@@ -1238,33 +1258,23 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildNotesTab(BuildContext context, String title, double top) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
-    final notes =
-        _notesAvailable ? _notesService.search(_query) : <VoiceNote>[];
+    // Lista plana de encabezados de sección, espacios y tarjetas, en orden.
+    final rows = _notesAvailable
+        ? _noteRows.resolve(
+            _notesService.notes,
+            _query,
+            build: () => groupRows(
+              _notesService.search(_query),
+              groupOf: (n) => noteGroupLabel(n.updatedAt),
+              timeOf: (n) => noteTimeLabel(n.updatedAt),
+            ),
+          )
+        : const <GroupedRow<VoiceNote>>[];
+    final pending = _pendingQueue.items;
     final showPending = _deferredQueueEnabled &&
         _queueLoaded &&
         _queueAvailable &&
-        _pendingQueue.items.isNotEmpty;
-
-    // Lista plana de encabezados de sección y tarjetas, en orden.
-    final rows = <Widget>[];
-    String? group;
-    for (final n in notes) {
-      final g = noteGroupLabel(n.updatedAt);
-      if (g != group) {
-        rows.add(HomeSectionHeader(g, key: ValueKey('notesGroup-$g')));
-        group = g;
-      } else {
-        rows.add(const SizedBox(height: 10));
-      }
-      rows.add(NoteCard(
-        key: ValueKey(n.id),
-        note: n,
-        highlight: n.id == _freshNoteId ? _newNoteHighlight : null,
-        onTap: () => _openEditor(n),
-        onLongPress: () => _openNoteActions(n),
-        onCopy: () => _copyNote(n),
-      ));
-    }
+        pending.isNotEmpty;
 
     Widget? placeholder;
     if (!_notesAvailable) {
@@ -1274,7 +1284,7 @@ class _HomeScreenState extends State<HomeScreen>
         title: _notesLoading ? 'Cargando notas…' : 'Notas no disponibles',
         message: _notesLoading ? '' : 'No se pudo leer el estado de las notas',
       );
-    } else if (notes.isEmpty && !showPending) {
+    } else if (rows.isEmpty && !showPending) {
       placeholder = _query.isEmpty
           ? HomeEmptyState(
               key: const ValueKey('notesEmpty'),
@@ -1299,30 +1309,35 @@ class _HomeScreenState extends State<HomeScreen>
         if (showPending)
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverList.list(
-              children: [
-                HomeSectionHeader(
-                  'Pendientes · ${_pendingQueue.items.length}',
-                  key: const ValueKey('pendingNotesList'),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                  child: Text(
-                    'Sin transcripción local todavía: el audio se guarda en el teléfono y solo sale a la nube cuando tocas Transcribir.',
-                    key: const ValueKey('pendingLocalInfo'),
-                    style: kTextCaption.copyWith(color: secondary),
-                  ),
-                ),
-                for (final p in _pendingQueue.items) ...[
-                  PendingNoteTile(
-                    item: p,
-                    busy: _isTranscribingPending,
-                    onTranscribe: () => _transcribePending(p),
-                    onDiscard: () => _discardPending(p),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ],
+            // Encabezado, aviso y luego tarjeta + espacio por pendiente.
+            sliver: SliverList.builder(
+              itemCount: 2 + pending.length * 2,
+              itemBuilder: (context, i) {
+                if (i == 0) {
+                  return HomeSectionHeader(
+                    'Pendientes · ${pending.length}',
+                    key: const ValueKey('pendingNotesList'),
+                  );
+                }
+                if (i == 1) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                    child: Text(
+                      'Sin transcripción local todavía: el audio se guarda en el teléfono y solo sale a la nube cuando tocas Transcribir.',
+                      key: const ValueKey('pendingLocalInfo'),
+                      style: kTextCaption.copyWith(color: secondary),
+                    ),
+                  );
+                }
+                if (i.isOdd) return const SizedBox(height: 8);
+                final p = pending[(i - 2) ~/ 2];
+                return PendingNoteTile(
+                  item: p,
+                  busy: _isTranscribingPending,
+                  onTranscribe: () => _transcribePending(p),
+                  onDiscard: () => _discardPending(p),
+                );
+              },
             ),
           ),
         if (_queueLoaded && !_queueAvailable)
@@ -1341,9 +1356,27 @@ class _HomeScreenState extends State<HomeScreen>
         else
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
+            // Perezosa: solo se construyen las tarjetas visibles (y la
+            // franja de caché); la key por id conserva cada tarjeta aunque
+            // cambie su índice.
             sliver: SliverList.builder(
               itemCount: rows.length,
-              itemBuilder: (_, i) => rows[i],
+              findChildIndexCallback: (key) =>
+                  key is ValueKey<String> ? _noteRows.indexOf(key.value) : null,
+              itemBuilder: (context, i) => switch (rows[i]) {
+                GroupHeaderRow(:final label) =>
+                  HomeSectionHeader(label, key: ValueKey('notesGroup-$label')),
+                GroupGapRow() => const SizedBox(height: 10),
+                GroupItemRow(item: final n, :final timeLabel) => NoteCard(
+                    key: ValueKey(n.id),
+                    note: n,
+                    timeLabel: timeLabel,
+                    highlight: n.id == _freshNoteId ? _newNoteHighlight : null,
+                    onTap: () => _openEditor(n),
+                    onLongPress: () => _openNoteActions(n),
+                    onCopy: () => _copyNote(n),
+                  ),
+              },
             ),
           ),
         SliverToBoxAdapter(child: _bottomClearance(context)),
@@ -1353,39 +1386,56 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildHistoryTab(BuildContext context, String title, double top) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final items = _filteredHistory;
+    final line = isDark ? kSeparatorDark : kSeparatorLight;
     final searching = _query.trim().isNotEmpty;
 
     // Agrupado por día solo en la presentación: el orden es el del
     // repositorio (más nuevo primero) y cada corrida de un mismo día abre
     // un encabezado. La fila lleva solo la hora.
-    final groups = <(String, List<Transcription>)>[];
-    for (final t in items) {
-      final label = historyDayLabel(t.timestamp);
-      if (groups.isEmpty || groups.last.$1 != label) {
-        groups.add((label, <Transcription>[]));
-      }
-      groups.last.$2.add(t);
-    }
+    final rows = _historyRows.resolve(
+      _transcriptionService.history,
+      _query,
+      build: () => groupRows(
+        _filterHistory(_transcriptionService.history),
+        groupOf: (t) => historyDayLabel(t.timestamp),
+        timeOf: (t) => historyTimeLabel(t.timestamp),
+      ),
+    );
 
-    final Widget body;
-    if (searching && items.isEmpty) {
-      body = HomeEmptyState(
-        showGlyph: false,
-        title: 'Sin resultados',
-        message: 'Nada coincide con “$_query”.',
+    final Widget list;
+    if (rows.isEmpty) {
+      list = SliverToBoxAdapter(
+        child: searching
+            ? HomeEmptyState(
+                showGlyph: false,
+                title: 'Sin resultados',
+                message: 'Nada coincide con “$_query”.',
+              )
+            : const HistoryList(transcriptions: [], embedded: true),
       );
-    } else if (items.isEmpty) {
-      body = HistoryList(transcriptions: items, embedded: true);
     } else {
-      body = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final (label, group) in groups) ...[
+      // Un solo sliver perezoso con índices planos (encabezado de día,
+      // fila, separador line): sin una lista con shrinkWrap por día.
+      list = SliverList.builder(
+        itemCount: rows.length,
+        findChildIndexCallback: (key) => key is ValueKey<String> &&
+                key.value.startsWith('historyRow-')
+            ? _historyRows.indexOf(key.value.substring('historyRow-'.length))
+            : null,
+        itemBuilder: (context, i) => switch (rows[i]) {
+          GroupHeaderRow(:final label) =>
             HomeSectionHeader(label, key: ValueKey('historyGroup-$label')),
-            HistoryList(transcriptions: group, embedded: true),
-          ],
-        ],
+          GroupGapRow() => Divider(
+              height: kSurfaceBorderWidth,
+              thickness: kSurfaceBorderWidth,
+              color: line,
+            ),
+          GroupItemRow(item: final t, :final timeLabel) => HistoryTile(
+              key: ValueKey('historyRow-${t.id}'),
+              transcription: t,
+              timeLabel: timeLabel,
+            ),
+        },
       );
     }
 
@@ -1396,7 +1446,7 @@ class _HomeScreenState extends State<HomeScreen>
         SliverToBoxAdapter(child: _buildHeader(context, title, top)),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-          sliver: SliverToBoxAdapter(child: body),
+          sliver: list,
         ),
         SliverToBoxAdapter(
           child: Padding(

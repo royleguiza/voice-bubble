@@ -23,6 +23,10 @@ class NoteCard extends StatelessWidget {
   /// desvanece. Null en las demás.
   final Animation<double>? highlight;
 
+  /// Hora o fecha corta ya formateada por la lista (memoizada junto con los
+  /// grupos). Sin ella se calcula acá.
+  final String? timeLabel;
+
   const NoteCard({
     super.key,
     required this.note,
@@ -30,6 +34,7 @@ class NoteCard extends StatelessWidget {
     this.onLongPress,
     this.onCopy,
     this.highlight,
+    this.timeLabel,
   });
 
   @override
@@ -94,7 +99,7 @@ class NoteCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      noteTimeLabel(note.updatedAt),
+                      timeLabel ?? noteTimeLabel(note.updatedAt),
                       style: kTextMono.copyWith(fontSize: 12, color: secondary),
                     ),
                     if (note.hasAudio) ...[
