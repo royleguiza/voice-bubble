@@ -4,12 +4,14 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
+import androidx.core.content.res.ResourcesCompat
 
 /**
  * Soporte del teclado (SPK-05, módulo 1 de N): tablas puras, constantes y
@@ -100,6 +102,44 @@ internal fun runOnMain(block: () -> Unit) {
 // --- Extensiones de Context (antes métodos privados de VKS) ---
 
 internal fun Context.dimen(resId: Int): Int = resources.getDimensionPixelSize(resId)
+
+/**
+ * Tipografías Horizonte del teclado (design.md §5/§12): Inter para letras y
+ * lectura, JetBrains Mono para etiquetas de capa, código, usuarios y
+ * cinta. Recursos empaquetados (`res/font`); si una fuente no carga se cae
+ * a la del sistema sin lanzar. Las familias resuelven el peso pedido
+ * (Inter 400/500/600, Mono 400/500) y Android sintetiza el resto.
+ */
+internal object KbFonts {
+    private var inter: Typeface? = null
+    private var mono: Typeface? = null
+
+    private fun interFamily(ctx: Context): Typeface =
+        inter ?: (
+            try {
+                ResourcesCompat.getFont(ctx, R.font.inter)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.DEFAULT
+            ).also { inter = it }
+
+    private fun monoFamily(ctx: Context): Typeface =
+        mono ?: (
+            try {
+                ResourcesCompat.getFont(ctx, R.font.jetbrains_mono)
+            } catch (_: Exception) {
+                null
+            } ?: Typeface.MONOSPACE
+            ).also { mono = it }
+
+    /** Inter regular, o semibold (600) cuando la tecla va en negrita. */
+    fun body(ctx: Context, strong: Boolean = false): Typeface =
+        Typeface.create(interFamily(ctx), if (strong) 600 else 400, false)
+
+    /** JetBrains Mono: 400 regular, 500 medium, 700 bold (sintetizado). */
+    fun mono(ctx: Context, weight: Int = 400): Typeface =
+        Typeface.create(monoFamily(ctx), weight, false)
+}
 
 internal fun Context.reducedMotion(): Boolean =
     Settings.Global.getFloat(

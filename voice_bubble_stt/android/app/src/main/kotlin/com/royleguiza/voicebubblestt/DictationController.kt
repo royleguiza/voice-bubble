@@ -51,6 +51,9 @@ data class MicFeedback(
     val soundsEnabled: Boolean,
 )
 
+/** Micrófono ocupado (la burbuja graba): el agujero de reposo atenuado. */
+internal const val MIC_BUSY_ALPHA = 0.5f
+
 class DictationController(
     private val service: InputMethodService,
     private val handler: Handler,
@@ -192,7 +195,7 @@ class DictationController(
         container.layoutParams = lp
 
         // Vista normal en reposo / ocupado: el agujero (Horizonte) con el
-        // glifo kb_ic_mic en on-hole; ocupado vuelve a tecla alt atenuada.
+        // glifo kb_ic_mic en on-hole; ocupado = el mismo agujero atenuado.
         val normal = ImageView(service)
         normal.scaleType = ImageView.ScaleType.FIT_CENTER
         normal.setImageResource(R.drawable.kb_ic_mic)
@@ -897,10 +900,11 @@ class DictationController(
                 pill?.visibility = View.GONE
                 proc?.visibility = View.GONE
                 normal?.visibility = View.VISIBLE
-                normal?.setBackgroundResource(R.drawable.kb_key_alt)
+                // Horizonte fase 2: ocupado = el mismo agujero, atenuado.
+                if (normal?.background !is HoleDrawable) normal?.background = HoleDrawable(service)
                 normal?.setImageResource(R.drawable.kb_ic_mic)
-                normal?.setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
-                normal?.alpha = 0.5f
+                normal?.setColorFilter(ContextCompat.getColor(service, R.color.hz_on_hole))
+                normal?.alpha = MIC_BUSY_ALPHA
                 normal?.contentDescription = if (host.isSpanish()) "micrófono ocupado" else "microphone busy"
                 container.contentDescription = if (host.isSpanish()) "micrófono ocupado" else "microphone busy"
             }

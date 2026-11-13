@@ -355,11 +355,15 @@ for d_name, d_path in [
             check(f"{d_name} es XML válido y parseable", False, str(e))
             continue
         if d_name == "ic_trackpad.xml":
-            check("ic_trackpad.xml flecha puntero (path M3,3…)", "M3,3 L10.07,19.97" in d_text)
+            # Horizonte fase 2: trackpad = path `pad` de la maqueta (superficie + botones).
+            check("ic_trackpad.xml superficie con botones (path pad, M4,14h16M12,14v6)", "M4,14h16M12,14v6" in d_text)
+            check("ic_trackpad.xml trazo Horizonte 1.8", 'android:strokeWidth="1.8"' in d_text and 'strokeWidth="2.0"' not in d_text)
             check("ic_trackpad.xml tint kb_label", 'android:tint="@color/kb_label"' in d_text)
         elif d_name == "ic_keyboard.xml":
-            check("ic_keyboard.xml 4 paths (marco+filas+espacio)", d_text.count("<path") == 4, f"<path reales: {d_text.count('<path')}")
-            check("ic_keyboard.xml línea de espacio (M8,16 H16)", "M8,16 H16" in d_text)
+            # Horizonte fase 2: path `kb` de la maqueta (marco + una fila de teclas + espacio).
+            check("ic_keyboard.xml 3 paths (marco+teclas+espacio)", d_text.count("<path") == 3, f"<path reales: {d_text.count('<path')}")
+            check("ic_keyboard.xml línea de espacio (M8,14h8)", "M8,14h8" in d_text)
+            check("ic_keyboard.xml trazo Horizonte 1.8", 'android:strokeWidth="1.8"' in d_text and 'strokeWidth="2.0"' not in d_text)
         elif d_name == "ic_mouse_left.xml":
             check("ic_mouse_left.xml cuadrante izquierdo relleno", "M 12,2 C 8.13,2 5,5.13 5,9 L 12,9 Z" in d_text)
         elif d_name == "ic_mouse_right.xml":

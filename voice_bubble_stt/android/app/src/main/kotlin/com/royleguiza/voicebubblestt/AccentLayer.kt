@@ -131,6 +131,7 @@ class AccentLayer(
             tv.setBackgroundResource(R.drawable.kb_menu_item)
             tv.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
             tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size).toFloat())
+            tv.typeface = KbFonts.body(service)
             tv.setOnClickListener {
                 host.haptic(it)
                 host.commitText(opt)

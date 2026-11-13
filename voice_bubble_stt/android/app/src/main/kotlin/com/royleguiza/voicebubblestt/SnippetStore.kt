@@ -44,6 +44,16 @@ object SnippetPalette {
         "violeta" -> R.color.snippet_stroke_violeta
         else -> R.color.snippet_stroke_gris
     }
+
+    /** Color base sólido (design.md §12): punto del chip y swatches. */
+    fun baseRes(id: String): Int = when (id) {
+        "azul" -> R.color.snippet_base_azul
+        "verde" -> R.color.snippet_base_verde
+        "rojo" -> R.color.snippet_base_rojo
+        "naranja" -> R.color.snippet_base_naranja
+        "violeta" -> R.color.snippet_base_violeta
+        else -> R.color.snippet_base_gris
+    }
 }
 
 /**

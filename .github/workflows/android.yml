@@ -117,6 +117,10 @@ jobs:
           --tests com.royleguiza.voicebubblestt.PointerProtocolTest
           --tests com.royleguiza.voicebubblestt.PadGesturesTest
 
+      - name: Test Kotlin nativo del nivel de voz (Horizonte)
+        working-directory: voice_bubble_stt/android
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.VoiceLevelTest
+
       - name: Protocolo del puntero idéntico en las dos apps
         run: |
           strip() { grep -E '^\s*const val ' "$1" | sed 's/^\s*//'; }

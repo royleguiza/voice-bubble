@@ -2,8 +2,10 @@
 """
 TEST SUITE: MODO MINI / MICRO-TECLADO (MEJ-12)
 Verifica sobre el código REAL:
-1. Iconos: ic_micro_collapse (teclado+flecita abajo, elegido por el dueño)
-   e ic_micro_expand, estilo de trazo 24dp, hex válidos, sin fills.
+1. Iconos (Horizonte fase 2, opción "Barra" del dueño): ic_micro_collapse =
+   path `mini` (contorno atenuado + barra llena: el único relleno) e
+   ic_micro_expand = path `full` (contorno atenuado + grilla y barra, sin
+   rellenos); trazo 1.8 sobre viewport 24, hex válidos.
 2. Estado: MiniModeStore con prefs propias (fuera del contrato flutter.*),
    default completo, parseo tolerante, sin Log.
 3. Toolbar: botón micro al borde junto al mic, icono según modo, i18n es/en.
@@ -53,9 +55,22 @@ for dw in ["ic_micro_collapse.xml", "ic_micro_expand.xml"]:
         check(f"{dw} viewport 24dp", 'viewportWidth="24"' in raw and 'android:width="24dp"' in raw)
         bad = [h for h in re.findall(r"#[0-9A-Fa-f]+", raw) if len(h) not in (4, 5, 7, 9)]
         check(f"{dw} sin colores malformados (§9.1-19)", not bad)
-        check(f"{dw} solo trazos (sin fills)", "#00000000" in raw or "fillColor" not in raw.replace("#00000000", ""))
-check("Collapse: flecita hacia abajo", "M12,13.5 V20.5" in read(f"{DW}/ic_micro_collapse.xml"))
-check("Expand: flecita hacia arriba", "M12,10.5 V3.5" in read(f"{DW}/ic_micro_expand.xml"))
+        check(f"{dw} trazo Horizonte 1.8 redondeado",
+              set(re.findall(r'strokeWidth="([0-9.]+)"', raw)) == {"1.8"}
+              and raw.count('strokeLineCap="round"') == raw.count("strokeWidth=")
+              and raw.count('strokeLineJoin="round"') == raw.count("strokeWidth="))
+        check(f"{dw} contorno del teclado atenuado (opacity .4)",
+              'android:strokeAlpha="0.4"' in raw and "M6.5,5h11a3.5,3.5" in raw)
+_col = read(f"{DW}/ic_micro_collapse.xml")
+_exp = read(f"{DW}/ic_micro_expand.xml")
+_fills = lambda raw: [f for f in re.findall(r'fillColor="([^"]+)"', raw) if f != "#00000000"]
+check("Collapse = path mini: barra llena abajo (único relleno)",
+      "M8.1,13h7.8a1.6,1.6" in _col and len(_fills(_col)) == 1, f"rellenos: {_fills(_col)}")
+check("Expand = path full: grilla de puntos + barra, sin rellenos",
+      "M7,9.5h1M11.5,9.5h1M16,9.5h1M7,12.5h1" in _exp and "M9,15.5h6" in _exp and not _fills(_exp),
+      f"rellenos: {_fills(_exp)}")
+check("Sin las flechitas del ícono anterior",
+      "M12,13.5 V20.5" not in _col and "M12,10.5 V3.5" not in _exp)
 
 # --- 2. Estado y persistencia propia ---
 check("MiniModeStore.kt existe", os.path.isfile(os.path.join(WORKSPACE, f"{KT}/MiniModeStore.kt")))

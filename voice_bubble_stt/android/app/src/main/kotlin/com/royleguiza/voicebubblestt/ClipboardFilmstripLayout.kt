@@ -1,7 +1,6 @@
 package com.royleguiza.voicebubblestt
 
 import android.content.Context
-import android.graphics.Typeface
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
@@ -17,8 +16,11 @@ import androidx.core.content.ContextCompat
  *
  * Implementa la Opción 2 del Laboratorio UI:
  * - Altura contenida (86dp) para no comprimir las filas de teclas.
- * - Tarjetas horizontales Liquid Glass (124dp x 74dp) con scroll inercial suave.
+ * - Tarjetas horizontales (124dp x 74dp) con scroll inercial suave; Horizonte
+ *   fase 2: fondo de tecla, etiqueta de tipo arriba en mono bold con tracking
+ *   y contenido en mono.
  * - Soporte para Badges de tipo (TXT, CODE, IMG, MATH, URL).
+ * - «Limpiar libres» como ícono al final de la fila (misma acción).
  * - Carga asíncrona de miniaturas con downsampling para 60/120 fps.
  * - Soporte para fijado (pin ★) y eliminación rápida.
  */
@@ -88,10 +90,6 @@ class ClipboardFilmstripLayout(
             return
         }
 
-        // Botón rápido de limpieza de no-fijados
-        val btnClear = createClearButton()
-        cardsContainer.addView(btnClear)
-
         val cardWidthPx = dpToPx(124)
         val cardHeightPx = dpToPx(74)
         val marginPx = dpToPx(3)
@@ -100,6 +98,9 @@ class ClipboardFilmstripLayout(
             val card = createClipCard(clip, cardWidthPx, cardHeightPx, marginPx, generation)
             cardsContainer.addView(card)
         }
+
+        // Limpieza rápida de no-fijados: ícono al final de la fila.
+        cardsContainer.addView(createClearButton())
     }
 
     override fun onDetachedFromWindow() {
@@ -148,14 +149,13 @@ class ClipboardFilmstripLayout(
                 ClipType.TEXT -> "TXT"
             }
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f)
-            setTypeface(Typeface.DEFAULT_BOLD)
+            typeface = KbFonts.mono(context, BADGE_WEIGHT)
+            letterSpacing = BADGE_TRACKING
+            // Brasa como texto = ember-t (contraste sobre la tecla); TXT en fg2.
             setTextColor(
                 when (clip.type) {
-                    ClipType.CODE -> ContextCompat.getColor(context, R.color.kb_key_bg_accent)
-                    ClipType.IMAGE -> ContextCompat.getColor(context, R.color.kb_recording)
-                    ClipType.MATH -> ContextCompat.getColor(context, R.color.kb_key_bg_accent)
-                    ClipType.URL -> ContextCompat.getColor(context, R.color.kb_key_bg_accent)
-                    ClipType.TEXT -> ContextCompat.getColor(context, R.color.kb_label_secondary)
+                    ClipType.TEXT -> ContextCompat.getColor(context, R.color.hz_fg2)
+                    else -> ContextCompat.getColor(context, R.color.hz_ember_t)
                 }
             )
             layoutParams = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f)
@@ -166,7 +166,7 @@ class ClipboardFilmstripLayout(
             val pinIndicator = TextView(context).apply {
                 text = "★"
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f)
-                setTextColor(ContextCompat.getColor(context, R.color.kb_key_bg_accent))
+                setTextColor(ContextCompat.getColor(context, R.color.hz_ember_t))
             }
             header.addView(pinIndicator)
         }
@@ -202,9 +202,7 @@ class ClipboardFilmstripLayout(
                 ellipsize = TextUtils.TruncateAt.END
                 includeFontPadding = false
                 setTextColor(ContextCompat.getColor(context, R.color.kb_label))
-                if (clip.type == ClipType.CODE) {
-                    typeface = Typeface.MONOSPACE
-                }
+                typeface = KbFonts.mono(context)
                 layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT).apply {
                     topMargin = dpToPx(2)
                 }
@@ -221,15 +219,19 @@ class ClipboardFilmstripLayout(
         return card
     }
 
+    /**
+     * «Limpiar libres» (Horizonte fase 2): ícono suelto de tacho al final de
+     * la cinta, sin caja (presionado: kb_tool). Misma acción que la tarjeta
+     * de texto anterior; 44 dp de ancho y el alto de una tarjeta (§9).
+     */
     private fun createClearButton(): View {
-        return TextView(context).apply {
-            text = "Limpiar\nlibres"
-            gravity = Gravity.CENTER
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f)
-            setTypeface(Typeface.DEFAULT_BOLD)
-            setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
-            setBackgroundResource(R.drawable.kb_key_alt)
-            val lp = LayoutParams(dpToPx(52), dpToPx(74)).apply {
+        return ImageView(context).apply {
+            setImageResource(R.drawable.ic_delete)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setColorFilter(ContextCompat.getColor(context, R.color.hz_fg2))
+            setBackgroundResource(R.drawable.kb_tool)
+            contentDescription = "Limpiar libres"
+            val lp = LayoutParams(dpToPx(CLEAR_TARGET_DP), dpToPx(74)).apply {
                 setMargins(dpToPx(3), dpToPx(3), dpToPx(3), dpToPx(3))
             }
             layoutParams = lp
@@ -241,4 +243,13 @@ class ClipboardFilmstripLayout(
 
     private fun dpToPx(dp: Int): Int =
         TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp.toFloat(), resources.displayMetrics).toInt()
+
+    companion object {
+        /** Etiqueta de tipo: mono bold (sintetizado sobre medium) con tracking. */
+        const val BADGE_WEIGHT = 700
+        const val BADGE_TRACKING = 0.12f
+
+        /** Ancho táctil del botón «Limpiar libres» (§9: ≥ 44 dp). */
+        const val CLEAR_TARGET_DP = 44
+    }
 }

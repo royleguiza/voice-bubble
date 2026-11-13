@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Capa código: chevrones (path code de la maqueta).
+     Horizonte fase 2: trazo 1.8 sobre viewport 24, extremos y uniones
+     redondeados (paths de laboratorio_ui/horizonte.html, objeto P). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,23 +10,9 @@
     android:tint="@color/kb_label">
     <path
         android:fillColor="#00000000"
-        android:pathData="M7,8 L3,12 L7,16"
+        android:pathData="M9,8l-4,4 4,4M15,8l4,4 -4,4"
         android:strokeColor="@color/kb_label"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="2.0" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M14.5,6.5 L9.5,17.5"
-        android:strokeColor="@color/kb_label"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2.0" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M17,8 L21,12 L17,16"
-        android:strokeColor="@color/kb_label"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2.0" />
+        android:strokeWidth="1.8" />
 </vector>

@@ -1,34 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modo mini (MEJ-12): teclado + flecha hacia arriba = expandir al completo.
-     Espejo de ic_micro_collapse, mismo estilo de trazo. -->
+<!-- Agrandar a completo (opción Barra del dueño, path full de la maqueta):
+     contorno atenuado + grilla de teclas y barra.
+     Horizonte fase 2: trazo 1.8 sobre viewport 24, extremos y uniones
+     redondeados (paths de laboratorio_ui/horizonte.html, objeto P). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="@color/kb_label">
-    <!-- Flecha hacia arriba -->
+    <!-- Contorno atenuado (opacity .4) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M12,10.5 V3.5 M8.2,7 L12,3.2 L15.8,7"
+        android:pathData="M6.5,5h11a3.5,3.5 0 0,1 3.5,3.5v7a3.5,3.5 0 0,1 -3.5,3.5h-11a3.5,3.5 0 0,1 -3.5,-3.5v-7a3.5,3.5 0 0,1 3.5,-3.5z"
         android:strokeColor="@color/kb_label"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="2.0" />
-    <!-- Mini teclado inferior -->
+        android:strokeWidth="1.8"
+        android:strokeAlpha="0.4" />
+    <!-- Grilla de teclas -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M4,13 H20 V20.5 H4 Z"
+        android:pathData="M7,9.5h1M11.5,9.5h1M16,9.5h1M7,12.5h1M11.5,12.5h1M16,12.5h1"
         android:strokeColor="@color/kb_label"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
         android:strokeWidth="1.8" />
-    <!-- Puntos de teclas -->
+    <!-- Barra -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M7,17 H9 M11,17 H13 M15,17 H17"
+        android:pathData="M9,15.5h6"
         android:strokeColor="@color/kb_label"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="2.0" />
+        android:strokeWidth="1.8" />
 </vector>

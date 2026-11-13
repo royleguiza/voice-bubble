@@ -203,7 +203,9 @@ check("Sin claves de puente nuevas (mismas del contrato)",
       "flutter.voice_snippets_v1" not in kt and "flutter.kb_snippets_seeded" not in kt,
       "BubbleHistoryController no debe hardcodear claves (viven en SnippetStore)")
 check("Tarjeta snippet outlined con título flotante (legend)",
-      "fun buildSnippetCard(" in cards and "bubble_legend_bg" in cards and "MONOSPACE" in cards,
+      # Horizonte fase 2: el contenido va en JetBrains Mono (KbFonts.mono,
+      # con MONOSPACE como respaldo dentro de KbFonts).
+      "fun buildSnippetCard(" in cards and "bubble_legend_bg" in cards and "KbFonts.mono(context)" in cards,
       "Falta la tarjeta fieldset/legend")
 check("Editar abajo-izquierda y copiar abajo-derecha (ops con spacer)",
       'contentDescription = "Editar snippet"' in cards and 'contentDescription = "Copiar snippet"' in cards,

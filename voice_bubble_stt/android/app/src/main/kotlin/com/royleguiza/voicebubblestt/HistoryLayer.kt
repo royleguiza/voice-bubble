@@ -1,7 +1,6 @@
 package com.royleguiza.voicebubblestt
 
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
 import android.text.TextUtils
@@ -84,14 +83,14 @@ class HistoryLayer(
             text = if (host.isSpanish()) "Historial de transcripciones" else "Transcription history"
             setTextColor(ContextCompat.getColor(service, R.color.kb_label))
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
-            setTypeface(null, Typeface.BOLD)
+            typeface = KbFonts.body(service, strong = true)
             alpha = 0.75f
             setPadding(pad * 2, pad, pad * 2, pad)
         }
         box.addView(header)
 
         val headerSep = View(service).apply {
-            setBackgroundColor(ContextCompat.getColor(service, R.color.kb_key_stroke))
+            setBackgroundColor(ContextCompat.getColor(service, R.color.hz_line))
         }
         box.addView(
             headerSep,
@@ -111,7 +110,7 @@ class HistoryLayer(
             if (text.isBlank()) continue
             if (count > 0) {
                 val sep = View(service).apply {
-                    setBackgroundColor(ContextCompat.getColor(service, R.color.kb_key_stroke))
+                    setBackgroundColor(ContextCompat.getColor(service, R.color.hz_line))
                 }
                 content.addView(
                     sep,
@@ -132,6 +131,7 @@ class HistoryLayer(
                 setBackgroundResource(R.drawable.kb_menu_item)
                 setTextColor(ContextCompat.getColor(service, R.color.kb_label))
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
+                typeface = KbFonts.body(service)
                 setOnClickListener {
                     host.haptic(this)
                     if (commitOrWarn(text)) {
@@ -147,8 +147,9 @@ class HistoryLayer(
                 this.text = if (host.isSpanish()) "Sin transcripciones todavía." else "No transcriptions yet."
                 gravity = Gravity.CENTER
                 setPadding(pad * 2, pad * 4, pad * 2, pad * 4)
-                setTextColor(ContextCompat.getColor(service, R.color.kb_label))
+                setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
+                typeface = KbFonts.body(service)
             }
             content.addView(empty)
         }

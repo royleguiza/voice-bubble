@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Herramienta activa (panel abierto): fondo ember-soft, ícono ember-t
+     (lo pone el tint), radio 10 dp. Presionada: kb_key_pressed. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape>
+            <corners android:radius="@dimen/kb_tool_radius" />
+            <solid android:color="@color/kb_key_pressed" />
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <corners android:radius="@dimen/kb_tool_radius" />
+            <solid android:color="@color/hz_ember_soft" />
+        </shape>
+    </item>
+</selector>

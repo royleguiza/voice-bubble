@@ -1,6 +1,5 @@
 package com.royleguiza.voicebubblestt
 
-import android.graphics.Typeface
 import android.inputmethodservice.InputMethodService
 import android.os.DeadObjectException
 import android.os.Handler
@@ -112,7 +111,7 @@ class CredentialsLayer(
             gravity = Gravity.CENTER
             setTextColor(ContextCompat.getColor(service, R.color.kb_label))
             setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15f)
-            setTypeface(null, Typeface.BOLD)
+            typeface = KbFonts.body(service, strong = true)
         }
         val avatarSize = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, 34f, service.resources.displayMetrics,
@@ -129,7 +128,7 @@ class CredentialsLayer(
             ellipsize = TextUtils.TruncateAt.END
             setTextColor(ContextCompat.getColor(service, R.color.kb_label))
             setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14f)
-            setTypeface(null, Typeface.BOLD)
+            typeface = KbFonts.body(service, strong = true)
         }
         meta.addView(name)
         if (showUser) {
@@ -139,6 +138,8 @@ class CredentialsLayer(
                 ellipsize = TextUtils.TruncateAt.END
                 setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+                // Usuarios en monoespaciada (design.md §12, Horizonte fase 2).
+                typeface = KbFonts.mono(service)
             }
             meta.addView(user)
         }
@@ -154,8 +155,10 @@ class CredentialsLayer(
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             isClickable = true
             isFocusable = true
-            setBackgroundResource(R.drawable.kb_key_accent)
-            setColorFilter(ContextCompat.getColor(service, R.color.kb_label_on_accent))
+            // Horizonte fase 2: ícono suelto (sin caja); la brasa queda para
+            // lo activo y la fila entera ya rellena al tocarla.
+            setBackgroundResource(R.drawable.kb_tool)
+            setColorFilter(ContextCompat.getColor(service, R.color.hz_fg2))
             contentDescription = if (host.isSpanish()) "pegar ${entry.nombre}" else "paste ${entry.nombre}"
         }
         val touchMin = TypedValue.applyDimension(

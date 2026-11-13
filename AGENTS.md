@@ -103,19 +103,30 @@ Ver `INSTALL.md` §4 para la lista vigente y su justificación (única fuente de
 
 | Recurso | Realidad |
 |---|---|
-| Máquina de desarrollo | **Termux/proot sobre Android (aarch64)** — no hay PC x86_64 |
-| Flutter local | **NO disponible** (no existe build ARM64 del SDK) |
-| Android SDK local | **NO instalable** (binarios solo para x86_64) |
-| RAM / Disco | ~3.6 GB total, ~13 GB libres → no intentar builds locales |
+| Máquina de desarrollo | Servidor **x86_64** (FX-6300), ~2 GB de RAM + swap |
+| Flutter local | `~/flutter/bin/flutter` (`flutter analyze` / `flutter test` desde `app_source/`; si cambia `app_source/pubspec.lock`, restaurarlo con `git checkout`) |
+| Android SDK / JDK | `~/android-sdk` + Java 17; Gradle 9.3.1 en `~/.gradle/wrapper/dists` con caché de dependencias |
+| RAM | Un solo proceso pesado a la vez |
 
-**Estrategia de build (decisión tomada):**
+**Compilar Kotlin y correr los tests JVM en el servidor (sí se puede):** copiar el proyecto a un directorio temporal (nunca compilar dentro del repo), sincronizar `voice_bubble_stt/android/{app/src,settings.gradle.kts,build.gradle.kts,app/build.gradle.kts}` y `app_source/{lib,test,pubspec.*}`, y en la copia acotar `android/gradle.properties` (`org.gradle.jvmargs=-Xmx1100m -XX:MaxMetaspaceSize=512m -XX:ReservedCodeCacheSize=128m`, `kotlin.compiler.execution.strategy=in-process`, `org.gradle.workers.max=1`, `org.gradle.parallel=false`). Luego, desde `android/` de la copia:
 
-- El APK se compila con **GitHub Actions** (`.github/workflows/android.yml`) en runners ubuntu x86_64.
+```bash
+~/.gradle/wrapper/dists/gradle-9.3.1-bin/*/gradle-9.3.1/bin/gradle --offline --no-daemon --max-workers=1 \
+  :app:compileDebugKotlin :app:compileDebugUnitTestKotlin
+~/.gradle/wrapper/dists/gradle-9.3.1-bin/*/gradle-9.3.1/bin/gradle --offline --no-daemon --max-workers=1 \
+  :app:testDebugUnitTest --tests 'com.royleguiza.voicebubblestt.*'
+```
+
+Compilación ~4–5 min, tests JVM ~1.5 min. `--offline` funciona mientras la caché tenga todo; si se sube una versión (p. ej. AGP), la primera corrida va sin `--offline` para descargarla.
+
+**Estrategia oficial de entrega (sin cambios):**
+
+- El APK oficial se compila con **GitHub Actions** (`.github/workflows/android.yml`) en runners ubuntu x86_64.
 - La fuente de la app vive en `app_source/`; el primer run de CI la scaffoldingea a `voice_bubble_stt/` vía `flutter create`, aplica parches (minSdk 28, RECORD_AUDIO, label) y commitea el scaffold.
 - **Cada run sincroniza incondicionalmente** `app_source/{pubspec,analysis_options,lib,test}` → `voice_bubble_stt/` antes de compilar: `app_source/` es la única fuente de edición.
 - Cada push a `main` (que toque código) ejecuta: pub get → analyze (estricto) → test → `flutter build apk --debug --split-per-abi` → sube el artefacto `voice-bubble-arm64-debug-apk-r<N>` (retención 7 días; dentro: `app-arm64-v8a-debug.apk`).
 - El usuario descarga el APK desde GitHub → Actions → run → Artifacts, y lo prueba en el teléfono físico ("Instalar apps desconocidas").
-- No intentar correr emuladores ni builds locales. Los unit tests de Dart corren en CI.
+- No correr emuladores. El build local verifica compilación y tests; el APK de prueba sigue saliendo del CI.
 
 ## 7. Convenciones de Git
 

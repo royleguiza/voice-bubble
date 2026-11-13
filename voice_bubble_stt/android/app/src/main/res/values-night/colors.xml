@@ -30,12 +30,13 @@
     <color name="kb_key_stroke">#FF262A38</color>
     <color name="kb_accent_pressed">#FFE5761A</color>
     <color name="kb_recording">@color/hz_ember</color>
-    <color name="kb_recording_pressed">#FFE5761A</color>
     <!-- Borrar / destructivo: único rojo. Texto sobre él: on-ember en oscuro
          (el blanco no llega a 4.5:1 sobre #FF6A5C). -->
     <color name="kb_danger">@color/hz_danger</color>
     <color name="kb_danger_pressed">#FFE85A4D</color>
     <color name="kb_label_on_danger">#FF1A0E00</color>
+    <!-- Sin sombra visible en oscuro (maqueta: 0 1px 0 #000 sobre kb). -->
+    <color name="kb_key_shadow">#00000000</color>
 
     <!-- Burbuja flotante (Hito 3): mismos neutros que claro; brasa
          derivada de las variantes noche. -->
@@ -43,7 +44,7 @@
     <color name="bubble_idle_border">#4DFFFFFF</color>
     <color name="bubble_active_border">#80FFFFFF</color>
     <color name="bubble_recording_bg">#E6FF8A1F</color>
-    <color name="bubble_transcribing_bg">#D9B84A06</color>
+    <color name="bubble_transcribing_bg">#D9B04706</color>
 
     <!-- Modal de historial: oscura (igual que la burbuja). -->
     <color name="bubble_modal_bg">#F208090E</color>
@@ -57,6 +58,12 @@
     <color name="splash_background">@color/hz_bg</color>
 
     <!-- Paleta de snippets - modo oscuro (mismos 6 ids que claro). -->
+    <color name="snippet_base_azul">#FF8FB0FF</color>
+    <color name="snippet_base_verde">#FF5FD38D</color>
+    <color name="snippet_base_rojo">#FFFF6A5C</color>
+    <color name="snippet_base_naranja">#FFFFA24A</color>
+    <color name="snippet_base_violeta">#FFC79BFF</color>
+    <color name="snippet_base_gris">#FF9A9DAB</color>
     <color name="snippet_fill_azul">#338FB0FF</color>
     <color name="snippet_stroke_azul">#668FB0FF</color>
     <color name="snippet_fill_verde">#335FD38D</color>

@@ -112,10 +112,9 @@ class ToolbarLayer(
 
         // Elementos borde (Snippets):
         if (!host.isPasswordField()) {
-            val btnSnippets = host.makeIconKey(
+            val btnSnippets = makeTool(
                 R.drawable.ic_snippets,
-                R.drawable.kb_key_alt,
-                1.0f,
+                host.currentLayer() == Layer.SNIPPETS,
                 if (host.isSpanish()) "fragmentos" else "snippets",
             ) {
                 host.snippetsToggle()
@@ -127,12 +126,10 @@ class ToolbarLayer(
         // Claves). En contraseñas sigue disponible si la pref está ON
         // (ahí es donde se necesita: relleno explícito usuario+clave).
         if (host.isCredentialsKeyPref()) {
-            val btnCredentials = host.makeIconKey(
+            val btnCredentials = makeTool(
                 R.drawable.ic_key,
-                if (host.currentLayer() == Layer.CREDENTIALS) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
-                1.0f,
+                host.currentLayer() == Layer.CREDENTIALS,
                 if (host.isSpanish()) "credenciales" else "credentials",
-                tintColorRes = if (host.currentLayer() == Layer.CREDENTIALS) R.color.kb_label_on_accent else R.color.kb_label,
             ) {
                 host.credentialsToggle()
             }
@@ -140,16 +137,15 @@ class ToolbarLayer(
         }
 
         // Elementos centrales:
-        val btnSettings = host.makeIconKey(R.drawable.ic_settings, R.drawable.kb_key_alt, 1.0f, "ajustes") {
+        val btnSettings = makeTool(R.drawable.ic_settings, false, "ajustes") {
             service.openAppUi()
         }
         items.add(btnSettings)
 
         if (host.isTerminalRowPref()) {
-            val btnTerminal = host.makeIconKey(
+            val btnTerminal = makeTool(
                 R.drawable.ic_terminal,
-                R.drawable.kb_key_alt,
-                1.0f,
+                false,
                 if (host.isSpanish()) "fila terminal" else "terminal row",
             ) {
                 host.toggleTerminalRowPref()
@@ -161,10 +157,9 @@ class ToolbarLayer(
         // C-14 [S]: En campos de contraseña la cinta y el botón de pegar
         // quedan completamente excluidos de la barra superior.
         if (!host.isPasswordField()) {
-            val btnPaste = host.makeIconKey(
+            val btnPaste = makeTool(
                 R.drawable.ic_paste,
-                R.drawable.kb_key_alt,
-                1.0f,
+                host.currentLayer() == Layer.CLIPBOARD,
                 if (host.isSpanish()) "portapapeles" else "clipboard",
             ) {
                 host.clipboardToggle()
@@ -182,10 +177,9 @@ class ToolbarLayer(
         }
 
         if (host.isCodeKeyPref()) {
-            val btnCode = host.makeIconKey(
+            val btnCode = makeTool(
                 R.drawable.ic_code,
-                R.drawable.kb_key_alt,
-                1.0f,
+                host.currentLayer() == Layer.CODE,
                 if (host.isSpanish()) "capa código" else "code layer",
             ) {
                 host.codeToggle()
@@ -195,25 +189,22 @@ class ToolbarLayer(
 
         if (!host.isPasswordField() && host.isTrackpadToolbarAllowed()) {
             val isTp = (host.currentLayer() == Layer.TRACKPAD)
-            val btnTrackpad = host.makeIconKey(
+            val btnTrackpad = makeTool(
                 if (isTp) R.drawable.ic_keyboard else R.drawable.ic_trackpad,
-                if (isTp) R.drawable.kb_key_accent else R.drawable.kb_key_alt,
-                1.0f,
+                isTp,
                 if (isTp) (if (host.isSpanish()) "teclado" else "keyboard") else "trackpad",
-                tintColorRes = if (isTp) R.color.kb_label_on_accent else R.color.kb_label,
             ) {
                 host.trackpadToggle()
             }
             items.add(btnTrackpad)
         }
 
-        // Modo mini (MEJ-12): teclado+flecita abajo para compactar (pedido
-        // del dueño); al estar en mini el icono es expandir (flecha arriba).
-        // Va al borde, junto al micrófono.
-        val btnMicro = host.makeIconKey(
+        // Modo mini (MEJ-12): opción "Barra" del dueño (Horizonte fase 2):
+        // completo muestra la barra en que se convierte (mini); en mini, la
+        // grilla del teclado completo (full). Va al borde, junto al micrófono.
+        val btnMicro = makeTool(
             if (host.isMiniMode()) R.drawable.ic_micro_expand else R.drawable.ic_micro_collapse,
-            R.drawable.kb_key_alt,
-            1.0f,
+            false,
             if (host.isSpanish()) {
                 if (host.isMiniMode()) "teclado completo" else "mini-teclado"
             } else {
@@ -229,7 +220,7 @@ class ToolbarLayer(
             val mic = host.micKeyView()
 
             // Adjust mic layout params to use weight 1.0f
-            val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 38f, service.resources.displayMetrics).toInt()
+            val hPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, MIC_HEIGHT_DP, service.resources.displayMetrics).toInt()
             val micLp = LinearLayout.LayoutParams(0, hPx, 1.0f)
             val micM = host.dimenPx(R.dimen.kb_key_gap) / 2
             micLp.setMargins(micM, micM, micM, micM)
@@ -247,6 +238,44 @@ class ToolbarLayer(
         items.forEach { row.addView(it) }
 
         return row
+    }
+
+    /**
+     * Herramienta de la barra sin caja (Horizonte fase 2, design.md §12):
+     * ícono suelto en hz_fg2 sin fondo ni borde; activa (su panel abierto)
+     * con fondo ember-soft e ícono ember-t; presionada con kb_key_pressed.
+     * El área táctil nunca baja de kb_tool_min_target (44 dp, §9): la vista
+     * ocupa todo el alto de la barra (el del micrófono con sus márgenes) en
+     * vez de 38 dp con márgenes, así la barra no cambia de alto.
+     */
+    private fun makeTool(
+        iconRes: Int,
+        active: Boolean,
+        description: String,
+        onClick: () -> Unit,
+    ): ImageView {
+        val tool = host.makeIconKey(
+            iconRes,
+            if (active) R.drawable.kb_tool_active else R.drawable.kb_tool,
+            1.0f,
+            description,
+            tintColorRes = if (active) R.color.hz_ember_t else R.color.hz_fg2,
+            onClick = onClick,
+        )
+        tool.isSelected = active
+        val lp = tool.layoutParams as LinearLayout.LayoutParams
+        lp.height = toolTargetPx()
+        lp.topMargin = 0
+        lp.bottomMargin = 0
+        tool.layoutParams = lp
+        return tool
+    }
+
+    /** Alto táctil de cada herramienta: máx(44 dp, alto del micrófono + márgenes). */
+    private fun toolTargetPx(): Int {
+        val micPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, MIC_HEIGHT_DP, service.resources.displayMetrics).toInt()
+        val micM = host.dimenPx(R.dimen.kb_key_gap) / 2
+        return maxOf(host.dimenPx(R.dimen.kb_tool_min_target), micPx + micM * 2)
     }
 
     /** Fila terminal permanente en todas las capas (K2). */
@@ -311,5 +340,10 @@ class ToolbarLayer(
         }
         registerModifier(key, isCtrl)
         return key
+    }
+
+    companion object {
+        /** Alto de la tecla de micrófono en la barra (fase 1, sin cambios). */
+        const val MIC_HEIGHT_DP = 38f
     }
 }

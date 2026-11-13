@@ -1,6 +1,5 @@
 package com.royleguiza.voicebubblestt
 
-import android.graphics.Typeface
 import android.inputmethodservice.InputMethodService
 import android.os.Handler
 import android.util.TypedValue
@@ -718,13 +717,23 @@ class KeyFactory(
         key.setBackgroundResource(bgRes)
         key.setTextColor(ContextCompat.getColor(service, colorRes))
         key.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSizePx.toFloat())
-        if (isBold) {
-            key.setTypeface(null, Typeface.BOLD)
+        // Horizonte (design.md §12): las etiquetas de capa de las teclas alt
+        // (?123, ABC, ES/EN, TAB/ESC/CTRL/ALT, operadores) en JetBrains Mono
+        // medium; letras y símbolos en Inter (semibold si van en negrita).
+        key.typeface = if (bgRes == R.drawable.kb_key_alt) {
+            KbFonts.mono(service, MONO_LABEL_WEIGHT)
+        } else {
+            KbFonts.body(service, strong = isBold)
         }
         val lp = LinearLayout.LayoutParams(0, heightPx ?: host.keyHeightPx(), weight)
         val m = host.dimenPx(R.dimen.kb_key_gap_h) / 2
         lp.setMargins(m, 0, m, 0)
         key.layoutParams = lp
         return key
+    }
+
+    companion object {
+        /** Peso de las etiquetas de capa en mono (medium). */
+        const val MONO_LABEL_WEIGHT = 500
     }
 }

@@ -11,6 +11,14 @@
     <!-- Horizonte: tecla 7 dp. -->
     <dimen name="kb_key_radius">7dp</dimen>
     <dimen name="kb_key_stroke_width">1dp</dimen>
+    <!-- Línea inferior de la tecla (kb_key_shadow), maqueta Horizonte. -->
+    <dimen name="kb_key_shadow_height">1dp</dimen>
+    <!-- Barra de herramientas sin cajas (Horizonte fase 2): íconos sueltos,
+         radio del estado activo/presionado y área táctil mínima (§9). -->
+    <dimen name="kb_tool_radius">10dp</dimen>
+    <dimen name="kb_tool_min_target">44dp</dimen>
+    <!-- Punto de color del chip de snippet (reemplaza el chip teñido). -->
+    <dimen name="kb_snippet_dot_size">6dp</dimen>
     <dimen name="kb_surface_radius">16dp</dimen>
     <dimen name="kb_key_text_size">20sp</dimen>
     <dimen name="kb_key_text_size_small">14sp</dimen>

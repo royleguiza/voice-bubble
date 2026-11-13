@@ -97,9 +97,23 @@ def test_snippet_color_palette():
     # Editor inline con draftColor y swatches
     assert "draftColor" in layer, "Falta draftColor en el editor"
     assert "buildColorSwatchRow" in layer, "Falta fila de swatches"
-    assert "SnippetPalette.fillRes" in layer, "Chip sin fondo teñido"
+    # Horizonte fase 2: el chip deja de teñirse entero; fondo de tecla +
+    # punto de 6 dp con el color base (sin color = sin punto) + nombre en
+    # JetBrains Mono medium. Los 6 ids y los tonos fill/stroke no cambian.
+    chip = layer.split("private fun makeChip(")[1].split("\n    private fun ")[0]
+    assert "SnippetPalette.baseRes" in layer, "Chip sin punto de color base"
+    assert "colorDot(it)" in chip and "setCompoundDrawablesRelativeWithIntrinsicBounds(dot" in chip, "Chip sin punto a la izquierda"
+    assert "snippet.color?.takeIf { SnippetPalette.isValid(it) }" in chip, "Sin color debe quedar sin punto"
+    assert "R.drawable.kb_key_bg" in chip and "tintedChipBackground" not in layer, "Chip todavía teñido entero"
+    assert "kb_snippet_dot_size" in layer, "Punto sin token de 6 dp"
     assert "kb_snippet_chip_text_size" in layer, "Chip sin tipografía 16sp"
-    assert "Typeface.DEFAULT_BOLD" in layer, "Chip sin bold"
+    assert "KbFonts.mono(service, KeyFactory.MONO_LABEL_WEIGHT)" in chip, "Chip sin mono medium"
+    with open("voice_bubble_stt/android/app/src/main/res/values/dimens.xml", "r", encoding="utf-8") as f:
+        assert '<dimen name="kb_snippet_dot_size">6dp</dimen>' in f.read(), "Punto del chip debe medir 6dp"
+    # Selector: color elegido marcado con anillo (sin cambiar los 6 ids).
+    sw = layer.split("private fun makeSwatch(")[1].split("\n    private fun ")[0]
+    assert "SWATCH_RING_DP" in sw and "LayerDrawable(arrayOf(ring, disc))" in sw, "Swatch elegido sin anillo"
+    assert "!selected -> Color.TRANSPARENT" in sw, "El anillo debe verse solo en el elegido"
 
     # Recursos de paleta (claro + oscuro)
     for theme in ("values", "values-night"):
@@ -109,6 +123,9 @@ def test_snippet_color_palette():
         for cid in ("azul", "verde", "rojo", "naranja", "violeta", "gris"):
             assert f"snippet_fill_{cid}" in raw, f"Falta fill {cid} en {theme}"
             assert f"snippet_stroke_{cid}" in raw, f"Falta stroke {cid} en {theme}"
+            assert f"snippet_base_{cid}" in raw, f"Falta base {cid} en {theme}"
+    for cid in ("azul", "verde", "rojo", "naranja", "violeta", "gris"):
+        assert f'"{cid}" -> R.color.snippet_base_{cid}' in store or (cid == "gris" and "else -> R.color.snippet_base_gris" in store), f"baseRes sin {cid}"
     print("  [PASS] Paleta de 6 colores, editor con swatches y chips teñidos 100% verificados.")
 
 if __name__ == "__main__":

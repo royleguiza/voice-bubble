@@ -268,7 +268,8 @@ Además:
 | `kb_surface` | `#FFE3E4ED` (kb) | `#FF0E1016` | Fondo completo del teclado, sólido |
 | `kb_key_bg` | `#FFFFFFFF` (key) | `#FF1E212D` | Tecla normal |
 | `kb_key_bg_alt` | `#FFCDCFDC` (key2) | `#FF151821` | Shift, backspace, cambiador de capa |
-| `kb_key_stroke` | `#FFC3C5D3` | `#FF262A38` | Borde 1 dp de las teclas alt |
+| `kb_key_stroke` | `#FFC3C5D3` | `#FF262A38` | Línea inferior de tecla en claro (vía `kb_key_shadow`), borde del swatch "sin color" |
+| `kb_key_shadow` | `@color/kb_key_stroke` | `#00000000` | Línea inferior de 1 dp de toda tecla (maqueta: sombra `0 1px 0`); en oscuro sin sombra visible |
 | `kb_key_pressed` | `#FFCDCFDC` | `#FF262A38` | Tecla presionada |
 | `kb_key_bg_accent` | `@color/hz_ember` `#F27A14` | `#FF8A1F` | Enter y tecla de capa activa (brasa) |
 | `kb_accent_pressed` | `#FFD96A0E` | `#FFE5761A` | Brasa presionada |
@@ -276,14 +277,17 @@ Además:
 | `kb_label_secondary` | `@color/hz_fg2` | `@color/hz_fg2` | Hints de capa superior |
 | `kb_label_on_accent` | `@color/hz_on_ember` `#1A0E00` | `#1A0E00` | Texto/glifo sobre brasa (Enter, grabando) |
 | `kb_recording` | `@color/hz_ember` | `@color/hz_ember` | Acento grabando (**brasa**, ya no rojo) en burbuja y barra; la pastilla del teclado es `hz_hole` + anillo `hz_ember` (`kb_mic_pill`, §8) |
-| `kb_recording_pressed` | `#FFD96A0E` | `#FFE5761A` | Sin uso desde la fase 1 (la pastilla presionada cambia el anillo a `hz_hot`); retirar en la limpieza de tokens |
 | `kb_danger` | `@color/hz_danger` `#C8372B` | `#FF6A5C` | Borrar snippet, chip en modo borrado (único rojo) |
 | `kb_danger_pressed` | `#FFA82D23` | `#FFE85A4D` | Borrar presionado |
 | `kb_label_on_danger` | `#FFFFFFFF` | `#FF1A0E00` | Texto sobre `kb_danger` (≥ 4.5:1 en ambos modos) |
 
 ### Paleta de snippets (color por snippet)
 
-Solo **6 ids fijos** (nunca color libre; los ids no cambian). El chip/card usa **fondo teñido ~20%** (`0x33`) + **stroke ~40%** (`alpha: 0.40` / `0x66` en Android nativo y Flutter) del color base; texto sigue `kb_label`. `color` es opcional en el JSON (`null` = sin tinte).
+Solo **6 ids fijos** (nunca color libre; los ids no cambian). `color` es opcional en el JSON (`null` = sin color).
+
+- **Chip del teclado** (Horizonte fase 2): fondo de tecla normal (`kb_key_bg`), **punto de 6 dp** (`kb_snippet_dot_size`) con el color base (`snippet_base_*`) a la izquierda y nombre en JetBrains Mono medium; sin color = sin punto. En modo editar/borrar, borde punteado brasa/rojo (`kb_chip_edit`/`kb_chip_delete`).
+- **Selector de color** (editor inline): círculos sólidos del color base; el elegido lleva un anillo separado por un respiro.
+- **Tonos teñidos** (siguen vigentes para la tarjeta de la burbuja y la app): fondo ~20% (`0x33`, `snippet_fill_*`) + stroke ~40% (`alpha: 0.40` / `0x66`, `snippet_stroke_*`) del color base; texto `kb_label`.
 
 | id | Base claro | Base oscuro |
 |---|---|---|
@@ -301,18 +305,26 @@ Selectores de color: editor inline del teclado (`SnippetsLayer`) y hoja de Ajust
 | Medida | Valor | Nota |
 |---|---|---|
 | Altura de tecla | 42–48 dp | 4 filas QWERTY; gap entre teclas 6 dp |
-| **Chip de snippet** | **40 dp** + **16 sp bold** | Excepción firmada a 48 dp por densidad/legibilidad (pedido del dueño); respeta perfil de altura |
+| **Chip de snippet** | **40 dp** + **16 sp** JetBrains Mono medium | Excepción firmada a 48 dp por densidad/legibilidad (pedido del dueño); respeta perfil de altura. Punto de color 6 dp |
 | **Barra snippet** (`kb_snippet_bar_height`) | **28 dp** | Excepción firmada de diseño para la barra compacta/slim del editor inline de snippets, optimizando espacio vertical |
 | **Tecla mini** (`kb_mini_key_height`) | **40 dp** | Excepción firmada de diseño para el modo mini 2 filas (MEJ-12): perfil compacto que escala con el multiplicador de altura |
 | Radio de tecla | 7 dp | `kb_key_radius` (Horizonte) |
-| Stroke de tecla alt | 1 dp | `kb_key_stroke`; presente también en estado presionado |
+| Línea inferior de tecla | 1 dp | `kb_key_shadow` (claro: `kb_key_stroke`; oscuro: transparente) en teclas normales, alt y Enter, también presionadas; sin borde perimetral |
+| **Barra de herramientas** | íconos sueltos, target ≥ 44 dp | Sin fondo ni borde, ícono `hz_fg2`; activa (panel abierto) = fondo `hz_ember_soft` + ícono `hz_ember_t`, radio `kb_tool_radius` 10 dp; presionada = `kb_key_pressed` (`hz_surf2` no se distingue de `kb_surface` en claro). Alto táctil = máx(`kb_tool_min_target` 44 dp, micrófono 38 dp + márgenes): la barra no cambia de alto |
+| Íconos de la barra | 24 dp, trazo 1.8 | Extremos y uniones redondeados, sin rellenos (paths `P` de la maqueta); achicar = `mini` (contorno atenuado + barra llena), agrandar = `full` (contorno atenuado + grilla y barra) |
 | Fila terminal | misma altura que teclas | TAB/ESC/CTRL/ALT/flechas presente en todas las capas; ocultable desde Settings para quien ya tiene teclas propias (ej. Termux) |
 | Target táctil mínimo | 44×44 dp | regla §9 innegociable |
 | Estado presionado | escala 0.96→1.0 + háptico | sonido de tecla OFF por defecto |
 
 ### Tipografía del teclado
 
-Las familias `@font/inter`, `@font/sora` y `@font/jetbrains_mono` están disponibles como recursos. Las vistas del teclado las adoptan en su fase; la monoespaciada es la indicada para la capa de código, la fila terminal, el cronómetro de grabación y la cinta del portapapeles.
+Las familias `@font/inter`, `@font/sora` y `@font/jetbrains_mono` están disponibles como recursos (`KbFonts` en `KeyboardSupport.kt`, con respaldo a la del sistema).
+
+- **Inter**: letras, símbolos (semibold si van en negrita), popups de acentos e historial.
+- **JetBrains Mono medium**: etiquetas de capa de las teclas alt (`?123`, `ABC`, `ES/EN`, `TAB/ESC/CTRL/ALT`, operadores), nombres de snippet.
+- **JetBrains Mono**: contenido de la cinta del portapapeles (etiqueta de tipo en bold con tracking: URL/CODE/IMG en `hz_ember_t`, TXT en `hz_fg2`), comando del editor de snippets, usuario en Claves, cronómetro de grabación.
+
+Paneles: buscador de snippets sobre `kb_key_bg` (dentro del teclado `hz_surf2` coincide con el fondo en claro); +, editar y borrar como íconos sueltos (editar activo en brasa suave, borrar activo en `kb_danger`). «Limpiar libres» del portapapeles es un ícono de tacho al final de la cinta. Micrófono ocupado = el mismo agujero atenuado (alfa 0.5).
 
 ### Movimiento
 

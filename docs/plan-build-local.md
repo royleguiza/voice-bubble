@@ -1,7 +1,20 @@
 # Plan: build local de APK en el servidor (futuro)
 
-> Estado: PLANIFICADO 2026-09-10. No ejecutar hasta que el dueño confirme
-> la ampliación de RAM. GitHub Actions sigue siendo la vía oficial.
+> Estado: PLANIFICADO 2026-09-10. GitHub Actions sigue siendo la vía oficial
+> del APK.
+>
+> **Actualización 2026-11-13 (Horizonte fase 2):** la compilación de Kotlin y
+> los tests JVM ya corren en el servidor, sin esperar la ampliación de RAM:
+> JDK 17, `~/android-sdk`, Flutter (`~/flutter`) y Gradle 9.3.1 con caché
+> están instalados. Procedimiento con 2 GB de RAM: copia del proyecto en un
+> directorio temporal, `gradle.properties` de la copia con
+> `-Xmx1100m -XX:MaxMetaspaceSize=512m`, compilador Kotlin `in-process`, un
+> worker y sin paralelismo; `gradle --offline --no-daemon --max-workers=1
+> :app:compileDebugKotlin :app:compileDebugUnitTestKotlin` (~4–5 min) y
+> `:app:testDebugUnitTest` (~1.5 min). Si cambia una versión que la caché no
+> tiene (p. ej. AGP), esa corrida va una vez sin `--offline`. Detalle en
+> `AGENTS.md` §6. Pendiente de este plan: el APK local completo y servirlo
+> al teléfono.
 
 ## Motivación
 
@@ -15,8 +28,8 @@ APK directo al teléfono por Tailscale.
 - Red ~3.8 MB/s contra dl.google.com.
 - `adb` presente; sin JDK, sin Flutter, sin cmdline-tools.
 - Comedores de RAM: sesión opencode (~1.4 GB) + zombies `drkonqi` (~800 MB).
-- `AGENTS.md` §6 dice "ARM/Termux, build imposible": DESACTUALIZADO,
-  corregir al activar este plan.
+- `AGENTS.md` §6 decía "ARM/Termux, build imposible": corregido el
+  2026-11-13 con el procedimiento real de compilación local.
 
 ## Pre-requisitos (dueño)
 
@@ -48,7 +61,7 @@ APK directo al teléfono por Tailscale.
 - [ ] APK local instala y dicta igual que el de CI (misma versión de código).
 - [ ] `flutter test` local verde coincide con CI.
 - [ ] Build sin OOM con la RAM ampliada.
-- [ ] `AGENTS.md` §6 corregido.
+- [x] `AGENTS.md` §6 corregido (2026-11-13).
 
 ## Rollback
 

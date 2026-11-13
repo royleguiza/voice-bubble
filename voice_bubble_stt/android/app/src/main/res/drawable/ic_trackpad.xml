@@ -1,16 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Trackpad: superficie con botones (path pad de la maqueta).
+     Horizonte fase 2: trazo 1.8 sobre viewport 24, extremos y uniones
+     redondeados (paths de laboratorio_ui/horizonte.html, objeto P). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="@color/kb_label">
-    <!-- Arrow pointer cursor matching laboratorio_ui/trackpad_lab.html -->
+    <!-- Superficie -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M3,3 L10.07,19.97 L12.58,12.58 L19.97,10.07 Z"
+        android:pathData="M7,4h10a3,3 0 0,1 3,3v10a3,3 0 0,1 -3,3h-10a3,3 0 0,1 -3,-3v-10a3,3 0 0,1 3,-3z"
         android:strokeColor="@color/kb_label"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="2.0" />
+        android:strokeWidth="1.8" />
+    <!-- Botones -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M4,14h16M12,14v6"
+        android:strokeColor="@color/kb_label"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.8" />
 </vector>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Buscador del panel de snippets (Horizonte fase 2): relleno de tecla: en claro surf2 coincide con el fondo del teclado y no se vería. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <corners android:radius="@dimen/kb_tool_radius" />
+    <solid android:color="@color/kb_key_bg" />
+</shape>

@@ -32,11 +32,13 @@
     <color name="kb_accent_pressed">#FFD96A0E</color>
     <!-- Grabando = brasa (decisión del dueño): el rojo queda para borrar. -->
     <color name="kb_recording">@color/hz_ember</color>
-    <color name="kb_recording_pressed">#FFD96A0E</color>
     <!-- Borrar / destructivo: único rojo. Texto sobre él: blanco en claro. -->
     <color name="kb_danger">@color/hz_danger</color>
     <color name="kb_danger_pressed">#FFA82D23</color>
     <color name="kb_label_on_danger">#FFFFFFFF</color>
+    <!-- Línea inferior de la tecla (maqueta Horizonte, sombra 0 1px 0):
+         visible en claro; en oscuro transparente (sin sombra visible). -->
+    <color name="kb_key_shadow">@color/kb_key_stroke</color>
 
     <!-- Burbuja flotante (Hito 3) sobre apps ajenas, sin vidrio.
          Derivados de kb_recording / brasa con alfa propio. -->
@@ -44,7 +46,7 @@
     <color name="bubble_idle_border">#4DFFFFFF</color>
     <color name="bubble_active_border">#80FFFFFF</color>
     <color name="bubble_recording_bg">#E6F27A14</color>
-    <color name="bubble_transcribing_bg">#D9B84A06</color>
+    <color name="bubble_transcribing_bg">#D9B04706</color>
 
     <!-- Modal de historial (B1–B7 + Snippets): fondo claro en tema claro.
          La burbuja sigue oscura siempre; la modal sí adapta para que las
@@ -61,7 +63,14 @@
     <color name="splash_background">@color/hz_bg</color>
 
     <!-- Paleta de snippets (design.md §12): solo 6 ids fijos.
-         Fondo teñido ~20% (0x33) + stroke ~40% (0x66) sobre el tema. -->
+         Fondo teñido ~20% (0x33) + stroke ~40% (0x66) sobre el tema; base
+         sólida para el punto del chip y los swatches (Horizonte fase 2). -->
+    <color name="snippet_base_azul">#FF3557C8</color>
+    <color name="snippet_base_verde">#FF1E874A</color>
+    <color name="snippet_base_rojo">#FFC8372B</color>
+    <color name="snippet_base_naranja">#FFD9750F</color>
+    <color name="snippet_base_violeta">#FF8B4FD0</color>
+    <color name="snippet_base_gris">#FF7B7E8C</color>
     <color name="snippet_fill_azul">#333557C8</color>
     <color name="snippet_stroke_azul">#663557C8</color>
     <color name="snippet_fill_verde">#331E874A</color>

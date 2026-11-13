@@ -1,15 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Tecla normal (Horizonte): fondo sólido kb_key_bg, radio 7 dp.
+     Línea inferior de 1 dp en kb_key_shadow (maqueta Horizonte: sombra
+     0 1px 0 en claro; transparente en oscuro). Sin borde perimetral. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
-        <shape>
-            <corners android:radius="@dimen/kb_key_radius" />
-            <solid android:color="@color/kb_key_pressed" />
-        </shape>
+        <layer-list>
+            <item>
+                <shape>
+                    <corners android:radius="@dimen/kb_key_radius" />
+                    <solid android:color="@color/kb_key_shadow" />
+                </shape>
+            </item>
+            <item android:bottom="@dimen/kb_key_shadow_height">
+                <shape>
+                    <corners android:radius="@dimen/kb_key_radius" />
+                    <solid android:color="@color/kb_key_pressed" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
     <item>
-        <shape>
-            <corners android:radius="@dimen/kb_key_radius" />
-            <solid android:color="@color/kb_key_bg" />
-        </shape>
+        <layer-list>
+            <item>
+                <shape>
+                    <corners android:radius="@dimen/kb_key_radius" />
+                    <solid android:color="@color/kb_key_shadow" />
+                </shape>
+            </item>
+            <item android:bottom="@dimen/kb_key_shadow_height">
+                <shape>
+                    <corners android:radius="@dimen/kb_key_radius" />
+                    <solid android:color="@color/kb_key_bg" />
+                </shape>
+            </item>
+        </layer-list>
     </item>
 </selector>

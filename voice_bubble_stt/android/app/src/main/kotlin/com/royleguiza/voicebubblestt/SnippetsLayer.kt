@@ -4,6 +4,7 @@ import android.graphics.Typeface
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
 import android.inputmethodservice.InputMethodService
 import android.text.Editable
 import android.text.InputType
@@ -378,7 +379,7 @@ class SnippetsLayer(
             else (if (host.isSpanish()) "Nuevo snippet" else "New snippet")
             setTextColor(ContextCompat.getColor(service, R.color.kb_label))
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
-            setTypeface(null, Typeface.BOLD)
+            typeface = KbFonts.body(service, strong = true)
         }
         val lpTitle = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         headerRow.addView(title, lpTitle)
@@ -466,6 +467,8 @@ class SnippetsLayer(
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
             setPadding(pad, pad, pad, pad)
             setText(draftContent)
+            // El contenido suele ser un comando: monoespaciada (design.md §5).
+            typeface = KbFonts.mono(service)
             onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
                 if (hasFocus) activeField = this
             }
@@ -529,11 +532,12 @@ class SnippetsLayer(
         val h = host.scaledDimen(R.dimen.kb_snippet_bar_height)
         row.setPadding(m, 0, m, 0)
 
-        // Caja de búsqueda (70%): icono lupa + campo transparente.
+        // Caja de búsqueda (70%): icono lupa + campo transparente sobre
+        // relleno surf2 (Horizonte fase 2).
         val box = LinearLayout(service).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setBackgroundResource(R.drawable.kb_key_bg)
+            setBackgroundResource(R.drawable.kb_search_bg)
         }
         val iconDp = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20f, service.resources.displayMetrics).toInt()
         val iconPad = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 8f, service.resources.displayMetrics).toInt()
@@ -617,7 +621,7 @@ class SnippetsLayer(
         return row
     }
 
-    /** Botón slim de la barra: icono centrado, sin texto. */
+    /** Botón slim de la barra: ícono suelto (sin caja), centrado, sin texto. */
     private fun slimToolButton(iconRes: Int, description: String?, heightPx: Int, marginPx: Int, onTap: () -> Unit): ImageView {
         val key = ImageView(service)
         key.setImageResource(iconRes)
@@ -627,8 +631,8 @@ class SnippetsLayer(
         key.minimumWidth = 0
         key.minimumHeight = 0
         key.setPadding(0, 0, 0, 0)
-        key.setBackgroundResource(R.drawable.kb_key_bg)
-        key.setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
+        key.setBackgroundResource(R.drawable.kb_tool)
+        key.setColorFilter(ContextCompat.getColor(service, R.color.hz_fg2))
         if (description != null) {
             key.contentDescription = description
         }
@@ -648,28 +652,36 @@ class SnippetsLayer(
     }
 
 
+    /**
+     * Íconos sueltos (Horizonte fase 2): editar activo = ember-soft +
+     * ember-t (brasa solo en lo activo); borrar activo = ícono kb_danger
+     * (el rojo solo para borrar); en reposo, hz_fg2 sin fondo.
+     */
     private fun updateModeVisuals() {
         btnEditView?.setBackgroundResource(
-            if (mode == SnippetMode.EDIT) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
+            if (mode == SnippetMode.EDIT) R.drawable.kb_tool_active else R.drawable.kb_tool,
         )
         (btnEditView as? ImageView)?.setColorFilter(
-            if (mode == SnippetMode.EDIT) ContextCompat.getColor(service, R.color.kb_label_on_accent)
-            else ContextCompat.getColor(service, R.color.kb_label),
+            if (mode == SnippetMode.EDIT) ContextCompat.getColor(service, R.color.hz_ember_t)
+            else ContextCompat.getColor(service, R.color.hz_fg2),
         )
-        btnDeleteView?.setBackgroundResource(
-            if (mode == SnippetMode.DELETE) R.drawable.kb_key_danger else R.drawable.kb_key_bg,
-        )
+        btnDeleteView?.setBackgroundResource(R.drawable.kb_tool)
         (btnDeleteView as? ImageView)?.setColorFilter(
-            if (mode == SnippetMode.DELETE) ContextCompat.getColor(service, R.color.kb_label_on_danger)
-            else ContextCompat.getColor(service, R.color.kb_label),
+            if (mode == SnippetMode.DELETE) ContextCompat.getColor(service, R.color.kb_danger)
+            else ContextCompat.getColor(service, R.color.hz_fg2),
         )
+        btnEditView?.isSelected = mode == SnippetMode.EDIT
+        btnDeleteView?.isSelected = mode == SnippetMode.DELETE
     }
 
-    /** Feedback visual del modo busqueda: fondo acentuado cuando esta activo. */
+    /**
+     * Feedback visual del modo busqueda: activo = ember-soft (brasa solo en
+     * lo activo); en reposo el campo es transparente sobre la caja surf2.
+     */
     private fun applySearchVisual() {
         val et = searchField ?: return
         et.setBackgroundResource(
-            if (searchActive) R.drawable.kb_key_accent else R.drawable.kb_key_bg,
+            if (searchActive) R.drawable.kb_tool_active else 0,
         )
     }
 
@@ -718,11 +730,16 @@ class SnippetsLayer(
         }
     }
 
-    /** Chip con el nombre del snippet: tap inserta, o activa accion segun modo. */
+    /**
+     * Chip con el nombre del snippet: tap inserta, o activa accion segun modo.
+     * Horizonte fase 2: fondo de tecla normal, punto de 6 dp con el color
+     * del snippet a la izquierda (sin color = sin punto) y nombre en
+     * JetBrains Mono medium.
+     */
     private fun makeChip(snippet: VbSnippet): TextView {
         val chip = TextView(service)
         chip.text = snippet.nombre
-        chip.gravity = Gravity.CENTER
+        chip.gravity = Gravity.START or Gravity.CENTER_VERTICAL
         chip.isClickable = true
         chip.isFocusable = true
         chip.includeFontPadding = false
@@ -735,7 +752,7 @@ class SnippetsLayer(
 
         when (mode) {
             SnippetMode.EDIT -> {
-                // Lab compacta: borde punteado azul, contenido intacto.
+                // Lab compacta: borde punteado brasa, contenido intacto.
                 chip.setBackgroundResource(R.drawable.kb_chip_edit)
                 chip.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
                 chip.setOnClickListener {
@@ -753,11 +770,7 @@ class SnippetsLayer(
                 }
             }
             SnippetMode.NORMAL -> {
-                if (snippet.color != null) {
-                    chip.background = tintedChipBackground(snippet.color)
-                } else {
-                    chip.setBackgroundResource(R.drawable.kb_key_bg)
-                }
+                chip.setBackgroundResource(R.drawable.kb_key_bg)
                 chip.setTextColor(ContextCompat.getColor(service, R.color.kb_label))
                 host.attachPress(
                     chip,
@@ -774,7 +787,10 @@ class SnippetsLayer(
             TypedValue.COMPLEX_UNIT_PX,
             host.dimenPx(R.dimen.kb_snippet_chip_text_size).toFloat(),
         )
-        chip.typeface = Typeface.DEFAULT_BOLD
+        chip.typeface = KbFonts.mono(service, KeyFactory.MONO_LABEL_WEIGHT)
+        val dot = snippet.color?.takeIf { SnippetPalette.isValid(it) }?.let { colorDot(it) }
+        chip.setCompoundDrawablesRelativeWithIntrinsicBounds(dot, null, null, null)
+        chip.compoundDrawablePadding = if (dot != null) dp(CHIP_DOT_GAP_DP) else 0
         chip.contentDescription = snippet.nombre
         // Chips compactos 40dp (pedido del dueño) + gap propio en laterales.
         val lp = LinearLayout.LayoutParams(0, host.scaledDimen(R.dimen.kb_snippet_chip_height), 1f)
@@ -784,17 +800,18 @@ class SnippetsLayer(
         return chip
     }
 
-    /** Fondo teñido del chip (fill ~20% + stroke del color de paleta). */
-    private fun tintedChipBackground(colorId: String): GradientDrawable {
-        val radius = host.dimenPx(R.dimen.kb_key_radius).toFloat()
-        val stroke = host.dimenPx(R.dimen.kb_key_stroke_width)
+    /** Punto de color del chip (6 dp, color base de la paleta fija). */
+    private fun colorDot(colorId: String): GradientDrawable {
+        val size = host.dimenPx(R.dimen.kb_snippet_dot_size)
         return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = radius
-            setColor(ContextCompat.getColor(service, SnippetPalette.fillRes(colorId)))
-            setStroke(stroke, ContextCompat.getColor(service, SnippetPalette.strokeRes(colorId)))
+            shape = GradientDrawable.OVAL
+            setColor(ContextCompat.getColor(service, SnippetPalette.baseRes(colorId)))
+            setSize(size, size)
         }
     }
+
+    private fun dp(value: Float): Int =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, service.resources.displayMetrics).toInt()
 
     /** Fila de swatches: primera opción = sin color; luego los 6 de paleta. */
     private fun buildColorSwatchRow(pad: Int): LinearLayout {
@@ -829,29 +846,42 @@ class SnippetsLayer(
         v.isClickable = true
         v.isFocusable = true
         v.contentDescription = description
-        val bg = GradientDrawable().apply {
+        v.isSelected = selected
+        // Horizonte fase 2: círculo sólido del color base; "sin color" es
+        // una tecla con línea. El elegido se marca con un anillo separado
+        // del círculo por un respiro (maqueta: .dots i.sel).
+        val fillColor = if (colorId == null) {
+            ContextCompat.getColor(service, R.color.kb_key_bg)
+        } else {
+            ContextCompat.getColor(service, SnippetPalette.baseRes(colorId))
+        }
+        val disc = GradientDrawable().apply {
             shape = GradientDrawable.OVAL
+            setColor(fillColor)
             if (colorId == null) {
-                setColor(ContextCompat.getColor(service, R.color.kb_key_bg))
                 setStroke(
-                    if (selected) 3 else host.dimenPx(R.dimen.kb_key_stroke_width),
-                    ContextCompat.getColor(
-                        service,
-                        if (selected) R.color.kb_key_bg_accent else R.color.kb_key_stroke,
-                    ),
-                )
-            } else {
-                setColor(ContextCompat.getColor(service, SnippetPalette.fillRes(colorId)))
-                setStroke(
-                    if (selected) 3 else host.dimenPx(R.dimen.kb_key_stroke_width),
-                    ContextCompat.getColor(
-                        service,
-                        if (selected) SnippetPalette.strokeRes(colorId) else R.color.kb_key_stroke,
-                    ),
+                    host.dimenPx(R.dimen.kb_key_stroke_width),
+                    ContextCompat.getColor(service, R.color.kb_key_stroke),
                 )
             }
         }
-        v.background = bg
+        // El círculo conserva su tamaño; solo el anillo aparece al elegirlo.
+        val ring = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.TRANSPARENT)
+            setStroke(
+                dp(SWATCH_RING_DP),
+                when {
+                    !selected -> Color.TRANSPARENT
+                    colorId == null -> ContextCompat.getColor(service, R.color.hz_fg2)
+                    else -> fillColor
+                },
+            )
+        }
+        val inset = dp(SWATCH_RING_DP + SWATCH_RING_GAP_DP)
+        v.background = LayerDrawable(arrayOf(ring, disc)).apply {
+            setLayerInset(1, inset, inset, inset, inset)
+        }
         val lp = LinearLayout.LayoutParams(size, size)
         lp.rightMargin = gapPx
         v.layoutParams = lp
@@ -1324,5 +1354,14 @@ class SnippetsLayer(
             searchField?.requestFocus()
         }
         updateSearchIcon()
+    }
+
+    companion object {
+        /** Respiro entre el punto de color y el nombre del chip (maqueta: 7 px). */
+        const val CHIP_DOT_GAP_DP = 7f
+
+        /** Anillo del color elegido en el selector y su respiro al círculo. */
+        const val SWATCH_RING_DP = 2f
+        const val SWATCH_RING_GAP_DP = 2f
     }
 }

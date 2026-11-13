@@ -2,7 +2,6 @@ package com.royleguiza.voicebubblestt
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.text.TextUtils
 import android.util.TypedValue
@@ -34,8 +33,9 @@ object SnippetsCardView {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = 12f * density
             if (selected) {
-                setColor(0xFF238636.toInt()) // #FF238636
-                setStroke((1.5f * density).toInt(), 0xFF3FB950.toInt()) // #FF3FB950
+                // Horizonte: lo activo/seleccionado es brasa suave + brasa.
+                setColor(tokenColor(context, R.color.hz_ember_soft))
+                setStroke((1.5f * density).toInt(), tokenColor(context, R.color.hz_ember))
             } else if (colorId != null && context != null && SnippetPalette.isValid(colorId)) {
                 setColor(ContextCompat.getColor(context, SnippetPalette.fillRes(colorId)))
                 setStroke(
@@ -45,19 +45,22 @@ object SnippetsCardView {
             } else {
                 // Caja transparente: solo el borde sutil (el fondo lo pone la modal).
                 setColor(Color.TRANSPARENT)
-                if (dark) {
-                    setStroke((1f * density).toInt(), 0x26FFFFFF.toInt()) // #26FFFFFF
-                } else {
-                    setStroke((1f * density).toInt(), 0x1F000000.toInt()) // #1F000000
-                }
+                setStroke((1f * density).toInt(), tokenColor(context, R.color.hz_line))
             }
         }
     }
 
+    /**
+     * Color de token (paleta hz_*, sigue el modo del sistema igual que
+     * `dark`). Sin contexto no hay tema que resolver: transparente.
+     */
+    private fun tokenColor(context: Context?, res: Int): Int =
+        if (context != null) ContextCompat.getColor(context, res) else Color.TRANSPARENT
+
     fun emptyView(context: Context, density: Float, dark: Boolean): TextView {
         return TextView(context).apply {
             text = "Sin snippets todavía. Crealos en la app."
-            setTextColor(if (dark) 0xFFAEAEB2.toInt() else 0xFF6E6E73.toInt()) // #FFAEAEB2 / #FF6E6E73
+            setTextColor(ContextCompat.getColor(context, R.color.hz_fg2))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             gravity = Gravity.CENTER
             val pad = (16 * density).toInt()
@@ -101,8 +104,8 @@ object SnippetsCardView {
         }
         val tx = TextView(context).apply {
             text = snippet.contenido
-            typeface = Typeface.MONOSPACE
-            setTextColor(if (dark) Color.WHITE else 0xFF1C1C1E.toInt()) // #1C1C1E
+            typeface = KbFonts.mono(context)
+            setTextColor(ContextCompat.getColor(context, R.color.hz_fg))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             maxLines = 2
             ellipsize = TextUtils.TruncateAt.END
@@ -130,7 +133,7 @@ object SnippetsCardView {
                     setImageResource(R.drawable.ic_edit)
                 } catch (_: Throwable) {}
             }
-            setColorFilter(if (dark) Color.WHITE else 0xFF3C3C43.toInt()) // #3C3C43
+            setColorFilter(ContextCompat.getColor(context, R.color.hz_fg2))
             background = HistoryCardView.copyBackground(density, dark)
             val pad = (7 * density).toInt()
             setPadding(pad, pad, pad, pad)
@@ -150,7 +153,7 @@ object SnippetsCardView {
                     setImageResource(R.drawable.ic_copy)
                 } catch (_: Throwable) {}
             }
-            setColorFilter(if (dark) Color.WHITE else 0xFF3C3C43.toInt()) // #3C3C43
+            setColorFilter(ContextCompat.getColor(context, R.color.hz_fg2))
             background = HistoryCardView.copyBackground(density, dark)
             val pad = (7 * density).toInt()
             setPadding(pad, pad, pad, pad)
@@ -165,9 +168,9 @@ object SnippetsCardView {
         box.addView(ops)
         val legend = TextView(context).apply {
             text = snippet.nombre.ifBlank { "Snippet" }
-            setTextColor(if (dark) 0xFFAEAEB2.toInt() else 0xFF6E6E73.toInt()) // #FFAEAEB2 / #FF6E6E73
+            setTextColor(ContextCompat.getColor(context, R.color.hz_fg2))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            typeface = Typeface.DEFAULT_BOLD
+            typeface = KbFonts.mono(context, KeyFactory.MONO_LABEL_WEIGHT)
             maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
             background = GradientDrawable().apply {
