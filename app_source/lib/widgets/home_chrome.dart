@@ -220,7 +220,7 @@ class HomeEmptyState extends StatelessWidget {
         children: [
           if (showGlyph) ...[
             const SymbolField(),
-            const SizedBox(height: 14),
+            const SizedBox(height: kSymbolFieldGap),
           ],
           Text(
             title,

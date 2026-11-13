@@ -41,6 +41,11 @@ class HomeScreen extends StatefulWidget {
   final NotesService? notesService;
   final PendingNoteQueue? pendingQueue;
 
+  /// Clave del lienzo del botón de dictar: la animación de arranque
+  /// (`HorizonIntroHost`) lee de ahí el centro y el radio reales del
+  /// agujero para aterrizar exactamente sobre él. Solo presentación.
+  final GlobalKey? holeKey;
+
   const HomeScreen({
     super.key,
     this.transcriptionService,
@@ -49,6 +54,7 @@ class HomeScreen extends StatefulWidget {
     this.recordingController,
     this.notesService,
     this.pendingQueue,
+    this.holeKey,
   });
 
   @override
@@ -1166,6 +1172,7 @@ class _HomeScreenState extends State<HomeScreen>
             const SizedBox(height: 6),
             // Capa propia: los cuadros de la pastilla no repintan el resto.
             RepaintBoundary(
+              key: widget.holeKey,
               child: RecordButton(
                 key: const ValueKey('recordButton'),
                 state: _buttonState,

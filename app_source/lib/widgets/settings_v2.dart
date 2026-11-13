@@ -63,7 +63,9 @@ class SettingsPalette {
   Color get sheetCard => card;
 }
 
-/// Título grande de la raíz ("Ajustes").
+/// Título grande de la raíz ("Ajustes"). Detrás, a la derecha y muy tenue,
+/// el campo de símbolos quieto (design.md §15): solo en este encabezado,
+/// nunca detrás de los grupos de la lista.
 class SettingsLargeTitle extends StatelessWidget {
   final String text;
 
@@ -71,17 +73,26 @@ class SettingsLargeTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(2, 56, 2, 12),
-      child: Semantics(
-        header: true,
-        child: Text(
-          text,
-          style: kSettingsLargeTitle.copyWith(
-            color: SettingsPalette.of(context).label,
+    return Stack(
+      children: [
+        const Positioned(
+          right: 0,
+          bottom: 6,
+          child: SymbolField.header(key: ValueKey('settingsHeaderSymbols')),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(2, 56, 2, 12),
+          child: Semantics(
+            header: true,
+            child: Text(
+              text,
+              style: kSettingsLargeTitle.copyWith(
+                color: SettingsPalette.of(context).label,
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
@@ -770,7 +781,7 @@ class SettingsEmptyState extends StatelessWidget {
       child: Column(
         children: [
           const SymbolField(),
-          const SizedBox(height: 14),
+          const SizedBox(height: kSymbolFieldGap),
           Text(
             title,
             textAlign: TextAlign.center,

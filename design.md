@@ -361,7 +361,7 @@ Maqueta: `laboratorio_ui/horizonte.html`, bloque «app». Etiqueta de grupo = `k
 | **Lista de Ajustes** | Grupos como lista sólida (surf + line, radio 14) con separadores line a todo el ancho. Íconos de línea en fg2 sin pastilla (fg con alto contraste); el valor de la fila en mono a la derecha: ember-t si está encendido/activo, fg2 si está apagado o es neutro. Interruptores en brasa. La fila «VoiceBubble» lleva un agujero chico (hole + anillo brasa + micrófono on-hole). Sin sombras: los menús desplegables son surf + line. |
 | **Snippets** | Marca vertical de 3 dp con el color del snippet al borde izquierdo (sin color = sin marca), nombre Inter 600, texto en mono fg2 en una línea; pie con el contador en mono; «Ordenar» como acción de texto ember-t. |
 | **Hojas** | Fondo bg, radio superior 22, borde line, agarradera line, sin sombra (el velo las separa). Cerrar = ícono circular sólido; guardar = círculo brasa (atenuado mientras guarda). Campos `.fld`: caja surf + line radio 12, etiqueta mono en mayúsculas arriba y valor abajo (texto de snippet y contraseña en mono). Selector de color: círculos sólidos y anillo solo en el elegido. Eliminar = texto danger, sin caja. |
-| **Pantallas vacías** | Sin notas, sin historial, sin claves, sin snippets: `SymbolField` (tres renglones quietos de 0 1 { } [ ] < > · en mono, fg2 al 50 %) sobre el título y la ayuda. Decorativo (fuera de la semántica), sin animación; nunca detrás de una lista con contenido ni en «sin resultados». |
+| **Pantallas vacías** | Sin notas, sin historial, sin claves, sin snippets: `SymbolField` (tres renglones quietos de 0 1 { } [ ] < > · en mono, fg2 al 50 %) sobre el título y la ayuda. Decorativo (fuera de la semántica), sin animación; nunca detrás de una lista con contenido ni en «sin resultados». Tokens y regla completa en §15. |
 
 ---
 
@@ -401,4 +401,37 @@ Hoja sólida `hz_bg` + line, radio 22, sin sombra (la separa el velo), agarrader
 ### Historial flotante de la burbuja
 
 Tarjeta sólida `hz_bg` + borde `hz_line`, radio 18 (nace de la burbuja). Título «Historial de transcripciones» / «Snippets» con la etiqueta de grupo (mono 500 en mayúsculas con tracking, fg2). Cada fila: hora en mono fg2 en una columna fija de 44 dp (`HistoryCardView.TIME_COLUMN_DP`), texto Inter fg, copiar como ícono fg2 (target 44 dp) y separador `hz_line`. Selección y copiado: `hz_ember_soft` + borde `hz_ember` (check ember-t); copiar-todo confirmado = círculo brasa con check on-ember. El micrófono del pie es el agujero; la agarradera, una línea `hz_line`.
+
+---
+
+## 15. Arranque y fondos (Horizonte, fase 5)
+
+Maqueta: `laboratorio_ui/horizonte.html`, escena `drawHole` y bloque «arranque» (primer segundo, final, pantalla vacía). Dibujado con código (`CustomPainter`), sin video ni imágenes nuevas.
+
+### Animación de arranque
+
+`app_source/lib/ui/horizon_intro.dart`: `HorizonIntroHost` (en `main()`, `VoiceBubbleApp(showIntro: true)`) monta Inicio y, encima, la capa `HorizonIntro`.
+
+| Regla | Detalle |
+|---|---|
+| **Fase 1** (`kIntroSwallow`, 700 ms) | Agujero grande (radio 0,13 × lado menor; centro a lo ancho y al 40 % del alto) con disco inclinado (−0,32 rad, órbitas aplastadas al 40 %). Símbolos en espiral: `0 1 { } [ ] < > / ;` y palabras fijas (`voz`, `nota`, `texto`, `ssh`, `tmux`, `dev`, `hola`), nunca contenido del usuario. Lejos: glifo mono en fg (tinta en claro); cerca: brasa; junto al horizonte: trazo corto brasa/destello. La mitad trasera del disco se dibuja antes del agujero y la delantera después; halo elíptico de brasa; borde destello. |
+| **Fase 2** (`kIntroLand`, 450 ms) | El agujero se achica y viaja (`easeInOutCubic`) hasta el centro y radio **medidos** del botón de dictar en reposo (`GlobalKey` del lienzo del botón, sin números mágicos); el anillo pasa de destello 1,5 dp a brasa 2 dp por dentro del borde (como el botón), el micrófono on-hole aparece en la segunda mitad, halo y símbolos se apagan sin reaparecer y el fondo de la capa se desvanece mostrando Inicio. El botón real queda tapado mientras el agujero viaja: nunca se ven dos agujeros. El último cuadro es idéntico al botón y la capa se desmonta. |
+| **Duración** | 1,15 s en total (≤ 1,2 s). Paso por cuadro acotado a 50 ms: un primer cuadro lento no salta etapas. |
+| **Saltear** | Un toque en la fase 1 pasa a la fase 2 acelerada (`kIntroSkipLand`, 200 ms); ese toque no llega a Inicio. En la fase 2 la capa ya no recibe toques. |
+| **Cuándo** | Solo en el arranque en frío: una vez por proceso (rotar, volver de recientes o reconstruir el árbol no la repite). Si encima de Inicio se abre otra pantalla (p. ej. una nota pedida por el widget), termina en el acto. Apagada por defecto en `VoiceBubbleApp`: los tests la piden explícitamente. |
+| **Reducir movimiento / TalkBack** | `MediaQuery.disableAnimations` o navegación accesible → sin arranque: Inicio directo. |
+| **Alto contraste** | Sin halo translúcido; anillo brasa sólido desde el primer cuadro. |
+| **Fondo y arranque nativo** | El fondo de la capa es `kHzBg*` (= `hz_bg` = `splash_background` en claro y oscuro), igual que la ventana nativa (`launch_background`, `NormalTheme`, `windowSplashScreenBackground` en Android 12+, que mantiene el ícono del sistema): sin parpadeo ni cambio de fondo al primer cuadro de Flutter. |
+| **Presupuesto** | Pool fijo de ≤ 120 partículas (`kIntroMaxParticles`); un solo `AnimationController` que se libera al desmontar; pinceles, colores con opacidad cuantizada, halo y `TextPainter` de glifos cacheados una vez por modo (como mucho `HorizonIntroPainter.textPainterCapacity`); sin `saveLayer`, sin blur; `RepaintBoundary`. Inicio y su carga de datos arrancan en el mismo primer cuadro (la capa no difiere nada). |
+
+### Fondos: campo de símbolos
+
+`SymbolField` (`app_source/lib/ui/symbol_field.dart`): tres renglones quietos de símbolos en mono, fg2 con opacidad por token. Siempre estático, fuera de la semántica y sin recibir toques.
+
+| Dónde | Opacidad | Token |
+|---|---|---|
+| Pantallas vacías (Notas, Historial, Claves, Snippets) sobre el título y la ayuda, con `kSymbolFieldGap` (14) hasta el texto | 50 % | `kSymbolFieldOpacity` |
+| Encabezado de Ajustes, detrás del título grande, a la derecha (`SymbolField.header`) | 22 % | `kSymbolFieldHeaderOpacity` |
+
+Cuerpo 13 (`kSymbolFieldFontSize`). Nunca detrás de una lista con contenido, de un formulario ni en «sin resultados» / «cargando».
 

@@ -528,6 +528,41 @@ const Curve kCurveExit = Curves.easeOut;
 /// Morph entre estados del botón de grabar.
 const Duration kAnimMorph = Duration(milliseconds: 350);
 
+// ---------------------------------------------------------------------------
+// Arranque y fondos (design.md §15)
+// ---------------------------------------------------------------------------
+
+/// Arranque, fase 1: el agujero grande traga símbolos en espiral.
+const Duration kIntroSwallow = Duration(milliseconds: 700);
+
+/// Arranque, fase 2: el agujero se achica y aterriza en el botón de dictar
+/// mientras el fondo de la capa se desvanece y aparece Inicio.
+const Duration kIntroLand = Duration(milliseconds: 450);
+
+/// Fase 2 acelerada cuando se toca para saltear el arranque.
+const Duration kIntroSkipLand = Duration(milliseconds: 200);
+
+/// Tope del pool fijo de partículas del arranque.
+const int kIntroMaxParticles = 120;
+
+/// Métricas del glifo del micrófono pintado a mano (arranque): las mismas
+/// que usa `Icon` en el botón de dictar, para que el último cuadro empalme
+/// sin salto. La familia y el color los pone quien lo pinta.
+const TextStyle kRecordIconGlyph = TextStyle(
+  inherit: false,
+  fontSize: kRecordIconSize,
+  height: 1.0,
+  leadingDistribution: TextLeadingDistribution.even,
+);
+
+/// Campo de símbolos quieto (`SymbolField`): opacidad sobre fg2 en las
+/// pantallas vacías, opacidad (más tenue) detrás del título de Ajustes,
+/// cuerpo del glifo mono y aire hasta el título que lo sigue.
+const double kSymbolFieldOpacity = 0.5;
+const double kSymbolFieldHeaderOpacity = 0.22;
+const double kSymbolFieldFontSize = 13.0;
+const double kSymbolFieldGap = 14.0;
+
 /// Scrim sobre el contenido cuando hay sheet abierto.
 const Color kScrimColor = Color(0x9905060A); // hole al 60% (maqueta)
 

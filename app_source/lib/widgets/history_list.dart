@@ -73,7 +73,7 @@ class HistoryList extends StatelessWidget {
         child: Column(
           children: [
             const SymbolField(),
-            const SizedBox(height: 14),
+            const SizedBox(height: kSymbolFieldGap),
             Text(
               'No hay transcripciones aun',
               key: const ValueKey('history-empty-message'),
