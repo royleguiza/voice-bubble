@@ -178,22 +178,26 @@ check(
 
 # 6. StatusLayer y VoiceKeyboardService
 check(
-    "StatusLayer.show admite onClick opcional",
-    "fun show(message: String, openSettingsOnClick: Boolean = false, onClick: (() -> Unit)? = null)" in stat,
+    "StatusLayer.show admite onClick opcional (y variante de error / etiqueta de acción)",
+    "fun show(\n        message: String,\n        openSettingsOnClick: Boolean = false,\n        onClick: (() -> Unit)? = null,\n        isError: Boolean = false,\n        actionLabel: String? = null,\n    )" in stat,
 )
 show_body = stat[stat.find("fun show(") : stat.find("fun hide()")]
 check(
-    "StatusLayer configura click listener para onClick y descarta aviso",
-    "if (onClick != null) {\n                tv.isClickable = true\n                tv.setOnClickListener {\n                    hide()\n                    onClick()\n                }" in show_body,
+    "StatusLayer: la acción invoca onClick y descarta el aviso",
+    "cap.actionView.setOnClickListener {\n            hideAnimated()\n            c.onClick?.invoke()" in stat,
 )
 check(
-    "StatusLayer extiende tiempo a 5000L cuando hay onClick",
-    "val timeout = if (onClick != null) 5000L else 3500L" in show_body,
+    "StatusLayer: con acción dura 4000 ms (informativo 1400, error 3000)",
+    "DURATION_ACTION_MS = 4000L" in stat and "DURATION_ERROR_MS = 3000L" in stat
+    and "DURATION_INFO_MS = 1400L" in stat
+    and "c.onClick != null || c.openSettings -> DURATION_ACTION_MS" in stat
+    and "c.isError -> DURATION_ERROR_MS" in stat,
 )
 check(
-    "VoiceKeyboardService.showNotice reenvía onClick",
+    "VoiceKeyboardService.showNotice reenvía onClick (como error, con etiqueta Reintentar/Retry)",
     "override fun showNotice(message: String, openSettingsOnClick: Boolean, onClick: (() -> Unit)?)" in vks
-    and "status.show(message, openSettingsOnClick, onClick)" in vks,
+    and "status.show(message, openSettingsOnClick, onClick, isError = true, actionLabel = label)" in vks
+    and '"Reintentar" else "Retry"' in vks.replace("(if (spanishMode) ", "").replace(")", ""),
 )
 check(
     "UiHost en DictationController define showNotice con onClick",

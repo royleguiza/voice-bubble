@@ -137,6 +137,10 @@ internal object KbFonts {
     fun body(ctx: Context, strong: Boolean = false): Typeface =
         Typeface.create(interFamily(ctx), if (strong) 600 else 400, false)
 
+    /** Inter en un peso intermedio (500 medium para los avisos). */
+    fun bodyWeight(ctx: Context, weight: Int): Typeface =
+        Typeface.create(interFamily(ctx), weight, false)
+
     /** JetBrains Mono: 400 regular, 500 medium, 700 bold (sintetizado). */
     fun mono(ctx: Context, weight: Int = 400): Typeface =
         Typeface.create(monoFamily(ctx), weight, false)

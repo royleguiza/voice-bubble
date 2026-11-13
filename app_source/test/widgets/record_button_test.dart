@@ -18,6 +18,10 @@ class _ExtentCanvas extends TestRecordingCanvas {
   final List<(Offset, double)> circles = [];
   final List<(double, double)> particles = [];
 
+  /// Igual que [particles] pero con el rectángulo completo y el alfa del
+  /// pincel (los glifos van con -1: su opacidad está en el texto).
+  final List<(Rect, double)> boxes = [];
+
   Offset _map(Offset p) => _t + p * _s;
 
   @override
@@ -45,13 +49,23 @@ class _ExtentCanvas extends TestRecordingCanvas {
     final center = _map(c);
     final r = radius * _s;
     circles.add((center, r));
-    if (r < 2) particles.add((center.dx - r, center.dx + r));
+    if (r < 2) {
+      particles.add((center.dx - r, center.dx + r));
+      boxes.add((Rect.fromCircle(center: center, radius: r), paint.color.a));
+    }
     super.drawCircle(c, radius, paint);
   }
 
   @override
   void drawRect(Rect rect, Paint paint) {
-    particles.add((_map(rect.topLeft).dx, _map(rect.bottomRight).dx));
+    // El degradado del ✕ (con shader) no es una partícula.
+    if (paint.shader == null) {
+      particles.add((_map(rect.topLeft).dx, _map(rect.bottomRight).dx));
+      boxes.add((
+        Rect.fromPoints(_map(rect.topLeft), _map(rect.bottomRight)),
+        paint.color.a,
+      ));
+    }
     super.drawRect(rect, paint);
   }
 
@@ -59,6 +73,11 @@ class _ExtentCanvas extends TestRecordingCanvas {
   void drawParagraph(ui.Paragraph paragraph, Offset offset) {
     final x = _map(offset).dx;
     particles.add((x, x + paragraph.maxIntrinsicWidth * _s));
+    boxes.add((
+      Rect.fromLTWH(_map(offset).dx, _map(offset).dy,
+          paragraph.maxIntrinsicWidth * _s, paragraph.height * _s),
+      -1.0,
+    ));
   }
 }
 
@@ -87,14 +106,16 @@ void main() {
     });
 
     testWidgets('estado recording muestra stop', (tester) async {
-      await tester.pumpWidget(buildTestWidget(state: RecordButtonState.recording));
+      await tester
+          .pumpWidget(buildTestWidget(state: RecordButtonState.recording));
       await tester.pump();
 
       expect(find.byIcon(Icons.stop_rounded), findsOneWidget);
       expect(find.byIcon(Icons.mic_rounded), findsNothing);
     });
 
-    testWidgets('estado transcribing muestra el agujero pensando y no dispara acciones',
+    testWidgets(
+        'estado transcribing muestra el agujero pensando y no dispara acciones',
         (tester) async {
       var pressed = false;
       await tester.pumpWidget(buildTestWidget(
@@ -113,8 +134,7 @@ void main() {
 
     testWidgets('tap dispara onPressed en modo toque', (tester) async {
       var pressed = 0;
-      await tester.pumpWidget(
-          buildTestWidget(onPressed: () => pressed++));
+      await tester.pumpWidget(buildTestWidget(onPressed: () => pressed++));
 
       await tester.tap(find.byKey(const ValueKey('recordButton')));
       expect(pressed, 1);
@@ -134,7 +154,8 @@ void main() {
         ),
       ));
 
-      final center = tester.getCenter(find.byKey(const ValueKey('recordButton')));
+      final center =
+          tester.getCenter(find.byKey(const ValueKey('recordButton')));
       final gesture = await tester.startGesture(center);
       await tester.pump(const Duration(milliseconds: 600));
       expect(started, 1);
@@ -146,7 +167,8 @@ void main() {
 
     testWidgets('grabando se estira en pastilla sin overflow amarillo',
         (tester) async {
-      await tester.pumpWidget(buildTestWidget(state: RecordButtonState.recording));
+      await tester
+          .pumpWidget(buildTestWidget(state: RecordButtonState.recording));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 800));
       expect(tester.takeException(), isNull);
@@ -161,7 +183,8 @@ void main() {
       tester.view.physicalSize = const Size(320, 640);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(buildTestWidget(state: RecordButtonState.recording));
+      await tester
+          .pumpWidget(buildTestWidget(state: RecordButtonState.recording));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 800));
       expect(tester.takeException(), isNull);
@@ -240,7 +263,8 @@ void main() {
       expect(polls, before);
     });
 
-    testWidgets('C-26: Semantics en modo idle hold tiene label Mantené para grabar y accion longPress',
+    testWidgets(
+        'C-26: Semantics en modo idle hold tiene label Mantené para grabar y accion longPress',
         (tester) async {
       final handle = tester.ensureSemantics();
       var started = 0;
@@ -259,15 +283,19 @@ void main() {
         ),
       ));
 
-      final semantics = tester.getSemantics(find.byKey(const ValueKey('recordButton')));
+      final semantics =
+          tester.getSemantics(find.byKey(const ValueKey('recordButton')));
       expect(semantics.label, 'Mantené para grabar');
-      expect(semantics.getSemanticsData().hasAction(SemanticsAction.longPress), isTrue);
-      expect(semantics.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+      expect(semantics.getSemanticsData().hasAction(SemanticsAction.longPress),
+          isTrue);
+      expect(
+          semantics.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
 
       handle.dispose();
     });
 
-    testWidgets('C-26: Semantics en modo recording hold tiene label Detener grabación',
+    testWidgets(
+        'C-26: Semantics en modo recording hold tiene label Detener grabación',
         (tester) async {
       final handle = tester.ensureSemantics();
       await tester.pumpWidget(MaterialApp(
@@ -283,17 +311,20 @@ void main() {
       ));
       await tester.pump();
 
-      final semantics = tester.getSemantics(find.byKey(const ValueKey('recordButton')));
+      final semantics =
+          tester.getSemantics(find.byKey(const ValueKey('recordButton')));
       expect(semantics.label, 'Detener grabación');
-      expect(semantics.getSemanticsData().hasAction(SemanticsAction.longPress), isTrue);
-      expect(semantics.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+      expect(semantics.getSemanticsData().hasAction(SemanticsAction.longPress),
+          isTrue);
+      expect(
+          semantics.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
 
       handle.dispose();
     });
 
     HorizonScene sceneOf(WidgetTester tester) {
-      final paint = tester.widget<CustomPaint>(
-          find.byKey(const ValueKey('recordHorizon')));
+      final paint = tester
+          .widget<CustomPaint>(find.byKey(const ValueKey('recordHorizon')));
       return (paint.painter! as HorizonPainter).scene;
     }
 
@@ -341,8 +372,8 @@ void main() {
       final scene = sceneOf(tester);
       expect(scene.vol, greaterThan(0.9));
       expect(scene.activeParticles, greaterThan(5));
-      expect(scene.activeParticles,
-          lessThanOrEqualTo(HorizonScene.maxParticles));
+      expect(
+          scene.activeParticles, lessThanOrEqualTo(HorizonScene.maxParticles));
     });
 
     testWidgets('fase 1: en silencio queda solo un goteo', (tester) async {
@@ -362,8 +393,8 @@ void main() {
       expect(tester.binding.hasScheduledFrame, isTrue);
       final state = tester.state(find.byKey(const ValueKey('recordButton')));
       // Mismo árbol, otro estado: el State sobrevive y debe parar su ticker.
-      await tester.pumpWidget(recordingWith(
-          level: () async => 0.5, state: RecordButtonState.idle));
+      await tester.pumpWidget(
+          recordingWith(level: () async => 0.5, state: RecordButtonState.idle));
       expect(tester.state(find.byKey(const ValueKey('recordButton'))),
           same(state));
       await tester.pump(const Duration(seconds: 1));
@@ -373,8 +404,8 @@ void main() {
           level: () async => 0.5, state: RecordButtonState.transcribing));
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.binding.hasScheduledFrame, isTrue);
-      await tester.pumpWidget(recordingWith(
-          level: () async => 0.5, state: RecordButtonState.idle));
+      await tester.pumpWidget(
+          recordingWith(level: () async => 0.5, state: RecordButtonState.idle));
       await tester.pump(const Duration(seconds: 1));
       expect(tester.binding.hasScheduledFrame, isFalse);
     });
@@ -462,12 +493,16 @@ void main() {
     Rect localRect(WidgetTester tester, Finder f) =>
         tester.getRect(f).shift(-tester.getTopLeft(horizon));
 
-    Finder timerBox() => find
-        .ancestor(
-          of: find.byKey(const ValueKey('recordElapsed')),
-          matching: find.byType(DecoratedBox),
-        )
-        .first;
+    /// Mini píldora del tiempo tal como la fija el layout (texto + holgura).
+    Rect timerCapsule(WidgetTester tester) {
+      final t = localRect(tester, find.byKey(const ValueKey('recordElapsed')));
+      return Rect.fromLTRB(
+        t.left - HoleGeometry.timerPadH,
+        t.top - HoleGeometry.timerPadV,
+        t.right + HoleGeometry.timerPadH,
+        t.bottom + HoleGeometry.timerPadV,
+      );
+    }
 
     for (final width in [320.0, 411.0, 800.0]) {
       for (final scale in [1.0, 2.0]) {
@@ -475,8 +510,8 @@ void main() {
             'el ■ queda en el centro exacto del agujero pintado '
             '(ancho $width, texto x$scale)', (tester) async {
           screenWidth(tester, width);
-          await tester.pumpWidget(
-              pillAt(textScale: scale, level: () async => 0.4));
+          await tester
+              .pumpWidget(pillAt(textScale: scale, level: () async => 0.4));
           await tester.pump(const Duration(milliseconds: 800));
           expect(tester.takeException(), isNull);
 
@@ -491,8 +526,8 @@ void main() {
             'el tiempo queda a ≥ 8 dp del anillo y su halo máximos '
             '(ancho $width, texto x$scale)', (tester) async {
           screenWidth(tester, width);
-          await tester.pumpWidget(
-              pillAt(textScale: scale, level: () async => 1.0));
+          await tester
+              .pumpWidget(pillAt(textScale: scale, level: () async => 1.0));
           for (var i = 0; i < 60; i++) {
             await tester.pump(const Duration(milliseconds: 16));
           }
@@ -509,7 +544,7 @@ void main() {
               .map((c) => (c.$1 - center).distance + c.$2)
               .reduce((a, b) => a > b ? a : b);
           expect(painted, lessThanOrEqualTo(g.outerExtent + 0.01));
-          final timer = localRect(tester, timerBox());
+          final timer = timerCapsule(tester);
           expect(timer.left - (center.dx + g.outerExtent),
               greaterThanOrEqualTo(8 - 0.01));
           // Y no pisa el ✕.
@@ -517,47 +552,169 @@ void main() {
               tester, find.byKey(const ValueKey('recordCancelButton')));
           expect(timer.right, lessThanOrEqualTo(cancel.left));
         });
+
+        testWidgets(
+            'el tiempo queda centrado en la pastilla y no choca con el '
+            'agujero ni el ✕ (ancho $width, texto x$scale)', (tester) async {
+          screenWidth(tester, width);
+          await tester
+              .pumpWidget(pillAt(textScale: scale, level: () async => 1.0));
+          await tester.pump(const Duration(milliseconds: 800));
+          expect(tester.takeException(), isNull);
+          final pill =
+              tester.getCenter(find.byKey(const ValueKey('recordButton')));
+          final text =
+              tester.getCenter(find.byKey(const ValueKey('recordElapsed')));
+          final g = HoleGeometry.of(tester.getSize(horizon));
+          final capsule = timerCapsule(tester);
+          final cancel = localRect(
+              tester, find.byKey(const ValueKey('recordCancelButton')));
+          final (left, right) = g.timerLimits(tester.getSize(horizon), cancel);
+          // ¿Cabe centrada en la pastilla sin pisar el agujero ni el ✕?
+          final localPill = pill.dx - tester.getTopLeft(horizon).dx;
+          final fits = localPill - capsule.width / 2 >= left &&
+              localPill + capsule.width / 2 <= right;
+          if (fits) {
+            expect((text.dx - pill.dx).abs(), lessThanOrEqualTo(0.5),
+                reason: 'tiempo en ${text.dx}, pastilla en ${pill.dx}');
+          } else {
+            // Ancho mínimo con letra grande: centrado en el espacio libre.
+            expect((capsule.center.dx - (left + right) / 2).abs(),
+                lessThanOrEqualTo(0.5));
+          }
+          // Con la tipografía normal siempre cabe centrado.
+          if (scale == 1.0) expect(fits, isTrue);
+          expect(capsule.left, greaterThanOrEqualTo(left - 0.01));
+          expect(capsule.right, lessThanOrEqualTo(right + 0.01));
+          expect(capsule.left - (g.center.dx + g.outerExtent),
+              greaterThanOrEqualTo(HoleGeometry.timerGap - 0.01));
+          expect(capsule.right + HoleGeometry.timerFade,
+              lessThanOrEqualTo(cancel.left));
+          // El ✕ conserva su área táctil.
+          expect(cancel.width, greaterThanOrEqualTo(44));
+          expect(cancel.height, greaterThanOrEqualTo(44));
+        });
       }
     }
 
-    testWidgets('las partículas no se pintan sobre el tiempo ni sobre el ✕',
-        (tester) async {
+    testWidgets(
+        'las partículas se atenúan junto al tiempo: ninguna visible en el '
+        'núcleo del texto ni con alfa alto cerca', (tester) async {
       screenWidth(tester, 411);
       await tester.pumpWidget(pillAt(textScale: 1, level: () async => 1.0));
       await tester.pump(const Duration(milliseconds: 400));
-      final timer = localRect(tester, timerBox());
-      final cancel =
-          localRect(tester, find.byKey(const ValueKey('recordCancelButton')));
+      final scene = sceneOf(tester);
+      final core = timerCapsule(tester);
+      expect(scene.timerRect, isNotNull);
+      expect((scene.timerRect!.center - core.center).distance,
+          lessThanOrEqualTo(0.5));
       var seen = 0;
+      var nearCore = 0;
       // Varias muestras con la pastilla llena (volumen alto).
-      for (var frame = 0; frame < 90; frame++) {
+      for (var frame = 0; frame < 120; frame++) {
         await tester.pump(const Duration(milliseconds: 16));
-        if (frame % 6 != 0) continue;
-        for (final (x0, x1) in paintPill(tester).particles) {
+        if (frame % 4 != 0) continue;
+        for (final (box, alpha) in paintPill(tester).boxes) {
           seen++;
-          for (final zone in [timer, cancel]) {
-            expect(x1 < zone.left || x0 > zone.right, isTrue,
-                reason: 'partícula [$x0, $x1] sobre la zona $zone');
+          // Nada pintado en el núcleo (texto + holgura).
+          expect(box.overlaps(core), isFalse,
+              reason: 'partícula $box sobre el núcleo $core');
+          // Dentro de la mitad del difuminado, el alfa de puntos y rayas
+          // es a lo sumo proporcional a la distancia.
+          final dx = [core.left - box.right, box.left - core.right, 0.0]
+              .reduce((a, b) => a > b ? a : b);
+          final dy = [core.top - box.bottom, box.top - core.bottom, 0.0]
+              .reduce((a, b) => a > b ? a : b);
+          final d = (dx * dx + dy * dy);
+          if (d < 4.5 * 4.5) {
+            nearCore++;
+            if (alpha >= 0) {
+              expect(alpha, lessThanOrEqualTo(0.6),
+                  reason: 'alfa $alpha a $d (cuadrado) del núcleo');
+            }
           }
         }
       }
       expect(seen, greaterThan(20), reason: 'la prueba debe ver partículas');
+      expect(nearCore, greaterThan(0),
+          reason: 'debe haber partículas pasando por el difuminado');
     });
 
-    testWidgets('modo mantener: sin ✕, el tiempo igual queda libre',
+    testWidgets('modo mantener: sin ✕, el tiempo sigue centrado y libre',
         (tester) async {
       screenWidth(tester, 411);
       await tester.pumpWidget(
           pillAt(textScale: 1, level: () async => 1.0, holdMode: true));
       await tester.pump(const Duration(milliseconds: 400));
-      final timer = localRect(tester, timerBox());
+      final pill = tester.getCenter(find.byKey(const ValueKey('recordButton')));
+      final text =
+          tester.getCenter(find.byKey(const ValueKey('recordElapsed')));
+      expect((text.dx - pill.dx).abs(), lessThanOrEqualTo(0.5));
+      final core = timerCapsule(tester);
       for (var frame = 0; frame < 60; frame++) {
         await tester.pump(const Duration(milliseconds: 16));
         if (frame % 6 != 0) continue;
-        for (final (x0, x1) in paintPill(tester).particles) {
-          expect(x1 < timer.left || x0 > timer.right, isTrue);
+        for (final (box, _) in paintPill(tester).boxes) {
+          expect(box.overlaps(core), isFalse);
         }
       }
+    });
+
+    testWidgets(
+        'el ✕ lleva un degradado del color del agujero y las partículas '
+        'nacen antes de él', (tester) async {
+      screenWidth(tester, 411);
+      await tester.pumpWidget(pillAt(textScale: 1, level: () async => 1.0));
+      await tester.pump(const Duration(milliseconds: 400));
+      final scene = sceneOf(tester);
+      final cancel =
+          localRect(tester, find.byKey(const ValueKey('recordCancelButton')));
+      expect(scene.cancelRect, isNotNull);
+      expect(scene.right, cancel.left - HoleGeometry.cancelFadeLead);
+      // El degradado (con shader) se pinta y cubre hasta el borde derecho.
+      final canvas = _ExtentCanvas();
+      final paint = tester.widget<CustomPaint>(horizon);
+      paint.painter!.paint(canvas, tester.getSize(horizon));
+      final fades = canvas.invocations
+          .where((c) => c.invocation.memberName == #drawRect)
+          .where((c) =>
+              (c.invocation.positionalArguments[1] as Paint).shader != null);
+      expect(fades, hasLength(1));
+      final r = fades.single.invocation.positionalArguments[0] as Rect;
+      expect(r.left, cancel.left - HoleGeometry.cancelFadeLead);
+      expect(r.right, tester.getSize(horizon).width);
+    });
+
+    testWidgets(
+        'al pasar de grabando a pensando no queda ninguna partícula de la '
+        'grabación en el primer cuadro', (tester) async {
+      await tester.pumpWidget(recordingWith(level: () async => 1.0));
+      for (var i = 0; i < 60; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(sceneOf(tester).activeParticles, greaterThan(5));
+      await tester.pumpWidget(recordingWith(
+          level: () async => 1.0, state: RecordButtonState.transcribing));
+      final scene = sceneOf(tester);
+      expect(scene.phase, VoicePhase.thinking);
+      expect(scene.activeParticles, 0);
+      expect(paintPill(tester).particles, isEmpty);
+      // Después sí salen renglones, y solo renglones.
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(scene.activeParticles, greaterThan(0));
+    });
+
+    testWidgets('al volver a reposo tampoco quedan partículas', (tester) async {
+      await tester.pumpWidget(recordingWith(level: () async => 1.0));
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final scene = sceneOf(tester);
+      await tester.pumpWidget(
+          recordingWith(level: () async => 1.0, state: RecordButtonState.idle));
+      expect(scene.activeParticles, 0);
     });
 
     testWidgets(
@@ -580,9 +737,8 @@ void main() {
       // Un solo cuadro del estado grabando.
       final scene = sceneOf(tester);
       expect(scene.activeParticles, greaterThan(0));
-      final opacity = tester.widget<Opacity>(find
-          .ancestor(of: horizon, matching: find.byType(Opacity))
-          .first);
+      final opacity = tester.widget<Opacity>(
+          find.ancestor(of: horizon, matching: find.byType(Opacity)).first);
       expect(opacity.opacity, greaterThan(0));
       final particles = paintPill(tester).particles;
       expect(particles, isNotEmpty);

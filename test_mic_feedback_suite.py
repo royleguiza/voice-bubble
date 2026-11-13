@@ -191,21 +191,44 @@ check("Teclado: sin tres puntos ni pulso viejo",
 check("Teclado: vistas de voz detenidas al destruir/descartar",
       "stopVoiceAnimations()" in dic.split("fun onDestroy()")[1].split("\n    }\n")[0]
       and "stopVoiceAnimations()" in dic.split("fun onViewsDiscarded()")[1].split("\n    }\n")[0])
-check("Teclado: cronómetro mono sobre fondo propio",
-      "R.font.jetbrains_mono" in dic and "kb_mic_timer_bg" in dic)
+check("Teclado: cronómetro mono, sin fondo rectangular opaco propio",
+      "R.font.jetbrains_mono" in dic and "kb_mic_timer_bg" not in dic
+      and "timer.setBackgroundResource" not in dic
+      and not os.path.isfile(os.path.join(WORKSPACE, RES, "drawable/kb_mic_timer_bg.xml")))
+check("Teclado: cronómetro más chico (11 dp, antes 12) y en mono",
+      "internal const val TIMER_TEXT_SIZE_DP = 11f" in dic
+      and "timer.setTextSize(TypedValue.COMPLEX_UNIT_DIP, TIMER_TEXT_SIZE_DP)" in dic)
 check("Teclado: reposo = agujero", "HoleDrawable(service)" in dic)
 # Fase 4 (feedback del dueño): cronómetro despegado del agujero y partículas
 # fuera de la ✕, con la geometría de HorizonView (sin márgenes mágicos).
 check("Teclado: cronómetro a ≥ 8 dp del agujero con anillo máximo y halo",
       "fun accretionHoleRightPx(heightPx: Float, density: Float): Float" in hz
       and "r * (HALO_MIN_K + HALO_GROW_K)" in hz and "(RING_MIN_DP + RING_GROW_DP)" in hz
-      and "HorizonView.accretionHoleRightPx(pillHeightPx, density) + TIMER_HOLE_GAP_DP * density" in dic
+      and "accretionHoleRightPx(h, dp) + TIMER_HOLE_GAP_DP * dp" in hz
       and "internal const val TIMER_HOLE_GAP_DP = 8f" in dic
-      and "timerLp.marginStart = dp(30f)" not in dic
+      and "timerLp.marginStart" not in dic
       and "pill.addOnLayoutChangeListener" in dic)
+check("Teclado: geometría única en HorizonView (centro del cronómetro, mini píldora, zona de la ✕)",
+      "fun setTimerBox(widthPx: Float, heightPx: Float)" in hz
+      and "var timerCenterXPx: Float" in hz and "private fun updateGeometry()" in hz
+      and "(w / 2f).coerceIn(left + half, right - half)" in hz
+      and "(left + right) / 2f" in hz
+      and "pillHorizon.setTimerBox(w, timer.height.toFloat())" in dic
+      and "timer.translationX = pillHorizon.timerCenterXPx - w / 2f" in dic
+      and "timer.addOnLayoutChangeListener" in dic)
+check("Teclado: mini píldora difuminada hz_hole por degradado radial (sin blur) y partículas atenuadas",
+      "RadialGradient(" in hz and "MINI_FEATHER_DP = 9f" in hz and "miniPaint" in draw
+      and "timerClearance(px[i], py[i], cy)" in draw
+      and "BlurMaskFilter" not in hz and "RenderEffect" not in hz and "MaskFilter" not in hz)
+check("Teclado: extremo derecho con degradado transparente -> hz_hole bajo la ✕ (22 dp)",
+      "END_FADE_DP = 22f" in hz and "LinearGradient(" in hz and "endPaint" in draw
+      and "HorizonView.endFadeWidthPx(" in dic and "cancel.minimumWidth = dp(44f)" in dic
+      and 'cancel.text = "✕"' in dic)
+check("Teclado: sin Paint/Shader nuevos en onDraw (pool de 60)",
+      "Paint(" not in draw and "Gradient(" not in draw and "MAX_PARTICLES = 60" in hz)
 check("Teclado: partículas terminan antes de la ✕ (campo con margen derecho)",
       "var particleEndInsetPx: Float" in hz and "fieldRight(" in draw
-      and "pillHorizon.particleEndInsetPx = inset.toFloat()" in dic)
+      and "pillHorizon.particleEndInsetPx = inset" in dic)
 check("Teclado: halo y anillo dibujan con las mismas constantes de la geometría",
       "r * (HALO_MIN_K + kk * HALO_GROW_K)" in hz and "(RING_MIN_DP + RING_GROW_DP * kk) * dp" in hz)
 for desc in ['"grabando dictado"', '"procesando"', '"dictar"', '"micrófono ocupado"']:

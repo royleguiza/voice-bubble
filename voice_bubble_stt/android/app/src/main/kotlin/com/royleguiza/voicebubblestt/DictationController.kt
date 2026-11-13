@@ -57,8 +57,8 @@ internal const val MIC_BUSY_ALPHA = 0.5f
 /** Aire libre entre el agujero de la pastilla (con halo) y el cronómetro. */
 internal const val TIMER_HOLE_GAP_DP = 8f
 
-/** Separación entre el fin del campo de partículas y la ✕ de cancelar. */
-internal const val PARTICLE_CANCEL_GAP_DP = 4f
+/** Tamaño del cronómetro de la pastilla (dp; antes 12). */
+internal const val TIMER_TEXT_SIZE_DP = 11f
 
 /** Alto de pastilla previo al primer layout (el de la barra). */
 internal const val MIC_HEIGHT_FALLBACK_DP = ToolbarLayer.MIC_HEIGHT_DP
@@ -288,27 +288,26 @@ class DictationController(
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT),
         )
 
-        // Cronómetro en vivo: mono sobre su propio fondo negro (las
-        // partículas pasan por detrás sin taparlo).
+        // Cronómetro en vivo: mono, centrado en la pastilla. Sin fondo
+        // propio: HorizonView dibuja detrás una mini píldora difuminada y
+        // atenúa las partículas que pasan por ahí (geometría única).
         val onHole = ContextCompat.getColor(service, R.color.hz_on_hole)
         val timer = TextView(service)
         timer.text = "0:00"
         timer.gravity = Gravity.CENTER
         timer.setTextColor(onHole)
-        timer.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12f)
+        timer.setTextSize(TypedValue.COMPLEX_UNIT_DIP, TIMER_TEXT_SIZE_DP)
         timer.typeface = try {
             ResourcesCompat.getFont(service, R.font.jetbrains_mono)
         } catch (_: Exception) {
             null
         } ?: android.graphics.Typeface.MONOSPACE
-        timer.setBackgroundResource(R.drawable.kb_mic_timer_bg)
         timer.setPadding(dp(5f), dp(1f), dp(5f), dp(1f))
         val timerLp = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             Gravity.START or Gravity.CENTER_VERTICAL,
         )
-        timerLp.marginStart = timerStartPx(dp(MIC_HEIGHT_FALLBACK_DP).toFloat())
         pill.addView(timer, timerLp)
 
         // Botón cancelar ✕
@@ -334,21 +333,23 @@ class DictationController(
         }
         pill.addView(cancel, cancelLp)
 
-        // Aire real entre el agujero y el cronómetro, y campo de partículas
-        // que termina antes de la ✕: se recalcula con el alto vivo de la
-        // pastilla (perfiles de altura y modo mini).
-        pill.addOnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ ->
-            val start = timerStartPx((bottom - top).toFloat())
-            val lpNow = timer.layoutParams as? FrameLayout.LayoutParams
-            if (lpNow != null && lpNow.marginStart != start) {
-                lpNow.marginStart = start
-                timer.post { timer.layoutParams = lpNow }
-            }
-            val inset = cancel.width + dp(PARTICLE_CANCEL_GAP_DP)
-            if (pillHorizon.particleEndInsetPx != inset.toFloat()) {
-                pillHorizon.particleEndInsetPx = inset.toFloat()
+        // Geometría única en HorizonView: se recalcula con el alto y ancho
+        // vivos de la pastilla (perfiles de altura y modo mini). La ✕ reserva
+        // su ancho + el degradado; el cronómetro se coloca donde HorizonView
+        // indica.
+        val placeTimer = {
+            val w = timer.width.toFloat()
+            if (w > 0f) {
+                pillHorizon.setTimerBox(w, timer.height.toFloat())
+                timer.translationX = pillHorizon.timerCenterXPx - w / 2f
             }
         }
+        pill.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            val inset = cancel.width + HorizonView.endFadeWidthPx(service.resources.displayMetrics.density)
+            if (pillHorizon.particleEndInsetPx != inset) pillHorizon.particleEndInsetPx = inset
+            placeTimer()
+        }
+        timer.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> placeTimer() }
 
         container.addView(pill)
 
@@ -368,18 +369,6 @@ class DictationController(
     private fun dp(value: Float): Int = TypedValue.applyDimension(
         TypedValue.COMPLEX_UNIT_DIP, value, service.resources.displayMetrics,
     ).toInt()
-
-    /**
-     * Inicio del cronómetro en la pastilla de [pillHeightPx]: borde máximo
-     * del agujero de HorizonView (anillo más grueso y halo a volumen
-     * máximo) + [TIMER_HOLE_GAP_DP] libres.
-     */
-    private fun timerStartPx(pillHeightPx: Float): Int {
-        val density = service.resources.displayMetrics.density
-        return kotlin.math.ceil(
-            HorizonView.accretionHoleRightPx(pillHeightPx, density) + TIMER_HOLE_GAP_DP * density,
-        ).toInt()
-    }
 
     /** Eventos de feedback del micrófono (hápticas + sonidos UI). */
     private enum class MicEvent { START, STOP, PASTE, CANCEL }

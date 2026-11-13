@@ -286,7 +286,6 @@ class _PillContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hole = isDark ? kHoleDark : kHoleLight;
     // Mientras la pastilla se abre, el contenido se recorta desde el CENTRO:
     // bajo el dedo quedan las partículas (tocar = terminar) y el ✕ aparece
     // recién en el borde cuando la pastilla ya se estiró.
@@ -321,32 +320,21 @@ class _PillContent extends StatelessWidget {
                         child: const Icon(Icons.stop_rounded,
                             size: AppIcons.medium, color: kOnHole),
                       ),
-                    // Tiempo en mono sobre su propio fondo negro: las
-                    // partículas no se pintan en su franja.
+                    // Tiempo en mono, centrado en la pastilla. Su "mini
+                    // píldora" difuminada la pinta el lienzo (HorizonPainter)
+                    // con la geometría que fija el layout.
                     LayoutId(
                       id: _PillLayout.timer,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: hole,
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
-                          child: Text(
-                            elapsed,
-                            key: const ValueKey('recordElapsed'),
-                            maxLines: 1,
-                            softWrap: false,
-                            style: kTextMono.copyWith(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: kOnHole,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures()
-                              ],
-                            ),
-                          ),
+                      child: Text(
+                        elapsed,
+                        key: const ValueKey('recordElapsed'),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: kTextMono.copyWith(
+                          fontSize: HoleGeometry.timerFontSize,
+                          fontWeight: FontWeight.w500,
+                          color: kOnHole,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ),
@@ -380,9 +368,9 @@ class _PillContent extends StatelessWidget {
   }
 }
 
-/// Coloca ■, tiempo y ✕ sobre el lienzo con la geometría del pintor y le
-/// pasa a la escena las franjas reservadas (tiempo y ✕) y el borde por el
-/// que entran las partículas.
+/// Coloca ■, tiempo y ✕ sobre el lienzo con la geometría de [HoleGeometry]
+/// y le pasa a la escena el rectángulo de la mini píldora del tiempo y el
+/// del ✕ (el pintor y la simulación leen de ahí).
 class _PillLayout extends MultiChildLayoutDelegate {
   final HorizonScene scene;
 
@@ -391,9 +379,6 @@ class _PillLayout extends MultiChildLayoutDelegate {
   static const String stop = 'stop';
   static const String timer = 'timer';
   static const String cancel = 'cancel';
-
-  /// Margen del ✕ al borde derecho del contenido.
-  static const double edge = 10;
 
   @override
   void performLayout(Size size) {
@@ -406,27 +391,23 @@ class _PillLayout extends MultiChildLayoutDelegate {
     Rect? cancelRect;
     if (hasChild(cancel)) {
       final s = layoutChild(cancel, loose);
-      final topLeft =
-          Offset(size.width - edge - s.width, g.center.dy - s.height / 2);
-      positionChild(cancel, topLeft);
-      cancelRect = topLeft & s;
+      cancelRect = g.cancelRect(size, s);
+      positionChild(cancel, cancelRect.topLeft);
     }
-    Rect? timerRect;
+    Rect? capsule;
     if (hasChild(timer)) {
-      final left = g.timerLeft;
-      final right = (cancelRect?.left ?? size.width) - HoleGeometry.zonePad;
+      final (left, right) = g.timerLimits(size, cancelRect);
       final s = layoutChild(
         timer,
         BoxConstraints(
-          maxWidth: math.max(0.0, right - left),
+          maxWidth: math.max(0.0, right - left - 2 * HoleGeometry.timerPadH),
           maxHeight: size.height,
         ),
       );
-      final topLeft = Offset(left, g.center.dy - s.height / 2);
-      positionChild(timer, topLeft);
-      timerRect = topLeft & s;
+      capsule = g.timerCapsule(size, s, cancelRect);
+      positionChild(timer, capsule.center - Offset(s.width / 2, s.height / 2));
     }
-    scene.setZones(size, timer: timerRect, cancel: cancelRect);
+    scene.setZones(size, timer: capsule, cancel: cancelRect);
   }
 
   @override
@@ -463,11 +444,57 @@ class HoleGeometry {
   /// Separación mínima entre el borde exterior del anillo y el tiempo.
   static const double timerGap = 8;
 
-  /// Margen de las franjas sin partículas alrededor del tiempo y del ✕.
+  /// Margen entre la mini píldora del tiempo y lo que tiene a los lados.
   static const double zonePad = 4;
 
-  /// Borde izquierdo del tiempo.
+  /// Tamaño de letra del tiempo (mono).
+  static const double timerFontSize = 13.5;
+
+  /// Holgura de la mini píldora alrededor del texto.
+  static const double timerPadH = 8;
+  static const double timerPadV = 3;
+
+  /// Ancho del borde difuminado de la mini píldora (hacia afuera).
+  static const double timerFade = 9;
+
+  /// Margen del ✕ al borde derecho del contenido.
+  static const double cancelEdge = 10;
+
+  /// El degradado que lleva al ✕ empieza esta distancia a la izquierda de
+  /// su área táctil y es opaco (color del agujero) [cancelFade] más allá.
+  static const double cancelFadeLead = 12;
+  static const double cancelFade = 22;
+
+  /// Borde izquierdo del tiempo (fuera del halo máximo).
   double get timerLeft => center.dx + outerExtent + timerGap;
+
+  /// Área del ✕ (de tamaño [child]) pegada al borde derecho.
+  Rect cancelRect(Size size, Size child) =>
+      Offset(
+        size.width - cancelEdge - child.width,
+        center.dy - child.height / 2,
+      ) &
+      child;
+
+  /// Franja [izq, der] donde puede ir la mini píldora del tiempo.
+  (double, double) timerLimits(Size size, Rect? cancel) => (
+        timerLeft,
+        cancel == null
+            ? size.width - cancelEdge
+            : cancel.left - cancelFadeLead - zonePad,
+      );
+
+  /// Mini píldora del tiempo: el texto [text] más su holgura, centrada en
+  /// la pastilla; si así chocara con el agujero o el ✕, centrada en el
+  /// espacio libre entre ambos.
+  Rect timerCapsule(Size size, Size text, Rect? cancel) {
+    final w = text.width + 2 * timerPadH;
+    final h = text.height + 2 * timerPadV;
+    final (left, right) = timerLimits(size, cancel);
+    var x = size.width / 2 - w / 2;
+    if (x < left || x + w > right) x = (left + right) / 2 - w / 2;
+    return Rect.fromLTWH(x, center.dy - h / 2, w, h);
+  }
 }
 
 /// Fundido de entrada corto para el contenido de cada estado.
@@ -537,13 +564,14 @@ class HorizonScene extends ChangeNotifier {
   /// Tamaño del lienzo (lo fijan el layout de la pastilla y el pintor).
   Size size = Size.zero;
 
-  /// Franjas horizontales [izq, der] donde no se pintan partículas: el
-  /// tiempo (con su fondo) y el ✕. Las fija el layout de la pastilla.
-  (double, double)? timerBand;
-  (double, double)? cancelBand;
+  /// Mini píldora del tiempo (texto + holgura) y área del ✕, en coordenadas
+  /// del lienzo. Las fija el layout de la pastilla; las partículas se
+  /// atenúan cerca de la primera y nacen antes del degradado del ✕.
+  Rect? timerRect;
+  Rect? cancelRect;
 
-  /// Borde derecho del recorrido: las partículas entran desde acá (a la
-  /// izquierda del ✕ si lo hay). Null = ancho del lienzo.
+  /// Borde derecho del recorrido: las partículas entran desde acá (donde
+  /// empieza el degradado del ✕ si lo hay). Null = ancho del lienzo.
   double? _right;
 
   /// Al empezar a grabar se siembra un goteo ya visible en el primer
@@ -569,11 +597,13 @@ class HorizonScene extends ChangeNotifier {
     _acc = next == VoicePhase.recording ? 1 : 0;
     _seedPending = next == VoicePhase.recording && animated;
     if (next != VoicePhase.recording) {
-      timerBand = null;
-      cancelBand = null;
+      timerRect = null;
+      cancelRect = null;
       _right = null;
     }
-    if (next == VoicePhase.idle || !animated) {
+    // Corte limpio: fuera de grabando no sobrevive ninguna partícula de la
+    // grabación (al pasar a pensando arrancan solo los renglones).
+    if (next != VoicePhase.recording || !animated) {
       _kind.fillRange(0, maxParticles, _inactive);
     }
     if (next != VoicePhase.recording) _target = 0;
@@ -594,11 +624,9 @@ class HorizonScene extends ChangeNotifier {
   /// Zonas reservadas del layout de la pastilla (coordenadas del lienzo).
   void setZones(Size size, {Rect? timer, Rect? cancel}) {
     this.size = size;
-    const pad = HoleGeometry.zonePad;
-    timerBand = timer == null ? null : (timer.left - pad, timer.right + pad);
-    cancelBand =
-        cancel == null ? null : (cancel.left - pad, cancel.right + pad);
-    _right = cancel == null ? null : cancel.left - pad;
+    timerRect = timer;
+    cancelRect = cancel;
+    _right = cancel == null ? null : cancel.left - HoleGeometry.cancelFadeLead;
     if (_seedPending) _seed();
   }
 
@@ -611,7 +639,9 @@ class HorizonScene extends ChangeNotifier {
     if (w <= 0 || h <= 0 || phase != VoicePhase.recording || !animated) return;
     _seedPending = false;
     final g = HoleGeometry.of(size);
-    final from = timerBand?.$2 ?? g.timerLeft;
+    final from = timerRect == null
+        ? g.timerLeft
+        : timerRect!.right + HoleGeometry.timerFade;
     final to = right - 6;
     // Una en el halo (cae enseguida) y el resto entre el tiempo y el borde.
     final xs = [
@@ -745,7 +775,8 @@ class HorizonPainter extends CustomPainter {
           res.stroke
             ..color = res.tint(0, a)
             ..strokeWidth = 2;
-          canvas.drawLine(Offset(x, y), Offset(x + scene._len[i], y), res.stroke);
+          canvas.drawLine(
+              Offset(x, y), Offset(x + scene._len[i], y), res.stroke);
           continue;
         }
         final d = ((x - cx) / (right - cx)).clamp(0.0, 1.0);
@@ -758,23 +789,31 @@ class HorizonPainter extends CustomPainter {
         final fontSize = h * 0.2 * k + 3;
         final scale = fontSize / _glyphBase;
         TextPainter? tp;
-        // Extensión horizontal de la partícula: fuera de las franjas del
-        // tiempo y del ✕, con un fundido corto al acercarse a ellas.
+        // Extensión de la partícula: se atenúa al acercarse a la mini
+        // píldora del tiempo (alfa por distancia) y no se pinta sobre ella.
         final double x0;
         final double x1;
+        final double y0;
+        final double y1;
         if (kind == HorizonScene._dot) {
           x0 = x - 1.5 * k;
           x1 = x + 1.5 * k;
+          y0 = y - 1.5 * k;
+          y1 = y + 1.5 * k;
         } else if (kind == HorizonScene._dash) {
           x0 = x;
           x1 = x + 8 * k;
+          y0 = y - 0.8 * k;
+          y1 = y + 0.8 * k;
         } else {
           tp = res.glyph(kind - HorizonScene._glyph0, colorIdx, a);
           x0 = x;
           x1 = x + tp.width * scale;
+          y0 = y + 3 - tp.height * 0.8 * scale;
+          y1 = y0 + tp.height * scale;
         }
-        a *= _zoneFade(x0, x1, scene.timerBand) *
-            _zoneFade(x0, x1, scene.cancelBand);
+        final timer = scene.timerRect;
+        if (timer != null) a *= _rectFade(x0, y0, x1, y1, timer);
         if (a <= 0.02) continue;
         if (!isGlyph) {
           res.fill.color = res.tint(colorIdx, a);
@@ -801,22 +840,67 @@ class HorizonPainter extends CustomPainter {
       VoicePhase.thinking => 0.25,
       VoicePhase.idle => 0.0,
     };
+    final timer = scene.timerRect;
+    if (live && timer != null) _timerPill(canvas, res, timer);
+    final cancel = scene.cancelRect;
+    if (cancel != null) _cancelFade(canvas, res, cancel, size);
     _ringGlow(canvas, res, g, k);
     if (scene.phase == VoicePhase.thinking) {
       _spinArc(canvas, res, cx, cy, r, live ? scene.clock : 0);
     }
   }
 
-  /// Distancia de fundido junto a una franja reservada.
-  static const double _zoneFadeWidth = 6;
+  /// 0 sobre [r]; sube a 1 a [HoleGeometry.timerFade] de distancia.
+  static double _rectFade(double x0, double y0, double x1, double y1, Rect r) {
+    final dx = math.max(math.max(r.left - x1, x0 - r.right), 0.0);
+    final dy = math.max(math.max(r.top - y1, y0 - r.bottom), 0.0);
+    return (math.sqrt(dx * dx + dy * dy) / HoleGeometry.timerFade)
+        .clamp(0.0, 1.0);
+  }
 
-  /// 0 si [x0, x1] pisa la franja; sube a 1 a [_zoneFadeWidth] de ella.
-  static double _zoneFade(double x0, double x1, (double, double)? band) {
-    if (band == null) return 1;
-    final (left, right) = band;
-    if (x1 >= left && x0 <= right) return 0;
-    final gap = x1 < left ? left - x1 : x0 - right;
-    return (gap / _zoneFadeWidth).clamp(0.0, 1.0);
+  // Anillos de la mini píldora (se rearman solo si cambia el rectángulo).
+  Rect? _ringsFor;
+  final List<RRect> _rings = [];
+
+  /// Mini píldora del tiempo: cápsula del color del agujero cuyo borde se
+  /// desvanece hacia afuera. Sin blur ni capas: [_PainterResources.pillSteps]
+  /// cápsulas concéntricas con alfa precalculado que se acumula.
+  void _timerPill(Canvas canvas, _PainterResources res, Rect core) {
+    if (_ringsFor != core) {
+      _ringsFor = core;
+      _rings.clear();
+      const n = _PainterResources.pillSteps;
+      for (var i = 0; i <= n; i++) {
+        final r = core.inflate(HoleGeometry.timerFade * (1 - i / n));
+        _rings.add(RRect.fromRectAndRadius(r, Radius.circular(r.height / 2)));
+      }
+    }
+    for (var i = 0; i < _rings.length; i++) {
+      res.fill.color = res.pillFill[i];
+      canvas.drawRRect(_rings[i], res.fill);
+    }
+  }
+
+  // Degradado horizontal que lleva al ✕ (se rearma solo si cambia).
+  double? _fadeLeft;
+  bool? _fadeDark;
+  final Paint _fadePaint = Paint()..style = PaintingStyle.fill;
+
+  /// Del transparente al color del agujero, sobre el que va el ✕; opaco
+  /// hasta el borde derecho.
+  void _cancelFade(
+      Canvas canvas, _PainterResources res, Rect cancel, Size size) {
+    final x0 = cancel.left - HoleGeometry.cancelFadeLead;
+    if (_fadeLeft != x0 || _fadeDark != isDark) {
+      _fadeLeft = x0;
+      _fadeDark = isDark;
+      _fadePaint.shader = ui.Gradient.linear(
+        Offset(x0, 0),
+        Offset(x0 + HoleGeometry.cancelFade, 0),
+        [res.hole.withValues(alpha: 0), res.hole],
+      );
+    }
+    canvas.drawRect(Rect.fromLTRB(x0, 0, size.width, size.height), _fadePaint);
   }
 
   void _ringGlow(
@@ -889,6 +973,22 @@ class _PainterResources {
 
   /// fg lejos → brasa → destello cerca del agujero.
   final List<Color> palette;
+
+  /// Cápsulas de la mini píldora del tiempo: n + 1 rellenos del color del
+  /// agujero cuyo alfa acumulado sube suave (smoothstep) de 0 a 1.
+  static const int pillSteps = 8;
+  late final List<Color> pillFill = () {
+    double cum(int i) {
+      final t = (i + 1) / (pillSteps + 1);
+      return t * t * (3 - 2 * t);
+    }
+
+    return [
+      for (var i = 0; i <= pillSteps; i++)
+        hole.withValues(
+            alpha: i == 0 ? cum(0) : 1 - (1 - cum(i)) / (1 - cum(i - 1))),
+    ];
+  }();
 
   /// Índice del negro (solo como opacidad del halo con shader).
   static const int black = 3;

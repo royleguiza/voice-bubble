@@ -254,6 +254,46 @@ check("bubble_transcribing_bg retirado (sin uso; Horizonte fase 4)",
 check("CI corre VoiceLevelTest",
       "--tests com.royleguiza.voicebubblestt.VoiceLevelTest" in read(".github/workflows/android.yml"))
 
+# Aviso del teclado: cápsula superpuesta, sin salto de layout (design.md §12).
+st = read(f"{KT}/StatusLayer.kt")
+check("Aviso: se dibuja en un contenedor superpuesto, no se inserta en la raíz",
+      "overlay.addView(cap, lp)" in st and "view.addView(" not in st and "root.addView(" not in st
+      and "fun noticeHost(): FrameLayout?" in st
+      and "frame.addView(\n            root," in vks and "return frame" in vks)
+check("Aviso: la raíz conserva WRAP_CONTENT dentro del marco (altura intacta)",
+      "ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT" in vks.split("val frame = FrameLayout(this)")[1][:300])
+check("Aviso: cápsula hz_hole, texto hz_on_hole Inter medium 13 sp, borde brasa/peligro",
+      "R.color.hz_hole" in st and "R.color.hz_on_hole" in st and "KbFonts.bodyWeight(context, 500)" in st
+      and "TEXT_SP = 13f" in st and "R.color.hz_ember" in st and "R.color.kb_danger" in st
+      and "Color.parseColor" not in st and "Color.rgb" not in st)
+check("Aviso: 32 dp visibles, target 44 dp, 14 dp laterales, radio 16 dp en 2 líneas",
+      "VISUAL_HEIGHT_DP = 32f" in st and "TOUCH_HEIGHT_DP = 44f" in st and "PAD_H_DP = 14f" in st
+      and "MULTILINE_RADIUS_DP = 16f" in st and "maxLines = 2" in st and "TruncateAt.END" in st
+      and "SIDE_MARGIN_DP = 16f" in st)
+check("Aviso: entrada 160 ms (alfa + 6 dp, desaceleración) y salida 180 ms",
+      "ENTER_MS = 160L" in st and "EXIT_MS = 180L" in st and "RISE_DP = 6f" in st
+      and "DecelerateInterpolator()" in st)
+check("Aviso: sin animaciones del sistema aparece/desaparece sin movimiento",
+      "ValueAnimator.areAnimatorsEnabled()" in st and "if (!animate())" in st)
+check("Aviso: reemplazo con fundido corto, sin acumular vistas",
+      "private fun swap(" in st and "SWAP_OUT_MS" in st and "if (existing != null)" in st)
+check("Aviso: duraciones 1,4 s info / 3 s error / 4 s acción; tocar cierra",
+      "DURATION_INFO_MS = 1400L" in st and "DURATION_ERROR_MS = 3000L" in st
+      and "DURATION_ACTION_MS = 4000L" in st and "3500L" not in st and "5000L" not in st
+      and "cap.setOnClickListener {\n            hideAnimated()" in st)
+check("Aviso: temporizadores y animaciones cancelados al ocultar/destruir",
+      "handler.removeCallbacks(it)" in st and "animate().cancel()" in st
+      and "if (::status.isInitialized) status.hide()" in vks.split("override fun onWindowHidden()")[1].split("}")[0]
+      and "if (::status.isInitialized) status.hide()" in vks.split("override fun onDestroy()")[1].split("super.onDestroy()")[0])
+check("Aviso: no roba foco de escritura y se anuncia a TalkBack",
+      "isFocusable = false" in st and "isFocusableInTouchMode = false" in st
+      and "announceForAccessibility(c.message)" in st and "actionView.contentDescription" in st)
+check("Aviso: acción con target >= 44 dp, brasa semibold",
+      "actionView.minHeight = dp(TOUCH_HEIGHT_DP)" in st and "actionView.setTextColor(ember)" in st
+      and "KbFonts.body(context, true)" in st)
+check("Aviso: errores de dictado y conexión perdida usan la variante de error",
+      "isError = true" in vks and "status.show(msg, isError = true)" in read(f"{KT}/EditEngine.kt"))
+
 print("\n============================================================")
 print(f" RESULTADO SUITE TECLADO-LAYOUT: {suite.passed} pasados, {suite.failed} fallidos.")
 print("============================================================\n")

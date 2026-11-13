@@ -9,7 +9,9 @@ import android.os.RemoteException
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.PopupWindow
@@ -65,6 +67,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // avisos la comparan por identidad antes de tocar root, porque
     // ::root.isInitialized no detecta que root ya fue reemplazado.
     private var inputView: View? = null
+    private var noticeFrame: FrameLayout? = null
 
     private var activePopup: PopupWindow? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -132,7 +135,16 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         layout.applyBottomInsets(root)
         rebuild()
         inputView = root
-        return root
+        // Los avisos flotan sobre el teclado: marco que envuelve la raíz con
+        // su mismo alto (WRAP_CONTENT) y aloja la cápsula encima, sin tocar
+        // mediciones ni insets de la raíz.
+        val frame = FrameLayout(this)
+        frame.addView(
+            root,
+            FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT),
+        )
+        noticeFrame = frame
+        return frame
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
@@ -201,6 +213,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
     override fun onWindowHidden() {
         super.onWindowHidden()
+        if (::status.isInitialized) status.hide()
         dismissPopup()
         trackpad.hide()
     }
@@ -209,6 +222,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (::clipboard.isInitialized) clipboard.onDestroy()
         dictation.onDestroy()
         cancelPendingKeyGestures()
+        if (::status.isInitialized) status.hide()
         handler.removeCallbacksAndMessages(null)
         dismissPopup()
         if (::trackpad.isInitialized) trackpad.destroy()
@@ -424,6 +438,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
     }
     override fun rootView(): LinearLayout = root
+    override fun noticeHost(): FrameLayout? = noticeFrame
     override fun beginTransition() = trackpad.playTransition()
 
     // --- KeyFactory.UiHost (SPK-05 módulo 14). isSpanish, dimenPx,
@@ -655,7 +670,11 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         keys.longPress(key, onLongPress = onLongPress, onTapUp = onTapUp)
     override fun standardKeyHeightPx(): Int = keyHeightPx()
     override fun showNotice(message: String, openSettingsOnClick: Boolean, onClick: (() -> Unit)?) {
-        if (::status.isInitialized) status.show(message, openSettingsOnClick, onClick)
+        // Todo aviso del dictado es un fallo o un bloqueo: variante de error.
+        if (::status.isInitialized) {
+            val label = if (onClick != null) (if (spanishMode) "Reintentar" else "Retry") else null
+            status.show(message, openSettingsOnClick, onClick, isError = true, actionLabel = label)
+        }
     }
     override fun micFeedback(): MicFeedback = MicFeedback(
         hapticsEnabled = kbPrefs.micHapticsEnabled,

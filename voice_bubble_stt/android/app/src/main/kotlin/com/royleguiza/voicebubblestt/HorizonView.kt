@@ -4,6 +4,7 @@ import android.animation.TimeAnimator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
@@ -68,8 +69,39 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
     var particleEndInsetPx: Float = 0f
         set(value) {
             field = value.coerceAtLeast(0f)
+            updateGeometry()
             invalidate()
         }
+
+    /**
+     * Caja del cronómetro (texto + relleno) que la vista que lo aloja
+     * mide; con ella HorizonView es la única fuente de la geometría de la
+     * pastilla: centro del cronómetro, mini píldora difuminada detrás y
+     * zona de la ✕ (ver [updateGeometry]). 0 = sin cronómetro.
+     */
+    fun setTimerBox(widthPx: Float, heightPx: Float) {
+        val w = widthPx.coerceAtLeast(0f)
+        val h = heightPx.coerceAtLeast(0f)
+        if (w == timerBoxW && h == timerBoxH) return
+        timerBoxW = w
+        timerBoxH = h
+        updateGeometry()
+        invalidate()
+    }
+
+    /** Centro horizontal (px, en la vista) del cronómetro, calculado en [updateGeometry]. */
+    var timerCenterXPx: Float = 0f
+        private set
+
+    private var timerBoxW = 0f
+    private var timerBoxH = 0f
+
+    /** Elipse de la mini píldora (centro x, radios) y arranque del degradado de la ✕. */
+    private var miniRx = 0f
+    private var miniRy = 0f
+    private var miniShaderKey = 0f
+    private var endSolidX = 0f
+    private var hasEndFade = false
 
     var phase: Phase = Phase.IDLE
         private set
@@ -122,6 +154,25 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
     }
     private val oval = RectF()
     private val clip = Path()
+
+    // Mini píldora del cronómetro: degradado radial (elíptico vía matriz),
+    // sin blur. El shader solo se rehace al cambiar la caja del cronómetro
+    // (layout), nunca en onDraw.
+    private val miniMatrix = Matrix()
+    private val miniPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private var miniShader: RadialGradient? = null
+
+    // Extremo derecho: degradado horizontal transparente -> hz_hole bajo la ✕.
+    private val endFadeShader = LinearGradient(
+        0f, 0f, 1f, 0f,
+        colorHole and 0x00FFFFFF, colorHole,
+        Shader.TileMode.CLAMP,
+    )
+    private val endMatrix = Matrix()
+    private val endPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        shader = endFadeShader
+    }
 
     // --- Bucle ---
     private var aggregatedVisible = false
@@ -218,6 +269,69 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
             val r = h / 2f
             clip.addRoundRect(0f, 0f, w.toFloat(), h.toFloat(), r, r, Path.Direction.CW)
         }
+        updateGeometry()
+    }
+
+    /**
+     * Única fuente de la geometría de la pastilla A, recalculada con el
+     * tamaño real en cada layout (perfiles de altura y modo mini):
+     * - la zona libre del cronómetro va del borde máximo del agujero
+     *   (+ [TIMER_HOLE_GAP_DP]) al inicio sólido del degradado de la ✕;
+     * - su centro es el de la pastilla completa; si la caja no cabe así se
+     *   corre dentro de la zona libre, y si la zona es menor que la caja
+     *   se centra en el espacio libre entre agujero y ✕;
+     * - la mini píldora difuminada rodea la caja con [MINI_FEATHER_DP] de
+     *   desvanecido a cada lado.
+     */
+    private fun updateGeometry() {
+        if (mode != Mode.ACCRETION) return
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        hasEndFade = particleEndInsetPx > 0f
+        endSolidX = if (hasEndFade) min(w, w - particleEndInsetPx + endFadePx()) else w
+        if (hasEndFade) {
+            endMatrix.setScale(endFadePx(), 1f)
+            endMatrix.postTranslate(max(0f, w - particleEndInsetPx), 0f)
+            endFadeShader.setLocalMatrix(endMatrix)
+        }
+        val half = timerBoxW / 2f
+        val left = accretionHoleRightPx(h, dp) + TIMER_HOLE_GAP_DP * dp
+        val right = endSolidX
+        timerCenterXPx = if (right - left >= timerBoxW) {
+            (w / 2f).coerceIn(left + half, right - half)
+        } else {
+            (left + right) / 2f
+        }
+        if (timerBoxW <= 0f) return
+        val feather = MINI_FEATHER_DP * dp
+        miniRx = half + feather
+        miniRy = timerBoxH / 2f + feather
+        val inner = min(half / miniRx, (timerBoxH / 2f) / miniRy).coerceIn(0.2f, 0.9f)
+        if (miniShader == null || miniShaderKey != inner) {
+            miniShaderKey = inner
+            miniShader = RadialGradient(
+                0f, 0f, 1f,
+                intArrayOf(colorHole, colorHole, (colorHole and 0x00FFFFFF) or 0x66000000, colorHole and 0x00FFFFFF),
+                floatArrayOf(0f, inner, inner + (1f - inner) * 0.55f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+            miniPaint.shader = miniShader
+        }
+        miniMatrix.setScale(miniRx, miniRy)
+        miniMatrix.postTranslate(timerCenterXPx, h / 2f)
+        miniShader?.setLocalMatrix(miniMatrix)
+    }
+
+    private fun endFadePx(): Float = END_FADE_DP * dp
+
+    /** Atenuación 0..1 de una partícula al pasar bajo la mini píldora del cronómetro. */
+    private fun timerClearance(x: Float, y: Float, cy: Float): Float {
+        if (timerBoxW <= 0f || phase != Phase.RECORDING) return 1f
+        val dx = (x - timerCenterXPx) / miniRx
+        val dy = (y - cy) / miniRy
+        val d = hypot(dx, dy)
+        return ((d - 0.3f) / 0.6f).coerceIn(0f, 1f)
     }
 
     // ------------------------------------------------------------------
@@ -337,7 +451,8 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
                     continue
                 }
                 val d = ((px[i] - cx) / (w - cx)).coerceIn(0f, 1f)
-                val a = min(1f, 0.25f + d * 0.9f) * ((w - px[i]) / (20f * dp) + 0.2f).coerceIn(0f, 1f)
+                val a = min(1f, 0.25f + d * 0.9f) * ((w - px[i]) / (20f * dp) + 0.2f).coerceIn(0f, 1f) *
+                    timerClearance(px[i], py[i], cy)
                 val color = if (d < 0.18f) colorHot else if (d < 0.45f) colorEmber else colorFg
                 val k = 0.45f + 0.55f * d
                 when (pkind[i]) {
@@ -359,6 +474,12 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
                     }
                 }
             }
+        }
+        if (phase == Phase.RECORDING) {
+            if (timerBoxW > 0f) canvas.drawOval(
+                timerCenterXPx - miniRx, cy - miniRy, timerCenterXPx + miniRx, cy + miniRy, miniPaint,
+            )
+            if (hasEndFade) canvas.drawRect(max(0f, viewW - particleEndInsetPx), 0f, viewW, h, endPaint)
         }
         val k = when (phase) {
             Phase.RECORDING -> vol
@@ -477,6 +598,13 @@ class HorizonView(context: Context, val mode: Mode) : View(context) {
             val halo = r * (HALO_MIN_K + HALO_GROW_K)
             return cx + max(ring, halo)
         }
+
+        /** Degradado de la ✕ (transparente a hz_hole) y desvanecido de la mini píldora del cronómetro. */
+        const val END_FADE_DP = 22f
+        const val MINI_FEATHER_DP = 9f
+
+        /** Ancho del degradado del extremo derecho para la densidad dada. */
+        fun endFadeWidthPx(density: Float): Float = END_FADE_DP * density
 
         /** Tope de partículas en la pastilla (pool fijo). */
         const val MAX_PARTICLES = 60

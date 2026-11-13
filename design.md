@@ -211,7 +211,11 @@ El nivel de entrada real (RMS → dB → 0..1 con piso de ruido, ataque rápido 
 | **A · Acreción** | Pastilla del teclado y pastilla de dictado de la app | Agujero a la izquierda con anillo cuyo grosor y halo siguen el volumen (destello `hot` con volumen alto); entran por la derecha puntos, rayas y 0/1/{/} en mono que convergen al agujero (más y más rápido cuanto más fuerte; goteo mínimo en silencio), color on-hole → brasa → destello al acercarse | Nada entra; arco con cola gira sobre el anillo y salen renglones hacia la derecha que se frenan y desvanecen |
 | **C · Corona** | Burbuja y barra flotante, teclado mini sin pastilla | ~44 espigas radiales cuya longitud sigue el volumen | Arco giratorio |
 
-- Fondo siempre `hole` (también en claro); partículas en on-hole/brasa/destello. El cronómetro va en mono sobre su propio fondo `hole`, a ≥ 8 dp del borde máximo del agujero (anillo más grueso y halo a volumen máximo, `HorizonView.accretionHoleRightPx`); las partículas nacen a la izquierda de la ✕ (`particleEndInsetPx`) y pasan por detrás del fondo del cronómetro.
+- Fondo siempre `hole` (también en claro); partículas en on-hole/brasa/destello. **Sin rectángulos de corte recto** sobre la animación:
+  - *Cronómetro* (pastilla de la app): mono, 13,5 pt, **centrado en la pastilla completa** (si en anchos mínimos o con letra grande chocara con el agujero o con la ✕, se centra en el espacio libre entre ambos; siempre a ≥ 8 dp del borde máximo del agujero). Lleva detrás una *mini píldora* difuminada: cápsula color `hole` apenas más grande que el texto (8 dp horizontal, 3 dp vertical) cuyo borde se desvanece hacia afuera ~9 dp (cápsulas concéntricas con alfa acumulado precalculado; sin blur ni capas). Las partículas pasan por detrás y se atenúan según la distancia al texto, de modo que el número siempre se lee.
+  - *✕ de cancelar*: sin bloque; el extremo derecho es un degradado horizontal de transparente a `hole` (~22 dp) sobre el que va la ✕ (área táctil ≥ 44 dp). Las partículas nacen con fundido de entrada antes del degradado.
+  - La geometría (agujero, cronómetro, ✕) sale de una sola fuente (`HoleGeometry`) usada por layout, pintor y simulación.
+- **Corte limpio** al pasar de grabando a pensando (y a reposo): se vacían al instante las partículas de la grabación (no terminan de caer) y arranca solo la animación de pensando, como en el teclado nativo.
 - **Widget** (RemoteViews, sin vistas propias ni dibujo por cuadro): versión A en `AnimatedVectorDrawable` dentro de un `ProgressBar` indeterminado, por niveles (ver §14).
 - Presupuesto: ≤ 60 partículas en pastilla, pool fijo, sin asignaciones por cuadro; el animador se detiene fuera de grabando/pensando o con la vista oculta.
 - Reducir movimiento / animaciones del sistema desactivadas: anillo fijo cuyo grosor sigue el volumen, sin partículas, espigas ni arco.
@@ -333,6 +337,24 @@ Paneles: buscador de snippets sobre `kb_key_bg` (dentro del teclado `hz_surf2` c
 - Cambio de capa (letras ↔ código ↔ snippets): crossfade + slide sutil 150–200 ms.
 - Micrófono: reposo = agujero (`hz_hole` + anillo brasa + glifo on-hole); grabando = pastilla A (Acreción) con cronómetro mono y ✕; procesando = A en modo pensando. Vista nativa `HorizonView` (modos `ACCRETION`/`CORONA`, §8).
 - Reduced Motion: crossfades directos sin rebote y anillo estático cuyo grosor sigue el volumen (igual que §9).
+
+### Avisos del teclado (cápsula superpuesta)
+
+Los avisos (cambio mini/completo, ciclo de mayúsculas, errores de dictado, conexión perdida) son una **cápsula flotante** y no una fila: se dibujan en un marco que envuelve la raíz del teclado (`StatusLayer`, `noticeHost`), centrada sobre la barra de herramientas y dentro de los límites actuales. **No cambian la altura, las mediciones ni los insets**, no empujan ninguna tecla y fuera de la cápsula los toques llegan al teclado.
+
+- **Aspecto:** 32 dp visibles (fila táctil de 44 dp), radio completo (16 dp si el texto ocupa 2 líneas), padding horizontal 14 dp, ancho según contenido hasta el ancho del teclado − 32 dp, texto en una línea con elipsis (máx. 2). Fondo `hz_hole`, texto `hz_on_hole` en Inter medium 13 sp, borde 1 dp `hz_ember` con alfa bajo.
+- **Error:** borde y punto inicial (6 dp) en `kb_danger`. **Con acción** (`Reintentar`/`Retry`): la acción en `hz_ember` semibold con target ≥ 44 dp.
+- **Animación:** entrada 160 ms (alfa 0→1 + 6 dp hacia arriba, desaceleración), salida 180 ms (alfa → 0). Un aviso nuevo con otro visible solo cambia el texto con un fundido corto (sin reiniciar la entrada ni apilar vistas). Con las animaciones del sistema desactivadas (`ValueAnimator.areAnimatorsEnabled()`), aparece y desaparece sin movimiento.
+- **Duración:** informativo 1,4 s; error 3 s; con acción (o que abre Ajustes) 4 s. Tocar la cápsula fuera de la acción la cierra. Los temporizadores y animaciones se cancelan al reconstruir, ocultar la ventana o destruir el servicio.
+- **Accesibilidad:** no toma el foco de escritura; el texto se anuncia a TalkBack (`announceForAccessibility`).
+
+### Pastilla de grabación del teclado (cronómetro y ✕)
+
+La geometría sale de una única fuente, `HorizonView.updateGeometry()`, recalculada con el tamaño real de la pastilla en cada layout (perfiles de altura y modo mini):
+
+- **Cronómetro** en JetBrains Mono 11, **centrado en la pastilla completa**; si no cabe entre el borde máximo del agujero (+ 8 dp) y el inicio sólido de la ✕, se corre dentro de ese espacio libre (o se centra en él si es menor que el texto).
+- **Sin rectángulo opaco:** detrás del número, una **mini píldora `hz_hole` difuminada** (degradado radial elíptico, ~9 dp de desvanecido a cada lado, sin blur). Las partículas pasan por detrás y multiplican su alfa por la distancia al centro del cronómetro, así el número siempre se lee.
+- **✕ de cancelar:** sin bloque de borde recto; el extremo derecho se resuelve con un degradado horizontal transparente → `hz_hole` de 22 dp bajo la ✕ (área táctil ≥ 44 dp, mismo `contentDescription`). Las partículas nacen con fundido antes de ese degradado.
 
 ### Reglas específicas del teclado
 

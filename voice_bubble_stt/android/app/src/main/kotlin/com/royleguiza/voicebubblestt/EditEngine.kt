@@ -45,7 +45,7 @@ internal fun warnDeadConnection(service: InputMethodService, isSpanish: Boolean 
     val msg = if (isSpanish) StatusLayer.NOTICE_DEAD_CONNECTION_ES else StatusLayer.NOTICE_DEAD_CONNECTION_EN
     val status = StatusLayer.activeInstance
     if (status != null) {
-        status.show(msg)
+        status.show(msg, isError = true)
     } else {
         try {
             android.os.Handler(android.os.Looper.getMainLooper()).post {
