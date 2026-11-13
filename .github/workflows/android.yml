@@ -2,7 +2,7 @@ name: Android Debug APK
 
 on:
   push:
-    branches: [main, horizonte]
+    branches: [main]
     paths-ignore:
       - '*.md'
   workflow_dispatch:
