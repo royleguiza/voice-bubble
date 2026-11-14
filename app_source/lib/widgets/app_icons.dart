@@ -2,6 +2,7 @@
 ///
 /// - `kIconSmall` (18): acciones en línea (copiar, nube en listas).
 /// - `kIconMedium` (22): tabs, botones de barra, estados.
+/// - `kIconBar` (24): barras flotantes del editor (como el widget).
 /// - `kIconLarge` (28): headers de sheets, estados vacíos.
 ///
 /// Prohibido `Icon(..., size: <otro>)` fuera de esta tabla ni mezclar
@@ -10,5 +11,6 @@
 class AppIcons {
   static const double small = 18;
   static const double medium = 22;
+  static const double bar = 24;
   static const double large = 28;
 }

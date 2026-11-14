@@ -8,6 +8,7 @@ import '../services/notes_service.dart';
 import '../services/gemini_key_store.dart';
 import '../services/gemini_note_service.dart';
 import '../services/widget_service.dart';
+import '../ui/ai_loaders.dart';
 import '../ui/design_tokens.dart';
 import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
@@ -43,13 +44,16 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   final _geminiKeyStore = GeminiKeyStore();
   bool _geminiReady = false;
   bool _geminiBusy = false;
+
+  /// Acción de IA en curso ('titulo' o 'resumir'): elige la animación.
+  String? _geminiOp;
   bool _saving = false;
 
   /// El contador del título solo aparece cerca del límite.
   static const int _titleCounterFrom = 60;
 
   /// Alto de la barra de herramientas flotante (sin el margen inferior).
-  static const double _toolbarHeight = 56;
+  static const double _toolbarHeight = 60;
 
   @override
   void initState() {
@@ -100,7 +104,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       setState(() => _geminiReady = false);
       return;
     }
-    if (mounted) setState(() => _geminiBusy = true);
+    if (mounted) {
+      setState(() {
+        _geminiBusy = true;
+        _geminiOp = accion;
+      });
+    }
     String? resultado;
     Object? error;
     try {
@@ -114,7 +123,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       error = e;
     }
     if (!mounted) return;
-    setState(() => _geminiBusy = false);
+    setState(() {
+      _geminiBusy = false;
+      _geminiOp = null;
+    });
     if (error != null) {
       final msg = error is GeminiException
           ? error.message
@@ -414,15 +426,26 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                             ),
                           ),
                         ),
-                        if (_geminiReady && _titleCtrl.text.trim().isEmpty)
-                          IconButton(
-                            key: const ValueKey('geminiTituloIcon'),
-                            icon: Icon(Icons.auto_awesome_rounded,
-                                size: AppIcons.medium, color: accent),
-                            tooltip: 'Generar título con IA',
-                            onPressed: _geminiBusy
-                                ? null
-                                : () => _runGemini('titulo'),
+                        if (_geminiReady &&
+                            (_titleCtrl.text.trim().isEmpty ||
+                                _geminiOp == 'titulo'))
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: _GlassCircleButton(
+                              key: const ValueKey('geminiTituloIcon'),
+                              tooltip: 'Generar título con IA',
+                              onPressed: _geminiBusy
+                                  ? null
+                                  : () => _runGemini('titulo'),
+                              child: _geminiOp == 'titulo'
+                                  ? const AiLoader(kind: AiLoaderKind.title)
+                                  : AiIcon(
+                                      glyph: AiGlyph.star,
+                                      size: AppIcons.bar,
+                                      color: isDark
+                                          ? kEmberTextDark
+                                          : kEmberTextLight),
+                            ),
                           ),
                       ],
                     ),
@@ -515,10 +538,14 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                           if (_geminiReady)
                             _ToolButton(
                               key: const ValueKey('geminiResumirButton'),
-                              icon: Icons.summarize_outlined,
                               tooltip: 'Resumir con IA',
-                              color: accent,
-                              busy: _geminiBusy,
+                              color: primary,
+                              custom: _geminiOp == 'resumir'
+                                  ? const AiLoader(kind: AiLoaderKind.summary)
+                                  : AiIcon(
+                                      glyph: AiGlyph.lines,
+                                      size: AppIcons.bar,
+                                      color: primary),
                               onPressed: _geminiBusy
                                   ? null
                                   : () => _runGemini('resumir'),
@@ -549,21 +576,25 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   }
 }
 
-/// Botón de ícono circular sólido de 44 dp (mismo que Ajustes en Inicio).
+/// Botón de ícono circular sólido de 48 dp (como los del widget).
 class _GlassCircleButton extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
   final double iconSize;
   final String tooltip;
-  final Color color;
+  final Color? color;
   final VoidCallback? onPressed;
+
+  /// Contenido propio en lugar de [icon] (ícono o carga de la IA).
+  final Widget? child;
 
   const _GlassCircleButton({
     super.key,
-    required this.icon,
+    this.icon,
     required this.tooltip,
-    required this.color,
+    this.color,
     required this.onPressed,
     this.iconSize = AppIcons.medium,
+    this.child,
   });
 
   @override
@@ -579,9 +610,10 @@ class _GlassCircleButton extends StatelessWidget {
           child: Tooltip(
             message: tooltip,
             child: SizedBox(
-              width: 44,
-              height: 44,
-              child: Icon(icon, size: iconSize, color: color),
+              width: 48,
+              height: 48,
+              child: Center(
+                  child: child ?? Icon(icon, size: iconSize, color: color)),
             ),
           ),
         ),
@@ -615,8 +647,8 @@ class _SaveButton extends StatelessWidget {
           duration:
               motionSafe ? const Duration(milliseconds: 200) : Duration.zero,
           curve: kCurveFade,
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: enabled ? accent : (isDark ? kFillDark : kFillLight),
@@ -629,7 +661,7 @@ class _SaveButton extends StatelessWidget {
               onTap: enabled ? onPressed : null,
               child: Icon(
                 Icons.check_rounded,
-                size: AppIcons.medium,
+                size: AppIcons.bar,
                 color: enabled
                     ? kOnEmber
                     : (isDark ? kLabelTertiaryDark : kLabelTertiaryLight),
@@ -645,19 +677,21 @@ class _SaveButton extends StatelessWidget {
 /// Acción de la barra flotante: solo icono, 48 dp, nombre en tooltip y
 /// para lectores de pantalla.
 class _ToolButton extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
   final String tooltip;
   final Color color;
   final VoidCallback? onPressed;
-  final bool busy;
+
+  /// Contenido propio en lugar de [icon] (ícono o carga de la IA).
+  final Widget? custom;
 
   const _ToolButton({
     super.key,
-    required this.icon,
+    this.icon,
     required this.tooltip,
     required this.color,
     required this.onPressed,
-    this.busy = false,
+    this.custom,
   });
 
   @override
@@ -665,14 +699,11 @@ class _ToolButton extends StatelessWidget {
     return IconButton(
       tooltip: tooltip,
       onPressed: onPressed,
-      constraints: const BoxConstraints(minWidth: 52, minHeight: 48),
-      icon: busy
-          ? SizedBox(
-              width: AppIcons.small,
-              height: AppIcons.small,
-              child: CircularProgressIndicator(strokeWidth: 2, color: color),
-            )
-          : Icon(icon, size: AppIcons.medium, color: color),
+      constraints: const BoxConstraints(minWidth: 56, minHeight: 52),
+      padding: EdgeInsets.zero,
+      // Deshabilitado mientras la IA trabaja: la animación conserva su color.
+      disabledColor: color,
+      icon: custom ?? Icon(icon, size: AppIcons.bar, color: color),
     );
   }
 }
