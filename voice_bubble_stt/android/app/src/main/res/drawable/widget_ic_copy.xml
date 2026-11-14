@@ -11,12 +11,12 @@
         android:strokeColor="@color/kb_label"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="1.8" />
+        android:strokeWidth="2.2" />
     <path
         android:fillColor="#00000000"
         android:pathData="M5,15V6a2,2 0 0,1 2,-2h8"
         android:strokeColor="@color/kb_label"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="1.8" />
+        android:strokeWidth="2.2" />
 </vector>

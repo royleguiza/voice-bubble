@@ -330,7 +330,7 @@ class WidgetNoteEditActivity : Activity() {
         if (cachedBodyMinPx > 0) return cachedBodyMinPx
         val density = resources.displayMetrics.density
         if (density <= 0) return 0
-        cachedBodyMinPx = (120 * density).toInt()
+        cachedBodyMinPx = (140 * density).toInt()
         return cachedBodyMinPx
     }
 

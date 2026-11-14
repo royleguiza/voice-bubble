@@ -3,7 +3,8 @@
      con IA sin abrir ninguna ventana. Solo "Editar" abre la hoja con teclado.
      Horizonte (design.md §14): volver/editar como botones de ícono
      circulares sólidos, título Sora, fecha mono, cuerpo Inter; abajo tres
-     botones parejos surf2 radio 10 (IA en ember-t). -->
+     botones circulares iguales (copiar · título IA en ember-t · resumen),
+     cada uno centrado en un tercio del ancho. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -78,7 +79,7 @@
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 android:layout_gravity="center"
-                android:src="@drawable/ic_edit" />
+                android:src="@drawable/widget_ic_edit" />
         </FrameLayout>
     </LinearLayout>
 
@@ -128,7 +129,7 @@
         android:textColor="@color/kb_label_secondary"
         android:visibility="gone" />
 
-    <!-- Acciones de la nota. -->
+    <!-- Acciones de la nota: botones circulares como volver/editar. -->
     <LinearLayout
         android:id="@+id/widget_detail_actions"
         android:layout_width="match_parent"
@@ -138,70 +139,86 @@
         android:gravity="center_vertical">
 
         <FrameLayout
-            android:id="@+id/widget_detail_copy"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_secondary_bg"
-            android:contentDescription="Copiar contenido">
+            android:layout_height="match_parent"
+            android:layout_weight="1">
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+            <FrameLayout
+                android:id="@+id/widget_detail_copy"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="center"
-                android:src="@drawable/widget_ic_copy" />
+                android:background="@drawable/widget_icon_btn_bg"
+                android:contentDescription="Copiar contenido">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/widget_ic_copy" />
+            </FrameLayout>
         </FrameLayout>
 
         <FrameLayout
-            android:id="@+id/widget_detail_ai_title"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/widget_secondary_bg"
-            android:contentDescription="Generar título con IA">
+            android:layout_height="match_parent"
+            android:layout_weight="1">
 
-            <ImageView
-                android:id="@+id/widget_detail_ai_title_icon"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+            <FrameLayout
+                android:id="@+id/widget_detail_ai_title"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="center"
-                android:src="@drawable/widget_ic_title" />
+                android:background="@drawable/widget_icon_btn_bg"
+                android:contentDescription="Generar título con IA">
 
-            <ProgressBar
-                android:id="@+id/widget_detail_ai_title_progress"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="center"
-                android:indeterminateTint="@color/hz_ember_t"
-                android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/widget_detail_ai_title_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/widget_ic_title" />
+
+                <ProgressBar
+                    android:id="@+id/widget_detail_ai_title_progress"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:indeterminateTint="@color/hz_ember_t"
+                    android:visibility="gone" />
+            </FrameLayout>
         </FrameLayout>
 
         <FrameLayout
-            android:id="@+id/widget_detail_ai_summary"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/widget_secondary_bg"
-            android:contentDescription="Resumir con IA">
+            android:layout_height="match_parent"
+            android:layout_weight="1">
 
-            <ImageView
-                android:id="@+id/widget_detail_ai_summary_icon"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
+            <FrameLayout
+                android:id="@+id/widget_detail_ai_summary"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="center"
-                android:src="@drawable/widget_ic_restructure" />
+                android:background="@drawable/widget_icon_btn_bg"
+                android:contentDescription="Resumir con IA">
 
-            <ProgressBar
-                android:id="@+id/widget_detail_ai_summary_progress"
-                style="?android:attr/progressBarStyleSmall"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="center"
-                android:indeterminateTint="@color/kb_label"
-                android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/widget_detail_ai_summary_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/widget_ic_restructure" />
+
+                <ProgressBar
+                    android:id="@+id/widget_detail_ai_summary_progress"
+                    style="?android:attr/progressBarStyleSmall"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:indeterminateTint="@color/kb_label"
+                    android:visibility="gone" />
+            </FrameLayout>
         </FrameLayout>
     </LinearLayout>
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Hoja de edición del widget (Horizonte fase 4, design.md §14): hoja
-     sólida bg + line radio 22 con agarradera line, campos surf + line
-     radio 12 y botones de ícono parejos surf + line radio 10; guardar es el
+     sólida bg + line radio 30 con agarradera line, campos surf + line
+     radio 18 y botones de ícono circulares surf + line; guardar es el
      único en brasa (check on-ember). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/overlay_root"
@@ -31,7 +31,8 @@
             android:id="@+id/btn_expand_handle"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:layout_marginTop="-14dp"
+            android:layout_marginTop="-16dp"
+            android:layout_marginBottom="-18dp"
             android:contentDescription="Arrastrar para ampliar">
 
             <View
@@ -55,7 +56,7 @@
             android:id="@+id/edit_title_wrap"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="8dp"
             android:orientation="vertical">
 
             <com.royleguiza.voicebubblestt.DismissEditText
@@ -77,8 +78,8 @@
         <com.royleguiza.voicebubblestt.DismissEditText
             android:id="@+id/edit_body"
             android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:layout_marginTop="10dp"
+            android:layout_height="140dp"
+            android:layout_marginTop="8dp"
             android:hint="Escribir nota…"
             android:textSize="14sp"
             android:fontFamily="@font/inter"

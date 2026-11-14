@@ -6,7 +6,7 @@ Auditoría C-40: cuerpo expandible con tirador en la modal [S]
 
 Verifica:
 1. Layout: tarjeta con id, tirador 48dp full-width con píldora
-   36x4 + descripción, cuerpo base 120dp.
+   36x4 + descripción, cuerpo base 140dp.
 2. Activity: helpers puros clampBodyHeight/computeBodyMaxPx, listener
    con DOWN/MOVE/UP/CANCEL/POINTER_UP, seguimiento de un puntero,
    doble-tap que alterna, recálculo en insets; solo el cuerpo cambia.
@@ -61,8 +61,8 @@ class TestC40ExpandableNoteBodySuite(unittest.TestCase):
                       "Color del token del sistema")
         body_tag = xml.split('@+id/edit_body"')[0].split("<com.royleguiza")[-1]
         body_tag += xml.split('@+id/edit_body"')[1].split("/>")[0]
-        self.assertIn('android:layout_height="120dp"', body_tag,
-                      "El cuerpo arranca en 120dp como hoy")
+        self.assertIn('android:layout_height="140dp"', body_tag,
+                      "El cuerpo arranca en 140dp (2026-11-14: más espacio)")
 
     def test_02_helpers_puros_y_clamp(self):
         pure = read_file(DISMISS)

@@ -85,10 +85,10 @@ check("Sin círculos blancos en botones de reposo",
       "widget_mic_bg" not in xml.split('@+id/widget_bottom_bar')[1] if '@+id/widget_bottom_bar' in xml else False)
 # Horizonte fase 4: widget sólido (sin vidrio), fuentes y tintes legibles.
 _wbg = (RES / "drawable/widget_bg.xml").read_text()
-check("Contenedor sólido: hz_bg + borde 1dp hz_line + radio 22",
+check("Contenedor sólido: hz_bg + borde 1dp hz_line + radio 30",
       'android:background="@drawable/widget_bg"' in xml
       and "@color/hz_bg" in _wbg and 'android:width="1dp" android:color="@color/hz_line"' in _wbg
-      and 'android:radius="22dp"' in _wbg)
+      and 'android:radius="30dp"' in _wbg)
 # Fondos (los íconos llevan fillColor #00000000 de trazo, que no es vidrio).
 _widget_drawables = sorted(f for f in (RES / "drawable").glob("widget_*.xml")
                            if not f.name.startswith("widget_ic_")
@@ -106,8 +106,9 @@ check("Fuentes Horizonte en el widget (Sora títulos, Inter lectura, mono horas)
       and '@font/inter' in (RES / "layout/widget_detail_paragraph.xml").read_text())
 check("Íconos del widget sobre superficie en ember-t (no brasa de relleno)",
       "@color/kb_key_bg_accent" not in xml and "@color/hz_ember_t" in xml)
-check("Lector: copiar · IA · resumen parejos surf2 radio 10, IA en ember-t",
-      _detail.count('android:background="@drawable/widget_secondary_bg"') >= 4
+check("Lector: copiar · IA · resumen circulares como volver/editar, IA en ember-t",
+      _detail.split('@+id/widget_detail_actions')[1].split('widget_detail_summary_actions')[0]
+      .count('android:background="@drawable/widget_icon_btn_bg"') == 3
       and "@color/hz_surf2" in (RES / "drawable/widget_secondary_bg.xml").read_text()
       and "@color/hz_ember_t" in (RES / "drawable/widget_ic_title.xml").read_text()
       and 'android:background="@drawable/widget_primary_bg"' in _detail)
@@ -220,16 +221,16 @@ check("Tarjeta overlay = hoja sólida (bg + line, sin vidrio)",
 check("Botones overlay sólidos (surf + line) y guardar en brasa",
       over.count('@+id/btn_cancel') >= 1 and 'widget_sheet_btn_bg' in over.split('@+id/btn_cancel')[1][:500]
       and 'widget_primary_bg' in over.split('@+id/btn_save')[1][:500])
-# Horizonte: íconos con trazo 1.8 redondeado (antes "trazo grueso" 2.8-3.2).
+# Horizonte: íconos del widget con trazo 2.2 redondeado (2026-11-14; antes 1.8).
 def _stroke_18(_icon):
     _t = (RES / f"drawable/{_icon}.xml").read_text()
     _w = re.findall(r'strokeWidth="([\d.]+)"', _t)
-    return (bool(_w) and set(_w) == {"1.8"}
+    return (bool(_w) and set(_w) == {"2.2"}
             and _t.count('strokeLineCap="round"') == len(_w)
             and _t.count('strokeLineJoin="round"') == len(_w)), _t[:120]
 for _icon in ("widget_ic_x", "widget_ic_check"):
     _ok, _t = _stroke_18(_icon)
-    check(f"Trazo Horizonte 1.8 redondeado {_icon}", _ok, _t)
+    check(f"Trazo Horizonte 2.2 redondeado {_icon}", _ok, _t)
 check("Overlay sobre el teclado (insets + resize)",
       "overlay_root" in act and "systemWindowInsetBottom" in act and "SOFT_INPUT_ADJUST_RESIZE" in act)
 check("Márgenes laterales iguales (12dp)", 'paddingStart="12dp"' in over and 'paddingEnd="12dp"' in over)
@@ -253,7 +254,7 @@ check("Overlay pendiente oculta guardar/copiar y muestra play",
       and 'R.id.slot_save' in act and 'R.id.slot_copy' in act and 'R.id.slot_play' in act
       and 'View.GONE' in act)
 _ok, _t = _stroke_18("widget_ic_pause")
-check("Trazo Horizonte 1.8 redondeado widget_ic_pause", _ok, _t)
+check("Trazo Horizonte 2.2 redondeado widget_ic_pause", _ok, _t)
 _t = (RES / "drawable/widget_ic_play.xml").read_text()
 check("Play relleno del set P en ember-t (widget_ic_play)",
       'android:fillColor="@color/hz_ember_t"' in _t and "M7,4l13,8 -13,8z" in _t, _t[:120])
@@ -427,9 +428,9 @@ check("Píldora visible también al procesar/guardar",
 check("Título visible con placeholder",
       'android:hint="Sin título"' in over and 'edit_title_wrap' in over
       and 'visibility="gone"' not in over.split('edit_title_wrap')[1][:300])
-check("Botones de ícono parejos sólidos (surf + line, radio 10)",
+check("Botones de ícono circulares sólidos (surf + line, radio 24 sobre 48)",
       over.count('@drawable/widget_sheet_btn_bg') >= 3
-      and '<corners android:radius="10dp" />' in (RES / "drawable/widget_sheet_btn_bg.xml").read_text())
+      and '<corners android:radius="24dp" />' in (RES / "drawable/widget_sheet_btn_bg.xml").read_text())
 check("Cierre al tocar fuera", "setFinishOnTouchOutside(true)" in act)
 check("Reutiliza instancia (onNewIntent)", "onNewIntent" in act)
 
@@ -617,13 +618,13 @@ check("Botonera equitativa (slots de igual peso, sin huecos indebidos)",
       and all(s in over for s in ('@+id/slot_delete', '@+id/slot_play', '@+id/slot_copy', '@+id/slot_save'))
       and 'btn_delete_gap' not in over and 'btn_play_gap' not in over)
 check("Fila de botones sin espaciadores fijos (reparto por peso)",
-      '<Space' not in over.split('layout_marginTop="10dp"')[1])
+      '<Space' not in over.split('@+id/classic_row')[1])
 check("Icono tacho existe (path trash del set P) y rojo peligro",
       (RES / "drawable/widget_ic_delete.xml").exists()
       and 'M5,7h14M10,7V4h4v3M7,7l1,13h8l1,-13' in (RES / "drawable/widget_ic_delete.xml").read_text()
       and '@color/hz_danger' in (RES / "drawable/widget_ic_delete.xml").read_text())
 _ok_del, _t_del = _stroke_18("widget_ic_delete")
-check("Trazo Horizonte 1.8 redondeado widget_ic_delete", _ok_del, _t_del)
+check("Trazo Horizonte 2.2 redondeado widget_ic_delete", _ok_del, _t_del)
 check("Tacho solo en edicion (nota nueva y pendiente sin borrar)",
       'R.id.btn_delete' in act
       and 'setOnClickListener { confirmDelete() }' in act

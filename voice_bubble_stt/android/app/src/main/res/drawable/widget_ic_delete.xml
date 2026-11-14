@@ -11,5 +11,5 @@
         android:strokeColor="@color/hz_danger"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="1.8" />
+        android:strokeWidth="2.2" />
 </vector>

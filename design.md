@@ -397,20 +397,22 @@ RemoteViews no admite vistas propias ni dibujo por cuadro: todo es drawable XML 
 
 | Pieza | Regla | Recurso |
 |---|---|---|
-| Contenedor (lista y lector) | `hz_bg` sólido, borde 1 dp `hz_line`, radio 22 | `widget_bg` |
+| Contenedor (lista y lector) | `hz_bg` sólido, borde 1 dp `hz_line`, radio 30 (acompaña los botones circulares) | `widget_bg` |
 | Encabezado | «Notas» Sora 600; contador `15 / 50` y pendientes en mono fg2, sin pastilla | — |
-| Tarjeta de nota | La de la app: `hz_surf` + line, radio 14; título Sora 600, cuerpo Inter 2 líneas fg2, fecha mono fg2, marca de audio ember-t | `widget_note_card_bg`, `widget_ic_audio` |
+| Tarjeta de nota | `hz_surf` + line, radio 20 en el widget (14 en la app); título Sora 600, cuerpo Inter 2 líneas fg2, fecha mono fg2, marca de audio ember-t | `widget_note_card_bg`, `widget_ic_audio` |
 | Audio pendiente | La misma tarjeta con un agujero chico y el estado en ember-t | `widget_hole_bg` |
 | «+» | Botón de ícono circular sólido (surf + line), glifo ember-t | `widget_icon_btn_bg` |
 | Micrófono | **Agujero**: círculo `hz_hole` con anillo `hz_ember` de 2 dp, glifo on-hole | `widget_hole_bg` |
 | Grabando / procesando / guardado | Píldora agujero (`hz_hole` + anillo brasa de 1.5 dp), tiempo en mono on-hole, X de cancelar (danger). A la izquierda, en su propio cuadro de 88 × 44 dp (las partículas nunca pasan sobre el cronómetro ni la X), la **voz animada**: `ProgressBar` indeterminado con un `AnimatedVectorDrawable` en bucle (agujero + 6/11/16 partículas que caen a él, claro → brasa → destello, inicios desfasados). Tres variantes por nivel (goteo / medio / fuerte); el servicio solo alterna la visible con `partiallyUpdateAppWidget` cuando cambia el nivel (histéresis, ≤ ~3 cambios/s, `WidgetVoiceLevel`). Procesando = anillo girando; guardado/pendiente o animaciones del sistema desactivadas = anillo estático. AVD generados por script (fuera del repo) | `widget_rec_bar_bg`, `widget_voice_{low,mid,high,think,static}` |
-| Lector | Volver y editar como botones de ícono circulares (44 dp); título Sora 600, fecha mono, cuerpo Inter con interlineado 1.5; abajo copiar · título IA · resumen como botones parejos `hz_surf2` radio 10 (IA en ember-t) | `widget_secondary_bg`, `widget_ic_title` |
+| Lector | Volver y editar como botones de ícono circulares (44 dp); título Sora 600, fecha mono, cuerpo Inter con interlineado 1.5; abajo copiar · título IA · resumen como botones de ícono circulares de 48 dp (surf + line, como volver/editar), uno por tercio del ancho (IA en ember-t, estrella centrada) | `widget_icon_btn_bg`, `widget_ic_title` |
 | IA: resultado | Primario (Reemplazar, Escuchar y transcribir) en brasa con texto on-ember; secundario (Descartar) surf2 | `widget_primary_bg`, `widget_secondary_bg` |
 | Íconos sobre superficie clara | `hz_ember_t` (nunca `kb_key_bg_accent`/ember como glifo fino: 2.77:1 en claro) | — |
 
 ### Hoja de edición del widget
 
-Hoja sólida `hz_bg` + line, radio 22, sin sombra (la separa el velo), agarradera `hz_line`. Título («Nueva nota» / «Editar nota» / «Audio sin transcribir») en Sora 600. Campos como en la app: `hz_surf` + line, radio 12, Inter (título semibold). Fila de acciones como botones de ícono parejos (`hz_surf` + line, radio 10): cancelar (fg2), borrar (danger), título IA (ember-t), resumen, copiar y **guardar como único botón brasa** con check on-ember. Diálogos de confirmación: misma hoja; secundario surf2, primario brasa, eliminar danger.
+Hoja sólida `hz_bg` + line, radio 30, sin sombra (la separa el velo), agarradera `hz_line` con el título pegado debajo (la zona táctil de 48 dp se superpone). Título («Nueva nota» / «Editar nota» / «Audio sin transcribir») en Sora 600. Campos `hz_surf` + line, radio 18, Inter (título semibold); cuerpo desde 140 dp. Fila de acciones como botones de ícono circulares (`hz_surf` + line, 48 dp): cancelar (fg2), borrar (danger), título IA (ember-t), resumen, copiar y **guardar como único botón brasa** con check on-ember. Diálogos de confirmación: misma hoja; secundario surf2, primario brasa, eliminar danger.
+
+Íconos del widget (`widget_ic_*`): trazo 2.2 redondeado (el teclado sigue en 1.8).
 
 ### Burbuja y barra flotante
 
