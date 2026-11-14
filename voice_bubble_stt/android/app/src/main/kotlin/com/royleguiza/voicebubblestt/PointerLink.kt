@@ -164,6 +164,16 @@ object PointerLink {
         return true
     }
 
+    /** Pantalla del complemento: estado, prueba de clic y contadores. */
+    fun openCompanionApp(context: Context): Boolean {
+        val intent = try {
+            context.packageManager.getLaunchIntentForPackage(PointerProtocol.COMPANION_PACKAGE)
+        } catch (_: Exception) {
+            null
+        } ?: return false
+        return start(context, intent)
+    }
+
     fun openAccessibilitySettings(context: Context): Boolean = start(
         context,
         Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),

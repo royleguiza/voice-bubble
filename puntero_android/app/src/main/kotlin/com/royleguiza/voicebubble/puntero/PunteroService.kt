@@ -26,6 +26,36 @@ class PunteroService : AccessibilityService() {
         @Volatile
         var isConnected = false
             private set
+
+        /** Servicio en marcha (para la prueba de clic de la pantalla del complemento). */
+        @Volatile
+        private var instance: PunteroService? = null
+
+        // Diagnóstico en memoria desde que arrancó el servicio: solo cuentas,
+        // nunca coordenadas ni a qué app fue el clic (se pierden al cerrarse).
+        @Volatile var received = 0
+            private set
+        @Volatile var done = 0
+            private set
+        @Volatile var cancelled = 0
+            private set
+        @Volatile var rejected = 0
+            private set
+
+        /**
+         * Toque de prueba en (x, y) de pantalla: lo usa la pantalla del
+         * complemento para comprobar que Android ejecuta los gestos.
+         * [result]: true = Android lo completó, false = lo canceló o rechazó.
+         * Devuelve false si el servicio no está en marcha.
+         */
+        fun testTap(x: Float, y: Float, result: (Boolean) -> Unit): Boolean {
+            val s = instance ?: return false
+            val path = Path().apply {
+                moveTo(x, y)
+                lineTo(x, y)
+            }
+            return s.dispatch(path, PointerProtocol.TAP_MS, null) { result(it) }
+        }
     }
 
     private val scroll = ScrollQueue()
@@ -41,6 +71,7 @@ class PunteroService : AccessibilityService() {
                 intent.getFloatExtra(PointerProtocol.EXTRA_DY, 0f),
             ) ?: return
             val seq = intent.getIntExtra(PointerProtocol.EXTRA_SEQ, 0)
+            if (cmd.op != PointerProtocol.OP_SCROLL) received++
             when (cmd.op) {
                 PointerProtocol.OP_TAP -> press(cmd.x, cmd.y, PointerProtocol.TAP_MS, seq)
                 PointerProtocol.OP_LONG_PRESS -> press(cmd.x, cmd.y, PointerProtocol.LONG_PRESS_MS, seq)
@@ -52,6 +83,7 @@ class PunteroService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         isConnected = true
+        instance = this
         if (!registered) {
             val filter = IntentFilter(PointerProtocol.ACTION_POINTER)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -79,10 +111,14 @@ class PunteroService : AccessibilityService() {
             moveTo(x, y)
             lineTo(x, y)
         }
-        val ok = dispatch(path, durationMs, null) { done ->
-            reply(seq, if (done) PointerProtocol.RESULT_DONE else PointerProtocol.RESULT_CANCELLED)
+        val ok = dispatch(path, durationMs, null) { completed ->
+            if (completed) done++ else cancelled++
+            reply(seq, if (completed) PointerProtocol.RESULT_DONE else PointerProtocol.RESULT_CANCELLED)
         }
-        if (!ok) reply(seq, PointerProtocol.RESULT_REJECTED)
+        if (!ok) {
+            rejected++
+            reply(seq, PointerProtocol.RESULT_REJECTED)
+        }
     }
 
     /** Le confirma a VoiceBubble cómo terminó el clic (solo apps con la misma firma lo reciben). */
@@ -151,6 +187,7 @@ class PunteroService : AccessibilityService() {
         }
         scroll.reset()
         isConnected = false
+        if (instance === this) instance = null
     }
 
     override fun onUnbind(intent: Intent?): Boolean {

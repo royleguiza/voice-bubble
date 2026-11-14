@@ -22,6 +22,7 @@ código real:
 """
 
 import os
+from pathlib import Path
 import re
 import sys
 
@@ -219,7 +220,17 @@ check("Trackpad: guía fina de desplazamiento a la derecha", "railW = 24f * d" i
 check("Trackpad: tocar = clic, mantener = clic largo, dos dedos = scroll", "listener.onTap()" in pad and "listener.onLongPress()" in pad and "PadGestures.scrollDelta(" in pad)
 check("Gestos en lógica pura testeada", "import android" not in gest and "PadGesturesTest" in ci)
 check("Colores de la placa en claro y oscuro", all(f'name="{n}"' in c for n in ("dock_pad", "dock_pad_line", "dock_hint") for c in (colors_day, colors_night)))
-check("Puntero: flecha fina del prototipo con sombra", "M2.5 2.2 v18.4" in pom and "setShadowLayer(" in pom and "Color.BLACK" in pom)
+check("Puntero: flecha Horizonte (tinta, borde claro, punto brasa) con sombra",
+      "Flecha esbelta «Horizonte»" in pom and "setShadowLayer(" in pom
+      and "INK = 0xFF08090E" in pom and "PAPER = 0xFFF7F5F0" in pom and "emberPaint" in pom)
+# Diagnóstico (2026-11-14): avisos del complemento dentro del panel (no Toast)
+# y prueba de clic con contadores en la app del complemento.
+check("Avisos del puntero dentro del panel, sin Toast",
+      "Toast.makeText" not in (Path(__file__).parent / "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/FloatingTrackpadService.kt").read_text()
+      and "fun checkCompanion()" in (Path(__file__).parent / "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/FloatingTrackpadService.kt").read_text())
+check("Complemento: prueba de clic y contadores sin coordenadas",
+      "fun testTap(" in pun_svc and "received++" in pun_svc
+      and "Probar el clic" in (Path(__file__).parent / "puntero_android/app/src/main/kotlin/com/royleguiza/voicebubble/puntero/MainActivity.kt").read_text())
 check("Puntero: onda en la punta al hacer clic", "fun triggerClickFeedback(long: Boolean = false)" in pom and "fun animateClick(long: Boolean)" in pom)
 check("Puntero en coordenadas de pantalla completa", "FLAG_LAYOUT_IN_SCREEN" in pom and "fitInsetsTypes = 0" in pom and "LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS" in pom)
 check("Clic en la punta que se ve (posición real dibujada)", "getLocationOnScreen(loc)" in pom and "statusBarHeightPx" not in pom)

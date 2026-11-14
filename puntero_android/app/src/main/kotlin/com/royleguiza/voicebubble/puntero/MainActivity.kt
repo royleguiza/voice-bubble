@@ -28,6 +28,9 @@ class MainActivity : Activity() {
     private lateinit var statusText: TextView
     private lateinit var primary: Button
     private lateinit var steps: TextView
+    private lateinit var testResult: TextView
+    private lateinit var counters: TextView
+    private var testWaiting = false
 
     private val d get() = resources.displayMetrics.density
     private fun color(id: Int) = getColor(id)
@@ -93,6 +96,45 @@ class MainActivity : Activity() {
             topMargin = dp(16f)
         })
 
+        // Prueba de clic: el servicio toca el botón «Blanco» de esta pantalla.
+        // Si Android lo ejecuta, el botón se entera; si no, se ve por qué.
+        column.addView(text("Probar el clic", 20f, R.color.label, bold = true),
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(32f)
+            })
+        column.addView(text("Tocá «Probar»: VoiceBubble Puntero va a tocar el botón «Blanco» solo, como haría con el trackpad.",
+            15f, R.color.secondary),
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = dp(6f)
+            })
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val target = pill("Blanco", R.color.surface, R.color.label)
+        target.setOnClickListener {
+            if (testWaiting) {
+                testWaiting = false
+                testResult.text = "✓ Android hizo el clic. El puntero puede tocar en otras apps."
+                testResult.setTextColor(color(R.color.ok))
+            }
+        }
+        val run = pill("Probar", R.color.accent, R.color.on_accent)
+        run.setOnClickListener { runTest(target) }
+        row.addView(run, LinearLayout.LayoutParams(0, dp(52f), 1f).apply { marginEnd = dp(12f) })
+        row.addView(target, LinearLayout.LayoutParams(0, dp(52f), 1f))
+        column.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(52f)).apply {
+            topMargin = dp(14f)
+        })
+        testResult = text("", 15f, R.color.secondary)
+        column.addView(testResult, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(10f)
+        })
+        counters = text("", 13f, R.color.secondary)
+        column.addView(counters, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(6f)
+        })
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             column.addView(
                 text(
@@ -128,6 +170,64 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         render(isEnabled())
+        renderCounters()
+    }
+
+    private fun renderCounters() {
+        counters.text = "Desde que se activó: ${PunteroService.received} clics pedidos por VoiceBubble · " +
+            "${PunteroService.done} hechos · ${PunteroService.cancelled} interrumpidos · " +
+            "${PunteroService.rejected} rechazados."
+    }
+
+    private fun runTest(target: View) {
+        testResult.setTextColor(color(R.color.secondary))
+        if (!PunteroService.isConnected) {
+            testResult.text = "✗ El servicio no está en marcha. Activalo en Accesibilidad (si ya está activo, apagalo y volvé a prenderlo)."
+            testResult.setTextColor(color(R.color.warn))
+            return
+        }
+        val loc = IntArray(2)
+        target.getLocationOnScreen(loc)
+        val x = loc[0] + target.width / 2f
+        val y = loc[1] + target.height / 2f
+        testWaiting = true
+        testResult.text = "Probando…"
+        val sent = PunteroService.testTap(x, y) { completed ->
+            runOnUiThread {
+                if (!completed && testWaiting) {
+                    testWaiting = false
+                    testResult.text = "✗ Android canceló el gesto. Apagá y volvé a prender VoiceBubble Puntero en Accesibilidad."
+                    testResult.setTextColor(color(R.color.warn))
+                }
+            }
+        }
+        if (!sent) {
+            testWaiting = false
+            testResult.text = "✗ Android rechazó el gesto. Apagá y volvé a prender VoiceBubble Puntero en Accesibilidad."
+            testResult.setTextColor(color(R.color.warn))
+            return
+        }
+        target.postDelayed({
+            if (testWaiting) {
+                testWaiting = false
+                testResult.text = "✗ Android dijo que hizo el gesto, pero el botón no recibió el toque."
+                testResult.setTextColor(color(R.color.warn))
+            }
+            renderCounters()
+        }, 1500L)
+    }
+
+    private fun pill(label: String, bgId: Int, fgId: Int) = Button(this).apply {
+        text = label
+        isAllCaps = false
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        typeface = Typeface.DEFAULT_BOLD
+        stateListAnimator = null
+        setTextColor(color(fgId))
+        background = GradientDrawable().apply {
+            cornerRadius = 26f * d
+            setColor(color(bgId))
+        }
     }
 
     private fun isEnabled(): Boolean {
@@ -140,8 +240,12 @@ class MainActivity : Activity() {
     }
 
     private fun render(enabled: Boolean) {
-        (statusDot.background as GradientDrawable).setColor(color(if (enabled) R.color.ok else R.color.warn))
-        statusText.text = if (enabled) "Activo. Los clics del puntero ya funcionan." else "Desactivado"
+        (statusDot.background as GradientDrawable).setColor(color(if (enabled && PunteroService.isConnected) R.color.ok else R.color.warn))
+        statusText.text = when {
+            enabled && PunteroService.isConnected -> "Activo. Los clics del puntero ya funcionan."
+            enabled -> "Activado en Accesibilidad, pero Android no lo inició. Apagalo y volvé a prenderlo."
+            else -> "Desactivado"
+        }
         primary.text = if (enabled) "Abrir Accesibilidad" else "Activar en Accesibilidad"
         primary.setTextColor(color(if (enabled) R.color.accent else R.color.on_accent))
         primary.background = GradientDrawable().apply {

@@ -72,6 +72,11 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
         private const val ARROW_GAP_PX = 3
         private const val HOT_DP = 22f
         private const val WINDOW_DP = 64f
+
+        /** Tokens Horizonte del puntero (iguales en claro y oscuro: se lee sobre cualquier app). */
+        private const val INK = 0xFF08090E.toInt()
+        private const val PAPER = 0xFFF7F5F0.toInt()
+        private const val EMBER = 0xFFFF8A1F.toInt()
     }
 
     private val layoutParams = WindowManager.LayoutParams(
@@ -298,9 +303,10 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
     }
 
     /**
-     * Dibujo del puntero. La flecha es la del prototipo (estilo macOS): blanca,
-     * contorno negro fino y sombra suave; la punta queda en (tip, tip).
-     * Punto y cruz se centran en (hot, hot).
+     * Dibujo del puntero. Flecha «Horizonte» (elegida en el artifact, 2026-11-14):
+     * esbelta, tinta casi negra con borde fino claro (se lee sobre cualquier
+     * fondo), sombra suave y un punto brasa en la punta, donde cae el clic.
+     * La punta queda en (tip, tip). Punto y cruz se centran en (hot, hot).
      */
     private class PointerView(context: Context, private val hot: Float, private val tip: Float) : View(context) {
 
@@ -312,6 +318,21 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
             style = Paint.Style.FILL
             color = Color.WHITE
             setShadowLayer(2f * d, 0f, 1.5f * d, 0x59000000)
+        }
+        private val inkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = INK
+            setShadowLayer(1.6f * d, 0f, 0.8f * d, 0x47000000)
+        }
+        private val paperPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = PAPER
+            strokeWidth = 1.4f * d
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val emberPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = EMBER
         }
         private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -333,8 +354,8 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
             color = accent
         }
 
-        /** Unidades del SVG del prototipo (22×26) a píxeles. */
-        private val unit = 1.1f * d
+        /** Unidades de la flecha del artifact a píxeles. */
+        private val unit = 1.05f * d
         private val arrowPath = Path()
         private var ripple = -1f
         private var rippleLong = false
@@ -346,21 +367,21 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
             buildArrow()
         }
 
-        /** M2.5 2.2 v18.4 l5 -4.6 l3.6 8.2 l3.3 -1.4 l-3.5 -8 h7.2 z, con la punta en (0,0). */
+        /** Flecha esbelta «Horizonte», con la punta en (0,0) (unidades del artifact). */
         private fun buildArrow() {
             val pts = floatArrayOf(
-                2.5f, 2.2f,
-                2.5f, 20.6f,
-                7.5f, 16.0f,
-                11.1f, 24.2f,
-                14.4f, 22.8f,
-                10.9f, 14.8f,
-                18.1f, 14.8f,
+                0f, 0f,
+                0f, 17.5f,
+                4.3f, 13.6f,
+                7.3f, 20.4f,
+                9.9f, 19.3f,
+                7f, 12.6f,
+                12.6f, 12.6f,
             )
             arrowPath.reset()
             for (i in pts.indices step 2) {
-                val x = tip + (pts[i] - 2.5f) * unit
-                val y = tip + (pts[i + 1] - 2.2f) * unit
+                val x = tip + pts[i] * unit
+                val y = tip + pts[i + 1] * unit
                 if (i == 0) arrowPath.moveTo(x, y) else arrowPath.lineTo(x, y)
             }
             arrowPath.close()
@@ -435,13 +456,14 @@ class PointerOverlayManager(private val context: Context) : OverlayPassThrough.H
                     drawCross(canvas, arm, gap)
                     canvas.drawCircle(hot, hot, 1.8f * d, accentPaint)
                 }
-                else -> { // "arrow"
-                    strokePaint.strokeWidth = 1.3f * unit
-                    strokePaint.color = Color.BLACK
+                else -> { // "arrow": Horizonte
                     canvas.save()
                     canvas.scale(press, press, tip, tip)
-                    canvas.drawPath(arrowPath, fillPaint)
-                    canvas.drawPath(arrowPath, strokePaint)
+                    canvas.drawPath(arrowPath, inkPaint)
+                    canvas.drawPath(arrowPath, paperPaint)
+                    // Punto brasa en la punta: crece un poco al hacer clic.
+                    val glow = 1f + (1f - press) * 3f
+                    canvas.drawCircle(tip + 1.3f * unit, tip + 1.9f * unit, 1.5f * d * glow, emberPaint)
                     canvas.restore()
                 }
             }

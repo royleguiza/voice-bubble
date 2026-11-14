@@ -24,7 +24,7 @@ import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import android.widget.LinearLayout
-import android.widget.Toast
+import android.widget.TextView
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
@@ -80,6 +80,10 @@ class FloatingTrackpadService : Service() {
     private var lastNoCompanionHint = 0L
     private var lastProblemHint = 0L
     private var padView: FloatingPadView? = null
+
+    /** Aviso dentro del panel (los Toast de un servicio Android los puede ocultar). */
+    private var banner: TextView? = null
+    private var bannerAction: (() -> Unit)? = null
     private var autoReturnSeconds = 0
     private val idleClose = Runnable { closePanel() }
 
@@ -183,6 +187,7 @@ class FloatingTrackpadService : Service() {
         }
         pointerManager?.resetBottomLimit()
         pointerManager?.show()
+        checkCompanion()
         FloatingBubbleService.setTrackpadOpen(true)
         startIdle()
     }
@@ -235,6 +240,29 @@ class FloatingTrackpadService : Service() {
         handle.contentDescription = "Cerrar trackpad"
         handle.setOnTouchListener(HandleTouch())
         root.addView(handle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (34 * d).roundToInt()))
+
+        // Aviso del complemento: visible solo cuando los clics no pueden salir.
+        val bannerView = TextView(this).apply {
+            visibility = View.GONE
+            textSize = 12.5f
+            setLineSpacing(0f, 1.2f)
+            setTextColor(androidx.core.content.ContextCompat.getColor(this@FloatingTrackpadService, R.color.kb_label))
+            try {
+                typeface = androidx.core.content.res.ResourcesCompat.getFont(this@FloatingTrackpadService, R.font.inter)
+            } catch (_: Exception) {}
+            val ph = (12 * d).roundToInt()
+            val pv = (8 * d).roundToInt()
+            setPadding(ph, pv, ph, pv)
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = 16 * d
+                setColor(androidx.core.content.ContextCompat.getColor(this@FloatingTrackpadService, R.color.hz_ember_soft))
+            }
+            setOnClickListener { bannerAction?.invoke() }
+        }
+        root.addView(bannerView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            bottomMargin = (8 * d).roundToInt()
+        })
+        banner = bannerView
 
         // Superficie única como el prototipo HTML (sin botones ni grilla).
         val pad = FloatingPadView(
@@ -317,17 +345,40 @@ class FloatingTrackpadService : Service() {
 
     private fun hintNoCompanion() {
         val now = SystemClock.uptimeMillis()
-        if (now - lastNoCompanionHint < 8000L) return
+        if (now - lastNoCompanionHint < 2000L) return
         lastNoCompanionHint = now
-        val status = PointerLink.status(this)
-        val msg = if (status == PointerProtocol.STATUS_MISSING) {
-            "Para hacer clic en otras apps, instalá VoiceBubble Puntero"
-        } else {
-            "Activá VoiceBubble Puntero en Accesibilidad para hacer clic"
+        checkCompanion()
+    }
+
+    /** Al abrir el panel (y si un clic no pudo salir): avisa qué falta, dentro del panel. */
+    private fun checkCompanion() {
+        when (PointerLink.status(this)) {
+            PointerProtocol.STATUS_MISSING -> showBanner(
+                "Para hacer clics falta la app VoiceBubble Puntero: instalá el APK «voice-bubble-puntero» del mismo build.",
+                null,
+            )
+            PointerProtocol.STATUS_DISABLED -> showBanner(
+                "Para hacer clics, activá VoiceBubble Puntero en Accesibilidad. Tocá acá.",
+            ) { openSettingsAndClose { PointerLink.openAccessibilitySettings(this) } }
+            else -> hideBanner()
         }
-        try {
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-        } catch (_: Exception) {}
+    }
+
+    private fun showBanner(message: String, action: (() -> Unit)?) {
+        val b = banner ?: return
+        bannerAction = action
+        b.text = message
+        b.isClickable = action != null
+        if (b.visibility != View.VISIBLE) b.visibility = View.VISIBLE
+    }
+
+    private fun hideBanner() {
+        bannerAction = null
+        banner?.visibility = View.GONE
+    }
+
+    private fun openSettingsAndClose(open: () -> Boolean) {
+        if (open()) closePanel()
     }
 
     /** Cierre automático al soltar (kb_trackpad_auto_return; 0 = queda abierto). */
@@ -347,11 +398,11 @@ class FloatingTrackpadService : Service() {
     /** El complemento avisó que un clic no se hizo (o no respondió). */
     private fun showProblem(message: String) {
         val now = SystemClock.uptimeMillis()
-        if (now - lastProblemHint < 6000L) return
+        if (now - lastProblemHint < 1000L) return
         lastProblemHint = now
-        try {
-            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-        } catch (_: Exception) {}
+        showBanner("$message Tocá acá.") {
+            openSettingsAndClose { PointerLink.openCompanionApp(this) || PointerLink.openAccessibilitySettings(this) }
+        }
     }
 
     private fun vibrate(isFirm: Boolean, hapticMode: String) {
