@@ -1231,7 +1231,15 @@ class _SettingsScreenState extends State<SettingsScreen>
     return _sectionList(
       context,
       storageKey: 'settings_root',
-      header: const SettingsLargeTitle('Ajustes'),
+      header: SettingsLargeTitle(
+        'Ajustes',
+        leading: SettingsGlassButton(
+          key: const ValueKey('settings-root-back-button'),
+          icon: Icons.chevron_left_rounded,
+          tooltip: 'Volver',
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+      ),
       sections: [
         if (needsSetup)
           SettingsSection(

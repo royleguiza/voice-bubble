@@ -211,9 +211,17 @@ class _HomeScreenState extends State<HomeScreen>
   /// segundo plano, por eso se relee también al volver al primer plano.
   Future<void> _loadNotes() async {
     bool notesLoaded = false;
-    try {
-      notesLoaded = await _notesService.load();
-    } catch (_) {}
+    // Reintento corto: un fallo transitorio (lock ocupado, disco lento al
+    // arrancar) no debe dejar "Notas no disponibles" hasta la próxima recarga.
+    for (var attempt = 0; attempt < 3 && !notesLoaded; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        if (!mounted) return;
+      }
+      try {
+        notesLoaded = await _notesService.load();
+      } catch (_) {}
+    }
     try {
       _deferredQueueEnabled =
           await _storageService.loadNotesDeferredQueueEnabled();
@@ -1011,36 +1019,10 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
     await Navigator.push(context, route);
-    // Animación corta de vuelta a Inicio (design.md §15): arranca sin esperar
-    // a la recarga de abajo.
-    unawaited(_playReturnIntro(route));
+    // Sin animación del agujero al volver: solo al abrir y al salir de la app.
     await _loadApiKey();
     await _loadRecordMode();
     await _loadNotes();
-  }
-
-  /// Espera a que la transición de salida de [route] termine (la capa va
-  /// debajo de la ruta de Ajustes mientras se desliza) y reproduce la vuelta.
-  Future<void> _playReturnIntro(ModalRoute<void> route) async {
-    final intro = HorizonIntroScope.maybeOf(context);
-    if (intro == null) return;
-    final anim = route.animation;
-    if (anim != null && anim.status != AnimationStatus.dismissed) {
-      final settled = Completer<void>();
-      void onStatus(AnimationStatus status) {
-        if (status == AnimationStatus.dismissed && !settled.isCompleted) {
-          settled.complete();
-        }
-      }
-
-      anim.addStatusListener(onStatus);
-      try {
-        await settled.future;
-      } finally {
-        anim.removeStatusListener(onStatus);
-      }
-    }
-    if (mounted) intro.playReturn();
   }
 
   void _selectTab(int tab) {

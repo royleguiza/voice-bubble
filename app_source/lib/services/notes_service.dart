@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/voice_note.dart';
+import '../helpers/lock_owner.dart';
 import '../helpers/uuid_helper.dart';
 
 enum _NotesReadState { missing, empty, valid, unavailable }
@@ -565,7 +566,7 @@ class NotesService {
       return null;
     }
     final token =
-        '${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}';
+        '${lockOwnerPrefix()}${DateTime.now().microsecondsSinceEpoch}_${Random.secure().nextInt(0x7fffffff)}';
     final deadline = DateTime.now().add(
       const Duration(milliseconds: lockTimeoutMs),
     );
@@ -637,6 +638,7 @@ class NotesService {
   bool _isStale(File lockFile) {
     try {
       if (!lockFile.existsSync()) return false;
+      if (lockOwnerIsDead(lockFile)) return true;
       final age = DateTime.now()
           .difference(lockFile.lastModifiedSync())
           .inMilliseconds;

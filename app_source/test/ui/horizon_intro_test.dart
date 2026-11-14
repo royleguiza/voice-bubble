@@ -73,9 +73,6 @@ const _recordKey = ValueKey('recordButton');
 /// Duración nominal del arranque en frío.
 final Duration _total = kIntroSwallow + kIntroLand;
 
-/// Duración nominal de la versión corta (volver de Ajustes).
-final Duration _totalReturn = kIntroSwallowReturn + kIntroLand;
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -440,51 +437,28 @@ void main() {
     }
 
     group('al volver de Ajustes', () {
-      testWidgets('se reproduce la versión corta (600 + 450 ms) y se desmonta',
+      // Pedido del usuario (2026-11-14): el agujero solo al abrir y al salir
+      // de la app, nunca al volver de Ajustes.
+      testWidgets('NO al volver de Ajustes, ni con «atrás» ni con el botón',
           (tester) async {
-        tall(tester);
-        await mountAfterColdStart(tester);
-        await openSettings(tester);
-        await tester.binding.handlePopRoute();
-        expect(await pumpUntilShown(tester, _introKey), isTrue);
-        final scene = HorizonIntro.debugLastScene!;
-        expect(scene.swallowSeconds, closeTo(0.6, 1e-9));
-        // Inicio ya está construido debajo.
-        expect(find.byKey(const ValueKey('homeTitleText')), findsOneWidget);
-        final frames = await pumpUntilGone(tester);
-        expect(frames * 16, greaterThanOrEqualTo(_totalReturn.inMilliseconds));
-        expect(frames * 16,
-            lessThanOrEqualTo(_totalReturn.inMilliseconds + 4 * 16));
-        expect(scene.landProgress, 1.0);
-        expect(popCalls, isEmpty);
-        await tester.pumpAndSettle();
-      });
-
-      testWidgets('un toque la saltea (fase 2 acelerada) sin tocar Inicio',
-          (tester) async {
-        tall(tester);
-        await mountAfterColdStart(tester);
-        await openSettings(tester);
-        await tester.binding.handlePopRoute();
-        expect(await pumpUntilShown(tester, _introKey), isTrue);
-        await tester.pump(const Duration(milliseconds: 100));
-        await tester.tapAt(tester.getCenter(find.byKey(_recordKey)));
-        await tester.pump(const Duration(milliseconds: 16));
-        final frames = await pumpUntilGone(tester);
-        expect(frames * 16,
-            lessThanOrEqualTo(kIntroSkipLand.inMilliseconds + 4 * 16));
-        expect(find.byKey(const ValueKey('recordIdle')), findsOneWidget);
-      });
-
-      testWidgets('se repite en cada vuelta', (tester) async {
         tall(tester);
         await mountAfterColdStart(tester);
         for (var i = 0; i < 2; i++) {
           await openSettings(tester);
-          await tester.binding.handlePopRoute();
-          expect(await pumpUntilShown(tester, _introKey), isTrue);
-          await pumpUntilGone(tester);
+          if (i == 0) {
+            await tester.binding.handlePopRoute();
+          } else {
+            await tester
+                .tap(find.byKey(const ValueKey('settings-root-back-button')));
+          }
+          for (var f = 0; f < 60; f++) {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(find.byKey(_introKey, skipOffstage: false), findsNothing);
+          }
           await tester.pumpAndSettle();
+          expect(find.byType(SettingsScreen), findsNothing);
+          expect(find.byKey(const ValueKey('homeTitleText')), findsOneWidget);
+          expect(popCalls, isEmpty);
         }
       });
 
@@ -500,10 +474,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(SettingsScreen), findsOneWidget);
         expect(find.byKey(_introKey, skipOffstage: false), findsNothing);
-        // Control: al salir de la raíz sí se reproduce.
+        // Tampoco al salir de la raíz de Ajustes hacia Inicio.
         await tester.binding.handlePopRoute();
-        expect(await pumpUntilShown(tester, _introKey), isTrue);
-        await pumpUntilGone(tester);
+        expect(await pumpUntilShown(tester, _introKey), isFalse);
+        await tester.pumpAndSettle();
       });
 
       testWidgets('NO al volver del editor de notas', (tester) async {
@@ -804,27 +778,6 @@ void main() {
           expect((scene.holeRadius - button.width / 2).abs(),
               lessThanOrEqualTo(0.5));
           await pumpFramesUntilCalls(tester);
-        });
-
-        testWidgets(
-            '${size.width.toInt()} dp: la vuelta de Ajustes termina '
-            'sobre el botón (centro y radio ≤ 0,5 px)', (tester) async {
-          phone(tester, width: size.width, height: size.height);
-          if (size.width < 360) _ignoreTestFontOverflow();
-          await mountAfterColdStart(tester);
-          tester.view.physicalSize = const Size(1600, 4800);
-          tester.view.devicePixelRatio = 2.0;
-          await openSettings(tester);
-          await tester.binding.handlePopRoute();
-          expect(await pumpUntilShown(tester, _introKey), isTrue);
-          final scene = HorizonIntro.debugLastScene!;
-          await pumpUntilGone(tester);
-          final button = tester.getRect(find.byKey(_recordKey));
-          expect(scene.target, isNotNull);
-          expect((scene.holeCenter - button.center).distance,
-              lessThanOrEqualTo(0.5));
-          expect((scene.holeRadius - button.width / 2).abs(),
-              lessThanOrEqualTo(0.5));
         });
       }
     });

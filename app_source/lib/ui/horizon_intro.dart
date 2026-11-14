@@ -550,7 +550,8 @@ class HorizonIntroScene extends ChangeNotifier {
     if (next == size || next.isEmpty) return;
     final first = size.isEmpty;
     size = next;
-    _start = Offset(next.width * 0.5, next.height * 0.40);
+    // Centro de la pantalla: mismo lugar que el agujero del arranque nativo.
+    _start = Offset(next.width * 0.5, next.height * 0.5);
     _startHole = math.min(next.width, next.height) * 0.13 * holeOfDisc;
     _updateHole();
     if (first) _seed();

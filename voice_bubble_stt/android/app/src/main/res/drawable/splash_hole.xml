@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Arranque nativo de Android 12+: el agujero de la animación Horizonte
+     (mismo tamaño aproximado: 0.117 × ancho de pantalla ≈ radio 45 dp),
+     centrado, para que Flutter tome la posta sin salto. Lienzo de ícono
+     sin fondo de 288 dp; lo visible es el círculo central de 192 dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <path android:pathData="M144,48 a96,96 0 1,1 0,192 a96,96 0 1,1 0,-192 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="144"
+                android:centerY="144"
+                android:gradientRadius="96">
+                <item android:offset="0.42" android:color="#99FF8A1F" />
+                <item android:offset="0.62" android:color="#33FF8A1F" />
+                <item android:offset="1.0" android:color="#00FF8A1F" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="@color/hz_hole"
+        android:pathData="M144,99 a45,45 0 1,1 0,90 a45,45 0 1,1 0,-90 Z" />
+    <path
+        android:strokeColor="#E6FFC766"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M144,99.75 a44.25,44.25 0 1,1 0,88.5 a44.25,44.25 0 1,1 0,-88.5 Z" />
+</vector>

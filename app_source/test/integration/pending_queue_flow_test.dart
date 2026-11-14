@@ -343,6 +343,12 @@ void main() {
     );
     final queue = PendingNoteQueue();
     await pumpNotes(tester, service, queue);
+    // Mientras reintenta (lectura fallida) sigue en «Cargando notas…».
+    expect(find.text('Cargando notas…'), findsOneWidget);
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('notesUnavailable')), findsOneWidget);
     expect(find.text('Notas no disponibles'), findsOneWidget);

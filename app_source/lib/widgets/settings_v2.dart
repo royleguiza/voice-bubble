@@ -69,17 +69,25 @@ class SettingsPalette {
 class SettingsLargeTitle extends StatelessWidget {
   final String text;
 
-  const SettingsLargeTitle(this.text, {super.key});
+  /// Botón opcional arriba a la izquierda, en el aire sobre el título
+  /// (el «volver» de la raíz de Ajustes).
+  final Widget? leading;
+
+  const SettingsLargeTitle(this.text, {super.key, this.leading});
 
   @override
   Widget build(BuildContext context) {
     return Stack(
+      // Sin recorte: el «volver» se alinea con el de las subpáginas (12 dp
+      // del borde) y sobresale 4 dp del relleno de la lista.
+      clipBehavior: Clip.none,
       children: [
         const Positioned(
           right: 0,
           bottom: 6,
           child: SymbolField.header(key: ValueKey('settingsHeaderSymbols')),
         ),
+        if (leading != null) Positioned(left: -4, top: 4, child: leading!),
         Padding(
           padding: const EdgeInsets.fromLTRB(2, 56, 2, 12),
           child: Semantics(

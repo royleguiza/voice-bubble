@@ -152,20 +152,25 @@ jobs:
           test -f voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SpeechToTextClient.kt \
             || { echo '::error::falta SpeechToTextClient.kt (K3)'; exit 1; }
 
-      - name: Build APK debug (split por ABI)
+      - name: Build APK profile (split por ABI)
         working-directory: voice_bubble_stt
+        # Profile y no debug: código Dart precompilado (AOT). En debug el
+        # motor compila al vuelo y el primer cuadro tardaba 5-6 s detrás del
+        # splash del sistema. El buildType profile del plugin de Flutter hereda
+        # de debug (initWith), así que firma con la misma debug.keystore y se
+        # instala como actualización encima de los APK debug anteriores.
         # build-number = run_number: cada APK sale con versionCode superior
         # al anterior para que Android lo trate como ACTUALIZACIÓN (conserva
         # notas, snippets, clipboard, historial y ajustes) en vez de
         # reinstalación de la misma versión. La firma ya es estable
         # (debug.keystore versionado en android/app).
-        run: flutter build apk --debug --split-per-abi --build-number=${{ github.run_number }}
+        run: flutter build apk --profile --split-per-abi --build-number=${{ github.run_number }}
 
       - name: Upload APK arm64
         uses: actions/upload-artifact@v4
         with:
-          name: voice-bubble-arm64-debug-apk-r${{ github.run_number }}
-          path: voice_bubble_stt/build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+          name: voice-bubble-arm64-profile-apk-r${{ github.run_number }}
+          path: voice_bubble_stt/build/app/outputs/flutter-apk/app-arm64-v8a-profile.apk
           if-no-files-found: error
           retention-days: 7
           compression-level: 6

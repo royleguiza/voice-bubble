@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:voice_bubble_stt/helpers/lock_owner.dart';
 import 'package:voice_bubble_stt/models/voice_note.dart';
 import 'package:voice_bubble_stt/services/notes_service.dart';
 
@@ -226,6 +227,40 @@ void main() {
     expect(service.notes.single.id, id);
     final prefs = await SharedPreferences.getInstance();
     expect(jsonDecode(prefs.getString(NotesService.notesKey)!) as List, hasLength(1));
+  });
+
+  test('lock huérfano de un proceso muerto se libera al instante', () async {
+    // Android mató la app con el lock tomado: el archivo es reciente (no
+    // vence por antigüedad) pero su dueño ya no existe.
+    var deadPid = 4194303;
+    while (Directory('/proc/$deadPid').existsSync()) {
+      deadPid--;
+    }
+    File('${tempDir.path}/${NotesService.lockFileName}').writeAsStringSync(
+      'p$deadPid:1_2\n${DateTime.now().millisecondsSinceEpoch}\n',
+    );
+    final service = NotesService();
+    final watch = Stopwatch()..start();
+    expect(await service.load(), isTrue);
+    expect(watch.elapsed, lessThan(const Duration(seconds: 2)));
+    expect(File('${tempDir.path}/${NotesService.lockFileName}').existsSync(),
+        isFalse);
+  });
+
+  test('lockOwnerIsDead: solo con dueño de otro proceso inexistente', () {
+    final lock = File('${tempDir.path}/probe.lock');
+    var deadPid = 4194303;
+    while (Directory('/proc/$deadPid').existsSync()) {
+      deadPid--;
+    }
+    lock.writeAsStringSync('p$deadPid:x\n0\n');
+    expect(lockOwnerIsDead(lock), isTrue);
+    lock.writeAsStringSync('p$pid:x\n0\n');
+    expect(lockOwnerIsDead(lock), isFalse, reason: 'mismo proceso');
+    lock.writeAsStringSync('p1:x\n0\n');
+    expect(lockOwnerIsDead(lock), isFalse, reason: 'proceso vivo');
+    lock.writeAsStringSync('123_456\n0\n');
+    expect(lockOwnerIsDead(lock), isFalse, reason: 'formato viejo');
   });
 
   test('fallo de token limpia lock y reintenta antes de ejecutar', () async {
