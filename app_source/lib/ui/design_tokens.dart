@@ -544,13 +544,13 @@ const Duration kIntroExit = Duration(milliseconds: 500);
 
 /// Arranque, fase 2: el agujero se achica y aterriza en el botón de dictar
 /// mientras el fondo de la capa se desvanece y aparece Inicio.
-const Duration kIntroLand = Duration(milliseconds: 450);
+const Duration kIntroLand = Duration(milliseconds: 550);
 
 /// Fase 2 acelerada cuando se toca para saltear el arranque.
 const Duration kIntroSkipLand = Duration(milliseconds: 200);
 
 /// Tope del pool fijo de partículas del arranque.
-const int kIntroMaxParticles = 120;
+const int kIntroMaxParticles = 580;
 
 /// Métricas del glifo del micrófono pintado a mano (arranque): las mismas
 /// que usa `Icon` en el botón de dictar, para que el último cuadro empalme

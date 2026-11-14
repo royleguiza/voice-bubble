@@ -158,7 +158,7 @@ void main() {
       await pumpUntilGone(tester);
     });
 
-    testWidgets('la capa se desmonta al terminar, en ≈ 1,75 s', (tester) async {
+    testWidgets('la capa se desmonta al terminar, en ≈ 1,85 s', (tester) async {
       phone(tester);
       await tester.pumpWidget(host());
       final frames = await pumpUntilGone(tester);
@@ -166,13 +166,47 @@ void main() {
       // 16 ms por cuadro: duración nominal + el cuadro final ya aterrizado.
       expect(frames * 16, lessThanOrEqualTo(_total.inMilliseconds + 3 * 16));
       expect(frames * 16, greaterThanOrEqualTo(_total.inMilliseconds));
-      // Fase 1 ≈ 1300 ms + fase 2 ≈ 450 ms.
+      // Fase 1 ≈ 1300 ms + fase 2 ≈ 550 ms.
       expect(kIntroSwallow, const Duration(milliseconds: 1300));
-      expect(kIntroLand, const Duration(milliseconds: 450));
-      expect(_total, const Duration(milliseconds: 1750));
+      expect(kIntroLand, const Duration(milliseconds: 550));
+      expect(_total, const Duration(milliseconds: 1850));
       // Sin la capa, Inicio sigue en pie y estable.
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('homeTitleText')), findsOneWidget);
+    });
+
+    testWidgets('mientras Inicio carga, el agujero sigue girando (tope 4 s)',
+        (tester) async {
+      phone(tester);
+      await tester.pumpWidget(host());
+      await tester.pump();
+      // Simula una carga lenta de notas.
+      HorizonIntroHost.homeLoading.value = true;
+      addTearDown(() => HorizonIntroHost.homeLoading.value = false);
+      final scene = HorizonIntro.debugLastScene!;
+      for (var i = 0; i < 150; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      // 2,4 s: con la carga normal ya habría terminado; sigue en la fase 1.
+      expect(find.byKey(_introKey), findsOneWidget);
+      expect(scene.landing, isFalse);
+      HorizonIntroHost.homeLoading.value = false;
+      final frames = await pumpUntilGone(tester);
+      // Aterrizaje + como mucho un paso de espera ya adelantado.
+      expect(frames * 16,
+          lessThanOrEqualTo(kIntroLand.inMilliseconds + 50 + 4 * 16));
+
+      // Si la carga nunca termina, aterriza igual al llegar al tope.
+      HorizonIntroHost.debugResetColdStart();
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(host());
+      await tester.pump();
+      HorizonIntroHost.homeLoading.value = true;
+      final capped = await pumpUntilGone(tester, maxFrames: 600);
+      final limit = _total.inMilliseconds +
+          (HorizonIntroScene.maxHoldSeconds * 1000).round();
+      expect(capped * 16, lessThanOrEqualTo(limit + 50 + 4 * 16));
+      expect(find.byKey(_introKey), findsNothing);
     });
 
     testWidgets('un toque en la fase 1 la saltea sin activar Inicio',
@@ -241,9 +275,16 @@ void main() {
   });
 
   group('Arranque: presupuesto', () {
-    test('pool fijo ≤ 120 y paso acotado ante un primer cuadro lento', () {
-      expect(HorizonIntroScene.maxParticles, lessThanOrEqualTo(120));
-      expect(HorizonIntroScene.glyphs.length, 17);
+    test('pool fijo ≤ kIntroMaxParticles y paso acotado ante un primer cuadro lento', () {
+      expect(HorizonIntroScene.maxParticles, kIntroMaxParticles);
+      expect(kIntroMaxParticles, lessThanOrEqualTo(600));
+      // Hoja de glifos finita: símbolos + código + 24 binarios + palabras.
+      expect(
+          HorizonIntroScene.glyphs.length,
+          HorizonIntroScene.symbols.length +
+              HorizonIntroScene.code.length +
+              24 +
+              HorizonIntroScene.words.length);
       final scene = HorizonIntroScene(random: math.Random(1))
         ..resize(const Size(411, 891));
       expect(scene.activeParticles, HorizonIntroScene.maxParticles);
@@ -254,7 +295,7 @@ void main() {
     });
 
     testWidgets(
-        'partículas ≤ 120 por cuadro y TextPainter cacheados, no por '
+        'partículas ≤ tope por cuadro y TextPainter cacheados, no por '
         'cuadro', (tester) async {
       phone(tester);
       final before = HorizonIntroPainter.debugTextPainterCount;
@@ -267,7 +308,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 16));
         frames++;
       }
-      expect(maxActive, lessThanOrEqualTo(120));
+      expect(maxActive, lessThanOrEqualTo(kIntroMaxParticles));
       expect(maxActive, greaterThan(0));
       // ~70 cuadros con decenas de glifos cada uno: si se armaran por
       // cuadro serían miles; el tope es el caché de un modo.
@@ -356,8 +397,8 @@ void main() {
       final exit = HorizonIntroScene.forKind(HorizonIntroKind.exit);
       expect(cold.swallowSeconds, closeTo(1.3, 1e-9));
       expect(back.swallowSeconds, closeTo(0.6, 1e-9));
-      expect(cold.landSeconds, closeTo(0.45, 1e-9));
-      expect(back.landSeconds, closeTo(0.45, 1e-9));
+      expect(cold.landSeconds, closeTo(0.55, 1e-9));
+      expect(back.landSeconds, closeTo(0.55, 1e-9));
       expect(exit.swallowSeconds, 0);
       expect(exit.landSeconds, closeTo(0.5, 1e-9));
       expect(exit.reverse, isTrue);
@@ -736,7 +777,7 @@ void main() {
         await pumpUntilGone(tester);
       });
 
-      testWidgets('presupuesto: ≤ 120 partículas y TextPainter acotados',
+      testWidgets('presupuesto: partículas ≤ tope y TextPainter acotados',
           (tester) async {
         phone(tester);
         await mountAfterColdStart(tester);
@@ -749,7 +790,7 @@ void main() {
           maxActive = math.max(maxActive, scene.activeParticles);
           await tester.pump(const Duration(milliseconds: 16));
         }
-        expect(maxActive, inInclusiveRange(1, 120));
+        expect(maxActive, inInclusiveRange(1, kIntroMaxParticles));
         expect(HorizonIntroPainter.debugTextPainterCount - before,
             lessThanOrEqualTo(HorizonIntroPainter.textPainterCapacity));
       });

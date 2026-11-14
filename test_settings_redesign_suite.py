@@ -48,7 +48,7 @@ for gone in ["tab-general", "tab-teclado", "tab-trackpad", "tab-snippets",
     check(f"Sin restos de '{gone}'", gone not in pages, f"quedó {gone}")
 check("SettingsScreen sin AppBar", "AppBar(" not in screen)
 check("SettingsScreen con SafeArea", "SafeArea(" in screen)
-check("Raíz con título grande 'Ajustes'", "SettingsLargeTitle('Ajustes')" in screen)
+check("Raíz con título grande 'Ajustes'", re.search(r"SettingsLargeTitle\(\s*'Ajustes'", screen) is not None)
 for page in ["root", "transcripcion", "ia", "teclado", "sonido", "burbuja",
              "trackpad", "snippets", "claves", "notas", "acerca"]:
     check(f"Página {page} en el enum", f"  {page}," in screen)

@@ -242,7 +242,10 @@ class _HomeScreenState extends State<HomeScreen>
   Future<void> _init() async {
     // En paralelo: leer notas toca disco con lock y no debe frenar la key,
     // el modo de grabación ni la burbuja.
-    unawaited(_loadNotes());
+    // El arranque en frío sigue girando mientras se leen las notas.
+    HorizonIntroHost.homeLoading.value = true;
+    unawaited(_loadNotes().whenComplete(
+        () => HorizonIntroHost.homeLoading.value = false));
     try {
       await _storageService.load();
     } catch (_) {}

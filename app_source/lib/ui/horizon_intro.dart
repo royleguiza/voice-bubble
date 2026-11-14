@@ -80,7 +80,14 @@ class HorizonIntroHost extends StatefulWidget {
 
   /// Vuelve a habilitar el arranque (solo tests: simula un proceso nuevo).
   @visibleForTesting
-  static void debugResetColdStart() => _coldStartPending = true;
+  static void debugResetColdStart() {
+    _coldStartPending = true;
+    homeLoading.value = false;
+  }
+
+  /// Inicio lo pone en true mientras carga sus notas al arrancar: el
+  /// arranque en frío sigue girando hasta que vuelva a false.
+  static final ValueNotifier<bool> homeLoading = ValueNotifier<bool>(false);
 
   @override
   State<HorizonIntroHost> createState() => _HorizonIntroHostState();
@@ -278,6 +285,9 @@ class _HorizonIntroState extends State<HorizonIntro>
   void initState() {
     super.initState();
     _scene.targetProbe = _measureTarget;
+    if (widget.kind == HorizonIntroKind.cold) {
+      _scene.holdWhile = () => HorizonIntroHost.homeLoading.value;
+    }
     HorizonIntro.debugLastScene = _scene;
     _frames.repeat();
   }
@@ -396,6 +406,7 @@ class HorizonIntroScene extends ChangeNotifier {
     this.reverse = false,
   })  : _rng = random ?? math.Random(),
         swallowSeconds = reverse ? 0 : swallow.inMicroseconds / 1e6,
+        _baseSwallow = reverse ? 0 : swallow.inMicroseconds / 1e6,
         landSeconds = land.inMicroseconds / 1e6;
 
   factory HorizonIntroScene.forKind(HorizonIntroKind kind,
@@ -408,27 +419,56 @@ class HorizonIntroScene extends ChangeNotifier {
           HorizonIntroScene(random: random, land: kIntroExit, reverse: true),
       };
 
-  /// Tope del pool (design.md §15: ≤ 120).
+  /// Tope del pool (design.md §15).
   static const int maxParticles = kIntroMaxParticles;
 
-  /// Glifos fijos (nunca contenido del usuario): símbolos y palabras cortas.
-  static const List<String> glyphs = [
-    '0', '1', '{', '}', '[', ']', '<', '>', '/', ';', //
-    'voz', 'nota', 'texto', 'ssh', 'tmux', 'dev', 'hola',
+  /// Textos fijos (nunca contenido del usuario). En [glyphs] van en este
+  /// orden: símbolos, código, tiras binarias y palabras.
+  static const List<String> symbols = [
+    '0', '1', '{', '}', '[', ']', '<', '>', '/', ';', '(', ')', '=', '*', //
+    '#',
+  ];
+  static const List<String> code = [
+    'const', 'let', 'if (x) {', '} else {', '=>', '</>', '{}', '[]', 'fn()',
+    'return', 'for (i = 0; i < n; i++)', 'PI = 3.14159;', 'while (true)',
+    'async', 'await', 'null', '===', 'import', '// nota', '0x1F',
+  ];
+  static const List<String> words = [
+    'voz', 'nota', 'texto', 'dev', 'hola', 'ssh', 'tmux',
   ];
 
-  /// Primer índice de [glyphs] que es palabra.
-  static const int wordStart = 10;
+  /// Tiras binarias: pool fijo (semilla fija) para que la hoja de glifos
+  /// sea finita.
+  static final List<String> binary = () {
+    final rng = math.Random(11);
+    return List<String>.generate(24, (_) {
+      final length = 4 + rng.nextInt(9);
+      final b = StringBuffer();
+      for (var j = 0; j < length; j++) {
+        b.write(rng.nextBool() ? '1' : '0');
+        if (j == 3 && length > 6) b.write(' ');
+      }
+      return b.toString();
+    }, growable: false);
+  }();
 
-  /// 0 y 1 salen el doble que el resto (maqueta).
-  static const List<int> _symbolPick = [0, 1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+  static final List<String> glyphs =
+      List.unmodifiable([...symbols, ...code, ...binary, ...words]);
 
-  /// Probabilidad de que una partícula sea palabra.
-  static const double wordChance = 0.08;
+  static int get _codeStart => symbols.length;
+  static int get _binaryStart => _codeStart + code.length;
+  static int get _wordStart => _binaryStart + binary.length;
 
-  /// Inclinación del disco y aplastamiento de la órbita (maqueta).
+  /// Parte de las partículas que son código o tiras binarias (artifact: 60 %).
+  static const double codeShare = 0.6;
+
+  /// Inclinación del disco y aplastamiento de la órbita (artifact: 0,22).
   static const double tilt = -0.32;
-  static const double flatten = 0.4;
+  static const double flatten = 0.22;
+
+  /// Tope de la espera por Inicio: aunque no termine de cargar, el agujero
+  /// aterriza después de este tiempo extra.
+  static const double maxHoldSeconds = 4;
 
   /// Radio del agujero respecto del radio del disco (R × 0,9).
   static const double holeOfDisc = 0.9;
@@ -454,7 +494,15 @@ class HorizonIntroScene extends ChangeNotifier {
   static const double exitReach = 0.55;
 
   final bool reverse;
-  final double swallowSeconds;
+
+  /// Fase 1: se estira mientras [holdWhile] diga que Inicio sigue cargando.
+  double swallowSeconds;
+  final double _baseSwallow;
+
+  /// Mientras devuelva true, la fase 1 sigue girando (hasta
+  /// [maxHoldSeconds] extra). Solo en el arranque en frío.
+  bool Function()? holdWhile;
+  bool _skipped = false;
   final double landSeconds;
   static final double skipSeconds = kIntroSkipLand.inMicroseconds / 1e6;
 
@@ -569,13 +617,20 @@ class HorizonIntroScene extends ChangeNotifier {
     }
   }
 
-  int _pick() => _rng.nextDouble() < wordChance
-      ? wordStart + _rng.nextInt(glyphs.length - wordStart)
-      : _symbolPick[_rng.nextInt(_symbolPick.length)];
+  int _pick() {
+    final x = _rng.nextDouble();
+    if (x < codeShare * 0.62) return _codeStart + _rng.nextInt(code.length);
+    if (x < codeShare) return _binaryStart + _rng.nextInt(binary.length);
+    if (x < codeShare + 0.06) return _wordStart + _rng.nextInt(words.length);
+    // 0 y 1 salen el doble que el resto.
+    final i = _rng.nextInt(symbols.length + 2);
+    return i >= symbols.length ? i - symbols.length : i;
+  }
 
   /// Tocar para saltear: la fase 2 empieza ya y dura [kIntroSkipLand].
   void skip() {
     if (reverse || done) return;
+    _skipped = true;
     if (!landing) clock = swallowSeconds;
     final remaining = swallowSeconds + landSeconds - clock;
     _timeScale = math.max(_timeScale, remaining / skipSeconds);
@@ -584,6 +639,15 @@ class HorizonIntroScene extends ChangeNotifier {
   void step(double dt) {
     final d = dt.clamp(0.0, maxStep) * _timeScale;
     clock += d;
+    // Inicio todavía carga: el agujero sigue girando en vez de aterrizar.
+    if (!reverse &&
+        !_skipped &&
+        clock + maxStep >= swallowSeconds &&
+        clock < _baseSwallow + maxHoldSeconds &&
+        (holdWhile?.call() ?? false)) {
+      // Un paso por delante del reloj: la fase 2 no arranca mientras espera.
+      swallowSeconds = clock + maxStep;
+    }
     _updateHole();
     if (!size.isEmpty) _advance(d);
     notifyListeners();
@@ -635,10 +699,16 @@ class HorizonIntroScene extends ChangeNotifier {
   }
 }
 
-/// Pintor del arranque sobre [HorizonIntroScene]: fondo, mitad trasera del
-/// disco, halo elíptico, agujero con anillo (destello → brasa), micrófono y
-/// mitad delantera. Sin `saveLayer` ni blur; pinceles, colores y glifos
-/// cacheados una vez por proceso y modo.
+/// Pintor del arranque sobre [HorizonIntroScene] (propuesta aprobada en el
+/// artifact «Agujero Horizonte», 2026-11-14): fondo, halo, mitad trasera del
+/// disco de acreción y de las partículas, anillo de fotones, agujero con su
+/// anillo (destello → brasa), micrófono y mitad delantera.
+///
+/// Las partículas son texto (símbolos, código, tiras binarias, palabras) que
+/// sigue la órbita, con estela y profundidad (detrás del agujero más chico).
+/// Todo el texto sale de una hoja de glifos precalculada y se dibuja con un
+/// único `drawRawAtlas` por mitad: cientos de partículas sin un TextPainter
+/// por cuadro. Sin `saveLayer` ni blur.
 class HorizonIntroPainter extends CustomPainter {
   final HorizonIntroScene scene;
   final bool isDark;
@@ -654,10 +724,11 @@ class HorizonIntroPainter extends CustomPainter {
   /// cantidad está acotada por [textPainterCapacity], no crece por cuadro).
   static int get debugTextPainterCount => _IntroResources.created;
 
-  /// Tope de TextPainter por modo: glifos × 2 colores × niveles + micrófono.
-  static const int textPainterCapacity = _IntroResources.capacity;
+  /// Tope de TextPainter por modo: un glifo por texto de la hoja + micrófono.
+  static int get textPainterCapacity => _IntroResources.capacity;
 
-  static const double _glyphBase = 16;
+  static const double _cosTilt = 0.9492354180824408; // cos(tilt)
+  static const double _sinTilt = -0.3145665606161178; // sin(tilt)
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -676,7 +747,7 @@ class HorizonIntroPainter extends CustomPainter {
     // Fondo = fondo de la app (empalma con el arranque nativo).
     final bgAlpha = 1 - Curves.easeInOut.transform(p);
     if (bgAlpha > 0) {
-      res.fill.color = res.tint(_IntroResources.bg, bgAlpha);
+      res.fill.color = res.bgSolid.withValues(alpha: bgAlpha);
       canvas.drawRect(Offset.zero & size, res.fill);
     }
     // Mientras el agujero viaja, el botón real que asoma debajo queda
@@ -688,29 +759,32 @@ class HorizonIntroPainter extends CustomPainter {
     }
 
     final fade = 1 - Curves.easeIn.transform(p);
-    _particles(canvas, res, w, h, big, fade, back: true);
+    // Disco, halo y anillo de fotones se apagan mientras aterriza.
+    final diskA = highContrast ? 0.0 : 1 - e;
 
-    if (!highContrast) {
-      final haloAlpha = 1 - e;
-      if (haloAlpha > 0.01) {
-        res.glow.color = res.tint(_IntroResources.black, haloAlpha);
-        canvas.save();
-        canvas.translate(c.dx, c.dy);
-        canvas.rotate(HorizonIntroScene.tilt);
-        canvas.scale(big * 2.3, big * 2.3 * 0.62);
-        canvas.drawCircle(Offset.zero, 1, res.glow);
-        canvas.restore();
-      }
+    if (diskA > 0.01) {
+      res.halo.color = Color.fromRGBO(0, 0, 0, diskA);
+      canvas.save();
+      canvas.translate(c.dx, c.dy);
+      canvas.rotate(HorizonIntroScene.tilt);
+      final sx = big * 3.4;
+      canvas.scale(sx, sx * math.max(0.45, HorizonIntroScene.flatten * 1.5));
+      canvas.drawCircle(Offset.zero, 1, res.halo);
+      canvas.restore();
     }
+    _disk(canvas, res, c, big, diskA, back: true);
+    _particles(canvas, res, w, h, big, fade, back: true);
+    if (diskA > 0.01) _photonRing(canvas, res, c, hr, diskA);
 
     res.fill.color = res.hole;
     canvas.drawCircle(c, hr, res.fill);
-    // Anillo: destello fino de la maqueta → brasa de 2 dp del botón (por
-    // dentro del borde, como Border.all).
-    final hotAlpha = highContrast ? 0.0 : 0.9 * (1 - e);
+    // Anillo: destello fino → brasa de 2 dp del botón (por dentro del borde,
+    // como Border.all).
+    final hotAlpha = highContrast ? 0.0 : 0.95 * (1 - e);
     if (hotAlpha > 0.01) {
       res.stroke
-        ..color = res.tint(_IntroResources.hot, hotAlpha)
+        ..blendMode = BlendMode.srcOver
+        ..color = kHot.withValues(alpha: hotAlpha)
         ..strokeWidth = 1.5;
       canvas.drawCircle(c, hr - 0.75, res.stroke);
     }
@@ -718,7 +792,8 @@ class HorizonIntroPainter extends CustomPainter {
     if (emberAlpha > 0.01) {
       final sw = 1.5 + 0.5 * e;
       res.stroke
-        ..color = res.tint(_IntroResources.ember, emberAlpha)
+        ..blendMode = BlendMode.srcOver
+        ..color = res.emberColor.withValues(alpha: emberAlpha)
         ..strokeWidth = sw;
       canvas.drawCircle(c, hr - sw / 2, res.stroke);
     }
@@ -728,7 +803,85 @@ class HorizonIntroPainter extends CustomPainter {
       tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
     }
 
+    _disk(canvas, res, c, big, diskA, back: false);
     _particles(canvas, res, w, h, big, fade, back: false);
+  }
+
+  /// Bandas finas del disco de acreción, discontinuas, que giran más rápido
+  /// cuanto más cerca del agujero. [back]: mitad de atrás (arriba).
+  void _disk(Canvas canvas, _IntroResources res, Offset c, double big,
+      double diskA,
+      {required bool back}) {
+    if (diskA <= 0.01) return;
+    const flat = HorizonIntroScene.flatten;
+    final a0 = back ? math.pi : 0.0;
+    final p = scene.landProgress;
+    final path = res.path;
+    final paint = res.band;
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(HorizonIntroScene.tilt);
+    for (final band in _IntroResources.bands) {
+      final rr = big * (1.05 + band.t * band.t * 2.6);
+      final near = 1 - band.t;
+      final alpha = ((0.08 + 0.5 * math.pow(near, 1.6)) *
+              diskA *
+              res.diskBrightness *
+              (back ? 0.8 : 1.0))
+          .clamp(0.0, 1.0);
+      if (alpha <= 0.01) continue;
+      final total = band.dash[0] + band.dash[1] + band.dash[2] + band.dash[3];
+      final offset = band.offset -
+          scene.clock * 260 * math.pow(big / rr, 1.5) * (1 + 3 * p);
+      final rect = Rect.fromCenter(
+          center: Offset.zero, width: rr * 2, height: rr * 2 * flat);
+      final length = math.pi * rr;
+      path.reset();
+      for (var s = -(offset % total); s < length; s += total) {
+        _dash(path, rect, rr, a0, length, s, band.dash[0]);
+        _dash(path, rect, rr, a0, length, s + band.dash[0] + band.dash[1],
+            band.dash[2]);
+      }
+      paint
+        ..color = Color(_withAlpha(
+            _mix(res.emberArgb, kHot.toARGB32(), math.pow(near, 2.2).toDouble()),
+            alpha))
+        ..strokeWidth = band.width * (1 + near);
+      canvas.drawPath(path, paint);
+    }
+    canvas.restore();
+  }
+
+  static void _dash(Path path, Rect rect, double rr, double a0, double length,
+      double from, double len) {
+    final s0 = math.max(0.0, from);
+    final s1 = math.min(length, from + len);
+    if (s1 - s0 < 0.5) return;
+    path.addArc(rect, a0 + s0 / rr, (s1 - s0) / rr);
+  }
+
+  /// Anillo de fotones: la parte trasera del disco curvada sobre el agujero.
+  void _photonRing(
+      Canvas canvas, _IntroResources res, Offset c, double hr, double diskA) {
+    final paint = res.band;
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(HorizonIntroScene.tilt);
+    for (final ring in _IntroResources.photonRings) {
+      final rr = hr * ring.radius;
+      paint
+        ..color = Color(_withAlpha(
+            ring.argb(res), (ring.alpha * diskA * res.diskBrightness).clamp(0.0, 1.0)))
+        ..strokeWidth = ring.width;
+      canvas.drawArc(
+        Rect.fromCenter(center: Offset.zero, width: rr * 2, height: rr * 1.84),
+        math.pi * 1.04,
+        math.pi * 0.92,
+        false,
+        paint,
+      );
+    }
+    canvas.restore();
   }
 
   void _particles(Canvas canvas, _IntroResources res, double w, double h,
@@ -737,59 +890,106 @@ class HorizonIntroPainter extends CustomPainter {
     if (fade <= 0.02) return;
     final c = scene.holeCenter;
     final reach = scene.orbitReach;
-    const ca = 0.9492354180824408; // cos(tilt)
-    const sa = -0.3145665606161178; // sin(tilt)
-    const flatten = HorizonIntroScene.flatten;
+    const tilt = HorizonIntroScene.tilt;
+    const flat = HorizonIntroScene.flatten;
+    const ca = _cosTilt;
+    const sa = _sinTilt;
+    final xforms = res.xforms;
+    final rects = res.rects;
+    final colors = res.colors;
+    final sprites = res.sprites;
+    final trail = res.trail;
+    var n = 0;
+    canvas.save();
+    canvas.translate(c.dx, c.dy);
+    canvas.rotate(tilt);
     for (var i = 0; i < HorizonIntroScene.maxParticles; i++) {
       final g = scene._glyph[i];
       if (g < 0) continue;
       final th = scene._th[i];
-      final sinTh = math.sin(th);
-      if (back != (sinTh < 0)) continue;
+      final sinT = math.sin(th);
+      if (back != (sinT < 0)) continue;
+      final cosT = math.cos(th);
       final r = scene._r[i];
       final u = (r - big) / reach;
-      var a = ((r - big * 1.02) / (big * 0.5)).clamp(0.0, 1.0) *
-          math.min(1.0, (1 - u) * 3);
-      a *= (u > 0.4 ? 0.55 : 0.95) * fade;
+      var a = ((r - big * 1.02) / (big * 0.35)).clamp(0.0, 1.0) *
+          math.min(1.0, (1 - u) * 2.6);
+      a *= (u > 0.45 ? 0.6 : 1.0) * fade * (back ? 0.85 : 1.0);
       final age = scene._age[i];
       if (age < HorizonIntroScene.fadeInSeconds) {
         a *= age / HorizonIntroScene.fadeInSeconds;
       }
+      // Profundidad: detrás del agujero (arriba) más chico y tenue.
+      final depth = 1 + 0.34 * sinT;
+      a *= 0.72 + 0.28 * (depth - 0.66) / 0.68;
       if (a <= 0.02) continue;
-      final ox = r * math.cos(th);
-      final oy = r * sinTh * flatten;
+      final ox = r * cosT;
+      final oy = r * sinT * flat;
       final x = c.dx + ox * ca - oy * sa;
       final y = c.dy + ox * sa + oy * ca;
-      if (x < -80 || x > w + 80 || y < -50 || y > h + 50) continue;
-      if (u > 0.16) {
-        // Lejos: glifo que crece al alejarse, fg; más cerca, brasa.
-        final word = g >= HorizonIntroScene.wordStart;
-        final sz =
-            math.max(7.0, (word ? 10.0 : 12.0) * (0.5 + u * 1.6) * scene._k[i]);
-        final tp = res.glyph(
-            g, u < 0.3 ? _IntroResources.ember : _IntroResources.fg, a);
-        final scale = sz / _glyphBase;
-        canvas.save();
-        canvas.translate(x, y);
-        canvas.rotate(HorizonIntroScene.tilt + sinTh * 0.35);
-        canvas.scale(scale);
-        tp.paint(canvas, Offset(0, -tp.height * 0.8));
-        canvas.restore();
-      } else {
-        // Cerca del horizonte: trazo corto en la dirección de la órbita.
-        final th2 = th - 0.09 * (1 + big / r);
-        final ox2 = r * math.cos(th2);
-        final oy2 = r * math.sin(th2) * flatten;
-        res.stroke
-          ..color =
-              res.tint(u < 0.1 ? _IntroResources.hot : _IntroResources.ember, a)
-          ..strokeWidth = 1.4;
-        canvas.drawLine(
-          Offset(c.dx + ox2 * ca - oy2 * sa, c.dy + ox2 * sa + oy2 * ca),
-          Offset(x, y),
-          res.stroke,
-        );
+      if (x < -120 || x > w + 120 || y < -60 || y > h + 60) continue;
+      final rgb = res.particleArgb(u);
+      // Estela: arco corto detrás, más largo cerca del horizonte.
+      final sweep = 0.05 + 0.32 * math.pow(big / r, 1.4);
+      trail
+        ..color = Color(_withAlpha(rgb, a * (u < 0.2 ? 0.9 : 0.35)))
+        ..strokeWidth = (u < 0.14 ? 1.6 : 1.0) * depth;
+      canvas.drawArc(
+        Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 2 * flat),
+        th - sweep,
+        sweep,
+        false,
+        trail,
+      );
+      if (u < 0.14 || sprites == null) continue; // pegado al horizonte: estela
+      // Dirección del giro en pantalla, siempre legible (nunca cabeza abajo).
+      // En los costados la órbita va casi vertical: el texto se apaga y
+      // queda la estela; nunca se para.
+      final tx = -r * sinT;
+      final ty = r * cosT * flat;
+      var dev = math.atan2(tx * sa + ty * ca, tx * ca - ty * sa) - tilt;
+      while (dev > math.pi / 2) {
+        dev -= math.pi;
       }
+      while (dev <= -math.pi / 2) {
+        dev += math.pi;
+      }
+      final textA =
+          a * (1 - ((math.sin(dev).abs() - 0.4) / 0.35).clamp(0.0, 1.0));
+      if (textA <= 0.03) continue;
+      final ang = tilt + dev.clamp(-0.5, 0.5);
+      final long = HorizonIntroScene.glyphs[g].length > 2;
+      final sz = math.max(5.5,
+          (long ? 9.5 : 12.0) * (0.55 + u * 1.35) * scene._k[i] * depth);
+      final scale = sz / _IntroResources.atlasFont;
+      final scos = scale * math.cos(ang);
+      final ssin = scale * math.sin(ang);
+      final ax = sprites[g * 4 + 2] / 2 - sprites[g * 4] / 2;
+      final ay = sprites[g * 4 + 3] / 2 - sprites[g * 4 + 1] / 2;
+      final o = n * 4;
+      xforms[o] = scos;
+      xforms[o + 1] = ssin;
+      xforms[o + 2] = x - scos * ax + ssin * ay;
+      xforms[o + 3] = y - ssin * ax - scos * ay;
+      rects[o] = sprites[g * 4];
+      rects[o + 1] = sprites[g * 4 + 1];
+      rects[o + 2] = sprites[g * 4 + 2];
+      rects[o + 3] = sprites[g * 4 + 3];
+      colors[n] = _withAlpha(rgb, textA);
+      n++;
+    }
+    canvas.restore();
+    final image = res.atlas;
+    if (n > 0 && image != null) {
+      canvas.drawRawAtlas(
+        image,
+        Float32List.sublistView(xforms, 0, n * 4),
+        Float32List.sublistView(rects, 0, n * 4),
+        Int32List.sublistView(colors, 0, n),
+        BlendMode.modulate,
+        null,
+        res.atlasPaint,
+      );
     }
   }
 
@@ -800,41 +1000,78 @@ class HorizonIntroPainter extends CustomPainter {
       old.highContrast != highContrast;
 }
 
-/// Pinceles, colores con opacidad cuantizada, halo y glifos del arranque:
-/// uno por modo y por proceso. Los TextPainter se arman a demanda una sola
-/// vez cada uno (como mucho [capacity]) y se reutilizan en cada cuadro.
+/// Mezcla dos colores ARGB opacos (t = 0 → [a]).
+int _mix(int a, int b, double t) {
+  final k = t.clamp(0.0, 1.0);
+  int ch(int shift) {
+    final x = (a >> shift) & 0xFF;
+    final y = (b >> shift) & 0xFF;
+    return (x + (y - x) * k).round() & 0xFF;
+  }
+
+  return 0xFF000000 | (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
+/// [argb] con la opacidad [alpha] (0..1).
+int _withAlpha(int argb, double alpha) =>
+    ((alpha.clamp(0.0, 1.0) * 255).round() << 24) | (argb & 0x00FFFFFF);
+
+/// Banda del disco: radio relativo, patrón de trazos (px), grosor y fase.
+class _Band {
+  final double t;
+  final List<double> dash;
+  final double width;
+  final double offset;
+  const _Band(this.t, this.dash, this.width, this.offset);
+}
+
+/// Arco del anillo de fotones: radio (× agujero), grosor, color y opacidad.
+class _PhotonRing {
+  final double radius;
+  final double width;
+  final int color; // 0 brasa, 1 dorado, 2 texto
+  final double alpha;
+  const _PhotonRing(this.radius, this.width, this.color, this.alpha);
+
+  int argb(_IntroResources res) => switch (color) {
+        0 => res.emberArgb,
+        1 => kHot.toARGB32(),
+        _ => res.fgArgb,
+      };
+}
+
+/// Pinceles, colores, halo, hoja de glifos y buffers del arranque: uno por
+/// modo y por proceso. Los TextPainter (uno por texto de la hoja y los
+/// niveles del micrófono) se arman una sola vez cada uno.
 class _IntroResources {
   _IntroResources._(bool isDark)
       : hole = isDark ? kHoleDark : kHoleLight,
         bgSolid = isDark ? kHzBgDark : kHzBgLight,
-        _bases = [
-          isDark ? kHzFgDark : kHzFgLight,
-          isDark ? kEmberDark : kEmberLight,
-          kHot,
-          isDark ? kHzBgDark : kHzBgLight,
-          kHoleDark,
-        ] {
-    for (var c = 0; c < _bases.length; c++) {
-      for (var l = 0; l <= _alphaSteps; l++) {
-        _tints[c * (_alphaSteps + 1) + l] =
-            _bases[c].withValues(alpha: l / _alphaSteps);
-      }
-    }
-    final emberColor = _bases[ember];
-    // Halo de la maqueta: brasa desde el borde del agujero (0,9 R de
-    // 2,3 R), brasa al 40 % al 35 % del tramo y transparente al final.
-    const inner = 0.9 / 2.3;
-    glow.shader = ui.Gradient.radial(
+        emberColor = isDark ? kEmberDark : kEmberLight,
+        diskBrightness = isDark ? 2.0 : 1.1,
+        _coolArgb = isDark ? 0xFFAEBBDA : kHzFg2Light.toARGB32(),
+        fgArgb = (isDark ? kHzFgDark : kHzFgLight).toARGB32(),
+        _hotArgb = isDark ? kHot.toARGB32() : kEmberLight.toARGB32() {
+    emberArgb = emberColor.toARGB32();
+    // En oscuro la luz se suma (como el render); en claro se pinta encima.
+    final blend = isDark ? BlendMode.plus : BlendMode.srcOver;
+    band.blendMode = blend;
+    trail.blendMode = blend;
+    halo.blendMode = blend;
+    atlasPaint.blendMode = blend;
+    final scale = isDark ? 1.0 : 0.5;
+    halo.shader = ui.Gradient.radial(
       Offset.zero,
       1,
       [
-        emberColor,
-        emberColor,
-        emberColor.withValues(alpha: 0.4),
+        emberColor.withValues(alpha: 1.0 * scale),
+        emberColor.withValues(alpha: 0.64 * scale),
+        emberColor.withValues(alpha: 0.16 * scale),
         emberColor.withValues(alpha: 0),
       ],
-      const [0, inner, inner + 0.35 * (1 - inner), 1],
+      const [0, 0.3, 0.6, 1],
     );
+    _buildAtlas();
   }
 
   static final Map<bool, _IntroResources> _cache = {};
@@ -842,60 +1079,139 @@ class _IntroResources {
   static _IntroResources of(bool isDark) =>
       _cache.putIfAbsent(isDark, () => _IntroResources._(isDark));
 
-  static const int fg = 0;
-  static const int ember = 1;
-  static const int hot = 2;
-  static const int bg = 3;
-  static const int black = 4;
-
-  static const int _alphaSteps = 32;
-  static const int _glyphLevels = 4;
+  /// Tamaño de letra de la hoja de glifos (se escala al dibujar).
+  static const double atlasFont = 40;
   static const int _micLevels = 8;
 
-  /// Glifos × {fg, brasa} × niveles de opacidad.
-  static const int _glyphSlots = _glyphCount * 2 * _glyphLevels;
-
-  /// = `HorizonIntroScene.glyphs.length` (lo verifica el test).
-  static const int _glyphCount = 17;
-
-  /// TextPainter que puede llegar a crear un modo (claro u oscuro).
-  static const int capacity = _glyphSlots + _micLevels;
+  static int get capacity => HorizonIntroScene.glyphs.length + _micLevels;
 
   static int created = 0;
 
+  /// Bandas del disco: fijas por proceso (semilla fija).
+  static final List<_Band> bands = () {
+    final rng = math.Random(7);
+    return List<_Band>.generate(30, (i) {
+      return _Band(
+        i / 29,
+        [
+          6 + rng.nextDouble() * 40,
+          3 + rng.nextDouble() * 18,
+          2 + rng.nextDouble() * 14,
+          4 + rng.nextDouble() * 22,
+        ],
+        0.6 + rng.nextDouble() * 1.6,
+        rng.nextDouble() * 200,
+      );
+    }, growable: false);
+  }();
+
+  static const List<_PhotonRing> photonRings = [
+    _PhotonRing(1.32, 9, 0, 0.10),
+    _PhotonRing(1.22, 5, 0, 0.22),
+    _PhotonRing(1.14, 2.4, 1, 0.55),
+    _PhotonRing(1.10, 1.1, 2, 0.50),
+  ];
+
   final Color hole;
   final Color bgSolid;
-  final List<Color> _bases;
-  final List<Color> _tints =
-      List<Color>.filled(5 * (_alphaSteps + 1), Colors.transparent);
+  final Color emberColor;
+  final double diskBrightness;
+  late final int emberArgb;
+  final int fgArgb;
+  final int _coolArgb;
+  final int _hotArgb;
 
-  Color tint(int colorIdx, double alpha) =>
-      _tints[colorIdx * (_alphaSteps + 1) +
-          (alpha.clamp(0.0, 1.0) * _alphaSteps).round()];
+  /// Color de una partícula según su distancia relativa al disco: frío
+  /// lejos, brasa en el medio, dorado cerca.
+  int particleArgb(double u) {
+    if (u > 0.42) return _mix(_coolArgb, fgArgb, (0.7 - u) / 0.28);
+    if (u > 0.2) return _mix(emberArgb, fgArgb, (u - 0.2) / 0.22 * 0.55);
+    return _mix(_hotArgb, emberArgb, u / 0.2);
+  }
 
   final Paint fill = Paint()..style = PaintingStyle.fill;
   final Paint stroke = Paint()
     ..style = PaintingStyle.stroke
     ..strokeCap = StrokeCap.round;
-  final Paint glow = Paint()..style = PaintingStyle.fill;
+  final Paint band = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  final Paint trail = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeCap = StrokeCap.round;
+  final Paint halo = Paint()..style = PaintingStyle.fill;
+  final Paint atlasPaint = Paint()..filterQuality = FilterQuality.low;
+  final Path path = Path();
 
-  final List<TextPainter?> _glyphs =
-      List<TextPainter?>.filled(_glyphSlots, null);
-  final List<TextPainter?> _mics = List<TextPainter?>.filled(_micLevels, null);
+  /// Hoja de glifos en blanco (se tiñe con el color de cada partícula) y el
+  /// rect de cada texto: [l, t, r, b] por índice de `HorizonIntroScene.glyphs`.
+  ui.Image? atlas;
+  Float32List? sprites;
 
-  TextPainter glyph(int glyph, int colorIdx, double alpha) {
-    final level = (alpha * _glyphLevels).ceil().clamp(1, _glyphLevels);
-    final key =
-        (glyph * 2 + (colorIdx == ember ? 1 : 0)) * _glyphLevels + (level - 1);
-    return _glyphs[key] ??= _layout(TextSpan(
-      text: HorizonIntroScene.glyphs[glyph],
-      style: kTextMono.copyWith(
-        fontSize: HorizonIntroPainter._glyphBase,
-        fontWeight: FontWeight.w500,
-        color: _bases[colorIdx].withValues(alpha: level / _glyphLevels),
-      ),
-    ));
+  /// Buffers del `drawRawAtlas`, reutilizados en cada cuadro.
+  final Float32List xforms = Float32List(HorizonIntroScene.maxParticles * 4);
+  final Float32List rects = Float32List(HorizonIntroScene.maxParticles * 4);
+  final Int32List colors = Int32List(HorizonIntroScene.maxParticles);
+
+  void _buildAtlas() {
+    const maxWidth = 2048.0;
+    const pad = 3.0;
+    final glyphs = HorizonIntroScene.glyphs;
+    final painters = [
+      for (final g in glyphs)
+        _layout(TextSpan(
+          text: g,
+          style: kTextMono.copyWith(
+            fontSize: atlasFont,
+            fontWeight: FontWeight.w500,
+            color: const Color(0xFFFFFFFF),
+          ),
+        )),
+    ];
+    final out = Float32List(glyphs.length * 4);
+    final offsets = <Offset>[];
+    var x = pad;
+    var y = pad;
+    var row = 0.0;
+    var width = 0.0;
+    for (var i = 0; i < painters.length; i++) {
+      final tp = painters[i];
+      if (x + tp.width + pad > maxWidth) {
+        x = pad;
+        y += row + pad;
+        row = 0;
+      }
+      offsets.add(Offset(x, y));
+      out[i * 4] = x;
+      out[i * 4 + 1] = y;
+      out[i * 4 + 2] = x + tp.width;
+      out[i * 4 + 3] = y + tp.height;
+      x += tp.width + pad;
+      width = math.max(width, x);
+      row = math.max(row, tp.height);
+    }
+    final height = y + row + pad;
+    try {
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      for (var i = 0; i < painters.length; i++) {
+        painters[i].paint(canvas, offsets[i]);
+      }
+      final picture = recorder.endRecording();
+      atlas = picture.toImageSync(width.ceil(), height.ceil());
+      picture.dispose();
+      sprites = out;
+    } catch (_) {
+      // Sin hoja de glifos: quedan disco, estelas y agujero.
+      atlas = null;
+      sprites = null;
+    }
+    for (final tp in painters) {
+      tp.dispose();
+    }
   }
+
+  final List<TextPainter?> _mics = List<TextPainter?>.filled(_micLevels, null);
 
   /// Glifo del micrófono idéntico al `Icon` del botón en reposo.
   TextPainter mic(double alpha) {
