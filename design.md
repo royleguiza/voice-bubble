@@ -414,6 +414,8 @@ Hoja sólida `hz_bg` + line, radio 30, sin sombra (la separa el velo), agarrader
 
 Íconos del widget (`widget_ic_*`): trazo 2.2 redondeado (el teclado sigue en 1.8).
 
+Carga de la IA en los botones circulares (lector y hoja): título = «Letras en órbita» (A, a, T caen en espiral a un agujero con disco inclinado), resumen = «Bits que caen» (puntos, 0 y 1 en espiral, fg2 lejos y ember-t cerca). Vectores animados generados por `docs/gen_widget_ai_loaders.py` (`widget_ai_title_loading`, `widget_ai_summary_loading`), colores por recurso para claro y oscuro.
+
 ### Burbuja y barra flotante
 
 - Ventana transparente sin blur (`GlassWindow` conserva el nombre); la vista pinta `dock_surface` (`hz_surf`) + borde `dock_line` (`hz_line`) de 1 dp.

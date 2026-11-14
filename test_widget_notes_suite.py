@@ -92,7 +92,8 @@ check("Contenedor sólido: hz_bg + borde 1dp hz_line + radio 30",
 # Fondos (los íconos llevan fillColor #00000000 de trazo, que no es vidrio).
 _widget_drawables = sorted(f for f in (RES / "drawable").glob("widget_*.xml")
                            if not f.name.startswith("widget_ic_")
-                           and f.name != "widget_rec_halo.xml")  # halo: degradado a transparente a propósito (no es vidrio)
+                           and f.name != "widget_rec_halo.xml"  # halo: degradado a transparente a propósito (no es vidrio)
+                           and not f.name.startswith("widget_ai_"))  # cargas de IA: mismo brillo radial del agujero
 _alpha_hex = [f.name for f in _widget_drawables
               if re.search(r'#(?![Ff]{2})[0-9A-Fa-f]{2}[0-9A-Fa-f]{6}\b', f.read_text())]
 check("Drawables del widget sin colores translúcidos (sin vidrio)", not _alpha_hex, str(_alpha_hex))
@@ -662,5 +663,16 @@ check("Suite tiene JUnit nativo de rutas productivas C-04",
       and "WidgetNotesProvider.resolveState" in NATIVE_TEST.read_text()
       and "WidgetNoteEditActivity.resolveExistingNoteState" in NATIVE_TEST.read_text())
 
+# Cargas de la IA (2026-11-14): «Letras en órbita» (título) y «Bits que caen»
+# (resumen), generadas por docs/gen_widget_ai_loaders.py, en lector y hoja.
+_det = (RES / "layout/widget_note_detail.xml").read_text()
+_ovl = (RES / "layout/activity_widget_note_edit.xml").read_text()
+check("Carga de IA: título con letras en órbita y resumen con bits (lector y hoja)",
+      _det.count("@drawable/widget_ai_title_loading") == 1 and _det.count("@drawable/widget_ai_summary_loading") == 1
+      and _ovl.count("@drawable/widget_ai_title_loading") == 1 and _ovl.count("@drawable/widget_ai_summary_loading") == 1
+      and "progressBarStyleSmall" not in _det
+      and "GENERADO por docs/gen_widget_ai_loaders.py" in (RES / "drawable/widget_ai_title_loading.xml").read_text())
+
 print(f"\nRESULTADO SUITE WIDGET-NOTES: {len(passed)} pasados, {len(failed)} fallidos.")
 sys.exit(1 if failed else 0)
+

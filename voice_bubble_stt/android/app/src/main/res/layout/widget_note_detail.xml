@@ -181,11 +181,12 @@
 
                 <ProgressBar
                     android:id="@+id/widget_detail_ai_title_progress"
-                    style="?android:attr/progressBarStyleSmall"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:layout_gravity="center"
-                    android:indeterminateTint="@color/hz_ember_t"
+                    android:indeterminate="true"
+                    android:indeterminateDrawable="@drawable/widget_ai_title_loading"
+                    android:indeterminateDuration="2000"
                     android:visibility="gone" />
             </FrameLayout>
         </FrameLayout>
@@ -212,11 +213,12 @@
 
                 <ProgressBar
                     android:id="@+id/widget_detail_ai_summary_progress"
-                    style="?android:attr/progressBarStyleSmall"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:layout_gravity="center"
-                    android:indeterminateTint="@color/kb_label"
+                    android:indeterminate="true"
+                    android:indeterminateDrawable="@drawable/widget_ai_summary_loading"
+                    android:indeterminateDuration="2000"
                     android:visibility="gone" />
             </FrameLayout>
         </FrameLayout>
