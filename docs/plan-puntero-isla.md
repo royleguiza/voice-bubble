@@ -65,7 +65,15 @@ VoiceBubble (host)                     VoiceBubble Puntero (complemento)
   integrado al teclado (`TrackpadBridge`) queda como está hasta la fase 4.
 - Especificación: `docs/spec-puntero-fase1.md`.
 
-### Fase 2 — Isla flotante
+### Fase 2 — Barra flotante en el complemento + isla
+> Ampliada el 2026-11-15 (aprobado por el dueño): la burbuja y la barra
+> desaparecían porque el host solo las enciende al abrir la app. Pasan a
+> dibujarse en el complemento (Android lo mantiene vivo y lo relanza tras
+> reiniciar); el host queda de respaldo si el complemento no está.
+> - **2A** (`docs/spec-puntero-fase2a.md`): barra (borde · burbuja · isla) en
+>   el complemento, protocolo v3, dictado nativo del host sin Flutter.
+> - **2B**: Ajustes de Flutter (elegir Isla, ajuste al píxel, maqueta, en vivo).
+
 - Tercera forma de la barra (burbuja · barra lateral · **isla**): píldora
   negra tipo isla dinámica, dibujada por el complemento para poder vivir en
   la zona de la cámara. Reposo compacto; al tocar se expande con micrófono y
