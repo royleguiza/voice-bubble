@@ -70,8 +70,13 @@ VoiceBubble (host)                     VoiceBubble Puntero (complemento)
   negra tipo isla dinámica, dibujada por el complemento para poder vivir en
   la zona de la cámara. Reposo compacto; al tocar se expande con micrófono y
   puntero; grabando muestra la animación de voz; pensando, las rayitas.
-- Ajustes › Barra flotante: elegir «Isla», posición X/Y y ancho con
-  deslizadores y botones de ±1 px (al milímetro) con vista previa en vivo.
+- Ajustes › Barra flotante: elegir «Isla» y ajustarla al píxel (pedido del
+  dueño, 2026-11-15): posición horizontal y vertical, ancho y ALTO en reposo,
+  cada uno con deslizador y botones de ±1 px; lado del micrófono (izquierda
+  o derecha; el puntero va del otro). En la misma pantalla, una maqueta de
+  la isla, y la isla real se actualiza EN VIVO mientras se ajusta (el host
+  manda `CONFIG` en cada cambio). Sirve para cámaras al centro, a un lado,
+  más altas o más bajas.
 - Protocolo: `CONFIG` (isla), `MIC_TOGGLE` (isla → host), `MIC_STATE`
   (host → isla, con nivel de voz a ≤ 15 Hz).
 - Sin el complemento activo, «Isla» no se puede elegir (Ajustes lo explica).
