@@ -17,6 +17,12 @@ import kotlin.math.abs
  *
  * ESPEJO EXACTO: puntero_android/app/src/main/kotlin/.../PointerProtocol.kt.
  * La suite test_floating_dock_suite.py verifica que las constantes coincidan.
+ * Protocolo v3 (fase 2A): la barra flotante (borde · burbuja · isla) la dibuja
+ * el complemento como ventanas de Accesibilidad, para que no desaparezca nunca;
+ * VoiceBubble le manda la configuración ([ACTION_DOCK_CONFIG]) y el estado del
+ * dictado ([ACTION_MIC_STATE]); el dictado lo hace un servicio nativo de
+ * VoiceBubble (sin Flutter). El audio y el texto NUNCA pasan por acá.
+ *
  * Lógica pura (sin android.*) para testearla en la JVM.
  */
 object PointerProtocol {
@@ -101,6 +107,73 @@ object PointerProtocol {
 
     /** Tope del cierre automático (segundos); 0 = el trackpad queda abierto. */
     const val MAX_AUTO_RETURN_S = 120
+
+    // --- v3: la barra flotante (borde · burbuja · isla) la dibuja el complemento ---
+
+    /** VoiceBubble → complemento: configuración de la barra (ver [DockConfig]). Aplica EN VIVO. */
+    const val ACTION_DOCK_CONFIG = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_CONFIG"
+
+    /** VoiceBubble → complemento: estado del dictado (ver [MicState]). */
+    const val ACTION_MIC_STATE = "com.royleguiza.voicebubble.puntero.ACTION_MIC_STATE"
+
+    /** Complemento → VoiceBubble: arrancó (o quiere configuración); el host contesta con DOCK_CONFIG. */
+    const val ACTION_DOCK_HELLO = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_HELLO"
+
+    /** Complemento → VoiceBubble: dice si está dibujando la barra ([EXTRA_ACTIVE]) y qué forma tiene. */
+    const val ACTION_DOCK_STATE = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE"
+
+    const val EXTRA_DOCK_ENABLED = "enabled"
+    const val EXTRA_DOCK_FORM = "form"
+    const val EXTRA_TOOL_MIC = "tool_mic"
+    const val EXTRA_TOOL_POINTER = "tool_pointer"
+    const val EXTRA_ISLAND_X = "island_x"
+    const val EXTRA_ISLAND_Y = "island_y"
+    const val EXTRA_ISLAND_W = "island_w"
+    const val EXTRA_ISLAND_H = "island_h"
+    const val EXTRA_ISLAND_SIDE = "island_side"
+    const val EXTRA_ACTIVE = "active"
+
+    /** DOCK_CONFIG: el host quiere que el complemento conteste con DOCK_STATE aunque nada haya cambiado. */
+    const val EXTRA_ACK = "ack"
+
+    const val EXTRA_MIC_STATE = "state"
+    const val EXTRA_MIC_LEVEL = "level"
+    const val EXTRA_MIC_MESSAGE = "message"
+    const val EXTRA_NEEDS_UI = "needs_ui"
+
+    const val FORM_EDGE = "edge"
+    const val FORM_BUBBLE = "bubble"
+    const val FORM_ISLAND = "island"
+    const val SIDE_LEFT = "left"
+    const val SIDE_RIGHT = "right"
+
+    const val MIC_IDLE = "idle"
+    const val MIC_RECORDING = "recording"
+    const val MIC_TRANSCRIBING = "transcribing"
+    const val MIC_DONE = "done"
+    const val MIC_ERROR = "error"
+
+    /** Isla: −1 = valor por defecto (centrada arriba, 112 × 30 dp). */
+    const val ISLAND_DEFAULT = -1
+
+    /** Tope de las medidas de la isla en px (más que eso es basura y vuelve al valor por defecto). */
+    const val ISLAND_MAX_PX = 20000
+
+    /** Largo máximo del mensaje corto de MIC_STATE (siempre una frase fija de VoiceBubble, nunca texto dictado). */
+    const val MAX_MIC_MESSAGE = 40
+
+    /** Mientras graba, el host manda el estado al menos cada tanto; si pasa este tiempo sin noticias, el complemento vuelve a reposo. */
+    const val MIC_STALE_MS = 6000L
+
+    /** Nivel de voz: como mucho 15 mensajes por segundo (un envío cada [MIC_LEVEL_EVERY_MS]). */
+    const val MIC_LEVEL_EVERY_MS = 70L
+
+    /** Dictado nativo de la barra (servicio DockDictationService del host): acciones y destino. */
+    const val HOST_DICTATION_SERVICE_CLASS = "com.royleguiza.voicebubblestt.DockDictationService"
+    const val HOST_TRAMPOLINE_CLASS = "com.royleguiza.voicebubblestt.DockTrampolineActivity"
+    const val ACTION_DICTATION_TOGGLE = "com.royleguiza.voicebubblestt.DOCK_DICTATION_TOGGLE"
+    const val ACTION_DICTATION_CANCEL = "com.royleguiza.voicebubblestt.DOCK_DICTATION_CANCEL"
+    const val EXTRA_FROM_TRAMPOLINE = "from_trampoline"
 
     data class Command(val op: String, val x: Float, val y: Float, val dy: Float = 0f) {
         /** Cuánto dura el gesto en pantalla: las ventanas propias se apartan ese tiempo. */
@@ -239,4 +312,91 @@ object PointerProtocol {
             autoReturnS = if (autoReturnS in 0..MAX_AUTO_RETURN_S) autoReturnS else 0,
         )
     }
+
+    // --- v3: configuración de la barra y estado del dictado ---
+
+    /** Configuración ya validada de la barra flotante. */
+    data class DockConfig(
+        /** La barra flotante está encendida en Ajustes. */
+        val enabled: Boolean,
+        /** [FORM_EDGE], [FORM_BUBBLE] o [FORM_ISLAND]. */
+        val form: String,
+        val toolMic: Boolean,
+        val toolPointer: Boolean,
+        /** Isla: centro horizontal y borde superior en px de pantalla completa; −1 = por defecto. */
+        val islandX: Int,
+        val islandY: Int,
+        /** Isla en reposo: ancho y alto en px; −1 = por defecto (112 × 30 dp). */
+        val islandW: Int,
+        val islandH: Int,
+        /** Lado del micrófono en la isla ([SIDE_LEFT]/[SIDE_RIGHT]); el puntero va del otro. */
+        val islandSide: String,
+        /** Configuración del trackpad (sin ancla: la pone la barra). */
+        val trackpad: TrackpadConfig,
+    ) {
+        val micOnLeft: Boolean get() = islandSide != SIDE_RIGHT
+    }
+
+    private fun islandPx(v: Int): Int = if (v in 0..ISLAND_MAX_PX) v else ISLAND_DEFAULT
+
+    /**
+     * Valida y normaliza DOCK_CONFIG: lo desconocido cae al valor por defecto,
+     * nunca rompe. Sin ninguna herramienta queda el micrófono (como la barra).
+     */
+    fun normalizeDockConfig(
+        enabled: Boolean,
+        form: String?,
+        toolMic: Boolean,
+        toolPointer: Boolean,
+        islandX: Int,
+        islandY: Int,
+        islandW: Int,
+        islandH: Int,
+        islandSide: String?,
+        trackpad: TrackpadConfig,
+    ): DockConfig {
+        val noTools = !toolMic && !toolPointer
+        return DockConfig(
+            enabled = enabled,
+            form = if (form == FORM_BUBBLE || form == FORM_ISLAND) form else FORM_EDGE,
+            toolMic = toolMic || noTools,
+            toolPointer = toolPointer && !noTools,
+            islandX = islandPx(islandX),
+            islandY = islandPx(islandY),
+            islandW = islandPx(islandW).let { if (it == 0) ISLAND_DEFAULT else it },
+            islandH = islandPx(islandH).let { if (it == 0) ISLAND_DEFAULT else it },
+            islandSide = if (islandSide == SIDE_RIGHT) SIDE_RIGHT else SIDE_LEFT,
+            trackpad = trackpad.copy(anchorX = -1, anchorY = -1),
+        )
+    }
+
+    /** Estado del dictado que el host le cuenta a la barra. */
+    data class MicState(
+        val state: String,
+        /** 0..1; solo grabando. */
+        val level: Float,
+        /** Frase corta fija (done/error); nunca texto dictado. */
+        val message: String?,
+        /** El host no pudo arrancar en segundo plano: abrir la actividad trampolín. */
+        val needsUi: Boolean,
+    )
+
+    /** Valida MIC_STATE. null = estado desconocido (se ignora). */
+    fun normalizeMicState(state: String?, level: Float, message: String?, needsUi: Boolean): MicState? {
+        if (state != MIC_IDLE && state != MIC_RECORDING && state != MIC_TRANSCRIBING &&
+            state != MIC_DONE && state != MIC_ERROR
+        ) {
+            return null
+        }
+        val lv = if (state == MIC_RECORDING && level.isFinite()) level.coerceIn(0f, 1f) else 0f
+        val msg = if (state == MIC_DONE || state == MIC_ERROR) {
+            message?.trim()?.take(MAX_MIC_MESSAGE)?.takeIf { it.isNotEmpty() }
+        } else {
+            null
+        }
+        return MicState(state, lv, msg, needsUi && state == MIC_ERROR)
+    }
+
+    /** ¿El estado exige que el complemento muestre algo (no es reposo)? */
+    fun isBusy(state: String): Boolean = state == MIC_RECORDING || state == MIC_TRANSCRIBING
 }

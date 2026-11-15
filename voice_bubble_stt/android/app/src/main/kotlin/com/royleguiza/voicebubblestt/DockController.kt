@@ -72,6 +72,12 @@ internal class DockController(
     private var dictationState = "idle"
     private var hidden = false
 
+    /**
+     * El complemento está dibujando la barra (protocolo v3): esta es solo el
+     * respaldo y se esconde para que nunca se vean dos. Ver [setSuppressed].
+     */
+    private var suppressed = false
+
     /** Con el trackpad abierto la burbuja se esconde (la barra del borde queda). */
     private var trackpadOpen = false
 
@@ -149,9 +155,24 @@ internal class DockController(
     /** Ocultar mientras está abierto el historial. */
     fun setHidden(value: Boolean) {
         hidden = value
+        updateVisibility()
+    }
+
+    /**
+     * Esconder (o volver a mostrar) esta barra de respaldo porque el complemento
+     * dibuja la suya. Las ventanas siguen creadas pero invisibles e intocables.
+     */
+    fun setSuppressed(value: Boolean) {
+        if (suppressed == value) return
+        suppressed = value
+        updateVisibility()
+    }
+
+    private fun updateVisibility() {
+        val off = hidden || suppressed
         closeArc()
-        edgeWindow?.setVisible(!value && form == DockGeometry.Form.EDGE)
-        bubbleWindow?.setVisible(!value && !trackpadOpen && form == DockGeometry.Form.BUBBLE)
+        edgeWindow?.setVisible(!off && form == DockGeometry.Form.EDGE)
+        bubbleWindow?.setVisible(!off && !trackpadOpen && form == DockGeometry.Form.BUBBLE)
     }
 
     fun setTrackpadOpen(open: Boolean) {
@@ -159,7 +180,7 @@ internal class DockController(
         trackpadOpen = open
         edgeView.pointerActive = open
         if (open) closeArc()
-        bubbleWindow?.setVisible(!hidden && !open && form == DockGeometry.Form.BUBBLE)
+        bubbleWindow?.setVisible(!suppressed && !hidden && !open && form == DockGeometry.Form.BUBBLE)
     }
 
     fun onConfigurationChanged() {
@@ -256,14 +277,14 @@ internal class DockController(
             edgeView.shape = shape
             edgeView.openFraction = if (expanded) 1f else 0f
             layoutEdge(shape)
-            edgeWindow?.setVisible(!hidden)
+            edgeWindow?.setVisible(!hidden && !suppressed)
         } else {
             edgeWindow?.let { if (it.isShown()) it.setVisible(false) }
             expanded = false
             openFraction = 0f
             clampBubblePos()
             showBubbleAt(bubbleX, bubbleY)
-            bubbleWindow?.setVisible(!hidden && !trackpadOpen)
+            bubbleWindow?.setVisible(!suppressed && !hidden && !trackpadOpen)
         }
     }
 
@@ -313,7 +334,9 @@ internal class DockController(
             .putFloat("bubble_x_frac", bubbleX / sw)
             .putFloat("bubble_y_frac", bubbleY / sh)
             .apply()
-        if (flutterPrefs.getString(PREF_FORM, null) != form.pref) {
+        // «island» (la forma del complemento) se ve acá como burbuja: no se la pisa
+        // mientras la forma que muestra esta barra sea la que corresponde.
+        if (DockGeometry.Form.fromPref(flutterPrefs.getString(PREF_FORM, null)) != form) {
             flutterPrefs.edit().putString(PREF_FORM, form.pref).apply()
         }
     }

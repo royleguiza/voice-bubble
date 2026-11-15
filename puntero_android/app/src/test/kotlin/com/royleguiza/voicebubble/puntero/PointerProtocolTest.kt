@@ -187,4 +187,129 @@ class PointerProtocolTest {
             PointerProtocol.ACTION_OPEN_TRACKPAD, PointerProtocol.ACTION_CLOSE_TRACKPAD, PointerProtocol.ACTION_TRACKPAD_STATE,
         ).size)
     }
+
+    // --- v3: la barra flotante en el complemento ---
+
+    private fun tp() = PointerProtocol.normalizeTrackpadConfig(-1, -1, null, Float.NaN, null, null, null, null, 0)
+
+    private fun dock(
+        enabled: Boolean = true,
+        form: String? = "edge",
+        mic: Boolean = true,
+        pointer: Boolean = false,
+        x: Int = -1, y: Int = -1, w: Int = -1, h: Int = -1,
+        side: String? = "left",
+    ) = PointerProtocol.normalizeDockConfig(enabled, form, mic, pointer, x, y, w, h, side, tp())
+
+    @Test
+    fun `DOCK_CONFIG valida y normaliza la barra`() {
+        val c = dock(form = "island", pointer = true, x = 540, y = 12, w = 330, h = 90, side = "right")
+        assertTrue(c.enabled)
+        assertEquals(PointerProtocol.FORM_ISLAND, c.form)
+        assertTrue(c.toolMic)
+        assertTrue(c.toolPointer)
+        assertEquals(540, c.islandX)
+        assertEquals(12, c.islandY)
+        assertEquals(330, c.islandW)
+        assertEquals(90, c.islandH)
+        assertEquals(PointerProtocol.SIDE_RIGHT, c.islandSide)
+        assertFalse(c.micOnLeft)
+    }
+
+    @Test
+    fun `la forma desconocida cae al borde y el lado desconocido a la izquierda`() {
+        assertEquals(PointerProtocol.FORM_EDGE, dock(form = "cuadrada").form)
+        assertEquals(PointerProtocol.FORM_EDGE, dock(form = null).form)
+        assertEquals(PointerProtocol.FORM_BUBBLE, dock(form = "bubble").form)
+        assertEquals(PointerProtocol.SIDE_LEFT, dock(side = "arriba").islandSide)
+        assertTrue(dock(side = null).micOnLeft)
+    }
+
+    @Test
+    fun `sin ninguna herramienta queda el microfono`() {
+        val c = dock(mic = false, pointer = false)
+        assertTrue(c.toolMic)
+        assertFalse(c.toolPointer)
+        val onlyPointer = dock(mic = false, pointer = true)
+        assertFalse(onlyPointer.toolMic)
+        assertTrue(onlyPointer.toolPointer)
+    }
+
+    @Test
+    fun `las medidas de la isla invalidas vuelven al valor por defecto`() {
+        val c = dock(x = -7, y = 99999, w = 0, h = -1)
+        assertEquals(PointerProtocol.ISLAND_DEFAULT, c.islandX)
+        assertEquals(PointerProtocol.ISLAND_DEFAULT, c.islandY)
+        assertEquals(PointerProtocol.ISLAND_DEFAULT, c.islandW)
+        assertEquals(PointerProtocol.ISLAND_DEFAULT, c.islandH)
+        // 0 es una posicion valida (pegada al borde), no un ancho.
+        val edge = dock(x = 0, y = 0)
+        assertEquals(0, edge.islandX)
+        assertEquals(0, edge.islandY)
+    }
+
+    @Test
+    fun `DOCK_CONFIG lleva la configuracion del trackpad sin ancla`() {
+        val withAnchor = PointerProtocol.normalizeTrackpadConfig(100, 200, "window", 2f, null, null, null, null, 9)
+        val c = PointerProtocol.normalizeDockConfig(true, "edge", true, true, -1, -1, -1, -1, "left", withAnchor)
+        assertEquals("window", c.trackpad.mode)
+        assertEquals(2f, c.trackpad.sensitivity, 0f)
+        assertEquals(9, c.trackpad.autoReturnS)
+        assertFalse(c.trackpad.hasAnchor)
+    }
+
+    @Test
+    fun `MIC_STATE solo acepta estados conocidos`() {
+        for (s in listOf("idle", "recording", "transcribing", "done", "error")) {
+            assertNotNull(PointerProtocol.normalizeMicState(s, 0f, null, false))
+        }
+        assertNull(PointerProtocol.normalizeMicState("pausado", 0f, null, false))
+        assertNull(PointerProtocol.normalizeMicState(null, 0f, null, false))
+    }
+
+    @Test
+    fun `el nivel de voz solo vale grabando y se limita a 0 a 1`() {
+        assertEquals(0.5f, PointerProtocol.normalizeMicState("recording", 0.5f, null, false)!!.level, 0f)
+        assertEquals(1f, PointerProtocol.normalizeMicState("recording", 7f, null, false)!!.level, 0f)
+        assertEquals(0f, PointerProtocol.normalizeMicState("recording", -2f, null, false)!!.level, 0f)
+        assertEquals(0f, PointerProtocol.normalizeMicState("recording", Float.NaN, null, false)!!.level, 0f)
+        assertEquals(0f, PointerProtocol.normalizeMicState("transcribing", 0.9f, null, false)!!.level, 0f)
+    }
+
+    @Test
+    fun `el mensaje corto solo viaja en listo y error y se acota`() {
+        assertEquals("Pegado", PointerProtocol.normalizeMicState("done", 0f, "  Pegado ", false)!!.message)
+        assertNull(PointerProtocol.normalizeMicState("done", 0f, "   ", false)!!.message)
+        assertNull(PointerProtocol.normalizeMicState("recording", 0f, "hola", false)!!.message)
+        val long = "x".repeat(500)
+        assertEquals(PointerProtocol.MAX_MIC_MESSAGE, PointerProtocol.normalizeMicState("error", 0f, long, false)!!.message!!.length)
+    }
+
+    @Test
+    fun `necesita pantalla solo cuando es un error`() {
+        assertTrue(PointerProtocol.normalizeMicState("error", 0f, "x", true)!!.needsUi)
+        assertFalse(PointerProtocol.normalizeMicState("recording", 0f, null, true)!!.needsUi)
+    }
+
+    @Test
+    fun `grabando y transcribiendo son estados ocupados`() {
+        assertTrue(PointerProtocol.isBusy(PointerProtocol.MIC_RECORDING))
+        assertTrue(PointerProtocol.isBusy(PointerProtocol.MIC_TRANSCRIBING))
+        assertFalse(PointerProtocol.isBusy(PointerProtocol.MIC_IDLE))
+        assertFalse(PointerProtocol.isBusy(PointerProtocol.MIC_DONE))
+        assertFalse(PointerProtocol.isBusy(PointerProtocol.MIC_ERROR))
+    }
+
+    @Test
+    fun `las acciones de la barra nacen del complemento y el nivel respeta 15 Hz`() {
+        for (a in listOf(PointerProtocol.ACTION_DOCK_CONFIG, PointerProtocol.ACTION_MIC_STATE, PointerProtocol.ACTION_DOCK_HELLO, PointerProtocol.ACTION_DOCK_STATE)) {
+            assertTrue(a.startsWith(PointerProtocol.COMPANION_PACKAGE))
+        }
+        assertEquals(4, setOf(
+            PointerProtocol.ACTION_DOCK_CONFIG, PointerProtocol.ACTION_MIC_STATE,
+            PointerProtocol.ACTION_DOCK_HELLO, PointerProtocol.ACTION_DOCK_STATE,
+        ).size)
+        assertTrue(1000L / PointerProtocol.MIC_LEVEL_EVERY_MS <= 15)
+        assertTrue(PointerProtocol.MIC_STALE_MS > 2 * 1500L)
+    }
 }

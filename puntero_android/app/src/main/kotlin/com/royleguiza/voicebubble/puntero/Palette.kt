@@ -25,6 +25,24 @@ internal class Palette(private val context: Context) {
         private set
     var emberSoft = 0
         private set
+    var hole = 0
+        private set
+    var hot = 0
+        private set
+    var onHole = 0
+        private set
+
+    // Isla: siempre negra, de día y de noche (mismos valores en los dos temas).
+    var islandBg = 0
+        private set
+    var islandLine = 0
+        private set
+    var islandTool = 0
+        private set
+    var islandToolLine = 0
+        private set
+    var islandFg = 0
+        private set
 
     init {
         reload()
@@ -39,6 +57,14 @@ internal class Palette(private val context: Context) {
         ember = context.getColor(R.color.hz_ember)
         emberT = context.getColor(R.color.hz_ember_t)
         emberSoft = context.getColor(R.color.hz_ember_soft)
+        hole = context.getColor(R.color.hz_hole)
+        hot = context.getColor(R.color.hz_hot)
+        onHole = context.getColor(R.color.hz_on_hole)
+        islandBg = context.getColor(R.color.island_bg)
+        islandLine = context.getColor(R.color.island_line)
+        islandTool = context.getColor(R.color.island_tool)
+        islandToolLine = context.getColor(R.color.island_tool_line)
+        islandFg = context.getColor(R.color.island_fg)
     }
 }
 
@@ -53,4 +79,5 @@ internal object Fonts {
     fun sora(context: Context): Typeface = load(context, R.font.sora_semibold, Typeface.DEFAULT_BOLD)
     fun inter(context: Context): Typeface = load(context, R.font.inter_regular, Typeface.DEFAULT)
     fun interMedium(context: Context): Typeface = load(context, R.font.inter_medium, Typeface.DEFAULT_BOLD)
+    fun mono(context: Context): Typeface = load(context, R.font.jetbrains_mono_medium, Typeface.MONOSPACE)
 }

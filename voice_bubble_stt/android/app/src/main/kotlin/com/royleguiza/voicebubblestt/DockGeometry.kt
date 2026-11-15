@@ -24,7 +24,15 @@ object DockGeometry {
         BUBBLE("bubble");
 
         companion object {
-            fun fromPref(value: String?): Form = entries.firstOrNull { it.pref == value } ?: EDGE
+            /**
+             * "island" (la forma que dibuja el complemento, fase 2A) no existe en
+             * este respaldo: acá se ve como burbuja. Ojo: la preferencia NO se
+             * pisa (ver DockController.persist), así la isla sigue elegida.
+             */
+            const val PREF_ISLAND = "island"
+
+            fun fromPref(value: String?): Form =
+                if (value == PREF_ISLAND) BUBBLE else entries.firstOrNull { it.pref == value } ?: EDGE
         }
     }
 

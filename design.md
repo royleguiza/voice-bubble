@@ -420,9 +420,26 @@ Carga de la IA en los botones circulares (lector y hoja): título = «Letras en 
 
 - Ventana transparente sin blur (`GlassWindow` conserva el nombre); la vista pinta `dock_surface` (`hz_surf`) + borde `dock_line` (`hz_line`) de 1 dp.
 - El micrófono (burbuja con una herramienta, burbuja dictando, lugar del micrófono en la barra abierta) es el agujero: disco `hz_hole` con anillo brasa de 2 dp y un `HorizonView` en modo `CORONA` encima, con las fases reposo / grabando / pensando del dictado. El animador se detiene solo con la vista oculta o desacoplada.
-- Nivel de voz: el dictado de la burbuja graba en Dart; mientras no exista un puente de nivel Dart → Kotlin la corona recibe nivel 0 (espigas mínimas), sin inventar volumen.
+- Nivel de voz: el dictado de la burbuja graba en Dart; mientras no exista un puente de nivel Dart → Kotlin la corona recibe nivel 0 (espigas mínimas), sin inventar volumen. Con la barra del complemento (fase 2A) el dictado es nativo (`DockDictationService`) y el nivel REAL llega como `MIC_STATE` (≤ 15 Hz): la corona y la isla siguen la voz; el dictado de la app por Flutter sigue sin nivel.
 - Las demás herramientas (puntero, concentrador) son íconos fg2; activa (trackpad abierto) = `hz_ember_soft` + `hz_ember_t`; presionada = `hz_surf2`. En el abanico, cada herramienta es un botón circular sólido (el micrófono, un agujero).
 - Gestos, arrastre, geometría y tamaños no cambian.
+- **Quién la dibuja (fase 2A):** con el complemento VoiceBubble Puntero activo, la barra la dibujan sus ventanas de Accesibilidad (`HorizonView`, `DockViews` y `DockController` portados a `puntero_android/`, mismos tokens `hz_*` día/noche); la barra de VoiceBubble queda de respaldo y nunca se ven dos. Ver `docs/contrato-barra.md`.
+
+#### Isla (tercera forma)
+
+Maqueta: `laboratorio_ui/isla.html`. Píldora negra SIEMPRE (`island_bg` #000, borde 1 px `island_line` #23252E, igual de día y de noche, como el recorte de la cámara), pensada para rodear la cámara; solo la puede dibujar el complemento porque Android deja tocar y dibujar sobre la barra de estado únicamente a un servicio de Accesibilidad. Sin desenfoque ni sombra.
+
+| Estado | Medida (dp) | Contenido |
+|---|---|---|
+| Reposo | `w × h` configurables (112 × 30; ancho 72–180, alto 22–48) | agujero chico (12 dp, anillo brasa de 1,5 dp) de un lado y glifo de puntero del otro (fg al 55 %; brasa si el trackpad está abierto); el micrófono va del lado elegido |
+| Abierta (toque) | 176 × 58 | botón micrófono = agujero de 42 dp (anillo brasa 2 dp, micrófono on-hole) y botón puntero (círculo `island_tool` + flecha); se cierra sola a los 4 s; con una sola herramienta el toque la ejecuta directo |
+| Grabando | 252 × 44 | agujero de 32 dp (toque = terminar) · franja de voz · cronómetro mono 11 · ✕ (cancelar); anillo brasa exterior de 1,5 dp; los símbolos (0 1 { } , rayas, puntos) caen HACIA el agujero, más rápido cuanto más fuerte, on-hole → brasa → destello |
+| Pensando | 252 × 44 | mismo diseño: rayitas blancas salen del agujero y se desvanecen; arco con cola en destello/brasa gira sobre el anillo |
+| Listo | 128 × 34 (se ensancha si la frase no entra) | ✓ destello + «Pegado»/«Copiado» (o «!» con un error), 1,3 s (2,6 s los errores) y vuelve a reposo |
+
+- Posición: `x` = centro horizontal, `y` = borde superior, en px de pantalla completa; al crecer se mantiene centrada en `x` y siempre queda dentro de la pantalla (margen lateral 4 dp). Sobre la barra de estado y la cámara: ventana de Accesibilidad con `FLAG_LAYOUT_NO_LIMITS`, sin insets y con el recorte incluido.
+- Movimiento: transiciones de tamaño con rebote suave (≈ 420 ms, overshoot leve) y cruce de capas; con «quitar animaciones» del sistema, cambio directo y anillo fijo cuyo grosor sigue el volumen.
+- Accesibilidad: cada botón con `contentDescription` en español (Dictar, Terminar dictado, Cancelar dictado, Abrir el puntero), la isla como región `polite`.
 
 ### Historial flotante de la burbuja
 

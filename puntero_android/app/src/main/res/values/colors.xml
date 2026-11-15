@@ -15,8 +15,17 @@
     <color name="hz_on_ember">#FF1A0E00</color>
     <color name="hz_hot">#FFFFC766</color>
     <color name="hz_hole">#FF05060A</color>
+    <color name="hz_on_hole">#FFFFE9CF</color>
     <color name="hz_danger">#FFC8372B</color>
     <color name="hz_ok">#FF1E874A</color>
+
+    <!-- Isla flotante: siempre negra, como el recorte de la cámara, sobre
+         fondos claros y oscuros (laboratorio_ui/isla.html). Mismo valor de día y noche. -->
+    <color name="island_bg">#FF000000</color>
+    <color name="island_line">#FF23252E</color>
+    <color name="island_tool">#FF1B1E2A</color>
+    <color name="island_tool_line">#FF2C3040</color>
+    <color name="island_fg">#FFF2F0EC</color>
 
     <!-- Fondo del ícono adaptativo. -->
     <color name="icon_bg">#FF5856D6</color>

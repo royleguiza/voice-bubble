@@ -10,13 +10,20 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.WindowManager
 
 /**
  * Servicio en primer plano (micrófono) de la barra flotante. La UI (barra en
  * el borde o burbuja, con micrófono y puntero) vive en [DockController]; acá
  * quedan la notificación, el historial y el puente con Dart.
+ *
+ * Desde la fase 2A es el RESPALDO de la barra: con el complemento VoiceBubble
+ * Puntero activo, la barra la dibuja él (ventanas de Accesibilidad que Android
+ * mantiene vivas) y esta se esconde ([DockController.setSuppressed]) para que
+ * nunca se vean dos. Sin complemento, o si deja de dibujar, funciona como siempre.
  */
 class FloatingBubbleService : Service() {
 
@@ -34,6 +41,12 @@ class FloatingBubbleService : Service() {
             private set
 
         var onBubbleActionListener: BubbleActionListener? = null
+
+        /** Cada cuánto se repite el estado hacia la barra del complemento mientras dura un dictado de la app. */
+        private const val MIRROR_REPEAT_MS = 1500L
+
+        /** Plazo para que el complemento conteste que dibuja la barra antes de mostrar la de respaldo. */
+        private const val COMPLEMENT_ANSWER_MS = 1200L
 
         fun updateState(state: String) {
             val svc = instance
@@ -71,6 +84,24 @@ class FloatingBubbleService : Service() {
     private var windowManager: WindowManager? = null
     private var dock: DockController? = null
     private var bubbleHistoryController: BubbleHistoryController? = null
+    private val handler = Handler(Looper.getMainLooper())
+
+    /** Esperando la respuesta del complemento: mientras tanto la barra de respaldo no se muestra. */
+    private var waitingComplement = false
+    private val complementTimeout = Runnable {
+        // Activado en Accesibilidad pero sin contestar: la barra de respaldo es la que vale.
+        waitingComplement = false
+        applySuppression()
+    }
+
+    /** Repite el estado del dictado de la app hacia la barra del complemento (si no, su vigilante lo daría por perdido). */
+    private val mirrorRepeat = object : Runnable {
+        override fun run() {
+            if (!DockLink.complementDrawing || !isBusyState(lastVisualState)) return
+            mirrorStateToComplement(lastVisualState)
+            handler.postDelayed(this, MIRROR_REPEAT_MS)
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -110,7 +141,58 @@ class FloatingBubbleService : Service() {
             return
         }
         // El trackpad del complemento avisa cuando se abre o se cierra: la burbuja se esconde mientras tanto.
-        PointerLink.listenTrackpadState(this) { open -> dock?.setTrackpadOpen(open) }
+        PointerLink.listenTrackpadState(this) { open ->
+            // Si el complemento contestó tarde y ya se había abierto el trackpad de
+            // respaldo, se cierra: nunca dos trackpads a la vez.
+            if (open) FloatingTrackpadService.stop(this)
+            dock?.setTrackpadOpen(open)
+        }
+        syncWithComplement()
+    }
+
+    /**
+     * Fase 2A: si el complemento está activo, él dibuja la barra. Se le manda la
+     * configuración (la barra está encendida: este servicio vive para eso) y
+     * hasta que conteste esta barra queda escondida: así nunca hay dos. Si no
+     * contesta a tiempo, o dice que no dibuja, se muestra la de respaldo.
+     */
+    private fun syncWithComplement() {
+        DockLink.onDrawingChanged = { drawing ->
+            handler.removeCallbacks(complementTimeout)
+            waitingComplement = false
+            applySuppression()
+            if (drawing) mirrorStateToComplement(lastVisualState)
+        }
+        if (PointerLink.isReady(this) && DockLink.sendConfig(this, enabledOverride = true, ack = true)) {
+            waitingComplement = true
+            applySuppression()
+            handler.postDelayed(complementTimeout, COMPLEMENT_ANSWER_MS)
+        } else {
+            applySuppression()
+        }
+    }
+
+    /** La barra de respaldo se esconde si el complemento dibuja (o está por contestar). */
+    private fun applySuppression() {
+        dock?.setSuppressed(DockLink.complementDrawing || waitingComplement)
+    }
+
+    private fun isBusyState(state: String) = state == "recording" || state == "transcribing"
+
+    /**
+     * El dictado de la app (Flutter) también se ve en la barra del complemento.
+     * Si el servicio nativo de la barra está dictando, él cuenta su propio estado.
+     */
+    private fun mirrorStateToComplement(state: String) {
+        if (!DockLink.complementDrawing || DockDictationService.isActive) return
+        val mic = when (state) {
+            "recording" -> PointerProtocol.MIC_RECORDING
+            "transcribing" -> PointerProtocol.MIC_TRANSCRIBING
+            else -> PointerProtocol.MIC_IDLE
+        }
+        DockLink.sendMicState(this, mic)
+        handler.removeCallbacks(mirrorRepeat)
+        if (isBusyState(state)) handler.postDelayed(mirrorRepeat, MIRROR_REPEAT_MS)
     }
 
     /**
@@ -201,6 +283,7 @@ class FloatingBubbleService : Service() {
     }
 
     private fun setupBubbleView() {
+        val initiallySuppressed = DockLink.complementDrawing
         dock = DockController(this, object : DockController.Callbacks {
             override fun onMicTap() {
                 onBubbleActionListener?.onBubbleTap()
@@ -219,12 +302,26 @@ class FloatingBubbleService : Service() {
 
             override fun onHistoryRequested(x: Int, y: Int, size: Int): Boolean =
                 showBubbleHistory(x, y, size)
-        }).also { it.start() }
+        }).also {
+            // Antes de crear las ventanas: si el complemento ya dibuja, esta no llega a verse.
+            it.setSuppressed(initiallySuppressed || PointerLink.isReady(this))
+            it.start()
+        }
     }
 
     /** Ajustes cambió forma o herramientas de la barra. */
     fun reloadDock() {
         dock?.reloadPrefs()
+        DockLink.sendConfig(this, enabledOverride = true, ack = false)
+    }
+
+    /** Apagar la barra del complemento al cerrar este servicio, y que no vuelva sola tras reiniciar. */
+    private fun closeComplementDock() {
+        try {
+            getSharedPreferences(FlutterPrefs.PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putBoolean(FlutterPrefs.key("floating_bubble_enabled"), false).apply()
+        } catch (_: Exception) {}
+        DockLink.sendConfig(this, enabledOverride = false, ack = true)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -274,6 +371,7 @@ class FloatingBubbleService : Service() {
 
     fun updateBubbleVisualState(state: String) {
         dock?.setDictationState(state)
+        mirrorStateToComplement(state)
     }
 
     override fun onDestroy() {
@@ -282,6 +380,11 @@ class FloatingBubbleService : Service() {
         lastVisualState = "idle"
 
         PointerLink.stopListeningTrackpadState(this)
+        handler.removeCallbacksAndMessages(null)
+        DockLink.onDrawingChanged = null
+        // Se cerró la barra (Cerrar en la notificación o Ajustes): el complemento también la saca.
+        // Si el sistema mata el proceso esto no corre, y la barra del complemento sigue (es lo que queremos).
+        closeComplementDock()
         try {
             bubbleHistoryController?.destroy()
         } catch (_: Exception) {}

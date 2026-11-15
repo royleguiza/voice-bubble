@@ -69,6 +69,9 @@ class PunteroService : AccessibilityService() {
     private var registered = false
     private var trackpad: TrackpadController? = null
 
+    /** La barra flotante (borde · burbuja · isla): ventanas de Accesibilidad que Android nos mantiene vivas. */
+    private var dock: DockManager? = null
+
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
@@ -78,6 +81,14 @@ class PunteroService : AccessibilityService() {
                 }
                 PointerProtocol.ACTION_CLOSE_TRACKPAD -> {
                     trackpad?.close()
+                    return
+                }
+                PointerProtocol.ACTION_DOCK_CONFIG -> {
+                    dock?.onDockConfig(intent)
+                    return
+                }
+                PointerProtocol.ACTION_MIC_STATE -> {
+                    dock?.onMicState(intent)
                     return
                 }
             }
@@ -104,10 +115,13 @@ class PunteroService : AccessibilityService() {
         // El WindowManager del servicio solo sirve para ventanas de Accesibilidad
         // una vez conectado: el controlador se crea acá, no antes.
         if (trackpad == null) trackpad = TrackpadController(this)
+        if (dock == null) dock = DockManager(this)
         if (!registered) {
             val filter = IntentFilter(PointerProtocol.ACTION_POINTER).apply {
                 addAction(PointerProtocol.ACTION_OPEN_TRACKPAD)
                 addAction(PointerProtocol.ACTION_CLOSE_TRACKPAD)
+                addAction(PointerProtocol.ACTION_DOCK_CONFIG)
+                addAction(PointerProtocol.ACTION_MIC_STATE)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(receiver, filter, PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED)
@@ -116,6 +130,8 @@ class PunteroService : AccessibilityService() {
             }
             registered = true
         }
+        // Con el receptor ya listo: dibuja la barra guardada y le pide a VoiceBubble la configuración al día.
+        dock?.start()
     }
 
     /** Valida la configuración que llega con OPEN_TRACKPAD y abre el trackpad. */
@@ -131,6 +147,11 @@ class PunteroService : AccessibilityService() {
             scrollDir = intent.getStringExtra(PointerProtocol.EXTRA_SCROLL_DIR),
             autoReturnS = intent.getIntExtra(PointerProtocol.EXTRA_AUTO_RETURN, 0),
         )
+        openTrackpad(cfg)
+    }
+
+    /** Abre el trackpad con una configuración ya validada (la de OPEN_TRACKPAD o la que guardó la barra). */
+    private fun openTrackpad(cfg: PointerProtocol.TrackpadConfig) {
         try {
             trackpad?.open(cfg)
         } catch (_: Exception) {
@@ -140,8 +161,13 @@ class PunteroService : AccessibilityService() {
         }
     }
 
+    /** La herramienta Puntero de la barra: abre el trackpad directo, sin broadcast. */
+    internal fun openTrackpadFromDock(cfg: PointerProtocol.TrackpadConfig) = openTrackpad(cfg)
+
     /** Le avisa a VoiceBubble si el trackpad está abierto (solo apps con la misma firma lo reciben). */
     internal fun sendTrackpadState(open: Boolean) {
+        // La barra del complemento también se entera (la burbuja se esconde, la isla enciende el puntero).
+        dock?.setTrackpadOpen(open)
         try {
             val intent = Intent(PointerProtocol.ACTION_TRACKPAD_STATE)
                 .setPackage(PointerProtocol.HOST_PACKAGE)
@@ -305,6 +331,9 @@ class PunteroService : AccessibilityService() {
         // ni corriendo sin el servicio.
         trackpad?.destroy()
         trackpad = null
+        // La barra afuera con sus ventanas y temporizadores; VoiceBubble muestra la suya si está viva.
+        dock?.destroy()
+        dock = null
         scroll.reset()
         isConnected = false
         if (instance === this) instance = null
@@ -314,6 +343,7 @@ class PunteroService : AccessibilityService() {
         super.onConfigurationChanged(newConfig)
         // Giro o cambio de tamaño de pantalla o de tema: las ventanas se reacomodan.
         trackpad?.onConfigurationChanged()
+        dock?.onConfigurationChanged()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {

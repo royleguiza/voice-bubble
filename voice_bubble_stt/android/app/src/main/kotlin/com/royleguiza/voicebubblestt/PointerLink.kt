@@ -118,7 +118,7 @@ object PointerLink {
     }
 
     /** Plazo para que el complemento confirme que abrió el trackpad. */
-    private const val OPEN_ANSWER_MS = 1000L
+    private const val OPEN_ANSWER_MS = 2500L
     private var pendingNoAnswer: (() -> Unit)? = null
     private val openTimeout = Runnable {
         val cb = pendingNoAnswer
@@ -137,7 +137,7 @@ object PointerLink {
     }
 
     /** Lee las preferencias de Flutter que antes leía FloatingTrackpadService y las normaliza. */
-    private fun readTrackpadConfig(context: Context, anchorX: Int, anchorY: Int): PointerProtocol.TrackpadConfig {
+    internal fun readTrackpadConfig(context: Context, anchorX: Int, anchorY: Int): PointerProtocol.TrackpadConfig {
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         val all = try {
             prefs.all

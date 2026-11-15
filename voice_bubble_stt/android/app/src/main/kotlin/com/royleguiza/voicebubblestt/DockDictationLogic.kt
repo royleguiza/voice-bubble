@@ -1,0 +1,135 @@
+package com.royleguiza.voicebubblestt
+
+/**
+ * Máquina de estados del dictado de la barra flotante (la usa
+ * [DockDictationService]). Lógica pura, sin android.*, para testearla en la JVM.
+ *
+ * Reglas (igual que el dictado de la burbuja por Flutter, que sí aguanta dos
+ * toques seguidos):
+ * - TOGGLE en reposo empieza; grabando termina; transcribiendo se ignora.
+ * - TOGGLE mientras todavía está arrancando el micrófono = «terminar» apenas
+ *   arranque (el toque no se pierde).
+ * - CANCEL mientras arranca o graba corta y tira el audio; transcribiendo no
+ *   se puede cancelar (la red ya salió).
+ */
+internal class DockDictationLogic {
+
+    enum class Phase { IDLE, STARTING, RECORDING, TRANSCRIBING }
+
+    /** Qué hacer con un TOGGLE. */
+    enum class Toggle { START, STOP, QUEUE_STOP, IGNORE }
+
+    /** Qué hacer apenas el micrófono empezó a grabar. */
+    enum class AfterStart { KEEP_RECORDING, STOP_NOW, CANCEL_NOW }
+
+    var phase = Phase.IDLE
+        private set
+
+    private var stopAfterStart = false
+    private var cancelAfterStart = false
+
+    fun onToggle(): Toggle = when (phase) {
+        Phase.IDLE -> {
+            phase = Phase.STARTING
+            stopAfterStart = false
+            cancelAfterStart = false
+            Toggle.START
+        }
+        Phase.STARTING -> {
+            stopAfterStart = true
+            Toggle.QUEUE_STOP
+        }
+        Phase.RECORDING -> {
+            phase = Phase.TRANSCRIBING
+            Toggle.STOP
+        }
+        Phase.TRANSCRIBING -> Toggle.IGNORE
+    }
+
+    /** El micrófono ya graba. Devuelve qué hacer con lo que se pidió mientras arrancaba. */
+    fun onRecordingStarted(): AfterStart {
+        if (phase != Phase.STARTING) return AfterStart.KEEP_RECORDING
+        return when {
+            cancelAfterStart -> {
+                phase = Phase.IDLE
+                AfterStart.CANCEL_NOW
+            }
+            stopAfterStart -> {
+                phase = Phase.TRANSCRIBING
+                AfterStart.STOP_NOW
+            }
+            else -> {
+                phase = Phase.RECORDING
+                AfterStart.KEEP_RECORDING
+            }
+        }
+    }
+
+    /** No arrancó (sin permiso, ocupado, Android lo negó): vuelve a reposo. */
+    fun onStartFailed() {
+        phase = Phase.IDLE
+        stopAfterStart = false
+        cancelAfterStart = false
+    }
+
+    /**
+     * La ✕. true = hay que cortar la grabación ya (estaba grabando); si todavía
+     * arrancaba, se corta apenas arranque ([onRecordingStarted]) y devuelve false.
+     */
+    fun onCancel(): Boolean = when (phase) {
+        Phase.RECORDING -> {
+            phase = Phase.IDLE
+            true
+        }
+        Phase.STARTING -> {
+            cancelAfterStart = true
+            false
+        }
+        else -> false
+    }
+
+    /** Terminó todo (transcripción lista o fallida): reposo. */
+    fun onFinished() {
+        phase = Phase.IDLE
+        stopAfterStart = false
+        cancelAfterStart = false
+    }
+
+    val isBusy: Boolean get() = phase != Phase.IDLE
+
+    companion object {
+        /** Audio mínimo útil para transcribir (igual que la app: < 8000 bytes se descarta sin avisar). */
+        const val MIN_AUDIO_BYTES = 8000
+
+        // Frases fijas que ve la persona en la barra (nunca texto dictado ni mensajes del servidor).
+        const val MSG_PASTED = "Pegado"
+        const val MSG_COPIED = "Copiado"
+        const val MSG_NO_KEY = "Falta la clave de Groq"
+        const val MSG_NO_MIC_PERMISSION = "Falta el permiso del micrófono"
+        const val MSG_MIC_BUSY = "El micrófono está ocupado"
+        const val MSG_MIC_FAILED = "No se pudo abrir el micrófono"
+        const val MSG_NO_NETWORK = "Sin conexión"
+        const val MSG_BAD_KEY = "La clave de Groq no sirve"
+        const val MSG_RATE_LIMIT = "Límite de uso alcanzado"
+        const val MSG_FAILED = "No se pudo transcribir"
+        const val MSG_NOTHING = "No se entendió nada"
+        const val MSG_TOO_BIG = "El audio es demasiado largo"
+
+        /**
+         * Frase corta para un fallo de la transcripción según el código HTTP
+         * (null = fallo de red). No se muestra nada del texto del servidor.
+         */
+        fun errorMessage(code: Int?): String = when {
+            code == null -> MSG_NO_NETWORK
+            code == 401 || code == 403 -> MSG_BAD_KEY
+            code == 429 -> MSG_RATE_LIMIT
+            else -> MSG_FAILED
+        }
+
+        /** Frase de éxito: pegado con el teclado propio, o copiado al portapapeles. */
+        fun doneMessage(pasted: Boolean): String = if (pasted) MSG_PASTED else MSG_COPIED
+
+        /** ¿Hay audio suficiente para llamar a la transcripción? */
+        fun hasUsableAudio(wavBytes: Int): Boolean = wavBytes >= MIN_AUDIO_BYTES
+    }
+}

@@ -156,6 +156,13 @@ class DockGeometryTest {
     }
 
     @Test
+    fun `la isla en el respaldo del host se ve como burbuja`() {
+        // La isla la dibuja el complemento (fase 2A): sin él, el host muestra una burbuja.
+        assertEquals(DockGeometry.Form.BUBBLE, DockGeometry.Form.fromPref("island"))
+        assertEquals(DockGeometry.Form.BUBBLE, DockGeometry.Form.fromPref(DockGeometry.Form.PREF_ISLAND))
+    }
+
+    @Test
     fun `el contorno liquido esta cerrado y dentro de su caja`() {
         for (side in DockGeometry.Side.entries) {
             for (shape in listOf(DockGeometry.collapsed(d), DockGeometry.expanded(d, 2))) {

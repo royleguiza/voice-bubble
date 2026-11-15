@@ -17,6 +17,9 @@ Verifica al 100% de certeza:
 12. Fase 1 (2026-11-15): trackpad y puntero del complemento como ventanas de
     Accesibilidad por encima de todo, fila de sistema, arrastre, protocolo v2
     y openTrackpad con respaldo en FloatingTrackpadService.
+13. Fase 2A (2026-11-15): la barra flotante (y su herramienta Puntero) vive en
+    el complemento; el trackpad lo abre la barra directo y el protocolo v3
+    convive con el v2.
 """
 
 import os
@@ -531,6 +534,40 @@ check("Host: TRACKPAD_STATE esconde/muestra la burbuja", "PointerLink.listenTrac
 check("Complemento: privacidad intacta (sin lectura de ventanas, cero Log)",
       'android:canRetrieveWindowContent="false"' in _rd("puntero_android/app/src/main/res/xml/puntero_service.xml")
       and "Log." not in p_over + p_panel + p_ctrl + p_svc)
+
+# --- TEST 13: fase 2A, la herramienta Puntero de la barra del complemento ---
+p_dock_mgr = _rd(f"{_pk}/DockManager.kt")
+p_dock_ctrl = _rd(f"{_pk}/DockController.kt")
+p_isl_ctrl = _rd(f"{_pk}/IslandController.kt")
+contrato_barra = _rd("docs/contrato-barra.md")
+contrato_trackpad = _rd("docs/contrato-trackpad.md")
+
+check("Fase 2A: la herramienta Puntero de la barra del complemento abre el trackpad directo (sin broadcast)",
+      "service.openTrackpadFromDock(config.trackpad.copy(anchorX = anchorX, anchorY = anchorY))" in p_dock_mgr
+      and "internal fun openTrackpadFromDock(cfg: PointerProtocol.TrackpadConfig) = openTrackpad(cfg)" in p_svc
+      and "trackpad?.open(cfg)" in p_svc)
+check("Fase 2A: el ancla del trackpad es el centro de la barra o burbuja, o el borde inferior de la isla",
+      "callbacks.onPointerTap(ax, ay)" in p_dock_ctrl and "val ay = r.bottom" in p_isl_ctrl and "callbacks.onPointerTap(ax, ay)" in p_isl_ctrl)
+check("Fase 2A: la configuración del trackpad viaja en DOCK_CONFIG (mismos extras que OPEN_TRACKPAD) y se guarda",
+      all(k in p_dock_mgr for k in ("EXTRA_MODE", "EXTRA_SENSITIVITY", "EXTRA_ACCEL", "EXTRA_STYLE", "EXTRA_HAPTIC", "EXTRA_SCROLL_DIR", "EXTRA_AUTO_RETURN"))
+      and "normalizeTrackpadConfig(" in p_dock_mgr and "tp_sensitivity" in _rd(f"{_pk}/DockPrefs.kt"))
+check("Fase 2A: OPEN_TRACKPAD / CLOSE_TRACKPAD / TRACKPAD_STATE siguen vivos junto al protocolo v3 (fallback del host y teclado)",
+      "ACTION_OPEN_TRACKPAD" in p_svc and "ACTION_CLOSE_TRACKPAD" in p_svc and "fun sendTrackpadState(" in p_svc
+      and "ACTION_DOCK_CONFIG" in p_svc and "ACTION_MIC_STATE" in p_svc)
+check("Fase 2A: protocolo v3 espejado (DOCK_CONFIG, MIC_STATE, DOCK_HELLO, DOCK_STATE) y normalizadores puros",
+      all(f"const val {c} =" in p_proto and f"const val {c} =" in h_proto
+          for c in ("ACTION_DOCK_CONFIG", "ACTION_MIC_STATE", "ACTION_DOCK_HELLO", "ACTION_DOCK_STATE"))
+      and "fun normalizeDockConfig(" in p_proto and "fun normalizeMicState(" in h_proto)
+check("Fase 2A: la barra del host sigue de respaldo y nunca se ven dos",
+      "setSuppressed(" in h_fbs and "DockLink.complementDrawing" in h_fbs
+      and "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {" in h_fbs)
+check("Fase 2A: contratos al día (contrato-barra.md y referencia desde contrato-trackpad.md)",
+      "DOCK_CONFIG" in contrato_barra and "TYPE_ACCESSIBILITY_OVERLAY" in contrato_barra
+      and "contrato-barra.md" in contrato_trackpad)
+check("Fase 2A: privacidad intacta en la barra (sin lectura de ventanas, cero Log, un solo uses-permission)",
+      'android:canRetrieveWindowContent="false"' in _rd("puntero_android/app/src/main/res/xml/puntero_service.xml")
+      and "Log." not in p_dock_mgr + p_dock_ctrl + p_isl_ctrl
+      and len(re.findall(r'<uses-permission ', _rd("puntero_android/app/src/main/AndroidManifest.xml"))) == 1)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TRACKPAD & ISLA: {suite.passed} pasados, {suite.failed} fallidos.")

@@ -1,0 +1,273 @@
+<title>Isla VoiceBubble</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: teléfono interactivo a la izquierda, controles a la derecha; notas debajo. Tema único oscuro (Horizonte). */
+:root{
+  --bg:#08090E; --surf:#12141C; --surf2:#1B1E2A; --line:#262A38;
+  --fg:#F2F0EC; --fg2:#9A9DAB; --ember:#FF8A1F; --hot:#FFC766; --onhole:#FFE9CF;
+  --display:"Sora","Inter",system-ui,sans-serif; --text:"Inter",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--text);font-size:15px;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:24px}
+h1{font-family:var(--display);font-size:30px;line-height:1.15;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-size:19px;margin:0}
+.lead,.muted{color:var(--fg2);margin:6px 0 0;max-width:64ch}
+.stage{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:760px){.stage{grid-template-columns:minmax(0,1fr)}.phone{margin:0 auto}}
+.phone{position:relative;width:100%;max-width:360px;aspect-ratio:360/700;border:1px solid var(--line);border-radius:34px;overflow:hidden;background:#000}
+.screen{position:absolute;left:0;top:0;width:360px;height:700px;transform-origin:0 0;overflow:hidden}
+.wall{position:absolute;inset:0;transition:background .3s}
+.screen[data-wall="dark"] .wall{background:radial-gradient(120% 70% at 20% 0%,#243a52 0%,#0d1420 55%,#07090f 100%)}
+.screen[data-wall="light"] .wall{background:radial-gradient(120% 70% at 20% 0%,#dfe9f6 0%,#eef0f5 55%,#f6f6f9 100%)}
+.status{position:absolute;left:0;right:0;top:0;height:36px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font:600 13px var(--text)}
+.screen[data-wall="dark"] .status{color:#fff}.screen[data-wall="light"] .status{color:#111}
+.status .ic{display:flex;gap:5px;align-items:center}
+.status .ic i{display:block;width:14px;height:9px;border-radius:2px;background:currentColor;opacity:.85}
+.cam{position:absolute;top:11px;width:14px;height:14px;border-radius:50%;background:#000;box-shadow:inset 0 0 0 2px #15171c}
+.appcard{position:absolute;left:16px;right:16px;height:64px;border-radius:16px}
+.screen[data-wall="dark"] .appcard{background:rgba(255,255,255,.07)}.screen[data-wall="light"] .appcard{background:rgba(0,0,0,.06)}
+/* Isla */
+#isla{position:absolute;background:#000;border:1px solid #23252e;border-radius:28px;cursor:pointer;overflow:hidden;
+  transition:width .42s cubic-bezier(.3,1.35,.5,1),height .42s cubic-bezier(.3,1.35,.5,1),left .42s cubic-bezier(.3,1.35,.5,1),top .2s,box-shadow .3s;
+  box-shadow:0 2px 10px rgba(0,0,0,.35)}
+#isla[data-state="rec"]{box-shadow:0 0 0 1.5px var(--ember),0 4px 16px rgba(255,138,31,.25)}
+#isla .lay{position:absolute;inset:0;display:flex;align-items:center;opacity:0;pointer-events:none;transition:opacity .18s}
+#isla[data-state="idle"] .l-idle,#isla[data-state="open"] .l-open,#isla[data-state="rec"] .l-rec,#isla[data-state="think"] .l-rec,#isla[data-state="done"] .l-done{opacity:1;pointer-events:auto;transition:opacity .25s .12s}
+.l-idle{justify-content:space-between;padding:0 10px}
+#isla[data-side="right"] .lay{flex-direction:row-reverse}
+.dot{width:12px;height:12px;border-radius:50%;background:#000;box-shadow:0 0 0 1.5px var(--ember)}
+.mini{width:14px;height:14px;opacity:.55}
+.mini.on{opacity:1}
+.l-open{justify-content:center;gap:14px}
+.ib{width:42px;height:42px;border-radius:50%;border:0;display:grid;place-items:center;cursor:pointer;padding:0}
+.ib.hole{background:#000;box-shadow:inset 0 0 0 2px var(--ember)}
+.ib.tool{background:#1B1E2A;box-shadow:inset 0 0 0 1px #2c3040}
+.ib svg{width:22px;height:22px}
+.l-rec{padding:0 8px 0 6px;gap:8px}
+.l-rec .hole{width:32px;height:32px;flex:none;position:relative}
+.l-rec .hole svg{width:17px;height:17px}
+.spin{position:absolute;inset:-3px;border-radius:50%;border:2.5px solid transparent;border-top-color:var(--hot);opacity:0}
+#isla[data-state="think"] .spin{opacity:1;animation:sp 1.1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.l-rec canvas{flex:1;min-width:0;height:100%}
+.timer{font:500 11px var(--mono);color:var(--onhole);flex:none}
+.xb{width:26px;height:26px;border-radius:50%;border:0;background:transparent;display:grid;place-items:center;cursor:pointer;flex:none;padding:0}
+.xb svg{width:15px;height:15px}
+.l-done{justify-content:center;gap:6px;font:600 12px var(--text);color:var(--onhole)}
+.l-done svg{width:15px;height:15px}
+/* Trackpad */
+.pad{position:absolute;left:10px;right:10px;bottom:22px;height:250px;border-radius:30px;background:var(--surf);border:1px solid var(--line);padding:2px 10px 10px;display:flex;flex-direction:column;
+  transform:translateY(300px);opacity:0;transition:transform .32s cubic-bezier(.2,.9,.3,1),opacity .2s}
+.screen[data-pad="1"] .pad{transform:none;opacity:1}
+.pad .handle{height:30px;display:grid;place-items:center;cursor:pointer;border:0;background:transparent;width:100%}
+.pad .handle i{display:block;width:44px;height:4px;border-radius:2px;background:var(--line)}
+.sys{display:flex;justify-content:space-between;gap:6px;padding:0 4px 8px}
+.sys button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surf);display:grid;place-items:center;cursor:pointer;padding:0}
+.sys button[aria-pressed="true"]{background:#3A2410;border-color:var(--ember)}
+.sys svg{width:21px;height:21px}
+.surface{flex:1;border-radius:20px;background:var(--surf2);border:1px solid var(--line);display:grid;place-items:center;color:var(--fg2);font-size:13px;position:relative}
+.surface::after{content:"";position:absolute;right:8px;top:14px;bottom:14px;width:4px;border-radius:2px;background:var(--line)}
+.ptr{position:absolute;left:150px;top:200px;width:26px;height:30px;opacity:0;transition:opacity .2s;animation:mv 6s ease-in-out infinite;pointer-events:none}
+.screen[data-pad="1"] .ptr{opacity:1}
+@keyframes mv{0%,100%{transform:translate(0,0)}35%{transform:translate(90px,-120px)}65%{transform:translate(-60px,-170px)}}
+/* Controles */
+.panel{background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.row{display:flex;flex-direction:column;gap:6px}
+.row label,.row .lab{display:flex;justify-content:space-between;font-size:14px}
+output{font-family:var(--mono);color:var(--ember);font-size:13px}
+.slide{display:flex;gap:8px;align-items:center}
+.slide input{flex:1;min-width:0;accent-color:var(--ember)}
+.nudge{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surf2);color:var(--fg);font:600 16px var(--text);cursor:pointer;flex:none}
+.seg{display:flex;flex-wrap:wrap;gap:8px}
+.seg button,.act{font:500 13.5px var(--text);color:var(--fg);background:var(--surf2);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ember);border-color:var(--ember);color:#1A0E00}
+button:focus-visible,input:focus-visible{outline:2px solid var(--hot);outline-offset:2px}
+ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:68ch}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:6px}
+.card b{font-family:var(--display);font-size:15px}
+.card p{margin:0;color:var(--fg2);font-size:14px}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Isla VoiceBubble</h1>
+    <p class="lead">Una tercera forma de la barra flotante, además de la burbuja y la barra lateral: una píldora negra que se ubica donde quieras, pensada para rodear la cámara. Tocá la isla del teléfono para probarla: se abre con el micrófono y el puntero.</p>
+  </header>
+
+  <div class="stage">
+    <div class="phone" id="phone" aria-label="Maqueta interactiva de la isla">
+      <div class="screen" id="screen" data-wall="dark" data-pad="0">
+        <div class="wall"></div>
+        <div class="appcard" style="top:120px"></div><div class="appcard" style="top:196px"></div><div class="appcard" style="top:272px"></div>
+        <div class="status"><span>9:41</span><span class="ic"><i></i><i></i><i style="width:20px"></i></span></div>
+        <div class="cam" id="cam"></div>
+        <svg class="ptr" viewBox="0 0 26 30" aria-hidden="true"><path d="M4 3v18.4l4.5-4.1 3.2 7.1 2.7-1.2-3-7H17z" fill="#08090E" stroke="#F7F5F0" stroke-width="1.5" stroke-linejoin="round"/><circle cx="5.4" cy="5" r="1.6" fill="#FF8A1F"/></svg>
+        <div class="pad" id="pad">
+          <button class="handle" id="padClose" aria-label="Cerrar trackpad"><i></i></button>
+          <div class="sys">
+            <button aria-label="Atrás"><svg viewBox="0 0 24 24" fill="none" stroke="#F2F0EC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l-6 6 6 6"/></svg></button>
+            <button aria-label="Inicio"><svg viewBox="0 0 24 24" fill="none" stroke="#F2F0EC" stroke-width="2.2"><circle cx="12" cy="12" r="6"/></svg></button>
+            <button aria-label="Recientes"><svg viewBox="0 0 24 24" fill="none" stroke="#F2F0EC" stroke-width="2.2" stroke-linejoin="round"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></svg></button>
+            <button aria-label="Notificaciones"><svg viewBox="0 0 24 24" fill="none" stroke="#F2F0EC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 16v-5a5.5 5.5 0 0 1 11 0v5l1.5 2h-14zM10.5 20.5h3"/></svg></button>
+            <button aria-label="Arrastrar" aria-pressed="false" id="dragBtn"><svg viewBox="0 0 24 24" fill="none" stroke="#F2F0EC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M4 12h16M12 4l-2.5 2.5M12 4l2.5 2.5M12 20l-2.5-2.5M12 20l2.5-2.5M4 12l2.5-2.5M4 12l2.5 2.5M20 12l-2.5-2.5M20 12l-2.5 2.5"/></svg></button>
+          </div>
+          <div class="surface">Mové el dedo acá · tocá para hacer clic</div>
+        </div>
+        <div id="isla" data-state="idle" role="button" tabindex="0" aria-label="Isla VoiceBubble">
+          <div class="lay l-idle"><span class="dot"></span>
+            <svg class="mini" id="miniPtr" viewBox="0 0 24 24"><path d="M6 3v15.5l4.1-3.7 2.9 6.6 2.5-1.1-2.8-6.4H18z" fill="#F2F0EC"/></svg></div>
+          <div class="lay l-open">
+            <button class="ib hole" id="bMic" aria-label="Dictar"><svg viewBox="0 0 24 24" fill="none" stroke="#FFE9CF" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3.5" width="6" height="10.5" rx="3" fill="#FFE9CF" stroke="none"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg></button>
+            <button class="ib tool" id="bPtr" aria-label="Abrir puntero"><svg viewBox="0 0 24 24"><path d="M6 3v15.5l4.1-3.7 2.9 6.6 2.5-1.1-2.8-6.4H18z" fill="#F2F0EC"/></svg></button>
+          </div>
+          <div class="lay l-rec">
+            <button class="ib hole" id="bStop" aria-label="Terminar dictado"><span class="spin"></span><svg viewBox="0 0 24 24" fill="none" stroke="#FFE9CF" stroke-width="2.2" stroke-linecap="round"><rect x="9" y="3.5" width="6" height="10.5" rx="3" fill="#FFE9CF" stroke="none"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3"/></svg></button>
+            <canvas id="voice"></canvas><span class="timer" id="timer">0:00</span>
+            <button class="xb" id="bCancel" aria-label="Cancelar dictado"><svg viewBox="0 0 24 24" fill="none" stroke="#FFE9CF" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </div>
+          <div class="lay l-done"><svg viewBox="0 0 24 24" fill="none" stroke="#FFC766" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Pegado</div>
+        </div>
+      </div>
+    </div>
+
+    <section class="panel" aria-label="Controles de la isla">
+      <div class="row"><span class="lab">Estado</span>
+        <div class="seg" id="states">
+          <button data-s="idle" aria-pressed="true">Reposo</button><button data-s="open">Abierta</button><button data-s="rec">Grabando</button><button data-s="think">Pensando</button><button data-s="done">Listo</button>
+        </div></div>
+      <div class="row"><label for="px">Posición horizontal (centro) <output id="pxO"></output></label>
+        <div class="slide"><button class="nudge" data-t="px" data-d="-1" aria-label="Un punto a la izquierda">−</button><input type="range" id="px" min="40" max="320" step="1" value="180"><button class="nudge" data-t="px" data-d="1" aria-label="Un punto a la derecha">+</button></div></div>
+      <div class="row"><label for="py">Posición vertical (borde superior) <output id="pyO"></output></label>
+        <div class="slide"><button class="nudge" data-t="py" data-d="-1" aria-label="Un punto arriba">−</button><input type="range" id="py" min="0" max="140" step="1" value="3"><button class="nudge" data-t="py" data-d="1" aria-label="Un punto abajo">+</button></div></div>
+      <div class="row"><label for="pw">Ancho en reposo <output id="pwO"></output></label>
+        <div class="slide"><button class="nudge" data-t="pw" data-d="-1" aria-label="Un punto más angosta">−</button><input type="range" id="pw" min="72" max="180" step="1" value="112"><button class="nudge" data-t="pw" data-d="1" aria-label="Un punto más ancha">+</button></div></div>
+      <div class="row"><label for="ph">Alto en reposo <output id="phO"></output></label>
+        <div class="slide"><button class="nudge" data-t="ph" data-d="-1" aria-label="Un punto más baja">−</button><input type="range" id="ph" min="22" max="48" step="1" value="30"><button class="nudge" data-t="ph" data-d="1" aria-label="Un punto más alta">+</button></div></div>
+      <div class="row"><span class="lab">Lado del micrófono (el puntero va del otro)</span>
+        <div class="seg" id="sides"><button data-d="left" aria-pressed="true">Izquierda</button><button data-d="right">Derecha</button></div></div>
+      <div class="row"><span class="lab">Cámara del teléfono</span>
+        <div class="seg" id="cams"><button data-c="center" aria-pressed="true">Centro</button><button data-c="left">Izquierda</button><button data-c="none">Sin recorte</button></div></div>
+      <div class="row"><span class="lab">Fondo de pantalla</span>
+        <div class="seg" id="walls"><button data-w="dark" aria-pressed="true">Oscuro</button><button data-w="light">Claro</button></div></div>
+      <div><button class="act" id="center">Centrar sobre la cámara</button></div>
+    </section>
+  </div>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <h2>Cómo se comporta</h2>
+    <div class="cols">
+      <div class="card"><b>Reposo</b><p>Píldora negra angosta alrededor de la cámara: un agujero chico con anillo brasa a un lado y el puntero al otro. No tapa nada de la app.</p></div>
+      <div class="card"><b>Abierta</b><p>Un toque la ensancha con un rebote suave y aparecen el micrófono y el puntero. Si no tocás nada, se cierra sola a los 4 segundos.</p></div>
+      <div class="card"><b>Grabando y pensando</b><p>La misma animación que el teclado y el widget: símbolos que caen al agujero mientras hablás, con el reloj y la ✕ para cancelar; al transcribir, rayitas y un arco que gira.</p></div>
+      <div class="card"><b>Puntero</b><p>Abre el trackpad nuevo, con Atrás, Inicio, Recientes, Notificaciones y Arrastrar. La isla vuelve al reposo con el puntero encendido.</p></div>
+    </div>
+    <h2>Lo que hay que saber</h2>
+    <ul>
+      <li><b>Ubicación al milímetro:</b> en Ajustes vas a tener estos mismos controles (horizontal, vertical, ancho, alto y lado del micrófono) con botones de un punto por toque. Ahí mismo se ve una maqueta como esta, y la isla real de arriba se mueve en vivo mientras ajustás.</li>
+      <li><b>Zona de la cámara:</b> Android solo deja dibujar y tocar sobre la barra de estado a un servicio de Accesibilidad. Por eso la isla la dibuja VoiceBubble Puntero: hace falta tenerlo instalado y activo. Sin él, siguen disponibles la burbuja y la barra lateral.</li>
+      <li><b>Cualquier teclado:</b> la isla, la burbuja y la barra no dependen del teclado de VoiceBubble; funcionan con Gboard o el que uses.</li>
+      <li><b>Color:</b> la isla es siempre negra, como el recorte de la cámara, sobre fondos claros y oscuros.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const phone = $('phone'), screen = $('screen'), isla = $('isla'), cam = $('cam');
+  const S = {state:'idle', x:180, y:3, w:112, h:30, side:'left', cam:'center', pad:false};
+  const SIZE = {idle:() => [S.w, S.h], open:() => [176, 58], rec:() => [252, 44], think:() => [252, 44], done:() => [128, 34]};
+  let tOpen = 0, tSeq = 0, tick = 0, secs = 0;
+
+  function fit() { screen.style.transform = `scale(${phone.clientWidth / 360})`; }
+  new ResizeObserver(fit).observe(phone); fit();
+
+  function layout() {
+    const [w, h] = SIZE[S.state]();
+    const left = Math.max(4, Math.min(360 - w - 4, S.x - w / 2));
+    isla.style.width = w + 'px'; isla.style.height = h + 'px';
+    isla.style.left = left + 'px'; isla.style.top = S.y + 'px';
+    isla.style.borderRadius = (h / 2) + 'px';
+    isla.dataset.state = S.state; isla.dataset.side = S.side;
+    $('phO').textContent = S.h + ' dp';
+    document.querySelectorAll('#states button').forEach(b => b.setAttribute('aria-pressed', b.dataset.s === S.state));
+    $('pxO').textContent = S.x + ' dp'; $('pyO').textContent = S.y + ' dp'; $('pwO').textContent = S.w + ' dp';
+    cam.hidden = S.cam === 'none';
+    cam.style.left = (S.cam === 'left' ? 34 : 173) + 'px';
+    screen.dataset.pad = S.pad ? '1' : '0';
+    $('miniPtr').classList.toggle('on', S.pad);
+    $('miniPtr').querySelector('path').setAttribute('fill', S.pad ? '#FF8A1F' : '#F2F0EC');
+  }
+  function go(state) {
+    clearTimeout(tOpen); clearTimeout(tSeq); clearInterval(tick);
+    S.state = state;
+    if (state === 'open') tOpen = setTimeout(() => go('idle'), 4000);
+    if (state === 'rec') { secs = 0; $('timer').textContent = '0:00'; tick = setInterval(() => { secs++; $('timer').textContent = Math.floor(secs/60) + ':' + String(secs%60).padStart(2,'0'); }, 1000); }
+    if (state === 'think') tSeq = setTimeout(() => go('done'), 1800);
+    if (state === 'done') tSeq = setTimeout(() => go('idle'), 1300);
+    layout();
+  }
+
+  isla.addEventListener('click', e => { if (S.state === 'idle') go('open'); });
+  isla.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && S.state === 'idle') { e.preventDefault(); go('open'); } });
+  $('bMic').addEventListener('click', e => { e.stopPropagation(); go('rec'); });
+  $('bPtr').addEventListener('click', e => { e.stopPropagation(); S.pad = true; go('idle'); });
+  $('bStop').addEventListener('click', e => { e.stopPropagation(); if (S.state === 'rec') go('think'); });
+  $('bCancel').addEventListener('click', e => { e.stopPropagation(); go('idle'); });
+  $('padClose').addEventListener('click', () => { S.pad = false; layout(); });
+  $('dragBtn').addEventListener('click', e => { const b = e.currentTarget; b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true'); });
+
+  $('states').addEventListener('click', e => { const s = e.target.dataset.s; if (s) go(s); });
+  $('cams').addEventListener('click', e => { const c = e.target.dataset.c; if (!c) return; S.cam = c;
+    document.querySelectorAll('#cams button').forEach(b => b.setAttribute('aria-pressed', b.dataset.c === c)); layout(); });
+  $('walls').addEventListener('click', e => { const w = e.target.dataset.w; if (!w) return; screen.dataset.wall = w;
+    document.querySelectorAll('#walls button').forEach(b => b.setAttribute('aria-pressed', b.dataset.w === w)); });
+  $('sides').addEventListener('click', e => { const d = e.target.dataset.d; if (!d) return; S.side = d;
+    document.querySelectorAll('#sides button').forEach(b => b.setAttribute('aria-pressed', b.dataset.d === d)); layout(); });
+  const map = {px:'x', py:'y', pw:'w', ph:'h'};
+  for (const id of Object.keys(map)) $(id).addEventListener('input', e => { S[map[id]] = +e.target.value; layout(); });
+  document.querySelectorAll('.nudge').forEach(b => b.addEventListener('click', () => {
+    const el = $(b.dataset.t); el.value = Math.max(+el.min, Math.min(+el.max, +el.value + +b.dataset.d));
+    S[map[b.dataset.t]] = +el.value; layout(); }));
+  $('center').addEventListener('click', () => { S.x = S.cam === 'left' ? 60 : 180; S.y = 3; $('px').value = S.x; $('py').value = S.y; layout(); });
+
+  // Animación de voz dentro de la isla (grabando: símbolos al agujero; pensando: rayitas hacia afuera).
+  const cv = $('voice'), ctx = cv.getContext('2d');
+  const GL = ['0','1','{','}'];
+  const P = Array.from({length: 26}, () => ({p: Math.random(), y: Math.random(), k: .6 + Math.random()*.8, g: Math.random()}));
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const r = cv.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 3), k = phone.clientWidth / 360;
+    const W = r.width / k, H = r.height / k;
+    if (W > 4 && (S.state === 'rec' || S.state === 'think')) {
+      if (cv.width !== Math.round(W*dpr)) { cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+      const level = .55 + .45*Math.sin(now/260)*Math.sin(now/970);
+      for (const q of P) {
+        if (S.state === 'rec') {
+          q.p += dt * (.35 + .9*level) * q.k; if (q.p > 1) { q.p = 0; q.y = Math.random(); q.g = Math.random(); }
+          const d = 1 - q.p, x = S.side === 'right' ? W * (1 - d) : W * d, y = H/2 + (q.y - .5) * H * .62 * d;
+          ctx.globalAlpha = Math.min(1, .25 + .9*d) * Math.min(1, q.p / .08);
+          const c = d > .45 ? '#FFE9CF' : d > .18 ? '#FF8A1F' : '#FFC766';
+          if (q.g < .45) { ctx.fillStyle = c; ctx.font = `500 ${(6 + 5*d).toFixed(1)}px "JetBrains Mono", monospace`; ctx.fillText(GL[Math.floor(q.g/.45*4)], x, y + 3); }
+          else if (q.g < .72) { ctx.fillStyle = c; ctx.fillRect(x, y - .8, 7*(.45 + .55*d), 1.6); }
+          else { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, 1.5*(.45 + .55*d), 0, 7); ctx.fill(); }
+        } else {
+          q.p += dt * .32 * q.k; if (q.p > 1) q.p = 0;
+          const e = 1 - Math.pow(1 - q.p, 2), x0 = 2 + (W - 8) * e, x = S.side === 'right' ? W - x0 - 12 : x0, y = H/2 + (q.y - .5) * H * .36;
+          ctx.globalAlpha = Math.min(1, q.p/.06) * Math.min(1, (1 - q.p)/.15);
+          ctx.fillStyle = '#FFFFFF'; ctx.fillRect(x, y - 1, 5 + 16*q.g, 2);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  layout();
+})();
+</script>

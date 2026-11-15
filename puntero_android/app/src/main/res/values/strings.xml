@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">VoiceBubble Puntero</string>
     <string name="service_label">VoiceBubble Puntero</string>
-    <string name="service_description">Hace los clics del puntero de VoiceBubble en cualquier app. No lee el contenido de la pantalla ni guarda nada.</string>
+    <string name="service_description">Hace los clics del puntero de VoiceBubble en cualquier app y dibuja su barra flotante (burbuja, barra lateral o isla) para que no desaparezca. No lee el contenido de la pantalla ni guarda nada, salvo dónde dejaste la barra.</string>
 </resources>

@@ -61,8 +61,9 @@ class MainActivity : Activity() {
         column.addView(text(getString(R.string.app_name), 30f, R.color.hz_fg, heading = true))
         column.addView(
             text(
-                "Hace los clics del trackpad de VoiceBubble en cualquier app, con cualquier teclado. " +
-                    "No lee lo que hay en la pantalla ni guarda nada.",
+                "Hace los clics del trackpad de VoiceBubble en cualquier app, con cualquier teclado, " +
+                    "y dibuja la barra flotante de VoiceBubble (burbuja, barra lateral o isla) para que no desaparezca. " +
+                    "No lee lo que hay en la pantalla; solo recuerda dónde dejaste la barra.",
                 17f, R.color.hz_fg2,
             ),
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {

@@ -28,6 +28,18 @@ internal class ScreenProbe(private val context: Context, private val windowManag
         return Pair(dm.widthPixels, dm.heightPixels)
     }
 
+    /** Alto de la barra de estado / recorte de cámara arriba (zona segura de la burbuja). */
+    fun topInset(): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val i = windowManager.currentWindowMetrics.windowInsets
+                    .getInsetsIgnoringVisibility(WindowInsets.Type.statusBars() or WindowInsets.Type.displayCutout())
+                if (i.top > 0) return i.top
+            } catch (_: Exception) {}
+        }
+        return (28 * context.resources.displayMetrics.density).roundToInt()
+    }
+
     /** Alto de la barra de navegación (o de la zona de gestos) abajo. */
     fun bottomInset(): Int {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

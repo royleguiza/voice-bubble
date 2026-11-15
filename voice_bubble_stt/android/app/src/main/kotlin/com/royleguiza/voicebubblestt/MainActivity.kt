@@ -70,6 +70,8 @@ class MainActivity : FlutterActivity() {
                                 ensurePostNotificationsPermission()
                                 val intent = Intent(this@MainActivity, FloatingBubbleService::class.java)
                                 ContextCompat.startForegroundService(this@MainActivity, intent)
+                                // Fase 2A: con el complemento activo, la barra la dibuja él.
+                                DockLink.sendConfig(this@MainActivity, enabledOverride = true)
                                 result.success(true)
                             }
                         } catch (e: Exception) {
@@ -80,16 +82,22 @@ class MainActivity : FlutterActivity() {
                         try {
                             val intent = Intent(this@MainActivity, FloatingBubbleService::class.java)
                             stopService(intent)
+                            // El complemento puede estar dibujando la barra aunque este servicio no corra.
+                            DockLink.sendConfig(this@MainActivity, enabledOverride = false)
                             result.success(true)
                         } catch (e: Exception) {
                             result.error("STOP_ERROR", e.message, null)
                         }
                     }
                     "isBubbleRunning" -> {
-                        result.success(FloatingBubbleService.isRunning)
+                        // Con el complemento dibujando la barra, esta cuenta como activa aunque el servicio de respaldo no corra.
+                        result.success(FloatingBubbleService.isRunning || DockLink.complementDrawing)
                     }
                     "reloadDock" -> {
-                        result.success(FloatingBubbleService.reloadDock())
+                        // Forma, herramientas o interruptor cambiaron en Ajustes: el complemento las recibe EN VIVO.
+                        val live = FloatingBubbleService.reloadDock()
+                        if (!live) DockLink.sendConfig(this@MainActivity, ack = false)
+                        result.success(live || DockLink.complementDrawing)
                     }
                     "updateBubbleState" -> {
                         val state = call.argument<String>("state") ?: "idle"

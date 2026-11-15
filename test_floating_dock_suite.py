@@ -23,6 +23,11 @@ código real:
     trackpad como ventanas TYPE_ACCESSIBILITY_OVERLAY en el complemento,
     fila de sistema, arrastre en dos pasos, protocolo v2, openTrackpad con
     respaldo, Horizonte en el complemento y tests JVM nuevos.
+11. Fase 2A (2026-11-15): la barra flotante (borde · burbuja · isla) la dibuja
+    el complemento como ventanas TYPE_ACCESSIBILITY_OVERLAY con estado en prefs
+    propias; protocolo v3; dictado nativo del host (DockDictationService
+    exportado SOLO con el permiso de firma, actividad trampolín); la barra de
+    VoiceBubble queda de respaldo y nunca se ven dos.
 """
 
 import os
@@ -396,8 +401,8 @@ check("Host: la herramienta Puntero usa primero el complemento y cae al trackpad
       "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {" in fbs
       and "FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY)" in fbs
       and "fallback()" in fbs.split("PointerLink.openTrackpad(")[1][:200])
-check("Host: si el complemento no contesta en 1 s, se abre el respaldo",
-      "OPEN_ANSWER_MS = 1000L" in link and "main.postDelayed(openTimeout, OPEN_ANSWER_MS)" in link
+check("Host: si el complemento no contesta en 2,5 s, se abre el respaldo",
+      "OPEN_ANSWER_MS = 2500L" in link and "if (open) FloatingTrackpadService.stop(this)" in fbs and "main.postDelayed(openTimeout, OPEN_ANSWER_MS)" in link
       and "main.removeCallbacks(openTimeout)" in link and "val fallback = { FloatingTrackpadService.open(" in fbs)
 check("Complemento: el arrastre encadena dos gestos (la continuación va en el siguiente)",
       "grab.continueStroke(move, 0L, DragPlan.MOVE_MS, false)" in pun_svc
@@ -438,8 +443,13 @@ check("Complemento sin androidx ni dependencias externas",
 
 # Privacidad
 check("Cero logs en todo el complemento", "Log." not in pun_all_kt and "println(" not in pun_all_kt)
-check("Contadores solo en memoria (sin SharedPreferences ni archivos en el complemento)",
-      "SharedPreferences" not in pun_all_kt and "openFileOutput" not in pun_all_kt and "File(" not in pun_all_kt)
+# Fase 2A: la barra guarda SU estado en prefs propias (DockPrefs). Los contadores del
+# clic siguen solo en memoria y ningún otro archivo del complemento toca el disco.
+_pun_without_prefs = "".join(read(f"{PUN_KT}/{f}") for f in sorted(os.listdir(os.path.join(WORKSPACE, PUN_KT)))
+                             if f.endswith(".kt") and f != "DockPrefs.kt")
+check("Contadores solo en memoria (el único disco del complemento es DockPrefs, con ajustes de la barra)",
+      "SharedPreferences" not in _pun_without_prefs and "openFileOutput" not in pun_all_kt and "File(" not in pun_all_kt
+      and "received++" in pun_svc and "SharedPreferences" in read(f"{PUN_KT}/DockPrefs.kt"))
 
 # Tests JVM nuevos
 for t in ("PadGesturesTest.kt", "DragPlanTest.kt", "PointerKinematicsTest.kt", "TrackpadGeometryTest.kt"):
@@ -462,6 +472,304 @@ mut_cfg2 = pun_cfg.replace('canRetrieveWindowContent="false"', 'canRetrieveWindo
 check("Mutación: lectura de pantalla en el complemento se detecta", 'android:canRetrieveWindowContent="false"' not in mut_cfg2)
 mut_svc = pun_svc.replace("trackpad?.destroy()", "")
 check("Mutación: ventanas sin quitar al desvincular se detecta", "trackpad?.destroy()" not in mut_svc)
+
+
+# --- 11. Fase 2A: la barra flotante en el complemento + isla + dictado nativo ---
+ISL = lambda n: read(f"{PUN_KT}/{n}")
+d_win = ISL("DockWindow.kt")
+d_mgr = ISL("DockManager.kt")
+d_ctrl = ISL("DockController.kt")
+d_isl_ctrl = ISL("IslandController.kt")
+d_isl_view = ISL("IslandView.kt")
+d_isl_geo = ISL("IslandGeometry.kt")
+d_geo = ISL("DockGeometry.kt")
+d_views = ISL("DockViews.kt")
+d_horizon = ISL("HorizonView.kt")
+d_prefs = ISL("DockPrefs.kt")
+d_host_link = ISL("HostLink.kt")
+d_tracker = ISL("MicStateTracker.kt")
+d_surface = ISL("DockSurface.kt")
+dock_pun_all = d_win + d_mgr + d_ctrl + d_isl_ctrl + d_isl_view + d_isl_geo + d_geo + d_views + d_horizon + d_prefs + d_host_link + d_tracker + d_surface
+h_dlink = read(f"{KT}/DockLink.kt")
+h_dsvc = read(f"{KT}/DockDictationService.kt")
+h_dlogic = read(f"{KT}/DockDictationLogic.kt")
+h_tramp = read(f"{KT}/DockTrampolineActivity.kt")
+h_feedback = read(f"{KT}/DockMicFeedback.kt")
+ISLA_HTML = "laboratorio_ui/isla.html"
+
+def component(tag, name):
+    """El bloque <tag ...> del manifiesto (sin comentarios) cuyo android:name es `name`."""
+    m = re.search(r'<' + tag + r'\b[^>]*android:name="' + re.escape(name) + r'"[^>]*?(?:/>|>)', manifest, re.S)
+    return m.group(0) if m else ""
+
+# Ventanas: overlay de accesibilidad, no de aplicación
+check("Barra del complemento: ventanas TYPE_ACCESSIBILITY_OVERLAY (por encima de la barra de estado y la cortina)",
+      "TYPE_ACCESSIBILITY_OVERLAY" in d_win and "TYPE_APPLICATION_OVERLAY" not in dock_pun_all and "Dialog" not in d_win)
+check("Barra del complemento: sin foco, sin bloquear toques fuera, en pantalla, sin insets y con la cámara incluida",
+      all(k in d_win for k in ("FLAG_NOT_FOCUSABLE", "FLAG_NOT_TOUCH_MODAL", "FLAG_LAYOUT_IN_SCREEN", "fitInsetsTypes = 0",
+                               "LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS")))
+check("Solo la isla va sin límites de pantalla (sobre la barra de estado y la cámara)",
+      "noLimits: Boolean = false" in d_win and "FLAG_LAYOUT_NO_LIMITS" in d_win
+      and "DockWindow(windowManager, view, noLimits = true)" in d_isl_ctrl
+      and "noLimits" not in d_ctrl)
+check("Barra del complemento sin desenfoque ni vidrio (Horizonte: superficie sólida)",
+      not any(has_blur(src) for src in (d_win, d_ctrl, d_views, d_isl_view, d_isl_ctrl, d_horizon)))
+check("Barra del complemento: sin androidx, sin Log, sin parseColor",
+      "androidx" not in dock_pun_all and "Log." not in dock_pun_all and "parseColor" not in dock_pun_all)
+check("Barra del complemento: colores por tokens (hz_* y island_*), el negro de la isla igual de día y de noche",
+      "R.color.hz_hole" in read(f"{PUN_KT}/Palette.kt") and "R.color.island_bg" in read(f"{PUN_KT}/Palette.kt")
+      and tok(colors_pun_day, "island_bg") == "#FF000000" == tok(colors_pun_night, "island_bg")
+      and tok(colors_pun_day, "island_line") == "#FF23252E" == tok(colors_pun_night, "island_line")
+      and tok(colors_pun_day, "hz_on_hole") == tok(colors_host_day, "hz_on_hole")
+      and tok(colors_pun_night, "hz_on_hole") == tok(colors_host_night, "hz_on_hole"))
+check("Complemento: fuente mono (JetBrains Mono) y su licencia OFL empaquetadas",
+      exists(f"{pun_res}/font/jetbrains_mono_medium.ttf") and exists(f"{pun_res}/raw/ofl_jetbrains_mono.txt")
+      and "R.font.jetbrains_mono_medium" in read(f"{PUN_KT}/Palette.kt"))
+
+# Port de la barra sin duplicar lógica
+check("Port: DockGeometry, DockViews, HorizonView y DockController viven en el complemento",
+      all(exists(f"{PUN_KT}/{f}") for f in ("DockGeometry.kt", "DockViews.kt", "HorizonView.kt", "DockController.kt", "DockWindow.kt")))
+check("Port: mismas medidas y reglas que el host (lengüeta 7 dp, burbuja 56, tope 200 dp del gesto Atrás)",
+      all(f"{k} = {v}" in d_geo and f"{k} = {v}" in geo for k, v in
+          (("COLLAPSED_W_DP", "7f"), ("BUBBLE_DP", "56f"), ("GESTURE_EXCLUSION_MAX_DP", "200f"), ("EDGE_IDLE_MS", "4000L"))))
+check("Port: tres formas con la isla; el host la ve como burbuja y no pisa la preferencia",
+      'ISLAND("island")' in d_geo and 'EDGE("edge")' in d_geo and 'BUBBLE("bubble")' in d_geo
+      and 'PREF_ISLAND = "island"' in geo and "if (value == PREF_ISLAND) BUBBLE" in geo
+      and 'DockGeometry.Form.fromPref(flutterPrefs.getString(PREF_FORM, null)) != form' in dock)
+check("Port: una sola barra a la vez en el complemento (DockManager elige la superficie según la forma)",
+      "IslandController(service, windowManager, screen, palette, this, level)" in d_mgr
+      and "DockController(service, windowManager, screen, palette, prefs, this, level)" in d_mgr
+      and "surfaceIsIsland != wantIsland" in d_mgr and "dropSurface()" in d_mgr
+      and "interface DockSurface" in d_surface and ": DockSurface" in d_ctrl and ": DockSurface" in d_isl_ctrl)
+check("Port: mismo comportamiento de la barra (convertir por gesto, soltar contra el borde, abanico, Atrás protegido, cierre solo)",
+      all(k in d_ctrl for k in ("DockGeometry.shouldBecomeBubble(side, dx, d)", "DockGeometry.snapSide(", "openArc()",
+                                "setGestureExclusion(", "EDGE_IDLE_MS", "restartEdgeIdle()", "TapAction.RUN_ONLY_TOOL")))
+check("Port: sin historial (toque largo anotado para la fase 4)",
+      "requestHistory" not in d_ctrl and "fase 4" in d_ctrl)
+check("La forma elegida con el dedo se recuerda en el complemento y se le cuenta a VoiceBubble",
+      "callbacks.onFormChanged(form.pref)" in d_ctrl and "prefs.saveForm(form)" in d_mgr
+      and "HostLink.state(service, announced ?: true, form)" in d_mgr
+      and "PointerProtocol.EXTRA_DOCK_FORM" in d_host_link
+      and 'putString(DockController.PREF_FORM, form)' in h_dlink)
+check("Herramienta Puntero abre el trackpad del complemento directo, sin broadcast",
+      "service.openTrackpadFromDock(" in d_mgr and "fun openTrackpadFromDock(" in pun_svc and "sendBroadcast" not in d_mgr)
+check("El trackpad avisa a la barra del complemento (la burbuja se esconde, la isla enciende el puntero)",
+      "dock?.setTrackpadOpen(open)" in pun_svc and "edgeView.pointerActive = open" in d_ctrl and "view.pointerActive = open" in d_isl_ctrl)
+
+# Isla
+check("Isla: cinco estados con las medidas de la maqueta",
+      "enum class State { IDLE, OPEN, REC, THINK, DONE }" in d_isl_geo
+      and all(f"{k} = {v}" in d_isl_geo for k, v in (
+          ("DEFAULT_W_DP", "112f"), ("DEFAULT_H_DP", "30f"), ("OPEN_W_DP", "176f"), ("OPEN_H_DP", "58f"),
+          ("REC_W_DP", "252f"), ("REC_H_DP", "44f"), ("DONE_W_DP", "128f"), ("DONE_H_DP", "34f"),
+          ("OPEN_BUTTON_DP", "42f"), ("REC_HOLE_DP", "32f"), ("OPEN_AUTO_CLOSE_MS", "4000L"), ("DONE_MS", "1300L"),
+          ("MORPH_MS", "420L"))))
+check("Isla: x = centro horizontal, y = borde superior, siempre dentro de la pantalla (recorte), también en pantallas angostas",
+      "fun bounds(" in d_isl_geo and "val left = clamp(cx - w / 2, margin, screenW - w - margin)" in d_isl_geo
+      and "val t = clamp(y, 0, screenH - h)" in d_isl_geo and "fun fitWidth(" in d_isl_geo.replace("private ", "")
+      and "IslandGeometry.bounds(" in d_isl_ctrl)
+check("Isla: ancho y alto en reposo acotados (72–180 dp y 22–48 dp)",
+      all(f"{k} = {v}" in d_isl_geo for k, v in (("MIN_W_DP", "72f"), ("MAX_W_DP", "180f"), ("MIN_H_DP", "22f"), ("MAX_H_DP", "48f"))))
+check("Isla: rebote de tamaño con overshoot leve y una sola ventana (unión de los dos tamaños solo mientras dura)",
+      "OvershootInterpolator(" in d_isl_ctrl and "IslandGeometry.animationWindow(" in d_isl_ctrl
+      and "w.setBounds(to.x, to.y, to.w, to.h)" in d_isl_ctrl)
+check("Isla: con «quitar animaciones» del sistema el tamaño cambia directo",
+      "ValueAnimator.areAnimatorsEnabled()" in d_isl_ctrl and "ValueAnimator.areAnimatorsEnabled()" in d_horizon)
+check("Isla: píldora negra con borde de 1 dp y anillo brasa exterior grabando",
+      "palette.islandBg" in d_isl_view and "palette.islandLine" in d_isl_view and "1.5f * d" in d_isl_view
+      and "palette.ember" in d_isl_view)
+check("Isla: la voz cae hacia el agujero (símbolos 0 1 { }) y pensando salen rayitas; sigue el nivel",
+      "Mode { CORONA, HOLE, VOICE }" in d_horizon and "charArrayOf('0', '1', '{', '}')" in d_horizon
+      and "holeOnLeft" in d_horizon and "levelSource" in d_horizon and "spinArc(" in d_horizon)
+check("Isla: el lado del micrófono es configurable y el puntero va del otro (diseño en espejo)",
+      "micOnLeft" in d_isl_geo and "fun mx(x: Int) = if (micOnLeft) x else w - x" in d_isl_geo
+      and "cfg.micOnLeft" in d_isl_ctrl and "voiceView.holeOnLeft = micOnLeft" in d_isl_view)
+check("Isla: con una sola herramienta el toque la ejecuta directo; con las dos se abre",
+      "fun idleTapOpens(hasMic: Boolean, hasPointer: Boolean): Boolean = hasMic && hasPointer" in d_isl_geo
+      and "IslandGeometry.idleTapOpens(c.toolMic, c.toolPointer)" in d_isl_ctrl)
+check("Isla: cronómetro mono, ✕ de cancelar y terminar al tocar el agujero",
+      "Fonts.mono(context)" in d_isl_view and "onCancelTap" in d_isl_view and "callbacks.onMicCancel()" in d_isl_ctrl
+      and "callbacks.onMicTap()" in d_isl_ctrl)
+check("Isla: listo muestra una frase corta y se ensancha lo justo (errores con «!» y más tiempo)",
+      "fun doneWidth(" in d_isl_geo and "ERROR_MS" in d_isl_ctrl and "doneIsError" in d_isl_view)
+check("Isla: accesibilidad en español (cada botón con contentDescription y región polite)",
+      all(t in d_isl_view for t in ('"Dictar"', '"Terminar dictado"', '"Cancelar dictado"', '"Abrir el puntero"',
+                                    "Isla de VoiceBubble", "ACCESSIBILITY_LIVE_REGION_POLITE")))
+check("Barra y burbuja del complemento: acciones de TalkBack Dictar y Abrir el puntero",
+      '"Dictar"' in d_ctrl and '"Abrir el puntero"' in d_ctrl and "AccessibilityNodeInfo.AccessibilityAction(" in d_ctrl
+      and 'contentDescription = "Barra flotante de VoiceBubble"' in d_ctrl)
+check("Maqueta de la isla copiada a laboratorio_ui/isla.html", exists(ISLA_HTML) and "Isla VoiceBubble" in read(ISLA_HTML) and "id=\"isla\"" in read(ISLA_HTML))
+
+# Prefs propias y arranque
+check("Estado en prefs PROPIAS del complemento (vb_puntero_dock): configuración y posición",
+      '"vb_puntero_dock"' in d_prefs and "fun loadConfig()" in d_prefs and "fun saveConfig(" in d_prefs
+      and "fun savePosition(" in d_prefs and "PointerProtocol.normalizeDockConfig(" in d_prefs
+      and "FlutterSharedPreferences" not in dock_pun_all)
+check("Sin configuración guardada la barra no se dibuja (enabled = false) hasta que VoiceBubble la encienda",
+      "enabled = false," in d_prefs and "prefs.getBoolean(K_ENABLED, false)" in d_prefs)
+check("Al conectarse el servicio dibuja lo guardado y manda DOCK_HELLO (la barra vuelve sola tras reiniciar)",
+      "if (dock == null) dock = DockManager(this)" in pun_svc and "dock?.start()" in pun_svc
+      and "HostLink.hello(service)" in d_mgr and "config = prefs.loadConfig()" in d_mgr)
+check("El receptor del servicio escucha DOCK_CONFIG y MIC_STATE con el permiso de firma",
+      "addAction(PointerProtocol.ACTION_DOCK_CONFIG)" in pun_svc and "addAction(PointerProtocol.ACTION_MIC_STATE)" in pun_svc
+      and "dock?.onDockConfig(intent)" in pun_svc and "dock?.onMicState(intent)" in pun_svc
+      and "registerReceiver(receiver, filter, PointerProtocol.PERMISSION_POINTER" in pun_svc)
+check("DOCK_CONFIG se valida, se guarda y se aplica en vivo",
+      "PointerProtocol.normalizeDockConfig(" in d_mgr and "prefs.saveConfig(cfg)" in d_mgr and "apply(force =" in d_mgr
+      and "s.applyConfig(cfg)" in d_mgr)
+check("Con la barra apagada en Ajustes el complemento no dibuja nada y se lo dice al host",
+      "if (!cfg.enabled) {" in d_mgr and "announce(false, force)" in d_mgr)
+check("El complemento dice si dibuja (DOCK_STATE active) solo si Android dejó crear la ventana",
+      "announce(s.isDrawing(), force)" in d_mgr and "override fun isDrawing()" in d_ctrl and "override fun isDrawing()" in d_isl_ctrl
+      and "PointerProtocol.EXTRA_ACTIVE" in d_host_link)
+
+# Ciclo de vida
+check("Ciclo de vida: onUnbind/onDestroy destruyen la barra (ventanas, animadores, temporizadores) y avisan",
+      "dock?.destroy()" in pun_svc and "unregister()" in pun_svc.split("override fun onUnbind")[1]
+      and "handler.removeCallbacksAndMessages(null)" in d_mgr and "dropSurface()" in d_mgr
+      and "HostLink.state(service, false)" in d_mgr)
+check("Ciclo de vida: DockController e IslandController no dejan nada corriendo al destruirse",
+      "handler.removeCallbacksAndMessages(null)" in d_ctrl and "openAnimator?.cancel()" in d_ctrl and "closeArcNow()" in d_ctrl
+      and "edgeWindow?.dismiss()" in d_ctrl and "bubbleWindow?.dismiss()" in d_ctrl
+      and "handler.removeCallbacksAndMessages(null)" in d_isl_ctrl and "morphAnimator?.cancel()" in d_isl_ctrl
+      and "window?.dismiss()" in d_isl_ctrl and "view.stopAnimations()" in d_isl_ctrl)
+check("Ciclo de vida: giro, tamaño de pantalla y tema reacomodan la barra",
+      "dock?.onConfigurationChanged()" in pun_svc and "palette.reload()" in d_mgr and "surface?.onConfigurationChanged()" in d_mgr
+      and "prefs.centerYFrac() * sh" in d_ctrl and "settle()" in d_isl_ctrl)
+check("Ciclo de vida: el vigilante vuelve a reposo si el host muere a mitad de un dictado",
+      "fun isStale(" in d_tracker and "MIC_STALE_MS" in d_tracker and "tracker.isStale(now)" in d_mgr and "staleCheck" in d_mgr)
+
+# Protocolo v3
+V3 = ("ACTION_DOCK_CONFIG", "ACTION_MIC_STATE", "ACTION_DOCK_HELLO", "ACTION_DOCK_STATE", "EXTRA_DOCK_ENABLED", "EXTRA_DOCK_FORM",
+      "EXTRA_TOOL_MIC", "EXTRA_TOOL_POINTER", "EXTRA_ISLAND_X", "EXTRA_ISLAND_Y", "EXTRA_ISLAND_W", "EXTRA_ISLAND_H",
+      "EXTRA_ISLAND_SIDE", "EXTRA_ACTIVE", "EXTRA_MIC_STATE", "EXTRA_MIC_LEVEL", "EXTRA_MIC_MESSAGE", "MIC_RECORDING",
+      "MIC_TRANSCRIBING", "MIC_DONE", "MIC_ERROR", "MIC_IDLE", "FORM_ISLAND", "MIC_LEVEL_EVERY_MS")
+check("Protocolo v3: las mismas const val en las dos apps (DOCK_CONFIG, MIC_STATE, DOCK_HELLO, DOCK_STATE y extras)",
+      all(f"const val {c} =" in proto and f"const val {c} =" in pun_proto for c in V3) and consts(proto) == consts(pun_proto)
+      and "fun normalizeDockConfig(" in proto and "fun normalizeDockConfig(" in pun_proto
+      and "fun normalizeMicState(" in proto and "fun normalizeMicState(" in pun_proto)
+check("Protocolo v3: el nivel de voz va como mucho a 15 Hz",
+      "const val MIC_LEVEL_EVERY_MS = 70L" in proto and "PointerProtocol.MIC_LEVEL_EVERY_MS" in h_dsvc)
+check("Protocolo v3: el audio y el texto nunca pasan por el complemento (solo estados y frases fijas)",
+      "TranscriptionHistoryRepository" not in dock_pun_all and "SpeechToTextClient" not in dock_pun_all
+      and "ClipboardManager" not in dock_pun_all and "MAX_MIC_MESSAGE" in proto
+      and "nunca texto dictado" in proto and "putExtra(PointerProtocol.EXTRA_MIC_MESSAGE, message)" in h_dlink)
+
+# Host: dictado nativo
+dsvc_tag = component("service", ".DockDictationService")
+tramp_tag = component("activity", ".DockTrampolineActivity")
+recv_tag = component("receiver", ".DockLinkReceiver")
+SIGN = f'android:permission="{perm}"'
+check("DockDictationService: exportado SOLO con el permiso de firma y tipo micrófono",
+      dsvc_tag != "" and 'android:exported="true"' in dsvc_tag and SIGN in dsvc_tag
+      and 'android:foregroundServiceType="microphone|shortService"' in dsvc_tag)
+_dds = open(f"{KT}/DockDictationService.kt").read()
+check("DockDictationService: cumple siempre la promesa de primer plano (si niegan el micrófono, servicio corto)",
+      "micForeground = enterForeground()" in _dds and "FOREGROUND_SERVICE_TYPE_SHORT_SERVICE" in _dds
+      and _dds.index("micForeground = enterForeground()") < _dds.index("toggle()"))
+check("DockTrampolineActivity: exportada SOLO con el permiso de firma, translúcida, fuera de recientes",
+      tramp_tag != "" and 'android:exported="true"' in tramp_tag and SIGN in tramp_tag
+      and 'android:excludeFromRecents="true"' in tramp_tag and 'android:noHistory="true"' in tramp_tag
+      and "DockTrampolineTheme" in tramp_tag)
+check("Receptor del manifiesto (funciona con la app cerrada) con el permiso de firma: DOCK_HELLO y DOCK_STATE",
+      recv_tag != "" and SIGN in recv_tag
+      and 'name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_HELLO"' in manifest
+      and 'name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE"' in manifest
+      and "PointerProtocol.ACTION_DOCK_HELLO -> DockLink.onHello(ctx)" in h_dlink)
+check("Todo componente exportado nuevo de la barra exige el permiso de firma",
+      all(SIGN in t for t in (dsvc_tag, tramp_tag, recv_tag)))
+check("Las acciones del dictado coinciden entre el complemento y el servicio",
+      "ACTION_DICTATION_TOGGLE" in h_dsvc and "ACTION_DICTATION_CANCEL" in h_dsvc and "PointerProtocol.HOST_DICTATION_SERVICE_CLASS" in d_host_link
+      and 'HOST_DICTATION_SERVICE_CLASS = "com.royleguiza.voicebubblestt.DockDictationService"' in proto)
+check("DockDictationService: foreground micrófono, misma clave/config y exclusión del micrófono que teclado y widget",
+      "FOREGROUND_SERVICE_TYPE_MICROPHONE" in h_dsvc and "SpeechToTextClient(this)" in h_dsvc
+      and "BackgroundWork.tryClaimMicrophone()" in h_dsvc and "BackgroundWork.releaseMicrophone(claim)" in h_dsvc
+      and "speech.loadConfig()" in h_dsvc and "START_NOT_STICKY" in h_dsvc)
+check("DockDictationService: resultado como la burbuja (historial nativo + portapapeles + pegado con el teclado propio)",
+      "TranscriptionHistoryRepository(this).addTranscription(clean)" in h_dsvc and "ClipData.newPlainText(" in h_dsvc
+      and "VoiceKeyboardService.commitFromExternal(clean)" in h_dsvc and "doneMessage(pasted)" in h_dsvc)
+check("DockDictationService: respeta sonidos y hápticos de micrófono del teclado",
+      all(k in h_feedback for k in ("kb_mic_haptics_enabled", "kb_mic_haptic_start", "kb_mic_haptic_cancel", "kb_mic_sounds_enabled",
+                                    "kb_mic_start_style", "kb_mic_stop_style")) and "DockMicFeedback(this)" in h_dsvc)
+check("DockDictationService: errores con frase corta fija vía MIC_STATE error (clave, permiso, micrófono ocupado, red)",
+      all(m in h_dlogic for m in ("Falta la clave de Groq", "Falta el permiso del micrófono", "El micrófono está ocupado", "Sin conexión"))
+      and "PointerProtocol.MIC_ERROR" in h_dsvc and "errorMessage(code)" in h_dsvc)
+check("DockDictationService: si startForeground se niega avisa needs_ui y no queda colgado",
+      "needsUi = !fromTrampoline" in h_dsvc and "EXTRA_NEEDS_UI" in proto and "fail(DockDictationLogic.MSG_MIC_FAILED" in h_dsvc)
+check("DockDictationService: no deja temporizadores ni el micrófono al destruirse",
+      "main.removeCallbacksAndMessages(null)" in h_dsvc and "client?.cancelRecording()" in h_dsvc
+      and "releaseMicrophone()" in h_dsvc.split("override fun onDestroy()")[1].split("override fun")[0]
+      and "Log." not in h_dsvc + h_dlogic + h_tramp + h_dlink + h_feedback)
+check("Trampolín: arranca el servicio en primer plano con from_trampoline y se cierra sola",
+      "startForegroundService(intent)" in h_tramp and "EXTRA_FROM_TRAMPOLINE" in h_tramp and "finish()" in h_tramp
+      and "overridePendingTransition(0, 0)" in h_tramp)
+check("Complemento: arranca el dictado con startForegroundService y, si Android lo niega, abre el trampolín",
+      "context.startForegroundService(intent) != null" in d_host_link and "fun openTrampoline(" in d_host_link
+      and "HostLink.toggleDictation(service)" in d_mgr and "HostLink.openTrampoline(service)" in d_mgr
+      and "if (ms.needsUi)" in d_mgr and "FLAG_ACTIVITY_NEW_TASK" in d_host_link)
+check("Complemento: no pide el micrófono si VoiceBubble no tiene el permiso",
+      "fun hostHasMicPermission(" in d_host_link and "HostLink.hostHasMicPermission(service)" in d_mgr)
+
+# Host: respaldo y «nunca dos barras»
+check("Host: la barra de respaldo se esconde mientras el complemento dibuja",
+      "fun setSuppressed(value: Boolean)" in dock and "!hidden && !suppressed" in dock
+      and "dock?.setSuppressed(DockLink.complementDrawing || waitingComplement)" in fbs)
+check("Host: nace escondida si el complemento está listo y se muestra si no contesta a tiempo (sin dos barras)",
+      "it.setSuppressed(initiallySuppressed || PointerLink.isReady(this))" in fbs and "COMPLEMENT_ANSWER_MS" in fbs
+      and "complementTimeout" in fbs and "DockLink.sendConfig(this, enabledOverride = true, ack = true)" in fbs)
+check("Host: DOCK_STATE actualiza el estado y la barra de respaldo reacciona",
+      "complementDrawing = active" in h_dlink and "onDrawingChanged?.invoke(active)" in h_dlink
+      and "DockLink.onDrawingChanged = { drawing ->" in fbs)
+check("Host: al cerrar el servicio de la barra, el complemento también la saca (y no vuelve tras reiniciar)",
+      "closeComplementDock()" in fbs and "enabledOverride = false" in fbs and "putBoolean(FlutterPrefs.key(\"floating_bubble_enabled\"), false)" in fbs
+      and "DockLink.onDrawingChanged = null" in fbs)
+check("Host: Ajustes (startBubble, stopBubble, reloadDock) además manda DOCK_CONFIG",
+      main.count("DockLink.sendConfig(") >= 3 and "enabledOverride = true" in main and "enabledOverride = false" in main)
+check("Host: DOCK_CONFIG lleva forma, herramientas, isla y trackpad (prefs de Flutter, isla con valores por defecto si no existen)",
+      all(k in h_dlink for k in ("EXTRA_DOCK_FORM", "EXTRA_TOOL_MIC", "EXTRA_ISLAND_X", "EXTRA_ISLAND_SIDE", "EXTRA_SENSITIVITY", "EXTRA_AUTO_RETURN"))
+      and "DockController.PREF_FORM" in h_dlink and "PointerLink.readTrackpadConfig(context, -1, -1)" in h_dlink
+      and "setPackage(PointerProtocol.COMPANION_PACKAGE)" in h_dlink and "sendBroadcast(intent, PointerProtocol.PERMISSION_POINTER)" in h_dlink)
+check("Host: las claves de la isla se leen sin el literal flutter.* (contrato 55 claves intacto hasta la fase 2B)",
+      "FlutterPrefs.key(" in h_dlink and 'K_ISLAND_X = "dock_island_x"' in h_dlink and "flutter.dock_island" not in h_dlink
+      and len(contract) == 55)
+check("Host: el dictado de la app por Flutter también se ve en la barra del complemento",
+      "mirrorStateToComplement(state)" in fbs and "DockDictationService.isActive" in fbs and "MIRROR_REPEAT_MS" in fbs)
+check("Host: el dictado de la burbuja de respaldo por Flutter no se tocó",
+      "onBubbleActionListener?.onBubbleTap()" in fbs and "onBubbleActionListener?.onBubbleTap()" in main + fbs)
+
+# Tests y CI
+for t in (f"{PUN_TEST}/IslandGeometryTest.kt", f"{PUN_TEST}/MicStateTrackerTest.kt", f"{PUN_TEST}/DockGeometryTest.kt",
+          f"{KT_TEST}/DockDictationLogicTest.kt"):
+    check(f"Existe {os.path.basename(t)}", exists(t))
+check("Tests JVM del protocolo v3 en las dos apps",
+      all("normalizeDockConfig" in read(t) and "normalizeMicState" in read(t) for t in (f"{PUN_TEST}/PointerProtocolTest.kt", f"{KT_TEST}/PointerProtocolTest.kt")))
+check("Tests JVM de la isla: tamaños por estado, centrado y recorte a pantalla",
+      all(k in read(f"{PUN_TEST}/IslandGeometryTest.kt") for k in ("tamanos por estado", "se centra en x", "nunca sale de la pantalla", "pantallas muy angostas")))
+check("Tests JVM del dictado: TOGGLE/CANCEL, toque mientras arranca y vigilante",
+      "QUEUE_STOP" in read(f"{KT_TEST}/DockDictationLogicTest.kt") and "isStale" in read(f"{PUN_TEST}/MicStateTrackerTest.kt"))
+check("CI corre los tests nuevos del host en el paso de la barra flotante", "DockDictationLogicTest" in ci)
+check("Documentación: contrato de la barra, design.md (isla) y AGENTS.md",
+      exists("docs/contrato-barra.md") and "Isla (tercera forma)" in read("design.md") and "fase 2A" in read("AGENTS.md")
+      and "DOCK_CONFIG" in read("docs/contrato-barra.md") and "contrato-barra.md" in read("docs/contrato-trackpad.md"))
+
+# Mutaciones de la fase 2A
+mut_win = d_win.replace("TYPE_ACCESSIBILITY_OVERLAY", "TYPE_APPLICATION_OVERLAY")
+check("Mutación: barra del complemento como overlay de app se detecta", "TYPE_ACCESSIBILITY_OVERLAY" not in mut_win)
+mut_dsvc_tag = dsvc_tag.replace(SIGN, "")
+check("Mutación: servicio de dictado exportado sin el permiso de firma se detecta",
+      'android:exported="true"' in mut_dsvc_tag and SIGN not in mut_dsvc_tag and SIGN in dsvc_tag)
+mut_fbs2 = fbs.replace("dock?.setSuppressed(DockLink.complementDrawing || waitingComplement)", "")
+check("Mutación: dos barras a la vez (host sin esconderse) se detecta", "dock?.setSuppressed(DockLink.complementDrawing || waitingComplement)" not in mut_fbs2)
+mut_isl = d_isl_ctrl.replace("DockWindow(windowManager, view, noLimits = true)", "DockWindow(windowManager, view)")
+check("Mutación: isla sin NO_LIMITS (no llega a la cámara) se detecta", "noLimits = true" not in mut_isl)
+mut_geo2 = d_isl_geo.replace("val left = clamp(cx - w / 2, margin, screenW - w - margin)", "val left = cx - w / 2")
+check("Mutación: isla sin recorte a pantalla se detecta", "clamp(cx - w / 2, margin, screenW - w - margin)" not in mut_geo2)
+mut_pun_proto = pun_proto.replace('const val ACTION_DOCK_STATE = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE"', "")
+check("Mutación: protocolo v3 incompleto en el complemento se detecta", consts(proto) != consts(mut_pun_proto))
+mut_dsvc = h_dsvc.replace("BackgroundWork.tryClaimMicrophone()", "1L")
+check("Mutación: dictado sin exclusión del micrófono se detecta", "BackgroundWork.tryClaimMicrophone()" not in mut_dsvc)
+mut_dock_destroy = pun_svc.replace("dock?.destroy()", "")
+check("Mutación: barra sin destruir al desvincular se detecta", "dock?.destroy()" not in mut_dock_destroy)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE BARRA FLOTANTE: {suite.passed} pasados, {suite.failed} fallidos.")

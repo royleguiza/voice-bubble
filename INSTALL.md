@@ -62,7 +62,9 @@ El trackpad de la barra mueve un puntero por toda la pantalla. Para que ese punt
 3. Si Android dice **«Ajuste restringido»** (Android 13+ con apps instaladas desde fuera de Play): abrí la información de la app (el complemento tiene un botón), tocá ⋮ arriba a la derecha → **Permitir ajustes restringidos**, y repetí el paso 2.
 4. En VoiceBubble, **Ajustes › Trackpad** debe decir "VoiceBubble Puntero: Activo".
 
-El complemento no lee lo que hay en pantalla ni guarda nada: solo hace el toque donde está el puntero. Detalle técnico en `docs/contrato-trackpad.md`.
+El complemento no lee lo que hay en pantalla: solo hace el toque donde está el puntero y recuerda dónde dejaste la barra. Detalle técnico en `docs/contrato-trackpad.md`.
+
+**Barra siempre presente (fase 2A):** con el complemento activo, la barra flotante (borde, burbuja o isla) la dibuja el complemento: Android lo mantiene vivo y lo relanza solo, así que la barra no desaparece aunque cierre VoiceBubble ni tras reiniciar el teléfono, y el micrófono dicta aunque VoiceBubble esté cerrada. Sin el complemento, la barra sigue funcionando como siempre (la dibuja VoiceBubble). Detalle en `docs/contrato-barra.md`.
 
 ## 2b. Alerta de Play Protect (leer si aparece un aviso)
 

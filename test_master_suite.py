@@ -1055,6 +1055,13 @@ CELDAS_CAPTURA = {
         1,
         "tryClaimMicrophone",
     ),
+    # Fase 2A: el dictado nativo de la barra del complemento. Una apertura (la
+    # captura) y un reclamo (el arbitro) en el mismo arranque, igual que el teclado.
+    ("DockDictationService.kt", "private fun startRecording()"): (
+        1,
+        1,
+        "tryClaimMicrophone",
+    ),
     (
         "MainActivity.kt",
         "override fun configureFlutterEngine()",
@@ -1760,13 +1767,14 @@ def _contrato_c05():
         "el unico CAS que decide la exclusion mutua estaria dentro de una celda "
         "que ya tomo el microfono"
     )
-    # Kotlin: 4 APERTURAS (2 en la fabrica del AudioRecord, 1 en el arranque del
-    # teclado y 1 en el del widget) y 3 RECLAMOS (teclado, widget y puente).
+    # Kotlin: 5 APERTURAS (2 en la fabrica del AudioRecord, 1 en el arranque del
+    # teclado, 1 en el del widget y 1 en el de la barra del complemento) y 4
+    # RECLAMOS (teclado, widget, puente y barra del complemento).
     # Dart: 3 APERTURAS (el recorder de TranscriptionService y su `start`, mas el
     # recorder de sondeo de permiso de Ajustes) y 2 RECLAMOS (el claimer inyectado
     # y el claimer por defecto, que es la fabrica).
     _verifica_celdas_de_captura(
-        celdas_captura, CELDAS_CAPTURA, "arbol Kotlin", 4, 3
+        celdas_captura, CELDAS_CAPTURA, "arbol Kotlin", 5, 4
     )
     celdas_dart = _sitios_de_captura_dart("app_source/lib")
     _verifica_celdas_de_captura(

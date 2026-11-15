@@ -73,6 +73,40 @@
             android:name=".WidgetDictationService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Fase 2A: la barra flotante la dibuja el complemento VoiceBubble Puntero
+             (ventanas de Accesibilidad, siempre vivas). Su micrófono dicta con este
+             servicio NATIVO, sin Flutter. Exportado SOLO con el permiso de firma:
+             ninguna otra app puede arrancarlo. -->
+        <service
+            android:name=".DockDictationService"
+            android:exported="true"
+            android:permission="com.royleguiza.voicebubble.puntero.permission.POINTER"
+            android:foregroundServiceType="microphone|shortService" />
+        <!-- Respaldo del servicio anterior: si Android no deja arrancar el micrófono
+             desde segundo plano, el complemento abre esta actividad translúcida, que lo
+             arranca en primer plano y se cierra sola. También solo con el permiso de firma. -->
+        <activity
+            android:name=".DockTrampolineActivity"
+            android:exported="true"
+            android:permission="com.royleguiza.voicebubble.puntero.permission.POINTER"
+            android:theme="@style/DockTrampolineTheme"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:launchMode="singleInstance" />
+        <!-- Hola / estado de la barra del complemento. En el MANIFIESTO para que
+             funcione con la app cerrada (Android la despierta): tras reiniciar, el
+             complemento pide su configuración y la barra vuelve sola. -->
+        <receiver
+            android:name=".DockLinkReceiver"
+            android:exported="true"
+            android:permission="com.royleguiza.voicebubble.puntero.permission.POINTER">
+            <intent-filter>
+                <action android:name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_HELLO" />
+                <action android:name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE" />
+            </intent-filter>
+        </receiver>
         <!-- Colección con scroll del widget (pendientes + notas):
              el launcher la consulta vía RemoteViewsFactory. Sin este
              permiso el ListView queda vacío. -->

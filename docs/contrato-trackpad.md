@@ -2,7 +2,9 @@
 
 > Fuente única del estado real del trackpad (SPK-23). Si la UI promete
 > otra cosa, vale este doc. Actualizado 2026-11-15 (fase 1: trackpad y
-> puntero en el complemento, protocolo v2).
+> puntero en el complemento, protocolo v2). Desde la fase 2A la barra flotante
+> (borde, burbuja e isla) también la dibuja el complemento: protocolo v3 y quién
+> dibuja qué en `docs/contrato-barra.md`.
 
 ## Quién dibuja qué
 
@@ -21,8 +23,12 @@ fase 4); dentro de su panel muestra qué falta instalar o activar.
 
 ## Dónde vive
 
-- **Barra flotante** (`DockController`, servicio `FloatingBubbleService`):
-  un solo objeto de vidrio con dos formas, barra en el borde o burbuja libre.
+- **Barra flotante** (desde la fase 2A la dibuja el complemento con ventanas de
+  Accesibilidad, `DockManager` en `PunteroService`; `DockController` y
+  `FloatingBubbleService` del host quedan como RESPALDO sin complemento; ver
+  `docs/contrato-barra.md`). Un solo objeto con tres formas: barra en el borde,
+  burbuja libre o isla. En el complemento la herramienta Puntero abre el
+  trackpad directo, sin broadcast. En el respaldo del host:
   Sus herramientas son Micrófono y Puntero (Ajustes › Barra flotante). La
   herramienta Puntero llama a `PointerLink.openTrackpad(...)`; si devuelve
   false (complemento no listo), abre `FloatingTrackpadService`. Mientras el
@@ -64,6 +70,10 @@ fase 4); dentro de su panel muestra qué falta instalar o activar.
   broadcast `OP_TAP` / `OP_LONG_PRESS` / `OP_SCROLL` (hasta la fase 4).
 
 ## Protocolo v2 (`PointerProtocol.kt`, espejo exacto en las dos apps)
+
+> El protocolo v3 (la barra: `DOCK_CONFIG`, `MIC_STATE`, `DOCK_HELLO`,
+> `DOCK_STATE`) está en `docs/contrato-barra.md`; usa las mismas reglas
+> (explícito al paquete, permiso de firma).
 
 Todos los broadcast son explícitos al paquete destino y protegidos con el
 permiso de firma `…puntero.permission.POINTER` (declarado en las dos apps, misma
