@@ -1,8 +1,84 @@
 # Plan: puntero por encima de todo + isla flotante
 
-> Estado: en curso (2026-11-15). Coordina y audita la sesión principal; cada
-> fase la implementa UN subagente por vez. Fuente de diseño: `design.md`
-> (Horizonte) y el artifact de la isla (enlace en la fase 2).
+> **Si retomás este trabajo (otro modelo u otra sesión), empezá por la
+> sección «Estado y traspaso».** Todo lo necesario está en el repo; no hace
+> falta la conversación original.
+
+## Estado y traspaso (actualizado 2026-11-15)
+
+| Fase | Qué es | Estado | Commit | APK |
+|---|---|---|---|---|
+| 1 | Trackpad y puntero en el complemento, por encima de todo; botones de sistema; arrastre | HECHA, probada por el dueño en su teléfono | `4cdc47c` | r315 |
+| 2A | Barra flotante (borde · burbuja · isla) dibujada por el complemento; dictado nativo sin Flutter | HECHA, subida; **falta prueba en teléfono** | `30ef040` | r316 |
+| 2B | Ajustes de la isla (elegirla, ajuste al píxel, maqueta, en vivo) | HECHA, subida; **falta prueba en teléfono** | `278cc41` | r317 |
+| 3 | Complemento independiente (pestaña propia, mover/achicar trackpad, ajustes mínimos) | PENDIENTE, sin especificación | — | — |
+| 4 | Un solo puntero también para el trackpad del teclado; historial; limpieza | PENDIENTE, sin especificación | — | — |
+
+### Pendientes abiertos (además de las fases 3 y 4)
+1. **Trackpad viejo debajo del nuevo.** Reportado por el dueño con r315 y
+   de nuevo después («sigue quedando»; no confirmó si ya tenía r316): al
+   abrir el trackpad del complemento se abre también, escondido debajo, el
+   `FloatingTrackpadService` del host (se ven dos punteros) y queda a la
+   vista al cerrar el nuevo. Causa conocida: el respaldo por silencio de
+   `PointerLink.openTrackpad` (`OPEN_ANSWER_MS`) dispara porque
+   `ACTION_TRACKPAD_STATE` no llega a tiempo (o no llega) al host. Mitigado
+   en `30ef040` (plazo 2,5 s y cierre del respaldo si la respuesta llega
+   tarde) pero NO confirmado. Investigar por qué no llega el broadcast
+   (receptor de `FloatingBubbleService`, permiso de firma, proceso en caché)
+   o reemplazar el respaldo por tiempo por una comprobación directa. Con la
+   barra dibujada por el complemento (2A) este camino ya casi no se usa.
+   El dueño pidió dejarlo para más adelante.
+2. **Historial con toque largo** sobre la burbuja/barra: no existe en la
+   barra del complemento (va en la fase 4).
+3. **Probar en teléfono 2A y 2B** (listas en `docs/contrato-barra.md` y en
+   los mensajes de commit): barra tras reiniciar, dictado con la app
+   cerrada (ruta directa o trampolín), nunca dos barras, isla en vivo desde
+   Ajustes, maqueta fiel. Riesgo anotado: tope vertical de la isla en
+   teléfonos con barra de navegación de 3 botones.
+4. `test_master_suite.py` da 98/100: los dos que fallan son C-34 (firma,
+   lockfile, pinning del CI), previos a este plan y fuera de alcance.
+
+### Cómo se viene trabajando (pedido del dueño)
+- Un coordinador planifica, escribe la especificación de cada fase
+  (`docs/spec-puntero-fase*.md`), lanza **un solo subagente por vez** que
+  implementa, y después AUDITA: lee lo crítico, recompila, corre tests y
+  suites por su cuenta, corrige y recién ahí commitea. En las tres fases la
+  auditoría encontró errores reales (gesto de arrastre mal encadenado,
+  servicio de dictado que podía matar la app, respaldo que abría dos
+  trackpads): no saltearla.
+- **Nunca push sin autorización explícita del dueño.** Él prueba cada APK
+  en su teléfono (artefactos `voice-bubble-arm64-profile-apk-rNNN` y
+  `voice-bubble-puntero-apk-rNNN`; hay que instalar los dos) y manda
+  capturas. Docs solas: commit con `[skip ci]`.
+- Responderle en español rioplatense, claro y sin jerga; es el dueño del
+  producto, no programa.
+- Diseño: Horizonte (`design.md`). Maquetas aprobadas: isla y trackpad en
+  `laboratorio_ui/isla.html` (artifact
+  https://claude.ai/artifact/QQTNtVoHFwqP6m5h8jy4xk); puntero y animaciones
+  en https://claude.ai/artifact/Ko8GmvLFjf9qXVYxx8Sk9G.
+
+### Dónde está cada cosa
+- Especificaciones: `docs/spec-puntero-fase1.md`, `-fase2a.md`, `-fase2b.md`
+  (modelo para escribir las de las fases 3 y 4).
+- Contratos: `docs/contrato-trackpad.md` (protocolo v2), `docs/contrato-barra.md`
+  (protocolo v3, quién dibuja qué), `docs/contrato-claves.md` +
+  `docs/contract-keys.txt` (61 claves de Ajustes).
+- Complemento: `puntero_android/` (Kotlin puro, sin androidx; servicio de
+  Accesibilidad `PunteroService`, `TrackpadController`, `DockManager`,
+  `IslandController`). Host nativo: `voice_bubble_stt/android/…/voicebubblestt/`
+  (`PointerLink`, `DockLink`, `DockDictationService`, `DockTrampolineActivity`,
+  `FloatingBubbleService` y `FloatingTrackpadService` como respaldo).
+  Flutter editable: `app_source/` (el CI lo copia a `voice_bubble_stt/`).
+- Compilar y probar en el servidor (2 GB de RAM): `docs/plan-build-local.md`
+  y la sección «Verificación obligatoria» de `docs/spec-puntero-fase1.md`.
+  Siempre en copias, una Gradle por vez, nunca junto con `flutter test`; si
+  el sistema mata la corrida por memoria, repetir por tandas (complemento,
+  host, tests) con `-Xmx900m`.
+- Líneas base al cierre de 2B: `flutter analyze` limpio, `flutter test` 757,
+  `test_floating_dock_suite.py` 300/0, `test_trackpad_suite.py` 206/0,
+  `test_settings_redesign_suite.py` 157/0, `test_master_suite.py` 98/100,
+  diff de `const val` entre los dos `PointerProtocol.kt` vacío.
+- Historial del servidor y de cada entrega: `/home/ubuntu/entorno.md`.
 
 ## Para quién es
 
