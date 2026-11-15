@@ -11,7 +11,7 @@
 | 1 | Trackpad y puntero en el complemento, por encima de todo; botones de sistema; arrastre | HECHA, probada por el dueño en su teléfono | `4cdc47c` | r315 |
 | 2A | Barra flotante (borde · burbuja · isla) dibujada por el complemento; dictado nativo sin Flutter | HECHA; el dueño confirmó con r317 que la barra y el dictado funcionan (falta probar reinicio y app cerrada) | `30ef040` | r316 |
 | 2B | Ajustes de la isla (elegirla, ajuste al píxel, maqueta, en vivo) | HECHA; el dueño confirmó con r317 que la isla funciona | `278cc41` | r317 |
-| 2C | Isla sin paso intermedio: cada mitad es su botón (pedido del dueño tras probar r317) | HECHA en local, **commit sin subir: falta autorización de push** | ver `git log` | r318 al subir |
+| 2C | Isla sin paso intermedio: cada mitad es su botón (pedido del dueño tras probar r317) | HECHA y subida; falta prueba en teléfono | `fb7fa16` | r318 |
 | 3 | Complemento independiente (pestaña propia, mover/achicar trackpad, ajustes mínimos) | PENDIENTE, sin especificación | — | — |
 | 4 | Un solo puntero también para el trackpad del teclado; historial; limpieza | PENDIENTE, sin especificación | — | — |
 
@@ -70,13 +70,14 @@ sobre la cámara → grabando) y pedía dos toques. Decisión:
    lockfile, pinning del CI), previos a este plan y fuera de alcance.
 
 ### Cómo se viene trabajando (pedido del dueño)
-- Un coordinador planifica, escribe la especificación de cada fase
-  (`docs/spec-puntero-fase*.md`), lanza **un solo subagente por vez** que
-  implementa, y después AUDITA: lee lo crítico, recompila, corre tests y
-  suites por su cuenta, corrige y recién ahí commitea. En las tres fases la
-  auditoría encontró errores reales (gesto de arrastre mal encadenado,
-  servicio de dictado que podía matar la app, respaldo que abría dos
-  trackpads): no saltearla.
+- **Desde 2026-11-15 (después de 2C), SIN SUBAGENTES** (pedido explícito
+  del dueño): el mismo asistente planifica, escribe la especificación de
+  cada fase (`docs/spec-puntero-fase*.md`), implementa, recompila, corre
+  tests y suites, revisa y commitea; todo directo. Mantener la revisión
+  final propia antes de cada commit: en las fases anteriores (hechas con
+  subagentes) la revisión encontró errores reales (gesto de arrastre mal
+  encadenado, servicio de dictado que podía matar la app, respaldo que
+  abría dos trackpads).
 - **Nunca push sin autorización explícita del dueño.** Él prueba cada APK
   en su teléfono (artefactos `voice-bubble-arm64-profile-apk-rNNN` y
   `voice-bubble-puntero-apk-rNNN`; hay que instalar los dos) y manda
