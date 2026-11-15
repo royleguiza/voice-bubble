@@ -561,12 +561,12 @@ check("El trackpad avisa a la barra del complemento (la burbuja se esconde, la i
       "dock?.setTrackpadOpen(open)" in pun_svc and "edgeView.pointerActive = open" in d_ctrl and "view.pointerActive = open" in d_isl_ctrl)
 
 # Isla
-check("Isla: cinco estados con las medidas de la maqueta",
-      "enum class State { IDLE, OPEN, REC, THINK, DONE }" in d_isl_geo
+check("Isla: cuatro estados (sin paso «abierta») con las medidas de la maqueta",
+      "enum class State { IDLE, REC, THINK, DONE }" in d_isl_geo and "OPEN_W_DP" not in d_isl_geo
       and all(f"{k} = {v}" in d_isl_geo for k, v in (
-          ("DEFAULT_W_DP", "112f"), ("DEFAULT_H_DP", "30f"), ("OPEN_W_DP", "176f"), ("OPEN_H_DP", "58f"),
+          ("DEFAULT_W_DP", "112f"), ("DEFAULT_H_DP", "30f"),
           ("REC_W_DP", "252f"), ("REC_H_DP", "44f"), ("DONE_W_DP", "128f"), ("DONE_H_DP", "34f"),
-          ("OPEN_BUTTON_DP", "42f"), ("REC_HOLE_DP", "32f"), ("OPEN_AUTO_CLOSE_MS", "4000L"), ("DONE_MS", "1300L"),
+          ("REC_HOLE_DP", "32f"), ("DONE_MS", "1300L"),
           ("MORPH_MS", "420L"))))
 check("Isla: x = centro horizontal, y = borde superior, siempre dentro de la pantalla (recorte), también en pantallas angostas",
       "fun bounds(" in d_isl_geo and "val left = clamp(cx - w / 2, margin, screenW - w - margin)" in d_isl_geo
@@ -588,9 +588,14 @@ check("Isla: la voz cae hacia el agujero (símbolos 0 1 { }) y pensando salen ra
 check("Isla: el lado del micrófono es configurable y el puntero va del otro (diseño en espejo)",
       "micOnLeft" in d_isl_geo and "fun mx(x: Int) = if (micOnLeft) x else w - x" in d_isl_geo
       and "cfg.micOnLeft" in d_isl_ctrl and "voiceView.holeOnLeft = micOnLeft" in d_isl_view)
-check("Isla: con una sola herramienta el toque la ejecuta directo; con las dos se abre",
-      "fun idleTapOpens(hasMic: Boolean, hasPointer: Boolean): Boolean = hasMic && hasPointer" in d_isl_geo
-      and "IslandGeometry.idleTapOpens(c.toolMic, c.toolPointer)" in d_isl_ctrl)
+check("Isla: en reposo cada mitad es su botón (micrófono o puntero), sin paso intermedio; con una sola herramienta, toda la isla",
+      "fun idleTapTool(xInPill: Float, w: Int, micOnLeft: Boolean, hasMic: Boolean, hasPointer: Boolean): Tool" in d_isl_geo
+      and "if ((xInPill < w / 2f) == micOnLeft) Tool.MIC else Tool.POINTER" in d_isl_geo
+      and "IslandGeometry.idleTapTool(xInPill, w, c.micOnLeft, c.toolMic, c.toolPointer)" in d_isl_ctrl
+      and "State.OPEN" not in d_isl_ctrl and "State.OPEN" not in d_isl_view)
+check("Isla: grabando, tocar cualquier parte de la píldora termina (el dedo no busca el agujero)",
+      "IslandGeometry.State.REC -> onMicTap?.invoke()" in d_isl_view
+      and "isClickable = state == IslandGeometry.State.IDLE || state == IslandGeometry.State.REC" in d_isl_view)
 check("Isla: cronómetro mono, ✕ de cancelar y terminar al tocar el agujero",
       "Fonts.mono(context)" in d_isl_view and "onCancelTap" in d_isl_view and "callbacks.onMicCancel()" in d_isl_ctrl
       and "callbacks.onMicTap()" in d_isl_ctrl)
@@ -598,7 +603,9 @@ check("Isla: listo muestra una frase corta y se ensancha lo justo (errores con �
       "fun doneWidth(" in d_isl_geo and "ERROR_MS" in d_isl_ctrl and "doneIsError" in d_isl_view)
 check("Isla: accesibilidad en español (cada botón con contentDescription y región polite)",
       all(t in d_isl_view for t in ('"Dictar"', '"Terminar dictado"', '"Cancelar dictado"', '"Abrir el puntero"',
-                                    "Isla de VoiceBubble", "ACCESSIBILITY_LIVE_REGION_POLITE")))
+                                    "Isla de VoiceBubble", "ACCESSIBILITY_LIVE_REGION_POLITE"))
+      and "AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_DICTATE" in d_isl_view
+      and "AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_POINTER" in d_isl_view)
 check("Barra y burbuja del complemento: acciones de TalkBack Dictar y Abrir el puntero",
       '"Dictar"' in d_ctrl and '"Abrir el puntero"' in d_ctrl and "AccessibilityNodeInfo.AccessibilityAction(" in d_ctrl
       and 'contentDescription = "Barra flotante de VoiceBubble"' in d_ctrl)

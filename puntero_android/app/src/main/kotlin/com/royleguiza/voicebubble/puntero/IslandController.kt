@@ -11,7 +11,8 @@ import android.view.animation.OvershootInterpolator
 
 /**
  * La isla: dueña de su ventana de Accesibilidad, de la máquina de estados
- * (reposo → abierta → grabando → pensando → listo → reposo) y del rebote entre
+ * (reposo → grabando → pensando → listo → reposo; en reposo cada mitad
+ * es su botón: no hay paso intermedio) y del rebote entre
  * tamaños. Las medidas salen de [IslandGeometry]; el dibujo, de [IslandView].
  *
  * - Una sola ventana. Quieta mide justo lo que la píldora; solo durante el
@@ -47,13 +48,12 @@ internal class IslandController(
     private var shown: IslandGeometry.Rect? = null
     private var morphAnimator: ValueAnimator? = null
 
-    private val autoClose = Runnable { if (state == IslandGeometry.State.OPEN) go(IslandGeometry.State.IDLE) }
     private val backToIdle = Runnable { if (state == IslandGeometry.State.DONE) go(IslandGeometry.State.IDLE) }
 
     init {
-        view.onIdleTap = { onIdleTap() }
+        view.onIdleTap = { x -> onIdleTap(x) }
         view.onMicTap = { onMicButton() }
-        view.onPointerTap = { onPointerButton() }
+        view.onPointerAction = { onPointerButton() }
         view.onCancelTap = { callbacks.onMicCancel() }
         // Toque en la parte transparente de la ventana mientras rebota: que no lo agarre la isla.
         view.setOnTouchListener { _, e -> !view.pillContains(e.x, e.y) }
@@ -87,10 +87,6 @@ internal class IslandController(
         view.micOnLeft = cfg.micOnLeft
         view.hasMic = cfg.toolMic
         view.hasPointer = cfg.toolPointer
-        // Una sola herramienta: no hay nada que abrir (el toque la ejecuta directo).
-        if (state == IslandGeometry.State.OPEN && !IslandGeometry.idleTapOpens(cfg.toolMic, cfg.toolPointer)) {
-            state = IslandGeometry.State.IDLE
-        }
         if (window == null) {
             val w = DockWindow(windowManager, view, noLimits = true)
             val r = targetRect(state)
@@ -150,12 +146,10 @@ internal class IslandController(
             state = next
             return
         }
-        handler.removeCallbacks(autoClose)
         handler.removeCallbacks(backToIdle)
         val from = shown ?: targetRect(state)
         state = next
         when (next) {
-            IslandGeometry.State.OPEN -> handler.postDelayed(autoClose, IslandGeometry.OPEN_AUTO_CLOSE_MS)
             IslandGeometry.State.DONE -> handler.postDelayed(
                 backToIdle,
                 if (view.doneIsError) IslandGeometry.ERROR_MS else IslandGeometry.DONE_MS,
@@ -222,16 +216,15 @@ internal class IslandController(
         } catch (_: Exception) {}
     }
 
-    private fun onIdleTap() {
+    /** Toque en reposo: [xInPill] decide la mitad (micrófono o puntero) y la ejecuta directo. */
+    private fun onIdleTap(xInPill: Float) {
         val c = cfg ?: return
         if (state != IslandGeometry.State.IDLE) return
-        if (IslandGeometry.idleTapOpens(c.toolMic, c.toolPointer)) {
-            tick()
-            go(IslandGeometry.State.OPEN)
-        } else if (c.toolMic) {
-            callbacks.onMicTap()
-        } else {
-            onPointerButton()
+        val w = (shown ?: targetRect(state)).w
+        when (IslandGeometry.idleTapTool(xInPill, w, c.micOnLeft, c.toolMic, c.toolPointer)) {
+            IslandGeometry.Tool.MIC -> onMicButton()
+            IslandGeometry.Tool.POINTER -> onPointerButton()
+            IslandGeometry.Tool.NONE -> {}
         }
     }
 
@@ -243,10 +236,9 @@ internal class IslandController(
     private fun onPointerButton() {
         tick()
         val r = shown ?: targetRect(state)
+        // Ancla del trackpad: el centro del borde inferior de la isla.
         val ax = r.x + r.w / 2
         val ay = r.bottom
-        // «La isla vuelve al reposo con el puntero encendido».
-        go(IslandGeometry.State.IDLE)
         callbacks.onPointerTap(ax, ay)
     }
 

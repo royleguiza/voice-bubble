@@ -23,7 +23,6 @@ class IslandGeometryTest {
     @Test
     fun `tamanos por estado de la maqueta`() {
         assertEquals(IslandGeometry.Size(336, 90), size(IslandGeometry.State.IDLE))          // 112 x 30 dp
-        assertEquals(IslandGeometry.Size(528, 174), size(IslandGeometry.State.OPEN))         // 176 x 58 dp
         assertEquals(IslandGeometry.Size(756, 132), size(IslandGeometry.State.REC))          // 252 x 44 dp
         assertEquals(IslandGeometry.Size(756, 132), size(IslandGeometry.State.THINK))        // pensando mide lo mismo
         assertEquals(IslandGeometry.Size(384, 102), size(IslandGeometry.State.DONE))         // 128 x 34 dp
@@ -121,31 +120,6 @@ class IslandGeometryTest {
     }
 
     @Test
-    fun `abierta con dos botones de 42 dp centrados y el microfono del lado elegido`() {
-        val s = size(IslandGeometry.State.OPEN)
-        val left = IslandGeometry.openLayout(s.w, s.h, d, true, true, true)
-        val right = IslandGeometry.openLayout(s.w, s.h, d, false, true, true)
-        assertEquals(126, left.mic!!.w)
-        assertTrue(left.mic!!.x < left.pointer!!.x)
-        assertTrue(right.mic!!.x > right.pointer!!.x)
-        // El par queda centrado en la pildora.
-        val total = left.pointer!!.right - left.mic!!.x
-        assertEquals((s.w - total) / 2, left.mic!!.x)
-        assertEquals((s.h - 126) / 2, left.mic!!.y)
-        assertEquals(14 * 3, left.pointer!!.x - left.mic!!.right)
-    }
-
-    @Test
-    fun `abierta con una sola herramienta la deja sola y centrada`() {
-        val s = size(IslandGeometry.State.OPEN)
-        val onlyMic = IslandGeometry.openLayout(s.w, s.h, d, true, true, false)
-        assertTrue(onlyMic.pointer == null)
-        assertEquals((s.w - 126) / 2, onlyMic.mic!!.x)
-        val none = IslandGeometry.openLayout(s.w, s.h, d, true, false, false)
-        assertTrue(none.mic == null && none.pointer == null)
-    }
-
-    @Test
     fun `grabando - agujero, franja, cronometro y cruz caben en la pildora y se espejan`() {
         val s = size(IslandGeometry.State.REC)
         val l = IslandGeometry.recLayout(s.w, s.h, d, true)
@@ -182,15 +156,38 @@ class IslandGeometryTest {
     }
 
     @Test
-    fun `con una sola herramienta el toque en reposo la ejecuta directo`() {
-        assertTrue(IslandGeometry.idleTapOpens(true, true))
-        assertFalse(IslandGeometry.idleTapOpens(true, false))
-        assertFalse(IslandGeometry.idleTapOpens(false, true))
+    fun `en reposo cada mitad es su boton - sin paso intermedio`() {
+        val w = size(IslandGeometry.State.IDLE).w
+        val mic = IslandGeometry.Tool.MIC
+        val ptr = IslandGeometry.Tool.POINTER
+        // Micrófono a la izquierda: mitad izquierda dicta, mitad derecha abre el puntero.
+        assertEquals(mic, IslandGeometry.idleTapTool(0f, w, true, true, true))
+        assertEquals(mic, IslandGeometry.idleTapTool(w / 2f - 1f, w, true, true, true))
+        assertEquals(ptr, IslandGeometry.idleTapTool(w / 2f, w, true, true, true))
+        assertEquals(ptr, IslandGeometry.idleTapTool(w - 1f, w, true, true, true))
+        // Micrófono a la derecha: en espejo.
+        assertEquals(ptr, IslandGeometry.idleTapTool(0f, w, false, true, true))
+        assertEquals(mic, IslandGeometry.idleTapTool(w - 1f, w, false, true, true))
+        // El toque cae donde está dibujada cada pieza.
+        for (left in listOf(true, false)) {
+            val l = IslandGeometry.idleLayout(w, 90, d, left)
+            assertEquals(mic, IslandGeometry.idleTapTool(l.dotCx.toFloat(), w, left, true, true))
+            assertEquals(ptr, IslandGeometry.idleTapTool(l.pointerCx.toFloat(), w, left, true, true))
+        }
+    }
+
+    @Test
+    fun `con una sola herramienta toda la isla es esa herramienta`() {
+        val w = size(IslandGeometry.State.IDLE).w
+        for (x in listOf(0f, w / 2f, w - 1f)) {
+            assertEquals(IslandGeometry.Tool.MIC, IslandGeometry.idleTapTool(x, w, true, true, false))
+            assertEquals(IslandGeometry.Tool.POINTER, IslandGeometry.idleTapTool(x, w, true, false, true))
+            assertEquals(IslandGeometry.Tool.NONE, IslandGeometry.idleTapTool(x, w, true, false, false))
+        }
     }
 
     @Test
     fun `tiempos de la maqueta`() {
-        assertEquals(4000L, IslandGeometry.OPEN_AUTO_CLOSE_MS)
         assertEquals(1300L, IslandGeometry.DONE_MS)
         assertEquals(420L, IslandGeometry.MORPH_MS)
         assertTrue(IslandGeometry.ERROR_MS > IslandGeometry.DONE_MS)

@@ -49,7 +49,7 @@ internal class DockController(
     level: HorizonView.LevelSource,
 ) : DockSurface {
 
-    private companion object {
+    companion object {
         const val OPEN_MS = 320L
         const val CLOSE_MS = 240L
         const val ARC_OUTSIDE_GRACE_MS = 300L

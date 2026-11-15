@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
 object IslandGeometry {
 
     /** Lo que muestra la isla. */
-    enum class State { IDLE, OPEN, REC, THINK, DONE }
+    enum class State { IDLE, REC, THINK, DONE }
 
     // --- medidas en dp (maqueta) ---
     const val DEFAULT_W_DP = 112f
@@ -30,8 +30,6 @@ object IslandGeometry {
     const val MAX_H_DP = 48f
     const val DEFAULT_TOP_DP = 3f
 
-    const val OPEN_W_DP = 176f
-    const val OPEN_H_DP = 58f
     const val REC_W_DP = 252f
     const val REC_H_DP = 44f
     const val DONE_W_DP = 128f
@@ -40,9 +38,7 @@ object IslandGeometry {
     /** Separación mínima de la píldora a los bordes laterales de la pantalla. */
     const val EDGE_MARGIN_DP = 4f
 
-    /** Agujero (micrófono) en cada estado. */
-    const val OPEN_BUTTON_DP = 42f
-    const val OPEN_GAP_DP = 14f
+    /** Agujero (micrófono) grabando. */
     const val REC_HOLE_DP = 32f
 
     /** Ventana del agujero grabando: deja lugar al arco que gira alrededor. */
@@ -70,7 +66,6 @@ object IslandGeometry {
     const val DONE_MAX_W_DP = 320f
 
     /** Tiempos. */
-    const val OPEN_AUTO_CLOSE_MS = 4000L
     const val DONE_MS = 1300L
     const val ERROR_MS = 2600L
     const val MORPH_MS = 420L
@@ -131,7 +126,6 @@ object IslandGeometry {
         doneTextWidthPx: Int = 0,
     ): Size = when (state) {
         State.IDLE -> Size(idleWidth(idleWPx, d, screenW), idleHeight(idleHPx, d))
-        State.OPEN -> Size(fitWidth(px(OPEN_W_DP, d), d, screenW), px(OPEN_H_DP, d))
         State.REC, State.THINK -> Size(fitWidth(px(REC_W_DP, d), d, screenW), px(REC_H_DP, d))
         State.DONE -> Size(doneWidth(doneTextWidthPx, d, screenW), px(DONE_H_DP, d))
     }
@@ -178,36 +172,6 @@ object IslandGeometry {
     }
 
     // ------------------------------------------------------------- piezas
-
-    /** Posición (relativa a la píldora) de las piezas del estado abierto. */
-    data class OpenLayout(val mic: Rect?, val pointer: Rect?)
-
-    /**
-     * Estado abierto: micrófono y puntero, de [OPEN_BUTTON_DP] cada uno y
-     * [OPEN_GAP_DP] entre ellos, centrados. El micrófono va del lado de
-     * [micOnLeft]; sin una de las herramientas queda sola y centrada.
-     */
-    fun openLayout(w: Int, h: Int, d: Float, micOnLeft: Boolean, hasMic: Boolean, hasPointer: Boolean): OpenLayout {
-        val b = px(OPEN_BUTTON_DP, d)
-        val gap = px(OPEN_GAP_DP, d)
-        val count = (if (hasMic) 1 else 0) + (if (hasPointer) 1 else 0)
-        if (count == 0) return OpenLayout(null, null)
-        val total = count * b + (count - 1) * gap
-        val start = (w - total) / 2
-        val y = (h - b) / 2
-        var mic: Rect? = null
-        var ptr: Rect? = null
-        var slot = 0
-        val order = if (micOnLeft) listOf(true, false) else listOf(false, true)
-        for (isMic in order) {
-            if (isMic && !hasMic) continue
-            if (!isMic && !hasPointer) continue
-            val r = Rect(start + slot * (b + gap), y, b, b)
-            if (isMic) mic = r else ptr = r
-            slot++
-        }
-        return OpenLayout(mic, ptr)
-    }
 
     /** Piezas de grabando / pensando, relativas a la píldora. */
     data class RecLayout(
@@ -272,9 +236,20 @@ object IslandGeometry {
         return if (micOnLeft) IdleLayout(left, right, h / 2) else IdleLayout(w - pad - dot / 2, pad + ptr / 2, h / 2)
     }
 
+    /** Qué hace un toque sobre la isla en reposo. */
+    enum class Tool { NONE, MIC, POINTER }
+
     /**
-     * Con una sola herramienta activa, tocar la isla en reposo la ejecuta
-     * directo (como la burbuja); con varias, la abre.
+     * La isla en reposo no se abre: cada mitad ES su botón. Con las dos
+     * herramientas, tocar la mitad del agujero dicta y tocar la mitad del
+     * glifo abre el puntero, de una. Con una sola, toda la isla es esa
+     * herramienta. [xInPill] = dónde cayó el dedo, en px desde el borde
+     * izquierdo de la píldora de ancho [w].
      */
-    fun idleTapOpens(hasMic: Boolean, hasPointer: Boolean): Boolean = hasMic && hasPointer
+    fun idleTapTool(xInPill: Float, w: Int, micOnLeft: Boolean, hasMic: Boolean, hasPointer: Boolean): Tool = when {
+        hasMic && hasPointer -> if ((xInPill < w / 2f) == micOnLeft) Tool.MIC else Tool.POINTER
+        hasMic -> Tool.MIC
+        hasPointer -> Tool.POINTER
+        else -> Tool.NONE
+    }
 }

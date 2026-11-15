@@ -9,12 +9,43 @@
 | Fase | Qué es | Estado | Commit | APK |
 |---|---|---|---|---|
 | 1 | Trackpad y puntero en el complemento, por encima de todo; botones de sistema; arrastre | HECHA, probada por el dueño en su teléfono | `4cdc47c` | r315 |
-| 2A | Barra flotante (borde · burbuja · isla) dibujada por el complemento; dictado nativo sin Flutter | HECHA, subida; **falta prueba en teléfono** | `30ef040` | r316 |
-| 2B | Ajustes de la isla (elegirla, ajuste al píxel, maqueta, en vivo) | HECHA, subida; **falta prueba en teléfono** | `278cc41` | r317 |
+| 2A | Barra flotante (borde · burbuja · isla) dibujada por el complemento; dictado nativo sin Flutter | HECHA; el dueño confirmó con r317 que la barra y el dictado funcionan (falta probar reinicio y app cerrada) | `30ef040` | r316 |
+| 2B | Ajustes de la isla (elegirla, ajuste al píxel, maqueta, en vivo) | HECHA; el dueño confirmó con r317 que la isla funciona | `278cc41` | r317 |
+| 2C | Isla sin paso intermedio: cada mitad es su botón (pedido del dueño tras probar r317) | HECHA en local, **commit sin subir: falta autorización de push** | ver `git log` | r318 al subir |
 | 3 | Complemento independiente (pestaña propia, mover/achicar trackpad, ajustes mínimos) | PENDIENTE, sin especificación | — | — |
 | 4 | Un solo puntero también para el trackpad del teclado; historial; limpieza | PENDIENTE, sin especificación | — | — |
 
+### Ajuste 2C — isla de toque directo (2026-11-15)
+Pedido del dueño al probar r317: la isla «iba a saltos» (reposo → abierta
+sobre la cámara → grabando) y pedía dos toques. Decisión:
+- La isla **ya no se abre**. En reposo, tocar la mitad del agujero dicta y
+  tocar la mitad del glifo abre el trackpad (`IslandGeometry.idleTapTool`).
+  Con una sola herramienta, toda la isla es esa herramienta.
+- El **borde y la burbuja NO cambian**: siguen con dos toques (abrir y
+  elegir). Es a propósito.
+- Grabando, tocar cualquier parte de la píldora termina (antes solo el
+  agujero, que al crecer la isla quedaba lejos del dedo); la ✕ cancela.
+- Se borró el estado `OPEN` (enum, medidas 176 × 58, botón de puntero,
+  cierre a los 4 s). TalkBack: acciones «Dictar» y «Abrir el puntero».
+- La maqueta `laboratorio_ui/isla.html` todavía muestra el estado
+  «Abierta»: quedó vieja en ese punto (manda `design.md`).
+- Verificado: tests JVM del complemento 106/0, `test_floating_dock_suite`
+  301/0, `test_trackpad_suite` 206/0. No se corrió lint (falta
+  `lint-gradle` en la caché sin red). Falta la prueba en teléfono.
+
 ### Pendientes abiertos (además de las fases 3 y 4)
+0. **El dictado de la barra no siempre pega el texto** (reportado con r317:
+   desde la isla copió pero no pegó; desde el borde sí). El código es el
+   mismo para las tres formas: `DockDictationService.onTranscribed` copia
+   al portapapeles y pega con `VoiceKeyboardService.commitFromExternal`,
+   que solo funciona si el teclado de VoiceBubble está activo con un campo
+   de texto enfocado (en la captura del dueño el campo no tenía el cursor
+   ni el teclado abierto). Hipótesis a descartar: que el trampolín, al
+   abrir una actividad, le saque el foco al campo. Mejora posible (decisión
+   del dueño, NO hecha): que pegue con cualquier teclado usando el
+   complemento (API de Accesibilidad `getInputMethod()`, Android 13+); eso
+   hace pasar el texto dictado por el complemento y cambia la regla de
+   privacidad «el texto nunca pasa por el complemento».
 1. **Trackpad viejo debajo del nuevo.** Reportado por el dueño con r315 y
    de nuevo después («sigue quedando»; no confirmó si ya tenía r316): al
    abrir el trackpad del complemento se abre también, escondido debajo, el
@@ -75,7 +106,7 @@
   el sistema mata la corrida por memoria, repetir por tandas (complemento,
   host, tests) con `-Xmx900m`.
 - Líneas base al cierre de 2B: `flutter analyze` limpio, `flutter test` 757,
-  `test_floating_dock_suite.py` 300/0, `test_trackpad_suite.py` 206/0,
+  `test_floating_dock_suite.py` 301/0, `test_trackpad_suite.py` 206/0,
   `test_settings_redesign_suite.py` 157/0, `test_master_suite.py` 98/100,
   diff de `const val` entre los dos `PointerProtocol.kt` vacío.
 - Historial del servidor y de cada entrega: `/home/ubuntu/entorno.md`.

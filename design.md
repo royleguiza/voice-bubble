@@ -431,15 +431,14 @@ Maqueta: `laboratorio_ui/isla.html`. Píldora negra SIEMPRE (`island_bg` #000, b
 
 | Estado | Medida (dp) | Contenido |
 |---|---|---|
-| Reposo | `w × h` configurables (112 × 30; ancho 72–180, alto 22–48) | agujero chico (12 dp, anillo brasa de 1,5 dp) de un lado y glifo de puntero del otro (fg al 55 %; brasa si el trackpad está abierto); el micrófono va del lado elegido |
-| Abierta (toque) | 176 × 58 | botón micrófono = agujero de 42 dp (anillo brasa 2 dp, micrófono on-hole) y botón puntero (círculo `island_tool` + flecha); se cierra sola a los 4 s; con una sola herramienta el toque la ejecuta directo |
-| Grabando | 252 × 44 | agujero de 32 dp (toque = terminar) · franja de voz · cronómetro mono 11 · ✕ (cancelar); anillo brasa exterior de 1,5 dp; los símbolos (0 1 { } , rayas, puntos) caen HACIA el agujero, más rápido cuanto más fuerte, on-hole → brasa → destello |
+| Reposo | `w × h` configurables (112 × 30; ancho 72–180, alto 22–48) | agujero chico (12 dp, anillo brasa de 1,5 dp) de un lado y glifo de puntero del otro (fg al 55 %; brasa si el trackpad está abierto); el micrófono va del lado elegido. **Cada mitad es su botón**: tocar el lado del agujero dicta y tocar el lado del glifo abre el trackpad, sin paso intermedio (con una sola herramienta, toda la isla) |
+| Grabando | 252 × 44 | agujero de 32 dp (tocar la píldora o el agujero = terminar) · franja de voz · cronómetro mono 11 · ✕ (cancelar); anillo brasa exterior de 1,5 dp; los símbolos (0 1 { } , rayas, puntos) caen HACIA el agujero, más rápido cuanto más fuerte, on-hole → brasa → destello |
 | Pensando | 252 × 44 | mismo diseño: rayitas blancas salen del agujero y se desvanecen; arco con cola en destello/brasa gira sobre el anillo |
 | Listo | 128 × 34 (se ensancha si la frase no entra) | ✓ destello + «Pegado»/«Copiado» (o «!» con un error), 1,3 s (2,6 s los errores) y vuelve a reposo |
 
 - Posición: `x` = centro horizontal, `y` = borde superior, en px de pantalla completa; al crecer se mantiene centrada en `x` y siempre queda dentro de la pantalla (margen lateral 4 dp). Sobre la barra de estado y la cámara: ventana de Accesibilidad con `FLAG_LAYOUT_NO_LIMITS`, sin insets y con el recorte incluido.
 - Movimiento: transiciones de tamaño con rebote suave (≈ 420 ms, overshoot leve) y cruce de capas; con «quitar animaciones» del sistema, cambio directo y anillo fijo cuyo grosor sigue el volumen.
-- Accesibilidad: cada botón con `contentDescription` en español (Dictar, Terminar dictado, Cancelar dictado, Abrir el puntero), la isla como región `polite`.
+- Accesibilidad: en reposo, acciones de TalkBack «Dictar» y «Abrir el puntero»; grabando, botones «Terminar dictado» y «Cancelar dictado»; todo en español y la isla como región `polite`.
 
 #### Ajustar isla (Ajustes › Barra flotante, fase 2B)
 

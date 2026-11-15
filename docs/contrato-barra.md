@@ -116,8 +116,8 @@ Todo es broadcast explícito al paquete destino con el permiso de firma
 
 - Píldora negra siempre (`island_bg`/`island_line`, mismo valor de día y de
   noche), borde de 1 dp. Estados y medidas (dp): reposo `w × h` configurables
-  (por defecto 112 × 30); abierta 176 × 58 con micrófono (agujero 42) y puntero;
-  grabando 252 × 44 con agujero de 32 (toque = terminar), franja de voz, cronómetro
+  (por defecto 112 × 30); grabando 252 × 44 con agujero de 32 (tocar la píldora
+  o el agujero = terminar), franja de voz, cronómetro
   mono y ✕; pensando igual con rayitas y arco; listo 128 × 34 (se ensancha si la
   frase no entra) durante 1,3 s (2,6 s si es un error).
 - `x` = centro horizontal, `y` = borde superior, en px de pantalla completa. Al
@@ -126,12 +126,15 @@ Todo es broadcast explícito al paquete destino con el permiso de firma
 - Rebote ≈ 420 ms con overshoot leve. La ventana mide justo lo que la píldora
   salvo durante el rebote (unión del tamaño viejo y el nuevo). Con «quitar
   animaciones» del sistema, el cambio es directo y la voz queda como anillo fijo.
-- Con una sola herramienta activa, el toque en reposo la ejecuta directo.
-  Abierta se cierra sola a los 4 s. El puntero abre el trackpad y la isla vuelve
-  al reposo con el glifo en brasa mientras el trackpad está abierto.
+- **Sin paso intermedio (r318):** la isla no se «abre». En reposo cada mitad es
+  su botón: tocar la mitad del agujero dicta, tocar la mitad del glifo abre el
+  trackpad (`IslandGeometry.idleTapTool`). Con una sola herramienta activa,
+  toda la isla es esa herramienta. El borde y la burbuja siguen con dos toques
+  (abrir y elegir). El glifo queda en brasa mientras el trackpad está abierto.
 - Accesibilidad: `contentDescription` en español en la isla («Isla de
-  VoiceBubble. Tocá para abrirla», «Grabando», «Transcribiendo»…), en cada botón
-  («Dictar», «Terminar dictado», «Cancelar dictado», «Abrir el puntero»); la
+  VoiceBubble. Tocá el lado del círculo para dictar…», «Grabando», «Transcribiendo»…),
+  acciones de TalkBack «Dictar» y «Abrir el puntero» en reposo y botones
+  «Terminar dictado» y «Cancelar dictado» grabando; la
   isla es una región `polite` (se anuncia «Pegado»/errores). La barra y la burbuja
   ofrecen «Dictar» y «Abrir el puntero» como acciones de TalkBack.
 

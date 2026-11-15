@@ -255,7 +255,7 @@ class _IslandAdjustBodyState extends State<IslandAdjustBody> {
       ),
       SettingsSection(
         header: 'Tamaño en reposo',
-        footer: 'Abierta o grabando, la isla se agranda sola.',
+        footer: 'Al grabar, la isla se agranda sola.',
         children: [
           stepper(
             id: 'island-w',

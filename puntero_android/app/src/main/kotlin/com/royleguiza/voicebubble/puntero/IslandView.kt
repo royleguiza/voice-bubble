@@ -6,7 +6,10 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.os.Bundle
+import android.view.MotionEvent
 import android.view.View
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.FrameLayout
 import kotlin.math.roundToInt
 
@@ -14,8 +17,9 @@ import kotlin.math.roundToInt
  * La isla (maqueta `laboratorio_ui/isla.html`): píldora negra siempre, de día
  * y de noche (tokens `island_*`), borde de 1 dp. Dibuja ella misma la
  * superficie y las piezas decorativas de cada estado (reposo, listo, cronómetro,
- * anillo brasa grabando); los botones son vistas reales para que TalkBack los
- * lea y los active (el agujero que dicta, el puntero, la ✕).
+ * anillo brasa grabando). En reposo cada mitad es un botón (la del agujero
+ * dicta, la del glifo abre el puntero); grabando, tocar la píldora termina y
+ * la ✕ cancela. El agujero y la ✕ son vistas reales para TalkBack.
  *
  * Quién decide qué estado mostrar, cuánto mide la píldora y cuándo se mueve la
  * ventana es [IslandController]; esta vista solo pinta lo que le dicen:
@@ -72,7 +76,6 @@ internal class IslandView(
     var pointerActive = false
         set(value) {
             field = value
-            pointerButton.active = value
             updateDescriptions()
             invalidate()
         }
@@ -89,13 +92,17 @@ internal class IslandView(
     // Piezas con vida propia.
     val holeView = HorizonView(context, HorizonView.Mode.HOLE)
     private val voiceView = HorizonView(context, HorizonView.Mode.VOICE)
-    private val pointerButton = PointerButton(context, palette)
     private val cancelButton = CancelButton(context, palette)
 
-    var onIdleTap: (() -> Unit)? = null
+    /** Toque en reposo; el argumento es la x del dedo desde el borde izquierdo de la píldora. */
+    var onIdleTap: ((Float) -> Unit)? = null
+
+    /** Terminar el dictado (toque en la píldora o en el agujero mientras graba). */
     var onMicTap: (() -> Unit)? = null
-    var onPointerTap: (() -> Unit)? = null
     var onCancelTap: (() -> Unit)? = null
+
+    /** Abrir el puntero sin coordenadas (acción de TalkBack). */
+    var onPointerAction: (() -> Unit)? = null
 
     init {
         setWillNotDraw(false)
@@ -103,15 +110,54 @@ internal class IslandView(
         holeView.levelSource = levelSource
         voiceView.levelSource = levelSource
         holeView.setOnClickListener { onMicTap?.invoke() }
-        pointerButton.setOnClickListener { onPointerTap?.invoke() }
         cancelButton.setOnClickListener { onCancelTap?.invoke() }
-        setOnClickListener { onIdleTap?.invoke() }
+        setOnClickListener {
+            when (current) {
+                IslandGeometry.State.IDLE -> onIdleTap?.invoke(tapX?.let { it - pill.left } ?: if (micOnLeft) 0f else pill.width())
+                // Grabando: la píldora entera termina (el dedo no tiene que ir a buscar el agujero).
+                IslandGeometry.State.REC -> onMicTap?.invoke()
+                else -> {}
+            }
+        }
         addView(voiceView, LayoutParams(1, 1))
         addView(holeView, LayoutParams(1, 1))
-        addView(pointerButton, LayoutParams(1, 1))
         addView(cancelButton, LayoutParams(1, 1))
         accessibilityLiveRegion = ACCESSIBILITY_LIVE_REGION_POLITE
+        // TalkBack no toca «una mitad»: en reposo cada herramienta es una acción con nombre.
+        accessibilityDelegate = object : AccessibilityDelegate() {
+            override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
+                super.onInitializeAccessibilityNodeInfo(host, info)
+                if (current != IslandGeometry.State.IDLE) return
+                if (hasMic) info.addAction(AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_DICTATE, "Dictar"))
+                if (hasPointer) info.addAction(AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_POINTER, "Abrir el puntero"))
+            }
+
+            override fun performAccessibilityAction(host: View, action: Int, args: Bundle?): Boolean = when {
+                current != IslandGeometry.State.IDLE -> super.performAccessibilityAction(host, action, args)
+                action == DockController.ACTION_DICTATE && hasMic -> { onMicTap?.invoke(); true }
+                action == DockController.ACTION_POINTER && hasPointer -> { onPointerAction?.invoke(); true }
+                else -> super.performAccessibilityAction(host, action, args)
+            }
+        }
         updateDescriptions()
+    }
+
+    /**
+     * Dónde cayó el último toque (x de la vista). Sin toque (TalkBack activa
+     * la isla sin coordenadas) queda del lado del micrófono.
+     */
+    private var tapX: Float? = null
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN || ev.actionMasked == MotionEvent.ACTION_UP) tapX = ev.x
+        return super.dispatchTouchEvent(ev)
+    }
+
+    override fun performClick(): Boolean {
+        val handled = super.performClick()
+        // El próximo clic sin dedo (accesibilidad) cae del lado del micrófono.
+        tapX = null
+        return handled
     }
 
     /** Detiene las animaciones (al sacar la ventana: nada queda corriendo). */
@@ -153,8 +199,8 @@ internal class IslandView(
                 else -> HorizonView.Phase.IDLE
             },
         )
-        holeView.holeRadiusDp = if (rec) IslandGeometry.REC_HOLE_DP / 2f else IslandGeometry.OPEN_BUTTON_DP / 2f - 1f
-        isClickable = state == IslandGeometry.State.IDLE
+        holeView.holeRadiusDp = IslandGeometry.REC_HOLE_DP / 2f
+        isClickable = state == IslandGeometry.State.IDLE || state == IslandGeometry.State.REC
         relayoutPieces()
         updateDescriptions()
         invalidate()
@@ -203,20 +249,15 @@ internal class IslandView(
     private fun relayoutPieces() {
         if (finalW <= 0 || finalH <= 0) return
         val rec = current == IslandGeometry.State.REC || current == IslandGeometry.State.THINK
-        val open = current == IslandGeometry.State.OPEN
         if (rec) {
             val l = IslandGeometry.recLayout(finalW, finalH, d, micOnLeft)
             holeSizePx = l.hole.w
             voiceW = l.voice.w
             voiceH = l.voice.h
             voiceView.holeOnLeft = micOnLeft
-        } else if (open) {
-            holeSizePx = (IslandGeometry.OPEN_BUTTON_DP * d).roundToInt()
         }
         sizeOf(holeView, holeSizePx, holeSizePx)
         sizeOf(voiceView, voiceW, voiceH)
-        val btn = (IslandGeometry.OPEN_BUTTON_DP * d).roundToInt()
-        sizeOf(pointerButton, btn, btn)
         val cancel = IslandGeometry.recLayout(finalW, finalH, d, micOnLeft).cancel
         sizeOf(cancelButton, cancel.w, cancel.h)
         positionPieces()
@@ -237,12 +278,10 @@ internal class IslandView(
         val cx = pill.centerX() - finalW / 2f
         val cy = pill.centerY() - finalH / 2f
         val rec = current == IslandGeometry.State.REC || current == IslandGeometry.State.THINK
-        val open = current == IslandGeometry.State.OPEN
         val a = ((morph - 0.35f) / 0.65f).coerceIn(0f, 1f)
 
         var holeOn = false
         var voiceOn = false
-        var pointerOn = false
         var cancelOn = false
         if (rec) {
             val l = IslandGeometry.recLayout(finalW, finalH, d, micOnLeft)
@@ -255,25 +294,12 @@ internal class IslandView(
             holeOn = true
             voiceOn = true
             cancelOn = current == IslandGeometry.State.REC
-        } else if (open) {
-            val l = IslandGeometry.openLayout(finalW, finalH, d, micOnLeft, hasMic, hasPointer)
-            l.mic?.let {
-                holeView.translationX = cx + it.x
-                holeView.translationY = cy + it.y
-                holeOn = true
-            }
-            l.pointer?.let {
-                pointerButton.translationX = cx + it.x
-                pointerButton.translationY = cy + it.y
-                pointerOn = true
-            }
         }
         setPiece(holeView, holeOn, a)
         setPiece(voiceView, voiceOn, a)
-        setPiece(pointerButton, pointerOn, a)
         setPiece(cancelButton, cancelOn, a)
-        // En reposo y «listo» no hay botones: la isla entera es un solo botón (IDLE) o solo informa (DONE).
-        holeView.isClickable = current == IslandGeometry.State.OPEN || current == IslandGeometry.State.REC
+        // En reposo los botones son las mitades de la píldora; «listo» solo informa.
+        holeView.isClickable = current == IslandGeometry.State.REC
     }
 
     private fun setPiece(v: View, on: Boolean, alpha: Float) {
@@ -283,20 +309,24 @@ internal class IslandView(
 
     private fun updateDescriptions() {
         holeView.contentDescription = when (current) {
-            IslandGeometry.State.OPEN -> "Dictar"
             IslandGeometry.State.REC -> "Terminar dictado"
             IslandGeometry.State.THINK -> "Transcribiendo"
             else -> null
         }
-        pointerButton.contentDescription = if (pointerActive) "Puntero activado. Tocá para abrirlo de nuevo" else "Abrir el puntero"
         cancelButton.contentDescription = "Cancelar dictado"
         contentDescription = when (current) {
-            IslandGeometry.State.IDLE -> "Isla de VoiceBubble. Tocá para abrirla"
-            IslandGeometry.State.OPEN -> "Isla de VoiceBubble abierta"
-            IslandGeometry.State.REC -> "Grabando"
+            IslandGeometry.State.IDLE -> idleDescription()
+            IslandGeometry.State.REC -> "Grabando. Tocá para terminar"
             IslandGeometry.State.THINK -> "Transcribiendo"
             IslandGeometry.State.DONE -> doneText.ifEmpty { "Listo" }
         }
+    }
+
+    private fun idleDescription(): String = when {
+        hasMic && hasPointer -> "Isla de VoiceBubble. Tocá el lado del círculo para dictar o el lado de la flecha para abrir el puntero"
+        hasMic -> "Isla de VoiceBubble. Tocá para dictar"
+        hasPointer -> "Isla de VoiceBubble. Tocá para abrir el puntero"
+        else -> "Isla de VoiceBubble"
     }
 
     // ------------------------------------------------------------ dibujo
@@ -390,39 +420,6 @@ internal class IslandView(
     }
 
     // ------------------------------------------------------------ botones
-
-    /** Puntero de la isla abierta: círculo `island_tool` + borde, flecha en `island_fg` (brasa si el trackpad está abierto). */
-    private class PointerButton(context: Context, private val palette: Palette) : View(context) {
-        private val d = resources.displayMetrics.density
-        private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-        private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
-        private val ink = Paint(Paint.ANTI_ALIAS_FLAG)
-        var active = false
-            set(value) { field = value; invalidate() }
-
-        init {
-            isClickable = true
-            isFocusable = true
-        }
-
-        override fun setPressed(pressed: Boolean) {
-            super.setPressed(pressed)
-            invalidate()
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val cx = width / 2f
-            val cy = height / 2f
-            val r = minOf(cx, cy) - 0.5f * d
-            fill.color = if (isPressed) palette.surf2 else palette.islandTool
-            canvas.drawCircle(cx, cy, r, fill)
-            ring.strokeWidth = 1f * d
-            ring.color = if (active) palette.ember else palette.islandToolLine
-            canvas.drawCircle(cx, cy, r, ring)
-            DockIcons.drawPointer(canvas, cx, cy, 26f * d, if (active) palette.ember else palette.islandFg, ink)
-        }
-    }
 
     /** ✕ de cancelar: sin fondo, trazo 2.2 en on-hole; la zona táctil es más grande que el dibujo. */
     private class CancelButton(context: Context, private val palette: Palette) : View(context) {
