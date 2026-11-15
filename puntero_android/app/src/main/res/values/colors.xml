@@ -1,12 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#FFF2F2F7</color>
-    <color name="surface">#FFFFFFFF</color>
-    <color name="label">#FF111114</color>
-    <color name="secondary">#FF636368</color>
-    <color name="accent">#FF007AFF</color>
-    <color name="ok">#FF17672B</color>
-    <color name="warn">#FF7F4A00</color>
-    <color name="on_accent">#FFFFFFFF</color>
+    <!-- Paleta Horizonte - modo claro (design.md §4). Copiada de los tokens
+         hz_* de VoiceBubble: mismos nombres y valores, para que las dos apps
+         se vean como una sola. -->
+    <color name="hz_bg">#FFEEEEF4</color>
+    <color name="hz_surf">#FFFFFFFF</color>
+    <color name="hz_surf2">#FFE3E4ED</color>
+    <color name="hz_line">#FFD5D7E2</color>
+    <color name="hz_fg">#FF10121A</color>
+    <color name="hz_fg2">#FF5C6072</color>
+    <color name="hz_ember">#FFF27A14</color>
+    <color name="hz_ember_t">#FFB04706</color>
+    <color name="hz_ember_soft">#FFFBE4CF</color>
+    <color name="hz_on_ember">#FF1A0E00</color>
+    <color name="hz_hot">#FFFFC766</color>
+    <color name="hz_hole">#FF05060A</color>
+    <color name="hz_danger">#FFC8372B</color>
+    <color name="hz_ok">#FF1E874A</color>
+
+    <!-- Fondo del ícono adaptativo. -->
     <color name="icon_bg">#FF5856D6</color>
+    <color name="icon_fg">#FFFFFFFF</color>
 </resources>

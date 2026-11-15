@@ -18,6 +18,10 @@ import java.util.concurrent.CopyOnWriteArraySet
  * VoiceBubble Puntero (ver [PointerProtocol]). Si el complemento no está
  * instalado o su Accesibilidad está apagada, no hace nada y devuelve false:
  * el trackpad sigue moviendo el puntero, pero sin clics en otras apps.
+ *
+ * Protocolo v2: [openTrackpad] le pide al complemento que dibuje el trackpad
+ * (puntero y panel como ventanas de Accesibilidad, por encima de todo) y
+ * [listenTrackpadState] recibe de vuelta si quedó abierto o cerrado.
  */
 object PointerLink {
 
@@ -73,6 +77,140 @@ object PointerLink {
                 app.registerReceiver(r, filter, PointerProtocol.PERMISSION_POINTER, null)
             }
             receiver = r
+        } catch (_: Exception) {}
+    }
+
+    // --- Trackpad del complemento (protocolo v2) ---
+
+    private var stateReceiver: BroadcastReceiver? = null
+
+    /**
+     * Pide abrir el trackpad del complemento, anclado a ([anchorX], [anchorY])
+     * (−1 = sin ancla), con la configuración de Ajustes › Trackpad. Devuelve
+     * false si el complemento no está listo: el que llama usa su respaldo.
+     */
+    fun openTrackpad(context: Context, anchorX: Int, anchorY: Int, onNoAnswer: (() -> Unit)? = null): Boolean {
+        if (!isReady(context)) return false
+        val cfg = readTrackpadConfig(context, anchorX, anchorY)
+        val intent = Intent(PointerProtocol.ACTION_OPEN_TRACKPAD).apply {
+            setPackage(PointerProtocol.COMPANION_PACKAGE)
+            putExtra(PointerProtocol.EXTRA_ANCHOR_X, cfg.anchorX)
+            putExtra(PointerProtocol.EXTRA_ANCHOR_Y, cfg.anchorY)
+            putExtra(PointerProtocol.EXTRA_MODE, cfg.mode)
+            putExtra(PointerProtocol.EXTRA_SENSITIVITY, cfg.sensitivity)
+            putExtra(PointerProtocol.EXTRA_ACCEL, cfg.accel)
+            putExtra(PointerProtocol.EXTRA_STYLE, cfg.style)
+            putExtra(PointerProtocol.EXTRA_HAPTIC, cfg.haptic)
+            putExtra(PointerProtocol.EXTRA_SCROLL_DIR, cfg.scrollDir)
+            putExtra(PointerProtocol.EXTRA_AUTO_RETURN, cfg.autoReturnS)
+        }
+        return try {
+            context.applicationContext.sendBroadcast(intent)
+            // Activado en Accesibilidad pero Android no inició el servicio: nadie
+            // contesta. Pasado el plazo, el que llama abre su respaldo.
+            main.removeCallbacks(openTimeout)
+            pendingNoAnswer = onNoAnswer
+            if (onNoAnswer != null && stateReceiver != null) main.postDelayed(openTimeout, OPEN_ANSWER_MS)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /** Plazo para que el complemento confirme que abrió el trackpad. */
+    private const val OPEN_ANSWER_MS = 1000L
+    private var pendingNoAnswer: (() -> Unit)? = null
+    private val openTimeout = Runnable {
+        val cb = pendingNoAnswer
+        pendingNoAnswer = null
+        try {
+            cb?.invoke()
+        } catch (_: Exception) {}
+    }
+
+    fun closeTrackpad(context: Context) {
+        try {
+            context.applicationContext.sendBroadcast(
+                Intent(PointerProtocol.ACTION_CLOSE_TRACKPAD).setPackage(PointerProtocol.COMPANION_PACKAGE),
+            )
+        } catch (_: Exception) {}
+    }
+
+    /** Lee las preferencias de Flutter que antes leía FloatingTrackpadService y las normaliza. */
+    private fun readTrackpadConfig(context: Context, anchorX: Int, anchorY: Int): PointerProtocol.TrackpadConfig {
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        val all = try {
+            prefs.all
+        } catch (_: Exception) {
+            emptyMap<String, Any?>()
+        }
+        fun str(key: String): String? = all["flutter.$key"] as? String
+        val sensitivity = when (val raw = all["flutter.kb_trackpad_sensitivity"]) {
+            is Number -> raw.toFloat()
+            is String -> raw.toFloatOrNull() ?: Float.NaN
+            else -> Float.NaN
+        }
+        val autoReturn = when (val raw = all["flutter.kb_trackpad_auto_return"]) {
+            is Number -> raw.toInt()
+            is String -> raw.toIntOrNull() ?: 0
+            else -> 0
+        }
+        // Ajustes guarda la dirección invertida como "standard"; el protocolo la llama "traditional".
+        val scrollDir = if (str("kb_trackpad_scroll_direction").let { it == "standard" || it == "traditional" }) {
+            PointerProtocol.SCROLL_TRADITIONAL
+        } else {
+            PointerProtocol.SCROLL_NATURAL
+        }
+        return PointerProtocol.normalizeTrackpadConfig(
+            anchorX = anchorX,
+            anchorY = anchorY,
+            mode = str("pointer_open_mode"),
+            sensitivity = sensitivity,
+            accel = str("kb_trackpad_accel_curve"),
+            style = str("kb_trackpad_pointer_style"),
+            haptic = str("kb_trackpad_haptic"),
+            scrollDir = scrollDir,
+            autoReturnS = autoReturn,
+        )
+    }
+
+    /**
+     * Escucha si el trackpad del complemento se abrió o se cerró (mientras viva
+     * quien llama; [stopListeningTrackpadState] lo suelta). [onState] corre en
+     * el hilo principal.
+     */
+    fun listenTrackpadState(context: Context, onState: (Boolean) -> Unit) {
+        if (stateReceiver != null) return
+        val r = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action != PointerProtocol.ACTION_TRACKPAD_STATE) return
+                // Contestó (abierto o no): ya no hace falta el respaldo por silencio.
+                main.removeCallbacks(openTimeout)
+                pendingNoAnswer = null
+                try {
+                    onState(intent.getBooleanExtra(PointerProtocol.EXTRA_OPEN, false))
+                } catch (_: Exception) {}
+            }
+        }
+        val filter = IntentFilter(PointerProtocol.ACTION_TRACKPAD_STATE)
+        try {
+            val app = context.applicationContext
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                app.registerReceiver(r, filter, PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED)
+            } else {
+                app.registerReceiver(r, filter, PointerProtocol.PERMISSION_POINTER, null)
+            }
+            stateReceiver = r
+        } catch (_: Exception) {}
+    }
+
+    fun stopListeningTrackpadState(context: Context) {
+        main.removeCallbacks(openTimeout)
+        pendingNoAnswer = null
+        val r = stateReceiver ?: return
+        stateReceiver = null
+        try {
+            context.applicationContext.unregisterReceiver(r)
         } catch (_: Exception) {}
     }
 

@@ -1,12 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="bg">#FF000000</color>
-    <color name="surface">#FF1C1C1E</color>
-    <color name="label">#FFF5F5F7</color>
-    <color name="secondary">#FFA1A1A8</color>
-    <color name="accent">#FF0A84FF</color>
-    <color name="ok">#FF30D158</color>
-    <color name="warn">#FFFFB340</color>
-    <color name="on_accent">#FFFFFFFF</color>
+    <!-- Paleta Horizonte - modo oscuro (design.md §4). -->
+    <color name="hz_bg">#FF08090E</color>
+    <color name="hz_surf">#FF12141C</color>
+    <color name="hz_surf2">#FF1B1E2A</color>
+    <color name="hz_line">#FF262A38</color>
+    <color name="hz_fg">#FFF2F0EC</color>
+    <color name="hz_fg2">#FF9A9DAB</color>
+    <color name="hz_ember">#FFFF8A1F</color>
+    <color name="hz_ember_t">#FFFF9A3D</color>
+    <color name="hz_ember_soft">#FF3A2410</color>
+    <color name="hz_on_ember">#FF1A0E00</color>
+    <color name="hz_hot">#FFFFC766</color>
+    <color name="hz_hole">#FF000000</color>
+    <color name="hz_danger">#FFFF6A5C</color>
+    <color name="hz_ok">#FF5FD38D</color>
+
     <color name="icon_bg">#FF5E5CE6</color>
+    <color name="icon_fg">#FFFFFFFF</color>
 </resources>

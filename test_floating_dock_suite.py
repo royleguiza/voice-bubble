@@ -19,6 +19,10 @@ código real:
    arrancar ventanas flotantes desde el trackpad del teclado.
 8. CI: tests JVM, paridad del protocolo y APK del complemento.
 9. Mutaciones negativas detectadas.
+10. Fase 1 del puntero por encima de todo (2026-11-15): puntero y panel del
+    trackpad como ventanas TYPE_ACCESSIBILITY_OVERLAY en el complemento,
+    fila de sistema, arrastre en dos pasos, protocolo v2, openTrackpad con
+    respaldo, Horizonte en el complemento y tests JVM nuevos.
 """
 
 import os
@@ -262,6 +266,202 @@ mut_glass = glass.replace("    fun show(x: Int, y: Int, w: Int, h: Int) {",
 check("Mutación: reintroducir el blur de GlassWindow se detecta", mut_glass != glass and has_blur(mut_glass))
 mut_views = views.replace("fill.color = palette.surface", "fill.color = palette.pressed")
 check("Mutación: barra sin superficie sólida se detecta", "fill.color = palette.surface" not in mut_views)
+
+# --- 10. Fase 1: trackpad y puntero en el complemento (por encima de todo) ---
+pun_overlay = read(f"{PUN_KT}/PointerOverlay.kt")
+pun_panel = read(f"{PUN_KT}/TrackpadPanel.kt")
+pun_ctrl = read(f"{PUN_KT}/TrackpadController.kt")
+pun_views = read(f"{PUN_KT}/TrackpadViews.kt")
+pun_pad = read(f"{PUN_KT}/PadView.kt")
+pun_drag = read(f"{PUN_KT}/DragPlan.kt")
+pun_geo = read(f"{PUN_KT}/TrackpadGeometry.kt")
+pun_kin = read(f"{PUN_KT}/PointerKinematics.kt")
+pun_palette = read(f"{PUN_KT}/Palette.kt")
+pun_all_kt = "".join(read(f"{PUN_KT}/{f}") for f in sorted(os.listdir(os.path.join(WORKSPACE, PUN_KT))) if f.endswith(".kt"))
+pun_res = f"{PUN}/res"
+HZ_TOKENS = ("hz_bg", "hz_surf", "hz_surf2", "hz_line", "hz_fg", "hz_fg2", "hz_ember", "hz_ember_t",
+             "hz_ember_soft", "hz_on_ember", "hz_hot", "hz_hole", "hz_danger", "hz_ok")
+
+# Ventanas de Accesibilidad por encima de todo
+check("Puntero del complemento: TYPE_ACCESSIBILITY_OVERLAY, sin toques ni foco, pantalla completa",
+      "TYPE_ACCESSIBILITY_OVERLAY" in pun_overlay and "FLAG_NOT_TOUCHABLE" in pun_overlay and "FLAG_NOT_FOCUSABLE" in pun_overlay
+      and "FLAG_LAYOUT_IN_SCREEN" in pun_overlay and "FLAG_LAYOUT_NO_LIMITS" in pun_overlay
+      and "fitInsetsTypes = 0" in pun_overlay and "LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS" in pun_overlay)
+check("Panel del complemento: TYPE_ACCESSIBILITY_OVERLAY tocable, sin foco y sin bloquear fuera",
+      "TYPE_ACCESSIBILITY_OVERLAY" in pun_panel and "FLAG_NOT_FOCUSABLE" in pun_panel
+      and "FLAG_NOT_TOUCH_MODAL" in pun_panel and "FLAG_LAYOUT_IN_SCREEN" in pun_panel
+      and "FLAG_NOT_TOUCHABLE" in pun_panel and "TYPE_APPLICATION_OVERLAY" not in pun_panel + pun_overlay)
+check("El complemento no usa TYPE_APPLICATION_OVERLAY (ni pide SYSTEM_ALERT_WINDOW)",
+      "TYPE_APPLICATION_OVERLAY" not in pun_all_kt and "SYSTEM_ALERT_WINDOW" not in pun_manifest)
+check("La punta dibujada ES el punto del clic (getLocationOnScreen, sin correrla ni apartarla)",
+      "getLocationOnScreen(loc)" in pun_overlay and "ARROW_GAP_PX" not in pun_overlay and "OverlayPassThrough" not in pun_all_kt)
+check("Estilos flecha Horizonte / punto / cruz y anillo brasa del clic en los tres",
+      "Flecha esbelta «Horizonte»" in pun_overlay and "STYLE_DOT ->" in pun_overlay and "STYLE_CROSS ->" in pun_overlay
+      and "INK = 0xFF08090E" in pun_overlay and "PAPER = 0xFFF7F5F0" in pun_overlay
+      and "fun triggerClickFeedback(long: Boolean = false)" in pun_overlay and "rippleAnim" in pun_overlay)
+check("Anillo brasa fijo del origen del arrastre, dibujado por PointerOverlay",
+      "fun setOrigin(x: Float, y: Float)" in pun_overlay and "fun clearOrigin()" in pun_overlay and "class OriginMarkView" in pun_overlay)
+check("Panel: superficie surf + borde line de 1 dp, radio 30, modos panel y window",
+      "cornerRadius = 30 * d" in pun_panel and "palette.surf" in pun_panel and "palette.line" in pun_panel
+      and "MODE_WINDOW" in pun_panel and "TrackpadGeometry.open(" in pun_panel)
+check("Geometría: panel con margen 10 dp sobre la barra de navegación y ventana de 280 dp",
+      "PANEL_MARGIN_DP = 10f" in pun_geo and "WINDOW_WIDTH_DP = 280f" in pun_geo and "bottomInset" in pun_geo)
+check("Agarradera: un toque cierra y muestra la cuenta del cierre automático",
+      "host.onCloseRequested()" in pun_panel and 'contentDescription = "Cerrar trackpad"' in pun_panel
+      and "fun startCountdown(totalMs: Long)" in pun_views and "handle.startCountdown(ms)" in pun_panel)
+
+# Fila de sistema
+check("Fila de sistema: Atrás, Inicio, Recientes y Notificaciones por performGlobalAction",
+      all(a in pun_panel for a in ("GLOBAL_ACTION_BACK", "GLOBAL_ACTION_HOME", "GLOBAL_ACTION_RECENTS", "GLOBAL_ACTION_NOTIFICATIONS"))
+      and "performGlobalAction(action)" in pun_svc)
+check("Botones circulares de 44 dp con contentDescription en español",
+      "SIZE_DP = 44f" in pun_views
+      and all(f'"{t}"' in pun_panel for t in ("Atrás", "Inicio", "Recientes", "Notificaciones", "Arrastrar")))
+check("Íconos de trazo 2.2 en fg; Arrastrar activo en brasa suave",
+      "STROKE_UNITS = 2.2f" in pun_views and "palette.fg" in pun_views and "palette.emberSoft" in pun_views and "palette.emberT" in pun_views)
+check("Sin glifos ni imágenes: los íconos se dibujan en código", "enum class Icon" in pun_views and "drawable" not in pun_views)
+
+# Gestos directos, siempre al soltar
+check("Gestos directos con dispatchGesture, sin broadcast por clic",
+      "dispatchGesture(" in pun_svc and "service.press(" in pun_ctrl and "service.scrollBy(" in pun_ctrl
+      and "sendBroadcast" not in pun_ctrl + pun_panel + pun_pad)
+check("Tap 40 ms, clic largo 450 ms y scroll por la cola existente",
+      "PointerProtocol.TAP_MS" in pun_ctrl and "PointerProtocol.LONG_PRESS_MS" in pun_ctrl
+      and "scroll.add(x, y, dy)" in pun_svc and "PointerProtocol.scrollChunks(gestureDy)" in pun_ctrl)
+check("Todo se despacha AL SOLTAR (tap en ACTION_UP, clic largo armado, scroll acumulado)",
+      "PadGestures.Action.Tap ->" in pun_pad and "fun flushScroll()" in pun_pad and "pendingScroll +=" in pun_pad
+      and "fun onLongPressArmed()" in pun_pad)
+check("Con el puntero bajo el panel, el panel deja pasar el gesto (y vuelve)",
+      "p.setPassThrough(true)" in pun_ctrl and "restorePanel" in pun_ctrl and "FLAG_NOT_TOUCHABLE" in pun_panel)
+check("Háptico por performHapticFeedback (sin permiso VIBRATE) respetando none/subtle/firm",
+      "performHapticFeedback" in pun_pad and "HAPTIC_NONE" in pun_pad and "HAPTIC_FIRM" in pun_pad and "VIBRATE" not in pun_manifest)
+
+# Arrastre en dos pasos
+check("Arrastre: botón, primer toque agarra, segundo suelta, el modo se apaga solo",
+      "override fun onDragButton()" in pun_ctrl and "private fun dragTouch()" in pun_ctrl
+      and "ptr.setOrigin(" in pun_ctrl and "dragOn = false" in pun_ctrl and "DragPlan.of(" in pun_ctrl)
+check("Arrastre: UN gesto de dos trazos continuos (willContinue) de 550 ms + 400 ms",
+      "continueStroke(" in pun_svc and "DragPlan.HOLD_MS, true" in pun_svc and "DragPlan.MOVE_MS, false" in pun_svc
+      and "HOLD_MS = 550L" in pun_drag and "MOVE_MS = 400L" in pun_drag)
+check("Arrastre: construcción pura (sin android.*) con recorte a pantalla",
+      "import android" not in pun_drag and "coerceIn(0f, maxX)" in pun_drag)
+check("Arrastre: no se cierra solo a medias y se cancela al cerrar o girar",
+      "dragOn) return" in pun_ctrl and "resetDrag()" in pun_ctrl)
+
+# Ciclo de vida
+check("Receptores y ventanas se sueltan al desvincular o destruir el servicio",
+      "trackpad?.destroy()" in pun_svc and "unregisterReceiver(receiver)" in pun_svc
+      and "handler.removeCallbacksAndMessages(null)" in pun_ctrl and "removeViewImmediate" in pun_panel + pun_overlay)
+check("Cambios de orientación y tamaño de pantalla reacomodan las ventanas",
+      "override fun onConfigurationChanged" in pun_svc and "fun onScreenChanged()" in pun_overlay + pun_panel
+      and "TrackpadGeometry.refit(" in pun_panel)
+check("Sin temporizadores sueltos: todo Handler del complemento se limpia",
+      "removeCallbacks(idleClose)" in pun_ctrl and "removeCallbacks(longPressCheck)" in pun_pad)
+
+# Protocolo v2
+for c in ("ACTION_OPEN_TRACKPAD", "ACTION_CLOSE_TRACKPAD", "ACTION_TRACKPAD_STATE", "EXTRA_ANCHOR_X", "EXTRA_ANCHOR_Y",
+          "EXTRA_MODE", "EXTRA_SENSITIVITY", "EXTRA_ACCEL", "EXTRA_STYLE", "EXTRA_HAPTIC", "EXTRA_SCROLL_DIR",
+          "EXTRA_AUTO_RETURN", "EXTRA_OPEN"):
+    check(f"Protocolo v2: {c} en las dos apps", f"const val {c} =" in proto and f"const val {c} =" in pun_proto)
+check("Protocolo v2 idéntico (const val) en las dos apps y con más líneas que la v1",
+      consts(proto) == consts(pun_proto) and len(consts(proto)) >= 45)
+check("Las acciones v2 son del paquete del complemento",
+      all(f'"com.royleguiza.voicebubble.puntero.{n}"' in proto for n in ("ACTION_OPEN_TRACKPAD", "ACTION_CLOSE_TRACKPAD", "ACTION_TRACKPAD_STATE")))
+check("Configuración de OPEN_TRACKPAD validada con función pura",
+      "fun normalizeTrackpadConfig(" in proto and "fun normalizeTrackpadConfig(" in pun_proto and "PointerProtocol.normalizeTrackpadConfig(" in pun_svc)
+check("OP_TAP / OP_LONG_PRESS / OP_SCROLL por broadcast se conservan (trackpad del teclado)",
+      all(c in pun_proto for c in ('const val OP_TAP = "tap"', 'const val OP_LONG_PRESS = "long_press"', 'const val OP_SCROLL = "scroll"'))
+      and "PointerProtocol.OP_TAP -> press(" in pun_svc and "PointerLink.tap(service, x, y)" in bridge)
+check("El complemento recibe OPEN/CLOSE con el permiso de firma y sigue validando órdenes",
+      "addAction(PointerProtocol.ACTION_OPEN_TRACKPAD)" in pun_svc and "addAction(PointerProtocol.ACTION_CLOSE_TRACKPAD)" in pun_svc
+      and "registerReceiver(receiver, filter, PointerProtocol.PERMISSION_POINTER" in pun_svc)
+check("TRACKPAD_STATE: al abrir y al cerrar, solo a VoiceBubble y con permiso de firma",
+      "setPackage(PointerProtocol.HOST_PACKAGE)" in pun_svc and "PointerProtocol.EXTRA_OPEN" in pun_svc
+      and "announce(true)" in pun_ctrl and "announce(false)" in pun_ctrl and "service.sendTrackpadState(open)" in pun_ctrl)
+check("Complemento: accessibility config sin lectura de pantalla ni permisos nuevos",
+      'android:canRetrieveWindowContent="false"' in pun_cfg
+      and re.findall(r'<uses-permission android:name="([^"]+)"', pun_manifest) == [perm])
+
+# Host: openTrackpad con respaldo
+check("Host: PointerLink.openTrackpad pide abrir solo si el complemento está listo",
+      "fun openTrackpad(context: Context, anchorX: Int, anchorY: Int, onNoAnswer: (() -> Unit)? = null): Boolean" in link
+      and "if (!isReady(context)) return false" in link
+      and "Intent(PointerProtocol.ACTION_OPEN_TRACKPAD)" in link and "setPackage(PointerProtocol.COMPANION_PACKAGE)" in link)
+check("Host: openTrackpad lee las prefs de Flutter del trackpad y las normaliza",
+      '"flutter.$key"' in link and "FlutterSharedPreferences" in link
+      and all(f'"{k}"' in link for k in ("pointer_open_mode", "kb_trackpad_accel_curve", "kb_trackpad_pointer_style", "kb_trackpad_haptic"))
+      and all(f'"flutter.{k}"' in link for k in ("kb_trackpad_sensitivity", "kb_trackpad_auto_return"))
+      and "kb_trackpad_scroll_direction" in link and "PointerProtocol.normalizeTrackpadConfig(" in link)
+check("Host: la herramienta Puntero usa primero el complemento y cae al trackpad de siempre",
+      "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {" in fbs
+      and "FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY)" in fbs
+      and "fallback()" in fbs.split("PointerLink.openTrackpad(")[1][:200])
+check("Host: si el complemento no contesta en 1 s, se abre el respaldo",
+      "OPEN_ANSWER_MS = 1000L" in link and "main.postDelayed(openTimeout, OPEN_ANSWER_MS)" in link
+      and "main.removeCallbacks(openTimeout)" in link and "val fallback = { FloatingTrackpadService.open(" in fbs)
+check("Complemento: el arrastre encadena dos gestos (la continuación va en el siguiente)",
+      "grab.continueStroke(move, 0L, DragPlan.MOVE_MS, false)" in pun_svc
+      and "addStroke(grab).addStroke(carry)" not in pun_svc)
+check("Host: FloatingTrackpadService se conserva como respaldo", exists(f"{KT}/FloatingTrackpadService.kt") and 'android:name=".FloatingTrackpadService"' in manifest)
+check("Host: escucha TRACKPAD_STATE con permiso de firma mientras vive el servicio",
+      "fun listenTrackpadState(" in link and "IntentFilter(PointerProtocol.ACTION_TRACKPAD_STATE)" in link
+      and "PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED" in link
+      and "PointerLink.listenTrackpadState(this)" in fbs and "dock?.setTrackpadOpen(open)" in fbs
+      and "PointerLink.stopListeningTrackpadState(this)" in fbs)
+check("Host: <queries> y permiso de firma ya cubren el protocolo v2",
+      '<package android:name="com.royleguiza.voicebubble.puntero"/>' in manifest and f'<uses-permission android:name="{perm}"/>' in manifest)
+
+# Horizonte en el complemento
+colors_pun_day = read(f"{pun_res}/values/colors.xml")
+colors_pun_night = read(f"{pun_res}/values-night/colors.xml")
+colors_host_day = read("voice_bubble_stt/android/app/src/main/res/values/colors.xml")
+colors_host_night = read("voice_bubble_stt/android/app/src/main/res/values-night/colors.xml")
+def tok(src, name):
+    m = re.search(r'<color name="' + name + r'">([^<]+)</color>', src)
+    return m.group(1) if m else None
+check("Complemento: tokens hz_* día y noche con los mismos valores que VoiceBubble",
+      all(tok(colors_pun_day, t) is not None and tok(colors_pun_day, t) == tok(colors_host_day, t)
+          and tok(colors_pun_night, t) is not None and tok(colors_pun_night, t) == tok(colors_host_night, t) for t in HZ_TOKENS))
+check("Complemento: pantalla con tokens Horizonte (brasa con texto on-ember, tarjetas surf + line)",
+      "R.color.hz_ember" in pun_main and "R.color.hz_on_ember" in pun_main and "R.color.hz_surf" in pun_main
+      and "R.color.hz_line" in pun_main and "Color.parseColor" not in pun_main)
+check("Complemento: sin colores genéricos viejos (azul del sistema)",
+      all(re.search(r'name="' + n + r'"', colors_pun_day) is None for n in ("accent", "on_accent", "surface", "label", "secondary", "warn")))
+check("Complemento: fuentes Horizonte (Sora semibold, Inter regular y medium) en res/font",
+      all(exists(f"{pun_res}/font/{f}") for f in ("sora_semibold.ttf", "inter_regular.ttf", "inter_medium.ttf"))
+      and "R.font.sora_semibold" in pun_palette and "R.font.inter_regular" in pun_palette and "R.font.inter_medium" in pun_palette
+      and "Fonts.sora(this)" in pun_main)
+check("Complemento: tema claro/oscuro del sistema (values-night con estilo propio)",
+      exists(f"{pun_res}/values-night/styles.xml") and "hz_bg" in read(f"{pun_res}/values-night/styles.xml"))
+check("Complemento sin androidx ni dependencias externas",
+      "androidx" not in pun_all_kt + pun_gradle and re.search(r'^\s*implementation\(', pun_gradle, re.M) is None)
+
+# Privacidad
+check("Cero logs en todo el complemento", "Log." not in pun_all_kt and "println(" not in pun_all_kt)
+check("Contadores solo en memoria (sin SharedPreferences ni archivos en el complemento)",
+      "SharedPreferences" not in pun_all_kt and "openFileOutput" not in pun_all_kt and "File(" not in pun_all_kt)
+
+# Tests JVM nuevos
+for t in ("PadGesturesTest.kt", "DragPlanTest.kt", "PointerKinematicsTest.kt", "TrackpadGeometryTest.kt"):
+    check(f"Existe {t} en el complemento", exists(f"{PUN_TEST}/{t}"))
+check("Test de la validación de OPEN_TRACKPAD en las dos apps",
+      "normalizeTrackpadConfig" in read(f"{PUN_TEST}/PointerProtocolTest.kt") and "normalizeTrackpadConfig" in read(f"{KT_TEST}/PointerProtocolTest.kt"))
+check("Test del gesto de arrastre (550 + 400 ms, recorte a pantalla)",
+      "HOLD_MS" in read(f"{PUN_TEST}/DragPlanTest.kt") and "recorta origen y destino" in read(f"{PUN_TEST}/DragPlanTest.kt"))
+check("CI: el complemento corre sus tests JVM y el protocolo se compara",
+      ":app:testDebugUnitTest" in ci and "PointerProtocol difiere" in ci)
+
+# Mutaciones de la fase 1
+mut_overlay = pun_overlay.replace("TYPE_ACCESSIBILITY_OVERLAY", "TYPE_APPLICATION_OVERLAY")
+check("Mutación: puntero del complemento como overlay de app se detecta", "TYPE_ACCESSIBILITY_OVERLAY" not in mut_overlay)
+mut_proto2 = pun_proto.replace('const val ACTION_CLOSE_TRACKPAD = "com.royleguiza.voicebubble.puntero.ACTION_CLOSE_TRACKPAD"', '')
+check("Mutación: protocolo v2 incompleto en el complemento se detecta", consts(proto) != consts(mut_proto2))
+mut_fbs = fbs.replace("if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {", "if (true) {")
+check("Mutación: herramienta Puntero sin el complemento primero se detecta", "PointerLink.openTrackpad(" not in mut_fbs)
+mut_cfg2 = pun_cfg.replace('canRetrieveWindowContent="false"', 'canRetrieveWindowContent="true"')
+check("Mutación: lectura de pantalla en el complemento se detecta", 'android:canRetrieveWindowContent="false"' not in mut_cfg2)
+mut_svc = pun_svc.replace("trackpad?.destroy()", "")
+check("Mutación: ventanas sin quitar al desvincular se detecta", "trackpad?.destroy()" not in mut_svc)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE BARRA FLOTANTE: {suite.passed} pasados, {suite.failed} fallidos.")

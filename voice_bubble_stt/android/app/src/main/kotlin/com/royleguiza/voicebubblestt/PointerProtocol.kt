@@ -10,6 +10,11 @@ import kotlin.math.abs
  * "tocá en (x, y)" por broadcast explícito protegido con un permiso de firma
  * declarado en las dos apps. Sin lectura de pantalla, sin registro.
  *
+ * Protocolo v2 (fase 1 del puntero por encima de todo): además de las órdenes
+ * de gesto sueltas, VoiceBubble pide «abrí / cerrá el trackpad» y el
+ * complemento dibuja el puntero y el panel como ventanas propias de
+ * Accesibilidad, avisando el estado de vuelta.
+ *
  * ESPEJO EXACTO: puntero_android/app/src/main/kotlin/.../PointerProtocol.kt.
  * La suite test_floating_dock_suite.py verifica que las constantes coincidan.
  * Lógica pura (sin android.*) para testearla en la JVM.
@@ -52,6 +57,50 @@ object PointerProtocol {
 
     /** Si no llega respuesta en este tiempo (tras el gesto), el complemento no está escuchando. */
     const val ACK_TIMEOUT_MS = 1200L
+
+    // --- v2: el trackpad vive en el complemento ---
+
+    /** VoiceBubble → complemento: abrir el trackpad (ancla + configuración). */
+    const val ACTION_OPEN_TRACKPAD = "com.royleguiza.voicebubble.puntero.ACTION_OPEN_TRACKPAD"
+
+    /** VoiceBubble → complemento: cerrar el trackpad. */
+    const val ACTION_CLOSE_TRACKPAD = "com.royleguiza.voicebubble.puntero.ACTION_CLOSE_TRACKPAD"
+
+    /** Complemento → VoiceBubble: el trackpad se abrió o se cerró (extra [EXTRA_OPEN]). */
+    const val ACTION_TRACKPAD_STATE = "com.royleguiza.voicebubble.puntero.ACTION_TRACKPAD_STATE"
+
+    const val EXTRA_ANCHOR_X = "anchor_x"
+    const val EXTRA_ANCHOR_Y = "anchor_y"
+    const val EXTRA_MODE = "mode"
+    const val EXTRA_SENSITIVITY = "sensitivity"
+    const val EXTRA_ACCEL = "accel"
+    const val EXTRA_STYLE = "style"
+    const val EXTRA_HAPTIC = "haptic"
+    const val EXTRA_SCROLL_DIR = "scroll_dir"
+    const val EXTRA_AUTO_RETURN = "auto_return"
+    const val EXTRA_OPEN = "open"
+
+    const val MODE_PANEL = "panel"
+    const val MODE_WINDOW = "window"
+    const val ACCEL_DYNAMIC = "dynamic"
+    const val ACCEL_LINEAR = "linear"
+    const val ACCEL_PRECISION = "precision"
+    const val STYLE_ARROW = "arrow"
+    const val STYLE_DOT = "dot"
+    const val STYLE_CROSS = "cross"
+    const val HAPTIC_SUBTLE = "subtle"
+    const val HAPTIC_NONE = "none"
+    const val HAPTIC_FIRM = "firm"
+    const val SCROLL_NATURAL = "natural"
+    const val SCROLL_TRADITIONAL = "traditional"
+
+    /** Sensibilidad por defecto y límites válidos del puntero. */
+    const val DEFAULT_SENSITIVITY = 1.2f
+    const val MIN_SENSITIVITY = 0.5f
+    const val MAX_SENSITIVITY = 2.5f
+
+    /** Tope del cierre automático (segundos); 0 = el trackpad queda abierto. */
+    const val MAX_AUTO_RETURN_S = 120
 
     data class Command(val op: String, val x: Float, val y: Float, val dy: Float = 0f) {
         /** Cuánto dura el gesto en pantalla: las ventanas propias se apartan ese tiempo. */
@@ -142,5 +191,52 @@ object PointerProtocol {
             left -= step
         }
         return out
+    }
+
+    /** Configuración ya validada con la que el complemento abre el trackpad. */
+    data class TrackpadConfig(
+        /** Ancla (px de pantalla) junto a la que se abre la ventana; −1 = sin ancla. */
+        val anchorX: Int,
+        val anchorY: Int,
+        val mode: String,
+        val sensitivity: Float,
+        val accel: String,
+        val style: String,
+        val haptic: String,
+        val scrollDir: String,
+        val autoReturnS: Int,
+    ) {
+        val hasAnchor: Boolean get() = anchorX >= 0 && anchorY >= 0
+        val naturalScroll: Boolean get() = scrollDir != SCROLL_TRADITIONAL
+    }
+
+    /**
+     * Valida y normaliza la configuración de OPEN_TRACKPAD: lo desconocido o
+     * fuera de rango cae al valor por defecto, nunca rompe. Sin ancla (o con
+     * una sola coordenada) queda en −1/−1.
+     */
+    fun normalizeTrackpadConfig(
+        anchorX: Int,
+        anchorY: Int,
+        mode: String?,
+        sensitivity: Float,
+        accel: String?,
+        style: String?,
+        haptic: String?,
+        scrollDir: String?,
+        autoReturnS: Int,
+    ): TrackpadConfig {
+        val anchored = anchorX >= 0 && anchorY >= 0
+        return TrackpadConfig(
+            anchorX = if (anchored) anchorX else -1,
+            anchorY = if (anchored) anchorY else -1,
+            mode = if (mode == MODE_WINDOW) MODE_WINDOW else MODE_PANEL,
+            sensitivity = if (sensitivity.isFinite() && sensitivity in MIN_SENSITIVITY..MAX_SENSITIVITY) sensitivity else DEFAULT_SENSITIVITY,
+            accel = if (accel == ACCEL_LINEAR || accel == ACCEL_PRECISION) accel else ACCEL_DYNAMIC,
+            style = if (style == STYLE_DOT || style == STYLE_CROSS) style else STYLE_ARROW,
+            haptic = if (haptic == HAPTIC_NONE || haptic == HAPTIC_FIRM) haptic else HAPTIC_SUBTLE,
+            scrollDir = if (scrollDir == SCROLL_TRADITIONAL) SCROLL_TRADITIONAL else SCROLL_NATURAL,
+            autoReturnS = if (autoReturnS in 0..MAX_AUTO_RETURN_S) autoReturnS else 0,
+        )
     }
 }

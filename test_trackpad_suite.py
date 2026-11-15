@@ -14,6 +14,9 @@ Verifica al 100% de certeza:
 9. SettingsScreen (Dart): sección dedicada, switches y segmented buttons.
 10. Vector drawables: ic_trackpad.xml, ic_keyboard.xml y strings.xml.
 11. Batería de tests unitarios Dart en app_source/test/.
+12. Fase 1 (2026-11-15): trackpad y puntero del complemento como ventanas de
+    Accesibilidad por encima de todo, fila de sistema, arrastre, protocolo v2
+    y openTrackpad con respaldo en FloatingTrackpadService.
 """
 
 import os
@@ -482,6 +485,52 @@ check("Contrato documentado (docs/contrato-trackpad.md)",
       os.path.isfile(os.path.join(WORKSPACE, "docs/contrato-trackpad.md"))
       and "voicebubble puntero" in open(os.path.join(WORKSPACE, "docs/contrato-trackpad.md"), encoding="utf-8").read().lower(),
       "Falta la fuente única del estado del puntero")
+
+# --- TEST 12: trackpad del complemento (fase 1: por encima de todo) ---
+def _rd(rel):
+    with open(os.path.join(WORKSPACE, rel), "r", encoding="utf-8") as f:
+        return f.read()
+
+_pk = "puntero_android/app/src/main/kotlin/com/royleguiza/voicebubble/puntero"
+_hk = "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt"
+p_over = _rd(f"{_pk}/PointerOverlay.kt")
+p_panel = _rd(f"{_pk}/TrackpadPanel.kt")
+p_ctrl = _rd(f"{_pk}/TrackpadController.kt")
+p_svc = _rd(f"{_pk}/PunteroService.kt")
+p_proto = _rd(f"{_pk}/PointerProtocol.kt")
+h_proto = _rd(f"{_hk}/PointerProtocol.kt")
+h_link = _rd(f"{_hk}/PointerLink.kt")
+h_fbs = _rd(f"{_hk}/FloatingBubbleService.kt")
+
+check("Complemento: puntero y panel son TYPE_ACCESSIBILITY_OVERLAY (por encima de la cortina)",
+      "TYPE_ACCESSIBILITY_OVERLAY" in p_over and "TYPE_ACCESSIBILITY_OVERLAY" in p_panel
+      and "TYPE_APPLICATION_OVERLAY" not in p_over + p_panel)
+check("Complemento: el puntero sigue sin recibir toques ni foco", "FLAG_NOT_TOUCHABLE" in p_over and "FLAG_NOT_FOCUSABLE" in p_over)
+check("Complemento: estilos arrow, dot, cross y cinemática dynamic, linear, precision",
+      all(k in p_over for k in ("STYLE_DOT", "STYLE_CROSS", "STYLE_ARROW"))
+      and all(k in _rd(f"{_pk}/PointerKinematics.kt") for k in ("ACCEL_LINEAR", "ACCEL_PRECISION")))
+check("Complemento: el puntero acota coordenadas a la pantalla y sanitiza NaN",
+      "clampCoordinates" in p_over and "isNaN()" in p_over)
+check("Complemento: fila de sistema (Atrás, Inicio, Recientes, Notificaciones) + Arrastrar",
+      all(a in p_panel for a in ("GLOBAL_ACTION_BACK", "GLOBAL_ACTION_HOME", "GLOBAL_ACTION_RECENTS", "GLOBAL_ACTION_NOTIFICATIONS"))
+      and "DRAG_LABEL" in p_panel and "performGlobalAction(" in p_svc)
+check("Complemento: arrastre en dos pasos con un gesto de dos trazos continuos",
+      "continueStroke(" in p_svc and "DragPlan.HOLD_MS, true" in p_svc and "private fun dragTouch()" in p_ctrl)
+check("Complemento: tap, clic largo y scroll directos al soltar, sin broadcast por clic",
+      "service.press(" in p_ctrl and "service.scrollBy(" in p_ctrl and "sendBroadcast" not in p_ctrl)
+check("Protocolo v2 espejado: OPEN_TRACKPAD, CLOSE_TRACKPAD y TRACKPAD_STATE",
+      all(f"const val {c} =" in p_proto and f"const val {c} =" in h_proto
+          for c in ("ACTION_OPEN_TRACKPAD", "ACTION_CLOSE_TRACKPAD", "ACTION_TRACKPAD_STATE")))
+check("Protocolo v2: configuración validada con función pura",
+      "fun normalizeTrackpadConfig(" in p_proto and "fun normalizeTrackpadConfig(" in h_proto)
+check("Host: openTrackpad con respaldo en FloatingTrackpadService",
+      "fun openTrackpad(" in h_link and "if (!isReady(context)) return false" in h_link
+      and "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {" in h_fbs
+      and "FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY)" in h_fbs)
+check("Host: TRACKPAD_STATE esconde/muestra la burbuja", "PointerLink.listenTrackpadState(this)" in h_fbs and "dock?.setTrackpadOpen(open)" in h_fbs)
+check("Complemento: privacidad intacta (sin lectura de ventanas, cero Log)",
+      'android:canRetrieveWindowContent="false"' in _rd("puntero_android/app/src/main/res/xml/puntero_service.xml")
+      and "Log." not in p_over + p_panel + p_ctrl + p_svc)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TRACKPAD & ISLA: {suite.passed} pasados, {suite.failed} fallidos.")

@@ -107,7 +107,10 @@ class FloatingBubbleService : Service() {
             setupBubbleView()
         } catch (_: Exception) {
             abortStartup()
+            return
         }
+        // El trackpad del complemento avisa cuando se abre o se cierra: la burbuja se esconde mientras tanto.
+        PointerLink.listenTrackpadState(this) { open -> dock?.setTrackpadOpen(open) }
     }
 
     /**
@@ -205,7 +208,12 @@ class FloatingBubbleService : Service() {
 
             override fun onPointerTap(anchorX: Int, anchorY: Int) {
                 try {
-                    FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY)
+                    // Primero el trackpad del complemento (por encima de todo); si no
+                    // está listo, el de siempre, que explica qué falta instalar o activar.
+                    val fallback = { FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY) }
+                    if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {
+                        fallback()
+                    }
                 } catch (_: Exception) {}
             }
 
@@ -273,6 +281,7 @@ class FloatingBubbleService : Service() {
         isRunning = false
         lastVisualState = "idle"
 
+        PointerLink.stopListeningTrackpadState(this)
         try {
             bubbleHistoryController?.destroy()
         } catch (_: Exception) {}
