@@ -865,7 +865,7 @@ class StorageService {
   // prefijo "flutter."; DockController escribe dock_form cuando el usuario
   // convierte la barra en burbuja (o al revés) con el dedo.
   static const String dockFormKey = 'dock_form';
-  static const List<String> dockForms = ['edge', 'bubble'];
+  static const List<String> dockForms = ['edge', 'bubble', 'island'];
   static const String defaultDockForm = 'edge';
 
   static const String dockToolMicKey = 'dock_tool_mic';
@@ -895,6 +895,54 @@ class StorageService {
   Future<void> setDockToolPointer(bool enabled) =>
       _setBool(dockToolPointerKey, enabled);
 
+  // --- Isla (fase 2B): medidas en px de pantalla completa que lee DockLink
+  // (host) y manda al complemento como DOCK_CONFIG. -1 = valor por defecto
+  // (centrada arriba, 112 x 30 dp); lado = el del micrófono (el puntero va
+  // del otro). Dominios espejo de PointerProtocol.normalizeDockConfig.
+  static const String dockIslandXKey = 'dock_island_x';
+  static const String dockIslandYKey = 'dock_island_y';
+  static const String dockIslandWKey = 'dock_island_w';
+  static const String dockIslandHKey = 'dock_island_h';
+  static const String dockIslandSideKey = 'dock_island_side';
+  static const int dockIslandDefault = -1;
+
+  /// Tope en px (más es basura y el complemento lo descarta igual).
+  static const int dockIslandMaxPx = 20000;
+  static const List<String> dockIslandSides = ['left', 'right'];
+  static const String defaultDockIslandSide = 'left';
+
+  Future<int> _getIslandPx(String key) async {
+    final v = await _getInt(key, dockIslandDefault);
+    return (v >= 0 && v <= dockIslandMaxPx) ? v : dockIslandDefault;
+  }
+
+  /// Negativo (o 0 en ancho y alto) = por defecto; el resto se acota al tope.
+  Future<void> _setIslandPx(String key, int px, {required bool zeroIsDefault}) {
+    final isDefault = px < 0 || (zeroIsDefault && px == 0);
+    return _setInt(
+        key, isDefault ? dockIslandDefault : px.clamp(0, dockIslandMaxPx));
+  }
+
+  Future<int> getDockIslandX() => _getIslandPx(dockIslandXKey);
+  Future<int> getDockIslandY() => _getIslandPx(dockIslandYKey);
+  Future<int> getDockIslandW() => _getIslandPx(dockIslandWKey);
+  Future<int> getDockIslandH() => _getIslandPx(dockIslandHKey);
+
+  Future<void> setDockIslandX(int px) =>
+      _setIslandPx(dockIslandXKey, px, zeroIsDefault: false);
+  Future<void> setDockIslandY(int px) =>
+      _setIslandPx(dockIslandYKey, px, zeroIsDefault: false);
+  Future<void> setDockIslandW(int px) =>
+      _setIslandPx(dockIslandWKey, px, zeroIsDefault: true);
+  Future<void> setDockIslandH(int px) =>
+      _setIslandPx(dockIslandHKey, px, zeroIsDefault: true);
+
+  Future<String> getDockIslandSide() => _getValidatedString(
+      dockIslandSideKey, dockIslandSides, defaultDockIslandSide);
+
+  Future<void> setDockIslandSide(String side) =>
+      _setValidatedString(dockIslandSideKey, dockIslandSides, side);
+
   Future<String> getPointerOpenMode() => _getValidatedString(
       pointerOpenModeKey, pointerOpenModes, defaultPointerOpenMode);
 
@@ -921,8 +969,14 @@ class StorageService {
   static const List<String> bridgeKeys = [
     _bubbleHistoryKey,
     dockFormKey,
+    dockIslandHKey,
+    dockIslandSideKey,
+    dockIslandWKey,
+    dockIslandXKey,
+    dockIslandYKey,
     dockToolMicKey,
     dockToolPointerKey,
+    _floatingBubbleKey,
     kbBottomElevationDpKey,
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,

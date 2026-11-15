@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -151,3 +152,19 @@ bool switchValue(WidgetTester tester, String key) => tester
     .value;
 
 Future<SharedPreferences> prefs() => SharedPreferences.getInstance();
+
+/// Valor anunciado por el nodo de semántica del deslizador (el nodo que
+/// devuelve `getSemantics` es el contenedor; el valor vive en su hijo).
+String sliderSpokenValue(WidgetTester tester, Finder slider) {
+  var value = '';
+  void walk(SemanticsNode node) {
+    if (node.value.isNotEmpty) value = node.value;
+    node.visitChildren((child) {
+      walk(child);
+      return true;
+    });
+  }
+
+  walk(tester.getSemantics(slider));
+  return value;
+}

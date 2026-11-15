@@ -14,18 +14,18 @@ import android.content.Intent
  * Todo es best-effort y firmado (permiso de firma + paquete explícito). Solo
  * viajan ajustes de la barra y estados: ni audio ni texto.
  *
- * Las claves nuevas de Ajustes de la isla (`dock_island_*`) y `floating_bubble_enabled`
- * se leen componiendo el prefijo ([FlutterPrefs.key]): la fase 2B las suma al
- * contrato Kotlin↔Dart (docs/contract-keys.txt) junto con los controles de Ajustes.
+ * Las claves de Ajustes de la isla (`dock_island_*`) y `floating_bubble_enabled`
+ * (fase 2B) viajan en el contrato Kotlin-Dart (docs/contract-keys.txt): se leen con
+ * el literal completo, que es lo que verifica la paridad de claves del CI.
  */
 object DockLink {
 
-    private const val K_ENABLED = "floating_bubble_enabled"
-    private const val K_ISLAND_X = "dock_island_x"
-    private const val K_ISLAND_Y = "dock_island_y"
-    private const val K_ISLAND_W = "dock_island_w"
-    private const val K_ISLAND_H = "dock_island_h"
-    private const val K_ISLAND_SIDE = "dock_island_side"
+    private const val K_ENABLED = "flutter.floating_bubble_enabled"
+    private const val K_ISLAND_X = "flutter.dock_island_x"
+    private const val K_ISLAND_Y = "flutter.dock_island_y"
+    private const val K_ISLAND_W = "flutter.dock_island_w"
+    private const val K_ISLAND_H = "flutter.dock_island_h"
+    private const val K_ISLAND_SIDE = "flutter.dock_island_side"
 
     /** Última noticia del complemento: ¿está dibujando la barra? (en memoria; se pierde con el proceso). */
     @Volatile
@@ -89,14 +89,14 @@ object DockLink {
         } catch (_: Exception) {
             emptyMap<String, Any?>()
         }
-        fun intPref(name: String): Int = when (val raw = all[FlutterPrefs.key(name)]) {
+        fun intPref(name: String): Int = when (val raw = all[name]) {
             is Number -> raw.toInt()
             is String -> raw.toIntOrNull() ?: PointerProtocol.ISLAND_DEFAULT
             else -> PointerProtocol.ISLAND_DEFAULT
         }
         fun boolPref(name: String, fallback: Boolean): Boolean = (all[name] as? Boolean) ?: fallback
         return PointerProtocol.normalizeDockConfig(
-            enabled = enabledOverride ?: boolPref(FlutterPrefs.key(K_ENABLED), false),
+            enabled = enabledOverride ?: boolPref(K_ENABLED, false),
             form = all[DockController.PREF_FORM] as? String,
             toolMic = boolPref(DockController.PREF_TOOL_MIC, true),
             toolPointer = boolPref(DockController.PREF_TOOL_POINTER, false),
@@ -104,7 +104,7 @@ object DockLink {
             islandY = intPref(K_ISLAND_Y),
             islandW = intPref(K_ISLAND_W),
             islandH = intPref(K_ISLAND_H),
-            islandSide = all[FlutterPrefs.key(K_ISLAND_SIDE)] as? String,
+            islandSide = all[K_ISLAND_SIDE] as? String,
             trackpad = PointerLink.readTrackpadConfig(context, -1, -1),
         )
     }

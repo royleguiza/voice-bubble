@@ -163,11 +163,31 @@ Todo es broadcast explícito al paquete destino con el permiso de firma
   trackpad que mandó VoiceBubble y la posición de la barra / burbuja. Nada de
   coordenadas de clics, apps ni contenido.
 
+## Ajustes de la isla (fase 2B)
+
+- Ajustes › Barra flotante › Forma suma **Isla** (`StorageService.dockForms`). Sin el
+  complemento activo (`getPointerStatus` ≠ `ready`, el mismo estado que muestra
+  Ajustes › Trackpad) la opción aparece deshabilitada, con una sección que explica
+  «Necesita VoiceBubble Puntero activo» y las mismas filas de activación que Trackpad.
+- Con la forma Isla aparece la fila «Ajustar isla»: subpágina con la maqueta a escala
+  real (fija arriba) y, debajo, posición horizontal (centro) y vertical (borde
+  superior), ancho y alto en reposo —deslizador + «−»/«+» de 1 px, mantener apretado
+  repite—, lado del micrófono, «Centrar arriba» (x e y a −1) y «Restablecer» (todo a
+  −1 y micrófono a la izquierda).
+- Claves nuevas (contrato de 61): `dock_island_x`, `dock_island_y`, `dock_island_w`,
+  `dock_island_h` (Int, px de pantalla completa, −1 = por defecto) y `dock_island_side`
+  (`left`/`right`). `floating_bubble_enabled` entra al contrato porque `DockLink` la lee.
+  `DockLink` las lee con el literal completo (`flutter.dock_island_x`…), que es lo que
+  verifica la paridad Kotlin == contrato == Dart.
+- En vivo: cada cambio guarda las prefs y llama a `reloadDock` (el host reenvía
+  `DOCK_CONFIG`). Mientras se arrastra, `Throttler` limita a un envío cada 60 ms
+  (siempre el último valor, nunca dos a la vez); al soltar y al salir de la página
+  se envía el valor final.
+- Rangos (px = dp × `devicePixelRatio`): ancho 72–180 dp, alto 22–48 dp, x de
+  `margen + ancho/2` a `pantalla − ancho − margen + ancho/2`, y de 0 a un tercio del
+  alto de la pantalla. `IslandGeometry` (Dart) es espejo de `IslandGeometry.kt`.
+
 ## Pendiente
 
-- Fase 2B (Ajustes de Flutter): elegir la isla, ajuste al píxel con maqueta y en
-  vivo. El host ya lee `dock_island_x/_y/_w/_h/_side` y `floating_bubble_enabled`
-  con el prefijo compuesto (`FlutterPrefs.key`), SIN el literal `flutter.…`: en 2B
-  esas claves se suman a `bridgeKeys` de Dart y a `docs/contract-keys.txt` (hoy
-  son 55, con paridad Kotlin == Dart == contrato).
+- Fase 4 (ver abajo). La fase 2B ya está hecha: ver «Ajustes de la isla (fase 2B)».
 - Fase 4: toque largo (historial) en la barra del complemento; retirar el respaldo.

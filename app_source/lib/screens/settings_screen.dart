@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
 import 'credentials_screen.dart';
 import 'settings/snippets_tab.dart';
+import '../helpers/island_geometry.dart';
 import '../services/channel_guard.dart';
 import '../services/storage_service.dart';
 import '../services/gemini_key_store.dart';
@@ -16,9 +17,11 @@ import '../ui/theme_mode.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/floating_trackpad_service.dart';
 import '../services/keyboard_service.dart';
+import '../widgets/island_mockup.dart';
 import '../widgets/settings_v2.dart';
 
 part 'settings/general_tab.dart';
+part 'settings/island_page.dart';
 part 'settings/teclado_tab.dart';
 part 'settings/trackpad_tab.dart';
 
@@ -31,6 +34,7 @@ enum SettingsPage {
   teclado,
   sonido,
   burbuja,
+  isla,
   trackpad,
   snippets,
   claves,
@@ -505,6 +509,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   // --- Barra flotante: forma y herramientas -------------------------------
 
   Future<void> _saveDockForm(String form) async {
+    // La isla solo la dibuja el complemento: sin él activo no se elige.
+    if (form == 'island' &&
+        _pointerStatus != FloatingTrackpadService.pointerReady) {
+      return;
+    }
     setState(() => _dockForm = form);
     await _storageService.setDockForm(form);
     await _floatingBubbleService.reloadDock();
@@ -1104,6 +1113,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         return _buildSonidoPage(context);
       case SettingsPage.burbuja:
         return _buildBurbujaPage(context);
+      case SettingsPage.isla:
+        return _buildIslaPage(context);
       case SettingsPage.trackpad:
         return _buildTrackpadPage(context);
       case SettingsPage.notas:

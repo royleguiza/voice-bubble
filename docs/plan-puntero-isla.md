@@ -72,7 +72,8 @@ VoiceBubble (host)                     VoiceBubble Puntero (complemento)
 > reiniciar); el host queda de respaldo si el complemento no está.
 > - **2A** (`docs/spec-puntero-fase2a.md`): barra (borde · burbuja · isla) en
 >   el complemento, protocolo v3, dictado nativo del host sin Flutter.
-> - **2B**: Ajustes de Flutter (elegir Isla, ajuste al píxel, maqueta, en vivo).
+> - **2B** (`docs/spec-puntero-fase2b.md`, implementada en local 2026-11-15): Ajustes de
+>   Flutter (elegir Isla, ajuste al píxel, maqueta, en vivo).
 
 - Tercera forma de la barra (burbuja · barra lateral · **isla**): píldora
   negra tipo isla dinámica, dibujada por el complemento para poder vivir en

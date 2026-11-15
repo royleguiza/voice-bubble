@@ -431,6 +431,18 @@ check("Isla retirada de los tests Dart",
       and not os.path.isfile(os.path.join(WORKSPACE, "app_source/test/screens/settings_island_test.dart")),
       "Reaparecieron tests de isla: rever decisión de retirada")
 
+# --- Fase 2B: la isla vuelve, ahora como forma de la barra del complemento ---
+# Lo retirado arriba es la "isla dinámica" vieja (claves island_pos_*, sección
+# «Píldora e Isla Dinámica»). La isla nueva guarda dock_island_* y vive en
+# Ajustes › Barra flotante › Ajustar isla; los archivos de test viejos siguen
+# ausentes (los nuevos se llaman dock_island_storage / settings_island_adjust).
+check("Isla nueva: claves dock_island_* en el Storage y el contrato (no island_pos_*)",
+      all(k in storage_content for k in ("'dock_island_x'", "'dock_island_y'", "'dock_island_w'", "'dock_island_h'", "'dock_island_side'"))
+      and "island_pos_x" not in storage_content)
+check("Isla nueva: tests Dart con nombres propios",
+      os.path.isfile(os.path.join(WORKSPACE, "app_source/test/services/dock_island_storage_test.dart"))
+      and os.path.isfile(os.path.join(WORKSPACE, "app_source/test/screens/settings_island_adjust_test.dart")))
+
 # --- TEST 13: FloatingTrackpadService declarado como servicio NORMAL ---
 # Es un Service corriente (no accesibilidad): declararlo es Play-Protect
 # seguro. Lo declara otro agente; este test pasa con el manifest final.

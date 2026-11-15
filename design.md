@@ -441,6 +441,18 @@ Maqueta: `laboratorio_ui/isla.html`. Píldora negra SIEMPRE (`island_bg` #000, b
 - Movimiento: transiciones de tamaño con rebote suave (≈ 420 ms, overshoot leve) y cruce de capas; con «quitar animaciones» del sistema, cambio directo y anillo fijo cuyo grosor sigue el volumen.
 - Accesibilidad: cada botón con `contentDescription` en español (Dictar, Terminar dictado, Cancelar dictado, Abrir el puntero), la isla como región `polite`.
 
+#### Ajustar isla (Ajustes › Barra flotante, fase 2B)
+
+Visible con la forma Isla (fila «Ajustar isla»; sin VoiceBubble Puntero activo, «Isla» se ve deshabilitada y una sección lo explica). Subpágina con componentes de Ajustes, sin estilos nuevos:
+
+| Pieza | Regla |
+|---|---|
+| Maqueta (`IslandMockup`) | Fija arriba, no se desplaza con la lista. Marco con el borde superior redondeado (radio de hoja) sobre surf2, barra de estado simulada, tres tarjetas de «apps» y una guía del centro. Escala única `ancho de la maqueta / ancho de pantalla en px` (tamaño físico y densidad de la vista): posición, tamaño y relleno de la píldora corresponden a los píxeles reales, calculados con la misma geometría que el complemento. La píldora es negra siempre (`kIslandBg`/`kIslandLine`), con el agujero de anillo brasa del lado del micrófono y el puntero (fg al 55 %) del otro. Sin desenfoque ni animación; la lee el lector de pantalla con posición y tamaño en píxeles. |
+| Medidas | `SettingsStepperRow`: título + valor en mono (brasa) y, debajo, «−» · deslizador · «+» (botones circulares sólidos de 48 dp; mantener apretado repite cada 50 ms). Un paso = 1 px. Horizontal (centro), vertical (borde superior), ancho y alto en reposo. |
+| Lado del micrófono | `SettingsMenuRow` Izquierda / Derecha; el puntero va del otro. |
+| Acciones | «Centrar arriba» y «Restablecer» como `SettingsActionRow` (texto brasa). |
+| En vivo | Cada cambio guarda y pide reenviar la configuración; arrastrando, como mucho cada 60 ms y siempre el valor final al soltar. |
+
 ### Historial flotante de la burbuja
 
 Tarjeta sólida `hz_bg` + borde `hz_line`, radio 18 (nace de la burbuja). Título «Historial de transcripciones» / «Snippets» con la etiqueta de grupo (mono 500 en mayúsculas con tracking, fg2). Cada fila: hora en mono fg2 en una columna fija de 44 dp (`HistoryCardView.TIME_COLUMN_DP`), texto Inter fg, copiar como ícono fg2 (target 44 dp) y separador `hz_line`. Selección y copiado: `hz_ember_soft` + borde `hz_ember` (check ember-t); copiar-todo confirmado = círculo brasa con check on-ember. El micrófono del pie es el agujero; la agarradera, una línea `hz_line`.

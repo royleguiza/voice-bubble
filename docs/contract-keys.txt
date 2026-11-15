@@ -1,7 +1,13 @@
 bubble_history_enabled
 dock_form
+dock_island_h
+dock_island_side
+dock_island_w
+dock_island_x
+dock_island_y
 dock_tool_mic
 dock_tool_pointer
+floating_bubble_enabled
 kb_bottom_elevation_dp
 kb_clipboard_images_enabled
 kb_code_key_visible

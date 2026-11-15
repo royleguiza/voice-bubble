@@ -4,13 +4,37 @@ part of '../settings_screen.dart';
 /// VoiceBubble Puntero, lo abre la barra flotante) y el trackpad del
 /// teclado; el ajuste fino solo aparece si alguno de los dos está en uso.
 extension _TrackpadPage on _SettingsScreenState {
-  Widget _buildTrackpadPage(BuildContext context) {
+  /// Filas del complemento VoiceBubble Puntero (estado + «Permitir ajustes
+  /// restringidos»). Las usan Trackpad y Barra flotante (la isla las
+  /// necesita): mismo acceso en los dos lados.
+  List<Widget> _pointerCompanionRows() {
     final status = _pointerStatus;
+    final ready = status == FloatingTrackpadService.pointerReady;
     final statusLabel = switch (status) {
       FloatingTrackpadService.pointerReady => 'Activo',
       FloatingTrackpadService.pointerDisabled => 'Activar',
       _ => 'No instalado',
     };
+    return [
+      SettingsNavRow(
+        key: const ValueKey('pointer-companion-row'),
+        title: 'VoiceBubble Puntero',
+        value: statusLabel,
+        valueActive: ready,
+        valueColor: ready ? null : SettingsPalette.of(context).alert,
+        onTap: _onPointerCompanionTap,
+      ),
+      if (status == FloatingTrackpadService.pointerDisabled)
+        SettingsActionRow(
+          key: const ValueKey('pointer-restricted-row'),
+          title: 'Permitir ajustes restringidos',
+          onTap: _floatingTrackpadService.openCompanionDetails,
+        ),
+    ];
+  }
+
+  Widget _buildTrackpadPage(BuildContext context) {
+    final status = _pointerStatus;
     final statusFooter = switch (status) {
       FloatingTrackpadService.pointerReady =>
         'Los clics del puntero llegan a cualquier app. No lee la pantalla '
@@ -28,24 +52,7 @@ extension _TrackpadPage on _SettingsScreenState {
         SettingsSection(
           header: 'Puntero en otras apps',
           footer: statusFooter,
-          children: [
-            SettingsNavRow(
-              key: const ValueKey('pointer-companion-row'),
-              title: 'VoiceBubble Puntero',
-              value: statusLabel,
-              valueActive: status == FloatingTrackpadService.pointerReady,
-              valueColor: status == FloatingTrackpadService.pointerReady
-                  ? null
-                  : SettingsPalette.of(context).alert,
-              onTap: _onPointerCompanionTap,
-            ),
-            if (status == FloatingTrackpadService.pointerDisabled)
-              SettingsActionRow(
-                key: const ValueKey('pointer-restricted-row'),
-                title: 'Permitir ajustes restringidos',
-                onTap: _floatingTrackpadService.openCompanionDetails,
-              ),
-          ],
+          children: _pointerCompanionRows(),
         ),
         SettingsSection(
           footer: 'Se abre desde la barra flotante. Para cerrarlo, tocá la '
@@ -285,16 +292,7 @@ class _TrackpadSensitivitySectionState
               Text('Lenta', style: kTextFootnote.copyWith(color: p.secondary)),
               Expanded(
                 child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4,
-                    activeTrackColor: p.tintFill,
-                    inactiveTrackColor: p.switchOff,
-                    thumbColor: kBgElevatedLight,
-                    overlayColor: p.tintFill.withValues(alpha: 0.12),
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 14),
-                    tickMarkShape: SliderTickMarkShape.noTickMark,
-                  ),
+                  data: settingsSliderTheme(context),
                   child: Slider(
                     key: const ValueKey('kb-trackpad-sensitivity-slider'),
                     value: _current,

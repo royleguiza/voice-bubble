@@ -28,6 +28,10 @@ código real:
     propias; protocolo v3; dictado nativo del host (DockDictationService
     exportado SOLO con el permiso de firma, actividad trampolín); la barra de
     VoiceBubble queda de respaldo y nunca se ven dos.
+12. Fase 2B (2026-11-15): Ajustes de Flutter para la isla: forma «Isla»
+    (deshabilitada sin el complemento), pantalla «Ajustar isla» con maqueta a
+    escala real, deslizadores y ±1 px, lado del micrófono, centrar/restablecer,
+    envío en vivo limitado (Throttler) y claves nuevas en el contrato (61).
 """
 
 import os
@@ -195,7 +199,7 @@ check("Las ventanas vuelven solas", "main.postDelayed(restore" in link)
 # --- 7. Dart / Ajustes ---
 for k in ("dock_form", "dock_tool_mic", "dock_tool_pointer", "pointer_open_mode"):
     check(f"Clave {k} en el contrato", k in contract)
-check("Dominio de forma validado", "static const List<String> dockForms = ['edge', 'bubble'];" in storage)
+check("Dominio de forma validado (borde, burbuja e isla)", "static const List<String> dockForms = ['edge', 'bubble', 'island'];" in storage)
 check("Dominio de apertura validado", "static const List<String> pointerOpenModes = ['panel', 'window'];" in storage)
 check("Ajustes: forma de la barra", "id: 'dock-form-selector'" in general)
 check("Ajustes: herramientas", "'dock-tool-mic-switch'" in general and "'dock-tool-pointer-switch'" in general)
@@ -729,9 +733,12 @@ check("Host: DOCK_CONFIG lleva forma, herramientas, isla y trackpad (prefs de Fl
       all(k in h_dlink for k in ("EXTRA_DOCK_FORM", "EXTRA_TOOL_MIC", "EXTRA_ISLAND_X", "EXTRA_ISLAND_SIDE", "EXTRA_SENSITIVITY", "EXTRA_AUTO_RETURN"))
       and "DockController.PREF_FORM" in h_dlink and "PointerLink.readTrackpadConfig(context, -1, -1)" in h_dlink
       and "setPackage(PointerProtocol.COMPANION_PACKAGE)" in h_dlink and "sendBroadcast(intent, PointerProtocol.PERMISSION_POINTER)" in h_dlink)
-check("Host: las claves de la isla se leen sin el literal flutter.* (contrato 55 claves intacto hasta la fase 2B)",
-      "FlutterPrefs.key(" in h_dlink and 'K_ISLAND_X = "dock_island_x"' in h_dlink and "flutter.dock_island" not in h_dlink
-      and len(contract) == 55)
+check("Host: las claves de la isla y floating_bubble_enabled se leen con el literal del contrato (fase 2B, 61 claves)",
+      all(f'"flutter.{k}"' in h_dlink for k in ("dock_island_x", "dock_island_y", "dock_island_w", "dock_island_h",
+                                               "dock_island_side", "floating_bubble_enabled"))
+      and "FlutterPrefs.key(" not in h_dlink and len(contract) == 61
+      and all(k in contract for k in ("dock_island_x", "dock_island_y", "dock_island_w", "dock_island_h",
+                                      "dock_island_side", "floating_bubble_enabled")))
 check("Host: el dictado de la app por Flutter también se ve en la barra del complemento",
       "mirrorStateToComplement(state)" in fbs and "DockDictationService.isActive" in fbs and "MIRROR_REPEAT_MS" in fbs)
 check("Host: el dictado de la burbuja de respaldo por Flutter no se tocó",
@@ -770,6 +777,76 @@ mut_dsvc = h_dsvc.replace("BackgroundWork.tryClaimMicrophone()", "1L")
 check("Mutación: dictado sin exclusión del micrófono se detecta", "BackgroundWork.tryClaimMicrophone()" not in mut_dsvc)
 mut_dock_destroy = pun_svc.replace("dock?.destroy()", "")
 check("Mutación: barra sin destruir al desvincular se detecta", "dock?.destroy()" not in mut_dock_destroy)
+
+# --- 12. Fase 2B: Ajustes de la isla (Flutter) ---
+isl_page = read("app_source/lib/screens/settings/island_page.dart")
+isl_mock = read("app_source/lib/widgets/island_mockup.dart")
+isl_geo = read("app_source/lib/helpers/island_geometry.dart")
+kit2 = read("app_source/lib/widgets/settings_v2.dart")
+deb = read("app_source/lib/ui/debouncer.dart")
+tokens2 = read("app_source/lib/ui/design_tokens.dart")
+dart_keys = ("dock_island_x", "dock_island_y", "dock_island_w", "dock_island_h", "dock_island_side")
+check("Forma Isla en el selector de Ajustes, deshabilitada sin el complemento activo",
+      "SettingsOption(\n                  'island'" in general and "enabled: islandAvailable" in general
+      and "o.enabled ? () => onSelected(o.value) : null" in kit2)
+check("Sin complemento: sección que explica y el mismo acceso que Trackpad",
+      "'island-companion-section'" in general and "Necesita VoiceBubble Puntero activo" in general
+      and "_pointerCompanionRows()" in general and "_pointerCompanionRows()" in trackpad_page
+      and "'pointer-companion-row'" in trackpad_page)
+check("Elegir Isla sin el complemento activo se rechaza también en el código",
+      "form == 'island' &&" in settings and "_pointerStatus != FloatingTrackpadService.pointerReady" in settings)
+check("Subpágina «Ajustar isla»: enum, fila solo con la forma Isla y página propia",
+      "  isla," in settings and "case SettingsPage.isla:" in settings and "part 'settings/island_page.dart';" in settings
+      and "if (_dockForm == 'island')" in general and "'island-adjust-row'" in general and "title: 'Ajustar isla'" in isl_page)
+check("Cuatro medidas con deslizador y ±1 px, lado, centrar arriba y restablecer",
+      all(f"id: 'island-{i}'" in isl_page for i in "xywh") and "'island-side-selector'" in isl_page
+      and "'island-center-button'" in isl_page and "'island-reset-button'" in isl_page
+      and "class SettingsStepperRow" in kit2 and "Icons.remove_rounded" in kit2 and "Icons.add_rounded" in kit2)
+check("Mantener apretado repite y el target mide 48 dp", "Timer.periodic(_repeatEvery" in kit2 and "kStepperButtonSize = 48.0" in tokens2)
+check("Rangos: ancho 72–180 dp, alto 22–48 dp, y hasta un tercio del alto, convertidos con la densidad",
+      "minWidthDp = 72" in isl_geo and "maxWidthDp = 180" in isl_geo and "minHeightDp = 22" in isl_geo
+      and "maxHeightDp = 48" in isl_geo and "screenH ~/ 3" in isl_geo and "View.of(context)" in isl_page
+      and "view.devicePixelRatio" in isl_page)
+check("Envío en vivo limitado: Throttler de 60 ms, valor final al soltar y al salir de la página",
+      "class Throttler" in deb and "Throttler(interval: const Duration(milliseconds: 60))" in isl_page
+      and "_throttler.flush()" in isl_page and "_throttler.dispose()" in isl_page and "reloadDock()" in isl_page)
+check("Cada cambio guarda las prefs ANTES de pedir el reenvío (DOCK_CONFIG)",
+      isl_page.index("await _save(f)") < isl_page.index("floatingBubbleService.reloadDock()"))
+check("Maqueta a escala real: misma geometría que el complemento, tamaño físico de la vista, sin desenfoque",
+      "IslandGeometry(" in isl_mock and "kIslandBg" in isl_mock and "BackdropFilter" not in isl_mock
+      and "ImageFilter" not in isl_mock and "view.physicalSize" in isl_page
+      and "static const double defaultWidthDp = 112" in isl_geo and "DEFAULT_W_DP = 112f" in d_isl_geo)
+check("Constantes de la geometría Dart == IslandGeometry.kt del complemento",
+      all(re.search(rf"{k}\s*=\s*{v}f?\b", d_isl_geo) for k, v in (("MIN_W_DP", "72"), ("MAX_W_DP", "180"), ("MIN_H_DP", "22"), ("MAX_H_DP", "48"),
+                                                                      ("DEFAULT_TOP_DP", "3"), ("EDGE_MARGIN_DP", "4"), ("IDLE_DOT_DP", "12"), ("IDLE_POINTER_DP", "14"), ("IDLE_PAD_DP", "10"))))
+check("Claves de la isla en Dart: constantes, bridgeKeys y contrato",
+      all(f"'{k}'" in storage for k in dart_keys) and all(k in contract for k in dart_keys)
+      and "dockIslandXKey," in storage and "dockIslandSideKey," in storage and "_floatingBubbleKey,\n    kbBottomElevationDpKey" in storage
+      and "floating_bubble_enabled" in contract)
+check("Valores de la isla validados (−1 por defecto, tope 20000, lado left/right)",
+      "dockIslandMaxPx = 20000" in storage and "dockIslandSides = ['left', 'right']" in storage
+      and "ISLAND_MAX_PX = 20000" in proto and "defaultDockIslandSide = 'left'" in storage)
+check("Tokens de la isla (negra siempre) en design_tokens, sin colores sueltos en la maqueta",
+      "kIslandBg = Color(0xFF000000)" in tokens2 and "Color(0x" not in isl_mock and "Colors." not in isl_mock + isl_page)
+for t in ("app_source/test/screens/settings_island_adjust_test.dart", "app_source/test/widgets/island_mockup_test.dart",
+          "app_source/test/widgets/settings_stepper_row_test.dart", "app_source/test/services/dock_island_storage_test.dart",
+          "app_source/test/helpers/island_geometry_test.dart", "app_source/test/ui/throttler_test.dart"):
+    check(f"Existe {os.path.basename(t)}", exists(t))
+check("Documentación 2B: design.md describe «Ajustar isla» y el contrato de la barra ya no lo deja pendiente",
+      "Ajustar isla" in read("design.md") and "Ajustes de la isla (fase 2B)" in read("docs/contrato-barra.md")
+      and "61" in read("docs/contrato-claves.md"))
+
+# Mutaciones de la fase 2B
+mut_form = storage.replace("['edge', 'bubble', 'island']", "['edge', 'bubble']")
+check("Mutación: forma Isla fuera del dominio se detecta", "['edge', 'bubble', 'island'];" not in mut_form)
+mut_en = general.replace("enabled: islandAvailable,", "")
+check("Mutación: Isla habilitada sin el complemento se detecta", "enabled: islandAvailable" not in mut_en)
+mut_thr = isl_page.replace("_throttler.run(_commit);", "_commit();")
+check("Mutación: envío sin limitar se detecta", "_throttler.run(_commit);" not in mut_thr)
+mut_lit = h_dlink.replace('"flutter.dock_island_x"', 'FlutterPrefs.key("dock_island_x")')
+check("Mutación: clave de la isla sin literal del contrato se detecta", '"flutter.dock_island_x"' not in mut_lit)
+mut_keys = storage.replace("    dockIslandHKey,\n", "")
+check("Mutación: clave de la isla fuera de bridgeKeys se detecta", "    dockIslandHKey,\n" not in mut_keys)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE BARRA FLOTANTE: {suite.passed} pasados, {suite.failed} fallidos.")

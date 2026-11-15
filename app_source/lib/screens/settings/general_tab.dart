@@ -95,6 +95,10 @@ extension _GeneralPages on _SettingsScreenState {
   }
 
   Widget _buildBurbujaPage(BuildContext context) {
+    // La isla la dibuja solo el complemento VoiceBubble Puntero: sin él
+    // activo se ve pero no se puede elegir, y se explica por qué.
+    final islandAvailable =
+        _pointerStatus == FloatingTrackpadService.pointerReady;
     return _subpage(
       context,
       title: 'Barra flotante',
@@ -114,14 +118,35 @@ extension _GeneralPages on _SettingsScreenState {
               id: 'dock-form-selector',
               title: 'Forma',
               value: _dockForm,
-              options: const [
-                SettingsOption('edge', 'Barra en el borde'),
-                SettingsOption('bubble', 'Burbuja'),
+              options: [
+                const SettingsOption('edge', 'Barra en el borde'),
+                const SettingsOption('bubble', 'Burbuja'),
+                SettingsOption(
+                  'island',
+                  'Isla',
+                  detail: islandAvailable ? null : 'No disponible',
+                  enabled: islandAvailable,
+                ),
               ],
               onSelected: _saveDockForm,
             ),
+            if (_dockForm == 'island')
+              SettingsNavRow(
+                key: const ValueKey('island-adjust-row'),
+                title: 'Ajustar isla',
+                onTap: () => _go(SettingsPage.isla),
+              ),
           ],
         ),
+        if (!islandAvailable)
+          SettingsSection(
+            key: const ValueKey('island-companion-section'),
+            header: 'Isla',
+            footer: 'Necesita VoiceBubble Puntero activo: solo un servicio de '
+                'Accesibilidad puede dibujar sobre la cámara y la barra de '
+                'estado.',
+            children: _pointerCompanionRows(),
+          ),
         SettingsSection(
           header: 'Herramientas',
           footer: 'Con una sola herramienta, tocar la burbuja la usa '

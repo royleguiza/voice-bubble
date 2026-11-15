@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -418,7 +420,12 @@ class SettingsOption<T> {
   /// Aclaración corta a la derecha dentro del menú ("250 ms").
   final String? detail;
 
-  const SettingsOption(this.value, this.label, {this.detail});
+  /// false = la opción se ve pero no se puede elegir (el motivo va en
+  /// [detail] y en el pie de la página).
+  final bool enabled;
+
+  const SettingsOption(this.value, this.label,
+      {this.detail, this.enabled = true});
 }
 
 /// Elegir una opción: valor actual + flechas; al tocar abre un menú
@@ -473,7 +480,7 @@ class SettingsMenuRow<T> extends StatelessWidget {
         for (final o in options)
           MenuItemButton(
             key: ValueKey('$id-${o.value}'),
-            onPressed: () => onSelected(o.value),
+            onPressed: o.enabled ? () => onSelected(o.value) : null,
             style: ButtonStyle(
               minimumSize: const WidgetStatePropertyAll(Size(220, 44)),
               padding: const WidgetStatePropertyAll(
@@ -499,7 +506,11 @@ class SettingsMenuRow<T> extends StatelessWidget {
                   ),
             child: Semantics(
               selected: o.value == value,
-              child: Text(o.label, style: kTextBody.copyWith(color: p.label)),
+              child: Text(
+                o.label,
+                style: kTextBody.copyWith(
+                    color: o.enabled ? p.label : p.secondary),
+              ),
             ),
           ),
       ],
@@ -1031,6 +1042,276 @@ class SettingsSheetCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: rows,
+    );
+  }
+}
+
+/// Tema común de los deslizadores de Ajustes: pista de 4 dp en brasa,
+/// perilla blanca de 14 dp de radio y sin marcas. El globo de valor solo
+/// sale si el [Slider] recibe `label`.
+SliderThemeData settingsSliderTheme(BuildContext context) {
+  final p = SettingsPalette.of(context);
+  return SliderTheme.of(context).copyWith(
+    trackHeight: 4,
+    activeTrackColor: p.tintFill,
+    inactiveTrackColor: p.switchOff,
+    thumbColor: kBgElevatedLight,
+    overlayColor: p.tintFill.withValues(alpha: 0.12),
+    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
+    tickMarkShape: SliderTickMarkShape.noTickMark,
+  );
+}
+
+/// Valor entero con ajuste fino: título y valor en mono arriba; abajo un
+/// deslizador entre dos botones «−» y «+» de un paso (mantener apretado
+/// repite). Para cosas que se ajustan al píxel (la isla).
+///
+/// [onChanged] llega en cada movimiento (arrastre, toque o repetición);
+/// [onChangeEnd] cuando el dedo se suelta, para guardar el valor final.
+/// El valor se lleva también acá adentro, así una repetición rápida suma de
+/// a uno aunque la pantalla de arriba todavía no haya repintado.
+/// Keys: `$id-value`, `$id-slider`, `$id-minus` y `$id-plus`.
+class SettingsStepperRow extends StatefulWidget {
+  final String id;
+  final String title;
+  final int value;
+  final int min;
+  final int max;
+
+  /// Unidad corta del valor ("px") y su lectura completa para el lector de
+  /// pantalla ("píxeles").
+  final String unit;
+  final String unitSpoken;
+  final String minusLabel;
+  final String plusLabel;
+  final ValueChanged<int> onChanged;
+  final VoidCallback onChangeEnd;
+
+  const SettingsStepperRow({
+    super.key,
+    required this.id,
+    required this.title,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.minusLabel,
+    required this.plusLabel,
+    required this.onChanged,
+    required this.onChangeEnd,
+    this.unit = 'px',
+    this.unitSpoken = 'píxeles',
+  });
+
+  @override
+  State<SettingsStepperRow> createState() => _SettingsStepperRowState();
+}
+
+class _SettingsStepperRowState extends State<SettingsStepperRow> {
+  late int _current;
+
+  /// Un rango vacío (pantalla diminuta) se ensancha para que el deslizador
+  /// no explote.
+  int get _hi => widget.max > widget.min ? widget.max : widget.min + 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.value.clamp(widget.min, _hi);
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsStepperRow old) {
+    super.didUpdateWidget(old);
+    _current = widget.value.clamp(widget.min, _hi);
+  }
+
+  void _set(int next) {
+    final v = next.clamp(widget.min, _hi);
+    if (v == _current) return;
+    setState(() => _current = v);
+    widget.onChanged(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = SettingsPalette.of(context);
+    final id = widget.id;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // El deslizador ya anuncia título y valor: el encabezado visual
+          // queda fuera de la semántica para no leerlo dos veces.
+          ExcludeSemantics(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(widget.title,
+                      style: kTextBody.copyWith(color: p.label)),
+                ),
+                Text(
+                  '$_current ${widget.unit}',
+                  key: ValueKey('$id-value'),
+                  style: kTextMono.copyWith(fontSize: 14, color: p.tintText),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              _StepButton(
+                key: ValueKey('$id-minus'),
+                icon: Icons.remove_rounded,
+                label: widget.minusLabel,
+                enabled: _current > widget.min,
+                onStep: () => _set(_current - 1),
+                onEnd: widget.onChangeEnd,
+              ),
+              Expanded(
+                child: SliderTheme(
+                  data: settingsSliderTheme(context),
+                  child: Slider(
+                    key: ValueKey('$id-slider'),
+                    value: _current.toDouble(),
+                    min: widget.min.toDouble(),
+                    max: _hi.toDouble(),
+                    divisions: _hi - widget.min,
+                    semanticFormatterCallback: (v) =>
+                        '${widget.title}, ${v.round()} ${widget.unitSpoken}',
+                    onChanged: (v) => _set(v.round()),
+                    onChangeEnd: (_) => widget.onChangeEnd(),
+                  ),
+                ),
+              ),
+              _StepButton(
+                key: ValueKey('$id-plus'),
+                icon: Icons.add_rounded,
+                label: widget.plusLabel,
+                enabled: _current < _hi,
+                onStep: () => _set(_current + 1),
+                onEnd: widget.onChangeEnd,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Botón circular de un paso (target de 48 dp): un toque da un paso y
+/// mantenerlo apretado repite hasta soltarlo.
+class _StepButton extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool enabled;
+  final VoidCallback onStep;
+
+  /// El dedo se soltó (después de un toque o de una repetición).
+  final VoidCallback onEnd;
+
+  const _StepButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.enabled,
+    required this.onStep,
+    required this.onEnd,
+  });
+
+  @override
+  State<_StepButton> createState() => _StepButtonState();
+}
+
+class _StepButtonState extends State<_StepButton> {
+  /// Cada cuánto repite mientras se mantiene apretado.
+  static const Duration _repeatEvery = Duration(milliseconds: 50);
+  Timer? _repeat;
+  bool _pressed = false;
+
+  void _startRepeat() {
+    _repeat?.cancel();
+    widget.onStep();
+    _repeat = Timer.periodic(_repeatEvery, (_) {
+      if (!widget.enabled) {
+        _stopRepeat();
+        return;
+      }
+      widget.onStep();
+    });
+  }
+
+  void _stopRepeat() {
+    if (_repeat == null) return;
+    _repeat!.cancel();
+    _repeat = null;
+    widget.onEnd();
+  }
+
+  @override
+  void dispose() {
+    _repeat?.cancel();
+    _repeat = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = SettingsPalette.of(context);
+    final enabled = widget.enabled;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: widget.label,
+      excludeSemantics: true,
+      onTap: enabled
+          ? () {
+              widget.onStep();
+              widget.onEnd();
+            }
+          : null,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        onTap: enabled
+            ? () {
+                widget.onStep();
+                widget.onEnd();
+              }
+            : null,
+        onLongPressStart: enabled ? (_) => _startRepeat() : null,
+        onLongPressEnd: (_) {
+          setState(() => _pressed = false);
+          _stopRepeat();
+        },
+        onLongPressCancel: () {
+          setState(() => _pressed = false);
+          _stopRepeat();
+        },
+        child: SizedBox(
+          width: kStepperButtonSize,
+          height: kStepperButtonSize,
+          child: Center(
+            child: Container(
+              width: kSettingsNavButtonSize,
+              height: kSettingsNavButtonSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _pressed ? p.field : p.glass,
+                border: Border.all(color: p.glassBorder, width: p.borderWidth),
+              ),
+              child: Icon(
+                widget.icon,
+                size: 22,
+                color: enabled ? p.label : p.chevron,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

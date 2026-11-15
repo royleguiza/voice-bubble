@@ -68,9 +68,10 @@ void main() {
     });
 
     test('los dominios coinciden con lo que entiende Kotlin', () {
-      // DockGeometry.Form.fromPref ("edge"/"bubble") y
+      // DockGeometry.Form.fromPref ("edge"/"bubble"; "island" la dibuja el
+      // complemento y el respaldo la ve como burbuja) y
       // FloatingTrackpadService.MODE_PANEL/MODE_WINDOW.
-      expect(StorageService.dockForms, ['edge', 'bubble']);
+      expect(StorageService.dockForms, ['edge', 'bubble', 'island']);
       expect(StorageService.pointerOpenModes, ['panel', 'window']);
     });
   });

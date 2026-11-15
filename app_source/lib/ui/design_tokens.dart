@@ -682,3 +682,22 @@ const Color kKbPreviewKeyLight = kKeyLight;
 const Color kKbPreviewKeyDark = kKeyDark;
 const Color kKbPreviewKeyAltLight = kKey2Light;
 const Color kKbPreviewKeyAltDark = kKey2Dark;
+
+// ---------------------------------------------------------------------------
+// Ajustar isla (maqueta y controles; design.md §14 «Isla»)
+// ---------------------------------------------------------------------------
+
+/// La isla es negra SIEMPRE (como el recorte de la cámara), de día y de
+/// noche: mismos valores que `island_bg` / `island_line` / `island_fg` del
+/// complemento (`puntero_android/.../colors.xml`).
+const Color kIslandBg = Color(0xFF000000);
+const Color kIslandLine = Color(0xFF23252E);
+const Color kIslandFg = kHzFgDark;
+
+/// Lado del botón − / + de un deslizador de un píxel (target táctil).
+const double kStepperButtonSize = 48.0;
+
+/// Ancho máximo de la maqueta del teléfono (dp) y qué parte de la pantalla
+/// real, desde arriba, muestra (la isla vive en el tercio superior).
+const double kIslandMockupMaxWidth = 280.0;
+const double kIslandMockupVisibleFraction = 0.4;

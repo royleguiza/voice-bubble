@@ -37,7 +37,8 @@ screen = read(f"{LIB}/screens/settings_screen.dart")
 kit = read(f"{LIB}/widgets/settings_v2.dart")
 pages = screen + read(f"{LIB}/screens/settings/general_tab.dart") \
     + read(f"{LIB}/screens/settings/teclado_tab.dart") \
-    + read(f"{LIB}/screens/settings/trackpad_tab.dart")
+    + read(f"{LIB}/screens/settings/trackpad_tab.dart") \
+    + read(f"{LIB}/screens/settings/island_page.dart")
 
 # --- 1. Estructura ---
 check("Dock de pestañas eliminado",
@@ -50,14 +51,14 @@ check("SettingsScreen sin AppBar", "AppBar(" not in screen)
 check("SettingsScreen con SafeArea", "SafeArea(" in screen)
 check("Raíz con título grande 'Ajustes'", re.search(r"SettingsLargeTitle\(\s*'Ajustes'", screen) is not None)
 for page in ["root", "transcripcion", "ia", "teclado", "sonido", "burbuja",
-             "trackpad", "snippets", "claves", "notas", "acerca"]:
+             "isla", "trackpad", "snippets", "claves", "notas", "acerca"]:
     check(f"Página {page} en el enum", f"  {page}," in screen)
 for nav in ["transcripcion", "ia", "teclado", "burbuja", "trackpad",
             "snippets", "claves", "notas"]:
     check(f"Fila raíz nav-{nav}", f"ValueKey('nav-{nav}')" in screen)
 check("Las páginas son part de la misma librería",
       all(f"part 'settings/{p}';" in screen
-          for p in ["general_tab.dart", "teclado_tab.dart", "trackpad_tab.dart"]))
+          for p in ["general_tab.dart", "island_page.dart", "teclado_tab.dart", "trackpad_tab.dart"]))
 
 # --- 2. Kit único ---
 for cls in ["SettingsSection", "SettingsNavRow", "SettingsSwitchRow",
@@ -72,6 +73,16 @@ check("Interruptor estilo iOS (CupertinoSwitch)", "CupertinoSwitch(" in kit)
 check("Menú desplegable con check (MenuAnchor)", "MenuAnchor(" in kit
       and "Icons.check_rounded" in kit)
 check("Sin SegmentedButton en Ajustes", "SegmentedButton" not in pages + kit)
+# Fase 2B: «Ajustar isla» con los componentes del kit (sin estilos sueltos).
+isla = read(f"{LIB}/screens/settings/island_page.dart")
+mock = read(f"{LIB}/widgets/island_mockup.dart")
+check("Ajustar isla usa el kit (sección, stepper, menú, acción) y la maqueta",
+      all(c in isla for c in ("SettingsSection(", "SettingsStepperRow(", "SettingsMenuRow<String>(",
+                              "SettingsActionRow(", "IslandMockup(")))
+check("El stepper del kit: deslizador con − y + de un paso y tema común de sliders",
+      "class SettingsStepperRow" in kit and "settingsSliderTheme(context)" in kit and "kStepperButtonSize" in kit)
+check("Maqueta sin desenfoque, con tokens de la isla y sin colores sueltos",
+      "BackdropFilter" not in mock and "ImageFilter" not in mock and "kIslandBg" in mock and "Color(0x" not in mock)
 check("Sin SwitchListTile en Ajustes", "SwitchListTile" not in pages + kit)
 check("Sin tarjetas expandibles", "ExpandableSettingsCard" not in pages + kit)
 
@@ -145,7 +156,9 @@ need_keys = [
     "snippet-content-field", "snippet-save-button", "snippet-delete-button",
     "credenciales-open-add", "credenciales-add-nombre", "credenciales-add-usuario",
     "credenciales-add-password", "credenciales-add-button", "credenciales-show-user",
-    "settings-back-button",
+    "settings-back-button", "island-adjust-row", "island-x",
+    "island-y", "island-w", "island-h",
+    "island-side-selector", "island-center-button", "island-reset-button",
 ]
 blob = " ".join(open(f, encoding="utf-8").read() for f in dart_files)
 for k in need_keys:

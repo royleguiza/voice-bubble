@@ -701,8 +701,14 @@ void main() {
     const expectedBridgeKeys = {
       'bubble_history_enabled',
       'dock_form',
+      'dock_island_h',
+      'dock_island_side',
+      'dock_island_w',
+      'dock_island_x',
+      'dock_island_y',
       'dock_tool_mic',
       'dock_tool_pointer',
+      'floating_bubble_enabled',
       'kb_bottom_elevation_dp',
       'kb_clipboard_images_enabled',
       'kb_code_key_visible',
@@ -756,8 +762,8 @@ void main() {
       'widget_mic_position',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (55 claves)', () {
-      expect(StorageService.bridgeKeys.length, 55);
+    test('bridgeKeys cubre exactamente el contrato (61 claves)', () {
+      expect(StorageService.bridgeKeys.length, 61);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
       expect(Set.of(StorageService.bridgeKeys), kContractKeysSnapshot);
       final contractFile = File('docs/contract-keys.txt');
@@ -775,11 +781,12 @@ void main() {
       }
     });
 
-    test('floating_bubble_enabled es solo-Dart (burbuja va por canal)',
+    test('floating_bubble_enabled está en el puente (DockLink lo lee)',
         () async {
-      // Aclaración de divergencia: la burbuja se gobierna por MethodChannel,
-      // Kotlin jamás lee esta pref; por eso NO entra al puente.
-      expect(StorageService.bridgeKeys, isNot(contains('floating_bubble_enabled')));
+      // Desde la fase 2B el host la lee (DockLink.readConfig) para saber si
+      // la barra del complemento debe dibujarse tras un reinicio: ya no es
+      // solo-Dart. La burbuja se sigue gobernando por el canal.
+      expect(StorageService.bridgeKeys, contains('floating_bubble_enabled'));
       SharedPreferences.setMockInitialValues({});
       final service = StorageService();
       await service.saveFloatingBubbleEnabled(true);
