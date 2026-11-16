@@ -48,6 +48,9 @@ class FloatingBubbleService : Service() {
         /** Plazo para que el complemento conteste que dibuja la barra antes de mostrar la de respaldo. */
         private const val COMPLEMENT_ANSWER_MS = 1200L
 
+        /** Aviso de la notificación: complemento activado en Accesibilidad pero sin contestar. */
+        private const val COMPLEMENT_STUCK = "stuck"
+
         fun updateState(state: String) {
             val svc = instance
             if (svc == null) {
@@ -175,6 +178,35 @@ class FloatingBubbleService : Service() {
     /** La barra de respaldo se esconde si el complemento dibuja (o está por contestar). */
     private fun applySuppression() {
         dock?.setSuppressed(DockLink.complementDrawing || waitingComplement)
+        updateComplementWarning()
+    }
+
+    /** Último aviso puesto en la notificación (para no reescribirla de más). */
+    private var complementProblem: String? = null
+
+    /**
+     * Complemento instalado pero sin dibujar la barra (Android le apagó la
+     * Accesibilidad al actualizarlo, o quedó activado pero trabado): se ve la
+     * barra de respaldo, que no sabe hacer la isla. La notificación lo dice y
+     * al tocarla abre Accesibilidad. Cuando el complemento vuelve, se limpia.
+     */
+    private fun updateComplementWarning() {
+        val problem = try {
+            when {
+                DockLink.complementDrawing || waitingComplement -> null
+                !PointerLink.isInstalled(this) -> null
+                !PointerLink.isEnabled(this, fresh = true) -> PointerProtocol.STATUS_DISABLED
+                else -> COMPLEMENT_STUCK
+            }
+        } catch (_: Exception) {
+            null
+        }
+        if (problem == complementProblem) return
+        complementProblem = problem
+        try {
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(NOTIFICATION_ID, buildNotification())
+        } catch (_: Exception) {}
     }
 
     private fun isBusyState(state: String) = state == "recording" || state == "transcribing"
@@ -263,10 +295,31 @@ class FloatingBubbleService : Service() {
             Notification.Builder(this)
         }
 
-        builder.setContentTitle("VoiceBubble STT")
-            .setContentText("Burbuja flotante activa. Toca para transcribir.")
-            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-            .setContentIntent(pendingOpenApp)
+        val problem = complementProblem
+        if (problem == null) {
+            builder.setContentTitle("VoiceBubble STT")
+                .setContentText("Burbuja flotante activa. Toca para transcribir.")
+                .setContentIntent(pendingOpenApp)
+        } else {
+            val text = if (problem == PointerProtocol.STATUS_DISABLED) {
+                "Android lo apagó (pasa al actualizarlo). Tocá para activarlo en Accesibilidad."
+            } else {
+                "Está activado pero no responde. Tocá, apagalo y volvé a prenderlo en Accesibilidad."
+            }
+            val a11y = PendingIntent.getActivity(
+                this, 2,
+                Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            builder.setContentTitle("VoiceBubble Puntero no está funcionando")
+                .setContentText(text)
+                .setStyle(Notification.BigTextStyle().bigText(
+                    "$text Mientras tanto se ve la barra común (sin la isla ni el puntero por encima de todo)."
+                ))
+                .setContentIntent(a11y)
+        }
+        builder.setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {

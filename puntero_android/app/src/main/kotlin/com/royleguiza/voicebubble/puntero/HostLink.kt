@@ -34,6 +34,14 @@ internal object HostLink {
         } catch (_: Exception) {}
     }
 
+    /** ¿Está VoiceBubble instalada? (visible por `<queries>` del manifiesto). */
+    fun isHostInstalled(context: Context): Boolean = try {
+        context.packageManager.getPackageInfo(PointerProtocol.HOST_PACKAGE, 0)
+        true
+    } catch (_: Exception) {
+        false
+    }
+
     /** ¿VoiceBubble tiene el permiso de micrófono? Sin él no vale la pena pedirle que grabe. */
     fun hostHasMicPermission(context: Context): Boolean = try {
         context.packageManager.checkPermission("android.permission.RECORD_AUDIO", PointerProtocol.HOST_PACKAGE) ==

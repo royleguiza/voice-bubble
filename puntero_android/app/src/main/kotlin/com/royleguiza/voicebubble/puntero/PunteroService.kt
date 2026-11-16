@@ -55,6 +55,15 @@ class PunteroService : AccessibilityService() {
          * [result]: true = Android lo completó, false = lo canceló o rechazó.
          * Devuelve false si el servicio no está en marcha.
          */
+        /** La pantalla del complemento cambió la pestaña propia o sus ajustes (hilo principal). */
+        fun refreshOwnSettings(rebuild: Boolean = false) {
+            instance?.dock?.refreshOwn(rebuild)
+        }
+
+        /** Hay una barra de VoiceBubble encendida (en ese caso la pestaña propia no se dibuja). */
+        fun hostDockEnabled(context: android.content.Context): Boolean =
+            DockPrefs(context).loadConfig().enabled && HostLink.isHostInstalled(context)
+
         fun testTap(x: Float, y: Float, result: (Boolean) -> Unit): Boolean {
             val s = instance ?: return false
             val path = Path().apply {

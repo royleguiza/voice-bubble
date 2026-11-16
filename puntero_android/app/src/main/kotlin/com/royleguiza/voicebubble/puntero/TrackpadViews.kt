@@ -181,3 +181,36 @@ internal class SystemButton(
         canvas.drawPath(path, ink)
     }
 }
+
+/**
+ * Esquina para cambiar el tamaño de la ventana libre: tres rayitas en
+ * diagonal (fg2; brasa mientras se arrastra). La zona táctil es toda la vista.
+ */
+internal class ResizeGrip(context: Context, private val palette: Palette) : View(context) {
+    companion object {
+        const val SIZE_DP = 36f
+    }
+
+    private val d = resources.displayMetrics.density
+    private val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+        strokeWidth = 2f * d
+    }
+
+    override fun setPressed(pressed: Boolean) {
+        super.setPressed(pressed)
+        invalidate()
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        ink.color = if (isPressed) palette.ember else palette.fg2
+        val r = width - 9 * d
+        val b = height - 9 * d
+        for (i in 1..3) {
+            val o = i * 5f * d
+            canvas.drawLine(r - o, b, r, b - o, ink)
+        }
+    }
+}

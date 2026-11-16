@@ -104,4 +104,65 @@ class TrackpadGeometryTest {
         assertTrue(b.contains(99f, 150f, slop = 1f))
         assertFalse(b.contains(150f, 301f))
     }
+
+    // ---------------------------------------------------------- fase 3: ventana libre
+
+    @Test
+    fun `ventana libre guardada se abre donde la dejaron, ignorando el ancla`() {
+        val saved = TrackpadGeometry.Placement(0.1f, 0.05f, 240f, 220f)
+        val b = TrackpadGeometry.open(PointerProtocol.MODE_WINDOW, sw, sh, nav, 900, 2000, false, d, saved)
+        assertEquals(108, b.x)
+        assertEquals(120, b.y)
+        assertEquals(480, b.w)
+        assertEquals(440, b.h)
+    }
+
+    @Test
+    fun `el panel abajo no usa el lugar guardado`() {
+        val saved = TrackpadGeometry.Placement(0.1f, 0.05f, 240f, 220f)
+        val b = TrackpadGeometry.open(PointerProtocol.MODE_PANEL, sw, sh, nav, -1, -1, false, d, saved)
+        assertEquals(open(PointerProtocol.MODE_PANEL), b)
+    }
+
+    @Test
+    fun `guardar y volver a abrir da la misma ventana`() {
+        val b = TrackpadGeometry.Bounds(300, 700, 500, 460)
+        val p = TrackpadGeometry.toPlacement(b, sw, sh, d)
+        val again = TrackpadGeometry.fromPlacement(p, sw, sh, nav, d)
+        assertTrue(kotlin.math.abs(again.x - b.x) <= 1)
+        assertTrue(kotlin.math.abs(again.y - b.y) <= 1)
+        assertEquals(b.w, again.w)
+        assertEquals(b.h, again.h)
+    }
+
+    @Test
+    fun `achicar no baja del minimo y agrandar no se sale de la pantalla`() {
+        val b = TrackpadGeometry.Bounds(600, 1500, 560, 592)
+        val tiny = TrackpadGeometry.resize(b, 10, 10, sw, sh, nav, d)
+        assertEquals((TrackpadGeometry.MIN_WINDOW_W_DP * d).toInt(), tiny.w)
+        assertEquals((TrackpadGeometry.MIN_WINDOW_H_DP * d).toInt(), tiny.h)
+        assertEquals(b.x, tiny.x)
+        assertEquals(b.y, tiny.y)
+        val huge = TrackpadGeometry.resize(b, 5000, 5000, sw, sh, nav, d)
+        assertEquals(sw, huge.x + huge.w)
+        assertEquals(sh - nav, huge.y + huge.h)
+    }
+
+    @Test
+    fun `al girar la ventana libre conserva su tamano elegido`() {
+        val b = TrackpadGeometry.Bounds(100, 300, 460, 420)
+        val r = TrackpadGeometry.refit(b, PointerProtocol.MODE_WINDOW, sh, sw, nav, false, d)
+        assertEquals(460, r.w)
+        assertEquals(420, r.h)
+        // Acotada a la pantalla girada.
+        assertTrue(r.y + r.h <= sw - nav)
+    }
+
+    @Test
+    fun `lugar guardado fuera de una pantalla mas chica queda adentro`() {
+        val saved = TrackpadGeometry.Placement(0.95f, 0.95f, 400f, 400f)
+        val b = TrackpadGeometry.fromPlacement(saved, 720, 1280, 60, 2f)
+        assertTrue(b.x >= 0 && b.x + b.w <= 720)
+        assertTrue(b.y >= 0 && b.y + b.h <= 1280 - 60)
+    }
 }

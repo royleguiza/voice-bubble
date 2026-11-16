@@ -15,10 +15,15 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.SeekBar
+import android.widget.Switch
 import android.widget.TextView
+import kotlin.math.roundToInt
 
 /**
- * Única pantalla del complemento: dice si está activo y lleva a activarlo.
+ * Única pantalla del complemento: dice si está activo y lleva a activarlo, y
+ * (fase 3) permite usarlo sin VoiceBubble: pestaña propia en el borde, lado,
+ * ajustes mínimos del trackpad y volver a poner el trackpad en su lugar.
  * Construida en código (sin dependencias) con Horizonte, el diseño de
  * VoiceBubble: tokens hz_* día/noche, Sora en títulos e Inter en el texto.
  */
@@ -31,6 +36,17 @@ class MainActivity : Activity() {
     private lateinit var testResult: TextView
     private lateinit var counters: TextView
     private var testWaiting = false
+
+    private val prefs by lazy { DockPrefs(this) }
+    private lateinit var tabSwitch: Switch
+    private lateinit var tabNote: TextView
+    private lateinit var ownSettings: LinearLayout
+    private lateinit var hostNote: TextView
+    private val sideButtons = mutableListOf<Pair<String, Button>>()
+    private val styleButtons = mutableListOf<Pair<String, Button>>()
+    private val modeButtons = mutableListOf<Pair<String, Button>>()
+    private lateinit var sensValue: TextView
+    private lateinit var sensBar: SeekBar
 
     private val d get() = resources.displayMetrics.density
     private fun color(id: Int) = getColor(id)
@@ -61,8 +77,8 @@ class MainActivity : Activity() {
         column.addView(text(getString(R.string.app_name), 30f, R.color.hz_fg, heading = true))
         column.addView(
             text(
-                "Hace los clics del trackpad de VoiceBubble en cualquier app, con cualquier teclado, " +
-                    "y dibuja la barra flotante de VoiceBubble (burbuja, barra lateral o isla) para que no desaparezca. " +
+                "Un puntero que llega a toda la pantalla, también a la parte que el dedo ya no alcanza. " +
+                    "Funciona solo o con VoiceBubble: hace los clics de su trackpad y dibuja su barra flotante (burbuja, barra lateral o isla). " +
                     "No lee lo que hay en la pantalla; solo recuerda dónde dejaste la barra.",
                 17f, R.color.hz_fg2,
             ),
@@ -103,6 +119,8 @@ class MainActivity : Activity() {
         column.addView(steps, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             topMargin = dp(16f)
         })
+
+        buildStandalone(column)
 
         // Prueba de clic: el servicio toca el botón «Blanco» de esta pantalla.
         // Si Android lo ejecuta, el botón se entera; si no, se ve por qué.
@@ -180,6 +198,187 @@ class MainActivity : Activity() {
         super.onResume()
         render(isEnabled())
         renderCounters()
+        renderStandalone()
+    }
+
+    // ------------------------------------------------------- sin VoiceBubble (fase 3)
+
+    private fun lp(topDp: Float = 0f) =
+        LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+            topMargin = dp(topDp)
+        }
+
+    private fun buildStandalone(column: LinearLayout) {
+        column.addView(text("Pestaña del puntero", 20f, R.color.hz_fg, heading = true), lp(32f))
+        column.addView(
+            text("Para usar el trackpad sin VoiceBubble: una pestaña chica en el borde de la pantalla lo abre.", 15f, R.color.hz_fg2),
+            lp(6f),
+        )
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18f), dp(10f), dp(12f), dp(10f))
+            background = surface(26f)
+        }
+        card.addView(text("Pestaña en el borde", 17f, R.color.hz_fg, medium = true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        tabSwitch = Switch(this).apply {
+            contentDescription = "Pestaña en el borde"
+            val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+            thumbTintList = android.content.res.ColorStateList(states, intArrayOf(color(R.color.hz_on_ember), color(R.color.hz_surf)))
+            trackTintList = android.content.res.ColorStateList(states, intArrayOf(color(R.color.hz_ember), color(R.color.hz_line)))
+            setOnCheckedChangeListener { _, on ->
+                if (on == prefs.ownTab()) return@setOnCheckedChangeListener
+                prefs.setOwnTab(on)
+                PunteroService.refreshOwnSettings()
+                renderStandalone()
+            }
+        }
+        card.addView(tabSwitch)
+        column.addView(card, lp(14f))
+        tabNote = text("", 14f, R.color.hz_fg2)
+        column.addView(tabNote, lp(8f))
+
+        column.addView(text("Lado de la pestaña", 15f, R.color.hz_fg, medium = true), lp(18f))
+        column.addView(choiceRow(sideButtons, listOf("left" to "Izquierda", "right" to "Derecha")) { side ->
+            prefs.saveSide(if (side == "left") DockGeometry.Side.LEFT else DockGeometry.Side.RIGHT)
+            PunteroService.refreshOwnSettings(rebuild = true)
+            renderStandalone()
+        }, lp(8f))
+
+        column.addView(text("Trackpad", 20f, R.color.hz_fg, heading = true), lp(28f))
+        column.addView(
+            text(
+                "En la ventana libre: arrastrá la línea de arriba para moverla y la esquina de abajo a la derecha " +
+                    "para agrandarla o achicarla. Se acuerda dónde la dejaste, así queda siempre en la parte sana de la pantalla.",
+                15f, R.color.hz_fg2,
+            ),
+            lp(6f),
+        )
+        hostNote = text(
+            "La sensibilidad, el estilo del puntero y la forma del trackpad se ajustan en VoiceBubble › Ajustes › Trackpad.",
+            15f, R.color.hz_fg2,
+        )
+        column.addView(hostNote, lp(12f))
+
+        ownSettings = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        ownSettings.addView(text("Forma", 15f, R.color.hz_fg, medium = true), lp(12f))
+        ownSettings.addView(choiceRow(modeButtons, listOf(PointerProtocol.MODE_WINDOW to "Ventana libre", PointerProtocol.MODE_PANEL to "Panel abajo")) { mode ->
+            saveOwn(mode = mode)
+        }, lp(8f))
+        ownSettings.addView(text("Estilo del puntero", 15f, R.color.hz_fg, medium = true), lp(18f))
+        ownSettings.addView(choiceRow(styleButtons, listOf(
+            PointerProtocol.STYLE_ARROW to "Flecha",
+            PointerProtocol.STYLE_DOT to "Punto",
+            PointerProtocol.STYLE_CROSS to "Cruz",
+        )) { style -> saveOwn(style = style) }, lp(8f))
+        val sensRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        sensRow.addView(text("Sensibilidad", 15f, R.color.hz_fg, medium = true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        sensValue = text("", 15f, R.color.hz_fg2)
+        sensRow.addView(sensValue)
+        ownSettings.addView(sensRow, lp(18f))
+        val steps = ((PointerProtocol.MAX_SENSITIVITY - PointerProtocol.MIN_SENSITIVITY) * 10).roundToInt()
+        sensBar = SeekBar(this).apply {
+            max = steps
+            contentDescription = "Sensibilidad del puntero"
+            progressTintList = android.content.res.ColorStateList.valueOf(color(R.color.hz_ember))
+            thumbTintList = android.content.res.ColorStateList.valueOf(color(R.color.hz_ember))
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
+                    val v = sensFromProgress(progress)
+                    sensValue.text = String.format("%.1f×", v)
+                    if (fromUser) saveOwn(sensitivity = v)
+                }
+                override fun onStartTrackingTouch(bar: SeekBar) {}
+                override fun onStopTrackingTouch(bar: SeekBar) {}
+            })
+        }
+        ownSettings.addView(sensBar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48f)))
+        column.addView(ownSettings, lp(0f))
+
+        column.addView(Button(this).apply {
+            text = "Volver a poner el trackpad en su lugar"
+            isAllCaps = false
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setTextColor(color(R.color.hz_ember_t))
+            typeface = interMedium
+            background = null
+            stateListAnimator = null
+            gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            setPadding(0, 0, 0, 0)
+            setOnClickListener {
+                prefs.clearTrackpadPlacement()
+                text = "Listo: la próxima vez se abre en su lugar de siempre"
+            }
+        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48f)).apply { topMargin = dp(8f) })
+    }
+
+    private fun sensFromProgress(progress: Int): Float =
+        (PointerProtocol.MIN_SENSITIVITY + progress / 10f).coerceIn(PointerProtocol.MIN_SENSITIVITY, PointerProtocol.MAX_SENSITIVITY)
+
+    private fun saveOwn(sensitivity: Float? = null, style: String? = null, mode: String? = null) {
+        val cur = prefs.ownTrackpad()
+        prefs.saveOwnTrackpad(sensitivity ?: cur.sensitivity, style ?: cur.style, mode ?: cur.mode)
+        PunteroService.refreshOwnSettings()
+        renderStandalone()
+    }
+
+    /** Fila de opciones (una sola elegida): píldoras Horizonte, la elegida en brasa. */
+    private fun choiceRow(
+        into: MutableList<Pair<String, Button>>,
+        options: List<Pair<String, String>>,
+        onPick: (String) -> Unit,
+    ): LinearLayout {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        options.forEachIndexed { i, (value, label) ->
+            val b = pill(label, R.color.hz_surf, R.color.hz_fg, outlined = true)
+            b.setOnClickListener { onPick(value) }
+            into += value to b
+            row.addView(b, LinearLayout.LayoutParams(0, dp(48f), 1f).apply {
+                if (i > 0) marginStart = dp(10f)
+            })
+        }
+        return row
+    }
+
+    private fun markChoice(buttons: List<Pair<String, Button>>, selected: String) {
+        for ((value, b) in buttons) {
+            val on = value == selected
+            b.isSelected = on
+            b.setTextColor(color(if (on) R.color.hz_on_ember else R.color.hz_fg))
+            b.background = if (on) {
+                GradientDrawable().apply {
+                    cornerRadius = 26f * d
+                    setColor(color(R.color.hz_ember))
+                }
+            } else {
+                surface(26f)
+            }
+        }
+    }
+
+    private fun renderStandalone() {
+        val own = prefs.ownTab()
+        if (tabSwitch.isChecked != own) tabSwitch.isChecked = own
+        val hostDock = PunteroService.hostDockEnabled(this)
+        tabNote.text = when {
+            own && hostDock -> "Ahora se ve la barra de VoiceBubble (con su puntero). La pestaña aparece cuando apagás esa barra."
+            own -> "Tocá la pestaña para abrir el trackpad. Arrastrala para moverla; llevala al centro y queda como burbuja."
+            else -> "Apagada."
+        }
+        markChoice(sideButtons, if (prefs.side() == DockGeometry.Side.LEFT) "left" else "right")
+        val hostInstalled = HostLink.isHostInstalled(this)
+        hostNote.visibility = if (hostInstalled) View.VISIBLE else View.GONE
+        ownSettings.visibility = if (hostInstalled) View.GONE else View.VISIBLE
+        val tp = prefs.ownTrackpad()
+        markChoice(modeButtons, tp.mode)
+        markChoice(styleButtons, tp.style)
+        val progress = ((tp.sensitivity - PointerProtocol.MIN_SENSITIVITY) * 10).roundToInt()
+        if (sensBar.progress != progress) sensBar.progress = progress
+        sensValue.text = String.format("%.1f×", tp.sensitivity)
     }
 
     private fun renderCounters() {
@@ -271,7 +470,7 @@ class MainActivity : Activity() {
             }
         }
         steps.text = if (enabled) {
-            "Abrí el trackpad desde la barra de VoiceBubble: tocar es clic, mantener es clic largo."
+            "Abrí el trackpad desde la barra de VoiceBubble o desde la pestaña propia: tocar es clic, mantener es clic largo."
         } else {
             "En Accesibilidad, elegí «VoiceBubble Puntero» y activalo."
         }

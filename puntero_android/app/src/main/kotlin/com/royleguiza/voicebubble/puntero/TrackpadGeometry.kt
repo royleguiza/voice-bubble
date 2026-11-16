@@ -9,7 +9,9 @@ import kotlin.math.roundToInt
  *
  * Modos (ver [PointerProtocol.MODE_PANEL] / [PointerProtocol.MODE_WINDOW]):
  * - panel: abajo, ancho completo con margen, respetando la barra de navegación.
- * - window: 280 dp junto al ancla (la barra o burbuja que lo abrió).
+ * - window: 280 dp junto al ancla (la barra o burbuja que lo abrió). Si la
+ *   persona la movió o la achicó ([Placement]), se abre donde la dejó: así
+ *   queda siempre en la zona sana de la pantalla (fase 3).
  */
 object TrackpadGeometry {
 
@@ -18,6 +20,17 @@ object TrackpadGeometry {
         fun contains(px: Float, py: Float, slop: Float = 0f): Boolean =
             px >= x - slop && px <= x + w + slop && py >= y - slop && py <= y + h + slop
     }
+
+    /**
+     * Lugar y tamaño que eligió la persona para la ventana libre: esquina
+     * superior izquierda como fracción de la pantalla (sobrevive al giro) y
+     * tamaño en dp (sobrevive a cambios de densidad).
+     */
+    data class Placement(val xFrac: Float, val yFrac: Float, val wDp: Float, val hDp: Float)
+
+    /** Tamaño mínimo de la ventana libre: entran la agarradera, la fila de sistema y algo de pad. */
+    const val MIN_WINDOW_W_DP = 220f
+    const val MIN_WINDOW_H_DP = 200f
 
     /** Alto con la fila de sistema: agarradera + botones + superficie del pad. */
     private const val HEIGHT_DP = 296f
@@ -52,8 +65,12 @@ object TrackpadGeometry {
         anchorY: Int,
         extended: Boolean,
         density: Float,
+        placement: Placement? = null,
     ): Bounds {
         val h = height(extended, screenH, bottomInset, density)
+        if (mode == PointerProtocol.MODE_WINDOW && placement != null) {
+            return fromPlacement(placement, screenW, screenH, bottomInset, density)
+        }
         if (mode != PointerProtocol.MODE_WINDOW) {
             val margin = dp(PANEL_MARGIN_DP, density)
             return Bounds(margin, screenH - bottomInset - h - dp(PANEL_LIFT_DP, density), screenW - 2 * margin, h)
@@ -89,8 +106,8 @@ object TrackpadGeometry {
         if (mode != PointerProtocol.MODE_WINDOW) {
             return open(mode, screenW, screenH, bottomInset, -1, -1, extended, density)
         }
-        val h = height(extended, screenH, bottomInset, density)
-        val w = dp(WINDOW_WIDTH_DP, density).coerceAtMost(screenW - dp(ANCHOR_GAP_DP, density))
+        // Ventana libre: conserva el tamaño que tenía (la persona pudo achicarla), solo acotado.
+        val (w, h) = clampSize(current.w, current.h, screenW, screenH, bottomInset, density)
         return Bounds(
             clamp(current.x, 0, screenW - w),
             clamp(current.y, 0, screenH - h - bottomInset),
@@ -98,6 +115,40 @@ object TrackpadGeometry {
             h,
         )
     }
+
+    /** Tamaño acotado de la ventana libre: entre el mínimo y lo que entra en pantalla. */
+    fun clampSize(w: Int, h: Int, screenW: Int, screenH: Int, bottomInset: Int, density: Float): Pair<Int, Int> {
+        val maxW = maxOf(screenW, 1)
+        val maxH = maxOf(screenH - bottomInset, 1)
+        val minW = dp(MIN_WINDOW_W_DP, density).coerceAtMost(maxW)
+        val minH = dp(MIN_WINDOW_H_DP, density).coerceAtMost(maxH)
+        return Pair(clamp(w, minW, maxW), clamp(h, minH, maxH))
+    }
+
+    /** Agrandar o achicar desde la esquina: la esquina superior izquierda queda quieta. */
+    fun resize(b: Bounds, newW: Int, newH: Int, screenW: Int, screenH: Int, bottomInset: Int, density: Float): Bounds {
+        val (w0, h0) = clampSize(newW, newH, screenW, screenH, bottomInset, density)
+        // Sin pasarse del borde derecho ni de la barra de navegación.
+        val w = w0.coerceAtMost(maxOf(screenW - b.x, 1))
+        val h = h0.coerceAtMost(maxOf(screenH - bottomInset - b.y, 1))
+        return Bounds(b.x, b.y, w, h)
+    }
+
+    /** Ventana libre en el lugar guardado, acotada a la pantalla de ahora. */
+    fun fromPlacement(p: Placement, screenW: Int, screenH: Int, bottomInset: Int, density: Float): Bounds {
+        val (w, h) = clampSize(dp(p.wDp, density), dp(p.hDp, density), screenW, screenH, bottomInset, density)
+        val x = (p.xFrac * screenW).roundToInt()
+        val y = (p.yFrac * screenH).roundToInt()
+        return Bounds(clamp(x, 0, screenW - w), clamp(y, 0, screenH - h - bottomInset), w, h)
+    }
+
+    /** Lo que se guarda al soltar la agarradera o la esquina. */
+    fun toPlacement(b: Bounds, screenW: Int, screenH: Int, density: Float): Placement = Placement(
+        xFrac = if (screenW > 0) (b.x.toFloat() / screenW).coerceIn(0f, 1f) else 0f,
+        yFrac = if (screenH > 0) (b.y.toFloat() / screenH).coerceIn(0f, 1f) else 0f,
+        wDp = b.w / density,
+        hDp = b.h / density,
+    )
 
     /** Lo máximo que se puede mover la ventana libre sin salirse (para la agarradera). */
     fun clampMove(x: Int, y: Int, b: Bounds, screenW: Int, screenH: Int): Pair<Int, Int> =

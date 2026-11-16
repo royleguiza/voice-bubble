@@ -4,7 +4,7 @@
 > sección «Estado y traspaso».** Todo lo necesario está en el repo; no hace
 > falta la conversación original.
 
-## Estado y traspaso (actualizado 2026-11-15)
+## Estado y traspaso (actualizado 2026-11-16)
 
 | Fase | Qué es | Estado | Commit | APK |
 |---|---|---|---|---|
@@ -13,7 +13,7 @@
 | 2B | Ajustes de la isla (elegirla, ajuste al píxel, maqueta, en vivo) | HECHA; el dueño confirmó con r317 que la isla funciona | `278cc41` | r317 |
 | 2C | Isla sin paso intermedio: cada mitad es su botón (pedido del dueño tras probar r317) | HECHA y subida; falta prueba en teléfono | `fb7fa16` | r318 |
 | 2D | Isla sin saltos al crecer y achicarse (pedido del dueño tras probar r318) | HECHA y subida; falta prueba en teléfono | ver `git log` | r319 |
-| 3 | Complemento independiente (pestaña propia, mover/achicar trackpad, ajustes mínimos) | PENDIENTE, sin especificación | — | — |
+| 3 | Complemento independiente (pestaña propia, mover/achicar trackpad, ajustes mínimos) + aviso del complemento apagado | HECHA (`docs/spec-puntero-fase3.md`); falta prueba en teléfono | ver `git log` | r320 |
 | 4 | Un solo puntero también para el trackpad del teclado; historial; limpieza | PENDIENTE, sin especificación | — | — |
 
 ### Ajuste 2C — isla de toque directo (2026-11-15)
@@ -50,8 +50,8 @@ grabar y al volver. Causas y arreglo:
   la final y no se mueve al terminar).
 - Nota r318: al actualizar el complemento, Android le apagó la
   Accesibilidad y se vio la burbuja de respaldo de la app en vez de la
-  isla; se arregló apagando y prendiendo el permiso. Idea pendiente: que
-  la app avise cuando el complemento está instalado pero apagado.
+  isla; se arregló apagando y prendiendo el permiso. Desde la fase 3 la
+  notificación de VoiceBubble avisa y abre Accesibilidad.
 
 ### Pendientes abiertos (además de las fases 3 y 4)
 0. **El dictado de la barra no siempre pega el texto** (con r318 el dueño
@@ -221,6 +221,7 @@ VoiceBubble (host)                     VoiceBubble Puntero (complemento)
 - Diseño aprobado en artifact antes de implementar.
 
 ### Fase 3 — Complemento independiente
+> Implementada el 2026-11-16: `docs/spec-puntero-fase3.md`.
 - Pestaña propia en el borde para abrir el trackpad sin VoiceBubble.
 - Mover y achicar el trackpad a la zona sana; recuerda su lugar.
 - Ajustes propios mínimos (sensibilidad, estilo, lado) cuando VoiceBubble no

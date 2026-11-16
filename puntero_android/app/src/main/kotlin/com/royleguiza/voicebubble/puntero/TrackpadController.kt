@@ -32,6 +32,7 @@ internal class TrackpadController(private val service: PunteroService) : Trackpa
     private val windowManager = service.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private val screen = ScreenProbe(service, windowManager)
     private val palette = Palette(service)
+    private val prefs = DockPrefs(service)
 
     private var config: PointerProtocol.TrackpadConfig? = null
     private var pointer: PointerOverlay? = null
@@ -66,7 +67,7 @@ internal class TrackpadController(private val service: PunteroService) : Trackpa
             announce(false)
             return
         }
-        val p = TrackpadPanel(service, windowManager, screen, palette, cfg, this)
+        val p = TrackpadPanel(service, windowManager, screen, palette, cfg, this, prefs.trackpadPlacement())
         if (!p.show()) {
             p.release()
             ptr.destroy()
@@ -148,6 +149,12 @@ internal class TrackpadController(private val service: PunteroService) : Trackpa
     }
 
     override fun onCloseRequested() = close()
+
+    /** La persona dejó la ventana libre en otro lugar o de otro tamaño: se recuerda para la próxima. */
+    override fun onPlacementChanged(bounds: TrackpadGeometry.Bounds) {
+        val (sw, sh) = screen.size()
+        prefs.saveTrackpadPlacement(TrackpadGeometry.toPlacement(bounds, sw, sh, service.resources.displayMetrics.density))
+    }
 
     // -------------------------------------------------------------- gestos
 

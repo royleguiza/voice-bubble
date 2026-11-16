@@ -555,7 +555,7 @@ contrato_barra = _rd("docs/contrato-barra.md")
 contrato_trackpad = _rd("docs/contrato-trackpad.md")
 
 check("Fase 2A: la herramienta Puntero de la barra del complemento abre el trackpad directo (sin broadcast)",
-      "service.openTrackpadFromDock(config.trackpad.copy(anchorX = anchorX, anchorY = anchorY))" in p_dock_mgr
+      "service.openTrackpadFromDock(effective().trackpad.copy(anchorX = anchorX, anchorY = anchorY))" in p_dock_mgr
       and "internal fun openTrackpadFromDock(cfg: PointerProtocol.TrackpadConfig) = openTrackpad(cfg)" in p_svc
       and "trackpad?.open(cfg)" in p_svc)
 check("Fase 2A: el ancla del trackpad es el centro de la barra o burbuja, o el borde inferior de la isla",
@@ -580,6 +580,37 @@ check("Fase 2A: privacidad intacta en la barra (sin lectura de ventanas, cero Lo
       'android:canRetrieveWindowContent="false"' in _rd("puntero_android/app/src/main/res/xml/puntero_service.xml")
       and "Log." not in p_dock_mgr + p_dock_ctrl + p_isl_ctrl
       and len(re.findall(r'<uses-permission ', _rd("puntero_android/app/src/main/AndroidManifest.xml"))) == 1)
+
+# ---------------------------------------------------------------- fase 3
+p_prefs = _rd(f"{_pk}/DockPrefs.kt")
+p_geo = _rd(f"{_pk}/TrackpadGeometry.kt")
+p_main = _rd(f"{_pk}/MainActivity.kt")
+p_host = _rd(f"{_pk}/HostLink.kt")
+check("Fase 3: pestaña propia = barra del complemento con SOLO el puntero cuando la de VoiceBubble está apagada o no está",
+      "private fun effective(): PointerProtocol.DockConfig" in p_dock_mgr
+      and "toolMic = false, toolPointer = true" in p_dock_mgr
+      and "private fun hostDockOn(): Boolean = config.enabled && HostLink.isHostInstalled(service)" in p_dock_mgr
+      and "if (!prefs.ownTab()) return cfg.copy(enabled = false)" in p_dock_mgr
+      and "fun isHostInstalled(context: Context): Boolean" in p_host)
+check("Fase 3: la pestaña propia no le cambia la forma a la barra de VoiceBubble",
+      "if (standalone()) return" in p_dock_mgr)
+check("Fase 3: ajustes propios solo sin VoiceBubble (sensibilidad, estilo, forma) y la pantalla los aplica en vivo",
+      "fun ownTrackpad(): PointerProtocol.TrackpadConfig" in p_prefs
+      and "if (HostLink.isHostInstalled(service)) cfg.trackpad else prefs.ownTrackpad()" in p_dock_mgr
+      and "ownSettings.visibility = if (hostInstalled) View.GONE else View.VISIBLE" in p_main
+      and "PunteroService.refreshOwnSettings(" in p_main and "fun refreshOwnSettings(" in p_svc)
+check("Fase 3: ventana libre que se mueve, se agranda/achica desde la esquina y recuerda su lugar",
+      "data class Placement(" in p_geo and "fun resize(" in p_geo and "fun fromPlacement(" in p_geo
+      and "class GripTouch" in p_panel and "host.onPlacementChanged(bounds)" in p_panel
+      and "prefs.saveTrackpadPlacement(" in p_ctrl and "prefs.trackpadPlacement()" in p_ctrl
+      and "fun clearTrackpadPlacement()" in p_prefs and "prefs.clearTrackpadPlacement()" in p_main)
+check("Fase 3: al girar, la ventana libre conserva el tamaño elegido (no vuelve a 280 dp)",
+      "val (w, h) = clampSize(current.w, current.h, screenW, screenH, bottomInset, density)" in p_geo)
+check("Fase 3: lo guardado son solo ajustes y el lugar del trackpad (sin coordenadas de clics ni Log)",
+      "Log." not in p_prefs + p_main + p_geo and "MIN_WINDOW_W_DP" in p_geo)
+check("Host: si el complemento está instalado pero no dibuja, la notificación avisa y abre Accesibilidad",
+      "private fun updateComplementWarning()" in h_fbs and "Settings.ACTION_ACCESSIBILITY_SETTINGS" in h_fbs
+      and "VoiceBubble Puntero no está funcionando" in h_fbs)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TRACKPAD & ISLA: {suite.passed} pasados, {suite.failed} fallidos.")

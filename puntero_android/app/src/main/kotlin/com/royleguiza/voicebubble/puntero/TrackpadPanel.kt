@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -20,7 +21,9 @@ import kotlin.math.roundToInt
  * de la barra de estado y la cortina de notificaciones. Arriba la agarradera
  * (cierra al tocarla y muestra la cuenta del cierre automático), debajo la
  * fila de sistema (Atrás, Inicio, Recientes, Notificaciones y Arrastrar) y el
- * resto es la superficie del pad ([PadView]).
+ * resto es la superficie del pad ([PadView]). En la ventana libre, la
+ * agarradera la mueve y la esquina de abajo a la derecha la agranda o la
+ * achica; al soltar, el lugar se guarda ([Host.onPlacementChanged]).
  *
  * Solo dibuja y reparte toques: qué hace cada cosa lo decide [Host]. Dónde
  * queda la ventana lo calcula [TrackpadGeometry].
@@ -32,6 +35,8 @@ internal class TrackpadPanel(
     private val palette: Palette,
     private val config: PointerProtocol.TrackpadConfig,
     private val host: Host,
+    /** Lugar guardado de la ventana libre (null = junto al ancla). */
+    private val placement: TrackpadGeometry.Placement? = null,
 ) {
 
     interface Host : PadView.Listener {
@@ -46,6 +51,9 @@ internal class TrackpadPanel(
 
         /** Algún dedo apoyó / soltó el panel (para pausar el cierre automático). */
         fun onPanelTouch(down: Boolean)
+
+        /** La persona movió o cambió el tamaño de la ventana libre (al soltar). */
+        fun onPlacementChanged(bounds: TrackpadGeometry.Bounds)
     }
 
     private val d = context.resources.displayMetrics.density
@@ -99,7 +107,20 @@ internal class TrackpadPanel(
 
         // Superficie única del trackpad (sin botones de mouse ni grilla).
         pad = PadView(context, palette, config.naturalScroll, config.haptic, host)
-        root.addView(pad, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        if (mode == PointerProtocol.MODE_WINDOW) {
+            // Ventana libre: esquina para agrandar o achicar, encima del pad.
+            val frame = FrameLayout(context)
+            frame.addView(pad, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            val grip = ResizeGrip(context, palette)
+            grip.contentDescription = "Cambiar el tamaño del trackpad"
+            grip.setOnTouchListener(GripTouch())
+            frame.addView(grip, FrameLayout.LayoutParams(px(ResizeGrip.SIZE_DP), px(ResizeGrip.SIZE_DP)).apply {
+                gravity = Gravity.BOTTOM or Gravity.END
+            })
+            root.addView(frame, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        } else {
+            root.addView(pad, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+        }
     }
 
     private companion object {
@@ -123,7 +144,7 @@ internal class TrackpadPanel(
     fun show(): Boolean {
         if (attached) return true
         val (sw, sh) = screen.size()
-        bounds = TrackpadGeometry.open(mode, sw, sh, screen.bottomInset(), config.anchorX, config.anchorY, extended, d)
+        bounds = TrackpadGeometry.open(mode, sw, sh, screen.bottomInset(), config.anchorX, config.anchorY, extended, d, placement)
         val lp = WindowManager.LayoutParams(
             bounds.w,
             bounds.h,
@@ -316,13 +337,49 @@ internal class TrackpadPanel(
                         if (e.actionMasked == MotionEvent.ACTION_UP) host.onCloseRequested()
                         return true
                     }
-                    if (mode != PointerProtocol.MODE_WINDOW) {
+                    if (mode == PointerProtocol.MODE_WINDOW) {
+                        host.onPlacementChanged(bounds)
+                    } else {
                         when {
                             dy > 55 * d -> host.onCloseRequested()
                             dy < -25 * d && !extended -> setExtended(true)
                             dy > 20 * d && extended -> setExtended(false)
                         }
                     }
+                }
+            }
+            return true
+        }
+    }
+
+    /** La esquina: arrastrar = agrandar o achicar (la esquina de arriba a la izquierda queda quieta). */
+    private inner class GripTouch : View.OnTouchListener {
+        private var x0 = 0f
+        private var y0 = 0f
+        private var w0 = 0
+        private var h0 = 0
+
+        @SuppressLint("ClickableViewAccessibility")
+        override fun onTouch(v: View, e: MotionEvent): Boolean {
+            if (!attached) return false
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    x0 = e.rawX
+                    y0 = e.rawY
+                    w0 = bounds.w
+                    h0 = bounds.h
+                    v.isPressed = true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val (sw, sh) = screen.size()
+                    val nw = (w0 + e.rawX - x0).roundToInt()
+                    val nh = (h0 + e.rawY - y0).roundToInt()
+                    val b = TrackpadGeometry.resize(bounds, nw, nh, sw, sh, screen.bottomInset(), d)
+                    if (b != bounds) applyBounds(b)
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.isPressed = false
+                    if (bounds.w != w0 || bounds.h != h0) host.onPlacementChanged(bounds)
                 }
             }
             return true

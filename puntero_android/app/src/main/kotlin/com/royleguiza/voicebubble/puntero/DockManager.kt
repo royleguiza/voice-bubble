@@ -21,6 +21,11 @@ import android.view.WindowManager
  * cada forma solo trae lo suyo (gestos de la barra y la burbuja; estados y
  * rebote de la isla).
  *
+ * Fase 3, uso sin VoiceBubble: si la barra de VoiceBubble está apagada (o
+ * VoiceBubble no está instalada) y la persona encendió la pestaña propia en la
+ * pantalla del complemento, se dibuja la barra del borde (o la burbuja) con
+ * SOLO el puntero ([effective]). La barra de VoiceBubble siempre manda.
+ *
  * Todo en el hilo principal. [destroy] saca la barra, el receptor lo suelta el
  * servicio y no queda ningún temporizador corriendo.
  */
@@ -102,9 +107,37 @@ internal class DockManager(private val service: PunteroService) : DockCallbacks 
         apply(force = intent.getBooleanExtra(PointerProtocol.EXTRA_ACK, false))
     }
 
+    /** ¿Se está dibujando la pestaña propia (y no la barra de VoiceBubble)? */
+    private fun standalone(): Boolean = !hostDockOn() && prefs.ownTab()
+
+    /** La barra de VoiceBubble está encendida (y VoiceBubble sigue instalada: si la desinstalaron, no cuenta). */
+    private fun hostDockOn(): Boolean = config.enabled && HostLink.isHostInstalled(service)
+
+    /**
+     * Lo que se dibuja: la configuración de VoiceBubble si su barra está
+     * encendida; si no, la pestaña propia (borde o burbuja, solo puntero) con
+     * los ajustes propios del trackpad cuando VoiceBubble no está instalada.
+     */
+    private fun effective(): PointerProtocol.DockConfig {
+        val cfg = config
+        if (hostDockOn()) return cfg
+        if (!prefs.ownTab()) return cfg.copy(enabled = false)
+        val form = if (prefs.form() == PointerProtocol.FORM_BUBBLE) PointerProtocol.FORM_BUBBLE else PointerProtocol.FORM_EDGE
+        val trackpad = if (HostLink.isHostInstalled(service)) cfg.trackpad else prefs.ownTrackpad()
+        return cfg.copy(enabled = true, form = form, toolMic = false, toolPointer = true, trackpad = trackpad)
+    }
+
+    /** La pantalla del complemento cambió la pestaña propia o sus ajustes: redibujar en vivo. */
+    fun refreshOwn(rebuild: Boolean = false) {
+        if (destroyed) return
+        // Cambió el lado: la barra lee su lugar guardado al crearse.
+        if (rebuild && standalone()) dropSurface()
+        apply(force = false)
+    }
+
     /** Crea, cambia o saca la superficie según la configuración; después le cuenta a VoiceBubble. */
     private fun apply(force: Boolean) {
-        val cfg = config
+        val cfg = effective()
         if (!cfg.enabled) {
             dropSurface()
             announce(false, force)
@@ -229,13 +262,15 @@ internal class DockManager(private val service: PunteroService) : DockCallbacks 
     }
 
     override fun onPointerTap(anchorX: Int, anchorY: Int) {
-        service.openTrackpadFromDock(config.trackpad.copy(anchorX = anchorX, anchorY = anchorY))
+        service.openTrackpadFromDock(effective().trackpad.copy(anchorX = anchorX, anchorY = anchorY))
     }
 
     override fun onFormChanged(form: String) {
         // La persona la cambió con el dedo: se recuerda acá y se le cuenta a VoiceBubble (Ajustes la muestra).
-        config = config.copy(form = form)
         prefs.saveForm(form)
+        // La pestaña propia no toca la forma de la barra de VoiceBubble.
+        if (standalone()) return
+        config = config.copy(form = form)
         HostLink.state(service, announced ?: true, form)
     }
 }
