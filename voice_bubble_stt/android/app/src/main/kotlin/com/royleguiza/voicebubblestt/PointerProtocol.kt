@@ -122,6 +122,17 @@ object PointerProtocol {
     /** Complemento → VoiceBubble: dice si está dibujando la barra ([EXTRA_ACTIVE]) y qué forma tiene. */
     const val ACTION_DOCK_STATE = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE"
 
+    /**
+     * Complemento → VoiceBubble (fase 4): toque largo en la barra o la burbuja;
+     * VoiceBubble muestra SU panel de historial desde ([EXTRA_HISTORY_X],
+     * [EXTRA_HISTORY_Y]) con lado [EXTRA_HISTORY_SIZE]. El texto dictado nunca
+     * pasa por el complemento.
+     */
+    const val ACTION_DOCK_HISTORY = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_HISTORY"
+    const val EXTRA_HISTORY_X = "history_x"
+    const val EXTRA_HISTORY_Y = "history_y"
+    const val EXTRA_HISTORY_SIZE = "history_size"
+
     const val EXTRA_DOCK_ENABLED = "enabled"
     const val EXTRA_DOCK_FORM = "form"
     const val EXTRA_TOOL_MIC = "tool_mic"

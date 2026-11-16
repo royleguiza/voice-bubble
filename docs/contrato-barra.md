@@ -29,7 +29,7 @@ VoiceBubble, sin Flutter.
 | Estado guardado | prefs PROPIAS del complemento (`vb_puntero_dock`): última configuración y posición | prefs de VoiceBubble (`vb_dock_state`, `flutter.dock_*`) |
 | Dictado | pide a VoiceBubble que dicte (`DockDictationService`) | Flutter (`MainActivity` → canal → Dart) |
 | Puntero | abre el `TrackpadController` directo, sin broadcast | `PointerLink.openTrackpad` (broadcast `OPEN_TRACKPAD`) |
-| Historial (toque largo) | NO se porta en esta fase (queda para la fase 4) | sí |
+| Historial (toque largo) | Fase 4: el complemento manda `ACTION_DOCK_HISTORY` y VoiceBubble muestra su panel (el texto no pasa por el complemento) | sí |
 
 **Nunca se ven dos barras.** El host (`FloatingBubbleService`) esconde la suya
 (`DockController.setSuppressed`) mientras el complemento dibuja:
@@ -193,4 +193,4 @@ Todo es broadcast explícito al paquete destino con el permiso de firma
 ## Pendiente
 
 - Fase 4 (ver abajo). La fase 2B ya está hecha: ver «Ajustes de la isla (fase 2B)».
-- Fase 4: toque largo (historial) en la barra del complemento; retirar el respaldo.
+- Fase 4 (hecha, `docs/spec-puntero-fase4.md`): toque largo (historial) en la barra del complemento vía `ACTION_DOCK_HISTORY`; sin respaldo por tiempo del trackpad.

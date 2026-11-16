@@ -17,6 +17,12 @@ internal interface DockCallbacks {
 
     /** La persona convirtió la barra en burbuja (o al revés) con el dedo: VoiceBubble debe enterarse (Ajustes). */
     fun onFormChanged(form: String)
+
+    /**
+     * Toque largo en la barra o la burbuja: pedirle a VoiceBubble que muestre
+     * su historial desde el cuadrado (x, y, size). Devuelve true si se pidió.
+     */
+    fun onHistoryRequested(x: Int, y: Int, size: Int): Boolean
 }
 
 /**

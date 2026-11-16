@@ -14,7 +14,7 @@
 | 2C | Isla sin paso intermedio: cada mitad es su botón (pedido del dueño tras probar r317) | HECHA y subida; falta prueba en teléfono | `fb7fa16` | r318 |
 | 2D | Isla sin saltos al crecer y achicarse (pedido del dueño tras probar r318) | HECHA y subida; falta prueba en teléfono | ver `git log` | r319 |
 | 3 | Complemento independiente (pestaña propia, mover/achicar trackpad, ajustes mínimos) + aviso del complemento apagado | HECHA (`docs/spec-puntero-fase3.md`); falta prueba en teléfono | ver `git log` | r320 |
-| 4 | Un solo puntero también para el trackpad del teclado; historial; limpieza | PENDIENTE, sin especificación | — | — |
+| 4 | Un solo puntero también para el trackpad del teclado; historial; sin respaldo por tiempo | HECHA (`docs/spec-puntero-fase4.md`); falta prueba en teléfono | ver `git log` | r321 |
 
 ### Ajuste 2C — isla de toque directo (2026-11-15)
 Pedido del dueño al probar r317: la isla «iba a saltos» (reposo → abierta
@@ -53,7 +53,7 @@ grabar y al volver. Causas y arreglo:
   isla; se arregló apagando y prendiendo el permiso. Desde la fase 3 la
   notificación de VoiceBubble avisa y abre Accesibilidad.
 
-### Pendientes abiertos (además de las fases 3 y 4)
+### Pendientes abiertos (1 y 2 resueltos en la fase 4, falta confirmarlos en el teléfono)
 0. **El dictado de la barra no siempre pega el texto** (con r318 el dueño
    confirmó que desde la isla SÍ pega si hay un campo enfocado; reportado con r317:
    desde la isla copió pero no pegó; desde el borde sí). El código es el
@@ -228,6 +228,8 @@ VoiceBubble (host)                     VoiceBubble Puntero (complemento)
   está instalado.
 
 ### Fase 4 — Unificar y cerrar
+> Implementada el 2026-11-16: `docs/spec-puntero-fase4.md` (resuelve los
+> pendientes 1 y 2 de abajo).
 - El trackpad del teclado usa el puntero del complemento (un solo puntero).
 - Limpieza de código muerto, `design.md`, `docs/contrato-trackpad.md`, suites.
 

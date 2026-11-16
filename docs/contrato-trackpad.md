@@ -163,3 +163,10 @@ permiso de firma `…puntero.permission.POINTER` (declarado en las dos apps, mis
 
 - **Arrastre:** el trazo de espera (`willContinue`) y el de recorrido van en dos `dispatchGesture` encadenados: la continuación de un trazo se despacha en el gesto siguiente, al completarse el primero.
 - **Complemento activado pero sin servicio:** si no llega `TRACKPAD_STATE` en 1 s tras `OPEN_TRACKPAD`, VoiceBubble abre el trackpad de respaldo (`FloatingTrackpadService`).
+
+## Fase 4 (2026-11-16)
+- Si el complemento está listo pero no contesta `OPEN_TRACKPAD` en
+  `OPEN_ANSWER_MS`, el host avisa (Toast + notificación) y **no** abre
+  `FloatingTrackpadService`: nunca dos trackpads.
+- El trackpad del teclado (`TrackpadBridge`) abre el del complemento cuando
+  está listo (un solo puntero); sin complemento sigue la capa del teclado.

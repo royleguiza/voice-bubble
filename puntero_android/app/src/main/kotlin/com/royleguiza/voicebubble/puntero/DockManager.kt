@@ -265,6 +265,13 @@ internal class DockManager(private val service: PunteroService) : DockCallbacks 
         service.openTrackpadFromDock(effective().trackpad.copy(anchorX = anchorX, anchorY = anchorY))
     }
 
+    override fun onHistoryRequested(x: Int, y: Int, size: Int): Boolean {
+        // La pestaña propia no tiene historial (es solo el puntero) y sin VoiceBubble no hay a quién pedírselo.
+        if (standalone() || !hostDockOn()) return false
+        HostLink.showHistory(service, x, y, size)
+        return true
+    }
+
     override fun onFormChanged(form: String) {
         // La persona la cambió con el dedo: se recuerda acá y se le cuenta a VoiceBubble (Ajustes la muestra).
         prefs.saveForm(form)

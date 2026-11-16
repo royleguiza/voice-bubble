@@ -402,12 +402,13 @@ check("Host: openTrackpad lee las prefs de Flutter del trackpad y las normaliza"
       and all(f'"flutter.{k}"' in link for k in ("kb_trackpad_sensitivity", "kb_trackpad_auto_return"))
       and "kb_trackpad_scroll_direction" in link and "PointerProtocol.normalizeTrackpadConfig(" in link)
 check("Host: la herramienta Puntero usa primero el complemento y cae al trackpad de siempre",
-      "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {" in fbs
+      "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = noAnswer)) {" in fbs
       and "FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY)" in fbs
       and "fallback()" in fbs.split("PointerLink.openTrackpad(")[1][:200])
-check("Host: si el complemento no contesta en 2,5 s, se abre el respaldo",
+check("Host (fase 4): si el complemento listo no contesta en 2,5 s se AVISA, sin abrir el trackpad viejo (nunca dos)",
       "OPEN_ANSWER_MS = 2500L" in link and "if (open) FloatingTrackpadService.stop(this)" in fbs and "main.postDelayed(openTimeout, OPEN_ANSWER_MS)" in link
-      and "main.removeCallbacks(openTimeout)" in link and "val fallback = { FloatingTrackpadService.open(" in fbs)
+      and "main.removeCallbacks(openTimeout)" in link and "val noAnswer = { onComplementNoAnswer() }" in fbs
+      and "FloatingTrackpadService.open" not in fbs.split("private fun onComplementNoAnswer()")[1].split("private fun updateComplementWarning()")[0])
 check("Complemento: el arrastre encadena dos gestos (la continuación va en el siguiente)",
       "grab.continueStroke(move, 0L, DragPlan.MOVE_MS, false)" in pun_svc
       and "addStroke(grab).addStroke(carry)" not in pun_svc)
@@ -470,7 +471,7 @@ mut_overlay = pun_overlay.replace("TYPE_ACCESSIBILITY_OVERLAY", "TYPE_APPLICATIO
 check("Mutación: puntero del complemento como overlay de app se detecta", "TYPE_ACCESSIBILITY_OVERLAY" not in mut_overlay)
 mut_proto2 = pun_proto.replace('const val ACTION_CLOSE_TRACKPAD = "com.royleguiza.voicebubble.puntero.ACTION_CLOSE_TRACKPAD"', '')
 check("Mutación: protocolo v2 incompleto en el complemento se detecta", consts(proto) != consts(mut_proto2))
-mut_fbs = fbs.replace("if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {", "if (true) {")
+mut_fbs = fbs.replace("if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = noAnswer)) {", "if (true) {")
 check("Mutación: herramienta Puntero sin el complemento primero se detecta", "PointerLink.openTrackpad(" not in mut_fbs)
 mut_cfg2 = pun_cfg.replace('canRetrieveWindowContent="false"', 'canRetrieveWindowContent="true"')
 check("Mutación: lectura de pantalla en el complemento se detecta", 'android:canRetrieveWindowContent="false"' not in mut_cfg2)
@@ -548,8 +549,11 @@ check("Port: una sola barra a la vez en el complemento (DockManager elige la sup
 check("Port: mismo comportamiento de la barra (convertir por gesto, soltar contra el borde, abanico, Atrás protegido, cierre solo)",
       all(k in d_ctrl for k in ("DockGeometry.shouldBecomeBubble(side, dx, d)", "DockGeometry.snapSide(", "openArc()",
                                 "setGestureExclusion(", "EDGE_IDLE_MS", "restartEdgeIdle()", "TapAction.RUN_ONLY_TOOL")))
-check("Port: sin historial (toque largo anotado para la fase 4)",
-      "requestHistory" not in d_ctrl and "fase 4" in d_ctrl)
+check("Fase 4: toque largo en barra y burbuja del complemento pide el historial a VoiceBubble (el texto no pasa por el complemento)",
+      d_ctrl.count("handler.postDelayed(longPress, LONG_PRESS_MS)") == 2 and "callbacks.onHistoryRequested(" in d_ctrl
+      and "HostLink.showHistory(service, x, y, size)" in d_mgr and "if (standalone() || !hostDockOn()) return false" in d_mgr
+      and "ACTION_DOCK_HISTORY" in fbs + read(f"{KT}/DockLink.kt") and "fun showHistoryFromComplement(" in fbs
+      and "com.royleguiza.voicebubble.puntero.ACTION_DOCK_HISTORY" in read("voice_bubble_stt/android/app/src/main/AndroidManifest.xml"))
 check("La forma elegida con el dedo se recuerda en el complemento y se le cuenta a VoiceBubble",
       "callbacks.onFormChanged(form.pref)" in d_ctrl and "prefs.saveForm(form)" in d_mgr
       and "HostLink.state(service, announced ?: true, form)" in d_mgr

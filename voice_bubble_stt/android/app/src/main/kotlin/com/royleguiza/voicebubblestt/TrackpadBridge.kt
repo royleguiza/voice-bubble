@@ -76,6 +76,10 @@ class TrackpadBridge(
             manager?.hide()
             host.rebuild()
         } else {
+            // Fase 4, un solo puntero: con el complemento listo, el trackpad del
+            // teclado es el del complemento (por encima de todo, con Atrás/Inicio/
+            // Recientes y arrastre). Si no contesta, solo se avisa: nunca dos punteros.
+            if (openComplementTrackpad()) return
             val cur = host.currentLayer()
             host.setLastLetters(if (cur != Layer.SNIPPETS && cur != Layer.TRACKPAD && cur != Layer.CLIPBOARD) cur else Layer.LETTERS)
             host.setLayer(Layer.TRACKPAD)
@@ -98,6 +102,26 @@ class TrackpadBridge(
                 }
             }
         }
+    }
+
+    /** Abre el trackpad del complemento sobre el teclado. false = el complemento no está listo (se usa el del teclado). */
+    private fun openComplementTrackpad(): Boolean {
+        if (!PointerLink.isReady(service)) return false
+        val loc = IntArray(2)
+        try {
+            host.rootView().getLocationOnScreen(loc)
+        } catch (_: Exception) {}
+        val dm = service.resources.displayMetrics
+        val anchorY = if (loc[1] > 0) loc[1] else -1
+        return PointerLink.openTrackpad(service, dm.widthPixels / 2, anchorY, onNoAnswer = {
+            try {
+                Toast.makeText(
+                    service,
+                    "VoiceBubble Puntero no responde. Apagalo y volvé a prenderlo en Accesibilidad.",
+                    Toast.LENGTH_LONG,
+                ).show()
+            } catch (_: Exception) {}
+        })
     }
 
     fun buildLayer(): View {

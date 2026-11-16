@@ -540,7 +540,7 @@ check("Protocolo v2: configuración validada con función pura",
       "fun normalizeTrackpadConfig(" in p_proto and "fun normalizeTrackpadConfig(" in h_proto)
 check("Host: openTrackpad con respaldo en FloatingTrackpadService",
       "fun openTrackpad(" in h_link and "if (!isReady(context)) return false" in h_link
-      and "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {" in h_fbs
+      and "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = noAnswer)) {" in h_fbs
       and "FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY)" in h_fbs)
 check("Host: TRACKPAD_STATE esconde/muestra la burbuja", "PointerLink.listenTrackpadState(this)" in h_fbs and "dock?.setTrackpadOpen(open)" in h_fbs)
 check("Complemento: privacidad intacta (sin lectura de ventanas, cero Log)",
@@ -572,7 +572,7 @@ check("Fase 2A: protocolo v3 espejado (DOCK_CONFIG, MIC_STATE, DOCK_HELLO, DOCK_
       and "fun normalizeDockConfig(" in p_proto and "fun normalizeMicState(" in h_proto)
 check("Fase 2A: la barra del host sigue de respaldo y nunca se ven dos",
       "setSuppressed(" in h_fbs and "DockLink.complementDrawing" in h_fbs
-      and "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {" in h_fbs)
+      and "if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = noAnswer)) {" in h_fbs)
 check("Fase 2A: contratos al día (contrato-barra.md y referencia desde contrato-trackpad.md)",
       "DOCK_CONFIG" in contrato_barra and "TYPE_ACCESSIBILITY_OVERLAY" in contrato_barra
       and "contrato-barra.md" in contrato_trackpad)
@@ -608,6 +608,10 @@ check("Fase 3: al girar, la ventana libre conserva el tamaño elegido (no vuelve
       "val (w, h) = clampSize(current.w, current.h, screenW, screenH, bottomInset, density)" in p_geo)
 check("Fase 3: lo guardado son solo ajustes y el lugar del trackpad (sin coordenadas de clics ni Log)",
       "Log." not in p_prefs + p_main + p_geo and "MIN_WINDOW_W_DP" in p_geo)
+h_tpb = _rd("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/TrackpadBridge.kt")
+check("Fase 4: un solo puntero — con el complemento listo, el trackpad del teclado abre el del complemento",
+      "if (openComplementTrackpad()) return" in h_tpb and "if (!PointerLink.isReady(service)) return false" in h_tpb
+      and "PointerLink.openTrackpad(service, dm.widthPixels / 2, anchorY, onNoAnswer" in h_tpb)
 check("Host: si el complemento está instalado pero no dibuja, la notificación avisa y abre Accesibilidad",
       "private fun updateComplementWarning()" in h_fbs and "Settings.ACTION_ACCESSIBILITY_SETTINGS" in h_fbs
       and "VoiceBubble Puntero no está funcionando" in h_fbs)

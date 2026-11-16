@@ -166,6 +166,12 @@ class DockLinkReceiver : BroadcastReceiver() {
         when (intent?.action) {
             PointerProtocol.ACTION_DOCK_HELLO -> DockLink.onHello(ctx)
             PointerProtocol.ACTION_DOCK_STATE -> DockLink.onDockState(ctx, intent)
+            // Fase 4: toque largo en la barra del complemento → nuestro historial (si la barra está viva).
+            PointerProtocol.ACTION_DOCK_HISTORY -> FloatingBubbleService.showHistoryFromComplement(
+                intent.getIntExtra(PointerProtocol.EXTRA_HISTORY_X, -1),
+                intent.getIntExtra(PointerProtocol.EXTRA_HISTORY_Y, -1),
+                intent.getIntExtra(PointerProtocol.EXTRA_HISTORY_SIZE, -1),
+            )
         }
     }
 }

@@ -71,6 +71,17 @@ class FloatingBubbleService : Service() {
             instance?.dock?.setTrackpadOpen(open)
         }
 
+        /**
+         * Fase 4: toque largo en la barra del complemento. Se muestra el
+         * historial propio (el texto no sale de VoiceBubble). Solo con la barra
+         * viva y el historial encendido en Ajustes.
+         */
+        fun showHistoryFromComplement(x: Int, y: Int, size: Int): Boolean {
+            val svc = instance ?: return false
+            if (x < 0 || y < 0 || size <= 0) return false
+            return svc.showBubbleHistory(x, y, size)
+        }
+
         /** Ajustes cambió forma o herramientas: redibujar la barra viva. */
         fun reloadDock(): Boolean {
             val svc = instance ?: return false
@@ -179,6 +190,24 @@ class FloatingBubbleService : Service() {
     private fun applySuppression() {
         dock?.setSuppressed(DockLink.complementDrawing || waitingComplement)
         updateComplementWarning()
+    }
+
+    /** El complemento está activado pero no abrió el trackpad: aviso corto y la notificación lo explica. */
+    private fun onComplementNoAnswer() {
+        try {
+            android.widget.Toast.makeText(
+                this,
+                "VoiceBubble Puntero no responde. Apagalo y volvé a prenderlo en Accesibilidad.",
+                android.widget.Toast.LENGTH_LONG,
+            ).show()
+        } catch (_: Exception) {}
+        if (complementProblem == null && PointerLink.isInstalled(this)) {
+            complementProblem = COMPLEMENT_STUCK
+            try {
+                (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                    .notify(NOTIFICATION_ID, buildNotification())
+            } catch (_: Exception) {}
+        }
     }
 
     /** Último aviso puesto en la notificación (para no reescribirla de más). */
@@ -346,8 +375,11 @@ class FloatingBubbleService : Service() {
                 try {
                     // Primero el trackpad del complemento (por encima de todo); si no
                     // está listo, el de siempre, que explica qué falta instalar o activar.
+                    // Fase 4: si está listo pero no contesta, NO se abre el viejo (quedaban
+                    // dos trackpads, uno debajo del otro): se avisa qué hacer.
                     val fallback = { FloatingTrackpadService.open(this@FloatingBubbleService, anchorX, anchorY) }
-                    if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = fallback)) {
+                    val noAnswer = { onComplementNoAnswer() }
+                    if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = noAnswer)) {
                         fallback()
                     }
                 } catch (_: Exception) {}

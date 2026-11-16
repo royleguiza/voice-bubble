@@ -105,6 +105,7 @@
             <intent-filter>
                 <action android:name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_HELLO" />
                 <action android:name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE" />
+                <action android:name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_HISTORY" />
             </intent-filter>
         </receiver>
         <!-- Colección con scroll del widget (pendientes + notas):

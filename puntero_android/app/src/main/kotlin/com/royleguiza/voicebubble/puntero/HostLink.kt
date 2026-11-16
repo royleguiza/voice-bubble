@@ -27,6 +27,17 @@ internal object HostLink {
         send(context, intent)
     }
 
+    /** Toque largo: VoiceBubble muestra su historial (el texto se queda allá). */
+    fun showHistory(context: Context, x: Int, y: Int, size: Int) {
+        send(
+            context,
+            Intent(PointerProtocol.ACTION_DOCK_HISTORY)
+                .putExtra(PointerProtocol.EXTRA_HISTORY_X, x)
+                .putExtra(PointerProtocol.EXTRA_HISTORY_Y, y)
+                .putExtra(PointerProtocol.EXTRA_HISTORY_SIZE, size),
+        )
+    }
+
     private fun send(context: Context, intent: Intent) {
         try {
             intent.setPackage(PointerProtocol.HOST_PACKAGE)

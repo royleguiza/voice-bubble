@@ -31,7 +31,8 @@ import kotlin.math.roundToInt
  *   siempre: tocar y dictar); con varias abre el abanico. Soltarla contra un
  *   borde → barra.
  *
- * Diferencias con el host: no hay historial (toque largo: pendiente de la fase 4), el dictado lo hace VoiceBubble sin Flutter ([DockCallbacks.onMicTap]), la
+ * Diferencias con el host: el historial (toque largo) lo muestra VoiceBubble
+ * ([DockCallbacks.onHistoryRequested], fase 4), el dictado lo hace VoiceBubble sin Flutter ([DockCallbacks.onMicTap]), la
  * posición se guarda en [DockPrefs] y la forma que elige la persona con el
  * dedo se le avisa a VoiceBubble ([DockCallbacks.onFormChanged]) para que
  * Ajustes la muestre.
@@ -53,6 +54,7 @@ internal class DockController(
         const val OPEN_MS = 320L
         const val CLOSE_MS = 240L
         const val ARC_OUTSIDE_GRACE_MS = 300L
+        const val LONG_PRESS_MS = 500L
 
         // Ids de las acciones de TalkBack (el byte alto distinto de cero los separa de los estándar).
         const val ACTION_DICTATE = 0x7E000001
@@ -518,6 +520,13 @@ internal class DockController(
         private var center0 = 0f
         private var moved = false
         private var converted = false
+        private var longFired = false
+        private val longPress = Runnable {
+            if (!moved && requestHistory()) {
+                longFired = true
+                tick(edgeView)
+            }
+        }
 
         override fun onTouch(v: View, e: MotionEvent): Boolean {
             when (e.actionMasked) {
@@ -527,17 +536,20 @@ internal class DockController(
                     center0 = centerY
                     moved = false
                     converted = false
+                    longFired = false
                     handler.removeCallbacks(edgeIdle)
                     if (expanded) edgeView.pressedIndex = toolAt(e.y)
+                    handler.postDelayed(longPress, LONG_PRESS_MS)
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = e.rawX - x0
                     val dy = e.rawY - y0
                     if (!moved && hypot(dx, dy) > slop) {
                         moved = true
+                        handler.removeCallbacks(longPress)
                         edgeView.pressedIndex = -1
                     }
-                    if (!moved) return true
+                    if (!moved || longFired) return true
                     if (!converted && DockGeometry.shouldBecomeBubble(side, dx, d)) {
                         converted = true
                         form = DockGeometry.Form.BUBBLE
@@ -560,8 +572,10 @@ internal class DockController(
                     }
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(longPress)
                     val pressed = edgeView.pressedIndex
                     edgeView.pressedIndex = -1
+                    if (longFired) return true
                     if (converted) {
                         edgeWindow?.setWindowAlpha(1f)
                         finishBubbleDrag()
@@ -591,6 +605,19 @@ internal class DockController(
         }
     }
 
+    /** Toque largo: historial (solo en reposo; lo dibuja VoiceBubble). */
+    private fun requestHistory(): Boolean {
+        if (dictationState != "idle") return false
+        val (ax, ay) = anchorCenter()
+        val size = bubbleSize
+        val asked = callbacks.onHistoryRequested(ax - size / 2, ay - size / 2, size)
+        if (asked) {
+            closeArc()
+            if (form == DockGeometry.Form.EDGE && expanded) collapse()
+        }
+        return asked
+    }
+
     /** Suelta de la burbuja: contra un borde vuelve a ser barra. */
     private fun finishBubbleDrag() {
         bubbleView.lifted = false
@@ -616,6 +643,13 @@ internal class DockController(
         private var bx0 = 0f
         private var by0 = 0f
         private var moved = false
+        private var longFired = false
+        private val longPress = Runnable {
+            if (!moved && requestHistory()) {
+                longFired = true
+                tick(bubbleView)
+            }
+        }
 
         override fun onTouch(v: View, e: MotionEvent): Boolean {
             when (e.actionMasked) {
@@ -633,22 +667,27 @@ internal class DockController(
                     bx0 = bubbleX
                     by0 = bubbleY
                     moved = false
+                    longFired = false
+                    handler.postDelayed(longPress, LONG_PRESS_MS)
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val dx = e.rawX - x0
                     val dy = e.rawY - y0
                     if (!moved && hypot(dx, dy) > slop) {
                         moved = true
+                        handler.removeCallbacks(longPress)
                         closeArc()
                         bubbleView.lifted = true
                     }
-                    if (!moved) return true
+                    if (!moved || longFired) return true
                     bubbleX = bx0 + dx
                     bubbleY = by0 + dy
                     clampBubblePos()
                     showBubbleAt(bubbleX, bubbleY)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(longPress)
+                    if (longFired) return true
                     if (moved) {
                         finishBubbleDrag()
                         return true
