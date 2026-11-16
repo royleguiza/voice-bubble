@@ -89,6 +89,28 @@ class IslandGeometryTest {
     }
 
     @Test
+    fun `la isla nunca queda sobre la barra de navegacion de 3 botones`() {
+        // Acostado: 2400 x 1080 con la barra de 48 dp (144 px) a la derecha.
+        val lw = 2400
+        val lh = 1080
+        val right = IslandGeometry.NavInsets(0, 144, 0)
+        for (state in IslandGeometry.State.entries) {
+            val r = IslandGeometry.bounds(size(state, screenW = lw), lw - 1, 0, d, lw, lh, right)
+            assertTrue("$state no pisa la barra derecha", r.right <= lw - 144)
+        }
+        val left = IslandGeometry.NavInsets(144, 0, 0)
+        val r = IslandGeometry.bounds(size(IslandGeometry.State.REC, screenW = lw), 0, 0, d, lw, lh, left)
+        assertTrue("no pisa la barra izquierda", r.x >= 144)
+        // Parado con la barra abajo: el borde superior se recorta por encima de ella.
+        val bottom = IslandGeometry.NavInsets(0, 0, 144)
+        val low = IslandGeometry.bounds(size(IslandGeometry.State.REC), 540, 99999, d, sw, sh, bottom)
+        assertEquals(sh - 144 - low.h, low.y)
+        // Sin barra a los costados, el centro pedido no cambia.
+        val same = IslandGeometry.bounds(size(IslandGeometry.State.IDLE), 540, 9, d, sw, sh, bottom)
+        assertEquals(IslandGeometry.bounds(size(IslandGeometry.State.IDLE), 540, 9, d, sw, sh), same)
+    }
+
+    @Test
     fun `en pantallas muy angostas la isla se achica para entrar`() {
         val narrow = 300
         for (state in IslandGeometry.State.entries) {

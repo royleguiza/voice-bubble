@@ -436,7 +436,7 @@ Maqueta: `laboratorio_ui/isla.html`. Píldora negra SIEMPRE (`island_bg` #000, b
 | Pensando | 252 × 44 | mismo diseño: rayitas blancas salen del agujero y se desvanecen; arco con cola en destello/brasa gira sobre el anillo |
 | Listo | 128 × 34 (se ensancha si la frase no entra) | ✓ destello + «Pegado»/«Copiado» (o «!» con un error), 1,3 s (2,6 s los errores) y vuelve a reposo |
 
-- Posición: `x` = centro horizontal, `y` = borde superior, en px de pantalla completa; al crecer se mantiene centrada en `x` y siempre queda dentro de la pantalla (margen lateral 4 dp). Sobre la barra de estado y la cámara: ventana de Accesibilidad con `FLAG_LAYOUT_NO_LIMITS`, sin insets y con el recorte incluido.
+- Posición: `x` = centro horizontal, `y` = borde superior, en px de pantalla completa; al crecer se mantiene centrada en `x` y siempre queda dentro de la pantalla (margen lateral 4 dp) y fuera de la barra de navegación (abajo o, acostado con 3 botones, a un costado; `ScreenProbe.navInsets`). Sobre la barra de estado y la cámara: ventana de Accesibilidad con `FLAG_LAYOUT_NO_LIMITS`, sin insets y con el recorte incluido.
 - Movimiento: transiciones de tamaño suaves y continuas (≈ 420 ms, curva 0.4/0/0.2/1, **sin overshoot**: el dueño pidió cero saltos) y cruce de capas; las piezas de cada estado acompañan el borde de la píldora mientras crece o se achica; con «quitar animaciones» del sistema, cambio directo y anillo fijo cuyo grosor sigue el volumen.
 - Accesibilidad: en reposo, acciones de TalkBack «Dictar» y «Abrir el puntero»; grabando, botones «Terminar dictado» y «Cancelar dictado»; todo en español y la isla como región `polite`.
 

@@ -573,9 +573,25 @@ check("Isla: cuatro estados (sin paso «abierta») con las medidas de la maqueta
           ("REC_HOLE_DP", "32f"), ("DONE_MS", "1300L"),
           ("MORPH_MS", "420L"))))
 check("Isla: x = centro horizontal, y = borde superior, siempre dentro de la pantalla (recorte), también en pantallas angostas",
-      "fun bounds(" in d_isl_geo and "val left = clamp(cx - w / 2, margin, screenW - w - margin)" in d_isl_geo
-      and "val t = clamp(y, 0, screenH - h)" in d_isl_geo and "fun fitWidth(" in d_isl_geo.replace("private ", "")
+      "fun bounds(" in d_isl_geo and "val left = clamp(cx - w / 2, lo, hi - w)" in d_isl_geo
+      and "val t = clamp(y, 0, bottom - h)" in d_isl_geo and "fun fitWidth(" in d_isl_geo.replace("private ", "")
       and "IslandGeometry.bounds(" in d_isl_ctrl)
+check("Isla: nunca sobre la barra de navegación (abajo o, acostado con 3 botones, a un costado)",
+      "data class NavInsets(val left: Int, val right: Int, val bottom: Int)" in d_isl_geo
+      and "val hi = screenW - max(0, nav.right) - margin" in d_isl_geo
+      and "val bottom = screenH - max(0, nav.bottom)" in d_isl_geo
+      and "screen.navInsets()" in d_isl_ctrl
+      and "fun navInsets(): IslandGeometry.NavInsets" in ISL("ScreenProbe.kt")
+      and "la isla nunca queda sobre la barra de navegacion de 3 botones" in read(f"{PUN_TEST}/IslandGeometryTest.kt"))
+check("Historial pedido por la barra del complemento: la barra se vela (invisible, sin tomar toques) y vuelve al cerrarlo",
+      "ACTION_DOCK_VEIL" in proto and "ACTION_DOCK_VEIL" in pun_proto
+      and "fun sendVeil(context: Context, veiled: Boolean)" in h_dlink
+      and "DockLink.sendVeil(this, true)" in fbs and "unveilComplement()" in fbs
+      and "showBubbleHistory(x, y, size, fromComplement = true)" in fbs
+      and "addAction(PointerProtocol.ACTION_DOCK_VEIL)" in pun_svc
+      and "fun setVeiled(veiled: Boolean)" in d_surface
+      and "fun setVeiled(on: Boolean)" in d_win and "val off = veiled ||" in d_win
+      and "PointerProtocol.VEIL_MAX_MS" in d_mgr and "s.setVeiled(veiled)" in d_mgr)
 check("Isla: ancho y alto en reposo acotados (72–180 dp y 22–48 dp)",
       all(f"{k} = {v}" in d_isl_geo for k, v in (("MIN_W_DP", "72f"), ("MAX_W_DP", "180f"), ("MIN_H_DP", "22f"), ("MAX_H_DP", "48f"))))
 check("Isla: cambio de tamaño suave sin pasarse (sin overshoot) y una sola ventana (unión de los dos tamaños solo mientras dura)",

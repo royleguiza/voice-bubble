@@ -77,6 +77,7 @@ internal class IslandController(
             c?.islandX ?: PointerProtocol.ISLAND_DEFAULT,
             c?.islandY ?: PointerProtocol.ISLAND_DEFAULT,
             d, sw, sh,
+            screen.navInsets(),
         )
     }
 
@@ -90,6 +91,7 @@ internal class IslandController(
         if (window == null) {
             val w = DockWindow(windowManager, view, noLimits = true)
             val r = targetRect(state)
+            w.setVeiled(veiled)
             if (!w.show(r.x, r.y, r.w, r.h)) return
             window = w
             shown = r
@@ -115,6 +117,13 @@ internal class IslandController(
     }
 
     override fun isDrawing(): Boolean = window?.isShown() == true
+
+    private var veiled = false
+
+    override fun setVeiled(veiled: Boolean) {
+        this.veiled = veiled
+        window?.setVeiled(veiled)
+    }
 
     override fun setTrackpadOpen(open: Boolean) {
         trackpadOpen = open

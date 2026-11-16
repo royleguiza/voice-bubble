@@ -40,6 +40,22 @@ internal class ScreenProbe(private val context: Context, private val windowManag
         return (28 * context.resources.displayMetrics.density).roundToInt()
     }
 
+    /**
+     * Lo que ocupa la barra de navegación en cada borde (para la isla). Solo
+     * Android 11+; antes, cero (la isla no baja más de un tercio de la
+     * pantalla, así que abajo no llega nunca).
+     */
+    fun navInsets(): IslandGeometry.NavInsets {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                val i = windowManager.currentWindowMetrics.windowInsets
+                    .getInsetsIgnoringVisibility(WindowInsets.Type.navigationBars())
+                return IslandGeometry.NavInsets(i.left, i.right, i.bottom)
+            } catch (_: Exception) {}
+        }
+        return IslandGeometry.NavInsets.NONE
+    }
+
     /** Alto de la barra de navegación (o de la zona de gestos) abajo. */
     fun bottomInset(): Int {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {

@@ -100,6 +100,10 @@ class PunteroService : AccessibilityService() {
                     dock?.onMicState(intent)
                     return
                 }
+                PointerProtocol.ACTION_DOCK_VEIL -> {
+                    dock?.setVeiled(intent.getBooleanExtra(PointerProtocol.EXTRA_VEILED, false))
+                    return
+                }
             }
             if (intent?.action != PointerProtocol.ACTION_POINTER) return
             val cmd = PointerProtocol.validate(
@@ -131,6 +135,7 @@ class PunteroService : AccessibilityService() {
                 addAction(PointerProtocol.ACTION_CLOSE_TRACKPAD)
                 addAction(PointerProtocol.ACTION_DOCK_CONFIG)
                 addAction(PointerProtocol.ACTION_MIC_STATE)
+                addAction(PointerProtocol.ACTION_DOCK_VEIL)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(receiver, filter, PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED)

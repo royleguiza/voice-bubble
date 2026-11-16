@@ -64,6 +64,8 @@ Todo es broadcast explícito al paquete destino con el permiso de firma
 | `ACTION_DOCK_HELLO` | complemento → VoiceBubble | — (el servicio arrancó o quiere configuración; VoiceBubble contesta con `DOCK_CONFIG`; receptor en el MANIFIESTO, funciona con la app cerrada) |
 | `ACTION_DOCK_STATE` | complemento → VoiceBubble | `active` (Boolean: está dibujando la barra), `form` (opcional: la persona la convirtió con el dedo, barra ↔ burbuja; VoiceBubble lo guarda en `flutter.dock_form` para que Ajustes lo muestre) |
 | `ACTION_DICTATION_TOGGLE` / `ACTION_DICTATION_CANCEL` | complemento → servicio `DockDictationService` | `from_trampoline` (Boolean, solo lo manda la actividad trampolín) |
+| `ACTION_DOCK_HISTORY` | complemento → VoiceBubble | `history_x`, `history_y`, `history_size` (toque largo: VoiceBubble muestra su panel de historial desde ahí) |
+| `ACTION_DOCK_VEIL` | VoiceBubble → complemento | `veiled` (Boolean): el historial pedido por la barra se abrió (true) o se cerró (false). Velada, la barra sigue puesta y cuenta como dibujada, pero es invisible y deja pasar los toques; si el «cerrado» no llega, vuelve sola a los 2 min (`VEIL_MAX_MS`) |
 
 - `PointerProtocol.normalizeDockConfig` y `normalizeMicState` (funciones puras
   con test JVM en las dos apps) validan todo: lo desconocido o fuera de rango
@@ -193,4 +195,4 @@ Todo es broadcast explícito al paquete destino con el permiso de firma
 ## Pendiente
 
 - Fase 4 (ver abajo). La fase 2B ya está hecha: ver «Ajustes de la isla (fase 2B)».
-- Fase 4 (hecha, `docs/spec-puntero-fase4.md`): toque largo (historial) en la barra del complemento vía `ACTION_DOCK_HISTORY`; sin respaldo por tiempo del trackpad.
+- Fase 4 (hecha, `docs/spec-puntero-fase4.md`): toque largo (historial) en la barra del complemento vía `ACTION_DOCK_HISTORY`; sin respaldo por tiempo del trackpad. Ajuste 4B: con el historial abierto la barra del complemento se vela (`ACTION_DOCK_VEIL`), y la isla nunca queda sobre la barra de navegación.

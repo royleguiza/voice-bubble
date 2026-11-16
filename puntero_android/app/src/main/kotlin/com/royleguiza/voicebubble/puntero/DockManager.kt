@@ -48,6 +48,10 @@ internal class DockManager(private val service: PunteroService) : DockCallbacks 
     private var surfaceIsIsland = false
     private var trackpadOpen = false
 
+    /** VoiceBubble tiene abierto su historial: la barra se vela para no taparlo. */
+    private var veiled = false
+    private val unveil = Runnable { setVeiled(false) }
+
     /** Último valor que le conté a VoiceBubble (null = todavía nada). */
     private var announced: Boolean? = null
     private var trampolineTried = false
@@ -157,6 +161,7 @@ internal class DockManager(private val service: PunteroService) : DockCallbacks 
         }
         s.applyConfig(cfg)
         s.setTrackpadOpen(trackpadOpen)
+        s.setVeiled(veiled)
         s.setMic(tracker, SystemClock.uptimeMillis())
         announce(s.isDrawing(), force)
     }
@@ -178,6 +183,18 @@ internal class DockManager(private val service: PunteroService) : DockCallbacks 
         if (destroyed) return
         palette.reload()
         surface?.onConfigurationChanged()
+    }
+
+    /**
+     * VoiceBubble abrió o cerró su panel de historial. Por si el «cerrado» no
+     * llega (VoiceBubble murió), la barra vuelve sola a los VEIL_MAX_MS.
+     */
+    fun setVeiled(on: Boolean) {
+        if (destroyed) return
+        handler.removeCallbacks(unveil)
+        veiled = on
+        if (on) handler.postDelayed(unveil, PointerProtocol.VEIL_MAX_MS)
+        surface?.setVeiled(on)
     }
 
     /** El trackpad se abrió o se cerró (la burbuja se esconde mientras está abierto; la isla enciende el glifo). */

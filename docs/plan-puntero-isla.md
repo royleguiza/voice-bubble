@@ -15,6 +15,7 @@
 | 2D | Isla sin saltos al crecer y achicarse (pedido del dueño tras probar r318) | HECHA y subida; falta prueba en teléfono | ver `git log` | r319 |
 | 3 | Complemento independiente (pestaña propia, mover/achicar trackpad, ajustes mínimos) + aviso del complemento apagado | HECHA (`docs/spec-puntero-fase3.md`); falta prueba en teléfono | ver `git log` | r320 |
 | 4 | Un solo puntero también para el trackpad del teclado; historial; sin respaldo por tiempo | HECHA (`docs/spec-puntero-fase4.md`); falta prueba en teléfono | ver `git log` | r321 |
+| 4B | Cierre: historial sin barra encima (velo), isla fuera de la barra de navegación, maqueta al día | HECHA; falta prueba en teléfono | ver `git log` | r322 |
 
 ### Ajuste 2C — isla de toque directo (2026-11-15)
 Pedido del dueño al probar r317: la isla «iba a saltos» (reposo → abierta
@@ -53,6 +54,24 @@ grabar y al volver. Causas y arreglo:
   isla; se arregló apagando y prendiendo el permiso. Desde la fase 3 la
   notificación de VoiceBubble avisa y abre Accesibilidad.
 
+### Ajuste 4B — cierre del plan (2026-11-16)
+- **Historial sin la barra encima.** Nuevo `ACTION_DOCK_VEIL` (VoiceBubble →
+  complemento, extra `veiled`): al abrir el historial pedido con toque largo,
+  `FloatingBubbleService` vela la barra del complemento y la desvela al
+  cerrarlo (también si el panel falla o el servicio muere). Velada, la
+  ventana sigue puesta (`DockWindow.setVeiled`: alfa 0 y sin tomar toques),
+  así que sigue contando como dibujada y VoiceBubble no saca la suya. Si el
+  «cerrado» no llega, `DockManager` la desvela solo a los 2 min.
+- **Isla fuera de la barra de navegación.** `IslandGeometry.bounds` recibe
+  `NavInsets` (`ScreenProbe.navInsets()`, Android 11+): con 3 botones y el
+  teléfono acostado la barra queda a un costado y la isla ya no la tapa;
+  abajo tampoco. Resuelve el riesgo anotado en el pendiente 3.
+- **Maqueta** `laboratorio_ui/isla.html` al día: sin el estado «Abierta»,
+  toque directo por mitades y curva sin rebote.
+- Verificación: complemento JVM 113/0 y compila; host `compileDebugKotlin`
+  OK; suites barra 303/0, historial 90/0, trackpad 214/0, maestra 98/100
+  (C-34, previo).
+
 ### Pendientes abiertos (1 y 2 resueltos en la fase 4, falta confirmarlos en el teléfono)
 0. **El dictado de la barra no siempre pega el texto** (con r318 el dueño
    confirmó que desde la isla SÍ pega si hay un campo enfocado; reportado con r317:
@@ -85,8 +104,8 @@ grabar y al volver. Causas y arreglo:
 3. **Probar en teléfono 2A y 2B** (listas en `docs/contrato-barra.md` y en
    los mensajes de commit): barra tras reiniciar, dictado con la app
    cerrada (ruta directa o trampolín), nunca dos barras, isla en vivo desde
-   Ajustes, maqueta fiel. Riesgo anotado: tope vertical de la isla en
-   teléfonos con barra de navegación de 3 botones.
+   Ajustes, maqueta fiel. (El riesgo de la isla sobre la barra de
+   navegación de 3 botones quedó resuelto en el ajuste 4B.)
 4. `test_master_suite.py` da 98/100: los dos que fallan son C-34 (firma,
    lockfile, pinning del CI), previos a este plan y fuera de alcance.
 

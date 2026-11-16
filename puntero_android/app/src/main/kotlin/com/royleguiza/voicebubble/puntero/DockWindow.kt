@@ -31,6 +31,8 @@ internal class DockWindow(
     private var params: WindowManager.LayoutParams? = null
     private var attached = false
     private var touchable = true
+    private var veiled = false
+    private var userAlpha = 1f
 
     var x = 0
         private set
@@ -71,6 +73,7 @@ internal class DockWindow(
             this.x = x
             this.y = y
             windowAnimations = 0
+            alpha = if (veiled) 0f else userAlpha
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 fitInsetsTypes = 0
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
@@ -147,14 +150,28 @@ internal class DockWindow(
      * invisible mientras el dedo, que empezó sobre ella, arrastra la burbuja.
      */
     fun setWindowAlpha(alpha: Float) {
+        userAlpha = alpha
         val lp = params ?: return
-        lp.alpha = alpha
+        lp.alpha = if (veiled) 0f else alpha
         pushParams()
+    }
+
+    /**
+     * Velo (fase 4, historial): la ventana sigue puesta —la barra cuenta como
+     * dibujada y VoiceBubble no saca la suya— pero no se ve y deja pasar los
+     * toques al panel de historial que queda debajo.
+     */
+    fun setVeiled(on: Boolean) {
+        if (veiled == on) return
+        veiled = on
+        val lp = params ?: return
+        lp.alpha = if (on) 0f else userAlpha
+        updateFlags()
     }
 
     private fun updateFlags() {
         val lp = params ?: return
-        val off = !touchable || content.visibility != View.VISIBLE
+        val off = veiled || !touchable || content.visibility != View.VISIBLE
         lp.flags = if (off) {
             lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         } else {

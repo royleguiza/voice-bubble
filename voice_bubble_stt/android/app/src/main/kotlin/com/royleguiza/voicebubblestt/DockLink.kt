@@ -128,6 +128,19 @@ object DockLink {
         } catch (_: Exception) {}
     }
 
+    /**
+     * Velo de la barra del complemento mientras está abierto el historial
+     * (que pidió con toque largo): abierto = invisible y sin tomar toques.
+     */
+    fun sendVeil(context: Context, veiled: Boolean) {
+        try {
+            val intent = Intent(PointerProtocol.ACTION_DOCK_VEIL)
+                .setPackage(PointerProtocol.COMPANION_PACKAGE)
+                .putExtra(PointerProtocol.EXTRA_VEILED, veiled)
+            context.applicationContext.sendBroadcast(intent, PointerProtocol.PERMISSION_POINTER)
+        } catch (_: Exception) {}
+    }
+
     // ------------------------------------------------------------ complemento → host
 
     /** DOCK_HELLO: el servicio del complemento arrancó; se le contesta con la configuración al día. */

@@ -28,9 +28,11 @@ v3 + `ACTION_DOCK_HISTORY` y `EXTRA_HISTORY_X/Y/SIZE` en los dos
 `PointerProtocol.kt` (diff de `const val` vacío); receptor del manifiesto
 `DockLinkReceiver` con la acción nueva (permiso de firma).
 
-## Limitación conocida
+## Limitación conocida (resuelta en el ajuste 4B)
 El panel de historial es una ventana de la app (`TYPE_APPLICATION_OVERLAY`):
-queda por debajo de la barra del complemento, que se sigue viendo encima.
+quedaba por debajo de la barra del complemento. Desde el ajuste 4B VoiceBubble
+le manda `ACTION_DOCK_VEIL` al abrirlo y al cerrarlo, y la barra del
+complemento se vela mientras tanto (ver `docs/plan-puntero-isla.md`).
 
 ## Verificación
 Complemento: compila + JVM 112/0. Host: `compileDebugKotlin` OK. Suites:

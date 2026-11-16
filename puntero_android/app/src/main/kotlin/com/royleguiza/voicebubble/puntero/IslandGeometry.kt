@@ -138,17 +138,43 @@ object IslandGeometry {
     /**
      * Rectángulo de la píldora en pantalla: centrada en [centerX] (−1 = centro
      * de la pantalla), con el borde superior en [top] (−1 = 3 dp), y recortada
-     * para que nunca salga de la pantalla (ni de los lados ni de abajo).
+     * para que nunca salga de la pantalla (ni de los lados ni de abajo) ni
+     * quede sobre la barra de navegación ([nav]).
      */
-    fun bounds(size: Size, centerX: Int, top: Int, d: Float, screenW: Int, screenH: Int): Rect {
+    fun bounds(
+        size: Size,
+        centerX: Int,
+        top: Int,
+        d: Float,
+        screenW: Int,
+        screenH: Int,
+        nav: NavInsets = NavInsets.NONE,
+    ): Rect {
         val margin = px(EDGE_MARGIN_DP, d)
-        val w = size.w.coerceAtMost(max(1, screenW - 2 * margin))
-        val h = size.h.coerceAtMost(max(1, screenH))
+        // Zona permitida: la pantalla menos la barra de navegación (abajo o,
+        // acostado con 3 botones, a un costado). Arriba no se resta nada: la
+        // isla puede ir sobre la barra de estado y la cámara.
+        val lo = max(0, nav.left) + margin
+        val hi = screenW - max(0, nav.right) - margin
+        val bottom = screenH - max(0, nav.bottom)
+        val w = size.w.coerceAtMost(max(1, hi - lo))
+        val h = size.h.coerceAtMost(max(1, bottom))
         val cx = if (centerX < 0) screenW / 2 else centerX
         val y = if (top < 0) px(DEFAULT_TOP_DP, d) else top
-        val left = clamp(cx - w / 2, margin, screenW - w - margin)
-        val t = clamp(y, 0, screenH - h)
+        val left = clamp(cx - w / 2, lo, hi - w)
+        val t = clamp(y, 0, bottom - h)
         return Rect(left, t, w, h)
+    }
+
+    /**
+     * Lo que ocupa la barra de navegación en cada borde, en px. Con 3 botones
+     * y el teléfono acostado queda a un costado; la isla no se mete debajo
+     * (ni encima: taparía Atrás / Inicio).
+     */
+    data class NavInsets(val left: Int, val right: Int, val bottom: Int) {
+        companion object {
+            val NONE = NavInsets(0, 0, 0)
+        }
     }
 
     /** coerceIn que no explota si el rango quedó al revés (pantallas diminutas). */

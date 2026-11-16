@@ -105,7 +105,7 @@ check("Toque largo 500 ms en la barra/burbuja", "LONG_PRESS_MS = 500L" in dock
       and "requestHistory()" in dock and 'dictationState != "idle"' in dock)
 check("Gate por switch isEnabled antes de mostrar", "BubbleHistoryController.isEnabled" in fbs)
 check("showBubbleHistory() como miembro (no anidada en setup)",
-      "private fun showBubbleHistory(x: Int, y: Int, size: Int): Boolean" in fbs
+      "private fun showBubbleHistory(x: Int, y: Int, size: Int, fromComplement: Boolean = false): Boolean" in fbs
       and "onHistoryRequested" in fbs)
 check("Mic de la modal reenvia onBubbleTap (graba via Dart)",
       "bubbleHistoryController?.close()" in fbs and "onBubbleActionListener?.onBubbleTap()" in fbs)

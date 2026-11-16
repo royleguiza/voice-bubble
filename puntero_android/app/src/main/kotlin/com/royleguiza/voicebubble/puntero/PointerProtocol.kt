@@ -133,6 +133,16 @@ object PointerProtocol {
     const val EXTRA_HISTORY_Y = "history_y"
     const val EXTRA_HISTORY_SIZE = "history_size"
 
+    /**
+     * VoiceBubble → complemento: su panel de historial se abrió
+     * ([EXTRA_VEILED] = true) o se cerró (false). Abierto, la barra del
+     * complemento se vela (invisible y sin tomar toques) para no taparlo; si
+     * el «cerrado» no llega, vuelve sola a los [VEIL_MAX_MS].
+     */
+    const val ACTION_DOCK_VEIL = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_VEIL"
+    const val EXTRA_VEILED = "veiled"
+    const val VEIL_MAX_MS = 120_000L
+
     const val EXTRA_DOCK_ENABLED = "enabled"
     const val EXTRA_DOCK_FORM = "form"
     const val EXTRA_TOOL_MIC = "tool_mic"

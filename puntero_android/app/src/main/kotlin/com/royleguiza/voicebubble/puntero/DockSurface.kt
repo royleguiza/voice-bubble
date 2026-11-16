@@ -44,6 +44,12 @@ internal interface DockSurface {
     /** El trackpad del complemento se abrió o se cerró. */
     fun setTrackpadOpen(open: Boolean)
 
+    /**
+     * VoiceBubble mostró (true) o cerró (false) su panel de historial: la barra
+     * se vela para no taparlo (sigue contando como dibujada).
+     */
+    fun setVeiled(veiled: Boolean)
+
     /** Giró el teléfono, cambió el tamaño de pantalla o el tema. */
     fun onConfigurationChanged()
 

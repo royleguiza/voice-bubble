@@ -168,6 +168,12 @@ internal class DockController(
         }
     }
 
+    override fun setVeiled(veiled: Boolean) {
+        if (veiled) closeArc()
+        edgeWindow?.setVeiled(veiled)
+        bubbleWindow?.setVeiled(veiled)
+    }
+
     override fun setTrackpadOpen(open: Boolean) {
         if (trackpadOpen == open) return
         trackpadOpen = open

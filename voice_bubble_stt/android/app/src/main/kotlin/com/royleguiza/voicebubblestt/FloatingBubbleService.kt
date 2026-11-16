@@ -79,7 +79,7 @@ class FloatingBubbleService : Service() {
         fun showHistoryFromComplement(x: Int, y: Int, size: Int): Boolean {
             val svc = instance ?: return false
             if (x < 0 || y < 0 || size <= 0) return false
-            return svc.showBubbleHistory(x, y, size)
+            return svc.showBubbleHistory(x, y, size, fromComplement = true)
         }
 
         /** Ajustes cambió forma o herramientas: redibujar la barra viva. */
@@ -417,7 +417,16 @@ class FloatingBubbleService : Service() {
     }
 
     /** Modal de historial anclada a la barra/burbuja (hito B1–B7). */
-    private fun showBubbleHistory(x: Int, y: Int, size: Int): Boolean {
+    /** El historial abierto lo pidió la barra del complemento: al cerrarlo se le saca el velo. */
+    private var historyVeiledComplement = false
+
+    private fun unveilComplement() {
+        if (!historyVeiledComplement) return
+        historyVeiledComplement = false
+        DockLink.sendVeil(this, false)
+    }
+
+    private fun showBubbleHistory(x: Int, y: Int, size: Int, fromComplement: Boolean = false): Boolean {
         try {
             if (dock == null || bubbleHistoryController?.isOpen() == true) return false
             if (!BubbleHistoryController.isEnabled(this)) return false
@@ -439,17 +448,24 @@ class FloatingBubbleService : Service() {
                         try {
                             dock?.setHidden(false)
                         } catch (_: Exception) {}
+                        unveilComplement()
                     }
                 )
                 bubbleHistoryController = controller
             }
             dock?.setHidden(true)
+            if (fromComplement) {
+                // La barra del complemento es de Accesibilidad y quedaría encima del panel: se vela.
+                historyVeiledComplement = true
+                DockLink.sendVeil(this, true)
+            }
             controller.showFrom(x, y, size)
             return true
         } catch (_: Exception) {
             try {
                 dock?.setHidden(false)
             } catch (_: Exception) {}
+            unveilComplement()
             return false
         }
     }
@@ -474,6 +490,7 @@ class FloatingBubbleService : Service() {
             bubbleHistoryController?.destroy()
         } catch (_: Exception) {}
         bubbleHistoryController = null
+        unveilComplement()
 
         try {
             dock?.destroy()
