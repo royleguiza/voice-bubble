@@ -12,6 +12,7 @@
 | 2A | Barra flotante (borde · burbuja · isla) dibujada por el complemento; dictado nativo sin Flutter | HECHA; el dueño confirmó con r317 que la barra y el dictado funcionan (falta probar reinicio y app cerrada) | `30ef040` | r316 |
 | 2B | Ajustes de la isla (elegirla, ajuste al píxel, maqueta, en vivo) | HECHA; el dueño confirmó con r317 que la isla funciona | `278cc41` | r317 |
 | 2C | Isla sin paso intermedio: cada mitad es su botón (pedido del dueño tras probar r317) | HECHA y subida; falta prueba en teléfono | `fb7fa16` | r318 |
+| 2D | Isla sin saltos al crecer y achicarse (pedido del dueño tras probar r318) | HECHA y subida; falta prueba en teléfono | ver `git log` | r319 |
 | 3 | Complemento independiente (pestaña propia, mover/achicar trackpad, ajustes mínimos) | PENDIENTE, sin especificación | — | — |
 | 4 | Un solo puntero también para el trackpad del teclado; historial; limpieza | PENDIENTE, sin especificación | — | — |
 
@@ -33,8 +34,28 @@ sobre la cámara → grabando) y pedía dos toques. Decisión:
   301/0, `test_trackpad_suite` 206/0. No se corrió lint (falta
   `lint-gradle` en la caché sin red). Falta la prueba en teléfono.
 
+### Ajuste 2D — isla sin saltos (2026-11-16)
+Con r318 el dueño confirmó el toque directo y el pegado desde la isla con
+un campo enfocado, pero vio un salto al pasar de la píldora chica a la de
+grabar y al volver. Causas y arreglo:
+- El agujero y la flecha del reposo se dibujaban con la medida FINAL:
+  saltaban a los extremos de la píldora grande. Ahora se dibujan con la
+  medida de ese momento y acompañan el borde.
+- Las piezas de grabar (agujero, ✕, cronómetro) se ubicaban desde el
+  centro con la medida final y aparecían fuera de la píldora; ahora van
+  pegadas a su borde (`IslandView.anchoredCx`) y se apagan de a poco al
+  pasar a «listo» (antes desaparecían de golpe).
+- Curva `OvershootInterpolator(1.1)` → `PathInterpolator(0.4, 0, 0.2, 1)`;
+  margen de la ventana de animación 12 → 0 dp (al crecer la ventana ya es
+  la final y no se mueve al terminar).
+- Nota r318: al actualizar el complemento, Android le apagó la
+  Accesibilidad y se vio la burbuja de respaldo de la app en vez de la
+  isla; se arregló apagando y prendiendo el permiso. Idea pendiente: que
+  la app avise cuando el complemento está instalado pero apagado.
+
 ### Pendientes abiertos (además de las fases 3 y 4)
-0. **El dictado de la barra no siempre pega el texto** (reportado con r317:
+0. **El dictado de la barra no siempre pega el texto** (con r318 el dueño
+   confirmó que desde la isla SÍ pega si hay un campo enfocado; reportado con r317:
    desde la isla copió pero no pegó; desde el borde sí). El código es el
    mismo para las tres formas: `DockDictationService.onTranscribed` copia
    al portapapeles y pega con `VoiceKeyboardService.commitFromExternal`,

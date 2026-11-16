@@ -70,8 +70,13 @@ object IslandGeometry {
     const val ERROR_MS = 2600L
     const val MORPH_MS = 420L
 
-    /** Margen extra de la ventana mientras dura el rebote (el overshoot pasa un poco del destino). */
-    const val OVERSHOOT_MARGIN_DP = 12f
+    /**
+     * Margen extra de la ventana mientras dura el cambio de tamaño. Cero: la
+     * curva no se pasa del destino, así que la ventana de la animación es la
+     * unión justa y al crecer coincide con la final (la ventana no se mueve
+     * al terminar: sin salto).
+     */
+    const val MORPH_MARGIN_DP = 0f
 
     data class Size(val w: Int, val h: Int)
 
@@ -149,7 +154,7 @@ object IslandGeometry {
     /** coerceIn que no explota si el rango quedó al revés (pantallas diminutas). */
     private fun clamp(v: Int, lo: Int, hi: Int): Int = if (hi < lo) lo else v.coerceIn(lo, hi)
 
-    /** Interpolación del rebote (t puede pasarse de 1 con el overshoot). */
+    /** Interpolación del cambio de tamaño (t de 0 a 1). */
     fun lerp(from: Rect, to: Rect, t: Float): Rect = Rect(
         (from.x + (to.x - from.x) * t).roundToInt(),
         (from.y + (to.y - from.y) * t).roundToInt(),
@@ -159,10 +164,10 @@ object IslandGeometry {
 
     /**
      * Ventana que contiene toda la animación de [from] a [to]: la unión de los
-     * dos más el margen del rebote, siempre dentro de la pantalla.
+     * dos (más [MORPH_MARGIN_DP]), siempre dentro de la pantalla.
      */
     fun animationWindow(from: Rect, to: Rect, d: Float, screenW: Int, screenH: Int): Rect {
-        val m = px(OVERSHOOT_MARGIN_DP, d)
+        val m = px(MORPH_MARGIN_DP, d)
         val u = from.union(to)
         val l = max(0, u.x - m)
         val t = max(0, u.y - m)

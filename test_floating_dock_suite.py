@@ -574,8 +574,9 @@ check("Isla: x = centro horizontal, y = borde superior, siempre dentro de la pan
       and "IslandGeometry.bounds(" in d_isl_ctrl)
 check("Isla: ancho y alto en reposo acotados (72–180 dp y 22–48 dp)",
       all(f"{k} = {v}" in d_isl_geo for k, v in (("MIN_W_DP", "72f"), ("MAX_W_DP", "180f"), ("MIN_H_DP", "22f"), ("MAX_H_DP", "48f"))))
-check("Isla: rebote de tamaño con overshoot leve y una sola ventana (unión de los dos tamaños solo mientras dura)",
-      "OvershootInterpolator(" in d_isl_ctrl and "IslandGeometry.animationWindow(" in d_isl_ctrl
+check("Isla: cambio de tamaño suave sin pasarse (sin overshoot) y una sola ventana (unión de los dos tamaños solo mientras dura)",
+      "PathInterpolator(0.4f, 0f, 0.2f, 1f)" in d_isl_ctrl and "OvershootInterpolator" not in d_isl_ctrl
+      and "MORPH_MARGIN_DP = 0f" in d_isl_geo and "IslandGeometry.animationWindow(" in d_isl_ctrl
       and "w.setBounds(to.x, to.y, to.w, to.h)" in d_isl_ctrl)
 check("Isla: con «quitar animaciones» del sistema el tamaño cambia directo",
       "ValueAnimator.areAnimatorsEnabled()" in d_isl_ctrl and "ValueAnimator.areAnimatorsEnabled()" in d_horizon)

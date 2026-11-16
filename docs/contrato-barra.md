@@ -123,8 +123,8 @@ Todo es broadcast explícito al paquete destino con el permiso de firma
 - `x` = centro horizontal, `y` = borde superior, en px de pantalla completa. Al
   crecer se mantiene centrada en `x`. Siempre queda dentro de la pantalla, con
   4 dp de margen lateral, en cualquier tamaño de teléfono (`IslandGeometry.bounds`).
-- Rebote ≈ 420 ms con overshoot leve. La ventana mide justo lo que la píldora
-  salvo durante el rebote (unión del tamaño viejo y el nuevo). Con «quitar
+- Cambio de tamaño ≈ 420 ms, curva suave sin overshoot. La ventana mide justo lo que la píldora
+  salvo durante el cambio (unión del tamaño viejo y el nuevo). Con «quitar
   animaciones» del sistema, el cambio es directo y la voz queda como anillo fijo.
 - **Sin paso intermedio (r318):** la isla no se «abre». En reposo cada mitad es
   su botón: tocar la mitad del agujero dicta, tocar la mitad del glifo abre el

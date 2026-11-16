@@ -102,15 +102,15 @@ class IslandGeometryTest {
     }
 
     @Test
-    fun `el rebote interpola y la ventana contiene toda la animacion`() {
+    fun `el cambio de tamano interpola y la ventana contiene toda la animacion`() {
         val a = IslandGeometry.Rect(100, 10, 300, 90)
         val b = IslandGeometry.Rect(0, 10, 500, 170)
         assertEquals(a, IslandGeometry.lerp(a, b, 0f))
         assertEquals(b, IslandGeometry.lerp(a, b, 1f))
-        val over = IslandGeometry.lerp(a, b, 1.1f)
-        assertTrue(over.w > b.w)
         val win = IslandGeometry.animationWindow(a, b, d, sw, sh)
-        for (t in listOf(0f, 0.5f, 1f, 1.1f)) {
+        // Al crecer, la ventana de la animación ES la final: no se mueve al terminar.
+        assertEquals(b, win)
+        for (t in listOf(0f, 0.25f, 0.5f, 0.75f, 1f)) {
             val r = IslandGeometry.lerp(a, b, t)
             assertTrue(win.x <= r.x + 1 || win.x == 0)
             assertTrue(win.right >= r.right - 1 || win.right == sw)

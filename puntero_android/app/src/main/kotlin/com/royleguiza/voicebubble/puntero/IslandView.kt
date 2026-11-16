@@ -61,9 +61,13 @@ internal class IslandView(
     private var from = IslandGeometry.State.IDLE
     private var morph = 1f
 
-    /** Tamaño FINAL de la píldora del estado actual (de ahí salen las piezas). */
-    private var finalW = 0
-    private var finalH = 0
+    /**
+     * Tamaño de la píldora grabando (el último que se usó). Las piezas de
+     * grabar se arman con esta medida aunque ya se esté yendo a otro estado,
+     * así se apagan de a poco en su lugar en vez de desaparecer de golpe.
+     */
+    private var recW = 0
+    private var recH = 0
 
     var micOnLeft = true
         set(value) { field = value; relayoutPieces(); invalidate() }
@@ -182,9 +186,11 @@ internal class IslandView(
     fun show(state: IslandGeometry.State, finalSize: IslandGeometry.Size) {
         if (state != current) from = current
         current = state
-        finalW = finalSize.w
-        finalH = finalSize.h
         val rec = state == IslandGeometry.State.REC || state == IslandGeometry.State.THINK
+        if (rec) {
+            recW = finalSize.w
+            recH = finalSize.h
+        }
         holeView.setPhase(
             when (state) {
                 IslandGeometry.State.REC -> HorizonView.Phase.RECORDING
@@ -247,21 +253,29 @@ internal class IslandView(
 
     /** Tamaños de las piezas según el estado (una vez por cambio de estado; la posición se pone por cuadro). */
     private fun relayoutPieces() {
-        if (finalW <= 0 || finalH <= 0) return
-        val rec = current == IslandGeometry.State.REC || current == IslandGeometry.State.THINK
-        if (rec) {
-            val l = IslandGeometry.recLayout(finalW, finalH, d, micOnLeft)
-            holeSizePx = l.hole.w
-            voiceW = l.voice.w
-            voiceH = l.voice.h
-            voiceView.holeOnLeft = micOnLeft
+        if (recW <= 0 || recH <= 0) {
+            positionPieces() // todavía no grabó nunca: las piezas quedan escondidas
+            return
         }
+        val l = IslandGeometry.recLayout(recW, recH, d, micOnLeft)
+        holeSizePx = l.hole.w
+        voiceW = l.voice.w
+        voiceH = l.voice.h
+        voiceView.holeOnLeft = micOnLeft
         sizeOf(holeView, holeSizePx, holeSizePx)
         sizeOf(voiceView, voiceW, voiceH)
-        val cancel = IslandGeometry.recLayout(finalW, finalH, d, micOnLeft).cancel
-        sizeOf(cancelButton, cancel.w, cancel.h)
+        sizeOf(cancelButton, l.cancel.w, l.cancel.h)
         positionPieces()
     }
+
+    /**
+     * x en la píldora de AHORA de algo que en una píldora de ancho [layoutW]
+     * tiene su centro en [cxInLayout]: lo de la mitad izquierda va pegado al
+     * borde izquierdo y lo de la derecha al derecho. Así cada pieza acompaña
+     * su borde mientras la píldora crece o se achica (nada salta).
+     */
+    private fun anchoredCx(cxInLayout: Float, layoutW: Int): Float =
+        if (cxInLayout <= layoutW / 2f) pill.left + cxInLayout else pill.right - (layoutW - cxInLayout)
 
     private fun sizeOf(v: View, w: Int, h: Int) {
         val lp = v.layoutParams as LayoutParams
@@ -274,36 +288,33 @@ internal class IslandView(
 
     /** Pone cada pieza donde va, relativa al CENTRO de la píldora (así acompaña el rebote sin salirse). */
     private fun positionPieces() {
-        if (finalW <= 0 || finalH <= 0) return
-        val cx = pill.centerX() - finalW / 2f
-        val cy = pill.centerY() - finalH / 2f
-        val rec = current == IslandGeometry.State.REC || current == IslandGeometry.State.THINK
-        val a = ((morph - 0.35f) / 0.65f).coerceIn(0f, 1f)
-
-        var holeOn = false
-        var voiceOn = false
-        var cancelOn = false
-        if (rec) {
-            val l = IslandGeometry.recLayout(finalW, finalH, d, micOnLeft)
-            holeView.translationX = cx + l.hole.x
+        val a = layerAlpha(IslandGeometry.State.REC)
+        val on = a > 0f && recW > 0 && recH > 0
+        if (on) {
+            val l = IslandGeometry.recLayout(recW, recH, d, micOnLeft)
+            val cy = pill.centerY() - recH / 2f
+            // Agujero y ✕ pegados a su borde; la franja de símbolos, al centro.
+            holeView.translationX = anchoredCx(l.hole.x + l.hole.w / 2f, recW) - l.hole.w / 2f
             holeView.translationY = cy + l.hole.y
-            voiceView.translationX = cx + l.voice.x
+            voiceView.translationX = pill.centerX() - recW / 2f + l.voice.x
             voiceView.translationY = cy + l.voice.y
-            cancelButton.translationX = cx + l.cancel.x
+            cancelButton.translationX = anchoredCx(l.cancel.x + l.cancel.w / 2f, recW) - l.cancel.w / 2f
             cancelButton.translationY = cy + l.cancel.y
-            holeOn = true
-            voiceOn = true
-            cancelOn = current == IslandGeometry.State.REC
         }
-        setPiece(holeView, holeOn, a)
-        setPiece(voiceView, voiceOn, a)
+        // La ✕ es solo de «grabando» (pensando no se cancela desde acá).
+        val cancelOn = on && (current == IslandGeometry.State.REC ||
+            (from == IslandGeometry.State.REC && canonical(current) != IslandGeometry.State.REC))
+        setPiece(holeView, on, a)
+        setPiece(voiceView, on, a)
         setPiece(cancelButton, cancelOn, a)
+        cancelButton.isClickable = current == IslandGeometry.State.REC
         // En reposo los botones son las mitades de la píldora; «listo» solo informa.
         holeView.isClickable = current == IslandGeometry.State.REC
     }
 
     private fun setPiece(v: View, on: Boolean, alpha: Float) {
-        v.visibility = if (on) VISIBLE else GONE
+        val vis = if (on) VISIBLE else GONE
+        if (v.visibility != vis) v.visibility = vis
         v.alpha = if (on) alpha else 0f
     }
 
@@ -362,11 +373,11 @@ internal class IslandView(
 
     /** Reposo: agujero chico con anillo brasa de un lado, glifo del puntero del otro. */
     private fun drawIdle(canvas: Canvas, a: Int) {
-        val w = finalW
-        val h = finalH
-        val l = IslandGeometry.idleLayout(w, h, d, micOnLeft)
-        val ox = pill.centerX() - w / 2f
-        val oy = pill.centerY() - h / 2f
+        // Medida de la píldora de AHORA: el agujero y la flecha acompañan los bordes
+        // mientras crece o se achica (antes saltaban a la medida final).
+        val l = IslandGeometry.idleLayout(pill.width().roundToInt(), pill.height().roundToInt(), d, micOnLeft)
+        val ox = pill.left
+        val oy = pill.top
         val dotR = IslandGeometry.IDLE_DOT_DP * d / 2f
         fill.color = withAlpha(palette.hole, a)
         canvas.drawCircle(ox + l.dotCx, oy + l.cy, dotR, fill)
@@ -380,12 +391,11 @@ internal class IslandView(
     }
 
     private fun drawTimer(canvas: Canvas, a: Int) {
-        val l = IslandGeometry.recLayout(finalW, finalH, d, micOnLeft)
-        val ox = pill.centerX() - finalW / 2f
-        val oy = pill.centerY() - finalH / 2f
+        if (recW <= 0 || recH <= 0) return
+        val l = IslandGeometry.recLayout(recW, recH, d, micOnLeft)
         timerPaint.color = withAlpha(palette.onHole, a)
-        val base = oy + finalH / 2f - (timerPaint.descent() + timerPaint.ascent()) / 2f
-        canvas.drawText(timerText, ox + l.timerCenterX, base, timerPaint)
+        val base = pill.centerY() - (timerPaint.descent() + timerPaint.ascent()) / 2f
+        canvas.drawText(timerText, anchoredCx(l.timerCenterX.toFloat(), recW), base, timerPaint)
     }
 
     /** «Listo»: ✓ en destello + frase corta («Pegado», «Copiado»…); con error, un «!» en su lugar. */

@@ -7,16 +7,16 @@ import android.os.Handler
 import android.os.Looper
 import android.view.HapticFeedbackConstants
 import android.view.WindowManager
-import android.view.animation.OvershootInterpolator
+import android.view.animation.PathInterpolator
 
 /**
  * La isla: dueña de su ventana de Accesibilidad, de la máquina de estados
  * (reposo → grabando → pensando → listo → reposo; en reposo cada mitad
- * es su botón: no hay paso intermedio) y del rebote entre
+ * es su botón: no hay paso intermedio) y del cambio suave entre
  * tamaños. Las medidas salen de [IslandGeometry]; el dibujo, de [IslandView].
  *
  * - Una sola ventana. Quieta mide justo lo que la píldora; solo durante el
- *   rebote (≈ 420 ms) es la unión del tamaño viejo y el nuevo, para no tapar
+ *   cambio de tamaño (≈ 420 ms) es la unión del tamaño viejo y el nuevo, para no tapar
  *   la pantalla de más.
  * - Siempre dentro de la pantalla, sea cual sea su tamaño (ver [IslandGeometry.bounds]).
  * - Con «quitar animaciones» del sistema, los cambios de tamaño son directos.
@@ -173,10 +173,18 @@ internal class IslandController(
         }
         val (sw, sh) = screen.size()
         val win = IslandGeometry.animationWindow(from, to, d, sw, sh)
+        // Primero la píldora en su lugar dentro de la ventana nueva y el cruce en 0,
+        // después la ventana: el primer cuadro ya sale bien (sin destello del estado nuevo).
+        view.setMorph(0f)
+        view.setPill(
+            (from.x - win.x).toFloat(), (from.y - win.y).toFloat(),
+            (from.right - win.x).toFloat(), (from.bottom - win.y).toFloat(),
+        )
         w.setBounds(win.x, win.y, win.w, win.h)
         morphAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = IslandGeometry.MORPH_MS
-            interpolator = OvershootInterpolator(1.1f)
+            // Curva suave y continua, sin pasarse del destino (el rebote se veía como un salto).
+            interpolator = PathInterpolator(0.4f, 0f, 0.2f, 1f)
             addUpdateListener {
                 val f = it.animatedValue as Float
                 val r = IslandGeometry.lerp(from, to, f)
