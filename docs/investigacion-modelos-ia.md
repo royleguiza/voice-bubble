@@ -254,6 +254,15 @@ prompt del botón). El camino 1 como atajo cuando el destino es inglés.
   modelo grande. Se puede ofrecer: «En el teléfono (privado)» o «Con IA
   (mejor calidad)».
 
+**Decisión del dueño (2026-11-16):** se ofrecen **las dos opciones**.
+«En el teléfono (privado)» con ML Kit Translation es la opción por defecto;
+«Con IA (mejor calidad)» manda el texto solo si el usuario lo **autoriza
+explícitamente** (aviso claro una vez, revocable en Ajustes). Nunca en campos
+de contraseña. Al implementar la etapa 2 hay que actualizar la regla de
+privacidad de `AGENTS.md` con esta excepción.
+
+Plan publicado como página: <https://claude.ai/artifact/2roqBTrftYvCFqEYfSiLNj>
+
 ### Prompt de traducción propuesto (para el camino 2 y el botón)
 Sistema:
 ```
