@@ -311,11 +311,11 @@ class ToolbarLayer(
         v.contentDescription = translateDescription(armed)
     }
 
-    /** Cargador del widget (agujero con letras en órbita) mientras traduce. */
+    /** Cargador del widget agrandado ×1.45 para la barra (agujero con letras en órbita) mientras traduce. */
     fun showTranslateBusy() {
         val v = translateView ?: return
         val d = try {
-            service.getDrawable(R.drawable.widget_ai_title_loading)
+            service.getDrawable(R.drawable.kb_translate_loading)
         } catch (_: Exception) {
             null
         } ?: return

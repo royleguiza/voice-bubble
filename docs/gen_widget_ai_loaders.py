@@ -151,7 +151,12 @@ def particle(i, path, phase, dur, traj, alpha_of, scale_of, near_from, stroke):
     return shape, targets
 
 
-def write(name, label, body, targets):
+def write(name, label, body, targets, scale=None):
+    if scale:
+        # Variante agrandada (teclado): misma animación en un grupo escalado
+        # desde el centro; lo que sale del lienzo se recorta.
+        body = ('            <group android:pivotX="%d" android:pivotY="%d" android:scaleX="%s" '
+                'android:scaleY="%s">\n' % (CX, CY, f(scale), f(scale))) + body + "            </group>\n"
     out = HEAD % (label, V, V, V, V) + body + "        </vector>\n    </aapt:attr>\n" + targets
     out += "</animated-vector>\n"
     with open(os.path.join(D, name + ".xml"), "w") as fh:
@@ -178,6 +183,11 @@ def title():
         targets += t
     write("widget_ai_title_loading", "IA, título: «Letras en órbita».",
           static_layers(13, 0.22, hole_r, ring=(11, 4.4)) + shapes, targets)
+    # Teclado (botón «Traducir», Ruta IA 2b): en la barra el lienzo de 48 dp
+    # se achica al alto del botón y el agujero quedaba de ~10 dp. 1.45 es lo
+    # máximo sin cortar las letras al entrar a la órbita.
+    write("kb_translate_loading", "Teclado, traducir: «Letras en órbita» ×1.45.",
+          static_layers(13, 0.22, hole_r, ring=(11, 4.4)) + shapes, targets, scale=1.45)
 
 
 def summary():

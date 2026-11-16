@@ -71,12 +71,16 @@ check("Sin selección arma el próximo dictado (un solo uso) y se apaga solo",
 check("El armado vale para el campo en que se pidió",
       "if (!restarting) {\n            translateArmed = false" in vks)
 check("Sin píldora «Traduciendo…»: cargador del widget en el botón y ✓ al terminar",
-      "Traduciendo…" not in vks and "R.drawable.widget_ai_title_loading" in toolbar
+      "Traduciendo…" not in vks and "R.drawable.kb_translate_loading" in toolbar
       and "R.drawable.kb_translate_done" in toolbar and "fun showTranslateDone()" in toolbar
       and "host.onDictationTranslate(busy = true, ok = false)" in dictation)
 check("Animación de fin: la órbita cae al agujero y se dibuja el ✓",
       'android:name="orbit"' in suite.read("voice_bubble_stt/android/app/src/main/res/drawable/kb_translate_done.xml")
       and 'android:propertyName="trimPathEnd"' in suite.read("voice_bubble_stt/android/app/src/main/res/drawable/kb_translate_done.xml"))
+check("Animaciones del botón agrandadas ×1.45 (en la barra quedaban chicas)",
+      'android:scaleX="1.45"' in suite.read("voice_bubble_stt/android/app/src/main/res/drawable/kb_translate_loading.xml")
+      and 'android:scaleX="1.45"' in suite.read("voice_bubble_stt/android/app/src/main/res/drawable/kb_translate_done.xml")
+      and "GENERADO por docs/gen_widget_ai_loaders.py" in suite.read("voice_bubble_stt/android/app/src/main/res/drawable/kb_translate_loading.xml"))
 check("Widget: se redibuja al actualizar la app (no queda vacío)",
       "android.intent.action.MY_PACKAGE_REPLACED" in suite.read("voice_bubble_stt/android/app/src/main/AndroidManifest.xml")
       and "Intent.ACTION_MY_PACKAGE_REPLACED" in suite.read(KT + "WidgetNotesProvider.kt"))

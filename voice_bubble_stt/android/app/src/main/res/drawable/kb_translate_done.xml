@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Fin de la traducción (Ruta IA 2b): sigue al cargador del widget
-     (widget_ai_title_loading, letras en órbita) con el mismo agujero y la
+     (kb_translate_loading, letras en órbita) con el mismo agujero y la
      misma órbita inclinada. La órbita se cierra sobre el agujero (lo que
      giraba «cae adentro»), el anillo brasa late una vez y se dibuja el ✓
      en destello. 48 dp, ≈ 760 ms; después la barra vuelve al ícono. -->
@@ -9,6 +9,9 @@
     <aapt:attr name="android:drawable">
         <vector android:width="48dp" android:height="48dp"
             android:viewportWidth="48" android:viewportHeight="48">
+            <!-- Mismo agrandado que kb_translate_loading (×1.45): en la barra
+                 el lienzo se achica al alto del botón. -->
+            <group android:pivotX="24" android:pivotY="24" android:scaleX="1.45" android:scaleY="1.45">
             <!-- Halo brasa (igual al cargador) -->
             <group android:name="halo" android:pivotX="24" android:pivotY="24">
                 <path android:pathData="M11,24a13,13 0 1,0 26,0a13,13 0 1,0 -26,0z">
@@ -40,6 +43,7 @@
                 android:strokeWidth="1.4" android:strokeLineCap="round"
                 android:strokeLineJoin="round" android:trimPathEnd="0"
                 android:pathData="M21.6,24.2L23.3,25.9L26.5,22.3" />
+            </group>
         </vector>
     </aapt:attr>
     <!-- La órbita se achica hasta el borde del agujero y se apaga -->
