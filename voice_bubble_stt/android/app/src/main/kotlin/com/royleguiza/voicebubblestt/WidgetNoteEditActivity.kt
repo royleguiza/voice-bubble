@@ -30,6 +30,9 @@ class WidgetNoteEditActivity : Activity() {
         // = NotesService.maxTituloLength en Dart.
         private const val MAX_TITLE_CHARS = 80
 
+        /** Espera para el segundo aviso al widget, con el launcher ya al frente. */
+        private const val LIST_REFRESH_AFTER_EXIT_MS = 700L
+
         private val UUID_REGEX =
             Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
@@ -1327,6 +1330,28 @@ class WidgetNoteEditActivity : Activity() {
         }
     }
 
+    /**
+     * Hubo un guardado silencioso (título o resumen de IA) con el editor
+     * abierto: el listado se vuelve a pedir al salir. Muchos launchers
+     * (Motorola, entre otros) ignoran el aviso de datos nuevos mientras el
+     * widget está tapado, y al volver mostraban la lista vieja.
+     */
+    @Volatile
+    private var listDirty = false
+
+    override fun onStop() {
+        super.onStop()
+        if (!listDirty) return
+        listDirty = false
+        val app = applicationContext
+        BackgroundWork.execute { refreshNoteWidgets(app) }
+        // Segundo aviso cuando el launcher ya volvió al frente.
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+            { BackgroundWork.execute { refreshNoteWidgets(app) } },
+            LIST_REFRESH_AFTER_EXIT_MS,
+        )
+    }
+
     private fun setGeminiBusy(action: String, busy: Boolean) {
         val (icon, progress) = if (action == GEMINI_TITULO) {
             R.id.icon_gemini_titulo to R.id.progress_gemini_titulo
@@ -1460,12 +1485,14 @@ class WidgetNoteEditActivity : Activity() {
         setMutationBusy(mutationInProgress.get())
     }
 
-    private fun refreshNoteWidgets() {
-        val appWidgetManager = AppWidgetManager.getInstance(this)
-        WidgetNotesProvider.requestListRefresh(this, appWidgetManager)
+    private fun refreshNoteWidgets(context: Context = this) {
+        // Con el editor abierto, el aviso puede perderse: se repite al salir (onStop).
+        if (context === this) listDirty = true
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        WidgetNotesProvider.requestListRefresh(context, appWidgetManager)
         val ids = appWidgetManager.getAppWidgetIds(
-            ComponentName(this, WidgetNotesProvider::class.java),
+            ComponentName(context, WidgetNotesProvider::class.java),
         )
-        for (id in ids) WidgetNotesProvider.updateOne(this, appWidgetManager, id)
+        for (id in ids) WidgetNotesProvider.updateOne(context, appWidgetManager, id)
     }
 }

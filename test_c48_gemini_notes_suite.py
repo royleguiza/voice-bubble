@@ -83,6 +83,12 @@ check("Editor: usa el proveedor resuelto", "NoteAiResolver().create()" in editor
 check("Widget: mismo modelo y elección que Dart",
       'const val MODEL = "openai/gpt-oss-20b"' in kt_ai and 'PROVIDER_PREF = "flutter.kb_ai_notes_provider"' in kt_ai
       and '.put("reasoning_effort", "low")' in kt_ai)
+check("Groq: nota demasiado larga (413) con mensaje claro en app y widget",
+      "if (code == 413)" in ai and "tooLongMessage" in ai
+      and "code == 413 -> GeminiNoteClient.GeminiError(" in kt_ai and "TOO_LONG_MESSAGE" in kt_ai)
+check("Widget: el listado se vuelve a pedir al salir del editor (launchers que ignoran el aviso)",
+      "override fun onStop()" in suite.read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/WidgetNoteEditActivity.kt")
+      and "if (context === this) listDirty = true" in suite.read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/WidgetNoteEditActivity.kt"))
 check("Widget: lector y editor usan NoteAiClients",
       "NoteAiClients.create(context, WIDGET_AI_TIMEOUT_MS)" in suite.read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/WidgetReader.kt")
       and "NoteAiClients.create(this)" in suite.read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/WidgetNoteEditActivity.kt"))

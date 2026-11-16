@@ -77,6 +77,12 @@ class GroqNoteClient(
         const val TITLE_MAX_TOKENS = 1024
         const val SUMMARY_MAX_TOKENS = 4096
 
+        /** Igual que `GroqNoteService.tooLongMessage` en Dart. */
+        const val TOO_LONG_MESSAGE =
+            "La nota es muy larga para Groq gratis (unos 20.000 caracteres como " +
+                "máximo). Para notas largas elegí Google en Ajustes › Inteligencia " +
+                "artificial."
+
         internal fun buildBody(prompt: String, maxTokens: Int): String =
             JSONObject()
                 .put("model", MODEL)
@@ -103,6 +109,8 @@ class GroqNoteClient(
             return when {
                 code == 401 || code == 403 -> GeminiNoteClient.GeminiError(
                     "Clave de Groq inválida ($code) $detail", GeminiNoteClient.ErrorKind.AUTH)
+                code == 413 -> GeminiNoteClient.GeminiError(
+                    TOO_LONG_MESSAGE, GeminiNoteClient.ErrorKind.BAD_REQUEST)
                 code == 429 -> GeminiNoteClient.GeminiError(
                     "Límite de Groq alcanzado: $detail", GeminiNoteClient.ErrorKind.SERVER)
                 code >= 500 -> GeminiNoteClient.GeminiError(

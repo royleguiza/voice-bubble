@@ -77,6 +77,17 @@ void main() {
       await expectKind(400, GeminiErrorKind.badRequest);
     });
 
+    test('nota demasiado larga (413) explica qué hacer', () async {
+      final client = MockClient((_) async => http.Response(
+          '{"error":{"message":"Request too large"}}', 413));
+      await expectLater(
+        GroqNoteService(apiKey: 'k', client: client).resumir('x'),
+        throwsA(isA<GeminiException>()
+            .having((e) => e.message, 'message', GroqNoteService.tooLongMessage)
+            .having((e) => e.kind, 'kind', GeminiErrorKind.badRequest)),
+      );
+    });
+
     test('respuesta vacía es un error claro', () async {
       final client = MockClient((_) async => _groqOk('   '));
       await expectLater(

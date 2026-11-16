@@ -36,6 +36,13 @@ class GroqNoteService implements NoteAiService {
   static const int titleMaxTokens = 1024;
   static const int summaryMaxTokens = 4096;
 
+  /// Nota más larga que lo que acepta Groq gratis en un pedido (≈ 8000
+  /// tokens por minuto entre nota y respuesta, unos 20 000 caracteres).
+  static const String tooLongMessage =
+      'La nota es muy larga para Groq gratis (unos 20.000 caracteres como '
+      'máximo). Para notas largas elegí Google en Ajustes › Inteligencia '
+      'artificial.';
+
   final String _apiKey;
   final http.Client _client;
 
@@ -112,6 +119,10 @@ class GroqNoteService implements NoteAiService {
     if (code == 401 || code == 403) {
       throw GeminiException('Clave de Groq inválida ($code) $detail',
           kind: GeminiErrorKind.auth);
+    }
+    if (code == 413) {
+      throw const GeminiException(tooLongMessage,
+          kind: GeminiErrorKind.badRequest);
     }
     if (code == 429) {
       throw GeminiException('Límite de Groq alcanzado: $detail',

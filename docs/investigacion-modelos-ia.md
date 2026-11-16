@@ -355,6 +355,11 @@ la API de Google salga de alfa.
   otro. App: `note_ai_service.dart` (`GroqNoteService`, `NoteAiResolver`);
   widget: `NoteAiClients.kt` (`GroqNoteClient`). Las acciones quedan
   encendidas por defecto aunque no haya clave de Google.
+- **Ajuste 2a (r327):** el dueño confirmó con r326 que Groq es «el día y la
+  noche». Arreglos: el listado del widget se vuelve a pedir al salir del
+  editor (los launchers ignoraban el aviso con el editor encima) y Groq
+  explica cuando la nota es muy larga (error 413: ≈ 8000 tokens por minuto en
+  el plan gratis, unos 20 000 caracteres entre nota y respuesta).
 - **Etapa 2b (pendiente):** dictado con traducción y botón «Traducir».
 
 ## 12. Plan actualizado por etapas
