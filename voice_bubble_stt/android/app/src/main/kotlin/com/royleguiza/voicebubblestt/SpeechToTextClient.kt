@@ -86,6 +86,18 @@ class SpeechToTextClient(
          * C-45: tapa WAV PCM 16-bit mono 16kHz (formato propio, espejo de
          * Dart `CloudSttService.buildWavHeader`). Solo metadatos de formato.
          */
+        /** WAV (cabecera RIFF + PCM) de un tramo PCM16 mono a 16 kHz. */
+        fun wavFromPcm(pcm: ByteArray): ByteArray = buildWavHeader(pcm.size) + pcm
+
+        /**
+         * Último pedazo de un dictado por tramos: el PCM de [fullWav] desde
+         * [pcmOffset] (bytes ya entregados en tramos) con su propia cabecera.
+         */
+        fun wavTail(fullWav: ByteArray, pcmOffset: Int): ByteArray {
+            val from = (WAV_HEADER_BYTES + pcmOffset).coerceIn(WAV_HEADER_BYTES, fullWav.size)
+            return wavFromPcm(fullWav.copyOfRange(from, fullWav.size))
+        }
+
         fun buildWavHeader(dataSize: Int): ByteArray {
             val out = ByteArrayOutputStream(WAV_HEADER_BYTES)
             fun le16(v: Int) { out.write(v and 0xFF); out.write((v shr 8) and 0xFF) }
@@ -166,6 +178,8 @@ class SpeechToTextClient(
         val apiKey: String,
         val model: String,
         val language: String,
+        /** Ruta IA 3: final del texto del tramo anterior (continuidad de puntuación). */
+        val prompt: String? = null,
     )
 
     /** C-34: Validación estricta de HTTPS. Cualquier URL en claro (http://)
@@ -332,6 +346,7 @@ class SpeechToTextClient(
             }
             pcmBuffer.reset()
             levelMeter.reset()
+            segmentCutBytes = 0
             cancelRequested = false
             audioRecord = rec
             rec.startRecording()
@@ -344,15 +359,50 @@ class SpeechToTextClient(
         }
     }
 
+    /**
+     * Ruta IA 3 (teclado): recibe cada tramo PCM cortado durante la
+     * grabación (ver [DictationTranches.shouldCut]). Se llama desde el hilo
+     * de captura: tiene que volver enseguida. Null = sin tramos (burbuja,
+     * widget: igual que siempre).
+     */
+    @Volatile
+    var segmentListener: ((ByteArray) -> Unit)? = null
+
+    /** Bytes PCM ya entregados en tramos (el resto es el último pedazo). */
+    @Volatile
+    private var segmentCutBytes = 0
+
+    /** Bytes PCM entregados en tramos en la última grabación (0 = sin tramos). */
+    fun lastSegmentCutBytes(): Int = segmentCutBytes
+
     private fun captureLoop(rec: AudioRecord) {
         val buf = ByteArray(2048)
         val deadline = System.currentTimeMillis() + MAX_SECONDS * 1000L
+        var quietMs = 0
         while (capturing && System.currentTimeMillis() < deadline) {
             val n = try { rec.read(buf, 0, buf.size) } catch (_: Exception) { -1 }
             if (n > 0) {
                 synchronized(pcmBuffer) { pcmBuffer.write(buf, 0, n) }
                 // Solo lectura del mismo buffer, sin copiar ni asignar.
                 levelMeter.feed(buf, n)
+                val listener = segmentListener
+                if (listener != null) {
+                    quietMs = if (DictationTranches.isQuietFrame(buf, n)) {
+                        quietMs + DictationTranches.frameMs(n)
+                    } else {
+                        0
+                    }
+                    val cut = segmentCutBytes
+                    val total = synchronized(pcmBuffer) { pcmBuffer.size() }
+                    if (DictationTranches.shouldCut(total - cut, quietMs)) {
+                        val segment = synchronized(pcmBuffer) {
+                            pcmBuffer.toByteArray().copyOfRange(cut, total)
+                        }
+                        segmentCutBytes = total
+                        quietMs = 0
+                        try { listener(segment) } catch (_: Exception) {}
+                    }
+                }
             } else if (n < 0) {
                 break
             }
@@ -544,6 +594,7 @@ class SpeechToTextClient(
                     }
                     field("model", config.model)
                     field("language", config.language)
+                    config.prompt?.takeIf { it.isNotBlank() }?.let { field("prompt", it) }
                     d.writeBytes("--$boundary\r\n")
                     d.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\n")
                     d.writeBytes("Content-Type: audio/wav\r\n\r\n")

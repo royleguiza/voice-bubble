@@ -386,6 +386,18 @@ la API de Google salga de alfa.
   Widget: se redibuja con `MY_PACKAGE_REPLACED` (tras actualizar la app
   quedaba vacío y + / micrófono abrían la app).
 
+- **Etapa 3 (2026-11-16, hecha; falta probar en el teléfono):** dictado por
+  tramos en el teclado. `SpeechToTextClient` corta un tramo cuando pasa de
+  25 s y hay una pausa de 400 ms, o a los 40 s; `DictationTranches` los sube
+  de a uno y en orden mientras se habla, con el final del texto anterior
+  como `prompt`, y reintenta hasta 2 veces por red, 429 o 5xx. Al soltar
+  solo se transcribe el último pedazo y se une todo. Si un tramo no sale se
+  sube el audio completo (camino de siempre) y el «Reintentar» conserva el
+  WAV entero. Dictados de menos de 25 s: un solo pedido, igual que antes.
+  Límites de Groq: 2–3 pedidos por minuto mientras se habla (límite 20); el
+  audio total no cambia. Alcance: solo el teclado (burbuja y widget sin
+  cambios); el texto se pega al final (no tramo a tramo).
+
 ## 12. Plan actualizado por etapas
 
 1. Desplegable de Groq (`turbo` / `large-v3`) + notas con

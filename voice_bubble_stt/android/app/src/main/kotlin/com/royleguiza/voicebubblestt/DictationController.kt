@@ -95,6 +95,9 @@ class DictationController(
     }
 
     private lateinit var sttClient: SpeechToTextClient
+
+    /** Ruta IA 3: dictado por tramos del cliente vigente. */
+    private lateinit var tranches: DictationTranches
     private val repo = TranscriptionHistoryRepository(service)
     private var micState = MicState.IDLE
     private var micKeyView: View? = null
@@ -154,7 +157,11 @@ class DictationController(
      */
     fun onCreateInputView() {
         cancelDictationIfActive()
+        if (::tranches.isInitialized) tranches.close()
         sttClient = SpeechToTextClient(service) { host.isSpanish() }
+        val t = DictationTranches(sttClient)
+        tranches = t
+        sttClient.segmentListener = { pcm -> t.onSegment(pcm) }
         preloadSttConfig()
         BackgroundWork.execute {
             initMicSounds()
@@ -600,6 +607,8 @@ class DictationController(
             return
         }
         micState = MicState.RECORDING
+        // Ruta IA 3: tramos nuevos para esta grabación (config en memoria, C-12).
+        tranches.begin(sttClient.getConfig())
         recordingStartMs = SystemClock.elapsedRealtime()
         micPillTimer?.text = "0:00"
         refreshMicVisual()
@@ -643,7 +652,7 @@ class DictationController(
             }
             lastDictationSlot = LastDictationSlot(wav, config)
             if (generation != transcriptionGeneration) return@execute
-            sttClient.transcribe(
+            transcribeDictation(
                 wav,
                 config,
                 onDone = { text ->
@@ -653,7 +662,7 @@ class DictationController(
                             if (generation != transcriptionGeneration) return@runOnMain
                             micIdle()
                         }
-                        return@transcribe
+                        return@transcribeDictation
                     }
                     lastDictationSlot = null
                     // AT-A3: historial (lectura de disco + XML + prefs) en el
@@ -693,6 +702,31 @@ class DictationController(
                 },
             )
         }
+    }
+
+    /**
+     * Ruta IA 3: si la grabación se cortó en tramos (dictado largo), ya están
+     * transcriptos mientras se hablaba: solo falta el último pedazo y se une
+     * todo. Sin tramos (dictado corto) es el pedido único de siempre. Mismos
+     * callbacks que [SpeechToTextClient.transcribe].
+     */
+    private fun transcribeDictation(
+        wav: ByteArray,
+        config: SpeechToTextClient.Config,
+        onDone: (String?) -> Unit,
+        onError: (String) -> Unit,
+    ) {
+        val cut = sttClient.lastSegmentCutBytes()
+        if (!tranches.hasSegments() || cut <= 0) {
+            tranches.cancel()
+            sttClient.transcribe(wav, config, onDone, onError)
+            return
+        }
+        tranches.finish(
+            wav,
+            SpeechToTextClient.wavTail(wav, cut),
+            onDone,
+        ) { _, message -> onError(message) }
     }
 
     /**
@@ -798,6 +832,7 @@ class DictationController(
         dictationStartPending = false
         transcriptionGeneration++
         lastDictationSlot = null
+        if (::tranches.isInitialized) tranches.cancel()
         micState = MicState.IDLE
         refreshMicVisual()
         val claimToken = microphoneClaimToken
@@ -829,6 +864,7 @@ class DictationController(
         dictationStartPending = false
         transcriptionGeneration++
         lastDictationSlot = null
+        if (::tranches.isInitialized) tranches.cancel()
         micIdle()
         if (client != null) {
             BackgroundWork.execute {

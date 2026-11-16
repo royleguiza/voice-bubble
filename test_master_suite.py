@@ -27,6 +27,7 @@ SUITES = [
     ("Pulsación larga: símbolos y tildes sin cambiar de capa (MEJ-05)", "test_long_press_symbols_suite.py"),
     ("Modelo: turbo por defecto y whisper-large-v3 elegible", "test_turbo_model_suite.py"),
     ("Traducción: botón del teclado y dictado traducido, local o IA autorizada (Ruta IA 2b)", "test_translate_suite.py"),
+    ("Dictado por tramos: no se pierde nada en dictados largos (Ruta IA 3)", "test_tranches_suite.py"),
     ("Escritura: precisión dedos + gaps + targets (typing-feel)", "test_typing_feel_suite.py"),
     ("Micro-teclado: modo mini 2 filas (MEJ-12)", "test_micro_keyboard_suite.py"),
     ("Ajustes: rediseño Settings v2 (5 tabs + crystal)", "test_settings_redesign_suite.py"),

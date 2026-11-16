@@ -125,7 +125,8 @@ check(
 finish_fn = dic[dic.find("private fun finishDictation()") : dic.find("private fun commitOrWarn")]
 check(
     "finishDictation aborta antes de transcribe si cambió la generación",
-    "if (generation != transcriptionGeneration) return@execute\n            sttClient.transcribe" in finish_fn,
+    # Ruta IA 3: la subida pasa por transcribeDictation (tramos o pedido único).
+    "if (generation != transcriptionGeneration) return@execute\n            transcribeDictation(" in finish_fn,
 )
 check(
     "onDone distingue text == null como cancelación",
