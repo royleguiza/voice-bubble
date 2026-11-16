@@ -28,7 +28,7 @@ class GeminiNoteClient(
     class GeminiError(message: String, val kind: ErrorKind) : Exception(message)
 
     companion object {
-        const val MODEL = "gemini-3.5-flash"
+        const val MODEL = "gemini-3.5-flash-lite"
         const val TIMEOUT_MS = 30_000
         private const val MODELS_ENDPOINT =
             "https://generativelanguage.googleapis.com/v1beta/models"

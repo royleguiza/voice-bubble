@@ -7,6 +7,7 @@ import 'credentials_screen.dart';
 import 'settings/snippets_tab.dart';
 import '../helpers/island_geometry.dart';
 import '../services/channel_guard.dart';
+import '../services/cloud_stt_service.dart';
 import '../services/storage_service.dart';
 import '../services/gemini_key_store.dart';
 import '../services/gemini_note_service.dart';
@@ -90,6 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   String? _geminiApiKeyError;
   bool _geminiActionsEnabled = true;
   String _recordMode = StorageService.defaultRecordMode;
+  String _sttModel = CloudSttService.model;
   bool _isBubbleEnabled = false;
   bool _showBubbleHistory = true;
   bool _notesDeferredQueue = false;
@@ -220,9 +222,11 @@ class _SettingsScreenState extends State<SettingsScreen>
     final longPressDelay = await s.getLongPressDelay();
     final themeMode = await s.loadThemeMode();
     final widgetMicPos = await s.getWidgetMicPosition();
+    final sttModel = await s.loadSttModel();
     if (!mounted) return;
     setState(() {
       _recordMode = results.$1;
+      _sttModel = sttModel;
       _showTerminalRow = results.$2;
       _showCodeKey = results.$3;
       _showLanguageKey = results.$4;
@@ -817,6 +821,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       } catch (_) {}
       if (mounted) setState(() => _isBubbleEnabled = false);
     }
+  }
+
+  Future<void> _saveSttModel(String model) async {
+    await _storageService.saveSttModel(model);
+    if (mounted) setState(() => _sttModel = CloudSttService.normalizeModel(model));
   }
 
   Future<void> _saveRecordMode(String mode) async {

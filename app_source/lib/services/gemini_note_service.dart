@@ -21,7 +21,7 @@ class GeminiException implements Exception {
 }
 
 class GeminiNoteService {
-  static const String model = 'gemini-3.5-flash';
+  static const String model = 'gemini-3.5-flash-lite';
   static const Duration timeout = Duration(seconds: 30);
   static const String _modelsEndpoint =
       'https://generativelanguage.googleapis.com/v1beta/models';

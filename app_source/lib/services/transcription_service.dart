@@ -168,6 +168,16 @@ class TranscriptionService {
     String audioPath, {
     bool deleteAudioOnSuccess = true,
   }) async {
+    // El modelo se lee en cada dictado: el cambio en Ajustes rige ya.
+    var model = CloudSttService.model;
+    try {
+      model = await _storageService.loadSttModel();
+    } catch (_) {}
+    // Solo se reemplaza el servicio si el modelo cambió (como la clave en
+    // [updateApiKey]): se conserva el cliente y el servicio inyectado.
+    if (model != _cloudService.sttModel) {
+      _cloudService = _cloudService.copyWith(sttModel: model);
+    }
     final result = await _cloudService.transcribe(audioPath);
 
     if (result.text.isNotEmpty) {

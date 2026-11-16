@@ -235,6 +235,21 @@ void main() {
       expect(rowShows('record-mode-selector', 'Mantener'), isTrue);
       expect(await h.storage.loadRecordMode(), StorageService.recordModeHold);
     });
+
+    testWidgets('el modelo de transcripción se elige y queda en el puente',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'transcripcion');
+
+      expect(rowShows('stt-model-selector', 'Whisper v3 Turbo'), isTrue);
+      await pickOption(
+          tester, 'stt-model-selector', CloudSttService.preciseModel);
+
+      expect(rowShows('stt-model-selector', 'Whisper v3'), isTrue);
+      expect(await h.storage.loadSttModel(), CloudSttService.preciseModel);
+      final p = await prefs();
+      expect(p.getString('kb_stt_model'), 'whisper-large-v3');
+    });
   });
 
   group('Ajustes 2026 - inteligencia artificial', () {

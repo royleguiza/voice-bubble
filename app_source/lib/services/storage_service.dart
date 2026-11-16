@@ -450,6 +450,14 @@ class StorageService {
   Future<void> saveRecordMode(String mode) =>
       _setString(_recordModeKey, mode);
 
+  /// Modelo de transcripción elegido (`kb_stt_model`, compartido con el
+  /// teclado nativo). Siempre uno de [CloudSttService.models].
+  Future<String> loadSttModel() async => CloudSttService.normalizeModel(
+      await _getString(_sttModelKey, CloudSttService.model));
+
+  Future<void> saveSttModel(String model) =>
+      _setString(_sttModelKey, CloudSttService.normalizeModel(model));
+
   static const String _floatingBubbleKey = 'floating_bubble_enabled';
 
   Future<bool> loadFloatingBubbleEnabled() =>
@@ -1078,7 +1086,9 @@ class StorageService {
             ? true
             : await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
 
-        final okModel = await prefs.setString(_sttModelKey, CloudSttService.model);
+        // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
+        final okModel = await prefs.setString(_sttModelKey,
+            CloudSttService.normalizeModel(prefs.getString(_sttModelKey)));
         final okLang = await prefs.setString(_sttLanguageKey, CloudSttService.language);
 
         try {
@@ -1135,7 +1145,9 @@ class StorageService {
           ? true
           : await prefs.setString(_sttUrlKey, CloudSttService.endpoint);
 
-      final okModel = await prefs.setString(_sttModelKey, CloudSttService.model);
+      // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
+      final okModel = await prefs.setString(_sttModelKey,
+          CloudSttService.normalizeModel(prefs.getString(_sttModelKey)));
       final okLang = await prefs.setString(_sttLanguageKey, CloudSttService.language);
 
       try {

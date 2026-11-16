@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-TEST SUITE: MODELO WHISPER-LARGE-V3-TURBO
-Verifica sobre el código REAL que el cambio de modelo no rompe nada:
-1. Dart: CloudSttService.model es whisper-large-v3-turbo (fuente única que
-   viaja en el multipart + se republica al puente kb_stt_model).
-2. Kotlin: default y fallback de loadConfig son turbo; resolveModel migra
-   el legado whisper-large-v3 (prefs de versiones viejas) a turbo.
-3. Sin restos funcionales del modelo viejo fuera de la migración y archivos
-   históricos (docs/archive, laboratorio_ui).
+TEST SUITE: MODELO DE TRANSCRIPCIÓN ELEGIBLE (Ruta IA, etapa 1)
+Verifica sobre el código REAL:
+1. Dart: turbo es el modelo por defecto; whisper-large-v3 (preciso) se puede
+   elegir; normalizeModel acepta solo esos dos; el multipart manda el elegido.
+2. Ajustes › Transcripción ofrece el menú de modelo y lo guarda en el puente
+   kb_stt_model; los espejos de la clave NO pisan la elección.
+3. Kotlin: resolveModel ya NO migra large-v3 a turbo; acepta los dos; lo
+   desconocido o vacío cae a turbo; getConfig relee el modelo en cada dictado.
 4. Docs vivos (README, AGENTS, PRODUCT) nombran turbo.
 """
 
@@ -26,42 +26,63 @@ def read(rel):
 
 
 print("\n============================================================")
-print(" INICIANDO TEST SUITE: MODELO TURBO")
+print(" INICIANDO TEST SUITE: MODELO DE TRANSCRIPCIÓN ELEGIBLE")
 print("============================================================\n")
 
 dart = read("app_source/lib/services/cloud_stt_service.dart")
 stt = read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/SpeechToTextClient.kt")
 
-# --- 1. Dart: fuente única turbo ---
-check("Dart usa whisper-large-v3-turbo",
-      "static const String _model = 'whisper-large-v3-turbo';" in dart)
-check("Dart expone model al puente", "static const String model = _model;" in dart or "static const String model =" in dart)
-check("Dart envía model en el multipart",
-      'request.fields[_multipartFieldModel] = _model;' in dart)
-check("Dart: sin literal del modelo viejo",
-      "whisper-large-v3'" not in dart and 'whisper-large-v3"' not in dart)
+storage = read("app_source/lib/services/storage_service.dart")
+config_store = read("app_source/lib/services/stt_config_store.dart")
+transcription = read("app_source/lib/services/transcription_service.dart")
+general = read("app_source/lib/screens/settings/general_tab.dart")
+settings = read("app_source/lib/screens/settings_screen.dart")
 
-# --- 2. Kotlin: default + migración ---
-check("Kotlin default turbo en prefs",
-      'prefs.getString("flutter.kb_stt_model", "whisper-large-v3-turbo")' in stt)
-check("Kotlin tiene resolveModel", "fun resolveModel(" in stt)
-check("Kotlin migra legado large-v3 a turbo",
-      'if (raw == "whisper-large-v3") "whisper-large-v3-turbo"' in stt)
-check("Kotlin blank cae a turbo", "isNullOrBlank" in stt)
-check("Kotlin loadConfig usa resolveModel", "model = resolveModel(" in stt)
+# --- 1. Dart: turbo por defecto, preciso elegible ---
+check("Dart: turbo es el modelo por defecto",
+      "static const String _model = 'whisper-large-v3-turbo';" in dart
+      and "static const String model = _model;" in dart)
+check("Dart: modelo preciso whisper-large-v3 elegible",
+      "static const String preciseModel = 'whisper-large-v3';" in dart
+      and "static const List<String> models = [_model, preciseModel];" in dart)
+check("Dart: normalizeModel cae a turbo si no es válido",
+      "static String normalizeModel(String? raw)" in dart and "models.contains(value)" in dart)
+check("Dart: el multipart manda el modelo elegido",
+      "request.fields[_multipartFieldModel] = normalizeModel(sttModel);" in dart)
+check("Dart: la transcripción lee el modelo en cada dictado",
+      "await _storageService.loadSttModel()" in transcription
+      and "if (model != _cloudService.sttModel)" in transcription
+      and "_cloudService.copyWith(sttModel: model)" in transcription)
+
+# --- 2. Ajustes + puente ---
+check("Ajustes: menú de modelo en Transcripción",
+      "id: 'stt-model-selector'" in general and "CloudSttService.preciseModel" in general
+      and "onSelected: _saveSttModel" in general)
+check("Ajustes: carga y guarda el modelo",
+      "await s.loadSttModel()" in settings and "saveSttModel(model)" in settings)
+check("Storage: loadSttModel / saveSttModel sobre kb_stt_model",
+      "Future<String> loadSttModel()" in storage and "Future<void> saveSttModel(String model)" in storage)
+check("Espejos de la clave respetan la elección (no pisan con turbo)",
+      "prefs.setString(_sttModelKey, CloudSttService.model)" not in storage
+      and "prefs.setString(sttModelKey, CloudSttService.model)" not in config_store
+      and storage.count("CloudSttService.normalizeModel(prefs.getString(_sttModelKey))") == 2
+      and config_store.count("CloudSttService.normalizeModel(prefs.getString(sttModelKey))") == 2)
+
+# --- 3. Kotlin ---
+check("Kotlin: default turbo y preciso declarados",
+      'const val DEFAULT_MODEL = "whisper-large-v3-turbo"' in stt
+      and 'const val PRECISE_MODEL = "whisper-large-v3"' in stt
+      and "val MODELS = listOf(DEFAULT_MODEL, PRECISE_MODEL)" in stt)
+check("Kotlin: resolveModel ya no migra large-v3 a turbo",
+      'if (raw == "whisper-large-v3") "whisper-large-v3-turbo"' not in stt
+      and "value in MODELS" in stt)
+check("Kotlin: loadConfig usa resolveModel con turbo por defecto",
+      'model = resolveModel(prefs.getString("flutter.kb_stt_model", DEFAULT_MODEL))' in stt)
+check("Kotlin: getConfig relee el modelo (cambio en vivo)",
+      "cached.copy(model = model)" in stt)
 check("Kotlin: endpoint Groq intacto",
       "https://api.groq.com/openai/v1/audio/transcriptions" in stt)
 check("Kotlin: idioma es intacto", '"es"' in stt)
-
-# --- 3. Sin restos del modelo viejo en código vivo ---
-old_in_dart_lib = [l for l in dart.splitlines()
-                   if "whisper-large-v3" in l and "turbo" not in l]
-check("Sin modelo viejo en CloudSttService", not old_in_dart_lib, str(old_in_dart_lib[:2]))
-old_in_stt = [l for l in stt.splitlines()
-              if "whisper-large-v3" in l and "turbo" not in l]
-check("Modelo viejo en Kotlin solo como legado a migrar",
-      all("whisper-large-v3`" in l or '== "whisper-large-v3"' in l for l in old_in_stt),
-      str(old_in_stt[:3]))
 
 # --- 4. Docs vivos ---
 for doc in ["README.md", "AGENTS.md", "PRODUCT.md"]:
@@ -69,7 +90,7 @@ for doc in ["README.md", "AGENTS.md", "PRODUCT.md"]:
     check(f"{doc} nombra turbo", "whisper-large-v3-turbo" in content)
 
 print("\n============================================================")
-print(f" RESULTADO SUITE TURBO: {suite.passed} pasados, {suite.failed} fallidos.")
+print(f" RESULTADO SUITE MODELO STT: {suite.passed} pasados, {suite.failed} fallidos.")
 print("============================================================\n")
 
 if suite.failed > 0:

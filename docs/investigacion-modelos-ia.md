@@ -15,7 +15,7 @@
 | Para qué | Plataforma | Modelo | Dónde está |
 |---|---|---|---|
 | Transcribir (app, burbuja, teclado, widget) | Groq | `whisper-large-v3-turbo` (fijo) | `app_source/lib/services/cloud_stt_service.dart`, `SpeechToTextClient.kt` |
-| Título y resumen de notas | Google (Gemini API) | `gemini-3.5-flash`, `thinkingLevel: minimal`, espera máx. 30 s | `gemini_note_service.dart`, `GeminiNoteClient.kt` |
+| Título y resumen de notas | Google (Gemini API) | `gemini-3.5-flash` hasta la etapa 1 (ahora `gemini-3.5-flash-lite`), `thinkingLevel: minimal`, espera máx. 30 s | `gemini_note_service.dart`, `GeminiNoteClient.kt` |
 
 - El modelo «más preciso pero más lento que puntuaba mejor» que recuerda el
   dueño es **`whisper-large-v3`**. La app lo cambia sola por el turbo
@@ -333,6 +333,17 @@ Recomendación: empezar por el **nivel 2 con sherpa-onnx + Whisper base
 multilingüe** (descarga ≈ 80–150 MB) como opción «Sin internet (beta)»,
 habilitada solo si la prueba del teléfono da bien; sumar el nivel 3 cuando
 la API de Google salga de alfa.
+
+## Avance
+
+- **Etapa 1 (2026-11-16, hecha; falta probar en el teléfono):** menú
+  «Modelo» en Ajustes › Transcripción (`stt-model-selector`): Whisper v3
+  Turbo (rápido, por defecto) o Whisper v3 (preciso). Se guarda en
+  `kb_stt_model` y lo usan la app, el teclado, la burbuja y el widget; el
+  teclado relee el modelo en cada dictado y ya no cambia `whisper-large-v3`
+  por el turbo; guardar la clave no pisa la elección. Notas: `gemini-3.5-flash`
+  → `gemini-3.5-flash-lite` (Dart y widget). Título y resumen son botones
+  separados (nunca se pedían juntos), así que no hizo falta paralelizarlos.
 
 ## 12. Plan actualizado por etapas
 

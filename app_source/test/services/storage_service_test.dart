@@ -806,4 +806,30 @@ void main() {
       expect(await service.loadThemeMode(), 'oscuro');
     });
   });
+
+  group('Modelo de transcripción (kb_stt_model, Ruta IA etapa 1)', () {
+    test('por defecto turbo; guarda el preciso; lo inválido cae a turbo',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final service = StorageService();
+      expect(await service.loadSttModel(), CloudSttService.model);
+      await service.saveSttModel(CloudSttService.preciseModel);
+      expect(await service.loadSttModel(), CloudSttService.preciseModel);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_stt_model'), 'whisper-large-v3');
+      await service.saveSttModel('cualquiera');
+      expect(await service.loadSttModel(), CloudSttService.model);
+    });
+
+    test('guardar la clave de Groq no pisa el modelo elegido', () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues(
+          {'kb_stt_model': 'whisper-large-v3'});
+      final service = StorageService();
+      await service.saveSttMirror(apiKey: 'gsk_prueba_123');
+      await service.repairSttMirror();
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_stt_model'), 'whisper-large-v3');
+    });
+  });
 }

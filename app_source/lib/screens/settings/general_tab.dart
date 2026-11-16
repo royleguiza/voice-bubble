@@ -43,11 +43,26 @@ extension _GeneralPages on _SettingsScreenState {
             ),
           ],
         ),
-        const SettingsSection(
+        SettingsSection(
           header: 'Motor',
-          footer: 'El audio sale del teléfono solo cuando dictás.',
+          footer: _sttModel == CloudSttService.preciseModel
+              ? 'Preciso: menos errores y mejor puntuación, apenas más lento. '
+                  'El audio sale del teléfono solo cuando dictás.'
+              : 'Rápido: el de menor espera. '
+                  'El audio sale del teléfono solo cuando dictás.',
           children: [
-            SettingsValueRow(title: 'Modelo', value: 'Whisper v3 Turbo'),
+            SettingsMenuRow<String>(
+              id: 'stt-model-selector',
+              title: 'Modelo',
+              value: _sttModel,
+              options: const [
+                SettingsOption(CloudSttService.model, 'Whisper v3 Turbo',
+                    detail: 'Rápido'),
+                SettingsOption(CloudSttService.preciseModel, 'Whisper v3',
+                    detail: 'Preciso'),
+              ],
+              onSelected: _saveSttModel,
+            ),
           ],
         ),
       ],

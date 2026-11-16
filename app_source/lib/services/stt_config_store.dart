@@ -128,7 +128,9 @@ class SttConfigStore {
           ? true
           : await prefs.setString(sttUrlKey, CloudSttService.endpoint);
 
-      final okModel = await prefs.setString(sttModelKey, CloudSttService.model);
+      // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
+      final okModel = await prefs.setString(
+          sttModelKey, CloudSttService.normalizeModel(prefs.getString(sttModelKey)));
       final okLang = await prefs.setString(sttLanguageKey, CloudSttService.language);
 
       try {
@@ -164,7 +166,9 @@ class SttConfigStore {
             ? true
             : await prefs.setString(sttUrlKey, CloudSttService.endpoint);
 
-        final okModel = await prefs.setString(sttModelKey, CloudSttService.model);
+        // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
+      final okModel = await prefs.setString(
+          sttModelKey, CloudSttService.normalizeModel(prefs.getString(sttModelKey)));
         final okLang = await prefs.setString(sttLanguageKey, CloudSttService.language);
 
         try {

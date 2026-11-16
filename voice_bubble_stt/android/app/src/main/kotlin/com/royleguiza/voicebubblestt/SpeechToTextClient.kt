@@ -45,6 +45,11 @@ class SpeechToTextClient(
         const val MAX_AUDIO_BYTES = 25 * 1024 * 1024 // 25 MB
         const val DEFAULT_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 
+        /** Modelos de Groq que se pueden elegir en Ajustes (el primero es el de defecto). */
+        const val DEFAULT_MODEL = "whisper-large-v3-turbo"
+        const val PRECISE_MODEL = "whisper-large-v3"
+        val MODELS = listOf(DEFAULT_MODEL, PRECISE_MODEL)
+
         fun timeoutForBytes(bytes: Int): Int {
             val seconds = TIMEOUT_BASE_SECONDS + (bytes / TIMEOUT_BYTES_PER_SECOND)
             return seconds.coerceIn(TIMEOUT_MIN_SECONDS, TIMEOUT_MAX_SECONDS)
@@ -174,19 +179,33 @@ class SpeechToTextClient(
         }
     }
 
-    /** Modelo vigente: Turbo (rápido, misma calidad). Las prefs escritas
-     *  por versiones viejas traen `whisper-large-v3`: se migran en lectura
-     *  (la app republica el valor nuevo al abrirse vía saveSttMirror). */
-    private fun resolveModel(raw: String?): String =
-        if (raw == "whisper-large-v3") "whisper-large-v3-turbo"
-        else if (raw.isNullOrBlank()) "whisper-large-v3-turbo"
-        else raw
+    /** Modelo elegido en Ajustes (`kb_stt_model`): Turbo (rápido, por
+     *  defecto) o `whisper-large-v3` (preciso). Cualquier otro valor o vacío
+     *  cae a Turbo. Espejo de `CloudSttService.normalizeModel` (Dart). */
+    internal fun resolveModel(raw: String?): String {
+        val value = raw?.trim()
+        return if (value != null && value in MODELS) value else DEFAULT_MODEL
+    }
 
     @Volatile
     private var cachedConfig: Config? = null
 
     /** C-12: Obtiene la configuración cacheada en memoria si está lista, o carga perezosa. */
-    fun getConfig(): Config = cachedConfig ?: loadConfig()
+    fun getConfig(): Config {
+        val cached = cachedConfig ?: return loadConfig()
+        // El modelo se relee en cada dictado (lectura en memoria): el cambio
+        // en Ajustes rige ya, sin reiniciar el teclado.
+        val model = try {
+            resolveModel(
+                context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                    .getString("flutter.kb_stt_model", DEFAULT_MODEL)
+            )
+        } catch (_: Exception) {
+            cached.model
+        }
+        if (model == cached.model) return cached
+        return cached.copy(model = model).also { cachedConfig = it }
+    }
 
     /** C-12: Precalentamiento de la configuración STT y bóveda en segundo plano antes del foco. */
     fun preloadConfig() {
@@ -223,7 +242,7 @@ class SpeechToTextClient(
             ),
             apiKey = SecureStore.read(context, SecureStore.STT_API_KEY)
                 ?: migrateLegacyMirror(prefs).orEmpty(),
-            model = resolveModel(prefs.getString("flutter.kb_stt_model", "whisper-large-v3-turbo")),
+            model = resolveModel(prefs.getString("flutter.kb_stt_model", DEFAULT_MODEL)),
             language = prefs.getString("flutter.kb_stt_language", "es") ?: "es",
         )
         // C-19: Lectura de presencia de clave configurada en prefs planas

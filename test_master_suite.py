@@ -25,7 +25,7 @@ SUITES = [
     ("Claves: sección credenciales + llave y relleno en teclado", "test_credentials_suite.py"),
     ("Mayúsculas: ciclo de caso con Shift (MEJ-02)", "test_shift_case_suite.py"),
     ("Pulsación larga: símbolos y tildes sin cambiar de capa (MEJ-05)", "test_long_press_symbols_suite.py"),
-    ("Modelo: whisper-large-v3-turbo con migración de legado", "test_turbo_model_suite.py"),
+    ("Modelo: turbo por defecto y whisper-large-v3 elegible", "test_turbo_model_suite.py"),
     ("Escritura: precisión dedos + gaps + targets (typing-feel)", "test_typing_feel_suite.py"),
     ("Micro-teclado: modo mini 2 filas (MEJ-12)", "test_micro_keyboard_suite.py"),
     ("Ajustes: rediseño Settings v2 (5 tabs + crystal)", "test_settings_redesign_suite.py"),
@@ -3038,7 +3038,7 @@ def test_c12_no_main_thread_heavy_work_contract():
 
     # 2. SpeechToTextClient: Caché de config y preload
     assert "var cachedConfig: Config? = null" in stt, "C-12: falta cachedConfig en SpeechToTextClient"
-    assert "fun getConfig(): Config = cachedConfig ?: loadConfig()" in stt, "C-12: falta getConfig en SpeechToTextClient"
+    assert "val cached = cachedConfig ?: return loadConfig()" in stt and "cached.copy(model = model)" in stt, "C-12: falta getConfig en SpeechToTextClient"
     assert "fun preloadConfig()" in stt and "BackgroundWork.execute" in stt, "C-12: falta preloadConfig en SpeechToTextClient"
 
     # 3. DictationController: Toque de mic sin trabajo pesado

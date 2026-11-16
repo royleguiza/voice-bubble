@@ -74,8 +74,25 @@ class CloudSttService {
 
   /// Valores canonicos compartidos con el teclado nativo (espejo D7).
   static const String endpoint = _endpoint;
+
+  /// Modelo por defecto (rápido). El elegido en Ajustes vive en
+  /// `kb_stt_model` y lo leen la app y el teclado nativo.
   static const String model = _model;
   static const String language = _language;
+
+  /// Modelo preciso de Groq: un poco más lento, menos errores y mejor
+  /// puntuación (error por palabra 10,3 % contra 12 % del turbo).
+  static const String preciseModel = 'whisper-large-v3';
+
+  /// Modelos que se pueden elegir en Ajustes (mismo orden que el menú).
+  static const List<String> models = [_model, preciseModel];
+
+  /// Lo guardado en `kb_stt_model` → un modelo válido (desconocido o vacío
+  /// cae al rápido). Espejo de `SpeechToTextClient.resolveModel`.
+  static String normalizeModel(String? raw) {
+    final value = raw?.trim();
+    return (value != null && models.contains(value)) ? value : _model;
+  }
 
   /// Umbral mínimo de audio útil (8000 bytes, ~0.25 s a 16kHz 16-bit mono).
   /// Por debajo de 8000B se descarta como click o ruido vacío.
@@ -233,19 +250,25 @@ class CloudSttService {
   final String apiKey;
   final http.Client? client;
 
+  /// Modelo con el que se transcribe (uno de [models]).
+  final String sttModel;
+
   const CloudSttService({
     required this.apiKey,
     this.client,
+    this.sttModel = _model,
   });
 
   /// Crea una copia del servicio conservando el [client] (y la clave si no se pasa).
   CloudSttService copyWith({
     String? apiKey,
     http.Client? client,
+    String? sttModel,
   }) {
     return CloudSttService(
       apiKey: apiKey ?? this.apiKey,
       client: client ?? this.client,
+      sttModel: sttModel ?? this.sttModel,
     );
   }
 
@@ -325,7 +348,7 @@ class CloudSttService {
 
     final request = http.MultipartRequest('POST', Uri.parse(_endpoint));
     request.headers[_headerAuthorization] = 'Bearer $apiKey';
-    request.fields[_multipartFieldModel] = _model;
+    request.fields[_multipartFieldModel] = normalizeModel(sttModel);
     request.fields[_multipartFieldLanguage] = _language;
     final http.MultipartFile audioPart;
     if (repaired != null) {

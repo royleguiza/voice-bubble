@@ -315,4 +315,48 @@ void main() {
       expect(service.timeoutForBytes(1 << 30), const Duration(seconds: 600));
     });
   });
+
+  group('CloudSttService - modelo elegible (Ruta IA, etapa 1)', () {
+    test('turbo por defecto; whisper-large-v3 elegible; lo inválido cae a turbo',
+        () {
+      expect(CloudSttService.model, 'whisper-large-v3-turbo');
+      expect(CloudSttService.preciseModel, 'whisper-large-v3');
+      expect(CloudSttService.models,
+          ['whisper-large-v3-turbo', 'whisper-large-v3']);
+      expect(CloudSttService.normalizeModel('whisper-large-v3'),
+          'whisper-large-v3');
+      expect(CloudSttService.normalizeModel(' whisper-large-v3-turbo '),
+          'whisper-large-v3-turbo');
+      for (final raw in [null, '', '   ', 'whisper-1', 'gpt-transcribe']) {
+        expect(CloudSttService.normalizeModel(raw), CloudSttService.model,
+            reason: 'valor: $raw');
+      }
+    });
+
+    Future<String> sentModel(CloudSttService base) async {
+      String? model;
+      final client = MockClient.streaming((request, bodyStream) async {
+        final body = latin1.decode(await bodyStream.toBytes());
+        final match = RegExp(r'name="model"\r\n\r\n([^\r]+)').firstMatch(body);
+        model = match?.group(1);
+        return http.StreamedResponse(
+            Stream.value(utf8.encode('{"text": "hola"}')), 200);
+      });
+      await base.copyWith(client: client).transcribe(tempAudioFile.path);
+      return model ?? '';
+    }
+
+    test('el pedido manda el modelo elegido', () async {
+      expect(await sentModel(const CloudSttService(apiKey: 'k')),
+          'whisper-large-v3-turbo');
+      expect(
+          await sentModel(const CloudSttService(
+              apiKey: 'k', sttModel: CloudSttService.preciseModel)),
+          'whisper-large-v3');
+      expect(
+          await sentModel(
+              const CloudSttService(apiKey: 'k').copyWith(sttModel: 'otro')),
+          'whisper-large-v3-turbo');
+    });
+  });
 }

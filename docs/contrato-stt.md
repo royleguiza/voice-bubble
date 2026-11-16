@@ -11,7 +11,7 @@
 | API key Groq | Bóveda cifrada (ESP) | `groq_api_key` | Dart `saveSttMirror` / `clearSttMirror` | Dart secure_storage, Kotlin `SecureStore.read` |
 | Presencia key | Prefs planas | `kb_stt_key_configured` (bool) | Dart `saveSttMirror`/`repairSttMirror` | Kotlin fail-fast "sin key" |
 | Endpoint | Prefs planas | `kb_stt_url` | Dart | Kotlin `loadConfig` |
-| Modelo | Prefs planas | `kb_stt_model` | Dart | Kotlin `loadConfig` |
+| Modelo | Prefs planas | `kb_stt_model` (`whisper-large-v3-turbo` por defecto o `whisper-large-v3`; otro valor cae a turbo) | Dart `saveSttModel` (Ajustes › Transcripción); los espejos de la clave solo corrigen un valor inválido | Kotlin `loadConfig` y `getConfig` (relee en cada dictado) |
 | Idioma | Prefs planas | `kb_stt_language` | Dart | Kotlin `loadConfig` |
 | Legado plano | Prefs planas | `kb_stt_api_key` | NADIE (prohibido escribir) | Migración única que lo traslada a bóveda y lo borra |
 
