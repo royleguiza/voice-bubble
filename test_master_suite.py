@@ -3337,7 +3337,8 @@ def test_c19_bridge_keys_contract():
     # 1. Claves y límites
     # 51 + 4 de la barra flotante (dock_form, dock_tool_mic, dock_tool_pointer, pointer_open_mode)
     # + 6 de la fase 2B (dock_island_x/y/w/h/side y floating_bubble_enabled, que ahora lee DockLink).
-    assert len(keys_content) == 61, f"C-19: contract-keys.txt debe tener 61 claves, tiene {len(keys_content)}"
+    # + 1 de la Ruta IA (kb_ai_notes_provider, proveedor de IA de notas que lee el widget).
+    assert len(keys_content) == 62, f"C-19: contract-keys.txt debe tener 62 claves, tiene {len(keys_content)}"
     assert "kb_stt_key_configured" in keys_content, "C-19: contract-keys.txt debe incluir kb_stt_key_configured"
     assert "20" in limits_content and "50" in limits_content and "15" in limits_content and "25" in limits_content, "C-19: contract-limits.md debe documentar 20/50/15/25"
 

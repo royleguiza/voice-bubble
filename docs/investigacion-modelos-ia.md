@@ -345,6 +345,18 @@ la API de Google salga de alfa.
   → `gemini-3.5-flash-lite` (Dart y widget). Título y resumen son botones
   separados (nunca se pedían juntos), así que no hizo falta paralelizarlos.
 
+- **Etapa 2a (2026-11-16, hecha; falta probar en el teléfono):** el dueño
+  midió 4–5 s para título/resumen con `gemini-3.5-flash-lite`. Ahora las
+  notas van por defecto con **Groq `openai/gpt-oss-20b`**
+  (`reasoning_effort: low`, mismos prompts) y la misma clave de la
+  transcripción. Ajustes › Inteligencia artificial › «Título y resumen con»
+  (`ai-notes-provider-selector`, clave del puente `kb_ai_notes_provider`:
+  `groq` por defecto o `google`); si al elegido le falta la clave se usa el
+  otro. App: `note_ai_service.dart` (`GroqNoteService`, `NoteAiResolver`);
+  widget: `NoteAiClients.kt` (`GroqNoteClient`). Las acciones quedan
+  encendidas por defecto aunque no haya clave de Google.
+- **Etapa 2b (pendiente):** dictado con traducción y botón «Traducir».
+
 ## 12. Plan actualizado por etapas
 
 1. Desplegable de Groq (`turbo` / `large-v3`) + notas con

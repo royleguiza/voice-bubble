@@ -76,7 +76,29 @@ extension _GeneralPages on _SettingsScreenState {
       title: 'Inteligencia artificial',
       sections: [
         SettingsSection(
-          header: 'Clave de API',
+          header: 'Proveedor',
+          footer: _aiNotesProvider == StorageService.aiNotesProviderGroq
+              ? 'Groq: rápido y gratis, con la misma clave de la transcripción.'
+                  '${_hasApiKey ? '' : ' Falta la clave de Groq (Ajustes › Transcripción).'}'
+              : 'Google: necesita su propia clave (abajo).'
+                  '${_geminiHasApiKey ? '' : ' Mientras no la cargues, se usa Groq.'}',
+          children: [
+            SettingsMenuRow<String>(
+              id: 'ai-notes-provider-selector',
+              title: 'Título y resumen con',
+              value: _aiNotesProvider,
+              options: const [
+                SettingsOption(StorageService.aiNotesProviderGroq, 'Groq',
+                    detail: 'Rápido'),
+                SettingsOption(StorageService.aiNotesProviderGoogle, 'Google',
+                    detail: 'Gemini'),
+              ],
+              onSelected: _saveAiNotesProvider,
+            ),
+          ],
+        ),
+        SettingsSection(
+          header: 'Clave de Google',
           footer: 'Opcional. La conseguís en aistudio.google.com.',
           children: [
             SettingsNavRow(
@@ -88,7 +110,7 @@ extension _GeneralPages on _SettingsScreenState {
             ),
           ],
         ),
-        if (_geminiHasApiKey)
+        if (_hasApiKey || _geminiHasApiKey)
           SettingsSection(
             footer: 'Título y resumen con un toque en el editor de cada nota.',
             children: [

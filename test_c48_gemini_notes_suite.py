@@ -58,6 +58,35 @@ check("NO usa gemini-2.5-flash (404 nuevos usuarios)", "gemini-2.5-flash" not in
 check("sin sampling params deprecados (temperature)", "temperature" not in service)
 check("error con detalle de body copiable", "_bodyDetail" in service)
 
+# 3b. Ruta IA etapa 2a: proveedor de notas elegible (Groq por defecto)
+ai = suite.read("app_source/lib/services/note_ai_service.dart")
+kt_ai = suite.read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/NoteAiClients.kt")
+storage_ai = suite.read("app_source/lib/services/storage_service.dart")
+general_ai = suite.read("app_source/lib/screens/settings/general_tab.dart")
+editor_ai = suite.read("app_source/lib/screens/note_editor_screen.dart")
+check("Groq notas: gpt-oss-20b con razonamiento corto (Dart)",
+      "static const String model = 'openai/gpt-oss-20b';" in ai and "'reasoning_effort': 'low'" in ai)
+check("Groq notas: mismos prompts que Gemini (Dart)",
+      "GeminiNoteService.promptTitulo" in ai and "GeminiNoteService.promptResumen" in ai
+      and "GeminiNoteService.systemInstruction" in ai)
+check("Groq notas: clave en Authorization, nunca en la URL",
+      "'Authorization': 'Bearer $_apiKey'" in ai and "?key=" not in ai)
+check("Gemini implementa la misma interfaz", "class GeminiNoteService implements NoteAiService" in service)
+check("Resolver: preferido, si no el otro, sin claves null",
+      "if (wanted == groq && hasGroq) return groq;" in ai and "if (hasGoogle) return google;" in ai)
+check("Preferencia kb_ai_notes_provider en el puente (Groq por defecto)",
+      "static const String aiNotesProviderKey = 'kb_ai_notes_provider';" in storage_ai
+      and "aiNotesProviderKey," in storage_ai)
+check("Ajustes: menú de proveedor de notas", "id: 'ai-notes-provider-selector'" in general_ai)
+check("Editor: usa el proveedor resuelto", "NoteAiResolver().create()" in editor_ai
+      and "NoteAiResolver().effectiveProvider()" in editor_ai)
+check("Widget: mismo modelo y elección que Dart",
+      'const val MODEL = "openai/gpt-oss-20b"' in kt_ai and 'PROVIDER_PREF = "flutter.kb_ai_notes_provider"' in kt_ai
+      and '.put("reasoning_effort", "low")' in kt_ai)
+check("Widget: lector y editor usan NoteAiClients",
+      "NoteAiClients.create(context, WIDGET_AI_TIMEOUT_MS)" in suite.read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/WidgetReader.kt")
+      and "NoteAiClients.create(this)" in suite.read("voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/WidgetNoteEditActivity.kt"))
+
 # 4. Editor
 check("editor: icono título", "geminiTituloIcon" in editor)
 check("editor: botón resumir", "geminiResumirButton" in editor)

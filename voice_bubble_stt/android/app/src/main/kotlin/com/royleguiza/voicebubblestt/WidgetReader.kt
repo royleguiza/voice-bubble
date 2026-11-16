@@ -357,15 +357,16 @@ object WidgetReader {
             setStatus(context, widgetId, "La nota está vacía")
             return
         }
-        val key = GeminiNoteClient.readKey(context)
-        if (key == null) {
-            setStatus(context, widgetId, "Falta la clave de Google AI: agregala en Ajustes de la app")
+        // Proveedor elegido en Ajustes (Groq por defecto, o Google); el otro
+        // si al elegido le falta la clave.
+        val client = NoteAiClients.create(context, WIDGET_AI_TIMEOUT_MS)
+        if (client == null) {
+            setStatus(context, widgetId, "Falta una clave de IA (Groq o Google): agregala en Ajustes de la app")
             return
         }
         setBusy(context, widgetId, action)
         refresh(context, widgetId)
         try {
-            val client = GeminiNoteClient(key, WIDGET_AI_TIMEOUT_MS)
             if (action == AI_TITLE) {
                 val raw = client.sugerirTitulo(texto)
                 val title = if (raw.length > MAX_TITLE_CHARS) raw.substring(0, MAX_TITLE_CHARS) else raw

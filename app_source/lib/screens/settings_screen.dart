@@ -10,7 +10,7 @@ import '../services/channel_guard.dart';
 import '../services/cloud_stt_service.dart';
 import '../services/storage_service.dart';
 import '../services/gemini_key_store.dart';
-import '../services/gemini_note_service.dart';
+import '../services/note_ai_service.dart';
 import '../services/widget_service.dart';
 import '../ui/debouncer.dart';
 import '../ui/design_tokens.dart';
@@ -92,6 +92,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _geminiActionsEnabled = true;
   String _recordMode = StorageService.defaultRecordMode;
   String _sttModel = CloudSttService.model;
+  String _aiNotesProvider = StorageService.aiNotesProviderGroq;
   bool _isBubbleEnabled = false;
   bool _showBubbleHistory = true;
   bool _notesDeferredQueue = false;
@@ -223,10 +224,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     final themeMode = await s.loadThemeMode();
     final widgetMicPos = await s.getWidgetMicPosition();
     final sttModel = await s.loadSttModel();
+    final aiNotesProvider = await s.loadAiNotesProvider();
     if (!mounted) return;
     setState(() {
       _recordMode = results.$1;
       _sttModel = sttModel;
+      _aiNotesProvider = aiNotesProvider;
       _showTerminalRow = results.$2;
       _showCodeKey = results.$3;
       _showLanguageKey = results.$4;
@@ -823,6 +826,14 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
+  Future<void> _saveAiNotesProvider(String provider) async {
+    await _storageService.saveAiNotesProvider(provider);
+    if (mounted) {
+      setState(() => _aiNotesProvider =
+          StorageService.normalizeAiNotesProvider(provider));
+    }
+  }
+
   Future<void> _saveSttModel(String model) async {
     await _storageService.saveSttModel(model);
     if (mounted) setState(() => _sttModel = CloudSttService.normalizeModel(model));
@@ -986,14 +997,19 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _testGeminiConnection() async {
-    final key = _storedGeminiKey.trim();
-    if (key.isEmpty) return;
-    final ok = await GeminiNoteService(apiKey: key).testConnection();
+    final resolver = NoteAiResolver(storage: _storageService);
+    final provider = await resolver.effectiveProvider();
+    final service = await resolver.create();
+    if (service == null) return;
+    final ok = await service.testConnection();
     if (!mounted) return;
+    final name =
+        provider == StorageService.aiNotesProviderGoogle ? 'Google' : 'Groq';
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-            ok ? 'Conectado con Gemini' : 'No se pudo conectar: revisá la clave'),
+        content: Text(ok
+            ? 'Conectado con $name'
+            : 'No se pudo conectar con $name: revisá la clave'),
       ),
     );
   }
@@ -1306,10 +1322,11 @@ class _SettingsScreenState extends State<SettingsScreen>
               key: const ValueKey('nav-ia'),
               icon: Icons.auto_awesome_outlined,
               title: 'Inteligencia artificial',
-              value: _geminiHasApiKey
+              value: (_hasApiKey || _geminiHasApiKey)
                   ? (_geminiActionsEnabled ? 'Activa' : 'Oculta')
                   : 'Opcional',
-              valueActive: _geminiHasApiKey && _geminiActionsEnabled,
+              valueActive:
+                  (_hasApiKey || _geminiHasApiKey) && _geminiActionsEnabled,
               onTap: () => _go(SettingsPage.ia),
             ),
           ],

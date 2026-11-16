@@ -21,7 +21,7 @@ import org.json.JSONObject
 class GeminiNoteClient(
     private val apiKey: String,
     private val timeoutMs: Int = TIMEOUT_MS,
-) {
+) : NoteAiClient {
 
     enum class ErrorKind { NETWORK, SERVER, AUTH, BAD_REQUEST, UNKNOWN }
 
@@ -122,10 +122,10 @@ Nota:
         }
     }
 
-    fun sugerirTitulo(texto: String): String =
+    override fun sugerirTitulo(texto: String): String =
         cleanTitle(run(fill(PROMPT_TITULO, texto), maxOutputTokens = 256))
 
-    fun resumir(texto: String): String =
+    override fun resumir(texto: String): String =
         run(fill(PROMPT_RESUMEN, texto), maxOutputTokens = 2048)
 
     private fun run(prompt: String, maxOutputTokens: Int): String {

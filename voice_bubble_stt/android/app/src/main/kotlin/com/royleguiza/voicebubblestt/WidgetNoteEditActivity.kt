@@ -1266,12 +1266,11 @@ class WidgetNoteEditActivity : Activity() {
         setGeminiBusy(action, true)
         BackgroundWork.executeWithResult(
             {
-                val key = GeminiNoteClient.readKey(this)
-                if (key == null) {
+                val client = NoteAiClients.create(this)
+                if (client == null) {
                     GeminiOutcome.MissingKey
                 } else {
                     try {
-                        val client = GeminiNoteClient(key)
                         val text = if (action == GEMINI_TITULO) client.sugerirTitulo(texto) else client.resumir(texto)
                         if (text.isBlank()) GeminiOutcome.Failed("Respuesta vacía del modelo") else GeminiOutcome.Ok(text)
                     } catch (e: GeminiNoteClient.GeminiError) {
@@ -1288,7 +1287,7 @@ class WidgetNoteEditActivity : Activity() {
                 when (outcome) {
                     null, is GeminiOutcome.MissingKey -> Toast.makeText(
                         this,
-                        "Falta la clave de Google AI: agregala en Ajustes de la app",
+                        "Falta una clave de IA (Groq o Google): agregala en Ajustes de la app",
                         Toast.LENGTH_LONG,
                     ).show()
                     is GeminiOutcome.Failed -> showGlassDialog("Error de IA", outcome.message, "Cerrar")

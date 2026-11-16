@@ -761,10 +761,10 @@ check("Host: DOCK_CONFIG lleva forma, herramientas, isla y trackpad (prefs de Fl
       all(k in h_dlink for k in ("EXTRA_DOCK_FORM", "EXTRA_TOOL_MIC", "EXTRA_ISLAND_X", "EXTRA_ISLAND_SIDE", "EXTRA_SENSITIVITY", "EXTRA_AUTO_RETURN"))
       and "DockController.PREF_FORM" in h_dlink and "PointerLink.readTrackpadConfig(context, -1, -1)" in h_dlink
       and "setPackage(PointerProtocol.COMPANION_PACKAGE)" in h_dlink and "sendBroadcast(intent, PointerProtocol.PERMISSION_POINTER)" in h_dlink)
-check("Host: las claves de la isla y floating_bubble_enabled se leen con el literal del contrato (fase 2B, 61 claves)",
+check("Host: las claves de la isla y floating_bubble_enabled se leen con el literal del contrato (fase 2B; 62 claves desde la Ruta IA)",
       all(f'"flutter.{k}"' in h_dlink for k in ("dock_island_x", "dock_island_y", "dock_island_w", "dock_island_h",
                                                "dock_island_side", "floating_bubble_enabled"))
-      and "FlutterPrefs.key(" not in h_dlink and len(contract) == 61
+      and "FlutterPrefs.key(" not in h_dlink and len(contract) == 62
       and all(k in contract for k in ("dock_island_x", "dock_island_y", "dock_island_w", "dock_island_h",
                                       "dock_island_side", "floating_bubble_enabled")))
 check("Host: el dictado de la app por Flutter también se ve en la barra del complemento",
@@ -849,7 +849,7 @@ check("Constantes de la geometría Dart == IslandGeometry.kt del complemento",
                                                                       ("DEFAULT_TOP_DP", "3"), ("EDGE_MARGIN_DP", "4"), ("IDLE_DOT_DP", "12"), ("IDLE_POINTER_DP", "14"), ("IDLE_PAD_DP", "10"))))
 check("Claves de la isla en Dart: constantes, bridgeKeys y contrato",
       all(f"'{k}'" in storage for k in dart_keys) and all(k in contract for k in dart_keys)
-      and "dockIslandXKey," in storage and "dockIslandSideKey," in storage and "_floatingBubbleKey,\n    kbBottomElevationDpKey" in storage
+      and "dockIslandXKey," in storage and "dockIslandSideKey," in storage and "_floatingBubbleKey,\n    aiNotesProviderKey,\n    kbBottomElevationDpKey" in storage
       and "floating_bubble_enabled" in contract)
 check("Valores de la isla validados (−1 por defecto, tope 20000, lado left/right)",
       "dockIslandMaxPx = 20000" in storage and "dockIslandSides = ['left', 'right']" in storage

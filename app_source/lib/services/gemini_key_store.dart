@@ -60,8 +60,9 @@ class GeminiKeyStore {
   Future<bool> actionsEnabled() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final configured = prefs.getBool(configuredKey) ?? false;
-      return prefs.getBool(actionsEnabledKey) ?? configured;
+      // Sin elección explícita, encendidas: con Groq alcanza la clave de la
+      // transcripción (Ruta IA); sin ninguna clave igual no se muestran.
+      return prefs.getBool(actionsEnabledKey) ?? true;
     } catch (_) {
       return false;
     }

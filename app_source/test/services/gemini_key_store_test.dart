@@ -41,8 +41,12 @@ void main() {
       expect(prefs.getBool(GeminiKeyStore.configuredKey), isFalse);
     });
 
-    test('actionsEnabled default sigue configured', () async {
+    test('actionsEnabled: encendidas por defecto (Groq alcanza) y respeta el switch',
+        () async {
       final store = GeminiKeyStore();
+      // Sin clave de Google igual quedan encendidas: con Groq alcanza la clave
+      // de la transcripción (la falta de claves la decide NoteAiResolver).
+      expect(await store.actionsEnabled(), isTrue);
       await store.saveKey('AQ.x12345678901');
       expect(await store.actionsEnabled(), isTrue);
       await store.setActionsEnabled(false);

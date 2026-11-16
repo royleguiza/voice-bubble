@@ -458,6 +458,23 @@ class StorageService {
   Future<void> saveSttModel(String model) =>
       _setString(_sttModelKey, CloudSttService.normalizeModel(model));
 
+  /// Proveedor de las acciones de IA en notas (`groq` por defecto o
+  /// `google`), compartido con el widget nativo (`NoteAiClients.kt`).
+  static const String aiNotesProviderKey = 'kb_ai_notes_provider';
+  static const String aiNotesProviderGroq = 'groq';
+  static const String aiNotesProviderGoogle = 'google';
+
+  static String normalizeAiNotesProvider(String? raw) {
+    final v = raw?.trim();
+    return v == aiNotesProviderGoogle ? aiNotesProviderGoogle : aiNotesProviderGroq;
+  }
+
+  Future<String> loadAiNotesProvider() async => normalizeAiNotesProvider(
+      await _getString(aiNotesProviderKey, aiNotesProviderGroq));
+
+  Future<void> saveAiNotesProvider(String provider) =>
+      _setString(aiNotesProviderKey, normalizeAiNotesProvider(provider));
+
   static const String _floatingBubbleKey = 'floating_bubble_enabled';
 
   Future<bool> loadFloatingBubbleEnabled() =>
@@ -985,6 +1002,7 @@ class StorageService {
     dockToolMicKey,
     dockToolPointerKey,
     _floatingBubbleKey,
+    aiNotesProviderKey,
     kbBottomElevationDpKey,
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,

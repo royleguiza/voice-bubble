@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'note_ai_service.dart';
+
 /// Servicio on-demand de acciones IA sobre notas (Gemini).
 /// Contrato:
 /// - Cada llamada ejecuta exactamente UNA petición HTTP (no reintenta).
@@ -20,7 +22,7 @@ class GeminiException implements Exception {
   String toString() => message;
 }
 
-class GeminiNoteService {
+class GeminiNoteService implements NoteAiService {
   static const String model = 'gemini-3.5-flash-lite';
   static const Duration timeout = Duration(seconds: 30);
   static const String _modelsEndpoint =
@@ -67,11 +69,13 @@ Nota:
 """{texto}"""''';
 
 
+  @override
   Future<String> sugerirTitulo(String texto) => _run(
         _fill(promptTitulo, texto),
         maxOutputTokens: 256,
       );
 
+  @override
   Future<String> resumir(String texto) => _run(
         _fill(promptResumen, texto),
         maxOutputTokens: 2048,
@@ -190,6 +194,7 @@ Nota:
   }
 
   /// Prueba ligera de la key (un token) para el botón "Probar conexión".
+  @override
   Future<bool> testConnection() async {
     try {
       final uri = Uri.parse(_modelsEndpoint);

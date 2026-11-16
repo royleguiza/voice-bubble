@@ -7,6 +7,7 @@ import '../models/voice_note.dart';
 import '../services/notes_service.dart';
 import '../services/gemini_key_store.dart';
 import '../services/gemini_note_service.dart';
+import '../services/note_ai_service.dart';
 import '../services/widget_service.dart';
 import '../ui/ai_loaders.dart';
 import '../ui/design_tokens.dart';
@@ -81,7 +82,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       _bodyCtrl.text.trim() != (widget.note?.cuerpo ?? '').trim();
 
   Future<void> _loadGeminiState() async {
-    final has = await _geminiKeyStore.hasKey();
+    // Groq (por defecto) o Google, según Ajustes y las claves presentes.
+    final has = await NoteAiResolver().effectiveProvider() != null;
     final enabled = await _geminiKeyStore.actionsEnabled();
     if (mounted) setState(() => _geminiReady = has && enabled);
   }
@@ -98,8 +100,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       _showSnack('Escribe o dicta una nota primero');
       return;
     }
-    final key = await _geminiKeyStore.getKey();
-    if (key == null) {
+    final service = await NoteAiResolver().create();
+    if (service == null) {
       if (!mounted) return;
       setState(() => _geminiReady = false);
       return;
@@ -113,7 +115,6 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     String? resultado;
     Object? error;
     try {
-      final service = GeminiNoteService(apiKey: key);
       if (accion == 'titulo') {
         resultado = await service.sugerirTitulo(texto);
       } else if (accion == 'resumir') {

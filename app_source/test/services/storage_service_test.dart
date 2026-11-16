@@ -709,6 +709,7 @@ void main() {
       'dock_tool_mic',
       'dock_tool_pointer',
       'floating_bubble_enabled',
+      'kb_ai_notes_provider',
       'kb_bottom_elevation_dp',
       'kb_clipboard_images_enabled',
       'kb_code_key_visible',
@@ -762,8 +763,8 @@ void main() {
       'widget_mic_position',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (61 claves)', () {
-      expect(StorageService.bridgeKeys.length, 61);
+    test('bridgeKeys cubre exactamente el contrato (62 claves)', () {
+      expect(StorageService.bridgeKeys.length, 62);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
       expect(Set.of(StorageService.bridgeKeys), kContractKeysSnapshot);
       final contractFile = File('docs/contract-keys.txt');

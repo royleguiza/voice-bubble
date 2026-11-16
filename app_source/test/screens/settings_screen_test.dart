@@ -253,6 +253,19 @@ void main() {
   });
 
   group('Ajustes 2026 - inteligencia artificial', () {
+    testWidgets('el proveedor de las notas arranca en Groq y se puede cambiar',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'ia');
+
+      expect(rowShows('ai-notes-provider-selector', 'Groq'), isTrue);
+      await pickOption(tester, 'ai-notes-provider-selector',
+          StorageService.aiNotesProviderGoogle);
+
+      expect(rowShows('ai-notes-provider-selector', 'Google'), isTrue);
+      expect(await h.storage.loadAiNotesProvider(), 'google');
+    });
+
     testWidgets('sin clave de Google las acciones quedan ocultas',
         (tester) async {
       await h.pump(tester);
