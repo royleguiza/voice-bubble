@@ -322,11 +322,12 @@ prueba de 10 segundos. Igual, estos son los tres niveles:
 | **2. Gama media con ≥ 6 GB de RAM** | La mayoría de los Motorola/Samsung/Xiaomi medianos actuales | **sherpa-onnx** (librería abierta, tiene versión Kotlin para el teclado) con **Whisper base/small multilingüe** o **NVIDIA Parakeet v3** (25 idiomas, ≈ 670 MB) | Buena calidad; Parakeet es el más preciso pero pesado; Whisper `small` puede ir más lento que el habla en teléfonos medianos. Hay que medir en el teléfono |
 | **3. Gama alta con Gemini Nano** | Pixel 10 y 11; chips Snapdragon SM8750 (8 Elite) y posteriores (SM8845, SM8850, SM8950, SM8975); MediaTek Dimensity 9400+ (MT6991/6993/6995); Exynos 2600 | ML Kit «modo avanzado» (Gemini Nano) | La mejor calidad local, texto en vivo, español estándar; también traducción por voz en el teléfono. API en **alfa** (puede cambiar) |
 
-**¿El Motorola del dueño?** Depende del modelo exacto (Ajustes › Acerca del
-teléfono). Los Motorola de gama media (Edge con Dimensity 7300 o Snapdragon
-7s) entran en el **nivel 2**; los tope de gama con Snapdragon 8 Elite (por
-ejemplo, algunos Razr/Edge 2025) entrarían en el **nivel 3**. Con el modelo
-exacto se puede confirmar.
+**Teléfono del dueño: Moto G05** (MediaTek Helio G81, gama de entrada,
+4 GB de RAM, Android 15, sin actualizaciones de Android). Entra en el
+**nivel 1** (si Motorola trae el motor sin internet) y en el **nivel 2 solo
+con modelos livianos** (Whisper tiny/base con sherpa-onnx); Parakeet y
+Whisper small le quedan grandes. En ese teléfono la nube sigue siendo el
+camino principal, y sirve como prueba de piso de la etapa 6.
 
 Recomendación: empezar por el **nivel 2 con sherpa-onnx + Whisper base
 multilingüe** (descarga ≈ 80–150 MB) como opción «Sin internet (beta)»,
