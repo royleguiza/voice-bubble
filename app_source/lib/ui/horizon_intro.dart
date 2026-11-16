@@ -396,25 +396,34 @@ class _HorizonIntroState extends State<HorizonIntro>
 /// cuadro. El tiempo avanza con un paso acotado ([maxStep]): un primer
 /// cuadro lento no produce un salto.
 ///
-/// Entrada: [swallow] de fase 1 y [land] de aterrizaje. Salida ([reverse]):
-/// solo la fase 2, recorrida al revés (`landProgress` baja de 1 a 0).
+/// Entrada: el agujero solo, el horizonte llega desde los costados
+/// ([arrive], dentro de la fase 1 [swallow]) y en el aterrizaje ([land]) todo
+/// se mete en el agujero mientras baja al botón. Salida ([reverse]): la fase 2
+/// recorrida al revés (`landProgress` baja de 1 a 0: el horizonte sale del
+/// agujero mientras sube) y al final se va hacia los costados ([depart]).
 class HorizonIntroScene extends ChangeNotifier {
   HorizonIntroScene({
     math.Random? random,
     Duration swallow = kIntroSwallow,
     Duration land = kIntroLand,
+    Duration arrive = kIntroArrive,
+    Duration depart = kIntroExitDepart,
     this.reverse = false,
   })  : _rng = random ?? math.Random(),
         swallowSeconds = reverse ? 0 : swallow.inMicroseconds / 1e6,
         _baseSwallow = reverse ? 0 : swallow.inMicroseconds / 1e6,
-        landSeconds = land.inMicroseconds / 1e6;
+        landSeconds = land.inMicroseconds / 1e6,
+        arriveSeconds = reverse ? 0 : arrive.inMicroseconds / 1e6,
+        departSeconds = reverse ? depart.inMicroseconds / 1e6 : 0;
 
   factory HorizonIntroScene.forKind(HorizonIntroKind kind,
           {math.Random? random}) =>
       switch (kind) {
         HorizonIntroKind.cold => HorizonIntroScene(random: random),
-        HorizonIntroKind.returning =>
-          HorizonIntroScene(random: random, swallow: kIntroSwallowReturn),
+        HorizonIntroKind.returning => HorizonIntroScene(
+            random: random,
+            swallow: kIntroSwallowReturn,
+            arrive: kIntroArriveReturn),
         HorizonIntroKind.exit =>
           HorizonIntroScene(random: random, land: kIntroExit, reverse: true),
       };
@@ -504,6 +513,17 @@ class HorizonIntroScene extends ChangeNotifier {
   bool Function()? holdWhile;
   bool _skipped = false;
   final double landSeconds;
+
+  /// Entrada: lo que tarda el horizonte en llegar desde los costados (0 en
+  /// la salida).
+  final double arriveSeconds;
+
+  /// Salida: lo que tarda el horizonte en irse hacia los costados después
+  /// de la fase 2 invertida (0 en la entrada).
+  final double departSeconds;
+
+  /// Reloj propio de la llegada: no salta al saltear la fase 1.
+  double _arriveClock = 0;
   static final double skipSeconds = kIntroSkipLand.inMicroseconds / 1e6;
 
   final math.Random _rng;
@@ -513,6 +533,9 @@ class HorizonIntroScene extends ChangeNotifier {
   final Float64List _age = Float64List(maxParticles);
   final Int8List _glyph = Int8List(maxParticles)
     ..fillRange(0, maxParticles, -1);
+
+  /// Costado por el que entra (y se va) cada partícula: −1 izquierda, 1 derecha.
+  final Int8List _side = Int8List(maxParticles);
 
   /// Reloj de la animación (s) y su escala (> 1 tras saltear).
   double clock = 0;
@@ -544,7 +567,45 @@ class HorizonIntroScene extends ChangeNotifier {
   /// El agujero está (o va) hacia el botón: hay que medirlo.
   bool get wantsTarget => reverse || landing;
 
-  bool get done => clock >= swallowSeconds + landSeconds;
+  bool get done => clock >= swallowSeconds + landSeconds + departSeconds;
+
+  /// 0..1: cuánto llegó el horizonte. Entrada: sube de 0 a 1 con la
+  /// llegada. Salida: 1 durante la fase 2 invertida y baja a 0 mientras se
+  /// va hacia los costados.
+  double get arrival {
+    if (reverse) {
+      if (departSeconds <= 0) return 1;
+      return 1 -
+          ((clock - landSeconds) / departSeconds).clamp(0.0, 1.0);
+    }
+    if (arriveSeconds <= 0) return 1;
+    return (_arriveClock / arriveSeconds).clamp(0.0, 1.0);
+  }
+
+  /// 0..1: cuánto se metió el horizonte en el agujero (1 = solo queda el
+  /// agujero con el micrófono). Sigue al viaje del agujero.
+  double get swallowed => landEase(landProgress);
+
+  /// Corrimiento horizontal (px de pantalla) de la partícula [i] por la
+  /// llegada o la partida: entra desde su costado, cada una con su demora.
+  double lateralOffset(int i) {
+    final a = arrival;
+    if (a >= 1) return 0;
+    final delay = ((_k[i] - 0.6) / 0.8).clamp(0.0, 1.0);
+    final own = ((a - 0.35 * delay) / 0.65).clamp(0.0, 1.0);
+    final eased = reverse
+        ? Curves.easeInCubic.transform(own)
+        : Curves.easeOutCubic.transform(own);
+    return _side[i] * (1 - eased) * (size.width * 0.85 + 60);
+  }
+
+  /// Llegada (o partida) propia de la partícula [i], 0..1 (para su opacidad).
+  double ownArrival(int i) {
+    final a = arrival;
+    if (a >= 1) return 1;
+    final delay = ((_k[i] - 0.6) / 0.8).clamp(0.0, 1.0);
+    return ((a - 0.35 * delay) / 0.65).clamp(0.0, 1.0);
+  }
 
   /// 0..1 dentro de la fase 2; en la salida va de 1 (agujero sobre el botón,
   /// fondo transparente) a 0 (agujero arriba, fondo cubriendo todo).
@@ -614,6 +675,7 @@ class HorizonIntroScene extends ChangeNotifier {
       _k[i] = 0.6 + _rng.nextDouble() * 0.8;
       _glyph[i] = _pick();
       _age[i] = fadeInSeconds;
+      _side[i] = math.cos(_th[i]) >= 0 ? 1 : -1;
     }
   }
 
@@ -637,8 +699,10 @@ class HorizonIntroScene extends ChangeNotifier {
   }
 
   void step(double dt) {
-    final d = dt.clamp(0.0, maxStep) * _timeScale;
+    final raw = dt.clamp(0.0, maxStep);
+    final d = raw * _timeScale;
     clock += d;
+    _arriveClock += raw;
     // Inicio todavía carga: el agujero sigue girando en vez de aterrizar.
     if (!reverse &&
         !_skipped &&
@@ -670,8 +734,9 @@ class HorizonIntroScene extends ChangeNotifier {
   }
 
   void _advance(double dt) {
-    // En la salida los símbolos caen con la fuerza de la mitad del aterrizaje.
-    final p = reverse ? 0.5 : landProgress;
+    // En la salida giran como en la fase 1: el horizonte sale del agujero
+    // (lo hace el pintor) y se va hacia los costados.
+    final p = reverse ? 0.0 : landProgress;
     final landingNow = landing;
     final big = discRadius;
     final reach = orbitReach;
@@ -693,6 +758,7 @@ class HorizonIntroScene extends ChangeNotifier {
               reach * (respawnNear + _rng.nextDouble() * (span - respawnNear));
           _th[i] = _rng.nextDouble() * math.pi * 2;
           _age[i] = 0;
+          _side[i] = math.cos(_th[i]) >= 0 ? 1 : -1;
         }
       }
     }
@@ -758,23 +824,33 @@ class HorizonIntroPainter extends CustomPainter {
       canvas.drawCircle(target.center, target.shortestSide / 2 + 0.5, res.fill);
     }
 
-    final fade = 1 - Curves.easeIn.transform(p);
-    // Disco, halo y anillo de fotones se apagan mientras aterriza.
-    final diskA = highContrast ? 0.0 : 1 - e;
+    // Mientras aterriza, el horizonte se mete en el agujero ([suck]): los
+    // radios se cierran sobre el borde y recién al final se apaga. Al llegar
+    // (o al irse en la salida) se estira hacia los costados ([spread]).
+    final suck = scene.swallowed;
+    final arrival = scene.arrival;
+    final spread = 1 + 1.8 * (1 - Curves.easeOut.transform(arrival));
+    final fade = 1 - suck * suck * suck;
+    final diskA = highContrast
+        ? 0.0
+        : (1 - suck * suck) * Curves.easeIn.transform(arrival);
 
     if (diskA > 0.01) {
       res.halo.color = Color.fromRGBO(0, 0, 0, diskA);
       canvas.save();
       canvas.translate(c.dx, c.dy);
       canvas.rotate(HorizonIntroScene.tilt);
-      final sx = big * 3.4;
-      canvas.scale(sx, sx * math.max(0.45, HorizonIntroScene.flatten * 1.5));
+      final sx = big * 3.4 * (1 - 0.7 * suck);
+      canvas.scale(sx * spread,
+          sx * math.max(0.45, HorizonIntroScene.flatten * 1.5));
       canvas.drawCircle(Offset.zero, 1, res.halo);
       canvas.restore();
     }
-    _disk(canvas, res, c, big, diskA, back: true);
-    _particles(canvas, res, w, h, big, fade, back: true);
-    if (diskA > 0.01) _photonRing(canvas, res, c, hr, diskA);
+    _disk(canvas, res, c, big, diskA, suck, spread, back: true);
+    _particles(canvas, res, w, h, big, fade, suck, back: true);
+    if (diskA > 0.01) {
+      _photonRing(canvas, res, c, hr, diskA * arrival);
+    }
 
     res.fill.color = res.hole;
     canvas.drawCircle(c, hr, res.fill);
@@ -803,14 +879,16 @@ class HorizonIntroPainter extends CustomPainter {
       tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
     }
 
-    _disk(canvas, res, c, big, diskA, back: false);
-    _particles(canvas, res, w, h, big, fade, back: false);
+    _disk(canvas, res, c, big, diskA, suck, spread, back: false);
+    _particles(canvas, res, w, h, big, fade, suck, back: false);
   }
 
   /// Bandas finas del disco de acreción, discontinuas, que giran más rápido
-  /// cuanto más cerca del agujero. [back]: mitad de atrás (arriba).
+  /// cuanto más cerca del agujero. [back]: mitad de atrás (arriba). [suck]:
+  /// cuánto se cerraron las bandas sobre el agujero; [spread]: cuánto se
+  /// estiran hacia los costados (llegada o partida).
   void _disk(Canvas canvas, _IntroResources res, Offset c, double big,
-      double diskA,
+      double diskA, double suck, double spread,
       {required bool back}) {
     if (diskA <= 0.01) return;
     const flat = HorizonIntroScene.flatten;
@@ -822,7 +900,7 @@ class HorizonIntroPainter extends CustomPainter {
     canvas.translate(c.dx, c.dy);
     canvas.rotate(HorizonIntroScene.tilt);
     for (final band in _IntroResources.bands) {
-      final rr = big * (1.05 + band.t * band.t * 2.6);
+      final rr = big * (1.05 + band.t * band.t * 2.6 * (1 - suck));
       final near = 1 - band.t;
       final alpha = ((0.08 + 0.5 * math.pow(near, 1.6)) *
               diskA *
@@ -834,7 +912,7 @@ class HorizonIntroPainter extends CustomPainter {
       final offset = band.offset -
           scene.clock * 260 * math.pow(big / rr, 1.5) * (1 + 3 * p);
       final rect = Rect.fromCenter(
-          center: Offset.zero, width: rr * 2, height: rr * 2 * flat);
+          center: Offset.zero, width: rr * 2 * spread, height: rr * 2 * flat);
       final length = math.pi * rr;
       path.reset();
       for (var s = -(offset % total); s < length; s += total) {
@@ -884,8 +962,10 @@ class HorizonIntroPainter extends CustomPainter {
     canvas.restore();
   }
 
+  /// Partículas. [suck] acerca el radio dibujado al borde del agujero (se
+  /// meten en él); la llegada o la partida las corre hacia su costado.
   void _particles(Canvas canvas, _IntroResources res, double w, double h,
-      double big, double fade,
+      double big, double fade, double suck,
       {required bool back}) {
     if (fade <= 0.02) return;
     final c = scene.holeCenter;
@@ -910,7 +990,7 @@ class HorizonIntroPainter extends CustomPainter {
       final sinT = math.sin(th);
       if (back != (sinT < 0)) continue;
       final cosT = math.cos(th);
-      final r = scene._r[i];
+      final r = big + (scene._r[i] - big) * (1 - suck);
       final u = (r - big) / reach;
       var a = ((r - big * 1.02) / (big * 0.35)).clamp(0.0, 1.0) *
           math.min(1.0, (1 - u) * 2.6);
@@ -922,10 +1002,17 @@ class HorizonIntroPainter extends CustomPainter {
       // Profundidad: detrás del agujero (arriba) más chico y tenue.
       final depth = 1 + 0.34 * sinT;
       a *= 0.72 + 0.28 * (depth - 0.66) / 0.68;
+      final lateral = scene.lateralOffset(i);
+      if (lateral != 0) {
+        // Al irse se apagan del todo: el último cuadro de la salida queda
+        // quieto hasta que se cierra la app y no puede quedar ninguna suelta.
+        final own = scene.ownArrival(i);
+        a *= scene.reverse ? own : 0.35 + 0.65 * own;
+      }
       if (a <= 0.02) continue;
       final ox = r * cosT;
       final oy = r * sinT * flat;
-      final x = c.dx + ox * ca - oy * sa;
+      final x = c.dx + ox * ca - oy * sa + lateral;
       final y = c.dy + ox * sa + oy * ca;
       if (x < -120 || x > w + 120 || y < -60 || y > h + 60) continue;
       final rgb = res.particleArgb(u);
@@ -935,7 +1022,13 @@ class HorizonIntroPainter extends CustomPainter {
         ..color = Color(_withAlpha(rgb, a * (u < 0.2 ? 0.9 : 0.35)))
         ..strokeWidth = (u < 0.14 ? 1.6 : 1.0) * depth;
       canvas.drawArc(
-        Rect.fromCenter(center: Offset.zero, width: r * 2, height: r * 2 * flat),
+        Rect.fromCenter(
+            // El corrimiento horizontal de pantalla, en el marco inclinado.
+            center: lateral == 0
+                ? Offset.zero
+                : Offset(lateral * ca, -lateral * sa),
+            width: r * 2,
+            height: r * 2 * flat),
         th - sweep,
         sweep,
         false,

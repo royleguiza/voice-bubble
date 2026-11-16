@@ -402,6 +402,15 @@ void main() {
       expect(exit.swallowSeconds, 0);
       expect(exit.landSeconds, closeTo(0.5, 1e-9));
       expect(exit.reverse, isTrue);
+      // Llegada desde los costados (entrada) y partida (salida).
+      expect(cold.arriveSeconds, closeTo(0.8, 1e-9));
+      expect(back.arriveSeconds, closeTo(0.42, 1e-9));
+      expect(exit.arriveSeconds, 0);
+      expect(cold.departSeconds, 0);
+      expect(exit.departSeconds, closeTo(0.45, 1e-9));
+      // La llegada entra en la fase 1 de cada entrada.
+      expect(cold.arriveSeconds, lessThan(cold.swallowSeconds));
+      expect(back.arriveSeconds, lessThan(back.swallowSeconds));
       for (final s in [cold, back, exit]) {
         s.dispose();
       }
@@ -599,7 +608,9 @@ void main() {
     });
 
     group('salida con «atrás» desde Inicio', () {
-      testWidgets('se reproduce (≈ 500 ms) y recién al terminar cierra la app',
+      testWidgets(
+          'se reproduce (≈ 500 ms + 450 ms de partida) y recién al terminar '
+          'cierra la app',
           (tester) async {
         phone(tester);
         await mountAfterColdStart(tester);
@@ -612,11 +623,14 @@ void main() {
         expect(scene.reverse, isTrue);
         final frames = await pumpFramesUntilCalls(tester);
         expect(popCalls, ['SystemNavigator.pop']);
-        expect(frames * 16, greaterThanOrEqualTo(kIntroExit.inMilliseconds));
-        expect(
-            frames * 16, lessThanOrEqualTo(kIntroExit.inMilliseconds + 4 * 16));
-        // Último cuadro: el fondo cubre todo y la capa sigue puesta.
+        final exitMs =
+            kIntroExit.inMilliseconds + kIntroExitDepart.inMilliseconds;
+        expect(frames * 16, greaterThanOrEqualTo(exitMs));
+        expect(frames * 16, lessThanOrEqualTo(exitMs + 4 * 16));
+        // Último cuadro: el fondo cubre todo, el horizonte ya se fue a los
+        // costados (queda el agujero solo) y la capa sigue puesta.
         expect(scene.landProgress, 0.0);
+        expect(scene.arrival, 0.0);
         expect(find.byKey(_exitKey), findsOneWidget);
         // Una sola llamada de cierre.
         await tester.pump(const Duration(milliseconds: 200));
@@ -821,6 +835,112 @@ void main() {
           await pumpFramesUntilCalls(tester);
         });
       }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Horizonte: llega desde los costados, se mete en el agujero, se va
+  // -------------------------------------------------------------------------
+  group('Horizonte: llegada, tragado y partida', () {
+    const size = Size(411, 891);
+    final target = Rect.fromCircle(
+        center: const Offset(205.5, 800), radius: kRecordButtonSize / 2);
+
+    test('entrada: arranca solo el agujero y el horizonte llega desde los '
+        'dos costados', () {
+      final scene = HorizonIntroScene(random: math.Random(5))..resize(size);
+      expect(scene.arrival, 0.0);
+      // Al principio todas las partículas están corridas hacia su costado,
+      // fuera de la pantalla, y hay de los dos lados.
+      var left = 0;
+      var right = 0;
+      for (var i = 0; i < HorizonIntroScene.maxParticles; i++) {
+        final dx = scene.lateralOffset(i);
+        expect(dx.abs(), greaterThan(size.width * 0.8));
+        if (dx < 0) left++;
+        if (dx > 0) right++;
+      }
+      expect(left, greaterThan(100));
+      expect(right, greaterThan(100));
+      // A mitad de la llegada vienen entrando (más cerca que al principio).
+      while (scene.clock < scene.arriveSeconds / 2) {
+        scene.step(0.016);
+      }
+      expect(scene.arrival, inExclusiveRange(0.3, 0.7));
+      var moving = 0;
+      for (var i = 0; i < HorizonIntroScene.maxParticles; i++) {
+        if (scene.lateralOffset(i).abs() < size.width * 0.8) moving++;
+      }
+      expect(moving, greaterThan(0));
+      // Terminada la llegada, todas en su órbita y antes del aterrizaje.
+      while (scene.clock < scene.arriveSeconds + 0.02) {
+        scene.step(0.016);
+      }
+      expect(scene.arrival, 1.0);
+      expect(scene.landing, isFalse);
+      for (var i = 0; i < HorizonIntroScene.maxParticles; i++) {
+        expect(scene.lateralOffset(i), 0.0);
+      }
+      scene.dispose();
+    });
+
+    test('aterrizaje: el horizonte se mete en el agujero y queda el '
+        'micrófono', () {
+      final scene = HorizonIntroScene(random: math.Random(6))
+        ..resize(size)
+        ..target = target;
+      while (!scene.landing) {
+        scene.step(0.016);
+      }
+      expect(scene.swallowed, lessThan(0.05));
+      var last = scene.swallowed;
+      while (!scene.done) {
+        scene.step(0.016);
+        expect(scene.swallowed, greaterThanOrEqualTo(last));
+        last = scene.swallowed;
+      }
+      expect(scene.swallowed, 1.0);
+      scene.dispose();
+    });
+
+    test('saltear durante la llegada no la corta de golpe', () {
+      final scene = HorizonIntroScene(random: math.Random(7))..resize(size);
+      scene.step(0.016);
+      scene.skip();
+      scene.step(0.016);
+      // El aterrizaje arrancó, pero la llegada sigue su propio reloj.
+      expect(scene.landing, isTrue);
+      expect(scene.arrival, lessThan(0.1));
+      scene.dispose();
+    });
+
+    test('salida: el horizonte sale del agujero y al final se va hacia los '
+        'costados', () {
+      final scene = HorizonIntroScene.forKind(HorizonIntroKind.exit,
+          random: math.Random(8))
+        ..resize(size)
+        ..target = target;
+      // Empieza todo adentro del agujero, sobre el botón.
+      expect(scene.swallowed, 1.0);
+      expect(scene.arrival, 1.0);
+      while (scene.clock < scene.landSeconds) {
+        scene.step(0.016);
+        // Mientras sube, el horizonte sigue entero (no se va todavía).
+        if (scene.clock <= scene.landSeconds) expect(scene.arrival, 1.0);
+      }
+      // Ya afuera y en el centro: ahora se va.
+      expect(scene.swallowed, 0.0);
+      var last = 1.0;
+      while (!scene.done) {
+        scene.step(0.016);
+        expect(scene.arrival, lessThanOrEqualTo(last));
+        last = scene.arrival;
+      }
+      expect(scene.arrival, 0.0);
+      for (var i = 0; i < HorizonIntroScene.maxParticles; i++) {
+        expect(scene.ownArrival(i), 0.0);
+      }
+      scene.dispose();
     });
   });
 }

@@ -542,6 +542,18 @@ const Duration kIntroSwallowReturn = Duration(milliseconds: 600);
 /// sola fase (el agujero crece desde el botón y el fondo cubre Inicio).
 const Duration kIntroExit = Duration(milliseconds: 500);
 
+/// Llegada del horizonte (entrada): con el agujero ya quieto, el disco, el
+/// halo y los símbolos entran desde los dos costados; corre dentro de la
+/// fase 1 (arranque en frío).
+const Duration kIntroArrive = Duration(milliseconds: 800);
+
+/// Llegada del horizonte en la versión corta (volver de Ajustes).
+const Duration kIntroArriveReturn = Duration(milliseconds: 420);
+
+/// Salida, último tramo: con el agujero ya en el centro, el horizonte se va
+/// hacia los dos costados y queda solo el agujero.
+const Duration kIntroExitDepart = Duration(milliseconds: 450);
+
 /// Arranque, fase 2: el agujero se achica y aterriza en el botón de dictar
 /// mientras el fondo de la capa se desvanece y aparece Inicio.
 const Duration kIntroLand = Duration(milliseconds: 550);
