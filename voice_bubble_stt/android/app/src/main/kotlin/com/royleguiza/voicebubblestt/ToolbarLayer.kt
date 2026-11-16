@@ -55,6 +55,9 @@ class ToolbarLayer(
         fun credentialsToggle()
         fun clipboardToggle()
         fun clipboardPasteLatest()
+
+        /** Ruta IA 2b: traduce el texto seleccionado (nunca en contraseñas). */
+        fun translateSelection()
         fun trackpadToggle()
         fun codeToggle()
         fun sendCode(code: Int)
@@ -174,6 +177,17 @@ class ToolbarLayer(
                 },
             )
             items.add(btnPaste)
+
+            // Ruta IA 2b: traducir la selección (en el teléfono o con IA,
+            // según Ajustes). Fuera de contraseñas, como pegar.
+            val btnTranslate = makeTool(
+                R.drawable.ic_translate,
+                false,
+                if (host.isSpanish()) "traducir selección" else "translate selection",
+            ) {
+                host.translateSelection()
+            }
+            items.add(btnTranslate)
         }
 
         if (host.isCodeKeyPref()) {

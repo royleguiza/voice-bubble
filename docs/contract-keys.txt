@@ -50,6 +50,9 @@ kb_trackpad_secondary_click
 kb_trackpad_sensitivity
 kb_trackpad_tap_to_click
 kb_trackpad_toolbar_visible
+kb_translate_dictation
+kb_translate_mode
+kb_translate_target
 notes_deferred_queue_enabled
 pointer_open_mode
 transcriptions

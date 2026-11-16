@@ -127,6 +127,45 @@ extension _GeneralPages on _SettingsScreenState {
               ),
             ],
           ),
+        SettingsSection(
+          header: 'Traducción',
+          footer: _translateMode == StorageService.translateModeAi
+              ? 'Con IA: el texto se manda al proveedor de arriba para '
+                  'traducirlo. Nunca en campos de contraseña.'
+              : 'En el teléfono: el texto no sale del teléfono. La primera '
+                  'vez baja el idioma (unos 30 MB) y después traduce sin '
+                  'internet. Nunca en campos de contraseña.',
+          children: [
+            SettingsMenuRow<String>(
+              id: 'translate-target-selector',
+              title: 'Traducir a',
+              value: _translateTarget,
+              options: [
+                for (final e in StorageService.translateTargets.entries)
+                  SettingsOption(e.key, e.value),
+              ],
+              onSelected: _saveTranslateTarget,
+            ),
+            SettingsMenuRow<String>(
+              id: 'translate-mode-selector',
+              title: 'Cómo traducir',
+              value: _translateMode,
+              options: const [
+                SettingsOption(StorageService.translateModeLocal,
+                    'En el teléfono', detail: 'Privado'),
+                SettingsOption(StorageService.translateModeAi, 'Con IA',
+                    detail: 'Mejor calidad'),
+              ],
+              onSelected: _saveTranslateMode,
+            ),
+            SettingsSwitchRow(
+              key: const ValueKey('translate-dictation-switch'),
+              title: 'Traducir el dictado del teclado',
+              value: _translateDictation,
+              onChanged: _toggleTranslateDictation,
+            ),
+          ],
+        ),
       ],
     );
   }

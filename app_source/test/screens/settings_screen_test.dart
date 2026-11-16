@@ -253,6 +253,45 @@ void main() {
   });
 
   group('Ajustes 2026 - inteligencia artificial', () {
+    testWidgets('traducir con IA pide autorización: cancelar no cambia nada',
+        (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'ia');
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('translate-mode-selector')), 200,
+          scrollable: find.byType(Scrollable).first);
+      expect(rowShows('translate-mode-selector', 'En el teléfono'), isTrue);
+
+      await pickOption(tester, 'translate-mode-selector',
+          StorageService.translateModeAi);
+      expect(find.byKey(const ValueKey('translate-ai-consent-dialog')),
+          findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('translate-ai-consent-cancel')));
+      await tester.pumpAndSettle();
+      expect(await h.storage.loadTranslateMode(), 'local');
+      expect(rowShows('translate-mode-selector', 'En el teléfono'), isTrue);
+
+      await pickOption(tester, 'translate-mode-selector',
+          StorageService.translateModeAi);
+      await tester.tap(find.byKey(const ValueKey('translate-ai-consent-accept')));
+      await tester.pumpAndSettle();
+      expect(await h.storage.loadTranslateMode(), 'ai');
+      expect(rowShows('translate-mode-selector', 'Con IA'), isTrue);
+    });
+
+    testWidgets('destino y dictado traducido se guardan', (tester) async {
+      await h.pump(tester);
+      await openPage(tester, 'ia');
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('translate-dictation-switch')), 200,
+          scrollable: find.byType(Scrollable).first);
+      await pickOption(tester, 'translate-target-selector', 'fr');
+      expect(await h.storage.loadTranslateTarget(), 'fr');
+      await tester.tap(find.byKey(const ValueKey('translate-dictation-switch')));
+      await tester.pumpAndSettle();
+      expect(await h.storage.loadTranslateDictation(), isTrue);
+    });
+
     testWidgets('el proveedor de las notas arranca en Groq y se puede cambiar',
         (tester) async {
       await h.pump(tester);

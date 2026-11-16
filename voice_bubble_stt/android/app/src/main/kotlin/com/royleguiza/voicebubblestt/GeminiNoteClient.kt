@@ -74,11 +74,15 @@ Nota:
         internal fun fill(template: String, texto: String): String =
             template.replace("{texto}", texto)
 
-        internal fun buildBody(prompt: String, maxOutputTokens: Int): String =
+        internal fun buildBody(
+            prompt: String,
+            maxOutputTokens: Int,
+            system: String = SYSTEM_INSTRUCTION,
+        ): String =
             JSONObject()
                 .put(
                     "system_instruction",
-                    JSONObject().put("parts", JSONArray().put(JSONObject().put("text", SYSTEM_INSTRUCTION))),
+                    JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))),
                 )
                 .put(
                     "contents",
@@ -128,7 +132,16 @@ Nota:
     override fun resumir(texto: String): String =
         run(fill(PROMPT_RESUMEN, texto), maxOutputTokens = 2048)
 
-    private fun run(prompt: String, maxOutputTokens: Int): String {
+    override fun traducir(texto: String, idiomaDestino: String): String =
+        KeyboardTranslator.cleanTranslation(
+            run(
+                KeyboardTranslator.userPrompt(texto),
+                maxOutputTokens = KeyboardTranslator.maxOutputTokens(texto),
+                system = KeyboardTranslator.systemPrompt(idiomaDestino),
+            )
+        )
+
+    private fun run(prompt: String, maxOutputTokens: Int, system: String = SYSTEM_INSTRUCTION): String {
         val conn: HttpURLConnection
         val code: Int
         val body: String
@@ -145,7 +158,7 @@ Nota:
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             conn.setRequestProperty("x-goog-api-key", apiKey)
             OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use {
-                it.write(buildBody(prompt, maxOutputTokens))
+                it.write(buildBody(prompt, maxOutputTokens, system))
             }
             code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream

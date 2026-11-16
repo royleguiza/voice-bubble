@@ -475,6 +475,55 @@ class StorageService {
   Future<void> saveAiNotesProvider(String provider) =>
       _setString(aiNotesProviderKey, normalizeAiNotesProvider(provider));
 
+  // --- Traducción del teclado (Ruta IA 2b; las lee KeyboardTranslator.kt) ---
+
+  /// Idioma destino (ISO 639-1). Mismo orden que el menú de Ajustes.
+  static const String translateTargetKey = 'kb_translate_target';
+  static const String defaultTranslateTarget = 'en';
+  static const Map<String, String> translateTargets = {
+    'en': 'Inglés',
+    'es': 'Español',
+    'pt': 'Portugués',
+    'fr': 'Francés',
+    'it': 'Italiano',
+    'de': 'Alemán',
+  };
+
+  /// `local` (en el teléfono, privado; por defecto) o `ai` (con el proveedor
+  /// de IA de notas). `ai` solo se guarda después de que el usuario acepta
+  /// el aviso de que el texto se manda a ese proveedor.
+  static const String translateModeKey = 'kb_translate_mode';
+  static const String translateModeLocal = 'local';
+  static const String translateModeAi = 'ai';
+
+  /// Traducir el dictado del teclado antes de pegarlo.
+  static const String translateDictationKey = 'kb_translate_dictation';
+
+  static String normalizeTranslateTarget(String? raw) {
+    final v = raw?.trim();
+    return (v != null && translateTargets.containsKey(v)) ? v : defaultTranslateTarget;
+  }
+
+  static String normalizeTranslateMode(String? raw) =>
+      raw?.trim() == translateModeAi ? translateModeAi : translateModeLocal;
+
+  Future<String> loadTranslateTarget() async => normalizeTranslateTarget(
+      await _getString(translateTargetKey, defaultTranslateTarget));
+
+  Future<void> saveTranslateTarget(String code) =>
+      _setString(translateTargetKey, normalizeTranslateTarget(code));
+
+  Future<String> loadTranslateMode() async => normalizeTranslateMode(
+      await _getString(translateModeKey, translateModeLocal));
+
+  Future<void> saveTranslateMode(String mode) =>
+      _setString(translateModeKey, normalizeTranslateMode(mode));
+
+  Future<bool> loadTranslateDictation() => _getBool(translateDictationKey, false);
+
+  Future<void> saveTranslateDictation(bool enabled) =>
+      _setBool(translateDictationKey, enabled);
+
   static const String _floatingBubbleKey = 'floating_bubble_enabled';
 
   Future<bool> loadFloatingBubbleEnabled() =>
@@ -1033,6 +1082,9 @@ class StorageService {
     sttKeyConfiguredKey,
     _sttLanguageKey,
     _sttModelKey,
+    translateDictationKey,
+    translateModeKey,
+    translateTargetKey,
     _sttUrlKey,
     _keyboardTerminalRowKey,
     kbTrackpadAccelCurveKey,

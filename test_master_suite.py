@@ -26,6 +26,7 @@ SUITES = [
     ("Mayúsculas: ciclo de caso con Shift (MEJ-02)", "test_shift_case_suite.py"),
     ("Pulsación larga: símbolos y tildes sin cambiar de capa (MEJ-05)", "test_long_press_symbols_suite.py"),
     ("Modelo: turbo por defecto y whisper-large-v3 elegible", "test_turbo_model_suite.py"),
+    ("Traducción: botón del teclado y dictado traducido, local o IA autorizada (Ruta IA 2b)", "test_translate_suite.py"),
     ("Escritura: precisión dedos + gaps + targets (typing-feel)", "test_typing_feel_suite.py"),
     ("Micro-teclado: modo mini 2 filas (MEJ-12)", "test_micro_keyboard_suite.py"),
     ("Ajustes: rediseño Settings v2 (5 tabs + crystal)", "test_settings_redesign_suite.py"),
@@ -2763,7 +2764,7 @@ def test_c06_dead_connection_contract():
     dict_path = os.path.join(base_kt, "DictationController.kt")
     with open(dict_path, "r", encoding="utf-8") as f:
         dict_ctrl = f.read()
-    assert "if (commitOrWarn(text)) {" in dict_ctrl and "micEvent(MicEvent.PASTE)" in dict_ctrl, "C-06: DictationController emite PASTE ante commit fallido"
+    assert dict_ctrl.count("if (commitOrWarn(out)) {") == 2 and "micEvent(MicEvent.PASTE)" in dict_ctrl, "C-06: DictationController emite PASTE ante commit fallido"
 
     hist_path = os.path.join(base_kt, "HistoryLayer.kt")
     with open(hist_path, "r", encoding="utf-8") as f:
@@ -3337,8 +3338,8 @@ def test_c19_bridge_keys_contract():
     # 1. Claves y límites
     # 51 + 4 de la barra flotante (dock_form, dock_tool_mic, dock_tool_pointer, pointer_open_mode)
     # + 6 de la fase 2B (dock_island_x/y/w/h/side y floating_bubble_enabled, que ahora lee DockLink).
-    # + 1 de la Ruta IA (kb_ai_notes_provider, proveedor de IA de notas que lee el widget).
-    assert len(keys_content) == 62, f"C-19: contract-keys.txt debe tener 62 claves, tiene {len(keys_content)}"
+    # + 4 de la Ruta IA (kb_ai_notes_provider y kb_translate_target/_mode/_dictation).
+    assert len(keys_content) == 65, f"C-19: contract-keys.txt debe tener 65 claves, tiene {len(keys_content)}"
     assert "kb_stt_key_configured" in keys_content, "C-19: contract-keys.txt debe incluir kb_stt_key_configured"
     assert "20" in limits_content and "50" in limits_content and "15" in limits_content and "25" in limits_content, "C-19: contract-limits.md debe documentar 20/50/15/25"
 

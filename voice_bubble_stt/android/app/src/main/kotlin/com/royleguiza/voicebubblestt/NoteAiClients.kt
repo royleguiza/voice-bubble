@@ -12,6 +12,9 @@ import org.json.JSONObject
 interface NoteAiClient {
     fun sugerirTitulo(texto: String): String
     fun resumir(texto: String): String
+
+    /** Traducción literal (botón «Traducir» y dictado traducido del teclado). */
+    fun traducir(texto: String, idiomaDestino: String): String
 }
 
 /**
@@ -83,13 +86,17 @@ class GroqNoteClient(
                 "máximo). Para notas largas elegí Google en Ajustes › Inteligencia " +
                 "artificial."
 
-        internal fun buildBody(prompt: String, maxTokens: Int): String =
+        internal fun buildBody(
+            prompt: String,
+            maxTokens: Int,
+            system: String = GeminiNoteClient.SYSTEM_INSTRUCTION,
+        ): String =
             JSONObject()
                 .put("model", MODEL)
                 .put(
                     "messages",
                     JSONArray()
-                        .put(JSONObject().put("role", "system").put("content", GeminiNoteClient.SYSTEM_INSTRUCTION))
+                        .put(JSONObject().put("role", "system").put("content", system))
                         .put(JSONObject().put("role", "user").put("content", prompt)),
                 )
                 .put("max_completion_tokens", maxTokens)
@@ -129,7 +136,16 @@ class GroqNoteClient(
     override fun resumir(texto: String): String =
         run(GeminiNoteClient.fill(GeminiNoteClient.PROMPT_RESUMEN, texto), SUMMARY_MAX_TOKENS)
 
-    private fun run(prompt: String, maxTokens: Int): String {
+    override fun traducir(texto: String, idiomaDestino: String): String =
+        KeyboardTranslator.cleanTranslation(
+            run(
+                KeyboardTranslator.userPrompt(texto),
+                KeyboardTranslator.maxOutputTokens(texto),
+                KeyboardTranslator.systemPrompt(idiomaDestino),
+            )
+        )
+
+    private fun run(prompt: String, maxTokens: Int, system: String = GeminiNoteClient.SYSTEM_INSTRUCTION): String {
         val conn: HttpURLConnection
         val code: Int
         val body: String
@@ -146,7 +162,7 @@ class GroqNoteClient(
             conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             conn.setRequestProperty("Authorization", "Bearer $apiKey")
             OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use {
-                it.write(buildBody(prompt, maxTokens))
+                it.write(buildBody(prompt, maxTokens, system))
             }
             code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream

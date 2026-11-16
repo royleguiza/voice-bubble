@@ -730,6 +730,9 @@ void main() {
       'kb_mic_sounds_enabled',
       'kb_mic_start_style',
       'kb_mic_stop_style',
+      'kb_translate_dictation',
+      'kb_translate_mode',
+      'kb_translate_target',
       'notes_deferred_queue_enabled',
       'voice_notes_pending_v1',
       'kb_snippets_seeded',
@@ -763,8 +766,8 @@ void main() {
       'widget_mic_position',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (62 claves)', () {
-      expect(StorageService.bridgeKeys.length, 62);
+    test('bridgeKeys cubre exactamente el contrato (65 claves)', () {
+      expect(StorageService.bridgeKeys.length, 65);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
       expect(Set.of(StorageService.bridgeKeys), kContractKeysSnapshot);
       final contractFile = File('docs/contract-keys.txt');
@@ -831,6 +834,34 @@ void main() {
       await service.repairSttMirror();
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('kb_stt_model'), 'whisper-large-v3');
+    });
+  });
+
+  group('Traducción del teclado (Ruta IA 2b)', () {
+    test('valores por defecto: inglés, en el teléfono, dictado sin traducir',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final s = StorageService();
+      expect(await s.loadTranslateTarget(), 'en');
+      expect(await s.loadTranslateMode(), StorageService.translateModeLocal);
+      expect(await s.loadTranslateDictation(), isFalse);
+    });
+
+    test('guarda y normaliza destino, modo y dictado', () async {
+      SharedPreferences.setMockInitialValues({});
+      final s = StorageService();
+      await s.saveTranslateTarget('pt');
+      await s.saveTranslateMode(StorageService.translateModeAi);
+      await s.saveTranslateDictation(true);
+      expect(await s.loadTranslateTarget(), 'pt');
+      expect(await s.loadTranslateMode(), 'ai');
+      expect(await s.loadTranslateDictation(), isTrue);
+      await s.saveTranslateTarget('klingon');
+      await s.saveTranslateMode('nube');
+      expect(await s.loadTranslateTarget(), 'en');
+      expect(await s.loadTranslateMode(), 'local');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('kb_translate_mode'), 'local');
     });
   });
 }

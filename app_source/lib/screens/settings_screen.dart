@@ -93,6 +93,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _recordMode = StorageService.defaultRecordMode;
   String _sttModel = CloudSttService.model;
   String _aiNotesProvider = StorageService.aiNotesProviderGroq;
+  String _translateTarget = StorageService.defaultTranslateTarget;
+  String _translateMode = StorageService.translateModeLocal;
+  bool _translateDictation = false;
   bool _isBubbleEnabled = false;
   bool _showBubbleHistory = true;
   bool _notesDeferredQueue = false;
@@ -225,11 +228,17 @@ class _SettingsScreenState extends State<SettingsScreen>
     final widgetMicPos = await s.getWidgetMicPosition();
     final sttModel = await s.loadSttModel();
     final aiNotesProvider = await s.loadAiNotesProvider();
+    final translateTarget = await s.loadTranslateTarget();
+    final translateMode = await s.loadTranslateMode();
+    final translateDictation = await s.loadTranslateDictation();
     if (!mounted) return;
     setState(() {
       _recordMode = results.$1;
       _sttModel = sttModel;
       _aiNotesProvider = aiNotesProvider;
+      _translateTarget = translateTarget;
+      _translateMode = translateMode;
+      _translateDictation = translateDictation;
       _showTerminalRow = results.$2;
       _showCodeKey = results.$3;
       _showLanguageKey = results.$4;
@@ -824,6 +833,63 @@ class _SettingsScreenState extends State<SettingsScreen>
       } catch (_) {}
       if (mounted) setState(() => _isBubbleEnabled = false);
     }
+  }
+
+  Future<void> _saveTranslateTarget(String code) async {
+    await _storageService.saveTranslateTarget(code);
+    if (mounted) {
+      setState(() =>
+          _translateTarget = StorageService.normalizeTranslateTarget(code));
+    }
+  }
+
+  /// «Con IA» se guarda solo si el usuario autoriza mandar el texto al
+  /// proveedor (decisión del dueño, Ruta IA 2b). Volver a «En el teléfono»
+  /// es retirar la autorización.
+  Future<void> _saveTranslateMode(String mode) async {
+    final next = StorageService.normalizeTranslateMode(mode);
+    if (next == StorageService.translateModeAi &&
+        _translateMode != StorageService.translateModeAi) {
+      final provider =
+          await NoteAiResolver(storage: _storageService).effectiveProvider();
+      if (!mounted) return;
+      final name = provider == StorageService.aiNotesProviderGoogle
+          ? 'Google'
+          : 'Groq';
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          key: const ValueKey('translate-ai-consent-dialog'),
+          title: const Text('¿Traducir con IA?'),
+          content: Text(
+            'Cuando traduzcas, el texto seleccionado o dictado se va a mandar '
+            'a $name (el proveedor de «Título y resumen con») para '
+            'traducirlo. VoiceBubble no lo guarda. Nunca se usa en campos de '
+            'contraseña.\n\nPodés volver a «En el teléfono» cuando quieras.',
+          ),
+          actions: [
+            TextButton(
+              key: const ValueKey('translate-ai-consent-cancel'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              key: const ValueKey('translate-ai-consent-accept'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Autorizar'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    await _storageService.saveTranslateMode(next);
+    if (mounted) setState(() => _translateMode = next);
+  }
+
+  Future<void> _toggleTranslateDictation(bool enabled) async {
+    await _storageService.saveTranslateDictation(enabled);
+    if (mounted) setState(() => _translateDictation = enabled);
   }
 
   Future<void> _saveAiNotesProvider(String provider) async {

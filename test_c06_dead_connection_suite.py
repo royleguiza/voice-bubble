@@ -185,7 +185,8 @@ check(
 
 check(
     "DictationController: onDone solo emite MicEvent.PASTE si commitOrWarn devuelve true",
-    "if (commitOrWarn(text)) {" in dict_ctrl and "micEvent(MicEvent.PASTE)" in dict_ctrl,
+    # Ruta IA 2b: se comete `out` (el dictado, traducido si corresponde).
+    dict_ctrl.count("if (commitOrWarn(out)) {\n                                micEvent(MicEvent.PASTE)\n                            }") == 2,
 )
 
 check(
@@ -224,8 +225,8 @@ def test_mutations():
     check("Mutación negativa 2 (ClipboardLayer cambio de capa incondicional): detectada", found_m2)
 
     # Mutación 3: DictationController emite PASTE incondicionalmente
-    mutated_dict = dict_ctrl.replace("if (commitOrWarn(text)) {\n                                micEvent(MicEvent.PASTE)\n                            }", "service.currentInputConnection?.commitText(text, 1)\nmicEvent(MicEvent.PASTE)")
-    found_m3 = "if (commitOrWarn(text)) {" not in mutated_dict
+    mutated_dict = dict_ctrl.replace("if (commitOrWarn(out)) {\n                                micEvent(MicEvent.PASTE)\n                            }", "service.currentInputConnection?.commitText(out, 1)\nmicEvent(MicEvent.PASTE)")
+    found_m3 = "if (commitOrWarn(out)) {" not in mutated_dict
     check("Mutación negativa 3 (DictationController PASTE incondicional): detectada", found_m3)
 
     # Mutación 4: HistoryLayer cierra popups incondicionalmente

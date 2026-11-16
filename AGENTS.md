@@ -85,6 +85,7 @@ Ver sección "Estado" al final de este archivo y los checkboxes de `docs/archive
 - **NUNCA hardcodear API keys ni secretos.** La key va en Settings, almacenada con `flutter_secure_storage`.
 - El audio SOLO viaja a internet cuando el usuario inicia explícitamente una transcripción Cloud. Sin transcripción en curso = cero tráfico de red con audio.
 - **El teclado JAMÁS registra, guarda ni transmite texto tecleado** (ni en logs de debug). Sin dictado, snippets ni sugerencias en campos de contraseña.
+  - **Única excepción (decisión del dueño, 2026-11-16, Ruta IA 2b):** la traducción «Con IA» manda el texto que el usuario selecciona y traduce (o el dictado, si encendió «Traducir el dictado») al proveedor de IA elegido, **solo después de que el usuario lo autoriza** en el aviso de Ajustes; volver a «En el teléfono» retira la autorización. El modo por defecto traduce en el teléfono (ML Kit) y el texto no sale. Nunca en campos de contraseña.
 - **Exclusión mutua de micrófono burbuja↔teclado**: si uno está grabando, el otro muestra estado ocupado (flag en memoria del proceso + audio focus).
 - Sin analytics, sin telemetría, sin permisos que no estén justificados en INSTALL.md.
 

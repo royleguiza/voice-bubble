@@ -72,6 +72,9 @@ class DictationController(
     /** Lo mínimo que el dictado exige al teclado. */
     interface UiHost {
         fun isSpanish(): Boolean
+
+        /** Ruta IA 2b: nunca traducir en campos de contraseña. */
+        fun isPasswordField(): Boolean
         fun tapFeedback()
         fun pressHaptic(view: View)
         fun attachPress(key: View, onLongPress: () -> Unit, onTapUp: () -> Unit)
@@ -651,17 +654,20 @@ class DictationController(
                     // hilo de fondo del cliente; sus callbacks jamas llegan
                     // por el hilo principal.
                     if (!text.isNullOrBlank()) addToSharedHistory(text)
+                    // Ruta IA 2b: dictado traducido (también en este hilo de fondo).
+                    val (out, translateNotice) = translateDictation(text)
                     runOnMain {
                         if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
-                        if (text.isNullOrBlank()) {
+                        if (out.isNullOrBlank()) {
                             host.showNotice(if (host.isSpanish()) "No se detectó voz." else "No voice detected.")
                         } else {
                             // AT-A10: el dictado se comete directo en el campo
                             // destino; jamas alimenta el query de snippets.
-                            if (commitOrWarn(text)) {
+                            if (commitOrWarn(out)) {
                                 micEvent(MicEvent.PASTE)
                             }
+                            translateNotice?.let { host.showNotice(it) }
                         }
                     }
                 },
@@ -679,6 +685,26 @@ class DictationController(
                         }
                     }
                 },
+            )
+        }
+    }
+
+    /**
+     * Ruta IA 2b: con «Traducir el dictado» encendido en Ajustes, el texto se
+     * traduce antes de pegarlo (en el teléfono o con IA, según el modo que
+     * eligió el usuario). Si falla se pega el original y se avisa.
+     * Bloqueante: solo desde el hilo de fondo del cliente.
+     */
+    private fun translateDictation(text: String?): Pair<String?, String?> {
+        if (text.isNullOrBlank() || host.isPasswordField()) return text to null
+        val settings = KeyboardTranslator.settings(service)
+        if (!settings.dictation) return text to null
+        return when (val r = KeyboardTranslator.translate(
+            service.applicationContext, text, settings.target, settings.mode, host.isSpanish(),
+        )) {
+            is KeyboardTranslator.Result.Ok -> r.text to null
+            is KeyboardTranslator.Result.Failed -> text to (
+                if (host.isSpanish()) "Sin traducir: ${r.message}" else "Not translated: ${r.message}"
             )
         }
     }
@@ -714,15 +740,17 @@ class DictationController(
                     }
                     lastDictationSlot = null
                     if (!text.isNullOrBlank()) addToSharedHistory(text)
+                    val (out, translateNotice) = translateDictation(text)
                     runOnMain {
                         if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
-                        if (text.isNullOrBlank()) {
+                        if (out.isNullOrBlank()) {
                             host.showNotice(if (host.isSpanish()) "No se detectó voz." else "No voice detected.")
                         } else {
-                            if (commitOrWarn(text)) {
+                            if (commitOrWarn(out)) {
                                 micEvent(MicEvent.PASTE)
                             }
+                            translateNotice?.let { host.showNotice(it) }
                         }
                     }
                 },

@@ -360,7 +360,20 @@ la API de Google salga de alfa.
   editor (los launchers ignoraban el aviso con el editor encima) y Groq
   explica cuando la nota es muy larga (error 413: ≈ 8000 tokens por minuto en
   el plan gratis, unos 20 000 caracteres entre nota y respuesta).
-- **Etapa 2b (pendiente):** dictado con traducción y botón «Traducir».
+- **Etapa 2b (2026-11-16, hecha; falta probar en el teléfono):** Ajustes ›
+  Inteligencia artificial › Traducción: «Traducir a» (inglés por defecto;
+  español, portugués, francés, italiano, alemán), «Cómo traducir» («En el
+  teléfono», privado, por defecto; «Con IA» solo tras el aviso de
+  autorización) y «Traducir el dictado del teclado». Claves del puente
+  `kb_translate_target/_mode/_dictation` (contrato 65). Teclado: botón
+  «Traducir» en la barra (fuera de contraseñas) que reemplaza la selección y
+  ofrece «Deshacer»; el dictado se traduce antes de pegarse si el switch
+  está encendido (si falla, pega el original con aviso).
+  `KeyboardTranslator.kt` (ML Kit `translate` 17.0.3 + `language-id`
+  17.0.6; con IA reutiliza `NoteAiClients`, método `traducir`, con el prompt
+  del §9). `AGENTS.md` registra la excepción de privacidad autorizada.
+  Alcance: el dictado traducido es del teclado; la burbuja y las notas de la
+  app no traducen todavía.
 
 ## 12. Plan actualizado por etapas
 

@@ -154,7 +154,7 @@ check(
 )
 check(
     "retryLastDictation comete texto y emite PASTE en onDone",
-    "if (commitOrWarn(text)) {\n                                micEvent(MicEvent.PASTE)\n                            }" in retry_body,
+    "if (commitOrWarn(out)) {\n                                micEvent(MicEvent.PASTE)\n                            }" in retry_body,
 )
 
 # 5. Limpieza de lastDictationSlot en otros flujos

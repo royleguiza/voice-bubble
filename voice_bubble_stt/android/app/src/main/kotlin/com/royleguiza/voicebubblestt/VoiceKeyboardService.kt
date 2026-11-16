@@ -338,6 +338,91 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     /** Portapapeles en mini (MEJ-12): inline, sin desplegar. */
     override fun clipboardToggle() = clipboard.toggle()
     override fun clipboardPasteLatest() = clipboard.pasteLatestOrToggle()
+
+    /** Una traducción por vez: un segundo toque mientras traduce no hace nada. */
+    @Volatile
+    private var translating = false
+
+    /**
+     * Ruta IA 2b: traduce la selección al idioma de Ajustes (en el teléfono o
+     * con IA autorizada) y la reemplaza; el aviso ofrece deshacer.
+     */
+    override fun translateSelection() {
+        if (currentIsPasswordField || translating) return
+        val ic = currentInputConnection ?: return
+        val original = try {
+            ic.getSelectedText(0)?.toString().orEmpty()
+        } catch (_: Exception) {
+            ""
+        }
+        if (original.isBlank()) {
+            translateNotice(
+                if (spanishMode) "Seleccioná el texto que querés traducir" else "Select the text to translate",
+            )
+            return
+        }
+        translating = true
+        val settings = KeyboardTranslator.settings(this)
+        translateNotice(if (spanishMode) "Traduciendo…" else "Translating…")
+        val app = applicationContext
+        val spanish = spanishMode
+        BackgroundWork.executeWithResult(
+            { KeyboardTranslator.translate(app, original, settings.target, settings.mode, spanish) },
+            { result ->
+                translating = false
+                when (result) {
+                    is KeyboardTranslator.Result.Ok -> replaceSelection(original, result.text)
+                    is KeyboardTranslator.Result.Failed -> translateNotice(result.message, isError = true)
+                    null -> translateNotice(if (spanishMode) "No se pudo traducir" else "Could not translate", isError = true)
+                }
+            },
+        )
+    }
+
+    private fun translateNotice(
+        message: String,
+        isError: Boolean = false,
+        onClick: (() -> Unit)? = null,
+        actionLabel: String? = null,
+    ) {
+        if (::status.isInitialized) {
+            status.show(message, onClick = onClick, isError = isError, actionLabel = actionLabel)
+        }
+    }
+
+    /** Reemplaza la selección (si sigue siendo la misma) y ofrece deshacer. */
+    private fun replaceSelection(original: String, translated: String) {
+        val ic = currentInputConnection ?: return
+        val stillSelected = try {
+            ic.getSelectedText(0)?.toString() == original
+        } catch (_: Exception) {
+            false
+        }
+        if (!stillSelected) {
+            translateNotice(
+                if (spanishMode) "La selección cambió: traducción descartada" else "Selection changed: translation discarded",
+                isError = true,
+            )
+            return
+        }
+        if (!commitOrWarn(this, translated, spanishMode)) return
+        translateNotice(
+            if (spanishMode) "Traducido" else "Translated",
+            onClick = { undoTranslation(original, translated) },
+            actionLabel = if (spanishMode) "Deshacer" else "Undo",
+        )
+    }
+
+    private fun undoTranslation(original: String, translated: String) {
+        val ic = currentInputConnection ?: return
+        try {
+            if (ic.getTextBeforeCursor(translated.length, 0)?.toString() != translated) return
+            ic.beginBatchEdit()
+            ic.deleteSurroundingText(translated.length, 0)
+            ic.commitText(original, 1)
+            ic.endBatchEdit()
+        } catch (_: Exception) {}
+    }
     /** Trackpad en mini (MEJ-12): exige altura completa, despliega primero. */
     override fun trackpadToggle() {
         if (miniMode) setMiniMode(false, rebuildNow = false)

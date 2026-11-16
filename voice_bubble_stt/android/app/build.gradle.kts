@@ -110,6 +110,10 @@ dependencies {
     // transitivamente flutter_secure_storage v9: sin cambio de conducta,
     // solo pin explícito para que el import compile aunque cambie el árbol.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    // Ruta IA 2b: traducción en el teléfono (ML Kit; cada idioma se baja una
+    // vez y después traduce sin internet) y detección del idioma de origen.
+    implementation("com.google.mlkit:translate:17.0.3")
+    implementation("com.google.mlkit:language-id:17.0.6")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("org.robolectric:robolectric:4.17")
