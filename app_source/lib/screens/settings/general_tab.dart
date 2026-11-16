@@ -129,12 +129,11 @@ extension _GeneralPages on _SettingsScreenState {
           ),
         SettingsSection(
           header: 'Traducción',
-          footer: _translateMode == StorageService.translateModeAi
-              ? 'Con IA: el texto se manda al proveedor de arriba para '
-                  'traducirlo. Nunca en campos de contraseña.'
-              : 'En el teléfono: el texto no sale del teléfono. La primera '
-                  'vez baja el idioma (unos 30 MB) y después traduce sin '
-                  'internet. Nunca en campos de contraseña.',
+          footer: 'Botón «Traducir» del teclado: con texto seleccionado lo '
+              'traduce; sin selección, el próximo dictado sale traducido. '
+              'Toque largo: deshacer. '
+              '${_translateMode == StorageService.translateModeAi ? 'Con IA: el texto se manda al proveedor de arriba para traducirlo.' : 'En el teléfono: el texto no sale del teléfono; la primera vez baja el idioma (unos 30 MB) y después traduce sin internet.'}'
+              ' Nunca en campos de contraseña.',
           children: [
             SettingsMenuRow<String>(
               id: 'translate-target-selector',
@@ -160,7 +159,7 @@ extension _GeneralPages on _SettingsScreenState {
             ),
             SettingsSwitchRow(
               key: const ValueKey('translate-dictation-switch'),
-              title: 'Traducir el dictado del teclado',
+              title: 'Traducir siempre el dictado del teclado',
               value: _translateDictation,
               onChanged: _toggleTranslateDictation,
             ),

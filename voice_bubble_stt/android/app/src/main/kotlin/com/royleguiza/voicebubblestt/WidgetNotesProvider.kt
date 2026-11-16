@@ -42,6 +42,25 @@ class WidgetNotesProvider : AppWidgetProvider() {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
     }
 
+    /**
+     * App actualizada: el launcher puede haber vuelto al diseño inicial del
+     * widget (lista vacía y + / micrófono sin acción, que terminaban abriendo
+     * la app). Se redibujan todos los widgets con su estado real.
+     */
+    override fun onReceive(context: Context, intent: android.content.Intent) {
+        if (intent.action == android.content.Intent.ACTION_MY_PACKAGE_REPLACED) {
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = try {
+                manager.getAppWidgetIds(ComponentName(context, WidgetNotesProvider::class.java))
+            } catch (_: Exception) {
+                IntArray(0)
+            }
+            if (ids.isNotEmpty()) onUpdate(context, manager, ids)
+            return
+        }
+        super.onReceive(context, intent)
+    }
+
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
         for (id in appWidgetIds) WidgetReader.close(context, id)
         super.onDeleted(context, appWidgetIds)

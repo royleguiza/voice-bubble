@@ -56,8 +56,20 @@ class ToolbarLayer(
         fun clipboardToggle()
         fun clipboardPasteLatest()
 
-        /** Ruta IA 2b: traduce el texto seleccionado (nunca en contraseñas). */
+        /**
+         * Ruta IA 2b: con texto seleccionado lo traduce; sin selección arma
+         * (o desarma) la traducción del próximo dictado.
+         */
         fun translateSelection()
+
+        /** Toque largo en «Traducir»: deshace la última traducción. */
+        fun undoLastTranslation()
+
+        /** El próximo dictado sale traducido (botón encendido). */
+        fun isTranslateArmed(): Boolean
+
+        /** Hay una traducción en curso (el botón muestra el cargador). */
+        fun isTranslating(): Boolean
         fun trackpadToggle()
         fun codeToggle()
         fun sendCode(code: Int)
@@ -99,6 +111,7 @@ class ToolbarLayer(
     }
 
     fun buildToolbar(): LinearLayout {
+        translateView = null
         val row = LinearLayout(service)
         row.orientation = LinearLayout.HORIZONTAL
 
@@ -180,13 +193,21 @@ class ToolbarLayer(
 
             // Ruta IA 2b: traducir la selección (en el teléfono o con IA,
             // según Ajustes). Fuera de contraseñas, como pegar.
+            val armed = host.isTranslateArmed()
             val btnTranslate = makeTool(
                 R.drawable.ic_translate,
-                false,
-                if (host.isSpanish()) "traducir selección" else "translate selection",
+                armed,
+                translateDescription(armed),
             ) {
                 host.translateSelection()
             }
+            host.attachPress(
+                btnTranslate,
+                onLongPress = { host.undoLastTranslation() },
+                onTapUp = { host.translateSelection() },
+            )
+            translateView = btnTranslate
+            if (host.isTranslating()) showTranslateBusy()
             items.add(btnTranslate)
         }
 
@@ -262,6 +283,67 @@ class ToolbarLayer(
      * ocupa todo el alto de la barra (el del micrófono con sus márgenes) en
      * vez de 38 dp con márgenes, así la barra no cambia de alto.
      */
+    // ------------------------------------------------ «Traducir» (Ruta IA 2b)
+
+    /** Botón «Traducir» de la barra vigente (null fuera de la barra o en contraseñas). */
+    private var translateView: ImageView? = null
+
+    private fun translateDescription(armed: Boolean): String = when {
+        armed && host.isSpanish() -> "el próximo dictado sale traducido; tocá para cancelar"
+        armed -> "next dictation will be translated; tap to cancel"
+        host.isSpanish() -> "traducir selección o el próximo dictado"
+        else -> "translate selection or next dictation"
+    }
+
+    /** Ícono normal o encendido (armado), con su tinte de herramienta. */
+    fun showTranslateIdle() {
+        val v = translateView ?: return
+        val armed = host.isTranslateArmed()
+        (v.drawable as? android.graphics.drawable.Animatable)?.stop()
+        v.setImageResource(R.drawable.ic_translate)
+        v.setBackgroundResource(if (armed) R.drawable.kb_tool_active else R.drawable.kb_tool)
+        v.setColorFilter(
+            androidx.core.content.ContextCompat.getColor(
+                service, if (armed) R.color.hz_ember_t else R.color.hz_fg2,
+            )
+        )
+        v.isSelected = armed
+        v.contentDescription = translateDescription(armed)
+    }
+
+    /** Cargador del widget (agujero con letras en órbita) mientras traduce. */
+    fun showTranslateBusy() {
+        val v = translateView ?: return
+        val d = try {
+            service.getDrawable(R.drawable.widget_ai_title_loading)
+        } catch (_: Exception) {
+            null
+        } ?: return
+        v.clearColorFilter()
+        v.setImageDrawable(d)
+        (d as? android.graphics.drawable.Animatable)?.start()
+        v.contentDescription = if (host.isSpanish()) "traduciendo" else "translating"
+    }
+
+    /** Fin: la órbita cae al agujero y se dibuja el ✓; después vuelve al ícono. */
+    fun showTranslateDone() {
+        val v = translateView ?: return
+        val d = try {
+            service.getDrawable(R.drawable.kb_translate_done)
+        } catch (_: Exception) {
+            null
+        }
+        if (d == null) {
+            showTranslateIdle()
+            return
+        }
+        v.clearColorFilter()
+        v.setImageDrawable(d)
+        (d as? android.graphics.drawable.Animatable)?.start()
+        v.contentDescription = if (host.isSpanish()) "traducido" else "translated"
+        v.postDelayed({ if (translateView === v && !host.isTranslating()) showTranslateIdle() }, TRANSLATE_DONE_MS)
+    }
+
     private fun makeTool(
         iconRes: Int,
         active: Boolean,
@@ -357,6 +439,9 @@ class ToolbarLayer(
     }
 
     companion object {
+        /** Lo que dura el ✓ de «Traducir» antes de volver al ícono. */
+        const val TRANSLATE_DONE_MS = 900L
+
         /** Alto de la tecla de micrófono en la barra (fase 1, sin cambios). */
         const val MIC_HEIGHT_DP = 38f
     }

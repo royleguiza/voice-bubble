@@ -375,6 +375,17 @@ la API de Google salga de alfa.
   Alcance: el dictado traducido es del teclado; la burbuja y las notas de la
   app no traducen todavía.
 
+- **Ajuste 2b (r329, pedido del dueño tras probar r328):** el botón
+  «Traducir» de la barra sin selección arma «el próximo dictado sale
+  traducido» (botón encendido, un solo uso, vale para ese campo); con
+  selección traduce como antes; toque largo deshace. Sin píldoras de
+  «Traduciendo…»/«Traducido»: el botón muestra el cargador del widget
+  (agujero con letras en órbita, `widget_ai_title_loading`) y al terminar
+  `kb_translate_done` (la órbita cae al agujero, late el anillo y se dibuja
+  el ✓). El switch de Ajustes pasa a «Traducir siempre el dictado».
+  Widget: se redibuja con `MY_PACKAGE_REPLACED` (tras actualizar la app
+  quedaba vacío y + / micrófono abrían la app).
+
 ## 12. Plan actualizado por etapas
 
 1. Desplegable de Groq (`turbo` / `large-v3`) + notas con

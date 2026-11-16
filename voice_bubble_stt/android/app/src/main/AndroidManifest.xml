@@ -67,6 +67,12 @@
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
+            <!-- Al instalar una versión nueva el launcher puede volver al
+                 diseño inicial (vacío, sin acciones en + ni micrófono): se
+                 redibuja enseguida. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_notes_info" />
         </receiver>
         <service

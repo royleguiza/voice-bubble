@@ -149,6 +149,12 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        // Ruta IA 2b: el «próximo dictado traducido» y el deshacer valen para
+        // el campo en el que se pidieron.
+        if (!restarting) {
+            translateArmed = false
+            lastTranslation = null
+        }
 
         val newPackage = info?.packageName
         val isPassword = isPasswordInput(info)
@@ -343,9 +349,21 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     @Volatile
     private var translating = false
 
+    /** Ruta IA 2b: el próximo dictado del teclado sale traducido (un solo uso). */
+    @Volatile
+    private var translateArmed = false
+
+    /** Última traducción pegada, para deshacerla con toque largo en «Traducir». */
+    private var lastTranslation: Pair<String, String>? = null
+
+    override fun isTranslateArmed(): Boolean = translateArmed
+    override fun isTranslating(): Boolean = translating
+
     /**
-     * Ruta IA 2b: traduce la selección al idioma de Ajustes (en el teléfono o
-     * con IA autorizada) y la reemplaza; el aviso ofrece deshacer.
+     * Ruta IA 2b. Con texto seleccionado: lo traduce al idioma de Ajustes (en
+     * el teléfono o con IA autorizada) y lo reemplaza; mientras tanto el botón
+     * muestra el agujero con letras en órbita y al terminar el ✓. Sin
+     * selección: arma (o desarma) la traducción del próximo dictado.
      */
     override fun translateSelection() {
         if (currentIsPasswordField || translating) return
@@ -356,43 +374,63 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             ""
         }
         if (original.isBlank()) {
-            translateNotice(
-                if (spanishMode) "Seleccioná el texto que querés traducir" else "Select the text to translate",
-            )
+            translateArmed = !translateArmed
+            if (::toolbar.isInitialized) toolbar.showTranslateIdle()
             return
         }
         translating = true
+        if (::toolbar.isInitialized) toolbar.showTranslateBusy()
         val settings = KeyboardTranslator.settings(this)
-        translateNotice(if (spanishMode) "Traduciendo…" else "Translating…")
         val app = applicationContext
         val spanish = spanishMode
         BackgroundWork.executeWithResult(
             { KeyboardTranslator.translate(app, original, settings.target, settings.mode, spanish) },
             { result ->
                 translating = false
-                when (result) {
-                    is KeyboardTranslator.Result.Ok -> replaceSelection(original, result.text)
-                    is KeyboardTranslator.Result.Failed -> translateNotice(result.message, isError = true)
-                    null -> translateNotice(if (spanishMode) "No se pudo traducir" else "Could not translate", isError = true)
+                val ok = result is KeyboardTranslator.Result.Ok &&
+                    replaceSelection(original, result.text)
+                if (ok) {
+                    if (::toolbar.isInitialized) toolbar.showTranslateDone()
+                } else {
+                    if (::toolbar.isInitialized) toolbar.showTranslateIdle()
+                    when (result) {
+                        is KeyboardTranslator.Result.Failed -> translateNotice(result.message)
+                        null -> translateNotice(if (spanishMode) "No se pudo traducir" else "Could not translate")
+                        else -> {}
+                    }
                 }
             },
         )
     }
 
-    private fun translateNotice(
-        message: String,
-        isError: Boolean = false,
-        onClick: (() -> Unit)? = null,
-        actionLabel: String? = null,
-    ) {
-        if (::status.isInitialized) {
-            status.show(message, onClick = onClick, isError = isError, actionLabel = actionLabel)
+    /** Llamado por el dictado (hilo de fondo): consume el armado de un solo uso. */
+    override fun takeTranslateArmed(): Boolean {
+        if (!translateArmed) return false
+        translateArmed = false
+        handler.post { if (::toolbar.isInitialized) toolbar.showTranslateIdle() }
+        return true
+    }
+
+    /** El dictado está traduciendo (cargador) o terminó (✓ si salió bien). */
+    override fun onDictationTranslate(busy: Boolean, ok: Boolean) {
+        handler.post {
+            translating = busy
+            if (!::toolbar.isInitialized) return@post
+            when {
+                busy -> toolbar.showTranslateBusy()
+                ok -> toolbar.showTranslateDone()
+                else -> toolbar.showTranslateIdle()
+            }
         }
     }
 
-    /** Reemplaza la selección (si sigue siendo la misma) y ofrece deshacer. */
-    private fun replaceSelection(original: String, translated: String) {
-        val ic = currentInputConnection ?: return
+    private fun translateNotice(message: String) {
+        if (::status.isInitialized) status.show(message, isError = true)
+    }
+
+    /** Reemplaza la selección si sigue siendo la misma. */
+    private fun replaceSelection(original: String, translated: String): Boolean {
+        val ic = currentInputConnection ?: return false
         val stillSelected = try {
             ic.getSelectedText(0)?.toString() == original
         } catch (_: Exception) {
@@ -401,26 +439,29 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (!stillSelected) {
             translateNotice(
                 if (spanishMode) "La selección cambió: traducción descartada" else "Selection changed: translation discarded",
-                isError = true,
             )
-            return
+            return false
         }
-        if (!commitOrWarn(this, translated, spanishMode)) return
-        translateNotice(
-            if (spanishMode) "Traducido" else "Translated",
-            onClick = { undoTranslation(original, translated) },
-            actionLabel = if (spanishMode) "Deshacer" else "Undo",
-        )
+        if (!commitOrWarn(this, translated, spanishMode)) return false
+        lastTranslation = original to translated
+        return true
     }
 
-    private fun undoTranslation(original: String, translated: String) {
+    /** Toque largo en «Traducir»: vuelve al texto original si sigue ahí. */
+    override fun undoLastTranslation() {
+        val (original, translated) = lastTranslation ?: return
         val ic = currentInputConnection ?: return
         try {
-            if (ic.getTextBeforeCursor(translated.length, 0)?.toString() != translated) return
+            if (ic.getTextBeforeCursor(translated.length, 0)?.toString() != translated) {
+                lastTranslation = null
+                return
+            }
             ic.beginBatchEdit()
             ic.deleteSurroundingText(translated.length, 0)
             ic.commitText(original, 1)
             ic.endBatchEdit()
+            lastTranslation = null
+            if (::toolbar.isInitialized) toolbar.showTranslateIdle()
         } catch (_: Exception) {}
     }
     /** Trackpad en mini (MEJ-12): exige altura completa, despliega primero. */

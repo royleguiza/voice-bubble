@@ -75,6 +75,12 @@ class DictationController(
 
         /** Ruta IA 2b: nunca traducir en campos de contraseña. */
         fun isPasswordField(): Boolean
+
+        /** Ruta IA 2b: consume el «próximo dictado traducido» del botón (un solo uso). */
+        fun takeTranslateArmed(): Boolean
+
+        /** Ruta IA 2b: animación del botón «Traducir» (cargador / ✓ / ícono). */
+        fun onDictationTranslate(busy: Boolean, ok: Boolean)
         fun tapFeedback()
         fun pressHaptic(view: View)
         fun attachPress(key: View, onLongPress: () -> Unit, onTapUp: () -> Unit)
@@ -690,18 +696,24 @@ class DictationController(
     }
 
     /**
-     * Ruta IA 2b: con «Traducir el dictado» encendido en Ajustes, el texto se
-     * traduce antes de pegarlo (en el teléfono o con IA, según el modo que
-     * eligió el usuario). Si falla se pega el original y se avisa.
+     * Ruta IA 2b: el texto se traduce antes de pegarlo si el botón «Traducir»
+     * quedó armado (un solo dictado) o si «Traducir el dictado» está
+     * encendido en Ajustes (siempre); en el teléfono o con IA, según el modo
+     * que eligió el usuario. Mientras traduce, el botón muestra el cargador;
+     * si falla se pega el original y se avisa.
      * Bloqueante: solo desde el hilo de fondo del cliente.
      */
     private fun translateDictation(text: String?): Pair<String?, String?> {
         if (text.isNullOrBlank() || host.isPasswordField()) return text to null
         val settings = KeyboardTranslator.settings(service)
-        if (!settings.dictation) return text to null
-        return when (val r = KeyboardTranslator.translate(
+        val oneShot = host.takeTranslateArmed()
+        if (!oneShot && !settings.dictation) return text to null
+        host.onDictationTranslate(busy = true, ok = false)
+        val r = KeyboardTranslator.translate(
             service.applicationContext, text, settings.target, settings.mode, host.isSpanish(),
-        )) {
+        )
+        host.onDictationTranslate(busy = false, ok = r is KeyboardTranslator.Result.Ok)
+        return when (r) {
             is KeyboardTranslator.Result.Ok -> r.text to null
             is KeyboardTranslator.Result.Failed -> text to (
                 if (host.isSpanish()) "Sin traducir: ${r.message}" else "Not translated: ${r.message}"

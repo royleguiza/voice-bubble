@@ -61,13 +61,30 @@ check("Botón Traducir en la barra, dentro del bloque sin contraseñas",
 check("Ícono ic_translate existe", bool(suite.read("voice_bubble_stt/android/app/src/main/res/drawable/ic_translate.xml")))
 check("Traduce la selección, nunca en contraseñas, de a una",
       "if (currentIsPasswordField || translating) return" in vks and "getSelectedText(0)" in vks)
-check("Reemplaza solo si la selección sigue igual y ofrece deshacer",
-      "La selección cambió: traducción descartada" in vks and "undoTranslation(original, translated)" in vks)
+check("Reemplaza solo si la selección sigue igual; toque largo deshace",
+      "La selección cambió: traducción descartada" in vks and "override fun undoLastTranslation()" in vks
+      and "onLongPress = { host.undoLastTranslation() }" in toolbar)
+check("Sin selección arma el próximo dictado (un solo uso) y se apaga solo",
+      "translateArmed = !translateArmed" in vks and "override fun takeTranslateArmed(): Boolean" in vks
+      and "val oneShot = host.takeTranslateArmed()" in dictation
+      and "if (!oneShot && !settings.dictation) return text to null" in dictation)
+check("El armado vale para el campo en que se pidió",
+      "if (!restarting) {\n            translateArmed = false" in vks)
+check("Sin píldora «Traduciendo…»: cargador del widget en el botón y ✓ al terminar",
+      "Traduciendo…" not in vks and "R.drawable.widget_ai_title_loading" in toolbar
+      and "R.drawable.kb_translate_done" in toolbar and "fun showTranslateDone()" in toolbar
+      and "host.onDictationTranslate(busy = true, ok = false)" in dictation)
+check("Animación de fin: la órbita cae al agujero y se dibuja el ✓",
+      'android:name="orbit"' in suite.read("voice_bubble_stt/android/app/src/main/res/drawable/kb_translate_done.xml")
+      and 'android:propertyName="trimPathEnd"' in suite.read("voice_bubble_stt/android/app/src/main/res/drawable/kb_translate_done.xml"))
+check("Widget: se redibuja al actualizar la app (no queda vacío)",
+      "android.intent.action.MY_PACKAGE_REPLACED" in suite.read("voice_bubble_stt/android/app/src/main/AndroidManifest.xml")
+      and "Intent.ACTION_MY_PACKAGE_REPLACED" in suite.read(KT + "WidgetNotesProvider.kt"))
 
 # 3. Dictado traducido
 check("Dictado traducido opcional, fuera de contraseñas",
       "if (text.isNullOrBlank() || host.isPasswordField()) return text to null" in dictation
-      and "if (!settings.dictation) return text to null" in dictation)
+      and "if (!oneShot && !settings.dictation) return text to null" in dictation)
 check("Si la traducción falla se pega el original con aviso",
       'Sin traducir: ${r.message}' in dictation and dictation.count("translateDictation(text)") == 2)
 
