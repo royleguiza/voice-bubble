@@ -285,7 +285,7 @@ class ToolbarLayer(
      */
     // ------------------------------------------------ «Traducir» (Ruta IA 2b)
 
-    /** Botón «Traducir» de la barra vigente (null fuera de la barra o en contraseñas). */
+    /** Botón «Traducir» de la barra vigente (null si no hay barra o en campos de contraseña). */
     private var translateView: ImageView? = null
 
     private fun translateDescription(armed: Boolean): String = when {
