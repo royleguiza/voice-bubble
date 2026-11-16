@@ -522,7 +522,8 @@ class HorizonIntroScene extends ChangeNotifier {
   /// de la fase 2 invertida (0 en la entrada).
   final double departSeconds;
 
-  /// Reloj propio de la llegada: no salta al saltear la fase 1.
+  /// Reloj propio de la llegada: no salta al saltear la fase 1 (avanza con
+  /// el paso real del cuadro, sin la aceleración de saltear).
   double _arriveClock = 0;
   static final double skipSeconds = kIntroSkipLand.inMicroseconds / 1e6;
 
