@@ -375,3 +375,32 @@ Quedan en `DictationController.kt` unos 14 pares `if (host.isSpanish()) getStrin
 - Parámetros `isSpanish` sin uso en `commitOrWarn`/`warnDeadConnection`/
   `KeyboardTranslator.translate`.
 - Ficha de Play Store por idioma.
+
+## Para verificar en la próxima sesión (pedido del dueño, 2026-11-17 noche)
+
+Probado OK por el dueño con r335: idioma en toda la app. Dictado por tramos
+(etapa 3): dictados de más de un minuto funcionan (el dueño lo confirmó; uno
+de ≈ 2 min 15 s).
+
+1. **Ventanas emergentes en otro idioma:** con la app en inglés, el aviso
+   del widget al pedir título/resumen/reestructurar una nota guardada
+   («¿Reemplazar?», Descartar/Reemplazar) sale en español. Revisar TODAS las
+   ventanas emergentes (diálogos, hojas, popups) de la app, el widget y el
+   teclado (por ejemplo el historial de transcripciones) y que sigan el
+   idioma elegido o el del teléfono. Sospecha: textos que quedaron fuera de
+   `strings.xml` (`WidgetReader`, `GeminiNoteClient`, `NoteAiClients`) o
+   contextos del widget sin el idioma de la app.
+2. **Prompts de IA y el idioma:** ver si los prompts de título, resumen y
+   reestructuración (hoy en español) hacen que la respuesta salga en español
+   aunque la nota o la app estén en otro idioma. Definir: responder en el
+   idioma de la nota.
+3. **Posible pérdida de letras en dictados largos (encontrado al leer el
+   dictado de 2 min 15 s):** en un tramo del medio se cortaron las palabras
+   desde la letra con tilde: «espa» (español), «configuraci»
+   (configuración), «ingl» (inglés), «as» (así), «habr» (habría), «est»
+   (están), «dem» (demás). Antes y después de ese tramo las tildes salieron
+   bien. Sospecha: decodificación UTF-8 de la respuesta de un tramo en
+   `DictationTranches`/`SpeechToTextClient` (bytes multibyte partidos) o en
+   la unión de tramos. Reproducir con un dictado largo con muchas tildes.
+4. Seguir con los pendientes de la etapa 4 (arriba) y después la etapa 5 en
+   una sesión nueva. Token de GitHub vence el 2026-11-29.
