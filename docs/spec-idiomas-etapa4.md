@@ -419,5 +419,10 @@ de ≈ 2 min 15 s).
    bien. Sospecha: decodificación UTF-8 de la respuesta de un tramo en
    `DictationTranches`/`SpeechToTextClient` (bytes multibyte partidos) o en
    la unión de tramos. Reproducir con un dictado largo con muchas tildes.
+**Cierre (2026-11-17, dueño con r336):** punto 1 probado OK (ventanas en
+el idioma elegido). Punto 3 descartado: con los tramos más largos ya no
+pasa y la puntuación, tildes y signos salen bien. Punto 2: los prompts ya
+piden responder en el idioma de la nota; queda solo «Nota sin título» fijo.
+
 4. Seguir con los pendientes de la etapa 4 (arriba) y después la etapa 5 en
    una sesión nueva. Token de GitHub vence el 2026-11-29.
