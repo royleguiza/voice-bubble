@@ -42,7 +42,7 @@ jamás desde el main (usar `BackgroundWork.execute`). `transcribe` no bloquea
 
 ## Dictado por tramos (Ruta IA, etapa 3)
 
-Solo el teclado. En dictados de más de 25 s, `SpeechToTextClient` entrega
+Solo el teclado. En dictados de más de 60 s (corte en una pausa desde los 60 s, obligatorio a los 90 s), `SpeechToTextClient` entrega
 tramos (`segmentListener`) y `DictationTranches` los sube de a uno con el
 campo multipart opcional `prompt` (final del texto anterior, ≤ 200
 caracteres). Si un tramo falla tras 2 reintentos (red, 429, 5xx) se sube el

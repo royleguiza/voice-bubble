@@ -2,8 +2,8 @@
 """
 TEST SUITE: DICTADO POR TRAMOS (Ruta IA, etapa 3)
 Verifica sobre el código REAL:
-1. Corte: desde 25 s en una pausa (400 ms) o a los 40 s; dictados cortos
-   siguen siendo un solo pedido.
+1. Corte: desde 60 s en una pausa (400 ms) o a los 90 s; dictados de hasta
+   un minuto siguen siendo un solo pedido.
 2. Subida en orden, de a una (un hilo), con el final del texto anterior como
    `prompt`; reintentos solo por red, límite (429) o servidor.
 3. Nada se pierde: si un tramo falla se sube el audio completo y queda el
@@ -32,8 +32,8 @@ print(" INICIANDO TEST SUITE: DICTADO POR TRAMOS (Ruta IA 3)")
 print("============================================================\n")
 
 # 1. Corte
-check("Umbrales: 25 s con pausa de 400 ms o 40 s",
-      "const val MIN_SEGMENT_SECONDS = 25" in tr and "const val MAX_SEGMENT_SECONDS = 40" in tr
+check("Umbrales: 60 s con pausa de 400 ms o 90 s (hasta un minuto, igual que antes)",
+      "const val MIN_SEGMENT_SECONDS = 60" in tr and "const val MAX_SEGMENT_SECONDS = 90" in tr
       and "const val SILENCE_MS = 400" in tr)
 check("Corte en la captura, sin trabajo pesado en ese hilo",
       "DictationTranches.shouldCut(total - cut, quietMs)" in stt and "try { listener(segment) }" in stt
@@ -72,7 +72,7 @@ check("Cada grabación arranca tramos nuevos", "tranches.begin(sttClient.getConf
 check("Solo el teclado corta tramos",
       "segmentListener" not in dock and "segmentListener" not in widget)
 check("Tests JVM de las partes puras",
-      all(n in test for n in ("dictados cortos no se cortan", "el ultimo pedazo sale del WAV completo")))
+      all(n in test for n in ("dictados de hasta un minuto no se cortan", "el ultimo pedazo sale del WAV completo")))
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TRAMOS: {suite.passed} pasados, {suite.failed} fallidos.")

@@ -398,6 +398,11 @@ la API de Google salga de alfa.
   audio total no cambia. Alcance: solo el teclado (burbuja y widget sin
   cambios); el texto se pega al final (no tramo a tramo).
 
+- **Ajuste 3 (r333, pedido del dueño):** tramos más largos y menos
+  uniones: el corte busca una pausa desde los **60 s** y es obligatorio a
+  los **90 s** (antes 25/40). Hasta un minuto el dictado es idéntico a antes;
+  ≈ 1 pedido por minuto a Groq mientras se habla.
+
 ## 12. Plan actualizado por etapas
 
 1. Desplegable de Groq (`turbo` / `large-v3`) + notas con

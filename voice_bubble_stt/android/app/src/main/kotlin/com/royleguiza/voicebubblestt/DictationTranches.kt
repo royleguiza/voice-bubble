@@ -16,7 +16,7 @@ import kotlin.math.sqrt
  *   se cortan: siguen siendo UN pedido, igual que antes.
  * - Los tramos se suben de a uno, en orden (un solo hilo): nunca en
  *   paralelo, así se respeta el vuelo único del cliente y el límite de
- *   pedidos por minuto de Groq (2–3 por minuto mientras se habla).
+ *   pedidos por minuto de Groq (≈ 1 por minuto mientras se habla).
  * - A cada tramo se le pasa el final del texto anterior como `prompt`
  *   (Whisper mantiene la puntuación y el sentido entre tramos).
  * - Un tramo que falla por red, límite (429) o servidor se reintenta hasta
@@ -27,8 +27,10 @@ import kotlin.math.sqrt
 internal class DictationTranches(private val client: SpeechToTextClient) {
 
     companion object {
-        const val MIN_SEGMENT_SECONDS = 25
-        const val MAX_SEGMENT_SECONDS = 40
+        // Pedido del dueño tras probar r332: tramos largos y pocas uniones.
+        // Hasta un minuto el dictado es idéntico a antes (un solo pedido).
+        const val MIN_SEGMENT_SECONDS = 60
+        const val MAX_SEGMENT_SECONDS = 90
         const val SILENCE_MS = 400
 
         /** RMS (escala PCM16) por debajo del cual un cuadro cuenta como pausa. */

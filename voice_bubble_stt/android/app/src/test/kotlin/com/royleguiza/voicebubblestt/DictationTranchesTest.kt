@@ -13,16 +13,17 @@ class DictationTranchesTest {
     private val perSecond = SpeechToTextClient.SAMPLE_RATE * 2
 
     @Test
-    fun `dictados cortos no se cortan`() {
+    fun `dictados de hasta un minuto no se cortan`() {
         assertFalse(DictationTranches.shouldCut(10 * perSecond, 2000))
-        assertFalse(DictationTranches.shouldCut(24 * perSecond, 2000))
+        assertFalse(DictationTranches.shouldCut(59 * perSecond, 2000))
     }
 
     @Test
-    fun `desde 25 s corta en una pausa y a los 40 s corta igual`() {
-        assertFalse(DictationTranches.shouldCut(30 * perSecond, 100))
-        assertTrue(DictationTranches.shouldCut(25 * perSecond, DictationTranches.SILENCE_MS))
-        assertTrue(DictationTranches.shouldCut(40 * perSecond, 0))
+    fun `desde 60 s corta en una pausa y a los 90 s corta igual`() {
+        assertFalse(DictationTranches.shouldCut(75 * perSecond, 100))
+        assertTrue(DictationTranches.shouldCut(60 * perSecond, DictationTranches.SILENCE_MS))
+        assertFalse(DictationTranches.shouldCut(89 * perSecond, 0))
+        assertTrue(DictationTranches.shouldCut(90 * perSecond, 0))
     }
 
     @Test
