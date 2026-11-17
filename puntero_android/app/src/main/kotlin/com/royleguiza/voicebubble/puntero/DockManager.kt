@@ -238,7 +238,7 @@ internal class DockManager(private val service: PunteroService) : DockCallbacks 
                 trampolineTried = true
                 if (HostLink.openTrampoline(service)) return
             }
-            showLocal("No se pudo abrir el micrófono")
+            showLocal(service.getString(R.string.ptr_mic_cannot_open))
             return
         }
         val now = SystemClock.uptimeMillis()
@@ -265,13 +265,13 @@ internal class DockManager(private val service: PunteroService) : DockCallbacks 
         if (tracker.state == PointerProtocol.MIC_TRANSCRIBING) return
         trampolineTried = false
         if (!HostLink.hostHasMicPermission(service)) {
-            showLocal("Falta el permiso del micrófono")
+            showLocal(service.getString(R.string.ptr_mic_no_permission))
             return
         }
         if (HostLink.toggleDictation(service)) return
         // Android no dejó arrancarlo en segundo plano: actividad trampolín en primer plano.
         trampolineTried = true
-        if (!HostLink.openTrampoline(service)) showLocal("No se pudo abrir el micrófono")
+        if (!HostLink.openTrampoline(service)) showLocal(service.getString(R.string.ptr_mic_cannot_open))
     }
 
     override fun onMicCancel() {

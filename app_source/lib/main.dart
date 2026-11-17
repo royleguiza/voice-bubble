@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'l10n/app_localizations.dart';
+import 'services/storage_service.dart';
+import 'ui/app_locale.dart';
 import 'ui/design_tokens.dart';
 import 'ui/horizon_intro.dart';
 import 'ui/theme_mode.dart';
@@ -12,9 +16,25 @@ void main() async {
     final prefs = await SharedPreferences.getInstance();
     appThemeMode.value =
         themeModeFromStorage(prefs.getString('theme_mode') ?? 'sistema');
+    appLocale.value = localeFromStorage(
+        prefs.getString(StorageService.appLocaleKey) ?? 'sistema');
   } catch (_) {}
+  // Android 13+: el idioma pudo cambiarse desde Ajustes del sistema.
+  unawaited(_syncAppLocaleFromSystem());
   // Arranque en frío del proceso: con la animación Horizonte (una vez).
   runApp(const VoiceBubbleApp(showIntro: true));
+}
+
+Future<void> _syncAppLocaleFromSystem() async {
+  final code = await AppLocaleChannel.current();
+  if (code == null || !StorageService.appLocales.contains(code)) return;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getString(StorageService.appLocaleKey) != code) {
+      await prefs.setString(StorageService.appLocaleKey, code);
+    }
+  } catch (_) {}
+  appLocale.value = localeFromStorage(code);
 }
 
 class VoiceBubbleApp extends StatelessWidget {
@@ -29,9 +49,11 @@ class VoiceBubbleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: appThemeMode,
-      builder: (_, mode, __) {
-        return MaterialApp(
+      builder: (_, mode, __) => ValueListenableBuilder<Locale?>(
+        valueListenable: appLocale,
+        builder: (_, locale, __) => MaterialApp(
           title: 'VoiceBubble STT',
+          locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           debugShowCheckedModeBanner: false,
@@ -41,8 +63,8 @@ class VoiceBubbleApp extends StatelessWidget {
           home: showIntro
               ? const HorizonIntroHost(homeBuilder: _homeWithHoleKey)
               : const HomeScreen(),
-        );
-      },
+        ),
+      ),
     );
   }
 }

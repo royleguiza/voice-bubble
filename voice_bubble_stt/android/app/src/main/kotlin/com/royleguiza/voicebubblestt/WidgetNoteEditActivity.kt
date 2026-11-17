@@ -23,6 +23,11 @@ import org.json.JSONArray
 
 class WidgetNoteEditActivity : Activity() {
 
+    // Etapa 4: Android 9–12 toma el idioma elegido en la app (13+ lo pone el sistema).
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
+
     companion object {
         private const val GEMINI_TITULO = "titulo"
         private const val GEMINI_RESUMIR = "resumir"
@@ -131,7 +136,7 @@ class WidgetNoteEditActivity : Activity() {
                         result == null || result.unavailable -> showPendingUnavailable()
                         loaded != null -> setupPendingMode(loaded)
                         else -> {
-                            Toast.makeText(this, "El audio ya no está pendiente", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, getString(R.string.widget_audio_not_pending), Toast.LENGTH_SHORT).show()
                             finish()
                         }
                     }
@@ -150,14 +155,14 @@ class WidgetNoteEditActivity : Activity() {
         findViewById<View>(R.id.btn_copy).setOnClickListener {
             val text = bodyEt.text.toString()
             if (text.isBlank()) {
-                Toast.makeText(this, "Sin contenido para copiar", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.widget_nothing_to_copy), Toast.LENGTH_SHORT).show()
             } else {
                 try {
                     val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     clipboard.setPrimaryClip(ClipData.newPlainText("nota", text))
-                    Toast.makeText(this, "Contenido copiado", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_content_copied), Toast.LENGTH_SHORT).show()
                 } catch (_: Exception) {
-                    Toast.makeText(this, "No se pudo copiar", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_copy_failed), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -175,7 +180,7 @@ class WidgetNoteEditActivity : Activity() {
             return
         }
 
-        findViewById<TextView>(R.id.overlay_title).text = "Editar nota"
+        findViewById<TextView>(R.id.overlay_title).text = getString(R.string.widget_edit_note)
         // Desde la vista de lectura del widget la nota ya está en memoria:
         // se muestra al instante y el teclado sube en el mismo gesto (sin
         // tarjeta vacía ni salto). Igual se verifica contra el disco.
@@ -199,7 +204,7 @@ class WidgetNoteEditActivity : Activity() {
                 when (WidgetNoteEditActivity.resolveExistingNoteState(result.snapshot, editingId)) {
                     ExistingNoteUiState.UNAVAILABLE -> if (cached == null) showExistingUnavailable()
                     ExistingNoteUiState.NOT_FOUND -> {
-                        Toast.makeText(this, "La nota ya no existe", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, getString(R.string.widget_note_gone), Toast.LENGTH_SHORT).show()
                         finish()
                     }
                     ExistingNoteUiState.READY -> {
@@ -493,12 +498,12 @@ class WidgetNoteEditActivity : Activity() {
 
     private fun showExistingUnavailable() {
         setEditorState(writable = false, ready = false, deletable = false)
-        Toast.makeText(this, "No se pudo leer la nota; no se perdió nada", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.widget_note_read_failed), Toast.LENGTH_SHORT).show()
     }
 
     private fun showPendingUnavailable() {
         setEditorState(writable = false, ready = false, deletable = false)
-        Toast.makeText(this, "No se pudo leer el audio; no se perdió nada", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.widget_audio_read_failed), Toast.LENGTH_SHORT).show()
     }
 
     private fun loadPending(id: String): PendingLoadResult {
@@ -516,7 +521,7 @@ class WidgetNoteEditActivity : Activity() {
     private fun setupPendingMode(pending: VbPending) {
         pendingMode = true
         pendingAudioPath = pending.audioPath
-        findViewById<TextView>(R.id.overlay_title).text = "Audio sin transcribir"
+        findViewById<TextView>(R.id.overlay_title).text = getString(R.string.widget_pending_untranscribed)
         findViewById<View>(R.id.edit_title_wrap).visibility = View.GONE
         val bodyEt = findViewById<EditText>(R.id.edit_body)
         bodyEt.setText(pendingInfoText(pending))
@@ -559,7 +564,7 @@ class WidgetNoteEditActivity : Activity() {
             BackgroundWork.execute { refreshNoteWidgets() }
             transcribeInProgress.set(false)
             BackgroundWork.postMain {
-                Toast.makeText(this, "Audio descartado", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.widget_audio_discarded), Toast.LENGTH_SHORT).show()
                 finish()
             }
         }
@@ -702,11 +707,11 @@ class WidgetNoteEditActivity : Activity() {
             if (playing) {
                 icon?.setImageResource(R.drawable.widget_ic_pause)
                 findViewById<android.view.View>(R.id.btn_player_main)
-                    ?.contentDescription = "Pausar audio"
+                    ?.contentDescription = getString(R.string.widget_pause_audio)
             } else {
                 icon?.setImageResource(R.drawable.widget_ic_play)
                 findViewById<android.view.View>(R.id.btn_player_main)
-                    ?.contentDescription = "Reproducir audio"
+                    ?.contentDescription = getString(R.string.widget_play_audio)
             }
         } catch (_: Exception) {}
     }
@@ -759,7 +764,7 @@ class WidgetNoteEditActivity : Activity() {
         }
         val path = pendingAudioPath
         if (path.isNullOrBlank()) {
-            Toast.makeText(this, "Audio no disponible", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.widget_audio_unavailable), Toast.LENGTH_SHORT).show()
             return
         }
         if (!playerLoading.compareAndSet(false, true)) return
@@ -773,7 +778,7 @@ class WidgetNoteEditActivity : Activity() {
                 playerLoading.set(false)
                 BackgroundWork.postMain {
                     collapseExpandingPlayer()
-                    Toast.makeText(this, "Audio no disponible", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_audio_unavailable), Toast.LENGTH_SHORT).show()
                 }
                 return@execute
             }
@@ -811,7 +816,7 @@ class WidgetNoteEditActivity : Activity() {
                     if (player === mediaPlayer) releasePlayer()
                     playerLoading.set(false)
                     collapseExpandingPlayer()
-                    Toast.makeText(this, "Audio dañado; podés descartarlo", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_audio_damaged), Toast.LENGTH_SHORT).show()
                 }
                 true
             }
@@ -837,7 +842,7 @@ class WidgetNoteEditActivity : Activity() {
                 playerLoading.set(false)
                 BackgroundWork.postMain {
                     collapseExpandingPlayer()
-                    Toast.makeText(this, "No se pudo reproducir", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_play_failed), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -868,7 +873,7 @@ class WidgetNoteEditActivity : Activity() {
                     null
                 }
                 if (raw == null || raw.isEmpty()) {
-                    failPendingTranscription("Audio no disponible")
+                    failPendingTranscription(getString(R.string.widget_audio_unavailable))
                     return@execute
                 }
                 // C-45: si el pendiente trae hueco sin tapa (stop anormal
@@ -891,7 +896,7 @@ class WidgetNoteEditActivity : Activity() {
                     null
                 }
                 if (client == null || config == null || config.apiKey.isBlank()) {
-                    failPendingTranscription("Configurá tu clave en la app")
+                    failPendingTranscription(getString(R.string.widget_configure_key))
                     return@execute
                 }
                 client.transcribe(
@@ -899,7 +904,7 @@ class WidgetNoteEditActivity : Activity() {
                     config,
                     onDone = { text ->
                         if (text.isNullOrBlank()) {
-                            failPendingTranscription("No se pudo transcribir; el audio se conserva")
+                            failPendingTranscription(getString(R.string.widget_transcribe_failed_kept))
                             return@transcribe
                         }
                         val keptPath = promotePendingWav(id, wav)
@@ -912,7 +917,7 @@ class WidgetNoteEditActivity : Activity() {
                                 } catch (_: Exception) {
                                 }
                             }
-                            failPendingTranscription("Nota no guardada; el audio se conserva")
+                            failPendingTranscription(getString(R.string.widget_note_not_saved_kept))
                             return@transcribe
                         }
                         NoteStore(this).removePending(id)
@@ -923,7 +928,7 @@ class WidgetNoteEditActivity : Activity() {
                         BackgroundWork.execute { refreshNoteWidgets() }
                         transcribeInProgress.set(false)
                         BackgroundWork.postMain {
-                            Toast.makeText(this, "Nota guardada", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, getString(R.string.widget_note_saved), Toast.LENGTH_SHORT).show()
                             finish()
                         }
                     },
@@ -932,7 +937,7 @@ class WidgetNoteEditActivity : Activity() {
                     },
                 )
             } catch (_: Exception) {
-                failPendingTranscription("No se pudo transcribir; el audio se conserva")
+                failPendingTranscription(getString(R.string.widget_transcribe_failed_kept))
             }
         }
     }
@@ -989,9 +994,9 @@ class WidgetNoteEditActivity : Activity() {
             ""
         }
         return if (whenText.isBlank()) {
-            "Grabado en este teléfono. Transcribilo acá con tus datos o Wi-Fi."
+            getString(R.string.widget_recorded_here)
         } else {
-            "Grabado el $whenText en este teléfono. Transcribilo acá con tus datos o Wi-Fi."
+            getString(R.string.widget_recorded_on_here, whenText)
         }
     }
 
@@ -1003,11 +1008,11 @@ class WidgetNoteEditActivity : Activity() {
                 if (current.isPlaying) {
                     current.pause()
                     icon.setImageResource(R.drawable.widget_ic_play)
-                    findViewById<View>(R.id.btn_play).contentDescription = "Reproducir audio"
+                    findViewById<View>(R.id.btn_play).contentDescription = getString(R.string.widget_play_audio)
                 } else {
                     current.start()
                     icon.setImageResource(R.drawable.widget_ic_pause)
-                    findViewById<View>(R.id.btn_play).contentDescription = "Pausar audio"
+                    findViewById<View>(R.id.btn_play).contentDescription = getString(R.string.widget_pause_audio)
                 }
             } catch (_: Exception) {
                 releasePlayer()
@@ -1016,7 +1021,7 @@ class WidgetNoteEditActivity : Activity() {
         }
         val path = pendingAudioPath
         if (path.isNullOrBlank()) {
-            Toast.makeText(this, "Audio no disponible", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.widget_audio_unavailable), Toast.LENGTH_SHORT).show()
             return
         }
         if (!playerLoading.compareAndSet(false, true)) return
@@ -1028,7 +1033,7 @@ class WidgetNoteEditActivity : Activity() {
             } catch (_: Exception) {
                 playerLoading.set(false)
                 BackgroundWork.postMain {
-                    Toast.makeText(this, "Audio no disponible", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_audio_unavailable), Toast.LENGTH_SHORT).show()
                 }
                 return@execute
             }
@@ -1040,7 +1045,7 @@ class WidgetNoteEditActivity : Activity() {
                     try {
                         mediaPlayer.start()
                         icon.setImageResource(R.drawable.widget_ic_pause)
-                        findViewById<View>(R.id.btn_play).contentDescription = "Pausar audio"
+                        findViewById<View>(R.id.btn_play).contentDescription = getString(R.string.widget_pause_audio)
                     } catch (_: Exception) {
                         releasePlayer()
                     }
@@ -1053,7 +1058,7 @@ class WidgetNoteEditActivity : Activity() {
                         mediaPlayer.seekTo(0)
                     } catch (_: Exception) {}
                     icon.setImageResource(R.drawable.widget_ic_play)
-                    findViewById<View>(R.id.btn_play).contentDescription = "Reproducir audio"
+                    findViewById<View>(R.id.btn_play).contentDescription = getString(R.string.widget_play_audio)
                 }
             }
             mediaPlayer.setOnErrorListener { _, _, _ ->
@@ -1061,7 +1066,7 @@ class WidgetNoteEditActivity : Activity() {
                     if (player === mediaPlayer) releasePlayer()
                     playerLoading.set(false)
                     icon.setImageResource(R.drawable.widget_ic_play)
-                    Toast.makeText(this, "Audio dañado; podés descartarlo", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_audio_damaged), Toast.LENGTH_SHORT).show()
                 }
                 true
             }
@@ -1086,7 +1091,7 @@ class WidgetNoteEditActivity : Activity() {
                 } catch (_: Exception) {}
                 playerLoading.set(false)
                 BackgroundWork.postMain {
-                    Toast.makeText(this, "No se pudo reproducir", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_play_failed), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -1126,14 +1131,14 @@ class WidgetNoteEditActivity : Activity() {
                 setPadding(pad, pad, pad, pad)
             }
             val title = android.widget.TextView(this).apply {
-                text = "¿Eliminar nota?"
+                text = getString(R.string.widget_delete_title)
                 setTextColor(ContextCompat.getColor(context, R.color.kb_label))
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
                 typeface = KbFonts.display(context)
             }
             box.addView(title)
             val description = android.widget.TextView(this).apply {
-                text = "Se borra la nota y su audio. No se puede deshacer."
+                text = getString(R.string.widget_delete_body)
                 setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
                 typeface = KbFonts.body(context)
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
@@ -1148,7 +1153,7 @@ class WidgetNoteEditActivity : Activity() {
                 0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
             )
             val cancel = android.widget.TextView(this).apply {
-                text = "Cancelar"
+                text = getString(R.string.widget_cancel)
                 gravity = android.view.Gravity.CENTER
                 setPadding(pad, pad, pad, pad)
                 setBackgroundResource(R.drawable.widget_secondary_bg)
@@ -1162,7 +1167,7 @@ class WidgetNoteEditActivity : Activity() {
             cancelParams.rightMargin = pad / 2
             row.addView(cancel, cancelParams)
             val remove = android.widget.TextView(this).apply {
-                text = "Eliminar"
+                text = getString(R.string.widget_delete)
                 gravity = android.view.Gravity.CENTER
                 setPadding(pad, pad, pad, pad)
                 setBackgroundResource(R.drawable.kb_key_danger)
@@ -1208,11 +1213,11 @@ class WidgetNoteEditActivity : Activity() {
                 mutationInProgress.set(false)
                 setMutationBusy(false)
                 if (result is NoteDeleteResult.Deleted) {
-                    Toast.makeText(this, "Nota eliminada", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_note_deleted), Toast.LENGTH_SHORT).show()
                     BackgroundWork.execute { refreshNoteWidgets() }
                     finish()
                 } else {
-                    Toast.makeText(this, "No se pudo eliminar; se conservó el audio", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.widget_delete_failed_kept), Toast.LENGTH_SHORT).show()
                 }
             },
         )
@@ -1220,7 +1225,7 @@ class WidgetNoteEditActivity : Activity() {
 
     private fun requestSave(titulo: String, cuerpo: String) {
         if (cuerpo.trim().isEmpty()) {
-            Toast.makeText(this, "Sin contenido para guardar", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.widget_nothing_to_save), Toast.LENGTH_SHORT).show()
             return
         }
         if (!mutationInProgress.compareAndSet(false, true)) return
@@ -1236,9 +1241,9 @@ class WidgetNoteEditActivity : Activity() {
                 } else {
                     setMutationBusy(false)
                     val message = if (result == NoteSaveResult.LIMIT_REACHED) {
-                        "Límite de ${NoteStore.MAX_NOTES} notas"
+                        getString(R.string.widget_notes_limit, NoteStore.MAX_NOTES)
                     } else {
-                        "No se pudo guardar; tus cambios siguen aquí"
+                        getString(R.string.widget_save_failed_kept)
                     }
                     Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
                 }
@@ -1262,7 +1267,7 @@ class WidgetNoteEditActivity : Activity() {
         val bodyEt = findViewById<EditText>(R.id.edit_body)
         val texto = bodyEt.text.toString().trim()
         if (texto.isEmpty()) {
-            Toast.makeText(this, "Escribí o dictá la nota primero", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.widget_write_first), Toast.LENGTH_SHORT).show()
             return
         }
         if (!geminiInProgress.compareAndSet(false, true)) return
@@ -1275,11 +1280,11 @@ class WidgetNoteEditActivity : Activity() {
                 } else {
                     try {
                         val text = if (action == GEMINI_TITULO) client.sugerirTitulo(texto) else client.resumir(texto)
-                        if (text.isBlank()) GeminiOutcome.Failed("Respuesta vacía del modelo") else GeminiOutcome.Ok(text)
+                        if (text.isBlank()) GeminiOutcome.Failed(getString(R.string.widget_ai_empty_response)) else GeminiOutcome.Ok(text)
                     } catch (e: GeminiNoteClient.GeminiError) {
-                        GeminiOutcome.Failed(e.message ?: "Error de IA")
+                        GeminiOutcome.Failed(e.message ?: getString(R.string.widget_ai_error))
                     } catch (_: Exception) {
-                        GeminiOutcome.Failed("Error inesperado")
+                        GeminiOutcome.Failed(getString(R.string.widget_unexpected_error))
                     }
                 }
             },
@@ -1290,14 +1295,14 @@ class WidgetNoteEditActivity : Activity() {
                 when (outcome) {
                     null, is GeminiOutcome.MissingKey -> Toast.makeText(
                         this,
-                        "Falta una clave de IA (Groq o Google): agregala en Ajustes de la app",
+                        getString(R.string.widget_missing_ai_key),
                         Toast.LENGTH_LONG,
                     ).show()
-                    is GeminiOutcome.Failed -> showGlassDialog("Error de IA", outcome.message, "Cerrar")
+                    is GeminiOutcome.Failed -> showGlassDialog(getString(R.string.widget_ai_error), outcome.message, getString(R.string.widget_close))
                     is GeminiOutcome.Ok -> if (action == GEMINI_TITULO) {
                         applyGeminiTitle(outcome.text)
                     } else {
-                        showGlassDialog("Resumen de la nota", outcome.text, "Descartar", "Reemplazar") {
+                        showGlassDialog(getString(R.string.widget_summary_title), outcome.text, getString(R.string.widget_discard), getString(R.string.widget_replace)) {
                             bodyEt.setText(outcome.text)
                             bodyEt.setSelection(bodyEt.text.length)
                             persistQuietly()
@@ -1314,7 +1319,7 @@ class WidgetNoteEditActivity : Activity() {
         titleEt.setText(if (title.length > max) title.substring(0, max) else title)
         titleEt.setSelection(titleEt.text.length)
         persistQuietly()
-        Toast.makeText(this, "Título generado", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.widget_title_generated), Toast.LENGTH_SHORT).show()
     }
 
     /** Guarda sin cerrar el editor (solo notas existentes, como la app). */

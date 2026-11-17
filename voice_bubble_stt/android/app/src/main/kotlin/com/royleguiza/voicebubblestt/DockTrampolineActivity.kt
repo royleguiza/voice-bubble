@@ -1,5 +1,6 @@
 package com.royleguiza.voicebubblestt
 
+import android.content.Context
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -15,6 +16,11 @@ import android.os.Bundle
  * No muestra nada ni guarda nada.
  */
 class DockTrampolineActivity : Activity() {
+
+    // Etapa 4: Android 9–12 toma el idioma elegido en la app (13+ lo pone el sistema).
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
 
     private var started = false
 
@@ -37,7 +43,7 @@ class DockTrampolineActivity : Activity() {
                 DockLink.sendMicState(
                     this,
                     PointerProtocol.MIC_ERROR,
-                    message = DockDictationLogic.MSG_MIC_FAILED,
+                    message = getString(DockDictationLogic.MSG_MIC_FAILED),
                 )
             }
         }

@@ -9,6 +9,9 @@ Verifica al 100% de certeza sobre el código REAL:
 4. Sin Log nuevo en los archivos tocados.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import sys
 

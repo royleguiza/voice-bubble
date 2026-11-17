@@ -138,14 +138,14 @@ private class WidgetNotesFactory(
         views.setTextColor(R.id.widget_pending_title, ContextCompat.getColor(context, R.color.kb_label))
         // Estado del pendiente en ember-t (como la tarjeta pendiente de la app).
         views.setTextColor(R.id.widget_pending_time, ContextCompat.getColor(context, R.color.hz_ember_t))
-        views.setTextViewText(R.id.widget_pending_title, "Audio sin transcribir")
+        views.setTextViewText(R.id.widget_pending_title, context.getString(R.string.widget_pending_untranscribed))
         views.setTextViewText(
             R.id.widget_pending_time,
-            "Toca para verlo y escucharlo · ${relativeTime(p.createdAtMs)}",
+            context.getString(R.string.widget_pending_time, relativeTime(p.createdAtMs)),
         )
         views.setContentDescription(
             R.id.widget_pending_root,
-            "Abrir audio sin transcribir",
+            context.getString(R.string.widget_open_pending_audio),
         )
         // Directo a la modal del widget (modo pendiente: ver + play,
         // sin transcribir). Un toque abre.
@@ -163,7 +163,7 @@ private class WidgetNotesFactory(
         views.setTextColor(R.id.widget_item_time, ContextCompat.getColor(context, R.color.kb_label_secondary))
         views.setTextViewText(
             R.id.widget_item_title,
-            n.titulo.ifBlank { "Sin título" },
+            n.titulo.ifBlank { context.getString(R.string.widget_untitled) },
         )
         // C-35: Si el modo discreto está activo, ocultar cuerpo (solo títulos).
         // En caso contrario, colapsar saltos de línea a 1 línea limpia para evitar fugas visuales.
@@ -176,13 +176,13 @@ private class WidgetNotesFactory(
         views.setTextViewText(R.id.widget_item_time, formatTime(n.updatedAt))
         views.setContentDescription(
             R.id.widget_item_root,
-            "Abrir nota ${n.titulo.ifBlank { "Sin título" }}",
+            context.getString(R.string.widget_open_note, n.titulo.ifBlank { context.getString(R.string.widget_untitled) }),
         )
         if (n.audioPath.isNotBlank()) {
             try {
                 if (java.io.File(n.audioPath).exists()) {
                     views.setViewVisibility(R.id.widget_item_audio, View.VISIBLE)
-                    views.setContentDescription(R.id.widget_item_audio, "Nota con audio original")
+                    views.setContentDescription(R.id.widget_item_audio, context.getString(R.string.widget_note_has_audio))
                 } else {
                     views.setViewVisibility(R.id.widget_item_audio, View.GONE)
                 }
@@ -201,18 +201,18 @@ private class WidgetNotesFactory(
     }
 
     private fun relativeTime(epochMs: Long): String {
-        if (epochMs <= 0L) return "reciente"
+        if (epochMs <= 0L) return context.getString(R.string.widget_time_recent)
         return try {
             val diffMin = (System.currentTimeMillis() - epochMs) / 60000L
             when {
-                diffMin < 1L -> "recién"
-                diffMin < 60L -> "hace ${diffMin}m"
-                diffMin < 1440L -> "hace ${diffMin / 60L}h"
-                diffMin < 10080L -> "hace ${diffMin / 1440L}d"
-                else -> "anterior"
+                diffMin < 1L -> context.getString(R.string.widget_time_just_now)
+                diffMin < 60L -> context.getString(R.string.widget_time_min_ago, diffMin)
+                diffMin < 1440L -> context.getString(R.string.widget_time_hours_ago, diffMin / 60L)
+                diffMin < 10080L -> context.getString(R.string.widget_time_days_ago, diffMin / 1440L)
+                else -> context.getString(R.string.widget_time_older)
             }
         } catch (_: Exception) {
-            "reciente"
+            context.getString(R.string.widget_time_recent)
         }
     }
 

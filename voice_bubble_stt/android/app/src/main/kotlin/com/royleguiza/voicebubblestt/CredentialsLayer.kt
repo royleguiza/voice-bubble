@@ -65,7 +65,7 @@ class CredentialsLayer(
         val showUser = store.getShowUser()
         if (entries.isEmpty()) {
             val empty = TextView(service).apply {
-                text = if (host.isSpanish()) "Sin claves. Guárdalas en Ajustes → Claves." else "No credentials. Save them in Settings → Claves."
+                text = service.getString(R.string.kb_credentials_empty)
                 gravity = Gravity.CENTER
                 setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13f)
@@ -159,7 +159,7 @@ class CredentialsLayer(
             // lo activo y la fila entera ya rellena al tocarla.
             setBackgroundResource(R.drawable.kb_tool)
             setColorFilter(ContextCompat.getColor(service, R.color.hz_fg2))
-            contentDescription = if (host.isSpanish()) "pegar ${entry.nombre}" else "paste ${entry.nombre}"
+            contentDescription = service.getString(R.string.kb_a11y_paste_credential, entry.nombre)
         }
         val touchMin = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, 44f, service.resources.displayMetrics,

@@ -27,6 +27,11 @@ import android.view.WindowManager
  */
 class FloatingBubbleService : Service() {
 
+    // Etapa 4: Android 9–12 toma el idioma elegido en la app (13+ lo pone el sistema).
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
+
     companion object {
         const val CHANNEL_ID = "voice_bubble_foreground_channel"
         const val NOTIFICATION_ID = 1001
@@ -197,7 +202,7 @@ class FloatingBubbleService : Service() {
         try {
             android.widget.Toast.makeText(
                 this,
-                "VoiceBubble Puntero no responde. Apagalo y volvé a prenderlo en Accesibilidad.",
+                getString(R.string.bubble_pointer_no_answer),
                 android.widget.Toast.LENGTH_LONG,
             ).show()
         } catch (_: Exception) {}
@@ -289,10 +294,10 @@ class FloatingBubbleService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "VoiceBubble Servicio Activo",
+                getString(R.string.notif_bubble_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Mantiene activa la burbuja flotante de transcripción"
+                description = getString(R.string.notif_bubble_channel_desc)
                 setShowBadge(false)
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -327,13 +332,13 @@ class FloatingBubbleService : Service() {
         val problem = complementProblem
         if (problem == null) {
             builder.setContentTitle("VoiceBubble STT")
-                .setContentText("Burbuja flotante activa. Toca para transcribir.")
+                .setContentText(getString(R.string.notif_bubble_active))
                 .setContentIntent(pendingOpenApp)
         } else {
             val text = if (problem == PointerProtocol.STATUS_DISABLED) {
-                "Android lo apagó (pasa al actualizarlo). Tocá para activarlo en Accesibilidad."
+                getString(R.string.notif_pointer_disabled)
             } else {
-                "Está activado pero no responde. Tocá, apagalo y volvé a prenderlo en Accesibilidad."
+                getString(R.string.notif_pointer_stuck)
             }
             val a11y = PendingIntent.getActivity(
                 this, 2,
@@ -341,10 +346,10 @@ class FloatingBubbleService : Service() {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
-            builder.setContentTitle("VoiceBubble Puntero no está funcionando")
+            builder.setContentTitle(getString(R.string.notif_pointer_not_working))
                 .setContentText(text)
                 .setStyle(Notification.BigTextStyle().bigText(
-                    "$text Mientras tanto se ve la barra común (sin la isla ni el puntero por encima de todo)."
+                    getString(R.string.notif_pointer_not_working_big, text)
                 ))
                 .setContentIntent(a11y)
         }
@@ -355,7 +360,7 @@ class FloatingBubbleService : Service() {
             builder.addAction(
                 Notification.Action.Builder(
                     null,
-                    "Cerrar",
+                    getString(R.string.notif_close),
                     pendingStop
                 ).build()
             )

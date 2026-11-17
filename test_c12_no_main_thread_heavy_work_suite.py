@@ -17,6 +17,9 @@ Garantiza:
 6. Mutaciones negativas reales verificadas sobre los puntos críticos de regresión.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

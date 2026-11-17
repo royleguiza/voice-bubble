@@ -131,7 +131,7 @@ class ToolbarLayer(
             val btnSnippets = makeTool(
                 R.drawable.ic_snippets,
                 host.currentLayer() == Layer.SNIPPETS,
-                if (host.isSpanish()) "fragmentos" else "snippets",
+                service.getString(R.string.kb_a11y_snippets),
             ) {
                 host.snippetsToggle()
             }
@@ -145,7 +145,7 @@ class ToolbarLayer(
             val btnCredentials = makeTool(
                 R.drawable.ic_key,
                 host.currentLayer() == Layer.CREDENTIALS,
-                if (host.isSpanish()) "credenciales" else "credentials",
+                service.getString(R.string.kb_a11y_credentials),
             ) {
                 host.credentialsToggle()
             }
@@ -162,7 +162,7 @@ class ToolbarLayer(
             val btnTerminal = makeTool(
                 R.drawable.ic_terminal,
                 false,
-                if (host.isSpanish()) "fila terminal" else "terminal row",
+                service.getString(R.string.kb_a11y_terminal_row),
             ) {
                 host.toggleTerminalRowPref()
                 host.rebuildKeyboard()
@@ -176,7 +176,7 @@ class ToolbarLayer(
             val btnPaste = makeTool(
                 R.drawable.ic_paste,
                 host.currentLayer() == Layer.CLIPBOARD,
-                if (host.isSpanish()) "portapapeles" else "clipboard",
+                service.getString(R.string.kb_a11y_clipboard),
             ) {
                 host.clipboardToggle()
             }
@@ -215,7 +215,7 @@ class ToolbarLayer(
             val btnCode = makeTool(
                 R.drawable.ic_code,
                 host.currentLayer() == Layer.CODE,
-                if (host.isSpanish()) "capa código" else "code layer",
+                service.getString(R.string.kb_a11y_code_layer),
             ) {
                 host.codeToggle()
             }
@@ -227,7 +227,7 @@ class ToolbarLayer(
             val btnTrackpad = makeTool(
                 if (isTp) R.drawable.ic_keyboard else R.drawable.ic_trackpad,
                 isTp,
-                if (isTp) (if (host.isSpanish()) "teclado" else "keyboard") else "trackpad",
+                if (isTp) (service.getString(R.string.kb_a11y_keyboard)) else "trackpad",
             ) {
                 host.trackpadToggle()
             }
@@ -240,11 +240,7 @@ class ToolbarLayer(
         val btnMicro = makeTool(
             if (host.isMiniMode()) R.drawable.ic_micro_expand else R.drawable.ic_micro_collapse,
             false,
-            if (host.isSpanish()) {
-                if (host.isMiniMode()) "teclado completo" else "mini-teclado"
-            } else {
-                if (host.isMiniMode()) "full keyboard" else "mini keyboard"
-            },
+            if (host.isMiniMode()) service.getString(R.string.kb_a11y_full_keyboard) else service.getString(R.string.kb_a11y_mini_keyboard),
         ) {
             host.miniToggle()
         }
@@ -289,10 +285,8 @@ class ToolbarLayer(
     private var translateView: ImageView? = null
 
     private fun translateDescription(armed: Boolean): String = when {
-        armed && host.isSpanish() -> "el próximo dictado sale traducido; tocá para cancelar"
-        armed -> "next dictation will be translated; tap to cancel"
-        host.isSpanish() -> "traducir selección o el próximo dictado"
-        else -> "translate selection or next dictation"
+        armed -> service.getString(R.string.kb_a11y_translate_armed)
+        else -> service.getString(R.string.kb_a11y_translate_idle)
     }
 
     /** Ícono normal o encendido (armado), con su tinte de herramienta. */
@@ -322,7 +316,7 @@ class ToolbarLayer(
         v.clearColorFilter()
         v.setImageDrawable(d)
         (d as? android.graphics.drawable.Animatable)?.start()
-        v.contentDescription = if (host.isSpanish()) "traduciendo" else "translating"
+        v.contentDescription = service.getString(R.string.kb_a11y_translating)
     }
 
     /** Fin: la órbita cae al agujero y se dibuja el ✓; después vuelve al ícono. */
@@ -340,7 +334,7 @@ class ToolbarLayer(
         v.clearColorFilter()
         v.setImageDrawable(d)
         (d as? android.graphics.drawable.Animatable)?.start()
-        v.contentDescription = if (host.isSpanish()) "traducido" else "translated"
+        v.contentDescription = service.getString(R.string.kb_a11y_translated)
         v.postDelayed({ if (translateView === v && !host.isTranslating()) showTranslateIdle() }, TRANSLATE_DONE_MS)
     }
 
@@ -388,25 +382,25 @@ class ToolbarLayer(
         row.addView(
             makeArrowKey(
                 "←", android.view.KeyEvent.KEYCODE_DPAD_LEFT,
-                if (host.isSpanish()) "flecha izquierda" else "left arrow",
+                service.getString(R.string.kb_a11y_arrow_left),
             ),
         )
         row.addView(
             makeArrowKey(
                 "↑", android.view.KeyEvent.KEYCODE_DPAD_UP,
-                if (host.isSpanish()) "flecha arriba" else "up arrow",
+                service.getString(R.string.kb_a11y_arrow_up),
             ),
         )
         row.addView(
             makeArrowKey(
                 "↓", android.view.KeyEvent.KEYCODE_DPAD_DOWN,
-                if (host.isSpanish()) "flecha abajo" else "down arrow",
+                service.getString(R.string.kb_a11y_arrow_down),
             ),
         )
         row.addView(
             makeArrowKey(
                 "→", android.view.KeyEvent.KEYCODE_DPAD_RIGHT,
-                if (host.isSpanish()) "flecha derecha" else "right arrow",
+                service.getString(R.string.kb_a11y_arrow_right),
             ),
         )
         return row
@@ -424,9 +418,9 @@ class ToolbarLayer(
             R.drawable.kb_key_alt,
             weight,
             if (isCtrl) {
-                if (host.isSpanish()) "tecla control" else "control key"
+                service.getString(R.string.kb_a11y_ctrl_key)
             } else {
-                if (host.isSpanish()) "tecla alt" else "alt key"
+                service.getString(R.string.kb_a11y_alt_key)
             },
             host.dimenPx(R.dimen.kb_key_text_size_small),
             true,

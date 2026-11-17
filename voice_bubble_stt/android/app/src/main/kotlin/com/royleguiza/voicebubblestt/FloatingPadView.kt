@@ -69,7 +69,7 @@ internal class FloatingPadView(
         strokeWidth = 1f * d
     }
     private val hintPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { textSize = 13f * d }
-    private val hintText = "Deslizá para mover · Tocá para hacer clic"
+    private val hintText = context.getString(R.string.pad_default_hint)
     private var hintLayout: StaticLayout? = null
     private var hintAlpha = 1f
     private var touchTint = 0f
@@ -99,7 +99,7 @@ internal class FloatingPadView(
     }
 
     init {
-        contentDescription = "Superficie del trackpad. Deslizá para mover el puntero, tocá para hacer clic."
+        contentDescription = context.getString(R.string.pad_surface_desc)
         isHapticFeedbackEnabled = false
         refreshPalette()
     }

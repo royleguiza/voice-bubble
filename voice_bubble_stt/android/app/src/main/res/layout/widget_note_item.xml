@@ -17,7 +17,7 @@
         android:id="@+id/widget_item_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Sin título"
+        android:text="@string/widget_untitled"
         android:textSize="13sp"
         android:textColor="@color/kb_label"
         android:fontFamily="@font/sora"
@@ -59,7 +59,7 @@
             android:layout_height="12dp"
             android:layout_marginStart="6dp"
             android:src="@drawable/widget_ic_audio"
-            android:contentDescription="Con audio original"
+            android:contentDescription="@string/widget_with_original_audio"
             android:visibility="gone" />
     </LinearLayout>
 </LinearLayout>

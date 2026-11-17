@@ -12,6 +12,9 @@ Verifica sobre el código REAL:
 5. Solo el teclado corta tramos (la burbuja y el widget, como siempre).
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import sys
 
 from test_helpers import Suite

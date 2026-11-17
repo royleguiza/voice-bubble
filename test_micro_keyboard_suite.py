@@ -18,6 +18,9 @@ Verifica sobre el código REAL:
 7. Contrato intacto: cero claves flutter.* nuevas; overrides makeIconKey==2.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

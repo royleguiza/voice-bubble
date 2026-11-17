@@ -5,20 +5,84 @@
 /// Funciones puras con `now` inyectable para testearlas sin reloj real.
 library;
 
-const List<String> _months = [
-  'enero',
-  'febrero',
-  'marzo',
-  'abril',
-  'mayo',
-  'junio',
-  'julio',
-  'agosto',
-  'septiembre',
-  'octubre',
-  'noviembre',
-  'diciembre',
-];
+/// Palabras y formatos de fecha de un idioma. Las funciones de abajo
+/// reciben uno; por defecto, español (el de la app antes de los idiomas).
+/// La UI arma el del idioma activo con `noteDateWordsOf(context.l10n)`.
+class NoteDateWords {
+  final String today;
+  final String yesterday;
+  final String thisWeek;
+
+  /// 12 nombres de mes en minúscula (enero…diciembre).
+  final List<String> months;
+
+  /// 12 abreviaturas (ene…dic).
+  final List<String> monthsShort;
+
+  /// Arma "28 oct" / "Oct 28".
+  final String Function(int day, String month) shortDate;
+
+  /// Arma "2 mar 2025" / "Mar 2, 2025".
+  final String Function(int day, String month, int year) shortDateYear;
+
+  /// Arma "Diciembre 2025".
+  final String Function(String month, int year) monthYear;
+
+  const NoteDateWords({
+    required this.today,
+    required this.yesterday,
+    required this.thisWeek,
+    required this.months,
+    required this.monthsShort,
+    required this.shortDate,
+    required this.shortDateYear,
+    required this.monthYear,
+  });
+
+  /// Si [label] es "Hoy" o "Ayer" (o su equivalente en este idioma).
+  bool isRecent(String label) => label == today || label == yesterday;
+}
+
+String _esShort(int d, String m) => '$d $m';
+String _esShortYear(int d, String m, int y) => '$d $m $y';
+String _esMonthYear(String m, int y) => '$m $y';
+
+const NoteDateWords kNoteDateWordsEs = NoteDateWords(
+  today: 'Hoy',
+  yesterday: 'Ayer',
+  thisWeek: 'Esta semana',
+  months: [
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ],
+  monthsShort: [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ],
+  shortDate: _esShort,
+  shortDateYear: _esShortYear,
+  monthYear: _esMonthYear,
+);
 
 DateTime _day(DateTime t) => DateTime(t.year, t.month, t.day);
 
@@ -30,40 +94,45 @@ int _daysAgo(DateTime t, DateTime now) {
 }
 
 /// Título de sección para una nota editada en [t].
-String noteGroupLabel(DateTime t, {DateTime? now}) {
+String noteGroupLabel(DateTime t,
+    {DateTime? now, NoteDateWords words = kNoteDateWordsEs}) {
   final ref = now ?? DateTime.now();
   final days = _daysAgo(t, ref);
-  if (days == 0) return 'Hoy';
-  if (days == 1) return 'Ayer';
-  if (days < 7) return 'Esta semana';
-  final month = _months[t.month - 1];
+  if (days == 0) return words.today;
+  if (days == 1) return words.yesterday;
+  if (days < 7) return words.thisWeek;
+  final month = words.months[t.month - 1];
   final label = '${month[0].toUpperCase()}${month.substring(1)}';
-  return t.year == ref.year ? label : '$label ${t.year}';
+  return t.year == ref.year ? label : words.monthYear(label, t.year);
 }
 
 String _hourMinute(DateTime t) => '${t.hour.toString().padLeft(2, '0')}:'
     '${t.minute.toString().padLeft(2, '0')}';
 
-String _shortDate(DateTime t, DateTime ref) {
-  final short = '${t.day} ${_months[t.month - 1].substring(0, 3)}';
-  return t.year == ref.year ? short : '$short ${t.year}';
+String _shortDate(DateTime t, DateTime ref, NoteDateWords words) {
+  final month = words.monthsShort[t.month - 1];
+  return t.year == ref.year
+      ? words.shortDate(t.day, month)
+      : words.shortDateYear(t.day, month, t.year);
 }
 
 /// Hora (hoy y ayer) o fecha corta "28 oct" (más viejo) de una tarjeta.
-String noteTimeLabel(DateTime t, {DateTime? now}) {
+String noteTimeLabel(DateTime t,
+    {DateTime? now, NoteDateWords words = kNoteDateWordsEs}) {
   final ref = now ?? DateTime.now();
   if (_daysAgo(t, ref) <= 1) return _hourMinute(t);
-  return _shortDate(t, ref);
+  return _shortDate(t, ref, words);
 }
 
 /// Grupo de un día del Historial: "Hoy", "Ayer" o la fecha corta "6 nov"
 /// (con el año si no es el actual).
-String historyDayLabel(DateTime t, {DateTime? now}) {
+String historyDayLabel(DateTime t,
+    {DateTime? now, NoteDateWords words = kNoteDateWordsEs}) {
   final ref = now ?? DateTime.now();
   final days = _daysAgo(t, ref);
-  if (days == 0) return 'Hoy';
-  if (days == 1) return 'Ayer';
-  return _shortDate(t, ref);
+  if (days == 0) return words.today;
+  if (days == 1) return words.yesterday;
+  return _shortDate(t, ref, words);
 }
 
 /// Hora sola "16:49" de una fila del Historial (el día lo da el grupo).
@@ -143,14 +212,16 @@ class GroupedRowsMemo<T> {
   int? indexOf(Object id) => _index[id];
 
   /// Filas de [source] con la búsqueda [query]; [build] filtra y agrupa.
+  /// [locale] entra en la clave: cambiar de idioma rehace las etiquetas.
   List<GroupedRow<T>> resolve(
     List<T> source,
     String query, {
     required List<GroupedRow<T>> Function() build,
     DateTime? now,
+    String locale = '',
   }) {
     final ref = now ?? DateTime.now();
-    final key = '${ref.year}-${ref.month}-${ref.day}|$query';
+    final key = '${ref.year}-${ref.month}-${ref.day}|$locale|$query';
     if (key == _key && _sameItems(source)) return _rows;
     computeCount++;
     _key = key;

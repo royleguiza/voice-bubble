@@ -272,7 +272,7 @@ internal class IslandController(
             }
             PointerProtocol.MIC_DONE, PointerProtocol.MIC_ERROR -> {
                 val error = tracker.state == PointerProtocol.MIC_ERROR
-                val text = tracker.message ?: if (error) "No se pudo dictar" else "Pegado"
+                val text = tracker.message ?: if (error) context.getString(R.string.ptr_island_dictation_failed) else context.getString(R.string.ptr_island_pasted)
                 if (state == IslandGeometry.State.DONE && view.doneText == text && view.doneIsError == error) return
                 view.doneIsError = error
                 view.doneText = text

@@ -1,4 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voice_bubble_stt/l10n/app_localizations_en.dart';
+import 'package:voice_bubble_stt/l10n/app_localizations_es.dart';
+import 'package:voice_bubble_stt/l10n/app_localizations_pt.dart';
+import 'package:voice_bubble_stt/l10n/l10n_ext.dart';
 import 'package:voice_bubble_stt/helpers/note_groups.dart';
 
 void main() {
@@ -98,6 +102,53 @@ void main() {
       expect(memo.computeCount, 4);
       resolve([a], 'x', DateTime(2026, 11, 5, 0, 1));
       expect(memo.computeCount, 5);
+    });
+  });
+
+  group('otros idiomas', () {
+    final now = DateTime(2026, 11, 4, 12);
+    test('inglés: Today/Yesterday, mes primero y año con coma', () {
+      final en = noteDateWordsOf(AppLocalizationsEn());
+      expect(noteGroupLabel(DateTime(2026, 11, 4, 1), now: now, words: en),
+          'Today');
+      expect(historyDayLabel(DateTime(2026, 11, 3), now: now, words: en),
+          'Yesterday');
+      expect(noteGroupLabel(DateTime(2026, 10, 28), now: now, words: en),
+          'October');
+      expect(noteGroupLabel(DateTime(2025, 12, 1), now: now, words: en),
+          'December 2025');
+      expect(noteTimeLabel(DateTime(2026, 10, 28), now: now, words: en),
+          'Oct 28');
+      expect(noteTimeLabel(DateTime(2025, 3, 2), now: now, words: en),
+          'Mar 2, 2025');
+      expect(en.isRecent('Today'), isTrue);
+      expect(en.isRecent('Hoy'), isFalse);
+    });
+    test('portugués: Hoje, meses y abreviaturas propias', () {
+      final pt = noteDateWordsOf(AppLocalizationsPt());
+      expect(noteGroupLabel(DateTime(2026, 11, 4, 1), now: now, words: pt),
+          'Hoje');
+      expect(noteGroupLabel(DateTime(2026, 9, 2), now: now, words: pt),
+          'Setembro');
+      expect(noteTimeLabel(DateTime(2026, 2, 3), now: now, words: pt),
+          '3 fev');
+    });
+    test('el español del ARB coincide con el valor por defecto', () {
+      final es = noteDateWordsOf(AppLocalizationsEs());
+      expect(es.months, kNoteDateWordsEs.months);
+      expect(es.monthsShort, kNoteDateWordsEs.monthsShort);
+      expect(noteTimeLabel(DateTime(2025, 3, 2), now: now, words: es),
+          '2 mar 2025');
+      expect(noteGroupLabel(DateTime(2025, 12, 1), now: now, words: es),
+          'Diciembre 2025');
+    });
+    test('cada idioma trae 12 meses y 12 abreviaturas', () {
+      for (final l in [AppLocalizationsEs(), AppLocalizationsEn(),
+          AppLocalizationsPt()]) {
+        expect(l.dateMonths.split(','), hasLength(12), reason: l.localeName);
+        expect(l.dateMonthsShort.split(','), hasLength(12),
+            reason: l.localeName);
+      }
     });
   });
 }

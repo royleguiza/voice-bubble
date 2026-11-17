@@ -133,8 +133,8 @@ internal class DockController(
         bubbleWindow = DockWindow(windowManager, bubbleView)
         edgeView.setOnTouchListener(EdgeTouch())
         bubbleView.setOnTouchListener(BubbleTouch())
-        edgeView.contentDescription = "Barra flotante de VoiceBubble"
-        bubbleView.contentDescription = "Burbuja de VoiceBubble"
+        edgeView.contentDescription = context.getString(R.string.ptr_dock_bar_desc)
+        bubbleView.contentDescription = context.getString(R.string.ptr_dock_bubble_desc)
         installAccessibility(edgeView) { if (expanded) collapse() else expand() }
         installAccessibility(bubbleView) { onBubbleTap() }
         applyForm()
@@ -153,12 +153,12 @@ internal class DockController(
         edgeView.dictationState = value
         bubbleView.dictationState = value
         val spoken = when (value) {
-            "recording" -> "Grabando"
-            "transcribing" -> "Transcribiendo"
+            "recording" -> context.getString(R.string.ptr_dock_recording)
+            "transcribing" -> context.getString(R.string.ptr_dock_transcribing)
             else -> null
         }
-        edgeView.contentDescription = "Barra flotante de VoiceBubble" + (spoken?.let { ". $it" } ?: "")
-        bubbleView.contentDescription = "Burbuja de VoiceBubble" + (spoken?.let { ". $it" } ?: "")
+        edgeView.contentDescription = context.getString(R.string.ptr_dock_bar_desc) + (spoken?.let { ". $it" } ?: "")
+        bubbleView.contentDescription = context.getString(R.string.ptr_dock_bubble_desc) + (spoken?.let { ". $it" } ?: "")
         if (value != "idle") {
             handler.removeCallbacks(edgeIdle)
             closeArc()
@@ -416,10 +416,10 @@ internal class DockController(
             override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
                 super.onInitializeAccessibilityNodeInfo(host, info)
                 if (tools.contains(DockGeometry.Tool.MIC)) {
-                    info.addAction(AccessibilityNodeInfo.AccessibilityAction(ACTION_DICTATE, "Dictar"))
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction(ACTION_DICTATE, context.getString(R.string.ptr_dock_dictate)))
                 }
                 if (tools.contains(DockGeometry.Tool.POINTER)) {
-                    info.addAction(AccessibilityNodeInfo.AccessibilityAction(ACTION_POINTER, "Abrir el puntero"))
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction(ACTION_POINTER, context.getString(R.string.ptr_dock_open_pointer)))
                 }
             }
 
@@ -444,7 +444,7 @@ internal class DockController(
         tools.forEachIndexed { i, tool ->
             val (tx, ty) = centers[i]
             val orb = ToolOrbView(context, palette, tool)
-            orb.contentDescription = if (tool == DockGeometry.Tool.MIC) "Dictar" else "Abrir el puntero"
+            orb.contentDescription = if (tool == DockGeometry.Tool.MIC) context.getString(R.string.ptr_dock_dictate) else context.getString(R.string.ptr_dock_open_pointer)
             val win = DockWindow(windowManager, orb)
             orb.setOnTouchListener { v, e ->
                 when (e.actionMasked) {

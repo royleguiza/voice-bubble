@@ -63,7 +63,7 @@ class LayoutLayer(
             R.drawable.ic_shift_off,
             R.drawable.kb_key_alt,
             1.3f,
-            if (host.isSpanish()) "mayúsculas" else "shift",
+            keys.getString(R.string.kb_a11y_shift),
             tintColorRes = R.color.kb_label,
             onClick = shiftAction,
         )
@@ -116,25 +116,25 @@ class LayoutLayer(
     fun buildNumericRows() {
         val es = host.isSpanish()
         val row1 = keys.horizontalRow()
-        row1.addView(keys.makeAltSymbolKey("-", if (es) "menos" else "minus", weight = NUM_EDGE_W))
+        row1.addView(keys.makeAltSymbolKey("-", keys.getString(R.string.kb_a11y_minus), weight = NUM_EDGE_W))
         for (c in "789") {
             row1.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
-        row1.addView(keys.makeAltSymbolKey("+", if (es) "más" else "plus", weight = NUM_EDGE_W))
+        row1.addView(keys.makeAltSymbolKey("+", keys.getString(R.string.kb_a11y_plus), weight = NUM_EDGE_W))
         keys.makeGapTolerant(row1)
         host.addContentRow(row1)
 
         val row2 = keys.horizontalRow()
-        row2.addView(keys.makeAltSymbolKey("*", if (es) "multiplicación" else "multiply", weight = NUM_EDGE_W))
+        row2.addView(keys.makeAltSymbolKey("*", keys.getString(R.string.kb_a11y_multiply), weight = NUM_EDGE_W))
         for (c in "456") {
             row2.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
-        row2.addView(keys.makeAltSymbolKey("%", if (es) "porcentaje" else "percent", weight = NUM_EDGE_W))
+        row2.addView(keys.makeAltSymbolKey("%", keys.getString(R.string.kb_a11y_percent), weight = NUM_EDGE_W))
         keys.makeGapTolerant(row2)
         host.addContentRow(row2)
 
         val row3 = keys.horizontalRow()
-        row3.addView(keys.makeAltSymbolKey("/", if (es) "división" else "divide", weight = NUM_EDGE_W))
+        row3.addView(keys.makeAltSymbolKey("/", keys.getString(R.string.kb_a11y_divide), weight = NUM_EDGE_W))
         for (c in "123") {
             row3.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
@@ -158,7 +158,7 @@ class LayoutLayer(
             "ABC",
             R.drawable.kb_key_alt,
             NUM_EDGE_W,
-            if (es) "letras" else "letters",
+            keys.getString(R.string.kb_a11y_letters),
             isBold = true,
             onTap = { host.pressSymbolsKey() },
             onLongPress = { host.pressSymbolsKey() },
@@ -168,7 +168,7 @@ class LayoutLayer(
             "!?#",
             R.drawable.kb_key_alt,
             NUM_SYM_W,
-            if (es) "símbolos" else "symbols",
+            keys.getString(R.string.kb_a11y_symbols),
             isBold = true,
         ) {
             host.pressSymbolsFromNumeric()
@@ -177,13 +177,13 @@ class LayoutLayer(
         row.addView(keys.makeSymbolKey(",", weight = NUM_PUNCT_W))
         row.addView(keys.makeSymbolKey("0", weight = NUM_DIGIT_W))
         row.addView(keys.makeSymbolKey(".", weight = NUM_PUNCT_W))
-        row.addView(keys.makeAltSymbolKey("=", if (es) "igual" else "equals", weight = NUM_SYM_W))
+        row.addView(keys.makeAltSymbolKey("=", keys.getString(R.string.kb_a11y_equals), weight = NUM_SYM_W))
 
         val enter = keys.makeActionIconKey(
             R.drawable.ic_enter,
             R.drawable.kb_key_accent,
             NUM_EDGE_W,
-            if (es) "intro" else "enter",
+            keys.getString(R.string.kb_a11y_enter),
             tintColorRes = R.color.kb_label_on_accent,
         ) {
             host.pressEnter()
@@ -210,7 +210,7 @@ class LayoutLayer(
         val row = keys.horizontalRow()
 
         // Tap = alternar símbolos; mantener = capa numérica (con pista para TalkBack).
-        val symDesc = if (host.isSpanish()) "símbolos, mantén para números" else "symbols, hold for numbers"
+        val symDesc = keys.getString(R.string.kb_a11y_symbols_hold_numbers)
         val btnSym = keys.makeSpecialKeyWithLongPress(
             host.symbolsLabel(),
             R.drawable.kb_key_alt,
@@ -222,7 +222,7 @@ class LayoutLayer(
         )
 
         val btnLang = if (host.isLanguageKeyVisible()) {
-            keys.makeSpecialKey(if (host.isSpanish()) "ES" else "EN", R.drawable.kb_key_alt, 1f, if (host.isSpanish()) "cambiar idioma" else "switch language", isBold = true) {
+            keys.makeSpecialKey(if (host.isSpanish()) "ES" else "EN", R.drawable.kb_key_alt, 1f, keys.getString(R.string.kb_a11y_switch_language), isBold = true) {
                 host.toggleLanguage()
             }
         } else {
@@ -232,7 +232,7 @@ class LayoutLayer(
         val comma = keys.makeSymbolKey(",", host.dimenPx(R.dimen.kb_key_glyph_punct), isBold = true)
         commaView = comma
 
-        val space = keys.makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, if (host.isSpanish()) "espacio" else "space") {
+        val space = keys.makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, keys.getString(R.string.kb_a11y_space)) {
             host.pressSpace()
         }
         spaceView = space
@@ -245,7 +245,7 @@ class LayoutLayer(
             R.drawable.ic_enter,
             R.drawable.kb_key_accent,
             1.8f,
-            if (host.isSpanish()) "intro" else "enter",
+            keys.getString(R.string.kb_a11y_enter),
             tintColorRes = R.color.kb_label_on_accent,
         ) {
             host.pressEnter()
@@ -296,7 +296,7 @@ class LayoutLayer(
             "",
             R.drawable.kb_key_bg,
             5.0f,
-            if (host.isSpanish()) "espacio" else "space",
+            keys.getString(R.string.kb_a11y_space),
             heightPx = h,
         ) {
             host.pressSpace()
@@ -309,7 +309,7 @@ class LayoutLayer(
                 R.drawable.ic_enter,
                 R.drawable.kb_key_accent,
                 1.8f,
-                if (host.isSpanish()) "intro" else "enter",
+                keys.getString(R.string.kb_a11y_enter),
                 tintColorRes = R.color.kb_label_on_accent,
                 heightPx = h,
             ) {

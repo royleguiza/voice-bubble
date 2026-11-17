@@ -80,7 +80,7 @@ class HistoryLayer(
         }
 
         val header = TextView(service).apply {
-            text = if (host.isSpanish()) "Historial de transcripciones" else "Transcription history"
+            text = service.getString(R.string.kb_history_title)
             setTextColor(ContextCompat.getColor(service, R.color.kb_label))
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
             typeface = KbFonts.body(service, strong = true)
@@ -144,7 +144,7 @@ class HistoryLayer(
 
         if (count == 0) {
             val empty = TextView(service).apply {
-                this.text = if (host.isSpanish()) "Sin transcripciones todavía." else "No transcriptions yet."
+                this.text = service.getString(R.string.kb_history_empty)
                 gravity = Gravity.CENTER
                 setPadding(pad * 2, pad * 4, pad * 2, pad * 4)
                 setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))

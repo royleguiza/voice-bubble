@@ -38,6 +38,11 @@ import android.os.Looper
  */
 class DockDictationService : Service() {
 
+    // Etapa 4: Android 9–12 toma el idioma elegido en la app (13+ lo pone el sistema).
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
+
     companion object {
         private const val CHANNEL_ID = "dock_dictation_channel"
         private const val NOTIF_ID = 2003
@@ -238,7 +243,7 @@ class DockDictationService : Service() {
         DockLink.sendMicState(this, PointerProtocol.MIC_TRANSCRIBING)
         main.removeCallbacks(thinkingBeat)
         main.postDelayed(thinkingBeat, THINKING_BEAT_MS)
-        runCatching { updateNotification("Transcribiendo…") }
+        runCatching { updateNotification(getString(R.string.notif_dock_transcribing)) }
         BackgroundWork.execute {
             val wav = try {
                 speech.stopRecording()
@@ -304,21 +309,21 @@ class DockDictationService : Service() {
     // ---------------------------------------------------------------- cierre
 
     /** No arrancó: avisa con una frase corta y cierra. [needsUi]: que el complemento pruebe con la actividad trampolín. */
-    private fun fail(message: String, needsUi: Boolean = false) {
+    private fun fail(@androidx.annotation.StringRes message: Int, needsUi: Boolean = false) {
         logic.onStartFailed()
         releaseMicrophone()
         client = null
-        DockLink.sendMicState(this, PointerProtocol.MIC_ERROR, message = message, needsUi = needsUi)
+        DockLink.sendMicState(this, PointerProtocol.MIC_ERROR, message = getString(message), needsUi = needsUi)
         finishService()
     }
 
-    private fun finishWith(state: String, message: String?) {
+    private fun finishWith(state: String, @androidx.annotation.StringRes message: Int?) {
         main.removeCallbacks(thinkingBeat)
         main.removeCallbacks(levelPoll)
         releaseMicrophone()
         client = null
         logic.onFinished()
-        DockLink.sendMicState(this, state, message = message)
+        DockLink.sendMicState(this, state, message = message?.let { getString(it) })
         finishService()
     }
 
@@ -329,7 +334,7 @@ class DockDictationService : Service() {
      * y devuelve false: el que llama avisa y termina.
      */
     private fun enterForeground(): Boolean {
-        val n = notification(if (logic.phase == DockDictationLogic.Phase.TRANSCRIBING) "Transcribiendo…" else "Grabando…")
+        val n = notification(if (logic.phase == DockDictationLogic.Phase.TRANSCRIBING) getString(R.string.notif_dock_transcribing) else getString(R.string.notif_dock_recording))
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
@@ -372,8 +377,8 @@ class DockDictationService : Service() {
 
     private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Dictado de la barra", NotificationManager.IMPORTANCE_LOW)
-                .apply { description = "Grabación desde la barra flotante" }
+            val channel = NotificationChannel(CHANNEL_ID, getString(R.string.notif_dock_channel_name), NotificationManager.IMPORTANCE_LOW)
+                .apply { description = getString(R.string.notif_dock_channel_desc) }
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(channel)
         }
     }

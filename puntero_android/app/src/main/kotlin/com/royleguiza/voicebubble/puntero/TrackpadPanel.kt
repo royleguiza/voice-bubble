@@ -77,7 +77,7 @@ internal class TrackpadPanel(
         root.onTouch = { down -> host.onPanelTouch(down) }
         applySurface()
 
-        handle.contentDescription = "Cerrar trackpad"
+        handle.contentDescription = context.getString(R.string.ptr_panel_close)
         handle.setOnTouchListener(HandleTouch())
         root.addView(handle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(34f)))
 
@@ -88,17 +88,17 @@ internal class TrackpadPanel(
             row.addView(button, LinearLayout.LayoutParams(px(SystemButton.SIZE_DP), px(SystemButton.SIZE_DP)))
         }
         val actions = listOf(
-            Triple(SystemButton.Icon.BACK, "Atrás", AccessibilityService.GLOBAL_ACTION_BACK),
-            Triple(SystemButton.Icon.HOME, "Inicio", AccessibilityService.GLOBAL_ACTION_HOME),
-            Triple(SystemButton.Icon.RECENTS, "Recientes", AccessibilityService.GLOBAL_ACTION_RECENTS),
-            Triple(SystemButton.Icon.NOTIFICATIONS, "Notificaciones", AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS),
+            Triple(SystemButton.Icon.BACK, context.getString(R.string.ptr_panel_back), AccessibilityService.GLOBAL_ACTION_BACK),
+            Triple(SystemButton.Icon.HOME, context.getString(R.string.ptr_panel_home), AccessibilityService.GLOBAL_ACTION_HOME),
+            Triple(SystemButton.Icon.RECENTS, context.getString(R.string.ptr_panel_recents), AccessibilityService.GLOBAL_ACTION_RECENTS),
+            Triple(SystemButton.Icon.NOTIFICATIONS, context.getString(R.string.ptr_panel_notifications), AccessibilityService.GLOBAL_ACTION_NOTIFICATIONS),
         )
         actions.forEachIndexed { i, (icon, label, action) ->
             val b = SystemButton(context, palette, icon, label)
             b.setOnClickListener { host.onSystemAction(action) }
             add(b, spaceBefore = i > 0)
         }
-        dragButton = SystemButton(context, palette, SystemButton.Icon.DRAG, DRAG_LABEL)
+        dragButton = SystemButton(context, palette, SystemButton.Icon.DRAG, context.getString(DRAG_LABEL))
         dragButton.setOnClickListener { host.onDragButton() }
         add(dragButton, spaceBefore = true)
         root.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(SystemButton.SIZE_DP)).apply {
@@ -112,7 +112,7 @@ internal class TrackpadPanel(
             val frame = FrameLayout(context)
             frame.addView(pad, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             val grip = ResizeGrip(context, palette)
-            grip.contentDescription = "Cambiar el tamaño del trackpad"
+            grip.contentDescription = context.getString(R.string.ptr_panel_resize)
             grip.setOnTouchListener(GripTouch())
             frame.addView(grip, FrameLayout.LayoutParams(px(ResizeGrip.SIZE_DP), px(ResizeGrip.SIZE_DP)).apply {
                 gravity = Gravity.BOTTOM or Gravity.END
@@ -124,7 +124,8 @@ internal class TrackpadPanel(
     }
 
     private companion object {
-        const val DRAG_LABEL = "Arrastrar"
+        /** Texto del botón Arrastrar (id de recurso: el nombre se conserva). */
+        val DRAG_LABEL = R.string.ptr_panel_drag
     }
 
     private fun px(dp: Float) = (dp * d).roundToInt()
@@ -243,8 +244,8 @@ internal class TrackpadPanel(
 
     fun setDragActive(active: Boolean, hint: String?) {
         dragButton.active = active
-        dragButton.contentDescription = if (active) "Arrastrar, activado. Tocá para cancelar." else DRAG_LABEL
-        if (hint != null) pad.setHint(hint, sticky = true) else pad.setHint(PadView.DEFAULT_HINT)
+        dragButton.contentDescription = if (active) context.getString(R.string.ptr_panel_drag_active) else context.getString(DRAG_LABEL)
+        if (hint != null) pad.setHint(hint, sticky = true) else pad.setHint(context.getString(R.string.ptr_pad_default_hint))
     }
 
     /** Cambia el paso del arrastre sin apagar el botón. */

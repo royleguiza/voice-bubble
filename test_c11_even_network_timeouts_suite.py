@@ -17,6 +17,9 @@ Verifica sobre el código REAL:
 6. Al menos 5 mutaciones negativas reales probando detección al 100%.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

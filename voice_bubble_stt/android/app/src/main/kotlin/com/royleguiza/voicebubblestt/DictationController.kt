@@ -133,8 +133,11 @@ class DictationController(
 
     internal var lastDictationSlot: LastDictationSlot? = null
 
+    // Etapa 4: los avisos salen en el idioma de la app (es/en/pt), así que
+    // las palabras clave cubren los tres (pt: «inválida», «conexão», «aguarde»).
     private fun isRetryableError(message: String): Boolean {
         if (message.contains("API key", ignoreCase = true) ||
+            message.contains("chave de API", ignoreCase = true) ||
             message.contains("inválida", ignoreCase = true) ||
             message.contains("invalid", ignoreCase = true)) {
             return false
@@ -148,7 +151,9 @@ class DictationController(
             message.contains("429") || message.contains("límite", ignoreCase = true) ||
             message.contains("limit", ignoreCase = true) ||
             message.contains("timeout", ignoreCase = true) ||
-            message.contains("espera", ignoreCase = true)
+            message.contains("espera", ignoreCase = true) ||
+            message.contains("conexão", ignoreCase = true) ||
+            message.contains("aguarde", ignoreCase = true)
     }
 
     /**
@@ -506,8 +511,7 @@ class DictationController(
             micState = MicState.IDLE
             refreshMicVisual()
             host.showNotice(
-                if (host.isSpanish()) "No se pudo obtener el foco de audio."
-                else "Could not obtain audio focus.",
+                service.getString(R.string.kb_dictation_no_audio_focus),
             )
             return
         }
@@ -515,7 +519,7 @@ class DictationController(
             abandonAudioFocus()
             micState = MicState.BUSY
             refreshMicVisual()
-            host.showNotice(if (host.isSpanish()) "Ocupado: la burbuja está grabando." else "Busy: the bubble is recording.")
+            host.showNotice(service.getString(R.string.kb_dictation_bubble_recording))
             return
         }
         // C-12: Configuración cacheada en memoria preparada en segundo plano
@@ -525,8 +529,7 @@ class DictationController(
             micState = MicState.IDLE
             refreshMicVisual()
             host.showNotice(
-                if (host.isSpanish()) "Falta la API key. Toca este aviso para abrir Ajustes."
-                else "Missing API key. Tap this notice to open Settings.",
+                service.getString(R.string.kb_dictation_missing_key),
                 openSettingsOnClick = true,
             )
             return
@@ -534,8 +537,7 @@ class DictationController(
         if (!sttClient.hasMicPermission()) {
             abandonAudioFocus()
             host.showNotice(
-                if (host.isSpanish()) "Permiso de micrófono denegado. Concedelo desde Ajustes."
-                else "Microphone permission denied. Allow it from Settings.",
+                service.getString(R.string.kb_dictation_mic_denied),
                 openSettingsOnClick = true,
             )
             return
@@ -545,7 +547,7 @@ class DictationController(
             abandonAudioFocus()
             micState = MicState.BUSY
             refreshMicVisual()
-            host.showNotice(if (host.isSpanish()) "Ocupado: el micrófono está en uso." else "Busy: the microphone is in use.")
+            host.showNotice(service.getString(R.string.kb_dictation_mic_in_use))
             return
         }
         microphoneClaimToken = claimToken
@@ -600,7 +602,7 @@ class DictationController(
             }
             if (!serviceAlive) return
             if (!started && isCurrentStart && micState == MicState.IDLE) {
-                host.showNotice(if (host.isSpanish()) "No se pudo iniciar la grabación." else "Could not start recording.")
+                host.showNotice(service.getString(R.string.kb_dictation_start_failed))
             } else {
                 refreshMicVisual()
             }
@@ -646,7 +648,7 @@ class DictationController(
                 runOnMain {
                     if (generation != transcriptionGeneration) return@runOnMain
                     micIdle()
-                    host.showNotice(if (host.isSpanish()) "No se detectó voz." else "No voice detected.")
+                    host.showNotice(service.getString(R.string.kb_dictation_no_voice))
                 }
                 return@execute
             }
@@ -675,7 +677,7 @@ class DictationController(
                         if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
                         if (out.isNullOrBlank()) {
-                            host.showNotice(if (host.isSpanish()) "No se detectó voz." else "No voice detected.")
+                            host.showNotice(service.getString(R.string.kb_dictation_no_voice))
                         } else {
                             // AT-A10: el dictado se comete directo en el campo
                             // destino; jamas alimenta el query de snippets.
@@ -750,14 +752,14 @@ class DictationController(
         return when (r) {
             is KeyboardTranslator.Result.Ok -> r.text to null
             is KeyboardTranslator.Result.Failed -> text to (
-                if (host.isSpanish()) "Sin traducir: ${r.message}" else "Not translated: ${r.message}"
+                service.getString(R.string.kb_dictation_not_translated, r.message)
             )
         }
     }
 
     private fun commitOrWarn(text: CharSequence): Boolean {
         return com.royleguiza.voicebubblestt.commitOrWarn(service, text, host.isSpanish()) {
-            host.showNotice(if (host.isSpanish()) StatusLayer.NOTICE_DEAD_CONNECTION_ES else StatusLayer.NOTICE_DEAD_CONNECTION_EN)
+            host.showNotice(service.getString(StatusLayer.NOTICE_DEAD_CONNECTION_ES))
         }
     }
 
@@ -791,7 +793,7 @@ class DictationController(
                         if (generation != transcriptionGeneration) return@runOnMain
                         micIdle()
                         if (out.isNullOrBlank()) {
-                            host.showNotice(if (host.isSpanish()) "No se detectó voz." else "No voice detected.")
+                            host.showNotice(service.getString(R.string.kb_dictation_no_voice))
                         } else {
                             if (commitOrWarn(out)) {
                                 micEvent(MicEvent.PASTE)
@@ -974,7 +976,7 @@ class DictationController(
                 normal?.visibility = View.GONE
                 proc?.visibility = View.GONE
                 pill?.visibility = View.VISIBLE
-                container.contentDescription = if (host.isSpanish()) "grabando dictado" else "recording dictation"
+                container.contentDescription = service.getString(R.string.kb_a11y_recording_dictation)
 
                 val elapsed = (SystemClock.elapsedRealtime() - recordingStartMs) / 1000
                 micPillTimer?.text = String.format("%d:%02d", elapsed / 60, elapsed % 60)
@@ -990,15 +992,15 @@ class DictationController(
                 normal?.setImageResource(R.drawable.kb_ic_mic)
                 normal?.setColorFilter(ContextCompat.getColor(service, R.color.hz_on_hole))
                 normal?.alpha = 1f
-                normal?.contentDescription = if (host.isSpanish()) "dictar" else "dictate"
-                container.contentDescription = if (host.isSpanish()) "dictar" else "dictate"
+                normal?.contentDescription = service.getString(R.string.kb_a11y_dictate)
+                container.contentDescription = service.getString(R.string.kb_a11y_dictate)
             }
             MicState.PROCESSING -> {
                 pill?.visibility = View.GONE
                 normal?.visibility = View.GONE
                 proc?.visibility = View.VISIBLE
-                proc?.contentDescription = if (host.isSpanish()) "procesando" else "processing"
-                container.contentDescription = if (host.isSpanish()) "procesando" else "processing"
+                proc?.contentDescription = service.getString(R.string.kb_a11y_processing)
+                container.contentDescription = service.getString(R.string.kb_a11y_processing)
             }
             MicState.BUSY -> {
                 pill?.visibility = View.GONE
@@ -1009,8 +1011,8 @@ class DictationController(
                 normal?.setImageResource(R.drawable.kb_ic_mic)
                 normal?.setColorFilter(ContextCompat.getColor(service, R.color.hz_on_hole))
                 normal?.alpha = MIC_BUSY_ALPHA
-                normal?.contentDescription = if (host.isSpanish()) "micrófono ocupado" else "microphone busy"
-                container.contentDescription = if (host.isSpanish()) "micrófono ocupado" else "microphone busy"
+                normal?.contentDescription = service.getString(R.string.kb_a11y_mic_busy)
+                container.contentDescription = service.getString(R.string.kb_a11y_mic_busy)
             }
         }
     }

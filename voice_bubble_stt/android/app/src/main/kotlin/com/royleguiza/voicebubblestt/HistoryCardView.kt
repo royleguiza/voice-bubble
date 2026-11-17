@@ -95,7 +95,7 @@ object HistoryCardView {
 
     fun emptyView(context: Context, density: Float): TextView {
         return TextView(context).apply {
-            text = "Sin transcripciones todavía."
+            text = context.getString(R.string.kb_history_empty)
             setTextColor(token(context, R.color.hz_fg2))
             typeface = KbFonts.body(context)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
@@ -181,7 +181,7 @@ object HistoryCardView {
                 gravity = Gravity.CENTER_VERTICAL
                 setMargins((4 * density).toInt(), 0, 0, 0)
             }
-            contentDescription = "Copiar al portapapeles"
+            contentDescription = context.getString(R.string.kb_copy_to_clipboard)
             setOnClickListener { onCopy(it as ImageView) }
         }
         row.addView(copy)

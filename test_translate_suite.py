@@ -12,6 +12,9 @@ Verifica sobre el código REAL:
 5. Regla de privacidad de AGENTS.md actualizada con la excepción autorizada.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import sys
 
 from test_helpers import Suite

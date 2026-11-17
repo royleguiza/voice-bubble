@@ -9,6 +9,9 @@ Verifica:
 5. Inserción de caracteres especiales (incluyendo '@', brackets, puntuación) en el campo activo.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import sys
 
 def test_manifest_retention():

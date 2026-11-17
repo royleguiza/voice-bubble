@@ -31,6 +31,9 @@ Verifica:
 8. Batería de mutaciones negativas para garantizar detección contra regresiones.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

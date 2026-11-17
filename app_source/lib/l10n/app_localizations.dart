@@ -5,7 +5,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
+import 'app_localizations_pt.dart';
 
 // ignore_for_file: type=lint
 
@@ -92,7 +94,11 @@ abstract class AppLocalizations {
   ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[Locale('es')];
+  static const List<Locale> supportedLocales = <Locale>[
+    Locale('en'),
+    Locale('es'),
+    Locale('pt')
+  ];
 
   /// No description provided for @copyButtonLabel.
   ///
@@ -2782,6 +2788,66 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Rápida'**
   String get trackpadFast;
+
+  /// No description provided for @dateToday.
+  ///
+  /// In es, this message translates to:
+  /// **'Hoy'**
+  String get dateToday;
+
+  /// No description provided for @dateYesterday.
+  ///
+  /// In es, this message translates to:
+  /// **'Ayer'**
+  String get dateYesterday;
+
+  /// No description provided for @dateThisWeek.
+  ///
+  /// In es, this message translates to:
+  /// **'Esta semana'**
+  String get dateThisWeek;
+
+  /// 12 meses en minúscula separados por coma
+  ///
+  /// In es, this message translates to:
+  /// **'enero,febrero,marzo,abril,mayo,junio,julio,agosto,septiembre,octubre,noviembre,diciembre'**
+  String get dateMonths;
+
+  /// 12 abreviaturas de mes separadas por coma
+  ///
+  /// In es, this message translates to:
+  /// **'ene,feb,mar,abr,may,jun,jul,ago,sep,oct,nov,dic'**
+  String get dateMonthsShort;
+
+  /// No description provided for @dateShort.
+  ///
+  /// In es, this message translates to:
+  /// **'{day} {month}'**
+  String dateShort(String day, String month);
+
+  /// No description provided for @dateShortYear.
+  ///
+  /// In es, this message translates to:
+  /// **'{day} {month} {year}'**
+  String dateShortYear(String day, String month, String year);
+
+  /// No description provided for @dateMonthYear.
+  ///
+  /// In es, this message translates to:
+  /// **'{month} {year}'**
+  String dateMonthYear(String month, String year);
+
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In es, this message translates to:
+  /// **'Idioma'**
+  String get settingsLanguage;
+
+  /// No description provided for @settingsLanguageSystem.
+  ///
+  /// In es, this message translates to:
+  /// **'Del teléfono'**
+  String get settingsLanguageSystem;
 }
 
 class _AppLocalizationsDelegate
@@ -2795,7 +2861,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['es'].contains(locale.languageCode);
+      <String>['en', 'es', 'pt'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -2804,8 +2870,12 @@ class _AppLocalizationsDelegate
 AppLocalizations lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'en':
+      return AppLocalizationsEn();
     case 'es':
       return AppLocalizationsEs();
+    case 'pt':
+      return AppLocalizationsPt();
   }
 
   throw FlutterError(

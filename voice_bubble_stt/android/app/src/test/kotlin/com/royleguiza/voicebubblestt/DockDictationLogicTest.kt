@@ -116,9 +116,18 @@ class DockDictationLogicTest {
             DockDictationLogic.MSG_FAILED, DockDictationLogic.MSG_NOTHING, DockDictationLogic.MSG_TOO_BIG,
         )
         for (m in all) {
-            assertTrue("«$m» entra en ${PointerProtocol.MAX_MIC_MESSAGE}", m.length <= PointerProtocol.MAX_MIC_MESSAGE)
+            val text = stringResource(m)
+            assertTrue("«$text» entra en ${PointerProtocol.MAX_MIC_MESSAGE}", text.length <= PointerProtocol.MAX_MIC_MESSAGE)
         }
-        assertEquals("Pegado", DockDictationLogic.doneMessage(true))
-        assertEquals("Copiado", DockDictationLogic.doneMessage(false))
+        assertEquals("Pegado", stringResource(DockDictationLogic.doneMessage(true)))
+        assertEquals("Copiado", stringResource(DockDictationLogic.doneMessage(false)))
+    }
+
+    /** Texto (es) de un id de `R.string`, leído de `res/values-es/strings.xml` (los tests JVM no tienen Resources). */
+    private fun stringResource(id: Int): String {
+        val name = R.string::class.java.fields.first { it.type == Int::class.javaPrimitiveType && it.getInt(null) == id }.name
+        val xml = java.io.File("src/main/res/values-es/strings.xml").readText(Charsets.UTF_8)
+        val raw = Regex("<string name=\"" + name + "\">(.*?)</string>", RegexOption.DOT_MATCHES_ALL).find(xml)!!.groupValues[1]
+        return raw.replace("\\'", "'").replace("\\\"", "\"").replace("&amp;", "&")
     }
 }

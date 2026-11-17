@@ -16,6 +16,9 @@ la clase Kotlin/JUnit real desde CI. Verifica sobre el código REAL:
 9. La prueba Kotlin/JUnit cruza addTranscription, concurrencia y fuentes mixtas; CI la ejecuta.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import sys
 

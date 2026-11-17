@@ -67,7 +67,7 @@ internal class PadView(
         textSize = 13f * d
         typeface = Fonts.inter(context)
     }
-    private var hintText = DEFAULT_HINT
+    private var hintText = context.getString(R.string.ptr_pad_default_hint)
     private var hintSticky = false
     private var hintLayout: StaticLayout? = null
     private var hintAlpha = 1f
@@ -94,12 +94,8 @@ internal class PadView(
         }
     }
 
-    companion object {
-        const val DEFAULT_HINT = "Deslizá para mover · Tocá para hacer clic"
-    }
-
     init {
-        contentDescription = "Superficie del trackpad. Deslizá para mover el puntero, tocá para hacer clic."
+        contentDescription = context.getString(R.string.ptr_pad_desc)
         isHapticFeedbackEnabled = haptic != PointerProtocol.HAPTIC_NONE
     }
 

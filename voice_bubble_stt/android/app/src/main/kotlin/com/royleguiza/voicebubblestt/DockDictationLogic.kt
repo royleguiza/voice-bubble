@@ -101,25 +101,26 @@ internal class DockDictationLogic {
         /** Audio mínimo útil para transcribir (igual que la app: < 8000 bytes se descarta sin avisar). */
         const val MIN_AUDIO_BYTES = 8000
 
-        // Frases fijas que ve la persona en la barra (nunca texto dictado ni mensajes del servidor).
-        const val MSG_PASTED = "Pegado"
-        const val MSG_COPIED = "Copiado"
-        const val MSG_NO_KEY = "Falta la clave de Groq"
-        const val MSG_NO_MIC_PERMISSION = "Falta el permiso del micrófono"
-        const val MSG_MIC_BUSY = "El micrófono está ocupado"
-        const val MSG_MIC_FAILED = "No se pudo abrir el micrófono"
-        const val MSG_NO_NETWORK = "Sin conexión"
-        const val MSG_BAD_KEY = "La clave de Groq no sirve"
-        const val MSG_RATE_LIMIT = "Límite de uso alcanzado"
-        const val MSG_FAILED = "No se pudo transcribir"
-        const val MSG_NOTHING = "No se entendió nada"
-        const val MSG_TOO_BIG = "El audio es demasiado largo"
+        // Frases fijas que ve la persona en la barra (nunca texto dictado ni mensajes del servidor):
+        // ids de recurso; quien las manda las resuelve con getString (tope: PointerProtocol.MAX_MIC_MESSAGE).
+        val MSG_PASTED = R.string.dock_msg_pasted
+        val MSG_COPIED = R.string.dock_msg_copied
+        val MSG_NO_KEY = R.string.dock_msg_no_key
+        val MSG_NO_MIC_PERMISSION = R.string.dock_msg_no_mic_permission
+        val MSG_MIC_BUSY = R.string.dock_msg_mic_busy
+        val MSG_MIC_FAILED = R.string.dock_msg_mic_failed
+        val MSG_NO_NETWORK = R.string.dock_msg_no_network
+        val MSG_BAD_KEY = R.string.dock_msg_bad_key
+        val MSG_RATE_LIMIT = R.string.dock_msg_rate_limit
+        val MSG_FAILED = R.string.dock_msg_failed
+        val MSG_NOTHING = R.string.dock_msg_nothing
+        val MSG_TOO_BIG = R.string.dock_msg_too_big
 
         /**
          * Frase corta para un fallo de la transcripción según el código HTTP
          * (null = fallo de red). No se muestra nada del texto del servidor.
          */
-        fun errorMessage(code: Int?): String = when {
+        fun errorMessage(code: Int?): Int = when {
             code == null -> MSG_NO_NETWORK
             code == 401 || code == 403 -> MSG_BAD_KEY
             code == 429 -> MSG_RATE_LIMIT
@@ -127,7 +128,7 @@ internal class DockDictationLogic {
         }
 
         /** Frase de éxito: pegado con el teclado propio, o copiado al portapapeles. */
-        fun doneMessage(pasted: Boolean): String = if (pasted) MSG_PASTED else MSG_COPIED
+        fun doneMessage(pasted: Boolean): Int = if (pasted) MSG_PASTED else MSG_COPIED
 
         /** ¿Hay audio suficiente para llamar a la transcripción? */
         fun hasUsableAudio(wavBytes: Int): Boolean = wavBytes >= MIN_AUDIO_BYTES

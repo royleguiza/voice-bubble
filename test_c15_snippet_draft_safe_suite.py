@@ -19,6 +19,9 @@ Garantías verificadas:
 7. Al menos 5 mutaciones negativas probadas y detectadas.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

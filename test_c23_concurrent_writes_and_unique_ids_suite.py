@@ -41,6 +41,9 @@ Verifica:
 6. Pruebas de mutación negativa en disco para certificar detección de regresiones.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

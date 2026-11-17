@@ -26,6 +26,9 @@ Verifica:
 6. Batería de mutaciones negativas para garantizar detección contra regresiones.
 """
 
+from test_helpers import install_l10n_reader, raw_read
+install_l10n_reader()
+
 import os
 import re
 import sys
@@ -194,7 +197,8 @@ def test_negative_mutations():
     ]
 
     for desc, filepath, mutator, test_func in mutations:
-        orig = read_file(filepath)
+        # Crudo: `orig` se vuelve a escribir al final (ver raw_read).
+        orig = raw_read(filepath)
         mutated = mutator(orig)
         assert mutated != orig, f"La mutación '{desc}' no modificó el archivo"
         try:

@@ -28,6 +28,8 @@ class KeyFactory(
     private val handler: Handler,
     private val host: UiHost,
 ) {
+    /** Texto de recurso para las capas que no tienen el servicio a mano (p. ej. [LayoutLayer]). */
+    fun getString(@androidx.annotation.StringRes id: Int): String = service.getString(id)
 
     /** Lo mínimo que la fábrica exige al teclado. */
     interface UiHost {
@@ -644,7 +646,7 @@ class KeyFactory(
             R.drawable.ic_backspace,
             R.drawable.kb_key_alt,
             weight,
-            if (host.isSpanish()) "borrar" else "delete",
+            service.getString(R.string.kb_a11y_delete),
             tintColorRes = R.color.kb_label,
             heightPx = heightPx,
             onClick = action,

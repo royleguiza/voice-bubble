@@ -31,6 +31,9 @@ Verifica sobre el código REAL:
 9. Al menos 5 mutaciones negativas reales probando detección al 100%.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys
@@ -197,7 +200,7 @@ check(
     "VoiceKeyboardService.showNotice reenvía onClick (como error, con etiqueta Reintentar/Retry)",
     "override fun showNotice(message: String, openSettingsOnClick: Boolean, onClick: (() -> Unit)?)" in vks
     and "status.show(message, openSettingsOnClick, onClick, isError = true, actionLabel = label)" in vks
-    and '"Reintentar" else "Retry"' in vks.replace("(if (spanishMode) ", "").replace(")", ""),
+    and '"Reintentar"' in vks and ">Retry<" in open(os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/values/strings.xml"), encoding="utf-8").read() and "val label = if (onClick != null)" in vks,
 )
 check(
     "UiHost en DictationController define showNotice con onClick",

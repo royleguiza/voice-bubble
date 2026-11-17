@@ -33,7 +33,7 @@
             android:layout_height="48dp"
             android:layout_marginTop="-16dp"
             android:layout_marginBottom="-18dp"
-            android:contentDescription="Arrastrar para ampliar">
+            android:contentDescription="@string/widget_edit_drag_expand">
 
             <View
                 android:layout_width="36dp"
@@ -46,7 +46,7 @@
             android:id="@+id/overlay_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nueva nota"
+            android:text="@string/widget_new_note"
             android:textSize="17sp"
             android:fontFamily="@font/sora"
             android:textFontWeight="600"
@@ -63,7 +63,7 @@
                 android:id="@+id/edit_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Sin título"
+                android:hint="@string/widget_untitled"
                 android:textSize="15sp"
                 android:fontFamily="@font/inter"
                 android:textFontWeight="600"
@@ -80,7 +80,7 @@
             android:layout_width="match_parent"
             android:layout_height="140dp"
             android:layout_marginTop="8dp"
-            android:hint="Escribir nota…"
+            android:hint="@string/widget_write_hint"
             android:textSize="14sp"
             android:fontFamily="@font/inter"
             android:lineSpacingMultiplier="1.4"
@@ -120,7 +120,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Cancelar">
+                    android:contentDescription="@string/widget_cancel">
 
                     <ImageView
                         android:layout_width="22dp"
@@ -135,7 +135,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Eliminar nota">
+                    android:contentDescription="@string/widget_delete_note">
 
                     <ImageView
                         android:layout_width="22dp"
@@ -165,7 +165,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Reproducir audio">
+                    android:contentDescription="@string/widget_play_audio">
 
                     <ImageView
                         android:id="@+id/player_main_icon"
@@ -192,7 +192,7 @@
                     android:layout_width="0dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Cerrar reproductor">
+                    android:contentDescription="@string/widget_close_player">
 
                     <ImageView
                         android:layout_width="22dp"
@@ -216,7 +216,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:background="@drawable/widget_sheet_btn_bg"
-                android:contentDescription="Transcribir ahora"
+                android:contentDescription="@string/widget_transcribe_now"
                 android:visibility="gone">
 
                 <ImageView
@@ -251,7 +251,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Cancelar">
+                    android:contentDescription="@string/widget_cancel">
 
                     <ImageView
                         android:layout_width="22dp"
@@ -275,7 +275,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Eliminar nota">
+                    android:contentDescription="@string/widget_delete_note">
 
                     <ImageView
                         android:layout_width="22dp"
@@ -298,7 +298,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Reproducir audio">
+                    android:contentDescription="@string/widget_play_audio">
 
                     <ImageView
                         android:id="@+id/widget_play_icon"
@@ -322,7 +322,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Transcribir ahora">
+                    android:contentDescription="@string/widget_transcribe_now">
 
                     <ImageView
                         android:layout_width="22dp"
@@ -344,7 +344,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Generar título con IA">
+                    android:contentDescription="@string/widget_ai_title">
 
                     <ImageView
                         android:id="@+id/icon_gemini_titulo"
@@ -377,7 +377,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Resumir con IA">
+                    android:contentDescription="@string/widget_ai_summary">
 
                     <ImageView
                         android:id="@+id/icon_gemini_resumir"
@@ -410,7 +410,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_sheet_btn_bg"
-                    android:contentDescription="Copiar contenido">
+                    android:contentDescription="@string/widget_copy_content">
 
                     <ImageView
                         android:layout_width="22dp"
@@ -432,7 +432,7 @@
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="@drawable/widget_primary_bg"
-                    android:contentDescription="Guardar nota">
+                    android:contentDescription="@string/widget_save_note">
 
                     <ImageView
                         android:layout_width="22dp"

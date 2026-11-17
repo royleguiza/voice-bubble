@@ -84,7 +84,7 @@ class TrackpadBridge(
             host.setLastLetters(if (cur != Layer.SNIPPETS && cur != Layer.TRACKPAD && cur != Layer.CLIPBOARD) cur else Layer.LETTERS)
             host.setLayer(Layer.TRACKPAD)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(service)) {
-                Toast.makeText(service, "Concede el permiso de superposición para ver el cursor", Toast.LENGTH_SHORT).show()
+                Toast.makeText(service, service.getString(R.string.kb_overlay_permission), Toast.LENGTH_SHORT).show()
             }
             val m = getOrCreate()
             val location = IntArray(2)
@@ -117,7 +117,7 @@ class TrackpadBridge(
             try {
                 Toast.makeText(
                     service,
-                    "VoiceBubble Puntero no responde. Apagalo y volvé a prenderlo en Accesibilidad.",
+                    service.getString(R.string.bubble_pointer_no_answer),
                     Toast.LENGTH_LONG,
                 ).show()
             } catch (_: Exception) {}

@@ -77,9 +77,7 @@ class MainActivity : Activity() {
         column.addView(text(getString(R.string.app_name), 30f, R.color.hz_fg, heading = true))
         column.addView(
             text(
-                "Un puntero que llega a toda la pantalla, también a la parte que el dedo ya no alcanza. " +
-                    "Funciona solo o con VoiceBubble: hace los clics de su trackpad y dibuja su barra flotante (burbuja, barra lateral o isla). " +
-                    "No lee lo que hay en la pantalla; solo recuerda dónde dejaste la barra.",
+                getString(R.string.ptr_main_intro),
                 17f, R.color.hz_fg2,
             ),
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -124,11 +122,11 @@ class MainActivity : Activity() {
 
         // Prueba de clic: el servicio toca el botón «Blanco» de esta pantalla.
         // Si Android lo ejecuta, el botón se entera; si no, se ve por qué.
-        column.addView(text("Probar el clic", 20f, R.color.hz_fg, heading = true),
+        column.addView(text(getString(R.string.ptr_main_test_title), 20f, R.color.hz_fg, heading = true),
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = dp(32f)
             })
-        column.addView(text("Tocá «Probar»: VoiceBubble Puntero va a tocar el botón «Blanco» solo, como haría con el trackpad.",
+        column.addView(text(getString(R.string.ptr_main_test_hint),
             15f, R.color.hz_fg2),
             LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
                 topMargin = dp(6f)
@@ -137,15 +135,15 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val target = pill("Blanco", R.color.hz_surf, R.color.hz_fg, outlined = true)
+        val target = pill(getString(R.string.ptr_main_target), R.color.hz_surf, R.color.hz_fg, outlined = true)
         target.setOnClickListener {
             if (testWaiting) {
                 testWaiting = false
-                testResult.text = "✓ Android hizo el clic. El puntero puede tocar en otras apps."
+                testResult.text = getString(R.string.ptr_main_test_ok)
                 testResult.setTextColor(color(R.color.hz_ok))
             }
         }
-        val run = pill("Probar", R.color.hz_ember, R.color.hz_on_ember)
+        val run = pill(getString(R.string.ptr_main_test_button), R.color.hz_ember, R.color.hz_on_ember)
         run.setOnClickListener { runTest(target) }
         row.addView(run, LinearLayout.LayoutParams(0, dp(52f), 1f).apply { marginEnd = dp(12f) })
         row.addView(target, LinearLayout.LayoutParams(0, dp(52f), 1f))
@@ -164,8 +162,7 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             column.addView(
                 text(
-                    "Si Android dice «Ajuste restringido»: abrí la información de la app, tocá ⋮ " +
-                        "arriba a la derecha y elegí «Permitir ajustes restringidos». Después volvé a Accesibilidad.",
+                    getString(R.string.ptr_main_restricted_hint),
                     15f, R.color.hz_fg2,
                 ),
                 LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
@@ -173,7 +170,7 @@ class MainActivity : Activity() {
                 },
             )
             column.addView(Button(this).apply {
-                text = "Abrir información de la app"
+                text = getString(R.string.ptr_main_app_info)
                 isAllCaps = false
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
                 setTextColor(color(R.color.hz_ember_t))
@@ -209,9 +206,9 @@ class MainActivity : Activity() {
         }
 
     private fun buildStandalone(column: LinearLayout) {
-        column.addView(text("Pestaña del puntero", 20f, R.color.hz_fg, heading = true), lp(32f))
+        column.addView(text(getString(R.string.ptr_main_tab_title), 20f, R.color.hz_fg, heading = true), lp(32f))
         column.addView(
-            text("Para usar el trackpad sin VoiceBubble: una pestaña chica en el borde de la pantalla lo abre.", 15f, R.color.hz_fg2),
+            text(getString(R.string.ptr_main_tab_hint), 15f, R.color.hz_fg2),
             lp(6f),
         )
 
@@ -221,9 +218,9 @@ class MainActivity : Activity() {
             setPadding(dp(18f), dp(10f), dp(12f), dp(10f))
             background = surface(26f)
         }
-        card.addView(text("Pestaña en el borde", 17f, R.color.hz_fg, medium = true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        card.addView(text(getString(R.string.ptr_main_edge_tab), 17f, R.color.hz_fg, medium = true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         tabSwitch = Switch(this).apply {
-            contentDescription = "Pestaña en el borde"
+            contentDescription = getString(R.string.ptr_main_edge_tab)
             val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
             thumbTintList = android.content.res.ColorStateList(states, intArrayOf(color(R.color.hz_on_ember), color(R.color.hz_surf)))
             trackTintList = android.content.res.ColorStateList(states, intArrayOf(color(R.color.hz_ember), color(R.color.hz_line)))
@@ -239,51 +236,50 @@ class MainActivity : Activity() {
         tabNote = text("", 14f, R.color.hz_fg2)
         column.addView(tabNote, lp(8f))
 
-        column.addView(text("Lado de la pestaña", 15f, R.color.hz_fg, medium = true), lp(18f))
-        column.addView(choiceRow(sideButtons, listOf("left" to "Izquierda", "right" to "Derecha")) { side ->
+        column.addView(text(getString(R.string.ptr_main_tab_side), 15f, R.color.hz_fg, medium = true), lp(18f))
+        column.addView(choiceRow(sideButtons, listOf("left" to getString(R.string.ptr_main_left), "right" to getString(R.string.ptr_main_right))) { side ->
             prefs.saveSide(if (side == "left") DockGeometry.Side.LEFT else DockGeometry.Side.RIGHT)
             PunteroService.refreshOwnSettings(rebuild = true)
             renderStandalone()
         }, lp(8f))
 
-        column.addView(text("Trackpad", 20f, R.color.hz_fg, heading = true), lp(28f))
+        column.addView(text(getString(R.string.ptr_main_trackpad_title), 20f, R.color.hz_fg, heading = true), lp(28f))
         column.addView(
             text(
-                "En la ventana libre: arrastrá la línea de arriba para moverla y la esquina de abajo a la derecha " +
-                    "para agrandarla o achicarla. Se acuerda dónde la dejaste, así queda siempre en la parte sana de la pantalla.",
+                getString(R.string.ptr_main_window_hint),
                 15f, R.color.hz_fg2,
             ),
             lp(6f),
         )
         hostNote = text(
-            "La sensibilidad, el estilo del puntero y la forma del trackpad se ajustan en VoiceBubble › Ajustes › Trackpad.",
+            getString(R.string.ptr_main_host_note),
             15f, R.color.hz_fg2,
         )
         column.addView(hostNote, lp(12f))
 
         ownSettings = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        ownSettings.addView(text("Forma", 15f, R.color.hz_fg, medium = true), lp(12f))
-        ownSettings.addView(choiceRow(modeButtons, listOf(PointerProtocol.MODE_WINDOW to "Ventana libre", PointerProtocol.MODE_PANEL to "Panel abajo")) { mode ->
+        ownSettings.addView(text(getString(R.string.ptr_main_shape), 15f, R.color.hz_fg, medium = true), lp(12f))
+        ownSettings.addView(choiceRow(modeButtons, listOf(PointerProtocol.MODE_WINDOW to getString(R.string.ptr_main_shape_window), PointerProtocol.MODE_PANEL to getString(R.string.ptr_main_shape_panel))) { mode ->
             saveOwn(mode = mode)
         }, lp(8f))
-        ownSettings.addView(text("Estilo del puntero", 15f, R.color.hz_fg, medium = true), lp(18f))
+        ownSettings.addView(text(getString(R.string.ptr_main_style), 15f, R.color.hz_fg, medium = true), lp(18f))
         ownSettings.addView(choiceRow(styleButtons, listOf(
-            PointerProtocol.STYLE_ARROW to "Flecha",
-            PointerProtocol.STYLE_DOT to "Punto",
-            PointerProtocol.STYLE_CROSS to "Cruz",
+            PointerProtocol.STYLE_ARROW to getString(R.string.ptr_main_style_arrow),
+            PointerProtocol.STYLE_DOT to getString(R.string.ptr_main_style_dot),
+            PointerProtocol.STYLE_CROSS to getString(R.string.ptr_main_style_cross),
         )) { style -> saveOwn(style = style) }, lp(8f))
         val sensRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        sensRow.addView(text("Sensibilidad", 15f, R.color.hz_fg, medium = true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        sensRow.addView(text(getString(R.string.ptr_main_sensitivity), 15f, R.color.hz_fg, medium = true), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         sensValue = text("", 15f, R.color.hz_fg2)
         sensRow.addView(sensValue)
         ownSettings.addView(sensRow, lp(18f))
         val steps = ((PointerProtocol.MAX_SENSITIVITY - PointerProtocol.MIN_SENSITIVITY) * 10).roundToInt()
         sensBar = SeekBar(this).apply {
             max = steps
-            contentDescription = "Sensibilidad del puntero"
+            contentDescription = getString(R.string.ptr_main_sensitivity_desc)
             progressTintList = android.content.res.ColorStateList.valueOf(color(R.color.hz_ember))
             thumbTintList = android.content.res.ColorStateList.valueOf(color(R.color.hz_ember))
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -300,7 +296,7 @@ class MainActivity : Activity() {
         column.addView(ownSettings, lp(0f))
 
         column.addView(Button(this).apply {
-            text = "Volver a poner el trackpad en su lugar"
+            text = getString(R.string.ptr_main_reset_placement)
             isAllCaps = false
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
             setTextColor(color(R.color.hz_ember_t))
@@ -311,7 +307,7 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, 0)
             setOnClickListener {
                 prefs.clearTrackpadPlacement()
-                text = "Listo: la próxima vez se abre en su lugar de siempre"
+                text = getString(R.string.ptr_main_reset_done)
             }
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48f)).apply { topMargin = dp(8f) })
     }
@@ -365,9 +361,9 @@ class MainActivity : Activity() {
         if (tabSwitch.isChecked != own) tabSwitch.isChecked = own
         val hostDock = PunteroService.hostDockEnabled(this)
         tabNote.text = when {
-            own && hostDock -> "Ahora se ve la barra de VoiceBubble (con su puntero). La pestaña aparece cuando apagás esa barra."
-            own -> "Tocá la pestaña para abrir el trackpad. Arrastrala para moverla; llevala al centro y queda como burbuja."
-            else -> "Apagada."
+            own && hostDock -> getString(R.string.ptr_main_tab_note_host)
+            own -> getString(R.string.ptr_main_tab_note_own)
+            else -> getString(R.string.ptr_main_tab_note_off)
         }
         markChoice(sideButtons, if (prefs.side() == DockGeometry.Side.LEFT) "left" else "right")
         val hostInstalled = HostLink.isHostInstalled(this)
@@ -382,15 +378,13 @@ class MainActivity : Activity() {
     }
 
     private fun renderCounters() {
-        counters.text = "Desde que se activó: ${PunteroService.received} clics pedidos por VoiceBubble · " +
-            "${PunteroService.done} hechos · ${PunteroService.cancelled} interrumpidos · " +
-            "${PunteroService.rejected} rechazados."
+        counters.text = getString(R.string.ptr_main_counters, PunteroService.received, PunteroService.done, PunteroService.cancelled, PunteroService.rejected)
     }
 
     private fun runTest(target: View) {
         testResult.setTextColor(color(R.color.hz_fg2))
         if (!PunteroService.isConnected) {
-            testResult.text = "✗ El servicio no está en marcha. Activalo en Accesibilidad (si ya está activo, apagalo y volvé a prenderlo)."
+            testResult.text = getString(R.string.ptr_main_err_service_down)
             testResult.setTextColor(color(R.color.hz_danger))
             return
         }
@@ -399,26 +393,26 @@ class MainActivity : Activity() {
         val x = loc[0] + target.width / 2f
         val y = loc[1] + target.height / 2f
         testWaiting = true
-        testResult.text = "Probando…"
+        testResult.text = getString(R.string.ptr_main_testing)
         val sent = PunteroService.testTap(x, y) { completed ->
             runOnUiThread {
                 if (!completed && testWaiting) {
                     testWaiting = false
-                    testResult.text = "✗ Android canceló el gesto. Apagá y volvé a prender VoiceBubble Puntero en Accesibilidad."
+                    testResult.text = getString(R.string.ptr_main_err_cancelled)
                     testResult.setTextColor(color(R.color.hz_danger))
                 }
             }
         }
         if (!sent) {
             testWaiting = false
-            testResult.text = "✗ Android rechazó el gesto. Apagá y volvé a prender VoiceBubble Puntero en Accesibilidad."
+            testResult.text = getString(R.string.ptr_main_err_rejected)
             testResult.setTextColor(color(R.color.hz_danger))
             return
         }
         target.postDelayed({
             if (testWaiting) {
                 testWaiting = false
-                testResult.text = "✗ Android dijo que hizo el gesto, pero el botón no recibió el toque."
+                testResult.text = getString(R.string.ptr_main_err_no_touch)
                 testResult.setTextColor(color(R.color.hz_danger))
             }
             renderCounters()
@@ -454,11 +448,11 @@ class MainActivity : Activity() {
     private fun render(enabled: Boolean) {
         (statusDot.background as GradientDrawable).setColor(color(if (enabled && PunteroService.isConnected) R.color.hz_ok else R.color.hz_danger))
         statusText.text = when {
-            enabled && PunteroService.isConnected -> "Activo. Los clics del puntero ya funcionan."
-            enabled -> "Activado en Accesibilidad, pero Android no lo inició. Apagalo y volvé a prenderlo."
-            else -> "Desactivado"
+            enabled && PunteroService.isConnected -> getString(R.string.ptr_main_status_active)
+            enabled -> getString(R.string.ptr_main_status_not_started)
+            else -> getString(R.string.ptr_main_status_off)
         }
-        primary.text = if (enabled) "Abrir Accesibilidad" else "Activar en Accesibilidad"
+        primary.text = if (enabled) getString(R.string.ptr_main_open_accessibility) else getString(R.string.ptr_main_enable_accessibility)
         // Primario en brasa con texto on-ember; ya activo, pasa a tarjeta.
         primary.setTextColor(color(if (enabled) R.color.hz_ember_t else R.color.hz_on_ember))
         primary.background = if (enabled) {
@@ -470,9 +464,9 @@ class MainActivity : Activity() {
             }
         }
         steps.text = if (enabled) {
-            "Abrí el trackpad desde la barra de VoiceBubble o desde la pestaña propia: tocar es clic, mantener es clic largo."
+            getString(R.string.ptr_main_steps_enabled)
         } else {
-            "En Accesibilidad, elegí «VoiceBubble Puntero» y activalo."
+            getString(R.string.ptr_main_steps_disabled)
         }
     }
 

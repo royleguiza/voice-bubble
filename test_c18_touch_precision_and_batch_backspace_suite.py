@@ -29,6 +29,9 @@ Verifica:
 7. Detección de mutaciones negativas reales sobre el código
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import sys
 

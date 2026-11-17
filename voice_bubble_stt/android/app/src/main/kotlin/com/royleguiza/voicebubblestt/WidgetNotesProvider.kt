@@ -207,10 +207,10 @@ class WidgetNotesProvider : AppWidgetProvider() {
         ): Boolean {
             return try {
                 val views = RemoteViews(context.packageName, R.layout.widget_notes)
-                views.setTextViewText(R.id.widget_notes_count, "No disponible")
+                views.setTextViewText(R.id.widget_notes_count, context.getString(R.string.widget_unavailable))
                 views.setViewVisibility(R.id.widget_notes_list, View.GONE)
                 views.setViewVisibility(R.id.widget_notes_empty, View.VISIBLE)
-                views.setTextViewText(R.id.widget_notes_empty, "Estado no disponible")
+                views.setTextViewText(R.id.widget_notes_empty, context.getString(R.string.widget_state_unavailable))
                 appWidgetManager.updateAppWidget(appWidgetId, views)
                 true
             } catch (_: Exception) {
@@ -274,7 +274,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_pending_count, View.VISIBLE)
                 views.setTextViewText(
                     R.id.widget_pending_count,
-                    if (pending == 1) "· 1 pendiente" else "· $pending pendientes",
+                    context.resources.getQuantityString(R.plurals.widget_pending_count, pending, pending),
                 )
             } else {
                 views.setViewVisibility(R.id.widget_pending_count, View.GONE)
@@ -351,10 +351,10 @@ class WidgetNotesProvider : AppWidgetProvider() {
             views.setContentDescription(
                 R.id.widget_voice_box,
                 when (state) {
-                    "transcribing" -> "Procesando"
-                    "saved" -> "Nota guardada"
-                    "pending" -> "Audio guardado"
-                    else -> "Grabando"
+                    "transcribing" -> context.getString(R.string.widget_state_processing)
+                    "saved" -> context.getString(R.string.widget_note_saved)
+                    "pending" -> context.getString(R.string.widget_audio_saved)
+                    else -> context.getString(R.string.widget_recording)
                 },
             )
             if (recording) {

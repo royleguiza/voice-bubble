@@ -545,6 +545,20 @@ class StorageService {
   /// Tema de la app (rediseño v2, pedido del dueño): 'sistema' (default,
   /// sigue al sistema), 'claro' u 'oscuro'. SOLO Dart: no entra en
   /// [bridgeKeys] ni en contract-keys.txt (el IME no la lee).
+  /// Idioma de la app (etapa 4): `sistema` (el del teléfono) o `es`/`en`/
+  /// `pt`. Puente: en Android 13+ manda el «idioma por app» del sistema y
+  /// esta clave lo refleja; en 9–12 la leen el teclado, el widget y la
+  /// burbuja (`AppLocale.kt`) para mostrar el mismo idioma que la app.
+  static const String appLocaleKey = 'kb_app_locale';
+  static const List<String> appLocales = ['sistema', 'es', 'en', 'pt'];
+  static const String defaultAppLocale = 'sistema';
+
+  Future<String> loadAppLocale() =>
+      _getValidatedString(appLocaleKey, appLocales, defaultAppLocale);
+
+  Future<void> saveAppLocale(String code) =>
+      _setValidatedString(appLocaleKey, appLocales, code);
+
   static const String themeModeKey = 'theme_mode';
   static const List<String> themeModes = ['sistema', 'claro', 'oscuro'];
   static const String defaultThemeMode = 'sistema';
@@ -1082,6 +1096,7 @@ class StorageService {
     sttKeyConfiguredKey,
     _sttLanguageKey,
     _sttModelKey,
+    appLocaleKey,
     translateDictationKey,
     translateModeKey,
     translateTargetKey,

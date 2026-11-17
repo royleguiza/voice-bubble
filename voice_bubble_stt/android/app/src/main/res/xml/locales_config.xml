@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Idiomas de la app (etapa 4): Android 13+ los ofrece en Ajustes del
+     sistema › Apps › Idioma. El primero que no esté cae en inglés. -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en"/>
+    <locale android:name="es"/>
+    <locale android:name="pt"/>
+</locale-config>

@@ -496,8 +496,7 @@ class SpeechToTextClient(
         if (!uploadInFlight.compareAndSet(false, true)) {
             onError(
                 400,
-                if (spanishModeProvider()) "Ya hay una transcripción en curso."
-                else "Another transcription is already running."
+                context.getString(R.string.kb_stt_busy)
             )
             return
         }
@@ -531,8 +530,7 @@ class SpeechToTextClient(
         if (wav.size > MAX_AUDIO_BYTES) {
             onError(
                 400,
-                if (spanishModeProvider()) "El audio supera el límite de 25 MB."
-                else "Audio exceeds 25 MB limit."
+                context.getString(R.string.kb_stt_too_big)
             )
             return
         }
@@ -543,8 +541,7 @@ class SpeechToTextClient(
             val huella = describeHead(wav, wav.size)
             onError(
                 400,
-                if (spanishModeProvider()) "El audio está dañado [$motivo $huella] y no se puede transcribir."
-                else "Audio is corrupted [$motivo] and cannot be transcribed."
+                context.getString(R.string.kb_stt_corrupt, motivo, huella)
             )
             return
         }
@@ -612,8 +609,7 @@ class SpeechToTextClient(
                         }
                         if (SystemClock.elapsedRealtime() > uploadDeadline) {
                             throw SocketTimeoutException(
-                                if (spanishModeProvider()) "Tiempo de subida agotado."
-                                else "Upload timed out."
+                                context.getString(R.string.kb_stt_upload_timeout)
                             )
                         }
                         val len = minOf(chunk, wav.size - offset)
@@ -679,8 +675,7 @@ class SpeechToTextClient(
                 }
                 onError(
                     null,
-                    if (spanishModeProvider()) "Sin conexión a internet."
-                    else "No internet connection."
+                    context.getString(R.string.kb_stt_no_internet)
                 )
             } catch (_: Exception) {
                 if (cancelRequested) {
@@ -689,8 +684,7 @@ class SpeechToTextClient(
                 }
                 onError(
                     null,
-                    if (spanishModeProvider()) "No se pudo procesar la respuesta."
-                    else "Could not process the response."
+                    context.getString(R.string.kb_stt_bad_response)
                 )
             } finally {
                 // C-35: Limpieza de buffers en memoria para evitar retención forense de audio.
@@ -726,13 +720,11 @@ class SpeechToTextClient(
         val es = spanishModeProvider()
         return when {
             code == 401 || code == 403 ->
-                if (es) "API key inválida. Verificala en Ajustes."
-                else "Invalid API key. Verify it in Settings."
+                context.getString(R.string.kb_stt_invalid_key)
             code == 429 ->
-                if (es) "Límite de solicitudes alcanzado. Esperá un momento."
-                else "Request limit reached. Wait a moment."
+                context.getString(R.string.kb_stt_rate_limit)
             remoteMessage.isNotBlank() -> "Error $code: $remoteMessage"
-            else -> if (es) "Error del servidor ($code)." else "Server error ($code)."
+            else -> context.getString(R.string.kb_stt_server_error, code.toString())
         }
     }
 }

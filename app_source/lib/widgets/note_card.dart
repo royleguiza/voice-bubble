@@ -100,7 +100,9 @@ class NoteCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      timeLabel ?? noteTimeLabel(note.updatedAt),
+                      timeLabel ??
+                          noteTimeLabel(note.updatedAt,
+                              words: noteDateWordsOf(context.l10n)),
                       style: kTextMono.copyWith(fontSize: 12, color: secondary),
                     ),
                     if (note.hasAudio) ...[

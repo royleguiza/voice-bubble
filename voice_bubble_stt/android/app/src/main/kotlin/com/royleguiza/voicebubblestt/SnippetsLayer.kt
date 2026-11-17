@@ -278,7 +278,7 @@ class SnippetsLayer(
             R.drawable.ic_shift_off,
             R.drawable.kb_key_alt,
             1.3f,
-            if (host.isSpanish()) "mayúsculas" else "shift",
+            service.getString(R.string.kb_a11y_shift),
             tintColorRes = R.color.kb_label,
             useKeyHeight = true,
         ) {
@@ -342,7 +342,7 @@ class SnippetsLayer(
             R.drawable.ic_backspace,
             R.drawable.kb_key_alt,
             1.3f,
-            if (host.isSpanish()) "borrar" else "delete",
+            service.getString(R.string.kb_a11y_delete),
             tintColorRes = R.color.kb_label,
             useKeyHeight = true,
             onClick = action,
@@ -375,8 +375,8 @@ class SnippetsLayer(
         }
 
         val title = TextView(service).apply {
-            text = if (isEdit) (if (host.isSpanish()) "Editar snippet" else "Edit snippet")
-            else (if (host.isSpanish()) "Nuevo snippet" else "New snippet")
+            text = if (isEdit) (service.getString(R.string.kb_snippet_edit))
+            else (service.getString(R.string.kb_snippet_new))
             setTextColor(ContextCompat.getColor(service, R.color.kb_label))
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
             typeface = KbFonts.body(service, strong = true)
@@ -385,7 +385,7 @@ class SnippetsLayer(
         headerRow.addView(title, lpTitle)
 
         val btnCancel = TextView(service).apply {
-            text = if (host.isSpanish()) "Cancelar" else "Cancel"
+            text = service.getString(R.string.kb_cancel)
             gravity = Gravity.CENTER
             setPadding(pad * 2, pad, pad * 2, pad)
             setBackgroundResource(R.drawable.kb_key_bg)
@@ -401,7 +401,7 @@ class SnippetsLayer(
         headerRow.addView(btnCancel, lpCancel)
 
         val btnSave = TextView(service).apply {
-            text = if (host.isSpanish()) "Guardar" else "Save"
+            text = service.getString(R.string.kb_save)
             gravity = Gravity.CENTER
             setPadding(pad * 2, pad, pad * 2, pad)
             setBackgroundResource(R.drawable.kb_key_accent)
@@ -434,7 +434,7 @@ class SnippetsLayer(
         container.addView(headerRow)
 
         val etName = EditText(service).apply {
-            hint = if (host.isSpanish()) "Nombre (ej. Git commit)" else "Name"
+            hint = service.getString(R.string.kb_snippet_name_hint)
             setSingleLine(true)
             maxLines = 1
             inputType = InputType.TYPE_CLASS_TEXT
@@ -457,7 +457,7 @@ class SnippetsLayer(
         container.addView(etName, lpName)
 
         val etContent = EditText(service).apply {
-            hint = if (host.isSpanish()) "Contenido o comando..." else "Content or command..."
+            hint = service.getString(R.string.kb_snippet_content_hint)
             setSingleLine(false)
             maxLines = 2
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
@@ -484,7 +484,7 @@ class SnippetsLayer(
         // Selector de color (paleta fija de 6 + sin color): el primer toque
         // alterna y el Guardar persiste draftColor en el snippet.
         val label = TextView(service).apply {
-            text = if (host.isSpanish()) "Color" else "Color"
+            text = service.getString(R.string.kb_snippet_color)
             setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size_small).toFloat())
             setPadding(0, pad, 0, pad / 2)
@@ -545,7 +545,7 @@ class SnippetsLayer(
             setImageResource(R.drawable.ic_search)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setColorFilter(ContextCompat.getColor(service, R.color.kb_label_secondary))
-            contentDescription = if (host.isSpanish()) "buscar snippets" else "search snippets"
+            contentDescription = service.getString(R.string.kb_a11y_search_snippets)
             setOnClickListener {
                 searchField?.requestFocus()
                 ensureSearchMode()
@@ -557,7 +557,7 @@ class SnippetsLayer(
         searchIconView = icon
 
         val et = EditText(service)
-        et.hint = if (host.isSpanish()) "Buscar" else "Search"
+        et.hint = service.getString(R.string.kb_search_hint)
         et.setSingleLine(true)
         et.maxLines = 1
         et.inputType = InputType.TYPE_CLASS_TEXT
@@ -598,17 +598,17 @@ class SnippetsLayer(
         row.addView(box, boxLp)
 
         // Botones slim (10% c/u): mismo alto, misma línea, mismo gap.
-        row.addView(slimToolButton(R.drawable.ic_add, if (host.isSpanish()) "nuevo snippet" else "new snippet", h, m) {
+        row.addView(slimToolButton(R.drawable.ic_add, service.getString(R.string.kb_a11y_new_snippet), h, m) {
             openEditor(null)
         })
-        val btnEdit = slimToolButton(R.drawable.ic_edit, if (host.isSpanish()) "editar snippet" else "edit snippet", h, m) {
+        val btnEdit = slimToolButton(R.drawable.ic_edit, service.getString(R.string.kb_a11y_edit_snippet), h, m) {
             mode = if (mode == SnippetMode.EDIT) SnippetMode.NORMAL else SnippetMode.EDIT
             updateModeVisuals()
             refreshGrid()
         }
         btnEditView = btnEdit
         row.addView(btnEdit)
-        val btnDelete = slimToolButton(R.drawable.ic_delete, if (host.isSpanish()) "eliminar snippet" else "delete snippet", h, m) {
+        val btnDelete = slimToolButton(R.drawable.ic_delete, service.getString(R.string.kb_a11y_delete_snippet), h, m) {
             mode = if (mode == SnippetMode.DELETE) SnippetMode.NORMAL else SnippetMode.DELETE
             updateModeVisuals()
             refreshGrid()
@@ -828,7 +828,7 @@ class SnippetsLayer(
         row.removeAllViews()
         // Sin color (default)
         row.addView(makeSwatch(null, size, gap, selected = draftColor == null,
-            description = if (host.isSpanish()) "sin color" else "no color"))
+            description = service.getString(R.string.kb_a11y_no_color)))
         for (id in SnippetPalette.IDS) {
             row.addView(makeSwatch(id, size, gap, selected = draftColor == id, description = id))
         }
@@ -847,7 +847,7 @@ class SnippetsLayer(
         v.isFocusable = true
         v.contentDescription = description
         v.isSelected = selected
-        // Horizonte fase 2: círculo sólido del color base; "sin color" es
+        // Horizonte fase 2: círculo sólido del color base; service.getString(R.string.kb_a11y_no_color) es
         // una tecla con línea. El elegido se marca con un anillo separado
         // del círculo por un respiro (maqueta: .dots i.sel).
         val fillColor = if (colorId == null) {
@@ -897,7 +897,7 @@ class SnippetsLayer(
             ).toInt()
             val g = pad / 2
             parent.addView(makeSwatch(null, sz, g, draftColor == null,
-                if (host.isSpanish()) "sin color" else "no color"))
+                service.getString(R.string.kb_a11y_no_color)))
             for (id in SnippetPalette.IDS) {
                 parent.addView(makeSwatch(id, sz, g, draftColor == id, id))
             }
@@ -915,7 +915,7 @@ class SnippetsLayer(
         }
 
         val title = TextView(service).apply {
-            text = if (host.isSpanish()) "¿Eliminar snippet?" else "Delete snippet?"
+            text = service.getString(R.string.kb_snippet_delete_title)
             setTextColor(ContextCompat.getColor(service, R.color.kb_label))
             setTextSize(TypedValue.COMPLEX_UNIT_PX, host.dimenPx(R.dimen.kb_key_text_size).toFloat())
             setTypeface(null, Typeface.BOLD)
@@ -936,7 +936,7 @@ class SnippetsLayer(
         }
 
         val btnCancel = TextView(service).apply {
-            text = if (host.isSpanish()) "Cancelar" else "Cancel"
+            text = service.getString(R.string.kb_cancel)
             gravity = Gravity.CENTER
             setPadding(pad * 2, pad, pad * 2, pad)
             setBackgroundResource(R.drawable.kb_key_bg)
@@ -952,7 +952,7 @@ class SnippetsLayer(
         actionsRow.addView(btnCancel, lpCancel)
 
         val btnDelete = TextView(service).apply {
-            text = if (host.isSpanish()) "Eliminar" else "Delete"
+            text = service.getString(R.string.kb_delete)
             gravity = Gravity.CENTER
             setPadding(pad * 2, pad, pad * 2, pad)
             setBackgroundResource(R.drawable.kb_key_danger)
@@ -1014,7 +1014,7 @@ class SnippetsLayer(
     private fun emptyView(): TextView {
         val pad = host.dimenPx(R.dimen.kb_popup_padding)
         val tv = TextView(service)
-        tv.text = if (host.isSpanish()) "Sin snippets todavía." else "No snippets yet."
+        tv.text = service.getString(R.string.kb_snippets_empty)
         tv.gravity = Gravity.CENTER
         tv.setPadding(pad, pad * 2, pad, pad * 2)
         tv.setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
@@ -1067,11 +1067,11 @@ class SnippetsLayer(
             }
             box.addView(tv)
         }
-        addOption(if (host.isSpanish()) "Insertar" else "Insert") { insert(snippet) }
-        addOption(if (host.isSpanish()) "Copiar al portapapeles" else "Copy to clipboard") {
+        addOption(service.getString(R.string.kb_snippet_insert)) { insert(snippet) }
+        addOption(service.getString(R.string.kb_copy_to_clipboard)) {
             service.copySnippetToClipboard(snippet.contenido)
         }
-        addOption(if (host.isSpanish()) "Abrir app para editar" else "Open app to edit") {
+        addOption(service.getString(R.string.kb_snippet_open_app)) {
             service.openAppUi()
         }
 

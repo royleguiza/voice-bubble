@@ -13,6 +13,9 @@ Verifica sobre el código REAL:
 6. Sin Log nuevo, sin lectura de documento, sin cambios en CI.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

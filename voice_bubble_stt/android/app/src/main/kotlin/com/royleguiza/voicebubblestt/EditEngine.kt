@@ -42,7 +42,7 @@ internal fun commitOrWarn(
 }
 
 internal fun warnDeadConnection(service: InputMethodService, isSpanish: Boolean = true) {
-    val msg = if (isSpanish) StatusLayer.NOTICE_DEAD_CONNECTION_ES else StatusLayer.NOTICE_DEAD_CONNECTION_EN
+    val msg = service.getString(StatusLayer.NOTICE_DEAD_CONNECTION_ES)
     val status = StatusLayer.activeInstance
     if (status != null) {
         status.show(msg, isError = true)
@@ -198,7 +198,7 @@ class EditEngine(
     }
 
     private fun warnDeadConnection() {
-        host.cycleNotice(if (host.isSpanish()) StatusLayer.NOTICE_DEAD_CONNECTION_ES else StatusLayer.NOTICE_DEAD_CONNECTION_EN)
+        host.cycleNotice(service.getString(StatusLayer.NOTICE_DEAD_CONNECTION_ES))
     }
 
     /**
@@ -281,9 +281,9 @@ class EditEngine(
         val es = host.isSpanish()
         host.cycleNotice(
             when (state) {
-                CaseState.LOWER -> if (es) "Minúsculas" else "Lowercase"
-                CaseState.TITLE -> if (es) "Mayúsculas iniciales" else "Title Case"
-                CaseState.UPPER -> if (es) "MAYÚSCULAS" else "UPPERCASE"
+                CaseState.LOWER -> service.getString(R.string.kb_case_lower)
+                CaseState.TITLE -> service.getString(R.string.kb_case_title)
+                CaseState.UPPER -> service.getString(R.string.kb_case_upper)
             },
         )
         return true
@@ -297,19 +297,19 @@ class EditEngine(
             when (shiftState) {
                 ShiftState.CAPS_LOCK -> {
                     key.setImageResource(R.drawable.ic_shift_caps)
-                    key.contentDescription = if (host.isSpanish()) "bloqueo mayúsculas" else "caps lock"
+                    key.contentDescription = service.getString(R.string.kb_a11y_caps_lock)
                     key.setBackgroundResource(R.drawable.kb_key_accent)
                     key.setColorFilter(ContextCompat.getColor(service, R.color.kb_label_on_accent))
                 }
                 ShiftState.MOMENTARY -> {
                     key.setImageResource(R.drawable.ic_shift_on)
-                    key.contentDescription = if (host.isSpanish()) "mayúsculas" else "shift"
+                    key.contentDescription = service.getString(R.string.kb_a11y_shift)
                     key.setBackgroundResource(R.drawable.kb_key_accent)
                     key.setColorFilter(ContextCompat.getColor(service, R.color.kb_label_on_accent))
                 }
                 ShiftState.OFF -> {
                     key.setImageResource(R.drawable.ic_shift_off)
-                    key.contentDescription = if (host.isSpanish()) "mayúsculas" else "shift"
+                    key.contentDescription = service.getString(R.string.kb_a11y_shift)
                     key.setBackgroundResource(R.drawable.kb_key_alt)
                     key.setColorFilter(ContextCompat.getColor(service, R.color.kb_label))
                 }

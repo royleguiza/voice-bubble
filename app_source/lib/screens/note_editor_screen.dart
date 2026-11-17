@@ -320,10 +320,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   String _metaLabel() {
     final note = widget.note;
     if (note == null) return context.l10n.noteEditorNewNote;
-    final group = noteGroupLabel(note.updatedAt);
-    final time = noteTimeLabel(note.updatedAt);
+    final words = noteDateWordsOf(context.l10n);
+    final group = noteGroupLabel(note.updatedAt, words: words);
+    final time = noteTimeLabel(note.updatedAt, words: words);
     // Hoy/Ayer muestran la hora; lo más viejo, la fecha corta.
-    return (group == 'Hoy' || group == 'Ayer') ? context.l10n.noteEditorMetaGroupTime(group, time) : time;
+    return words.isRecent(group)
+        ? context.l10n.noteEditorMetaGroupTime(group, time)
+        : time;
   }
 
   @override

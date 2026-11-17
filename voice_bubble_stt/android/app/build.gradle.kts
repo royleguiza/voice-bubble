@@ -79,6 +79,9 @@ android {
     }
 
     testOptions {
+        // Etapa 4 (idiomas): el código lee textos de res/values/strings.xml
+        // (getString); los tests Robolectric necesitan los recursos reales.
+        unitTests.isIncludeAndroidResources = true
         unitTests.all {
             it.jvmArgs(
                 "--add-opens=java.base/java.lang=ALL-UNNAMED",
@@ -117,4 +120,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("org.robolectric:robolectric:4.17")
+}
+
+// Con recursos en los tests JVM, el empaquetado de tests lee los assets
+// mezclados; los de Flutter se copian antes (orden, sin cambiar qué corre).
+tasks.matching { it.name == "packageDebugUnitTestForUnitTest" }.configureEach {
+    mustRunAfter("copyFlutterAssetsDebug")
 }

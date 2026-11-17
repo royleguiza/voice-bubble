@@ -42,6 +42,11 @@ import kotlin.math.roundToInt
  */
 class FloatingTrackpadService : Service() {
 
+    // Etapa 4: Android 9–12 toma el idioma elegido en la app (13+ lo pone el sistema).
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
+
     companion object {
         const val ACTION_OPEN = "com.royleguiza.voicebubblestt.ACTION_OPEN_TRACKPAD"
         const val ACTION_STOP = "com.royleguiza.voicebubblestt.ACTION_STOP_TRACKPAD"
@@ -237,7 +242,7 @@ class FloatingTrackpadService : Service() {
             setPadding(pad, (2 * d).roundToInt(), pad, pad)
         }
         val handle = HandleView(this)
-        handle.contentDescription = "Cerrar trackpad"
+        handle.contentDescription = getString(R.string.pad_close_trackpad)
         handle.setOnTouchListener(HandleTouch())
         root.addView(handle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (34 * d).roundToInt()))
 
@@ -354,11 +359,11 @@ class FloatingTrackpadService : Service() {
     private fun checkCompanion() {
         when (PointerLink.status(this)) {
             PointerProtocol.STATUS_MISSING -> showBanner(
-                "Para hacer clics falta la app VoiceBubble Puntero: instalá el APK «voice-bubble-puntero» del mismo build.",
+                getString(R.string.pad_pointer_missing),
                 null,
             )
             PointerProtocol.STATUS_DISABLED -> showBanner(
-                "Para hacer clics, activá VoiceBubble Puntero en Accesibilidad. Tocá acá.",
+                getString(R.string.pad_pointer_disabled),
             ) { openSettingsAndClose { PointerLink.openAccessibilitySettings(this) } }
             else -> hideBanner()
         }
@@ -400,7 +405,7 @@ class FloatingTrackpadService : Service() {
         val now = SystemClock.uptimeMillis()
         if (now - lastProblemHint < 1000L) return
         lastProblemHint = now
-        showBanner("$message Tocá acá.") {
+        showBanner(getString(R.string.pad_problem_tap_here, message)) {
             openSettingsAndClose { PointerLink.openCompanionApp(this) || PointerLink.openAccessibilitySettings(this) }
         }
     }

@@ -23,9 +23,6 @@ internal class TrackpadController(private val service: PunteroService) : Trackpa
          */
         const val PASS_LEAD_MS = 120L
         const val PASS_TAIL_MS = 140L
-
-        const val HINT_GRAB = "Arrastrar: poné el puntero sobre lo que querés agarrar y tocá."
-        const val HINT_DROP = "Agarrado. Llevá el puntero hasta el destino y tocá para soltar."
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -237,7 +234,7 @@ internal class TrackpadController(private val service: PunteroService) : Trackpa
         }
         dragOn = true
         cancelIdle()
-        panel?.setDragActive(true, HINT_GRAB)
+        panel?.setDragActive(true, service.getString(R.string.ptr_drag_hint_grab))
     }
 
     /** Un toque en el pad con el arrastre activo: el primero agarra, el segundo suelta. */
@@ -249,7 +246,7 @@ internal class TrackpadController(private val service: PunteroService) : Trackpa
         if (origin == null) {
             dragOrigin = pos
             ptr.setOrigin(pos.first, pos.second)
-            panel?.setDragHint(HINT_DROP)
+            panel?.setDragHint(service.getString(R.string.ptr_drag_hint_drop))
             return
         }
         val (sw, sh) = screen.size()

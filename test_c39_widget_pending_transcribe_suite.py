@@ -20,6 +20,9 @@ Verifica:
 5. Mutaciones negativas: versiones rotas no pasan las guardas.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

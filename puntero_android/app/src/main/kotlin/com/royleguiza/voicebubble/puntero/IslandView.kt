@@ -132,8 +132,8 @@ internal class IslandView(
             override fun onInitializeAccessibilityNodeInfo(host: View, info: AccessibilityNodeInfo) {
                 super.onInitializeAccessibilityNodeInfo(host, info)
                 if (current != IslandGeometry.State.IDLE) return
-                if (hasMic) info.addAction(AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_DICTATE, "Dictar"))
-                if (hasPointer) info.addAction(AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_POINTER, "Abrir el puntero"))
+                if (hasMic) info.addAction(AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_DICTATE, context.getString(R.string.ptr_dock_dictate)))
+                if (hasPointer) info.addAction(AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_POINTER, context.getString(R.string.ptr_dock_open_pointer)))
             }
 
             override fun performAccessibilityAction(host: View, action: Int, args: Bundle?): Boolean = when {
@@ -320,24 +320,24 @@ internal class IslandView(
 
     private fun updateDescriptions() {
         holeView.contentDescription = when (current) {
-            IslandGeometry.State.REC -> "Terminar dictado"
-            IslandGeometry.State.THINK -> "Transcribiendo"
+            IslandGeometry.State.REC -> context.getString(R.string.ptr_island_finish_dictation)
+            IslandGeometry.State.THINK -> context.getString(R.string.ptr_dock_transcribing)
             else -> null
         }
-        cancelButton.contentDescription = "Cancelar dictado"
+        cancelButton.contentDescription = context.getString(R.string.ptr_island_cancel_dictation)
         contentDescription = when (current) {
             IslandGeometry.State.IDLE -> idleDescription()
-            IslandGeometry.State.REC -> "Grabando. Tocá para terminar"
-            IslandGeometry.State.THINK -> "Transcribiendo"
-            IslandGeometry.State.DONE -> doneText.ifEmpty { "Listo" }
+            IslandGeometry.State.REC -> context.getString(R.string.ptr_island_recording_desc)
+            IslandGeometry.State.THINK -> context.getString(R.string.ptr_dock_transcribing)
+            IslandGeometry.State.DONE -> doneText.ifEmpty { context.getString(R.string.ptr_island_done) }
         }
     }
 
     private fun idleDescription(): String = when {
-        hasMic && hasPointer -> "Isla de VoiceBubble. Tocá el lado del círculo para dictar o el lado de la flecha para abrir el puntero"
-        hasMic -> "Isla de VoiceBubble. Tocá para dictar"
-        hasPointer -> "Isla de VoiceBubble. Tocá para abrir el puntero"
-        else -> "Isla de VoiceBubble"
+        hasMic && hasPointer -> context.getString(R.string.ptr_island_desc_both)
+        hasMic -> context.getString(R.string.ptr_island_desc_mic)
+        hasPointer -> context.getString(R.string.ptr_island_desc_pointer)
+        else -> context.getString(R.string.ptr_island_desc)
     }
 
     // ------------------------------------------------------------ dibujo

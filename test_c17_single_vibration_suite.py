@@ -17,6 +17,9 @@ Valida que:
    estrictamente igual a 1.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

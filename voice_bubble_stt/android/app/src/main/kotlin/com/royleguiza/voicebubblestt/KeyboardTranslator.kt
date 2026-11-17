@@ -108,29 +108,28 @@ Reglas:
     fun translate(context: Context, text: String, target: String, mode: String, spanish: Boolean): Result {
         if (text.isBlank()) return Result.Ok(text)
         return if (normalizeMode(mode) == MODE_AI) translateWithAi(context, text, target, spanish)
-        else translateOnDevice(text, target, spanish)
+        else translateOnDevice(context, text, target, spanish)
     }
 
     private fun translateWithAi(context: Context, text: String, target: String, spanish: Boolean): Result {
         val client = NoteAiClients.create(context)
             ?: return Result.Failed(
-                if (spanish) "Falta una clave de IA (Groq o Google) para traducir con IA"
-                else "Add an AI key (Groq or Google) to translate with AI"
+                context.getString(R.string.kb_translate_missing_ai_key)
             )
         return try {
             val out = client.traducir(text, normalizeTarget(target))
-            if (out.isBlank()) Result.Failed(if (spanish) "La IA no devolvió la traducción" else "Empty translation")
+            if (out.isBlank()) Result.Failed(context.getString(R.string.kb_translate_ai_empty))
             else Result.Ok(out)
         } catch (e: GeminiNoteClient.GeminiError) {
-            Result.Failed(e.message ?: "Error de IA")
+            Result.Failed(e.message ?: context.getString(R.string.kb_translate_ai_error))
         } catch (_: Exception) {
-            Result.Failed(if (spanish) "No se pudo traducir" else "Could not translate")
+            Result.Failed(context.getString(R.string.kb_translate_failed))
         }
     }
 
-    private fun translateOnDevice(text: String, target: String, spanish: Boolean): Result {
+    private fun translateOnDevice(context: Context, text: String, target: String, spanish: Boolean): Result {
         val targetLang = TranslateLanguage.fromLanguageTag(normalizeTarget(target))
-            ?: return Result.Failed(if (spanish) "Idioma no disponible" else "Language not available")
+            ?: return Result.Failed(context.getString(R.string.kb_translate_language_unavailable))
         val source = try {
             val tag = Tasks.await(
                 LanguageIdentification.getClient().identifyLanguage(text),
@@ -149,17 +148,15 @@ Reglas:
             // La primera vez baja los dos idiomas (una sola vez; después sin internet).
             Tasks.await(translator.downloadModelIfNeeded(), DOWNLOAD_TIMEOUT_S, TimeUnit.SECONDS)
             val out = Tasks.await(translator.translate(text), TRANSLATE_TIMEOUT_S, TimeUnit.SECONDS)
-            if (out.isNullOrBlank()) Result.Failed(if (spanish) "No se pudo traducir" else "Could not translate")
+            if (out.isNullOrBlank()) Result.Failed(context.getString(R.string.kb_translate_failed))
             else Result.Ok(out)
         } catch (_: java.util.concurrent.TimeoutException) {
             Result.Failed(
-                if (spanish) "La descarga del idioma tarda: probá de nuevo con internet"
-                else "Language download is slow: try again online"
+                context.getString(R.string.kb_translate_download_slow)
             )
         } catch (_: Exception) {
             Result.Failed(
-                if (spanish) "No se pudo traducir en el teléfono (la primera vez necesita internet para bajar el idioma)"
-                else "On-device translation failed (the first time needs internet to download the language)"
+                context.getString(R.string.kb_translate_on_device_failed)
             )
         } finally {
             try {

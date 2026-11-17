@@ -213,18 +213,18 @@ object WidgetReader {
         val summary = summary(context, widgetId)
         val busy = busy(context, widgetId)
         val status = when (busy) {
-            AI_TITLE -> "Generando título…"
-            AI_SUMMARY -> "Resumiendo…"
+            AI_TITLE -> context.getString(R.string.widget_generating_title)
+            AI_SUMMARY -> context.getString(R.string.widget_summarizing)
             else -> status(context, widgetId)
         }
-        views.setTextViewText(R.id.widget_detail_title, note.titulo.ifBlank { "Sin título" })
+        views.setTextViewText(R.id.widget_detail_title, note.titulo.ifBlank { context.getString(R.string.widget_untitled) })
         views.setTextViewText(
             R.id.widget_detail_meta,
-            if (summary != null) "Resumen sugerido · reemplaza el texto" else formatTime(note.updatedAt),
+            if (summary != null) context.getString(R.string.widget_suggested_summary) else formatTime(note.updatedAt),
         )
         views.setViewVisibility(R.id.widget_detail_status, if (status.isNullOrBlank()) View.GONE else View.VISIBLE)
         views.setTextViewText(R.id.widget_detail_status, status ?: "")
-        views.setTextViewText(R.id.widget_detail_empty, "Nota vacía")
+        views.setTextViewText(R.id.widget_detail_empty, context.getString(R.string.widget_note_empty))
 
         views.setViewVisibility(R.id.widget_detail_edit, View.VISIBLE)
         views.setOnClickPendingIntent(R.id.widget_detail_edit, editPi(context, widgetId, note.id))
@@ -246,10 +246,10 @@ object WidgetReader {
     }
 
     private fun renderPending(context: Context, views: RemoteViews, widgetId: Int, pending: VbPending) {
-        views.setTextViewText(R.id.widget_detail_title, "Audio sin transcribir")
+        views.setTextViewText(R.id.widget_detail_title, context.getString(R.string.widget_pending_untranscribed))
         views.setTextViewText(R.id.widget_detail_meta, formatEpoch(pending.createdAtMs))
         views.setViewVisibility(R.id.widget_detail_status, View.GONE)
-        views.setTextViewText(R.id.widget_detail_empty, "Todavía no tiene texto. Escuchalo o transcribilo.")
+        views.setTextViewText(R.id.widget_detail_empty, context.getString(R.string.widget_pending_no_text))
         views.setViewVisibility(R.id.widget_detail_edit, View.GONE)
         views.setViewVisibility(R.id.widget_detail_actions, View.GONE)
         views.setViewVisibility(R.id.widget_detail_summary_actions, View.GONE)
@@ -346,7 +346,7 @@ object WidgetReader {
         } catch (_: Exception) {
             false
         }
-        setStatus(context, widgetId, if (ok) "Contenido copiado" else "No se pudo copiar")
+        setStatus(context, widgetId, if (ok) context.getString(R.string.widget_content_copied) else context.getString(R.string.widget_copy_failed))
     }
 
     internal fun runAi(context: Context, widgetId: Int, action: String) {
@@ -354,14 +354,14 @@ object WidgetReader {
         val note = currentNote(context, widgetId) ?: return
         val texto = note.cuerpo.trim()
         if (texto.isEmpty()) {
-            setStatus(context, widgetId, "La nota está vacía")
+            setStatus(context, widgetId, context.getString(R.string.widget_note_is_empty))
             return
         }
         // Proveedor elegido en Ajustes (Groq por defecto, o Google); el otro
         // si al elegido le falta la clave.
         val client = NoteAiClients.create(context, WIDGET_AI_TIMEOUT_MS)
         if (client == null) {
-            setStatus(context, widgetId, "Falta una clave de IA (Groq o Google): agregala en Ajustes de la app")
+            setStatus(context, widgetId, context.getString(R.string.widget_missing_ai_key))
             return
         }
         setBusy(context, widgetId, action)
@@ -375,7 +375,7 @@ object WidgetReader {
                 val saved = fresh != null && title.isNotBlank() &&
                     NoteStore(context).saveNote(fresh.id, title, fresh.cuerpo) == NoteSaveResult.SAVED
                 setBusy(context, widgetId, null)
-                setStatus(context, widgetId, if (saved) "Título generado" else "No se pudo guardar el título")
+                setStatus(context, widgetId, if (saved) context.getString(R.string.widget_title_generated) else context.getString(R.string.widget_title_save_failed))
                 if (saved) WidgetNotesProvider.requestListRefresh(context, AppWidgetManager.getInstance(context))
             } else {
                 val text = client.resumir(texto)
@@ -385,10 +385,10 @@ object WidgetReader {
             }
         } catch (e: GeminiNoteClient.GeminiError) {
             setBusy(context, widgetId, null)
-            setStatus(context, widgetId, "Error de IA: ${e.message ?: "desconocido"}")
+            setStatus(context, widgetId, context.getString(R.string.widget_ai_error_detail, e.message ?: context.getString(R.string.widget_unknown)))
         } catch (_: Exception) {
             setBusy(context, widgetId, null)
-            setStatus(context, widgetId, "Error inesperado de IA")
+            setStatus(context, widgetId, context.getString(R.string.widget_ai_unexpected_error))
         }
     }
 
@@ -398,7 +398,7 @@ object WidgetReader {
         val saved = note != null &&
             NoteStore(context).saveNote(note.id, note.titulo, text) == NoteSaveResult.SAVED
         setSummary(context, widgetId, null)
-        setStatus(context, widgetId, if (saved) "Texto reemplazado por el resumen" else "No se pudo guardar el resumen")
+        setStatus(context, widgetId, if (saved) context.getString(R.string.widget_summary_applied) else context.getString(R.string.widget_summary_save_failed))
         if (saved) WidgetNotesProvider.requestListRefresh(context, AppWidgetManager.getInstance(context))
     }
 

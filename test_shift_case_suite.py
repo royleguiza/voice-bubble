@@ -12,6 +12,9 @@ Verifica al 100% de certeza sobre el código REAL:
 6. D-M5: el ciclo consume el tap (toggleShiftKey delega y no hace caps).
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys
@@ -73,9 +76,13 @@ check("Re-selección mismo largo", "transformed.length == selected.length" in ee
 check("setSelection(start, start +", "setSelection(start, start +" in ee)
 
 # --- 5. Feedback i18n sin logs ---
-check("Aviso Minúsculas/Lowercase", '"Minúsculas"' in ee and '"Lowercase"' in ee)
-check("Aviso Mayúsculas iniciales/Title Case", '"Mayúsculas iniciales"' in ee and '"Title Case"' in ee)
-check("Aviso MAYÚSCULAS/UPPERCASE", '"MAYÚSCULAS"' in ee and '"UPPERCASE"' in ee)
+# Etapa 4 (C2): el español vive en values-es (el lector lo expande en el .kt) y
+# el inglés, idioma por defecto, en values/strings.xml; el idioma lo elige Android.
+with open(os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/res/values/strings.xml"), "r", encoding="utf-8") as _f:
+    en_xml = _f.read()
+check("Aviso Minúsculas/Lowercase", '"Minúsculas"' in ee and ">Lowercase<" in en_xml)
+check("Aviso Mayúsculas iniciales/Title Case", '"Mayúsculas iniciales"' in ee and ">Title Case<" in en_xml)
+check("Aviso MAYÚSCULAS/UPPERCASE", '"MAYÚSCULAS"' in ee and ">UPPERCASE<" in en_xml)
 check("Sin Log en el ciclo", "Log." not in cycle)
 
 # --- 6. D-M5: consume el tap ---

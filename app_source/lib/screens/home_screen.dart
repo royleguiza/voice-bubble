@@ -1305,15 +1305,17 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildNotesTab(BuildContext context, String title, double top) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final secondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
+    final words = noteDateWordsOf(context.l10n);
     // Lista plana de encabezados de sección, espacios y tarjetas, en orden.
     final rows = _notesAvailable
         ? _noteRows.resolve(
             _notesService.notes,
             _query,
+            locale: context.l10n.localeName,
             build: () => groupRows(
               _notesService.search(_query),
-              groupOf: (n) => noteGroupLabel(n.updatedAt),
-              timeOf: (n) => noteTimeLabel(n.updatedAt),
+              groupOf: (n) => noteGroupLabel(n.updatedAt, words: words),
+              timeOf: (n) => noteTimeLabel(n.updatedAt, words: words),
             ),
           )
         : const <GroupedRow<VoiceNote>>[];
@@ -1439,12 +1441,14 @@ class _HomeScreenState extends State<HomeScreen>
     // Agrupado por día solo en la presentación: el orden es el del
     // repositorio (más nuevo primero) y cada corrida de un mismo día abre
     // un encabezado. La fila lleva solo la hora.
+    final words = noteDateWordsOf(context.l10n);
     final rows = _historyRows.resolve(
       _transcriptionService.history,
       _query,
+      locale: context.l10n.localeName,
       build: () => groupRows(
         _filterHistory(_transcriptionService.history),
-        groupOf: (t) => historyDayLabel(t.timestamp),
+        groupOf: (t) => historyDayLabel(t.timestamp, words: words),
         timeOf: (t) => historyTimeLabel(t.timestamp),
       ),
     );

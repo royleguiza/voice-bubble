@@ -24,6 +24,9 @@ Verifica al 100% de certeza sobre el código REAL:
    de `CLIPBOARD` en `lastLetters` hace fallar la suite.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

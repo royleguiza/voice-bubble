@@ -28,6 +28,9 @@ Verifica de forma estricta:
 5. Batería de 5 mutaciones negativas sobre disco certificadas.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

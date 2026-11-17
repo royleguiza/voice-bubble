@@ -24,6 +24,9 @@ Verifica al 100% de certeza sobre el código REAL:
    las compuertas de aborto rompe la suite.
 """
 
+from test_helpers import install_l10n_reader, raw_read
+install_l10n_reader()
+
 import os
 import re
 import sys
@@ -198,7 +201,9 @@ check(
 check(
     "StatusLayer: constantes de conexión perdida i18n",
     'NOTICE_DEAD_CONNECTION_ES = "Conexión perdida"' in stat
-    and 'NOTICE_DEAD_CONNECTION_EN = "Connection lost"' in stat,
+    # Etapa 4: el inglés vive en values/strings.xml (idioma por defecto).
+    and '<string name="kb_notice_dead_connection">Connection lost</string>' in raw_read(
+        "voice_bubble_stt/android/app/src/main/res/values/strings.xml"),
 )
 check(
     "StatusLayer: registro de activeInstance para avisos en línea",
@@ -209,7 +214,7 @@ check(
 warn_fn = ee[ee.find("internal fun warnDeadConnection") : ee.find("/**\n * Motor de edición")]
 check(
     "warnDeadConnection no recibe texto ni filtra contenido del usuario",
-    "text:" not in warn_fn and "text," not in warn_fn and "msg = if (isSpanish)" in warn_fn,
+    "text:" not in warn_fn and "text," not in warn_fn and "msg = service.getString(StatusLayer.NOTICE_DEAD_CONNECTION_ES)" in warn_fn,
 )
 
 # 8. Mutaciones negativas: verificación de que la suite detecta regresiones

@@ -123,8 +123,8 @@ internal class DockController(
                 handler.postDelayed(arcOutside, ARC_OUTSIDE_GRACE_MS)
             }
         }
-        edgeView.contentDescription = "Barra flotante de VoiceBubble"
-        bubbleView.contentDescription = "Burbuja de VoiceBubble"
+        edgeView.contentDescription = context.getString(R.string.dock_bar_desc)
+        bubbleView.contentDescription = context.getString(R.string.dock_bubble_desc)
         applyForm()
     }
 
@@ -437,7 +437,7 @@ internal class DockController(
         tools.forEachIndexed { i, tool ->
             val (tx, ty) = centers[i]
             val orb = ToolOrbView(context, tool)
-            orb.contentDescription = if (tool == DockGeometry.Tool.MIC) "Dictar" else "Abrir trackpad"
+            orb.contentDescription = if (tool == DockGeometry.Tool.MIC) context.getString(R.string.dock_dictate) else context.getString(R.string.dock_open_trackpad)
             val win = GlassWindow(context, orb)
             orb.setOnTouchListener { v, e ->
                 when (e.actionMasked) {

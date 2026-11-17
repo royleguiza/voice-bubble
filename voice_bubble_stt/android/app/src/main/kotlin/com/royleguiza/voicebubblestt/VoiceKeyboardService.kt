@@ -28,6 +28,11 @@ import android.widget.TextView
  */
 class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost, LayoutLayer.UiHost, SpacebarLayer.UiHost, EditEngine.UiHost {
 
+    // Etapa 4: Android 9–12 toma el idioma elegido en la app (13+ lo pone el sistema).
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
+
     private var layer = Layer.LETTERS
     private var lastLettersLayer = Layer.LETTERS
     // --- Modo mini (MEJ-12): micro-teclado de 2 filas (toolbar + fila
@@ -395,7 +400,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                     if (::toolbar.isInitialized) toolbar.showTranslateIdle()
                     when (result) {
                         is KeyboardTranslator.Result.Failed -> translateNotice(result.message)
-                        null -> translateNotice(if (spanishMode) "No se pudo traducir" else "Could not translate")
+                        null -> translateNotice(getString(R.string.kb_translate_failed))
                         else -> {}
                     }
                 }
@@ -438,7 +443,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
         if (!stillSelected) {
             translateNotice(
-                if (spanishMode) "La selección cambió: traducción descartada" else "Selection changed: translation discarded",
+                getString(R.string.kb_translate_selection_changed),
             )
             return false
         }
@@ -503,7 +508,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (::miniStore.isInitialized) miniStore.save(enabled)
         val es = spanishMode
         if (::status.isInitialized) {
-            status.show(if (enabled) (if (es) "Mini-teclado" else "Mini keyboard") else (if (es) "Teclado completo" else "Full keyboard"), false)
+            status.show(if (enabled) (getString(R.string.kb_mini_keyboard_on)) else (getString(R.string.kb_full_keyboard_on)), false)
         }
         if (rebuildNow) rebuild()
     }
@@ -798,7 +803,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun showNotice(message: String, openSettingsOnClick: Boolean, onClick: (() -> Unit)?) {
         // Todo aviso del dictado es un fallo o un bloqueo: variante de error.
         if (::status.isInitialized) {
-            val label = if (onClick != null) (if (spanishMode) "Reintentar" else "Retry") else null
+            val label = if (onClick != null) (getString(R.string.kb_retry)) else null
             status.show(message, openSettingsOnClick, onClick, isError = true, actionLabel = label)
         }
     }

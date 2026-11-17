@@ -15,6 +15,9 @@ Verifica al 100% de certeza:
 9. Resiliencia de escritura atómica ante disco lleno (try/catch + .tmp).
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys

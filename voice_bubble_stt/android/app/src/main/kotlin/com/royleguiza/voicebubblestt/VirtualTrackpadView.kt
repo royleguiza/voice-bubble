@@ -136,8 +136,8 @@ class VirtualTrackpadView(
         }
 
         val btnLeft = createIconButton(
-            title = "CLIC",
-            subtitle = "IZQ",
+            title = context.getString(R.string.kb_a11y_click),
+            subtitle = context.getString(R.string.kb_a11y_left),
             iconRes = R.drawable.ic_mouse_left,
             isPrimary = true,
             weight = 1.0f,
@@ -149,8 +149,8 @@ class VirtualTrackpadView(
         )
 
         val btnRight = createIconButton(
-            title = "CLIC",
-            subtitle = "DER",
+            title = context.getString(R.string.kb_a11y_click),
+            subtitle = context.getString(R.string.kb_a11y_right),
             iconRes = R.drawable.ic_mouse_right,
             isPrimary = false,
             weight = 1.0f,
@@ -228,8 +228,8 @@ class VirtualTrackpadView(
             "left" -> {
                 val scrollStrip = createScrollStripView(weight = 1.4f)
                 val btnLeft = createIconButton(
-                    title = "CLIC",
-                    subtitle = "IZQ",
+                    title = context.getString(R.string.kb_a11y_click),
+                    subtitle = context.getString(R.string.kb_a11y_left),
                     iconRes = R.drawable.ic_mouse_left,
                     isPrimary = true,
                     weight = 0.8f,
@@ -243,8 +243,8 @@ class VirtualTrackpadView(
                 leftWing.addView(btnLeft)
 
                 val btnRight = createIconButton(
-                    title = "CLIC",
-                    subtitle = "DER",
+                    title = context.getString(R.string.kb_a11y_click),
+                    subtitle = context.getString(R.string.kb_a11y_right),
                     iconRes = R.drawable.ic_mouse_right,
                     isPrimary = false,
                     weight = 1.0f,
@@ -258,8 +258,8 @@ class VirtualTrackpadView(
             }
             "disabled", "none" -> {
                 val btnLeft = createIconButton(
-                    title = "CLIC",
-                    subtitle = "IZQ",
+                    title = context.getString(R.string.kb_a11y_click),
+                    subtitle = context.getString(R.string.kb_a11y_left),
                     iconRes = R.drawable.ic_mouse_left,
                     isPrimary = true,
                     weight = 1.0f,
@@ -272,8 +272,8 @@ class VirtualTrackpadView(
                 leftWing.addView(btnLeft)
 
                 val btnRight = createIconButton(
-                    title = "CLIC",
-                    subtitle = "DER",
+                    title = context.getString(R.string.kb_a11y_click),
+                    subtitle = context.getString(R.string.kb_a11y_right),
                     iconRes = R.drawable.ic_mouse_right,
                     isPrimary = false,
                     weight = 1.0f,
@@ -287,8 +287,8 @@ class VirtualTrackpadView(
             }
             else -> { // "right" (default)
                 val btnLeft = createIconButton(
-                    title = "CLIC",
-                    subtitle = "IZQ",
+                    title = context.getString(R.string.kb_a11y_click),
+                    subtitle = context.getString(R.string.kb_a11y_left),
                     iconRes = R.drawable.ic_mouse_left,
                     isPrimary = true,
                     weight = 1.0f,
@@ -302,8 +302,8 @@ class VirtualTrackpadView(
 
                 val scrollStrip = createScrollStripView(weight = 1.4f)
                 val btnRight = createIconButton(
-                    title = "CLIC",
-                    subtitle = "DER",
+                    title = context.getString(R.string.kb_a11y_click),
+                    subtitle = context.getString(R.string.kb_a11y_right),
                     iconRes = R.drawable.ic_mouse_right,
                     isPrimary = false,
                     weight = 0.8f,

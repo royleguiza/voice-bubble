@@ -34,8 +34,8 @@ class StatusLayer(
 ) {
 
     companion object {
-        const val NOTICE_DEAD_CONNECTION_ES = "Conexión perdida"
-        const val NOTICE_DEAD_CONNECTION_EN = "Connection lost"
+        /** Id de recurso del aviso en español (el inglés sigue siendo literal: lo elige el idioma del teclado). */
+        val NOTICE_DEAD_CONNECTION_ES = R.string.kb_notice_dead_connection
 
         /** Duración visible: informativo, error y con acción (ms). */
         const val DURATION_INFO_MS = 1400L

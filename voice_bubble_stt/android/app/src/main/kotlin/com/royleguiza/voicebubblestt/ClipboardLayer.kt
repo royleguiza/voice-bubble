@@ -173,8 +173,7 @@ class ClipboardLayer(
                     {
                         handler.post {
                             service.showClipboardNotice(
-                                if (host.isSpanish()) "No se pudo guardar la imagen"
-                                else "Could not save image"
+                                service.getString(R.string.kb_clip_image_save_failed)
                             )
                         }
                     }
@@ -281,7 +280,7 @@ class ClipboardLayer(
     private fun commitImageClip(clip: ClipboardItem): Boolean {
         val file = store.getMediaFile(clip)
         if (file == null) {
-            service.showClipboardNotice(if (host.isSpanish()) "Imagen no disponible" else "Image unavailable")
+            service.showClipboardNotice(service.getString(R.string.kb_clip_image_unavailable))
             return false
         }
 
@@ -330,7 +329,7 @@ class ClipboardLayer(
                     null
                 )
                 if (!success) {
-                    service.showClipboardNotice(if (host.isSpanish()) "La app no aceptó la imagen" else "App rejected image")
+                    service.showClipboardNotice(service.getString(R.string.kb_clip_image_rejected))
                     false
                 } else {
                     true
@@ -345,11 +344,11 @@ class ClipboardLayer(
                 warnDeadConnection(service, host.isSpanish())
                 false
             } catch (_: Exception) {
-                service.showClipboardNotice(if (host.isSpanish()) "Error al insertar imagen" else "Error inserting image")
+                service.showClipboardNotice(service.getString(R.string.kb_clip_image_insert_error))
                 false
             }
         } else {
-            service.showClipboardNotice(if (host.isSpanish()) "Este campo no acepta imágenes" else "Field does not support images")
+            service.showClipboardNotice(service.getString(R.string.kb_clip_field_no_images))
             return false
         }
     }

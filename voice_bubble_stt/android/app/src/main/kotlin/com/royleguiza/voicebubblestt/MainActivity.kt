@@ -22,6 +22,7 @@ class MainActivity : FlutterActivity() {
     private val KEYBOARD_CHANNEL = "com.royleguiza.voicebubblestt/keyboard"
     private val TRACKPAD_CHANNEL = "com.royleguiza.voicebubblestt/floating_trackpad"
     private val WIDGET_CHANNEL = "com.royleguiza.voicebubblestt/widgets"
+    private val LOCALE_CHANNEL = "com.royleguiza.voicebubblestt/locale"
     private var methodChannel: MethodChannel? = null
     private var pendingWidgetAction: String? = null
     private var pendingWidgetNoteId: String? = null
@@ -63,7 +64,7 @@ class MainActivity : FlutterActivity() {
                                 // SecurityException en Android 14+: no arrancar nunca.
                                 result.error(
                                     "MIC_PERMISSION_DENIED",
-                                    "VoiceBubble necesita el permiso de micrófono para iniciar la burbuja.",
+                                    getString(R.string.bubble_mic_permission_needed),
                                     null
                                 )
                             } else {
@@ -262,6 +263,28 @@ class MainActivity : FlutterActivity() {
         // Capturar accion del widget al arrancar
         pendingWidgetAction = intent.getStringExtra("widget_action")
         pendingWidgetNoteId = intent.getStringExtra("note_id")
+
+        // Idioma de la app (etapa 4): ver AppLocale.kt.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LOCALE_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setAppLocale" -> {
+                    val tag = call.argument<String>("tag") ?: AppLocale.SYSTEM
+                    try {
+                        AppLocale.apply(this@MainActivity, tag)
+                        // El widget arma sus textos en este proceso: redibujarlo.
+                        val awm = android.appwidget.AppWidgetManager.getInstance(this@MainActivity)
+                        val ids = awm.getAppWidgetIds(android.content.ComponentName(this@MainActivity, WidgetNotesProvider::class.java))
+                        WidgetNotesProvider.requestListRefresh(this@MainActivity, awm)
+                        for (id in ids) WidgetNotesProvider.updateOne(this@MainActivity, awm, id)
+                        result.success(null)
+                    } catch (e: Exception) {
+                        result.error("LOCALE", e.message, null)
+                    }
+                }
+                "getAppLocale" -> result.success(AppLocale.current(this@MainActivity))
+                else -> result.notImplemented()
+            }
+        }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {

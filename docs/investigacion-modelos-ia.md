@@ -410,6 +410,14 @@ la API de Google salga de alfa.
   textos del ARB expandidos (`test_helpers.install_l10n_reader`). Siguen
   tanda B (Kotlin a `strings.xml`) y C (inglés, portugués, idioma por app).
   Detalle: `docs/spec-idiomas-etapa4.md`.
+- **Etapa 4, tandas B y C (2026-11-17, hechas; falta probar en el
+  teléfono):** Kotlin de la app y del complemento con textos en
+  `strings.xml` (inglés por defecto en `values/`, `values-es`, `values-pt`);
+  app Flutter en español, inglés y portugués; Ajustes › Idioma con idioma
+  por app de Android 13+ (`AppLocale.kt`, `localeConfig`, clave
+  `kb_app_locale`, contrato 66). Los avisos del teclado siguen el idioma de
+  la app, no la tecla ES/EN (que solo decide el idioma del dictado).
+  Pendientes en `docs/spec-idiomas-etapa4.md` § «Pendientes de la etapa 4».
 
 ## 12. Plan actualizado por etapas
 

@@ -13,6 +13,9 @@ Verifica:
 4. Sin logs con contenido y mutaciones negativas.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import sys
 import unittest

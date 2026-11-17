@@ -162,7 +162,7 @@ class BubbleHistoryController(
             section = SECTION_HISTORY
             buildOverlay(modalW, modalH)
             try {
-                handleLabel?.text = "Historial"
+                handleLabel?.text = context.getString(R.string.bubble_history)
                 handleLabel?.alpha = 1f
             } catch (_: Throwable) {}
             populateCurrent()
@@ -414,7 +414,7 @@ class BubbleHistoryController(
             background = iconButtonBackground()
             val pad = (13 * density).toInt()
             setPadding(pad, pad, pad, pad)
-            contentDescription = "Copiar seleccionados"
+            contentDescription = context.getString(R.string.bubble_copy_selected)
             visibility = View.INVISIBLE
             setOnClickListener { copySelected() }
         }
@@ -430,7 +430,7 @@ class BubbleHistoryController(
             minimumHeight = (HANDLE_MIN_H_DP * density).toInt()
             isClickable = true
             isFocusable = true
-            contentDescription = "Contraer"
+            contentDescription = context.getString(R.string.bubble_collapse)
         }
         // Toque = contraer; deslizamiento hacia arriba = contraer en vivo;
         // deslizamiento lateral = alternar Historial/Snippets.
@@ -492,7 +492,7 @@ class BubbleHistoryController(
         }
         handleWrap.addView(handleBar)
         // Etiqueta de sección bajo la rayita: siempre dice dónde se está.
-        val sectionLabel = groupLabel("Historial").apply {
+        val sectionLabel = groupLabel(context.getString(R.string.bubble_history)).apply {
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -518,7 +518,7 @@ class BubbleHistoryController(
             background = holeBackground()
             val pad = (12 * density).toInt()
             setPadding(pad, pad, pad, pad)
-            contentDescription = "Dictar"
+            contentDescription = context.getString(R.string.bubble_dictate)
             setOnClickListener {
                 try {
                     onMicTap()
@@ -567,7 +567,7 @@ class BubbleHistoryController(
     }
 
     private fun sectionTitle(): String =
-        if (section == SECTION_HISTORY) "Historial de transcripciones" else "Snippets"
+        if (section == SECTION_HISTORY) context.getString(R.string.bubble_history_title) else context.getString(R.string.bubble_snippets)
 
     private fun populateCards() {
         val list = cardsList ?: return
@@ -620,7 +620,7 @@ class BubbleHistoryController(
             titleLabel?.text = sectionTitle()
         } catch (_: Throwable) {}
         val lbl = handleLabel ?: return
-        val text = if (section == SECTION_HISTORY) "Historial" else "Snippets"
+        val text = if (section == SECTION_HISTORY) context.getString(R.string.bubble_history) else context.getString(R.string.bubble_snippets)
         if (reducedMotion()) {
             try {
                 lbl.text = text

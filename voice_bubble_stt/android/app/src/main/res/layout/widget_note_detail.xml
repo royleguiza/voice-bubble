@@ -26,7 +26,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="@drawable/widget_icon_btn_bg"
-            android:contentDescription="Volver a la lista">
+            android:contentDescription="@string/widget_detail_back">
 
             <ImageView
                 android:layout_width="18dp"
@@ -47,7 +47,7 @@
                 android:id="@+id/widget_detail_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Sin título"
+                android:text="@string/widget_untitled"
                 android:textSize="14sp"
                 android:fontFamily="@font/sora"
                 android:textFontWeight="600"
@@ -73,7 +73,7 @@
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:background="@drawable/widget_icon_btn_bg"
-            android:contentDescription="Editar nota">
+            android:contentDescription="@string/widget_edit_note">
 
             <ImageView
                 android:layout_width="18dp"
@@ -123,7 +123,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:text="Nota vacía"
+        android:text="@string/widget_note_empty"
         android:textSize="12sp"
         android:fontFamily="@font/inter"
         android:textColor="@color/kb_label_secondary"
@@ -149,7 +149,7 @@
                 android:layout_height="48dp"
                 android:layout_gravity="center"
                 android:background="@drawable/widget_icon_btn_bg"
-                android:contentDescription="Copiar contenido">
+                android:contentDescription="@string/widget_copy_content">
 
                 <ImageView
                     android:layout_width="20dp"
@@ -170,7 +170,7 @@
                 android:layout_height="48dp"
                 android:layout_gravity="center"
                 android:background="@drawable/widget_icon_btn_bg"
-                android:contentDescription="Generar título con IA">
+                android:contentDescription="@string/widget_ai_title">
 
                 <ImageView
                     android:id="@+id/widget_detail_ai_title_icon"
@@ -202,7 +202,7 @@
                 android:layout_height="48dp"
                 android:layout_gravity="center"
                 android:background="@drawable/widget_icon_btn_bg"
-                android:contentDescription="Resumir con IA">
+                android:contentDescription="@string/widget_ai_summary">
 
                 <ImageView
                     android:id="@+id/widget_detail_ai_summary_icon"
@@ -241,7 +241,7 @@
             android:layout_weight="1"
             android:background="@drawable/widget_secondary_bg"
             android:gravity="center"
-            android:text="Descartar"
+            android:text="@string/widget_discard"
             android:textSize="13sp"
             android:fontFamily="@font/inter"
             android:textFontWeight="500"
@@ -255,7 +255,7 @@
             android:layout_marginStart="8dp"
             android:background="@drawable/widget_primary_bg"
             android:gravity="center"
-            android:text="Reemplazar"
+            android:text="@string/widget_replace"
             android:textSize="13sp"
             android:fontFamily="@font/inter"
             android:textFontWeight="600"
@@ -270,7 +270,7 @@
         android:layout_marginTop="8dp"
         android:background="@drawable/widget_primary_bg"
         android:gravity="center"
-        android:text="Escuchar y transcribir"
+        android:text="@string/widget_listen_transcribe"
         android:textSize="13sp"
         android:fontFamily="@font/inter"
         android:textFontWeight="600"

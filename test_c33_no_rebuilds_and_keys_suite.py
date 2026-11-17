@@ -26,6 +26,7 @@ Verifica:
 """
 
 import os
+from test_helpers import raw_read
 import re
 import sys
 
@@ -224,7 +225,10 @@ def test_negative_mutations():
     ]
 
     for desc, filepath, mutator, test_func in mutations:
-        orig = read_file(filepath)
+        # Crudo: `orig` se vuelve a escribir al final; si otra suite dejó
+        # instalado el lector expandido, restaurar pegaría los textos en el
+        # código (ver test_helpers.raw_read).
+        orig = raw_read(filepath)
         mutated = mutator(orig)
         assert mutated != orig, f"La mutación '{desc}' no modificó el archivo"
         try:

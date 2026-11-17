@@ -1480,4 +1480,42 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get trackpadFast => 'Rápida';
+
+  @override
+  String get dateToday => 'Hoy';
+
+  @override
+  String get dateYesterday => 'Ayer';
+
+  @override
+  String get dateThisWeek => 'Esta semana';
+
+  @override
+  String get dateMonths =>
+      'enero,febrero,marzo,abril,mayo,junio,julio,agosto,septiembre,octubre,noviembre,diciembre';
+
+  @override
+  String get dateMonthsShort =>
+      'ene,feb,mar,abr,may,jun,jul,ago,sep,oct,nov,dic';
+
+  @override
+  String dateShort(String day, String month) {
+    return '$day $month';
+  }
+
+  @override
+  String dateShortYear(String day, String month, String year) {
+    return '$day $month $year';
+  }
+
+  @override
+  String dateMonthYear(String month, String year) {
+    return '$month $year';
+  }
+
+  @override
+  String get settingsLanguage => 'Idioma';
+
+  @override
+  String get settingsLanguageSystem => 'Del teléfono';
 }

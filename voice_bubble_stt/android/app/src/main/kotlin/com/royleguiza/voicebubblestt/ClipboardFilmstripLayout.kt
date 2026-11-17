@@ -80,7 +80,7 @@ class ClipboardFilmstripLayout(
 
         if (clips.isEmpty()) {
             val emptyTv = TextView(context).apply {
-                text = "Portapapeles vacío"
+                text = context.getString(R.string.kb_clipboard_empty)
                 setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                 setPadding(dpToPx(16), 0, dpToPx(16), 0)
@@ -230,7 +230,7 @@ class ClipboardFilmstripLayout(
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setColorFilter(ContextCompat.getColor(context, R.color.hz_fg2))
             setBackgroundResource(R.drawable.kb_tool)
-            contentDescription = "Limpiar libres"
+            contentDescription = context.getString(R.string.kb_a11y_clear_unpinned)
             val lp = LayoutParams(dpToPx(CLEAR_TARGET_DP), dpToPx(74)).apply {
                 setMargins(dpToPx(3), dpToPx(3), dpToPx(3), dpToPx(3))
             }

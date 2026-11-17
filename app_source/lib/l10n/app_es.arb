@@ -713,5 +713,54 @@
       }
     }
   },
-  "trackpadFast": "Rápida"
+  "trackpadFast": "Rápida",
+  "dateToday": "Hoy",
+  "dateYesterday": "Ayer",
+  "dateThisWeek": "Esta semana",
+  "dateMonths": "enero,febrero,marzo,abril,mayo,junio,julio,agosto,septiembre,octubre,noviembre,diciembre",
+  "@dateMonths": {
+    "description": "12 meses en minúscula separados por coma"
+  },
+  "dateMonthsShort": "ene,feb,mar,abr,may,jun,jul,ago,sep,oct,nov,dic",
+  "@dateMonthsShort": {
+    "description": "12 abreviaturas de mes separadas por coma"
+  },
+  "dateShort": "{day} {month}",
+  "@dateShort": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      }
+    }
+  },
+  "dateShortYear": "{day} {month} {year}",
+  "@dateShortYear": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "month": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "dateMonthYear": "{month} {year}",
+  "@dateMonthYear": {
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsLanguage": "Idioma",
+  "settingsLanguageSystem": "Del teléfono"
 }

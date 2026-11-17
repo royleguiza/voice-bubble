@@ -11,6 +11,9 @@ Verifica sobre el código REAL:
 4. Docs vivos (README, AGENTS, PRODUCT) nombran turbo.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import sys
 

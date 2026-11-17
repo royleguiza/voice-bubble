@@ -3,6 +3,9 @@
 SUITE Widget grande de notas (rediseño: + abajo-izq, píldora extensible).
 Valida estáticamente layout + provider + servicio sin SDK Android.
 """
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import re
 import sys
 import xml.etree.ElementTree as ET

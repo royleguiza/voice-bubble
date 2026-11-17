@@ -171,9 +171,9 @@ class WidgetDictationService(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Widget dictado",
+                getString(R.string.notif_widget_channel_name),
                 NotificationManager.IMPORTANCE_LOW
-            ).apply { description = "Grabacion desde widget" }
+            ).apply { description = getString(R.string.notif_widget_channel_desc) }
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
                 .createNotificationChannel(channel)
         }
@@ -294,9 +294,9 @@ class WidgetDictationService(
         // Foreground requerido para mic en background (Android 14+).
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIF_ID, notif("Grabando..."), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+                startForeground(NOTIF_ID, notif(getString(R.string.notif_widget_recording)), ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
             } else {
-                startForeground(NOTIF_ID, notif("Grabando..."))
+                startForeground(NOTIF_ID, notif(getString(R.string.notif_widget_recording)))
             }
         } catch (_: Exception) {
             releaseMicrophone()

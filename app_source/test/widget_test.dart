@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:voice_bubble_stt/l10n/app_localizations.dart';
 import 'package:voice_bubble_stt/main.dart';
+import 'package:voice_bubble_stt/ui/app_locale.dart';
 
 import 'helpers/mock_channels.dart';
 
@@ -13,9 +15,45 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
     registerAppChannelMocks();
+    // El entorno de test es en-US: las aserciones de abajo son en español.
+    appLocale.value = const Locale('es');
   });
 
-  tearDown(unregisterAppChannelMocks);
+  tearDown(() {
+    appLocale.value = null;
+    unregisterAppChannelMocks();
+  });
+
+  group('Idioma de la app (etapa 4)', () {
+    String title(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(const ValueKey('homeTitleText')))
+        .data!;
+
+    testWidgets('sigue al teléfono; sin traducción cae en inglés',
+        (tester) async {
+      appLocale.value = null;
+      tester.platformDispatcher.localesTestValue = const [Locale('fr')];
+      addTearDown(tester.platformDispatcher.clearLocalesTestValue);
+      await tester.pumpWidget(const VoiceBubbleApp());
+      await tester.pumpAndSettle();
+      expect(title(tester), 'Notes');
+    });
+
+    testWidgets('el elegido en Ajustes manda y cambia en vivo',
+        (tester) async {
+      await tester.pumpWidget(const VoiceBubbleApp());
+      await tester.pumpAndSettle();
+      expect(title(tester), 'Notas');
+      appLocale.value = const Locale('en');
+      await tester.pumpAndSettle();
+      expect(title(tester), 'Notes');
+      appLocale.value = const Locale('pt');
+      await tester.pumpAndSettle();
+      final ctx = tester.element(find.byKey(const ValueKey('homeTitleText')));
+      expect(AppLocalizations.of(ctx).localeName, 'pt');
+      expect(AppLocalizations.of(ctx).homeTabHistory, 'Histórico');
+    });
+  });
 
   group('VoiceBubbleApp Widget Tests', () {
     // Smoke único de lanzamiento + grabación. La navegación Home→Settings

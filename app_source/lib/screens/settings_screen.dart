@@ -15,6 +15,7 @@ import '../services/note_ai_service.dart';
 import '../services/widget_service.dart';
 import '../ui/debouncer.dart';
 import '../ui/design_tokens.dart';
+import '../ui/app_locale.dart';
 import '../ui/theme_mode.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/floating_trackpad_service.dart';
@@ -143,6 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _pointerOpenMode = StorageService.defaultPointerOpenMode;
   String _pointerStatus = FloatingTrackpadService.pointerMissing;
   String _themeMode = StorageService.defaultThemeMode;
+  String _appLocale = StorageService.defaultAppLocale;
   String _widgetMicPosition = StorageService.defaultWidgetMicPosition;
 
   @override
@@ -229,6 +231,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final widgetMicPos = await s.getWidgetMicPosition();
     final sttModel = await s.loadSttModel();
     final aiNotesProvider = await s.loadAiNotesProvider();
+    final appLocaleCode = await s.loadAppLocale();
     final translateTarget = await s.loadTranslateTarget();
     final translateMode = await s.loadTranslateMode();
     final translateDictation = await s.loadTranslateDictation();
@@ -283,6 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _longPressSymbolsEnabled = longPressSymbols;
       _longPressDelay = longPressDelay;
       _themeMode = themeMode;
+      _appLocale = appLocaleCode;
       _widgetMicPosition = widgetMicPos;
     });
   }
@@ -702,6 +706,15 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Future<void> _showInputMethodPicker() async {
     await _keyboardService.showInputMethodPicker();
+  }
+
+  /// Idioma de la app: Flutter cambia al instante; Android guarda el
+  /// «idioma por app» (13+) para el teclado, el widget y la burbuja.
+  Future<void> _saveAppLocale(String code) async {
+    await _storageService.saveAppLocale(code);
+    appLocale.value = localeFromStorage(code);
+    if (mounted) setState(() => _appLocale = code);
+    await AppLocaleChannel.apply(code);
   }
 
   Future<void> _saveThemeMode(String mode) async {
@@ -1460,6 +1473,20 @@ class _SettingsScreenState extends State<SettingsScreen>
                 SettingsOption('oscuro', context.l10n.settingsThemeDark),
               ],
               onSelected: _saveThemeMode,
+            ),
+            SettingsMenuRow<String>(
+              id: 'language-selector',
+              icon: Icons.translate_rounded,
+              title: context.l10n.settingsLanguage,
+              value: _appLocale,
+              options: [
+                SettingsOption('sistema', context.l10n.settingsLanguageSystem),
+                // Cada idioma con su propio nombre, como en Android.
+                const SettingsOption('es', 'Español'),
+                const SettingsOption('en', 'English'),
+                const SettingsOption('pt', 'Português'),
+              ],
+              onSelected: _saveAppLocale,
             ),
           ],
         ),

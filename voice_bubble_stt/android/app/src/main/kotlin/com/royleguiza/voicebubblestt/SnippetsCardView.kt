@@ -59,7 +59,7 @@ object SnippetsCardView {
 
     fun emptyView(context: Context, density: Float, dark: Boolean): TextView {
         return TextView(context).apply {
-            text = "Sin snippets todavía. Crealos en la app."
+            text = context.getString(R.string.kb_snippets_empty_app)
             setTextColor(ContextCompat.getColor(context, R.color.hz_fg2))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             gravity = Gravity.CENTER
@@ -139,7 +139,7 @@ object SnippetsCardView {
             setPadding(pad, pad, pad, pad)
             val sz = (36 * density).toInt()
             layoutParams = LinearLayout.LayoutParams(sz, sz)
-            contentDescription = "Editar snippet"
+            contentDescription = context.getString(R.string.kb_snippet_edit)
             setOnClickListener { onEdit() }
         }
         val spacer = View(context).apply {
@@ -159,7 +159,7 @@ object SnippetsCardView {
             setPadding(pad, pad, pad, pad)
             val sz = (36 * density).toInt()
             layoutParams = LinearLayout.LayoutParams(sz, sz)
-            contentDescription = "Copiar snippet"
+            contentDescription = context.getString(R.string.kb_snippet_copy)
             setOnClickListener { onCopy(it as ImageView) }
         }
         ops.addView(edit)

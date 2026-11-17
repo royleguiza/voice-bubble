@@ -11,6 +11,9 @@ Verifica al 100% de certeza sobre el código REAL:
 6. Sin Log con contenido en lo tocado.
 """
 
+from test_helpers import install_l10n_reader
+install_l10n_reader()
+
 import os
 import re
 import sys
