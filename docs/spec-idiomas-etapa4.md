@@ -365,10 +365,16 @@ Quedan en `DictationController.kt` unos 14 pares `if (host.isSpanish()) getStrin
 ### Pendientes de la etapa 4
 - «Idioma en que hablo» (hoy la app manda `es` fijo a Groq y el teclado
   usa la tecla ES/EN).
-- Mensajes que nacen en servicios: Dart (`TranscriptionException`,
-  `GeminiException`, IA de notas) y Kotlin (`GeminiNoteClient`,
-  `NoteAiClients`, `PointerProtocol.resultMessage`, vista previa de
-  imágenes de `ClipboardStore`).
+- ~~Mensajes que nacen en servicios~~ **Hecho (2026-11-17):** Dart:
+  `TranscriptionException`/`GeminiException` llevan un `ServiceError`
+  (`services/service_error.dart`) y las pantallas los muestran con
+  `serviceErrorText` (`l10n/service_error_text.dart`, claves `err*`); el
+  `message` en español queda para registros y pruebas. Kotlin:
+  `GeminiError` lleva `Reason` y la UI usa `localized(context)` (claves
+  `ai_err_*`); los avisos del puntero salen de `pointer_click_*` /
+  `bubble_pointer_no_answer` en `PointerLink` (el protocolo espejo no
+  cambia). La vista previa de imágenes de `ClipboardStore` no se muestra
+  (las imágenes van como miniatura), quedó igual.
 - El complemento es otra app: sigue su propio idioma por app / el del
   teléfono, no el elegido en VoiceBubble. En 9–12 el widget sigue el del
   teléfono.

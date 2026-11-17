@@ -2848,6 +2848,180 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Del teléfono'**
   String get settingsLanguageSystem;
+
+  /// No description provided for @errSttKeyMissing.
+  ///
+  /// In es, this message translates to:
+  /// **'Falta la API key de Groq. Agregala en Ajustes.'**
+  String get errSttKeyMissing;
+
+  /// No description provided for @errAudioNotFound.
+  ///
+  /// In es, this message translates to:
+  /// **'No se encontró el archivo de audio.'**
+  String get errAudioNotFound;
+
+  /// No description provided for @errAudioTooShort.
+  ///
+  /// In es, this message translates to:
+  /// **'El audio es demasiado corto para transcribir.'**
+  String get errAudioTooShort;
+
+  /// No description provided for @errAudioTooLarge.
+  ///
+  /// In es, this message translates to:
+  /// **'El audio supera el límite de 25 MB.'**
+  String get errAudioTooLarge;
+
+  /// No description provided for @errAudioDamaged.
+  ///
+  /// In es, this message translates to:
+  /// **'El audio está dañado [{detail}] y no se puede transcribir. Grabalo de nuevo.'**
+  String errAudioDamaged(String detail);
+
+  /// No description provided for @errAudioUnreadable.
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo leer el audio para subirlo.'**
+  String get errAudioUnreadable;
+
+  /// No description provided for @errSttKeyInvalid.
+  ///
+  /// In es, this message translates to:
+  /// **'API key inválida. Revisá tu clave en Ajustes.'**
+  String get errSttKeyInvalid;
+
+  /// No description provided for @errSttRateLimit.
+  ///
+  /// In es, this message translates to:
+  /// **'Límite de solicitudes alcanzado. Esperá un momento e intentá de nuevo.'**
+  String get errSttRateLimit;
+
+  /// No description provided for @errGroqError.
+  ///
+  /// In es, this message translates to:
+  /// **'Error {code} de Groq: {detail}'**
+  String errGroqError(String code, String detail);
+
+  /// No description provided for @errGroqServer.
+  ///
+  /// In es, this message translates to:
+  /// **'Error del servidor de Groq ({code}). Intentá de nuevo.'**
+  String errGroqServer(String code);
+
+  /// No description provided for @errInvalidResponse.
+  ///
+  /// In es, this message translates to:
+  /// **'Respuesta inválida del servidor. Intentá de nuevo.'**
+  String get errInvalidResponse;
+
+  /// No description provided for @errEmptyTranscript.
+  ///
+  /// In es, this message translates to:
+  /// **'El servidor no devolvió texto para ese audio.'**
+  String get errEmptyTranscript;
+
+  /// No description provided for @errNoInternet.
+  ///
+  /// In es, this message translates to:
+  /// **'Sin conexión a internet.'**
+  String get errNoInternet;
+
+  /// No description provided for @errTimeout.
+  ///
+  /// In es, this message translates to:
+  /// **'Tiempo de espera agotado al conectar con el servidor.'**
+  String get errTimeout;
+
+  /// No description provided for @errUnexpectedTranscribe.
+  ///
+  /// In es, this message translates to:
+  /// **'Error inesperado al transcribir.'**
+  String get errUnexpectedTranscribe;
+
+  /// No description provided for @errMicPermission.
+  ///
+  /// In es, this message translates to:
+  /// **'Permiso de micrófono denegado.'**
+  String get errMicPermission;
+
+  /// No description provided for @errMicBusy.
+  ///
+  /// In es, this message translates to:
+  /// **'El teclado está usando el micrófono.'**
+  String get errMicBusy;
+
+  /// No description provided for @errUploadInFlight.
+  ///
+  /// In es, this message translates to:
+  /// **'Ya hay una transcripción en curso. Esperá a que termine.'**
+  String get errUploadInFlight;
+
+  /// No description provided for @errHistorySaveFailed.
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo guardar la transcripción en el historial (disco lleno o error de almacenamiento).'**
+  String get errHistorySaveFailed;
+
+  /// No description provided for @errAiTimeout.
+  ///
+  /// In es, this message translates to:
+  /// **'Tiempo de espera agotado'**
+  String get errAiTimeout;
+
+  /// No description provided for @errAiNetwork.
+  ///
+  /// In es, this message translates to:
+  /// **'Error de red. Revisá tu conexión.'**
+  String get errAiNetwork;
+
+  /// No description provided for @errAiInvalidResponse.
+  ///
+  /// In es, this message translates to:
+  /// **'Respuesta inválida del modelo'**
+  String get errAiInvalidResponse;
+
+  /// No description provided for @errAiEmptyResponse.
+  ///
+  /// In es, this message translates to:
+  /// **'Respuesta vacía del modelo'**
+  String get errAiEmptyResponse;
+
+  /// No description provided for @errAiKeyInvalid.
+  ///
+  /// In es, this message translates to:
+  /// **'Clave de {provider} inválida ({code}) {detail}'**
+  String errAiKeyInvalid(String provider, String code, String detail);
+
+  /// No description provided for @errAiModelUnavailable.
+  ///
+  /// In es, this message translates to:
+  /// **'Modelo no disponible: {detail}'**
+  String errAiModelUnavailable(String detail);
+
+  /// No description provided for @errAiLimit.
+  ///
+  /// In es, this message translates to:
+  /// **'Límite de {provider} alcanzado: {detail}'**
+  String errAiLimit(String provider, String detail);
+
+  /// No description provided for @errAiServer.
+  ///
+  /// In es, this message translates to:
+  /// **'Error del servidor ({code}): {detail}'**
+  String errAiServer(String code, String detail);
+
+  /// No description provided for @errAiHttp.
+  ///
+  /// In es, this message translates to:
+  /// **'Error {code}: {detail}'**
+  String errAiHttp(String code, String detail);
+
+  /// No description provided for @errAiTooLong.
+  ///
+  /// In es, this message translates to:
+  /// **'La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial.'**
+  String get errAiTooLong;
 }
 
 class _AppLocalizationsDelegate

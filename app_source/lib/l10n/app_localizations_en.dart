@@ -1514,4 +1514,112 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLanguageSystem => 'Phone language';
+
+  @override
+  String get errSttKeyMissing => 'Groq API key missing. Add it in Settings.';
+
+  @override
+  String get errAudioNotFound => 'Audio file not found.';
+
+  @override
+  String get errAudioTooShort => 'The audio is too short to transcribe.';
+
+  @override
+  String get errAudioTooLarge => 'The audio is over the 25 MB limit.';
+
+  @override
+  String errAudioDamaged(String detail) {
+    return 'The audio is damaged [$detail] and can\'t be transcribed. Record it again.';
+  }
+
+  @override
+  String get errAudioUnreadable => 'Couldn\'t read the audio to upload it.';
+
+  @override
+  String get errSttKeyInvalid => 'Invalid API key. Check your key in Settings.';
+
+  @override
+  String get errSttRateLimit =>
+      'Request limit reached. Wait a moment and try again.';
+
+  @override
+  String errGroqError(String code, String detail) {
+    return 'Groq error $code: $detail';
+  }
+
+  @override
+  String errGroqServer(String code) {
+    return 'Groq server error ($code). Try again.';
+  }
+
+  @override
+  String get errInvalidResponse => 'Invalid server response. Try again.';
+
+  @override
+  String get errEmptyTranscript =>
+      'The server returned no text for that audio.';
+
+  @override
+  String get errNoInternet => 'No internet connection.';
+
+  @override
+  String get errTimeout => 'Timed out connecting to the server.';
+
+  @override
+  String get errUnexpectedTranscribe => 'Unexpected error while transcribing.';
+
+  @override
+  String get errMicPermission => 'Microphone permission denied.';
+
+  @override
+  String get errMicBusy => 'The keyboard is using the microphone.';
+
+  @override
+  String get errUploadInFlight =>
+      'A transcription is already in progress. Wait for it to finish.';
+
+  @override
+  String get errHistorySaveFailed =>
+      'Couldn\'t save the transcription to history (storage full or storage error).';
+
+  @override
+  String get errAiTimeout => 'Timed out';
+
+  @override
+  String get errAiNetwork => 'Network error. Check your connection.';
+
+  @override
+  String get errAiInvalidResponse => 'Invalid response from the model';
+
+  @override
+  String get errAiEmptyResponse => 'Empty response from the model';
+
+  @override
+  String errAiKeyInvalid(String provider, String code, String detail) {
+    return 'Invalid $provider key ($code) $detail';
+  }
+
+  @override
+  String errAiModelUnavailable(String detail) {
+    return 'Model not available: $detail';
+  }
+
+  @override
+  String errAiLimit(String provider, String detail) {
+    return '$provider limit reached: $detail';
+  }
+
+  @override
+  String errAiServer(String code, String detail) {
+    return 'Server error ($code): $detail';
+  }
+
+  @override
+  String errAiHttp(String code, String detail) {
+    return 'Error $code: $detail';
+  }
+
+  @override
+  String get errAiTooLong =>
+      'The note is too long for free Groq (about 20,000 characters at most). For long notes, choose Google in Settings › Artificial intelligence.';
 }

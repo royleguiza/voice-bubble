@@ -762,5 +762,108 @@
     }
   },
   "settingsLanguage": "Idioma",
-  "settingsLanguageSystem": "Del teléfono"
+  "settingsLanguageSystem": "Del teléfono",
+  "errSttKeyMissing": "Falta la API key de Groq. Agregala en Ajustes.",
+  "errAudioNotFound": "No se encontró el archivo de audio.",
+  "errAudioTooShort": "El audio es demasiado corto para transcribir.",
+  "errAudioTooLarge": "El audio supera el límite de 25 MB.",
+  "errAudioDamaged": "El audio está dañado [{detail}] y no se puede transcribir. Grabalo de nuevo.",
+  "@errAudioDamaged": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "errAudioUnreadable": "No se pudo leer el audio para subirlo.",
+  "errSttKeyInvalid": "API key inválida. Revisá tu clave en Ajustes.",
+  "errSttRateLimit": "Límite de solicitudes alcanzado. Esperá un momento e intentá de nuevo.",
+  "errGroqError": "Error {code} de Groq: {detail}",
+  "@errGroqError": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "errGroqServer": "Error del servidor de Groq ({code}). Intentá de nuevo.",
+  "@errGroqServer": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "errInvalidResponse": "Respuesta inválida del servidor. Intentá de nuevo.",
+  "errEmptyTranscript": "El servidor no devolvió texto para ese audio.",
+  "errNoInternet": "Sin conexión a internet.",
+  "errTimeout": "Tiempo de espera agotado al conectar con el servidor.",
+  "errUnexpectedTranscribe": "Error inesperado al transcribir.",
+  "errMicPermission": "Permiso de micrófono denegado.",
+  "errMicBusy": "El teclado está usando el micrófono.",
+  "errUploadInFlight": "Ya hay una transcripción en curso. Esperá a que termine.",
+  "errHistorySaveFailed": "No se pudo guardar la transcripción en el historial (disco lleno o error de almacenamiento).",
+  "errAiTimeout": "Tiempo de espera agotado",
+  "errAiNetwork": "Error de red. Revisá tu conexión.",
+  "errAiInvalidResponse": "Respuesta inválida del modelo",
+  "errAiEmptyResponse": "Respuesta vacía del modelo",
+  "errAiKeyInvalid": "Clave de {provider} inválida ({code}) {detail}",
+  "@errAiKeyInvalid": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "code": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "errAiModelUnavailable": "Modelo no disponible: {detail}",
+  "@errAiModelUnavailable": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "errAiLimit": "Límite de {provider} alcanzado: {detail}",
+  "@errAiLimit": {
+    "placeholders": {
+      "provider": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "errAiServer": "Error del servidor ({code}): {detail}",
+  "@errAiServer": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "errAiHttp": "Error {code}: {detail}",
+  "@errAiHttp": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "errAiTooLong": "La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial."
 }

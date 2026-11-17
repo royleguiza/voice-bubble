@@ -15,6 +15,8 @@
     <string name="bubble_history">Histórico</string>
     <string name="bubble_history_title">Histórico de transcrições</string>
     <string name="bubble_pointer_no_answer">O VoiceBubble Ponteiro não está respondendo. Desative e ative de novo em Acessibilidade.</string>
+    <string name="pointer_click_cancelled">O Android interrompeu o clique. Tente de novo.</string>
+    <string name="pointer_click_rejected">O VoiceBubble Ponteiro não conseguiu clicar. Desative e ative de novo em Acessibilidade.</string>
     <string name="bubble_snippets">Snippets</string>
     <string name="dock_bar_desc">Barra flutuante do VoiceBubble</string>
     <string name="dock_bubble_desc">Bolha do VoiceBubble</string>
@@ -130,7 +132,6 @@
     <string name="kb_stt_too_big">O áudio excede o limite de 25 MB.</string>
     <string name="kb_stt_upload_timeout">Tempo de envio esgotado.</string>
     <string name="kb_translate_ai_empty">A IA não devolveu a tradução</string>
-    <string name="kb_translate_ai_error">Erro de IA</string>
     <string name="kb_translate_download_slow">O download do idioma está demorando: tente de novo com internet</string>
     <string name="kb_translate_failed">Não foi possível traduzir</string>
     <string name="kb_translate_language_unavailable">Idioma indisponível</string>
@@ -243,9 +244,19 @@
     <string name="widget_transcribe_now">Transcrever agora</string>
     <string name="widget_unavailable">Indisponível</string>
     <string name="widget_unexpected_error">Erro inesperado</string>
-    <string name="widget_unknown">desconhecido</string>
     <string name="widget_untitled">Sem título</string>
     <string name="widget_with_original_audio">Com áudio original</string>
     <string name="widget_write_first">Escreva ou dite a nota primeiro</string>
     <string name="widget_write_hint">Escrever nota…</string>
+
+    <!-- Errores de IA de notas (GeminiError.localized) -->
+    <string name="ai_err_timeout">Tempo esgotado</string>
+    <string name="ai_err_network">Erro de rede. Confira sua conexão.</string>
+    <string name="ai_err_empty">Resposta vazia do modelo</string>
+    <string name="ai_err_key_invalid">Chave do %1$s inválida (%2$s) %3$s</string>
+    <string name="ai_err_model_unavailable">Modelo indisponível: %1$s</string>
+    <string name="ai_err_limit">Limite do %1$s atingido: %2$s</string>
+    <string name="ai_err_server">Erro do servidor (%1$s): %2$s</string>
+    <string name="ai_err_http">Erro %1$s: %2$s</string>
+    <string name="ai_err_too_long">A nota é longa demais para o Groq grátis (uns 20.000 caracteres no máximo). Para notas longas, escolha Google em Ajustes › Inteligência artificial.</string>
 </resources>

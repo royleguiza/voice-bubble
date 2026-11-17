@@ -28,6 +28,7 @@ import '../widgets/note_card.dart';
 import '../widgets/pending_note_tile.dart';
 import 'package:path_provider/path_provider.dart';
 import '../l10n/l10n_ext.dart';
+import '../l10n/service_error_text.dart';
 
 /// Pantalla principal: las notas son la app y la burbuja de dictado flota
 /// abajo (laboratorio_ui/inicio-notas.html).
@@ -396,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.homeRecordStartError(e.toString()))),
+          SnackBar(content: Text(context.l10n.homeRecordStartError(serviceErrorText(context.l10n, e)))),
         );
       }
     }
@@ -602,7 +603,7 @@ class _HomeScreenState extends State<HomeScreen>
           SnackBar(
             content: Text(e is PendingAudioUnavailable
                 ? context.l10n.homePendingAudioGone
-                : context.l10n.homeError(e.toString())),
+                : context.l10n.homeError(serviceErrorText(context.l10n, e))),
             action: canRetry
                 ? SnackBarAction(
                     label: context.l10n.homeRetry,
@@ -847,7 +848,7 @@ class _HomeScreenState extends State<HomeScreen>
           ? context.l10n.homeApiKeyMissing
           : e.isRetryable
               ? context.l10n.homeStillOffline
-              : e.message);
+              : serviceErrorText(context.l10n, e));
     } catch (e) {
       if (!noteCommitted) _pendingQueue.deleteKeptAudio(keptPath);
       if (!mounted) return;

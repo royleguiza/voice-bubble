@@ -90,9 +90,10 @@ class GroqNoteService implements NoteAiService {
           .timeout(timeout);
     } on TimeoutException {
       throw const GeminiException('Tiempo de espera agotado',
-          kind: GeminiErrorKind.network);
+          kind: GeminiErrorKind.network, reason: ServiceError.aiTimeout);
     } on Exception catch (e) {
-      throw GeminiException('Error de red: $e', kind: GeminiErrorKind.network);
+      throw GeminiException('Error de red: $e',
+          kind: GeminiErrorKind.network, reason: ServiceError.aiNetwork);
     }
     if (response.statusCode == 200) {
       String? text;
@@ -106,11 +107,13 @@ class GroqNoteService implements NoteAiService {
         text = message?['content'] as String?;
       } catch (_) {
         throw const GeminiException('Respuesta inválida',
-            kind: GeminiErrorKind.unknown);
+            kind: GeminiErrorKind.unknown,
+            reason: ServiceError.aiInvalidResponse);
       }
       if (text == null || text.trim().isEmpty) {
         throw const GeminiException('Respuesta vacía del modelo',
-            kind: GeminiErrorKind.unknown);
+            kind: GeminiErrorKind.unknown,
+            reason: ServiceError.aiEmptyResponse);
       }
       return text.trim();
     }
@@ -118,22 +121,35 @@ class GroqNoteService implements NoteAiService {
     final code = response.statusCode;
     if (code == 401 || code == 403) {
       throw GeminiException('Clave de Groq inválida ($code) $detail',
-          kind: GeminiErrorKind.auth);
+          kind: GeminiErrorKind.auth,
+          reason: ServiceError.aiKeyInvalid,
+          code: code,
+          detail: detail,
+          provider: 'Groq');
     }
     if (code == 413) {
       throw const GeminiException(tooLongMessage,
-          kind: GeminiErrorKind.badRequest);
+          kind: GeminiErrorKind.badRequest, reason: ServiceError.aiTooLong);
     }
     if (code == 429) {
       throw GeminiException('Límite de Groq alcanzado: $detail',
-          kind: GeminiErrorKind.server);
+          kind: GeminiErrorKind.server,
+          reason: ServiceError.aiLimit,
+          detail: detail,
+          provider: 'Groq');
     }
     if (code >= 500) {
       throw GeminiException('Error del servidor ($code): $detail',
-          kind: GeminiErrorKind.server);
+          kind: GeminiErrorKind.server,
+          reason: ServiceError.aiServer,
+          code: code,
+          detail: detail);
     }
     throw GeminiException('Error $code: $detail',
-        kind: GeminiErrorKind.badRequest);
+        kind: GeminiErrorKind.badRequest,
+        reason: ServiceError.aiHttp,
+        code: code,
+        detail: detail);
   }
 
   static String _detail(String body) {

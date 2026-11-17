@@ -121,7 +121,7 @@ Reglas:
             if (out.isBlank()) Result.Failed(context.getString(R.string.kb_translate_ai_empty))
             else Result.Ok(out)
         } catch (e: GeminiNoteClient.GeminiError) {
-            Result.Failed(e.message ?: context.getString(R.string.kb_translate_ai_error))
+            Result.Failed(e.localized(context))
         } catch (_: Exception) {
             Result.Failed(context.getString(R.string.kb_translate_failed))
         }

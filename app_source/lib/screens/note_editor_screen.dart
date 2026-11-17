@@ -16,6 +16,7 @@ import '../ui/transcription_feedback.dart';
 import '../widgets/app_icons.dart';
 import '../widgets/note_audio_row.dart';
 import '../l10n/l10n_ext.dart';
+import '../l10n/service_error_text.dart';
 
 /// Editor de una nota: hoja limpia (sin cajas ni etiquetas) con el mismo
 /// lenguaje que Inicio — fondo base, botones de ícono circulares sólidos
@@ -131,7 +132,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     });
     if (error != null) {
       final msg = error is GeminiException
-          ? error.message
+          ? serviceErrorText(context.l10n, error)
           : context.l10n.noteEditorUnexpectedError(error.toString());
       unawaited(showDialog<void>(
         context: context,

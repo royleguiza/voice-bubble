@@ -4,6 +4,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'note_ai_service.dart';
+import 'service_error.dart';
+
+export 'service_error.dart';
 
 /// Servicio on-demand de acciones IA sobre notas (Gemini).
 /// Contrato:
@@ -15,7 +18,27 @@ enum GeminiErrorKind { network, server, auth, badRequest, unknown }
 class GeminiException implements Exception {
   final String message;
   final GeminiErrorKind kind;
-  const GeminiException(this.message, {this.kind = GeminiErrorKind.unknown});
+
+  /// Motivo para mostrarlo traducido (null = mostrar [message]).
+  final ServiceError? reason;
+
+  /// Código HTTP, si lo hay (0 = ninguno).
+  final int code;
+
+  /// Detalle técnico que se muestra tal cual (motivo del servidor).
+  final String detail;
+
+  /// Proveedor que falló («Groq» o «Google»), para los mensajes que lo nombran.
+  final String provider;
+
+  const GeminiException(
+    this.message, {
+    this.kind = GeminiErrorKind.unknown,
+    this.reason,
+    this.code = 0,
+    this.detail = '',
+    this.provider = '',
+  });
   bool get isRetryable =>
       kind == GeminiErrorKind.network || kind == GeminiErrorKind.server;
   @override
@@ -120,9 +143,10 @@ Nota:
           .timeout(timeout);
     } on TimeoutException {
       throw const GeminiException('Tiempo de espera agotado',
-          kind: GeminiErrorKind.network);
+          kind: GeminiErrorKind.network, reason: ServiceError.aiTimeout);
     } on Exception catch (e) {
-      throw GeminiException('Error de red: $e', kind: GeminiErrorKind.network);
+      throw GeminiException('Error de red: $e',
+          kind: GeminiErrorKind.network, reason: ServiceError.aiNetwork);
     }
 
     if (response.statusCode == 200) {
@@ -133,35 +157,52 @@ Nota:
           final reason = _finishReason(data);
           throw GeminiException(
               'Respuesta vacía del modelo (finishReason: $reason)',
-              kind: GeminiErrorKind.unknown);
+              kind: GeminiErrorKind.unknown,
+              reason: ServiceError.aiEmptyResponse);
         }
         return text.trim();
       } on GeminiException {
         rethrow;
       } catch (_) {
         throw const GeminiException('Respuesta inválida',
-            kind: GeminiErrorKind.unknown);
+            kind: GeminiErrorKind.unknown,
+            reason: ServiceError.aiInvalidResponse);
       }
     }
     final detail = _bodyDetail(response.body);
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw GeminiException('API key inválida (${response.statusCode}) $detail',
-          kind: GeminiErrorKind.auth);
+          kind: GeminiErrorKind.auth,
+          reason: ServiceError.aiKeyInvalid,
+          code: response.statusCode,
+          detail: detail,
+          provider: 'Google');
     }
     if (response.statusCode == 404) {
       throw GeminiException('Modelo no disponible: $detail',
-          kind: GeminiErrorKind.badRequest);
+          kind: GeminiErrorKind.badRequest,
+          reason: ServiceError.aiModelUnavailable,
+          detail: detail);
     }
     if (response.statusCode == 429) {
       throw GeminiException('Cuota agotada: $detail',
-          kind: GeminiErrorKind.server);
+          kind: GeminiErrorKind.server,
+          reason: ServiceError.aiLimit,
+          detail: detail,
+          provider: 'Google');
     }
     if (response.statusCode >= 500) {
       throw GeminiException('Error del servidor (${response.statusCode}): $detail',
-          kind: GeminiErrorKind.server);
+          kind: GeminiErrorKind.server,
+          reason: ServiceError.aiServer,
+          code: response.statusCode,
+          detail: detail);
     }
     throw GeminiException('Error ${response.statusCode}: $detail',
-        kind: GeminiErrorKind.badRequest);
+        kind: GeminiErrorKind.badRequest,
+        reason: ServiceError.aiHttp,
+        code: response.statusCode,
+        detail: detail);
   }
 
   static String _finishReason(Map<String, dynamic> data) {

@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../models/transcription.dart';
+import 'service_error.dart';
+
+export 'service_error.dart';
 
 /// Contrato de reintento (para la UI sin tocar screens/):
 /// - Este servicio NUNCA reintenta por su cuenta: cada `transcribe()` envía
@@ -33,7 +36,22 @@ class TranscriptionException implements Exception {
   final String message;
   final TranscriptionErrorKind kind;
 
-  const TranscriptionException(this.message, {this.kind = TranscriptionErrorKind.unknown});
+  /// Motivo para mostrarlo traducido (null = mostrar [message]).
+  final ServiceError? reason;
+
+  /// Código HTTP, si lo hay (0 = ninguno).
+  final int code;
+
+  /// Detalle técnico que se muestra tal cual (motivo del servidor, etc.).
+  final String detail;
+
+  const TranscriptionException(
+    this.message, {
+    this.kind = TranscriptionErrorKind.unknown,
+    this.reason,
+    this.code = 0,
+    this.detail = '',
+  });
 
   /// Network y server valen la pena reintentar; auth/badRequest no.
   bool get isRetryable =>
@@ -287,6 +305,7 @@ class CloudSttService {
       throw const TranscriptionException(
         'API key de Groq no configurada. Ve a Settings para agregarla.',
         kind: TranscriptionErrorKind.auth,
+        reason: ServiceError.sttKeyMissing,
       );
     }
 
@@ -298,6 +317,7 @@ class CloudSttService {
       throw const TranscriptionException(
         'Archivo de audio no encontrado.',
         kind: TranscriptionErrorKind.badRequest,
+        reason: ServiceError.audioNotFound,
       );
     }
 
@@ -306,12 +326,14 @@ class CloudSttService {
       throw const TranscriptionException(
         'El archivo de audio es demasiado corto para transcribir (mínimo 8000 bytes).',
         kind: TranscriptionErrorKind.badRequest,
+        reason: ServiceError.audioTooShort,
       );
     }
     if (fileLength > maxFileSizeBytes) {
       throw const TranscriptionException(
         'El archivo de audio supera el límite de 25 MB.',
         kind: TranscriptionErrorKind.badRequest,
+        reason: ServiceError.audioTooLarge,
       );
     }
     // C-42: validar integridad ANTES de subir (solo cabecera, barato).
@@ -342,6 +364,8 @@ class CloudSttService {
       throw TranscriptionException(
         'El audio está dañado [$motivo $huella] y no se puede transcribir. Grabalo de nuevo.',
         kind: TranscriptionErrorKind.badRequest,
+        reason: ServiceError.audioDamaged,
+        detail: '$motivo $huella',
       );
     }
     final timeout = timeoutForBytes(fileLength);
@@ -370,16 +394,19 @@ class CloudSttService {
         throw TranscriptionException(
           'No se pudo leer el audio para subirlo: ${e.message}',
           kind: TranscriptionErrorKind.badRequest,
+          reason: ServiceError.audioUnreadable,
         );
       } on OSError catch (e) {
         throw TranscriptionException(
           'No se pudo leer el audio para subirlo: ${e.message}',
           kind: TranscriptionErrorKind.badRequest,
+          reason: ServiceError.audioUnreadable,
         );
       } catch (_) {
         throw const TranscriptionException(
           'No se pudo leer el audio para subirlo.',
           kind: TranscriptionErrorKind.badRequest,
+          reason: ServiceError.audioUnreadable,
         );
       }
     }
@@ -406,25 +433,23 @@ class CloudSttService {
       throw const TranscriptionException(
         'API key inválida. Verifica tu clave en Settings.',
         kind: TranscriptionErrorKind.auth,
+        reason: ServiceError.sttKeyInvalid,
       );
     }
     if (response.statusCode == _httpRateLimit) {
       throw const TranscriptionException(
         'Límite de solicitudes alcanzado. Espera un momento e intenta de nuevo.',
         kind: TranscriptionErrorKind.server,
+        reason: ServiceError.sttRateLimit,
       );
     }
     if (response.statusCode >= _httpServerErrorFloor) {
-      throw TranscriptionException(
-        _serverErrorDetail(response.statusCode, body),
-        kind: TranscriptionErrorKind.server,
-      );
+      throw _serverError(response.statusCode, body,
+          TranscriptionErrorKind.server);
     }
 
-    throw TranscriptionException(
-      _serverErrorDetail(response.statusCode, body),
-      kind: TranscriptionErrorKind.badRequest,
-    );
+    throw _serverError(response.statusCode, body,
+        TranscriptionErrorKind.badRequest);
   }
 
   /// Parseo defensivo del 200 sin `as` duros: valida `text` String no vacío.
@@ -441,12 +466,14 @@ class CloudSttService {
       throw const TranscriptionException(
         'Respuesta inválida del servidor. Intenta de nuevo.',
         kind: TranscriptionErrorKind.server,
+        reason: ServiceError.invalidResponse,
       );
     }
     if (decoded is! Map<dynamic, dynamic>) {
       throw const TranscriptionException(
         'Respuesta inválida del servidor. Intenta de nuevo.',
         kind: TranscriptionErrorKind.server,
+        reason: ServiceError.invalidResponse,
       );
     }
     final rawText = decoded['text'];
@@ -454,12 +481,14 @@ class CloudSttService {
       throw const TranscriptionException(
         'Respuesta inválida del servidor. Intenta de nuevo.',
         kind: TranscriptionErrorKind.server,
+        reason: ServiceError.invalidResponse,
       );
     }
     if (rawText.trim().isEmpty) {
       throw const TranscriptionException(
         'El servidor no devolvió texto para ese audio.',
         kind: TranscriptionErrorKind.badRequest,
+        reason: ServiceError.emptyTranscript,
       );
     }
     return Transcription(
@@ -473,23 +502,29 @@ class CloudSttService {
       return await call();
     } on SocketException {
       throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
+          kind: TranscriptionErrorKind.network,
+          reason: ServiceError.noInternet);
     } on http.ClientException {
       throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
+          kind: TranscriptionErrorKind.network,
+          reason: ServiceError.noInternet);
     } on HttpException {
       throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
+          kind: TranscriptionErrorKind.network,
+          reason: ServiceError.noInternet);
     } on HandshakeException {
       throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
+          kind: TranscriptionErrorKind.network,
+          reason: ServiceError.noInternet);
     } on TlsException {
       throw const TranscriptionException('Sin conexión a internet.',
-          kind: TranscriptionErrorKind.network);
+          kind: TranscriptionErrorKind.network,
+          reason: ServiceError.noInternet);
     } on TimeoutException {
       throw const TranscriptionException(
         'Tiempo de espera agotado al conectar con el servidor.',
         kind: TranscriptionErrorKind.network,
+        reason: ServiceError.timeout,
       );
     } catch (e) {
       // No tragar la clasificación ya decidida: el llamador la usa vía kind/isRetryable.
@@ -499,13 +534,26 @@ class CloudSttService {
       throw const TranscriptionException(
         'Error inesperado al transcribir.',
         kind: TranscriptionErrorKind.unknown,
+        reason: ServiceError.unexpectedTranscribe,
       );
     }
   }
 
-  /// Propaga el motivo exacto que devuelve Groq en el body (ej. 400:
-  /// formato de archivo inválido) para diagnóstico directo en la app.
-  String _serverErrorDetail(int statusCode, String body) {
+  /// Error HTTP de Groq con el motivo que devuelve (traducible por [ServiceError]).
+  TranscriptionException _serverError(
+      int statusCode, String body, TranscriptionErrorKind kind) {
+    final reason = _groqReason(body);
+    return TranscriptionException(
+      _serverErrorDetail(statusCode, body),
+      kind: kind,
+      reason: reason.isEmpty ? ServiceError.groqServer : ServiceError.groqError,
+      code: statusCode,
+      detail: reason,
+    );
+  }
+
+  /// Motivo de Groq saneado y recortado ('' si el body no lo trae).
+  String _groqReason(String body) {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<dynamic, dynamic>) {
@@ -514,12 +562,21 @@ class CloudSttService {
             error is Map<dynamic, dynamic> ? error['message'] : null;
         if (message is String && message.isNotEmpty) {
           final sanitized = message.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
-          final truncated =
-              sanitized.length > 200 ? '${sanitized.substring(0, 200)}…' : sanitized;
-          return 'Error $statusCode de Groq: $truncated';
+          return sanitized.length > 200
+              ? '${sanitized.substring(0, 200)}…'
+              : sanitized;
         }
       }
     } catch (_) {}
-    return 'Error del servidor Groq ($statusCode). Intenta de nuevo.';
+    return '';
+  }
+
+  /// Propaga el motivo exacto que devuelve Groq en el body (ej. 400:
+  /// formato de archivo inválido) para diagnóstico directo en la app.
+  String _serverErrorDetail(int statusCode, String body) {
+    final reason = _groqReason(body);
+    return reason.isNotEmpty
+        ? 'Error $statusCode de Groq: $reason'
+        : 'Error del servidor Groq ($statusCode). Intenta de nuevo.';
   }
 }

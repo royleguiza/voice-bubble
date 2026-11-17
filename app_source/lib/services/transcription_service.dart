@@ -73,12 +73,14 @@ class TranscriptionService {
 
   Future<void> startRecording(String path) async {
     if (!await _recorder.hasPermission()) {
-      throw const TranscriptionException('Permiso de micrófono denegado.');
+      throw const TranscriptionException('Permiso de micrófono denegado.',
+          reason: ServiceError.micPermission);
     }
     final claim = await _claimMicrophone();
     if (claim == 0) {
       throw const TranscriptionException(
         'El micrófono está siendo usado por el teclado.',
+        reason: ServiceError.micBusy,
       );
     }
     _activeClaim = claim;
@@ -151,6 +153,7 @@ class TranscriptionService {
       throw const TranscriptionException(
         'Ya hay una transcripción en curso. Esperá a que termine.',
         kind: TranscriptionErrorKind.badRequest,
+        reason: ServiceError.uploadInFlight,
       );
     }
     _uploadInFlight = true;
@@ -186,6 +189,7 @@ class TranscriptionService {
         throw const TranscriptionException(
           'No se pudo guardar la transcripción en el historial (disco lleno o error de almacenamiento).',
           kind: TranscriptionErrorKind.server,
+          reason: ServiceError.historySaveFailed,
         );
       }
     }

@@ -115,15 +115,20 @@ class GroqNoteClient(
             val detail = GeminiNoteClient.bodyDetail(body)
             return when {
                 code == 401 || code == 403 -> GeminiNoteClient.GeminiError(
-                    "Clave de Groq inválida ($code) $detail", GeminiNoteClient.ErrorKind.AUTH)
+                    "Clave de Groq inválida ($code) $detail", GeminiNoteClient.ErrorKind.AUTH,
+                    GeminiNoteClient.Reason.KEY_INVALID, code, detail, "Groq")
                 code == 413 -> GeminiNoteClient.GeminiError(
-                    TOO_LONG_MESSAGE, GeminiNoteClient.ErrorKind.BAD_REQUEST)
+                    TOO_LONG_MESSAGE, GeminiNoteClient.ErrorKind.BAD_REQUEST,
+                    GeminiNoteClient.Reason.TOO_LONG, code)
                 code == 429 -> GeminiNoteClient.GeminiError(
-                    "Límite de Groq alcanzado: $detail", GeminiNoteClient.ErrorKind.SERVER)
+                    "Límite de Groq alcanzado: $detail", GeminiNoteClient.ErrorKind.SERVER,
+                    GeminiNoteClient.Reason.LIMIT, code, detail, "Groq")
                 code >= 500 -> GeminiNoteClient.GeminiError(
-                    "Error del servidor ($code): $detail", GeminiNoteClient.ErrorKind.SERVER)
+                    "Error del servidor ($code): $detail", GeminiNoteClient.ErrorKind.SERVER,
+                    GeminiNoteClient.Reason.SERVER, code, detail)
                 else -> GeminiNoteClient.GeminiError(
-                    "Error $code: $detail", GeminiNoteClient.ErrorKind.BAD_REQUEST)
+                    "Error $code: $detail", GeminiNoteClient.ErrorKind.BAD_REQUEST,
+                    GeminiNoteClient.Reason.HTTP, code, detail)
             }
         }
     }
@@ -152,7 +157,7 @@ class GroqNoteClient(
         try {
             conn = URL(ENDPOINT).openConnection() as HttpURLConnection
         } catch (e: Exception) {
-            throw GeminiNoteClient.GeminiError("Error de red: ${e.javaClass.simpleName}", GeminiNoteClient.ErrorKind.NETWORK)
+            throw GeminiNoteClient.GeminiError("Error de red: ${e.javaClass.simpleName}", GeminiNoteClient.ErrorKind.NETWORK, GeminiNoteClient.Reason.NETWORK)
         }
         try {
             conn.requestMethod = "POST"
@@ -168,9 +173,9 @@ class GroqNoteClient(
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
         } catch (_: SocketTimeoutException) {
-            throw GeminiNoteClient.GeminiError("Tiempo de espera agotado", GeminiNoteClient.ErrorKind.NETWORK)
+            throw GeminiNoteClient.GeminiError("Tiempo de espera agotado", GeminiNoteClient.ErrorKind.NETWORK, GeminiNoteClient.Reason.TIMEOUT)
         } catch (e: Exception) {
-            throw GeminiNoteClient.GeminiError("Error de red: ${e.javaClass.simpleName}", GeminiNoteClient.ErrorKind.NETWORK)
+            throw GeminiNoteClient.GeminiError("Error de red: ${e.javaClass.simpleName}", GeminiNoteClient.ErrorKind.NETWORK, GeminiNoteClient.Reason.NETWORK)
         } finally {
             try {
                 conn.disconnect()
@@ -178,7 +183,7 @@ class GroqNoteClient(
         }
         if (code == 200) {
             return extractText(body)
-                ?: throw GeminiNoteClient.GeminiError("Respuesta vacía del modelo", GeminiNoteClient.ErrorKind.UNKNOWN)
+                ?: throw GeminiNoteClient.GeminiError("Respuesta vacía del modelo", GeminiNoteClient.ErrorKind.UNKNOWN, GeminiNoteClient.Reason.EMPTY)
         }
         throw errorFor(code, body)
     }

@@ -1282,7 +1282,7 @@ class WidgetNoteEditActivity : Activity() {
                         val text = if (action == GEMINI_TITULO) client.sugerirTitulo(texto) else client.resumir(texto)
                         if (text.isBlank()) GeminiOutcome.Failed(getString(R.string.widget_ai_empty_response)) else GeminiOutcome.Ok(text)
                     } catch (e: GeminiNoteClient.GeminiError) {
-                        GeminiOutcome.Failed(e.message ?: getString(R.string.widget_ai_error))
+                        GeminiOutcome.Failed(e.localized(this@WidgetNoteEditActivity))
                     } catch (_: Exception) {
                         GeminiOutcome.Failed(getString(R.string.widget_unexpected_error))
                     }

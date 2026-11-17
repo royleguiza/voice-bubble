@@ -25,7 +25,34 @@ class GeminiNoteClient(
 
     enum class ErrorKind { NETWORK, SERVER, AUTH, BAD_REQUEST, UNKNOWN }
 
-    class GeminiError(message: String, val kind: ErrorKind) : Exception(message)
+    /** Motivo para mostrar el error en el idioma de la app (Ruta IA, etapa 4). */
+    enum class Reason { TIMEOUT, NETWORK, EMPTY, KEY_INVALID, MODEL_UNAVAILABLE, LIMIT, SERVER, HTTP, TOO_LONG }
+
+    /**
+     * Error de IA. [message] queda en español para registros; la UI muestra
+     * [localized], que usa [reason] con [code], [detail] y [provider].
+     */
+    class GeminiError(
+        message: String,
+        val kind: ErrorKind,
+        val reason: Reason? = null,
+        val code: Int = 0,
+        val detail: String = "",
+        val provider: String = "",
+    ) : Exception(message) {
+        fun localized(context: Context): String = when (reason) {
+            Reason.TIMEOUT -> context.getString(R.string.ai_err_timeout)
+            Reason.NETWORK -> context.getString(R.string.ai_err_network)
+            Reason.EMPTY -> context.getString(R.string.ai_err_empty)
+            Reason.KEY_INVALID -> context.getString(R.string.ai_err_key_invalid, provider, code.toString(), detail).trim()
+            Reason.MODEL_UNAVAILABLE -> context.getString(R.string.ai_err_model_unavailable, detail)
+            Reason.LIMIT -> context.getString(R.string.ai_err_limit, provider, detail)
+            Reason.SERVER -> context.getString(R.string.ai_err_server, code.toString(), detail)
+            Reason.HTTP -> context.getString(R.string.ai_err_http, code.toString(), detail)
+            Reason.TOO_LONG -> context.getString(R.string.ai_err_too_long)
+            null -> message ?: context.getString(R.string.ai_err_network)
+        }
+    }
 
     companion object {
         const val MODEL = "gemini-3.5-flash-lite"
@@ -117,11 +144,15 @@ Nota:
         internal fun errorFor(code: Int, body: String): GeminiError {
             val detail = bodyDetail(body)
             return when {
-                code == 401 || code == 403 -> GeminiError("API key inválida ($code) $detail", ErrorKind.AUTH)
-                code == 404 -> GeminiError("Modelo no disponible: $detail", ErrorKind.BAD_REQUEST)
-                code == 429 -> GeminiError("Cuota agotada: $detail", ErrorKind.SERVER)
-                code >= 500 -> GeminiError("Error del servidor ($code): $detail", ErrorKind.SERVER)
-                else -> GeminiError("Error $code: $detail", ErrorKind.BAD_REQUEST)
+                code == 401 || code == 403 -> GeminiError(
+                    "API key inválida ($code) $detail", ErrorKind.AUTH, Reason.KEY_INVALID, code, detail, "Google")
+                code == 404 -> GeminiError(
+                    "Modelo no disponible: $detail", ErrorKind.BAD_REQUEST, Reason.MODEL_UNAVAILABLE, code, detail)
+                code == 429 -> GeminiError(
+                    "Cuota agotada: $detail", ErrorKind.SERVER, Reason.LIMIT, code, detail, "Google")
+                code >= 500 -> GeminiError(
+                    "Error del servidor ($code): $detail", ErrorKind.SERVER, Reason.SERVER, code, detail)
+                else -> GeminiError("Error $code: $detail", ErrorKind.BAD_REQUEST, Reason.HTTP, code, detail)
             }
         }
     }
@@ -148,7 +179,7 @@ Nota:
         try {
             conn = URL("$MODELS_ENDPOINT/$MODEL:generateContent").openConnection() as HttpURLConnection
         } catch (e: Exception) {
-            throw GeminiError("Error de red: ${e.javaClass.simpleName}", ErrorKind.NETWORK)
+            throw GeminiError("Error de red: ${e.javaClass.simpleName}", ErrorKind.NETWORK, Reason.NETWORK)
         }
         try {
             conn.requestMethod = "POST"
@@ -164,9 +195,9 @@ Nota:
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
         } catch (_: SocketTimeoutException) {
-            throw GeminiError("Tiempo de espera agotado", ErrorKind.NETWORK)
+            throw GeminiError("Tiempo de espera agotado", ErrorKind.NETWORK, Reason.TIMEOUT)
         } catch (e: Exception) {
-            throw GeminiError("Error de red: ${e.javaClass.simpleName}", ErrorKind.NETWORK)
+            throw GeminiError("Error de red: ${e.javaClass.simpleName}", ErrorKind.NETWORK, Reason.NETWORK)
         } finally {
             try {
                 conn.disconnect()
@@ -174,7 +205,7 @@ Nota:
         }
         if (code == 200) {
             return extractText(body)
-                ?: throw GeminiError("Respuesta vacía del modelo", ErrorKind.UNKNOWN)
+                ?: throw GeminiError("Respuesta vacía del modelo", ErrorKind.UNKNOWN, Reason.EMPTY)
         }
         throw errorFor(code, body)
     }

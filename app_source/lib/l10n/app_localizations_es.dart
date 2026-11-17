@@ -1518,4 +1518,117 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsLanguageSystem => 'Del teléfono';
+
+  @override
+  String get errSttKeyMissing =>
+      'Falta la API key de Groq. Agregala en Ajustes.';
+
+  @override
+  String get errAudioNotFound => 'No se encontró el archivo de audio.';
+
+  @override
+  String get errAudioTooShort =>
+      'El audio es demasiado corto para transcribir.';
+
+  @override
+  String get errAudioTooLarge => 'El audio supera el límite de 25 MB.';
+
+  @override
+  String errAudioDamaged(String detail) {
+    return 'El audio está dañado [$detail] y no se puede transcribir. Grabalo de nuevo.';
+  }
+
+  @override
+  String get errAudioUnreadable => 'No se pudo leer el audio para subirlo.';
+
+  @override
+  String get errSttKeyInvalid =>
+      'API key inválida. Revisá tu clave en Ajustes.';
+
+  @override
+  String get errSttRateLimit =>
+      'Límite de solicitudes alcanzado. Esperá un momento e intentá de nuevo.';
+
+  @override
+  String errGroqError(String code, String detail) {
+    return 'Error $code de Groq: $detail';
+  }
+
+  @override
+  String errGroqServer(String code) {
+    return 'Error del servidor de Groq ($code). Intentá de nuevo.';
+  }
+
+  @override
+  String get errInvalidResponse =>
+      'Respuesta inválida del servidor. Intentá de nuevo.';
+
+  @override
+  String get errEmptyTranscript =>
+      'El servidor no devolvió texto para ese audio.';
+
+  @override
+  String get errNoInternet => 'Sin conexión a internet.';
+
+  @override
+  String get errTimeout =>
+      'Tiempo de espera agotado al conectar con el servidor.';
+
+  @override
+  String get errUnexpectedTranscribe => 'Error inesperado al transcribir.';
+
+  @override
+  String get errMicPermission => 'Permiso de micrófono denegado.';
+
+  @override
+  String get errMicBusy => 'El teclado está usando el micrófono.';
+
+  @override
+  String get errUploadInFlight =>
+      'Ya hay una transcripción en curso. Esperá a que termine.';
+
+  @override
+  String get errHistorySaveFailed =>
+      'No se pudo guardar la transcripción en el historial (disco lleno o error de almacenamiento).';
+
+  @override
+  String get errAiTimeout => 'Tiempo de espera agotado';
+
+  @override
+  String get errAiNetwork => 'Error de red. Revisá tu conexión.';
+
+  @override
+  String get errAiInvalidResponse => 'Respuesta inválida del modelo';
+
+  @override
+  String get errAiEmptyResponse => 'Respuesta vacía del modelo';
+
+  @override
+  String errAiKeyInvalid(String provider, String code, String detail) {
+    return 'Clave de $provider inválida ($code) $detail';
+  }
+
+  @override
+  String errAiModelUnavailable(String detail) {
+    return 'Modelo no disponible: $detail';
+  }
+
+  @override
+  String errAiLimit(String provider, String detail) {
+    return 'Límite de $provider alcanzado: $detail';
+  }
+
+  @override
+  String errAiServer(String code, String detail) {
+    return 'Error del servidor ($code): $detail';
+  }
+
+  @override
+  String errAiHttp(String code, String detail) {
+    return 'Error $code: $detail';
+  }
+
+  @override
+  String get errAiTooLong =>
+      'La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial.';
 }

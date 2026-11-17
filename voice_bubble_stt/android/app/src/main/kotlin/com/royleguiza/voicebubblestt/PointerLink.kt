@@ -43,11 +43,13 @@ object PointerLink {
     private var seq = 0
     private var pendingSeq = 0
     private var onProblem: ((String) -> Unit)? = null
+    /** Contexto con el idioma de la app para los avisos (null = sin escuchar). */
+    private var texts: Context? = null
     private var receiver: BroadcastReceiver? = null
     private val ackTimeout = Runnable {
         if (pendingSeq != 0) {
             pendingSeq = 0
-            report(PointerProtocol.resultMessage(null))
+            report(null)
         }
     }
 
@@ -57,6 +59,7 @@ object PointerLink {
      */
     fun listen(context: Context, problem: (String) -> Unit) {
         onProblem = problem
+        texts = AppLocale.wrap(context.applicationContext)
         if (receiver != null) return
         val r = object : BroadcastReceiver() {
             override fun onReceive(c: Context?, intent: Intent?) {
@@ -65,7 +68,7 @@ object PointerLink {
                 if (got == 0 || got != pendingSeq) return
                 pendingSeq = 0
                 main.removeCallbacks(ackTimeout)
-                report(PointerProtocol.resultMessage(intent.getStringExtra(PointerProtocol.EXTRA_RESULT)))
+                report(intent.getStringExtra(PointerProtocol.EXTRA_RESULT))
             }
         }
         val filter = IntentFilter(PointerProtocol.ACTION_RESULT)
@@ -225,8 +228,22 @@ object PointerLink {
         } catch (_: Exception) {}
     }
 
-    private fun report(message: String?) {
-        if (message == null) return
+    /**
+     * Avisa si un clic no se hizo. [result] null = el complemento no respondió.
+     * Qué casos avisan lo decide `PointerProtocol.resultMessage(null)` y sus
+     * pares; el texto sale de strings.xml en el idioma de la app.
+     */
+    private fun report(result: String?) {
+        val fallback = PointerProtocol.resultMessage(result) ?: return
+        val message = texts?.let { c ->
+            c.getString(
+                when (result) {
+                    PointerProtocol.RESULT_CANCELLED -> R.string.pointer_click_cancelled
+                    PointerProtocol.RESULT_REJECTED -> R.string.pointer_click_rejected
+                    else -> R.string.bubble_pointer_no_answer
+                }
+            )
+        } ?: fallback
         try {
             onProblem?.invoke(message)
         } catch (_: Exception) {}

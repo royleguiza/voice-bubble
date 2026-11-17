@@ -253,7 +253,7 @@ check("Clic en la punta que se ve (posición real dibujada)", "getLocationOnScre
 check("Protocolo: respuesta del complemento", all(k in proto for k in ("ACTION_RESULT", "HOST_PACKAGE", "EXTRA_SEQ", "RESULT_DONE", "RESULT_CANCELLED", "RESULT_REJECTED", "ACK_TIMEOUT_MS", "fun resultMessage(")))
 check("Complemento responde cada clic con permiso de firma", "sendBroadcast(intent, PointerProtocol.PERMISSION_POINTER)" in pun_svc and "reply(seq, PointerProtocol.RESULT_REJECTED)" in pun_svc)
 check("Complemento ve a VoiceBubble y tiene el permiso para responder", 'uses-permission android:name="com.royleguiza.voicebubble.puntero.permission.POINTER"' in pun_manifest and '<package android:name="com.royleguiza.voicebubblestt"/>' in pun_manifest)
-check("VoiceBubble espera la respuesta y avisa si no llega", "ackTimeout" in link and "PointerProtocol.resultMessage(null)" in link and "PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED" in link)
+check("VoiceBubble espera la respuesta y avisa si no llega", "ackTimeout" in link and "PointerProtocol.resultMessage(result)" in link and "report(null)" in link and "PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED" in link)
 check("Scroll sin complemento también avisa", "PointerLink.scroll(this@FloatingTrackpadService, pos.first, pos.second, chunk)) {\n                            hintNoCompanion()" in ftp)
 check("Burbuja se esconde con el trackpad abierto y vuelve al cerrarlo", "fun setTrackpadOpen(open: Boolean)" in dock and "!hidden && !trackpadOpen" in dock and "FloatingBubbleService.setTrackpadOpen(true)" in ftp and "FloatingBubbleService.setTrackpadOpen(false)" in ftp)
 check("La flecha nunca tapa el punto del clic", "ARROW_GAP_PX = 3" in pom and "fun originOffset()" in pom)

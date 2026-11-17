@@ -386,7 +386,7 @@ object WidgetReader {
             }
         } catch (e: GeminiNoteClient.GeminiError) {
             setBusy(context, widgetId, null)
-            setStatus(context, widgetId, context.getString(R.string.widget_ai_error_detail, e.message ?: context.getString(R.string.widget_unknown)))
+            setStatus(context, widgetId, context.getString(R.string.widget_ai_error_detail, e.localized(context)))
         } catch (_: Exception) {
             setBusy(context, widgetId, null)
             setStatus(context, widgetId, context.getString(R.string.widget_ai_unexpected_error))
