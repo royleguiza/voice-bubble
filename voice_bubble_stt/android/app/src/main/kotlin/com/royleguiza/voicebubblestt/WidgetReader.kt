@@ -173,6 +173,7 @@ object WidgetReader {
     ): Boolean {
         val open = openState(context, widgetId) ?: return false
         val views = RemoteViews(context.packageName, R.layout.widget_note_detail)
+        WidgetTexts.detail(context, views)
         val primary = ContextCompat.getColor(context, R.color.kb_label)
         val secondary = ContextCompat.getColor(context, R.color.kb_label_secondary)
         views.setTextColor(R.id.widget_detail_title, primary)
@@ -432,7 +433,8 @@ class WidgetReaderReceiver : BroadcastReceiver() {
         val widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
         if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return
         val action = intent.action ?: return
-        val app = context.applicationContext
+        // Idioma de la app también en Android 9–12 (avisos de estado).
+        val app = AppLocale.wrap(context.applicationContext)
         // goAsync: la IA puede tardar; el sistema da hasta ~60 s a un
         // broadcast de fondo y el cliente corta a los 20 s por tramo.
         val pending = goAsync()
@@ -469,7 +471,7 @@ class WidgetReaderReceiver : BroadcastReceiver() {
 class WidgetNoteDetailService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
         WidgetNoteDetailFactory(
-            applicationContext,
+            AppLocale.wrap(applicationContext),
             intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID),
         )
 }

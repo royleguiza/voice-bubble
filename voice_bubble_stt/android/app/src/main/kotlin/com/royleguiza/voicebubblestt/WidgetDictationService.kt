@@ -87,6 +87,11 @@ class WidgetDictationService(
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /** Idioma de la app en la notificación (Android 9–12; en 13+ lo pone el sistema). */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
+
     internal fun reconcileDurableAudio() {
         val noteStore = NoteStore(storageContextOrSelf())
         noteStore.reconcileOrphanedAudio()

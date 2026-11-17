@@ -390,6 +390,17 @@ de ≈ 2 min 15 s).
    idioma elegido o el del teléfono. Sospecha: textos que quedaron fuera de
    `strings.xml` (`WidgetReader`, `GeminiNoteClient`, `NoteAiClients`) o
    contextos del widget sin el idioma de la app.
+   **Resuelto (2026-11-17, `WidgetTexts.kt`):** la causa eran los
+   `@string/…` escritos en los XML del widget (`widget_*.xml`): esos
+   diseños los infla el launcher con el idioma del teléfono, no con el
+   idioma por app. Ahora todo texto y descripción accesible de esos diseños
+   se pone desde el código (`WidgetTexts.notes/detail/noteItem/pendingItem`)
+   y la suite `test_android_strings_parity_suite.py` (en la maestra) falla
+   si un `@string` nuevo de un `widget_*.xml` no pasa por ahí. En 9–12 el
+   widget, sus listas, su receptor y `WidgetDictationService` usan
+   `AppLocale.wrap`. Revisado el resto: diálogos de la app Flutter, teclado
+   y burbuja ya seguían el idioma; lo que queda en español son mensajes de
+   error que nacen en servicios (pendiente de abajo).
 2. **Prompts de IA y el idioma:** ver si los prompts de título, resumen y
    reestructuración (hoy en español) hacen que la respuesta salga en español
    aunque la nota o la app estén en otro idioma. Definir: responder en el

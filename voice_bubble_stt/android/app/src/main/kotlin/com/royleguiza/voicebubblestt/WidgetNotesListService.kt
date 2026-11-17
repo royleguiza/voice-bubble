@@ -79,7 +79,7 @@ class WidgetNotesListService : RemoteViewsService() {
     }
 
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
-        WidgetNotesFactory(applicationContext)
+        WidgetNotesFactory(AppLocale.wrap(applicationContext))
 }
 
 private class WidgetNotesFactory(
@@ -127,12 +127,14 @@ private class WidgetNotesFactory(
             else noteView(notes[position - pendings.size])
         } catch (_: Exception) {
             RemoteViews(context.packageName, R.layout.widget_pending_item)
+                .also { WidgetTexts.pendingItem(context, it) }
         }
     }
 
     /** Entrada superior: audio sin transcribir, abre la modal del widget. */
     private fun pendingView(p: VbPending): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_pending_item)
+        WidgetTexts.pendingItem(context, views)
         // Texto adaptativo claro/oscuro (el XML ya usa @color, esto cubre
         // vistas cacheadas tras el cambio automatico por horario).
         views.setTextColor(R.id.widget_pending_title, ContextCompat.getColor(context, R.color.kb_label))
@@ -158,6 +160,7 @@ private class WidgetNotesFactory(
 
     private fun noteView(n: VbNote): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_note_item)
+        WidgetTexts.noteItem(context, views)
         views.setTextColor(R.id.widget_item_title, ContextCompat.getColor(context, R.color.kb_label))
         views.setTextColor(R.id.widget_item_body, ContextCompat.getColor(context, R.color.kb_label_secondary))
         views.setTextColor(R.id.widget_item_time, ContextCompat.getColor(context, R.color.kb_label_secondary))

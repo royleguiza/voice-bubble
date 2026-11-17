@@ -207,6 +207,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
         ): Boolean {
             return try {
                 val views = RemoteViews(context.packageName, R.layout.widget_notes)
+                WidgetTexts.notes(context, views)
                 views.setTextViewText(R.id.widget_notes_count, context.getString(R.string.widget_unavailable))
                 views.setViewVisibility(R.id.widget_notes_list, View.GONE)
                 views.setViewVisibility(R.id.widget_notes_empty, View.VISIBLE)
@@ -219,11 +220,13 @@ class WidgetNotesProvider : AppWidgetProvider() {
         }
 
         private fun updateRemoteViews(
-            context: Context,
+            baseContext: Context,
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int,
             state: String,
         ): Boolean {
+            // Idioma de la app también en Android 9–12 (en 13+ ya lo pone el sistema).
+            val context = AppLocale.wrap(baseContext)
             val snapshot = NoteStore(context).loadSnapshot()
             val pendingSnapshot = loadWidgetPendingSnapshot(context)
             when (
@@ -252,6 +255,7 @@ class WidgetNotesProvider : AppWidgetProvider() {
                 return true
             }
             val views = RemoteViews(context.packageName, R.layout.widget_notes)
+            WidgetTexts.notes(context, views)
             val count = snapshot.notes.size
 
             // Colores adaptativos claro/oscuro desde la fuente unica
