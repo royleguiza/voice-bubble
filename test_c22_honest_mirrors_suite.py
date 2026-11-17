@@ -35,6 +35,9 @@ Verifica:
 """
 
 import os
+# l10n (etapa 4): los textos de la UI viven en app_es.arb; ver test_helpers.expand_l10n.
+from test_helpers import install_l10n_reader
+install_l10n_reader()
 import re
 import sys
 
@@ -150,13 +153,13 @@ suite.check(
 
 suite.check(
     "settings_screen._saveApiKey muestra SnackBar existente de error ante fallo",
-    "ScaffoldMessenger.of(context).showSnackBar(\n        const SnackBar(content: Text('No se pudo guardar la API key'))," in scr_code or
+    "ScaffoldMessenger.of(context).showSnackBar(\n        SnackBar(content: Text('No se pudo guardar la API key'))," in scr_code or
     "content: Text('No se pudo guardar la API key')" in scr_code
 )
 
 suite.check(
     "settings_screen._saveApiKey NO asigna _hasApiKey si hay fallo",
-    "if (!mounted) return;\n      ScaffoldMessenger.of(context).showSnackBar(\n        const SnackBar(content: Text('No se pudo guardar la API key')),\n      );\n      return;" in scr_code
+    "if (!mounted) return;\n      ScaffoldMessenger.of(context).showSnackBar(\n        SnackBar(content: Text('No se pudo guardar la API key')),\n      );\n      return;" in scr_code
 )
 
 # --- 4. Simulaciones de Falla y Respeto a URL Custom ---

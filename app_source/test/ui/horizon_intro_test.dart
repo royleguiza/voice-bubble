@@ -23,6 +23,7 @@ import 'package:voice_bubble_stt/ui/design_tokens.dart';
 import 'package:voice_bubble_stt/ui/horizon_intro.dart';
 
 import '../helpers/mock_channels.dart';
+import '../helpers/l10n_app.dart';
 
 /// Notas en memoria que cuentan cuándo se pidió la carga.
 class _CountingNotes extends NotesService {
@@ -96,7 +97,7 @@ void main() {
     bool enabled = true,
     Brightness brightness = Brightness.light,
   }) {
-    return MaterialApp(
+    return esMaterialApp(
       theme:
           brightness == Brightness.light ? buildLightTheme() : buildDarkTheme(),
       home: HorizonIntroHost(
@@ -767,7 +768,7 @@ void main() {
         expect(popCalls, hasLength(1));
         popCalls.clear();
         await tester.pumpWidget(const SizedBox());
-        await tester.pumpWidget(MaterialApp(
+        await tester.pumpWidget(esMaterialApp(
           theme: buildLightTheme(),
           home: HomeScreen(
             notesService: _CountingNotes(),

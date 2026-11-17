@@ -7,7 +7,7 @@ extension _TecladoPages on _SettingsScreenState {
   Widget _buildTecladoPage(BuildContext context) {
     return _subpage(
       context,
-      title: 'Teclado',
+      title: context.l10n.settingsNavKeyboard,
       sections: [
         KeyboardPreview(
           key: const ValueKey('kb-preview'),
@@ -24,38 +24,38 @@ extension _TecladoPages on _SettingsScreenState {
         ),
         _keyboardStatusSection(),
         SettingsSection(
-          header: 'Tamaño',
+          header: context.l10n.keyboardSizeHeader,
           children: [
             SettingsMenuRow<String>(
               id: 'kb-height-profile-selector',
-              title: 'Altura',
+              title: context.l10n.keyboardHeight,
               value: _heightProfile,
-              options: const [
-                SettingsOption('baja', 'Baja'),
-                SettingsOption('media', 'Media'),
-                SettingsOption('alta', 'Alta'),
-                SettingsOption('muy_alta', 'Muy alta'),
+              options: [
+                SettingsOption('baja', context.l10n.keyboardHeightLow),
+                SettingsOption('media', context.l10n.keyboardHeightMedium),
+                SettingsOption('alta', context.l10n.keyboardHeightHigh),
+                SettingsOption('muy_alta', context.l10n.keyboardHeightVeryHigh),
               ],
               onSelected: _saveHeightProfile,
             ),
             SettingsMenuRow<String>(
               id: 'kb-key-spacing-selector',
-              title: 'Separación',
+              title: context.l10n.keyboardSpacing,
               value: _keySpacing,
-              options: const [
-                SettingsOption('compacto', 'Compacta'),
-                SettingsOption('normal', 'Normal'),
-                SettingsOption('amplio', 'Amplia'),
-                SettingsOption('extra', 'Máxima'),
+              options: [
+                SettingsOption('compacto', context.l10n.keyboardSpacingCompact),
+                SettingsOption('normal', context.l10n.keyboardNormal),
+                SettingsOption('amplio', context.l10n.keyboardSpacingWide),
+                SettingsOption('extra', context.l10n.keyboardSpacingMax),
               ],
               onSelected: _saveKeySpacing,
             ),
             SettingsMenuRow<int>(
               id: 'kb-bottom-elevation-selector',
-              title: 'Distancia al borde',
+              title: context.l10n.keyboardBottomDistance,
               value: _bottomElevationDp,
-              options: const [
-                SettingsOption(0, 'Ninguna'),
+              options: [
+                SettingsOption(0, context.l10n.keyboardBottomNone),
                 SettingsOption(12, '12 dp'),
                 SettingsOption(24, '24 dp'),
                 SettingsOption(36, '36 dp'),
@@ -66,84 +66,84 @@ extension _TecladoPages on _SettingsScreenState {
           ],
         ),
         SettingsSection(
-          header: 'Teclas',
-          footer: 'Ocultá las que no uses y el teclado gana espacio.',
+          header: context.l10n.keyboardKeysHeader,
+          footer: context.l10n.keyboardKeysFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('kb-terminal-row-switch'),
-              title: 'Fila de terminal',
+              title: context.l10n.keyboardTerminalRow,
               value: _showTerminalRow,
               onChanged: _toggleTerminalRow,
             ),
             SettingsSwitchRow(
               key: const ValueKey('kb-code-key-switch'),
-              title: 'Tecla de código',
+              title: context.l10n.keyboardCodeKey,
               value: _showCodeKey,
               onChanged: _toggleKeyboardCodeKey,
             ),
             SettingsSwitchRow(
               key: const ValueKey('kb-language-key-switch'),
-              title: 'Tecla de idioma',
+              title: context.l10n.keyboardLanguageKey,
               value: _showLanguageKey,
               onChanged: _toggleKeyboardLanguageKey,
             ),
             SettingsSwitchRow(
               key: const ValueKey('credenciales-key-visible-switch'),
-              title: 'Llave de claves',
+              title: context.l10n.keyboardCredentialsKey,
               value: _showCredentialsKey,
               onChanged: _toggleKeyboardCredentialsKey,
             ),
           ],
         ),
         SettingsSection(
-          header: 'Escritura',
+          header: context.l10n.keyboardTypingHeader,
           children: [
             SettingsMenuRow<String>(
               id: 'kb-spacebar-trackpad-mode-selector',
-              title: 'Mover el cursor',
+              title: context.l10n.keyboardMoveCursor,
               value: _spacebarTrackpadMode,
-              options: const [
-                SettingsOption('ios_2d', 'Mantener', detail: 'en 2D'),
+              options: [
+                SettingsOption('ios_2d', context.l10n.settingsRecordHold, detail: context.l10n.keyboardCursorHold2dDetail),
                 SettingsOption(
                   'gboard_horizontal',
-                  'Deslizar',
-                  detail: 'lateral',
+                  context.l10n.keyboardCursorSlide,
+                  detail: context.l10n.keyboardCursorSlideDetail,
                 ),
               ],
               onSelected: _saveSpacebarTrackpadMode,
             ),
             SettingsMenuRow<String>(
               id: 'kb-spacebar-alignment-selector',
-              title: 'Barra espaciadora',
+              title: context.l10n.keyboardSpacebar,
               value: _spacebarAlignment,
-              options: const [
-                SettingsOption('left', 'A la izquierda'),
-                SettingsOption('center', 'Centrada'),
-                SettingsOption('right', 'A la derecha'),
+              options: [
+                SettingsOption('left', context.l10n.commonLeft),
+                SettingsOption('center', context.l10n.keyboardAlignCenter),
+                SettingsOption('right', context.l10n.commonRight),
               ],
               onSelected: _saveSpacebarAlignment,
             ),
             SettingsSwitchRow(
               key: const ValueKey('kb-invert-toolbar-switch'),
-              title: 'Micrófono a la izquierda',
+              title: context.l10n.keyboardMicLeft,
               value: _invertToolbar,
               onChanged: _toggleInvertToolbar,
             ),
             SettingsSwitchRow(
               key: const ValueKey('kb-long-press-symbols-switch'),
-              title: 'Símbolos al mantener',
+              title: context.l10n.keyboardLongPressSymbols,
               value: _longPressSymbolsEnabled,
               onChanged: _toggleLongPressSymbols,
             ),
             if (_longPressSymbolsEnabled)
               SettingsMenuRow<String>(
                 id: 'kb-long-press-delay-selector',
-                title: 'Espera',
+                title: context.l10n.keyboardLongPressDelay,
                 value: _longPressDelay,
-                options: const [
-                  SettingsOption('rapido', 'Corta', detail: '250 ms'),
-                  SettingsOption('normal', 'Normal', detail: '350 ms'),
-                  SettingsOption('relajado', 'Larga', detail: '450 ms'),
+                options: [
+                  SettingsOption('rapido', context.l10n.keyboardDelayShort, detail: '250 ms'),
+                  SettingsOption('normal', context.l10n.keyboardNormal, detail: '350 ms'),
+                  SettingsOption('relajado', context.l10n.keyboardDelayLong, detail: '450 ms'),
                 ],
                 onSelected: _saveLongPressDelay,
               ),
@@ -154,20 +154,20 @@ extension _TecladoPages on _SettingsScreenState {
             SettingsNavRow(
               key: const ValueKey('nav-sonido'),
               icon: Icons.volume_up_outlined,
-              title: 'Vibración y sonido',
-              value: _hapticsEnabled ? 'Activados' : 'Sin vibración',
+              title: context.l10n.settingsHapticsSound,
+              value: _hapticsEnabled ? context.l10n.keyboardHapticsOn : context.l10n.keyboardHapticsOff,
               valueActive: _hapticsEnabled,
               onTap: () => _go(SettingsPage.sonido),
             ),
           ],
         ),
         SettingsSection(
-          header: 'Portapapeles',
-          footer: 'Apagado guarda solo texto y ocupa menos memoria.',
+          header: context.l10n.keyboardClipboardHeader,
+          footer: context.l10n.keyboardClipboardFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('kb-clipboard-images-switch'),
-              title: 'Guardar imágenes',
+              title: context.l10n.keyboardClipboardImages,
               badge: 'Beta',
               value: _clipboardImagesEnabled,
               onChanged: _toggleClipboardImages,
@@ -185,13 +185,13 @@ extension _TecladoPages on _SettingsScreenState {
       return SettingsSection(
         key: const ValueKey('kb-status-active'),
         children: [
-          const SettingsStatusRow(
-            title: 'VoiceBubble está activo',
-            subtitle: 'Es tu teclado en todas las apps.',
+          SettingsStatusRow(
+            title: context.l10n.keyboardActiveTitle,
+            subtitle: context.l10n.keyboardActiveSubtitle,
           ),
           SettingsActionRow(
             key: const ValueKey('kb-picker-button'),
-            title: 'Cambiar de teclado',
+            title: context.l10n.keyboardSwitch,
             onTap: _showInputMethodPicker,
           ),
         ],
@@ -199,23 +199,23 @@ extension _TecladoPages on _SettingsScreenState {
     }
     return SettingsSection(
       key: const ValueKey('kb-status-setup'),
-      header: 'Activalo en dos pasos',
-      footer: 'Al volver de Android, el selector se abre solo.',
+      header: context.l10n.keyboardSetupHeader,
+      footer: context.l10n.keyboardSetupFooter,
       children: [
         if (_isKeyboardEnabled)
-          const SettingsStatusRow(
-            title: 'Activado en Android',
-            subtitle: 'Falta elegirlo como teclado.',
+          SettingsStatusRow(
+            title: context.l10n.keyboardEnabledTitle,
+            subtitle: context.l10n.keyboardEnabledSubtitle,
           )
         else
           SettingsActionRow(
             key: const ValueKey('kb-open-settings-button'),
-            title: '1. Activar en Android',
+            title: context.l10n.keyboardStep1,
             onTap: _openKeyboardSettings,
           ),
         SettingsActionRow(
           key: const ValueKey('kb-picker-button'),
-          title: '2. Elegir VoiceBubble',
+          title: context.l10n.keyboardStep2,
           onTap: _isKeyboardEnabled ? _showInputMethodPicker : null,
         ),
       ],
@@ -223,71 +223,71 @@ extension _TecladoPages on _SettingsScreenState {
   }
 
   Widget _buildSonidoPage(BuildContext context) {
-    const tones = [
-      SettingsOption('1', 'Tono 1'),
-      SettingsOption('2', 'Tono 2'),
-      SettingsOption('3', 'Tono 3'),
-      SettingsOption('4', 'Tono 4'),
+    final tones = [
+      SettingsOption('1', context.l10n.keyboardTone1),
+      SettingsOption('2', context.l10n.keyboardTone2),
+      SettingsOption('3', context.l10n.keyboardTone3),
+      SettingsOption('4', context.l10n.keyboardTone4),
     ];
     return _subpage(
       context,
-      title: 'Vibración y sonido',
+      title: context.l10n.settingsHapticsSound,
       sections: [
         SettingsSection(
-          header: 'Al escribir',
+          header: context.l10n.keyboardTypingSub,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('kb-haptics-switch'),
-              title: 'Vibrar al tocar',
+              title: context.l10n.keyboardHapticsToggle,
               value: _hapticsEnabled,
               onChanged: _toggleHaptics,
             ),
             if (_hapticsEnabled)
               SettingsMenuRow<String>(
                 id: 'kb-haptic-style-selector',
-                title: 'Intensidad',
+                title: context.l10n.keyboardIntensity,
                 value: _hapticStyle,
-                options: const [
-                  SettingsOption('nitido', 'Nítida', detail: 'clic seco'),
-                  SettingsOption('firme', 'Firme', detail: 'marcada'),
-                  SettingsOption('suave', 'Suave', detail: 'leve'),
+                options: [
+                  SettingsOption('nitido', context.l10n.keyboardIntensitySharp, detail: context.l10n.keyboardIntensitySharpDetail),
+                  SettingsOption('firme', context.l10n.keyboardIntensityFirm, detail: context.l10n.keyboardIntensityFirmDetail),
+                  SettingsOption('suave', context.l10n.keyboardIntensitySoft, detail: context.l10n.keyboardIntensitySoftDetail),
                 ],
                 onSelected: _saveHapticStyle,
               ),
           ],
         ),
         SettingsSection(
-          header: 'Al dictar',
-          footer: 'Funciona aparte de la vibración de las teclas.',
+          header: context.l10n.keyboardDictatingHeader,
+          footer: context.l10n.keyboardDictatingFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('kb-mic-haptics-enabled'),
-              title: 'Vibración',
+              title: context.l10n.keyboardMicVibration,
               value: _micHapticsEnabled,
               onChanged: _toggleMicHaptics,
             ),
             if (_micHapticsEnabled) ...[
               SettingsSwitchRow(
                 key: const ValueKey('kb-mic-haptic-start'),
-                title: 'Al empezar',
+                title: context.l10n.keyboardMicOnStart,
                 value: _micHapticStart,
                 onChanged: _toggleMicHapticStart,
               ),
               SettingsSwitchRow(
                 key: const ValueKey('kb-mic-haptic-recording'),
-                title: 'Mientras graba',
+                title: context.l10n.keyboardMicWhileRecording,
                 value: _micHapticRecording,
                 onChanged: _toggleMicHapticRecording,
               ),
               SettingsSwitchRow(
                 key: const ValueKey('kb-mic-haptic-paste'),
-                title: 'Al pegar',
+                title: context.l10n.keyboardMicOnPaste,
                 value: _micHapticPaste,
                 onChanged: _toggleMicHapticPaste,
               ),
               SettingsSwitchRow(
                 key: const ValueKey('kb-mic-haptic-cancel'),
-                title: 'Al cancelar',
+                title: context.l10n.keyboardMicOnCancel,
                 value: _micHapticCancel,
                 onChanged: _toggleMicHapticCancel,
               ),
@@ -295,25 +295,25 @@ extension _TecladoPages on _SettingsScreenState {
           ],
         ),
         SettingsSection(
-          header: 'Sonidos del micrófono',
+          header: context.l10n.keyboardMicSoundsHeader,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('kb-mic-sounds-enabled'),
-              title: 'Sonidos',
+              title: context.l10n.keyboardMicSounds,
               value: _micSoundsEnabled,
               onChanged: _toggleMicSounds,
             ),
             if (_micSoundsEnabled) ...[
               SettingsMenuRow<String>(
                 id: 'kb-mic-start-style',
-                title: 'Al empezar',
+                title: context.l10n.keyboardMicOnStart,
                 value: _micStartStyle,
                 options: tones,
                 onSelected: _saveMicStartStyle,
               ),
               SettingsMenuRow<String>(
                 id: 'kb-mic-stop-style',
-                title: 'Al terminar',
+                title: context.l10n.keyboardMicOnStop,
                 value: _micStopStyle,
                 options: tones,
                 onSelected: _saveMicStopStyle,

@@ -4,6 +4,7 @@ import '../models/credential.dart';
 import '../services/storage_service.dart';
 import '../ui/design_tokens.dart';
 import '../widgets/settings_v2.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Página "Claves": credenciales para rellenar desde la llave del teclado.
 ///
@@ -64,12 +65,12 @@ class CredentialsScreenState extends State<CredentialsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Borrar clave'),
-        content: Text('¿Borrar "${cred.nombre}"? No se puede deshacer.'),
+        title: Text(context.l10n.credentialsDeleteTitle),
+        content: Text(context.l10n.credentialsDeleteConfirm(cred.nombre)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             key: const ValueKey('credenciales-confirm-delete'),
@@ -77,7 +78,7 @@ class CredentialsScreenState extends State<CredentialsScreen> {
               foregroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Borrar'),
+            child: Text(context.l10n.credentialsDeleteButton),
           ),
         ],
       ),
@@ -106,11 +107,11 @@ class CredentialsScreenState extends State<CredentialsScreen> {
       ),
       children: [
         SettingsSection(
-          footer: 'Junto al nombre, en la lista del teclado.',
+          footer: context.l10n.credentialsShowUserFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('credenciales-show-user'),
-              title: 'Mostrar usuario',
+              title: context.l10n.credentialsShowUser,
               value: _showUser,
               onChanged: _toggleShowUser,
             ),
@@ -119,18 +120,16 @@ class CredentialsScreenState extends State<CredentialsScreen> {
         const SizedBox(height: kSettingsGroupGap),
         if (_loaded && _credentials.isEmpty)
           SettingsEmptyState(
-            title: 'Sin claves guardadas',
-            message: 'Guardá usuario y contraseña para rellenarlos desde la '
-                'llave del teclado.',
-            actionLabel: 'Agregar clave',
+            title: context.l10n.credentialsEmptyTitle,
+            message: context.l10n.credentialsEmptyMessage,
+            actionLabel: context.l10n.credentialsAdd,
             actionKey: const ValueKey('credenciales-empty-add'),
             onAction: openAddCredential,
           )
         else if (_credentials.isNotEmpty)
           SettingsSection(
-            header: 'Guardadas',
-            footer: '${_credentials.length} de ${StorageService.maxCredentials}'
-                ' · La contraseña nunca se muestra.',
+            header: context.l10n.credentialsSavedHeader,
+            footer: context.l10n.credentialsCountFooter(_credentials.length.toString(), StorageService.maxCredentials.toString()),
             monoFooter: true,
             children: [
               for (final cred in _credentials)
@@ -195,7 +194,7 @@ class _CredentialRow extends StatelessWidget {
               key: ValueKey('credenciales-delete-${cred.id}'),
               icon: const Icon(Icons.delete_outline_rounded, size: 22),
               color: p.secondary,
-              tooltip: 'Borrar ${cred.nombre}',
+              tooltip: context.l10n.credentialsDeleteNamed(cred.nombre),
               constraints: const BoxConstraints.tightFor(width: 44, height: 44),
               onPressed: onDelete,
             ),
@@ -246,7 +245,7 @@ class _CredentialFormSheetState extends State<_CredentialFormSheet> {
     }
     setState(() {
       _saving = false;
-      _error = 'Revisá los campos: nombre y usuario no pueden quedar vacíos.';
+      _error = context.l10n.credentialsFormError;
     });
   }
 
@@ -263,7 +262,7 @@ class _CredentialFormSheetState extends State<_CredentialFormSheet> {
             bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: AutofillGroup(
           child: SettingsSheetFrame(
-            title: 'Nueva clave',
+            title: context.l10n.credentialsNewTitle,
             closeKey: const ValueKey('credenciales-cancel-button'),
             onClose: () => Navigator.of(context).pop(),
             saveKey: const ValueKey('credenciales-add-button'),
@@ -274,24 +273,24 @@ class _CredentialFormSheetState extends State<_CredentialFormSheet> {
                 children: [
                   SettingsSheetField(
                     key: const ValueKey('credenciales-add-nombre'),
-                    label: 'Nombre',
-                    hint: 'Ej. Banco',
+                    label: context.l10n.credentialsFieldName,
+                    hint: context.l10n.credentialsFieldNameHint,
                     controller: _nameController,
                     autofocus: true,
                     textInputAction: TextInputAction.next,
                   ),
                   SettingsSheetField(
                     key: const ValueKey('credenciales-add-usuario'),
-                    label: 'Usuario',
-                    hint: 'Usuario o email',
+                    label: context.l10n.credentialsFieldUser,
+                    hint: context.l10n.credentialsFieldUserHint,
                     controller: _userController,
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.username],
                   ),
                   SettingsSheetField(
                     key: const ValueKey('credenciales-add-password'),
-                    label: 'Contraseña',
-                    hint: 'Solo se escribe, nunca se muestra',
+                    label: context.l10n.credentialsFieldPassword,
+                    hint: context.l10n.credentialsFieldPasswordHint,
                     controller: _passController,
                     obscure: true,
                     mono: true,
@@ -305,8 +304,7 @@ class _CredentialFormSheetState extends State<_CredentialFormSheet> {
                 padding: const EdgeInsets.fromLTRB(4, 10, 4, 0),
                 child: Text(
                   _error ??
-                      'Se guarda cifrada. El teclado la rellena solo en '
-                          'campos de contraseña.',
+                      context.l10n.credentialsFormHint,
                   style: kTextFootnote.copyWith(
                     color: _error == null ? p.secondary : p.danger,
                     height: 1.35,

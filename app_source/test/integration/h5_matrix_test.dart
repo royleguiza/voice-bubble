@@ -14,6 +14,7 @@ import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 import 'package:voice_bubble_stt/widgets/record_button.dart';
+import '../helpers/l10n_app.dart';
 
 /// Matriz H5-T5 (Lane A): integracion widget-level de los flujos de
 /// grabacion de HomeScreen contra servicios instrumentados.
@@ -320,7 +321,7 @@ void main() {
     tester.view.physicalSize = const Size(1600, 4800);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(esMaterialApp(
       // Clave unica por fase: sin ella, pumpWidget con estructura identica
       // REUTILIZA el State del HomeScreen anterior y la fase nueva hereda
       // servicios/modo de la vieja (falla de aislamiento entre fases).

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
+import '../l10n/l10n_ext.dart';
 import 'credentials_screen.dart';
 import 'settings/snippets_tab.dart';
 import '../helpers/island_geometry.dart';
@@ -541,7 +542,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final pointerAfter = pointer ? value : _dockToolPointer;
     if (!micAfter && !pointerAfter) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dejá al menos una herramienta')),
+        SnackBar(content: Text(context.l10n.settingsKeepOneTool)),
       );
       return;
     }
@@ -557,8 +558,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     await _floatingBubbleService.reloadDock();
     if (pointer && value && _pointerStatus != FloatingTrackpadService.pointerReady && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Para hacer clic en otras apps, activá VoiceBubble Puntero en Trackpad'),
+        SnackBar(
+          content: Text(context.l10n.settingsPointerNeedsCompanion),
         ),
       );
     }
@@ -583,17 +584,15 @@ class _SettingsScreenState extends State<SettingsScreen>
       await showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('VoiceBubble Puntero'),
-          content: const Text(
-            'Es una app chica que hace los clics del puntero en otras apps. '
-            'Se descarga junto con VoiceBubble, en el mismo lugar de GitHub. '
-            'Instalala y volvé acá para activarla.',
+          title: Text(context.l10n.settingsPointerCompanionTitle),
+          content: Text(
+            context.l10n.settingsPointerCompanionMessage,
           ),
           actions: [
             TextButton(
               key: const ValueKey('pointer-missing-ok'),
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Entendido'),
+              child: Text(context.l10n.settingsPointerCompanionOk),
             ),
           ],
         ),
@@ -724,7 +723,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (hasPermission) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permiso de superposición concedido')),
+          SnackBar(content: Text(context.l10n.settingsOverlayGranted)),
         );
       }
       return;
@@ -777,18 +776,18 @@ class _SettingsScreenState extends State<SettingsScreen>
         final grant = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Permiso de superposición'),
-            content: const Text(
-              'Para mostrar la burbuja sobre otras apps, VoiceBubble necesita el permiso de mostrar sobre otras aplicaciones.',
+            title: Text(context.l10n.settingsOverlayTitle),
+            content: Text(
+              context.l10n.settingsOverlayMessage,
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancelar'),
+                child: Text(context.l10n.commonCancel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Configurar'),
+                child: Text(context.l10n.settingsOverlayConfigure),
               ),
             ],
           ),
@@ -820,8 +819,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         if (mounted) setState(() => _isBubbleEnabled = true);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('No se pudo activar la burbuja flotante')),
+          SnackBar(
+              content: Text(context.l10n.settingsBubbleStartFailed)),
         );
       }
     } else {
@@ -860,23 +859,20 @@ class _SettingsScreenState extends State<SettingsScreen>
         context: context,
         builder: (ctx) => AlertDialog(
           key: const ValueKey('translate-ai-consent-dialog'),
-          title: const Text('¿Traducir con IA?'),
+          title: Text(context.l10n.settingsTranslateAiTitle),
           content: Text(
-            'Cuando traduzcas, el texto seleccionado o dictado se va a mandar '
-            'a $name (el proveedor de «Título y resumen con») para '
-            'traducirlo. VoiceBubble no lo guarda. Nunca se usa en campos de '
-            'contraseña.\n\nPodés volver a «En el teléfono» cuando quieras.',
+            context.l10n.settingsTranslateAiMessage(name),
           ),
           actions: [
             TextButton(
               key: const ValueKey('translate-ai-consent-cancel'),
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancelar'),
+              child: Text(context.l10n.commonCancel),
             ),
             FilledButton(
               key: const ValueKey('translate-ai-consent-accept'),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Autorizar'),
+              child: Text(context.l10n.settingsTranslateAiAuthorize),
             ),
           ],
         ),
@@ -918,11 +914,11 @@ class _SettingsScreenState extends State<SettingsScreen>
     // Validación visible: vacía, incompleta (<10) o sin prefijo gsk_.
     String? error;
     if (key.isEmpty) {
-      error = 'Pegá tu clave para continuar.';
+      error = context.l10n.settingsKeyPasteToContinue;
     } else if (key.length < 10) {
-      error = 'Parece incompleta: revisá que la copiaste entera.';
+      error = context.l10n.settingsKeyIncomplete;
     } else if (!key.startsWith('gsk_')) {
-      error = 'Las claves de Groq empiezan con gsk_.';
+      error = context.l10n.settingsGroqKeyPrefix;
     }
     if (error != null) {
       if (mounted) setState(() => _apiKeyError = error);
@@ -944,7 +940,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       // Keystore bloqueado / prefs caído: SnackBar, nunca pantalla roja.
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo guardar la API key')),
+        SnackBar(content: Text(context.l10n.settingsKeySaveFailed)),
       );
       return;
     }
@@ -956,7 +952,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _apiKeyError = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Clave guardada')),
+      SnackBar(content: Text(context.l10n.settingsKeySaved)),
     );
   }
 
@@ -998,9 +994,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     final key = _geminiApiKeyController.text.trim();
     String? error;
     if (key.isEmpty) {
-      error = 'Pegá tu clave de Google AI Studio para continuar.';
+      error = context.l10n.settingsGoogleKeyPaste;
     } else if (key.length < 10) {
-      error = 'Parece incompleta: revisá que la copiaste entera.';
+      error = context.l10n.settingsKeyIncomplete;
     }
     if (error != null) {
       if (mounted) setState(() => _geminiApiKeyError = error);
@@ -1010,7 +1006,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (!ok) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo guardar la API key')),
+        SnackBar(content: Text(context.l10n.settingsKeySaveFailed)),
       );
       return;
     }
@@ -1023,7 +1019,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _geminiApiKeyError = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Clave de Google AI guardada')),
+      SnackBar(content: Text(context.l10n.settingsGoogleKeySaved)),
     );
   }
 
@@ -1058,7 +1054,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _geminiApiKeyError = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Clave de Google AI eliminada')),
+      SnackBar(content: Text(context.l10n.settingsGoogleKeyDeleted)),
     );
   }
 
@@ -1074,8 +1070,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(ok
-            ? 'Conectado con $name'
-            : 'No se pudo conectar con $name: revisá la clave'),
+            ? context.l10n.settingsConnected(name)
+            : context.l10n.settingsConnectFailed(name)),
       ),
     );
   }
@@ -1092,7 +1088,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo eliminar la API key')),
+        SnackBar(content: Text(context.l10n.settingsKeyDeleteFailed)),
       );
       return;
     }
@@ -1105,7 +1101,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _apiKeyError = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Clave eliminada')),
+      SnackBar(content: Text(context.l10n.settingsKeyDeleted)),
     );
   }
 
@@ -1215,11 +1211,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       case SettingsPage.snippets:
         return _subpage(
           context,
-          title: 'Snippets',
+          title: context.l10n.settingsSnippetsTitle,
           trailing: SettingsGlassButton(
             key: const ValueKey('snippets-add-button'),
             icon: Icons.add_rounded,
-            tooltip: 'Nuevo snippet',
+            tooltip: context.l10n.snippetSheetNew,
             onPressed: () => _snippetsKey.currentState?.openNewSnippet(),
           ),
           body: SnippetsTab(
@@ -1230,11 +1226,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       case SettingsPage.claves:
         return _subpage(
           context,
-          title: 'Claves',
+          title: context.l10n.settingsCredentialsTitle,
           trailing: SettingsGlassButton(
             key: const ValueKey('credenciales-open-add'),
             icon: Icons.add_rounded,
-            tooltip: 'Nueva clave',
+            tooltip: context.l10n.credentialsNewTitle,
             onPressed: () =>
                 _credentialsKey.currentState?.openAddCredential(),
           ),
@@ -1295,7 +1291,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 child: SettingsGlassButton(
                   key: const ValueKey('settings-back-button'),
                   icon: Icons.chevron_left_rounded,
-                  tooltip: 'Volver',
+                  tooltip: context.l10n.commonBack,
                   onPressed: _handleBack,
                 ),
               ),
@@ -1334,11 +1330,11 @@ class _SettingsScreenState extends State<SettingsScreen>
       context,
       storageKey: 'settings_root',
       header: SettingsLargeTitle(
-        'Ajustes',
+        context.l10n.settingsTitle,
         leading: SettingsGlassButton(
           key: const ValueKey('settings-root-back-button'),
           icon: Icons.chevron_left_rounded,
-          tooltip: 'Volver',
+          tooltip: context.l10n.commonBack,
           onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
@@ -1346,15 +1342,15 @@ class _SettingsScreenState extends State<SettingsScreen>
         if (needsSetup)
           SettingsSection(
             key: const ValueKey('setup-section'),
-            header: 'Terminá de configurar',
-            footer: 'Con esto ya podés dictar en cualquier app.',
+            header: context.l10n.settingsSetupHeader,
+            footer: context.l10n.settingsSetupFooter,
             children: [
               if (!_hasApiKey)
                 SettingsNavRow(
                   key: const ValueKey('setup-groq-row'),
                   icon: Icons.graphic_eq_rounded,
-                  title: 'Agregar clave de Groq',
-                  value: 'Falta',
+                  title: context.l10n.settingsSetupAddGroqKey,
+                  value: context.l10n.settingsMissing,
                   valueColor: p.alert,
                   onTap: () => _go(SettingsPage.transcripcion),
                 ),
@@ -1362,8 +1358,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                 SettingsNavRow(
                   key: const ValueKey('setup-keyboard-row'),
                   icon: Icons.keyboard_rounded,
-                  title: 'Activar el teclado',
-                  value: 'Falta',
+                  title: context.l10n.settingsSetupEnableKeyboard,
+                  value: context.l10n.settingsMissing,
                   valueColor: p.alert,
                   onTap: () => _go(SettingsPage.teclado),
                 ),
@@ -1372,7 +1368,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         SettingsAppCard(
           key: const ValueKey('about-open-button'),
           title: 'VoiceBubble',
-          subtitle: 'Dictado con Groq Whisper',
+          subtitle: context.l10n.settingsAppSubtitle,
           onTap: () => _go(SettingsPage.acerca),
         ),
         SettingsSection(
@@ -1380,17 +1376,17 @@ class _SettingsScreenState extends State<SettingsScreen>
             SettingsNavRow(
               key: const ValueKey('nav-transcripcion'),
               icon: Icons.graphic_eq_rounded,
-              title: 'Transcripción',
-              value: _hasApiKey ? 'Groq' : 'Sin clave',
+              title: context.l10n.settingsNavTranscription,
+              value: _hasApiKey ? 'Groq' : context.l10n.settingsNoKey,
               onTap: () => _go(SettingsPage.transcripcion),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-ia'),
               icon: Icons.auto_awesome_outlined,
-              title: 'Inteligencia artificial',
+              title: context.l10n.settingsNavAi,
               value: (_hasApiKey || _geminiHasApiKey)
-                  ? (_geminiActionsEnabled ? 'Activa' : 'Oculta')
-                  : 'Opcional',
+                  ? (_geminiActionsEnabled ? context.l10n.settingsAiActive : context.l10n.settingsAiHidden)
+                  : context.l10n.settingsAiOptional,
               valueActive:
                   (_hasApiKey || _geminiHasApiKey) && _geminiActionsEnabled,
               onTap: () => _go(SettingsPage.ia),
@@ -1398,55 +1394,55 @@ class _SettingsScreenState extends State<SettingsScreen>
           ],
         ),
         SettingsSection(
-          header: 'Dónde dictar',
+          header: context.l10n.settingsWhereHeader,
           children: [
             SettingsNavRow(
               key: const ValueKey('nav-teclado'),
               icon: Icons.keyboard_outlined,
-              title: 'Teclado',
-              value: _isKeyboardActive ? 'Activo' : 'Inactivo',
+              title: context.l10n.settingsNavKeyboard,
+              value: _isKeyboardActive ? context.l10n.settingsKeyboardActive : context.l10n.settingsKeyboardInactive,
               valueActive: _isKeyboardActive,
               onTap: () => _go(SettingsPage.teclado),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-burbuja'),
               icon: Icons.radio_button_unchecked_rounded,
-              title: 'Barra flotante',
-              value: _isBubbleEnabled ? 'Activada' : 'Apagada',
+              title: context.l10n.settingsNavBubble,
+              value: _isBubbleEnabled ? context.l10n.settingsBubbleOn : context.l10n.settingsBubbleOff,
               valueActive: _isBubbleEnabled,
               onTap: () => _go(SettingsPage.burbuja),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-trackpad'),
               icon: Icons.touch_app_outlined,
-              title: 'Trackpad',
+              title: context.l10n.settingsNavTrackpad,
               value: _trackpadEnabled || _dockToolPointer
-                  ? 'Activado'
-                  : 'Apagado',
+                  ? context.l10n.settingsTrackpadOn
+                  : context.l10n.settingsTrackpadOff,
               valueActive: _trackpadEnabled || _dockToolPointer,
               onTap: () => _go(SettingsPage.trackpad),
             ),
           ],
         ),
         SettingsSection(
-          header: 'Tu contenido',
+          header: context.l10n.settingsContentHeader,
           children: [
             SettingsNavRow(
               key: const ValueKey('nav-snippets'),
               icon: Icons.code_rounded,
-              title: 'Snippets',
+              title: context.l10n.settingsSnippetsTitle,
               onTap: () => _go(SettingsPage.snippets),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-claves'),
               icon: Icons.key_outlined,
-              title: 'Claves',
+              title: context.l10n.settingsCredentialsTitle,
               onTap: () => _go(SettingsPage.claves),
             ),
             SettingsNavRow(
               key: const ValueKey('nav-notas'),
               icon: Icons.sticky_note_2_outlined,
-              title: 'Notas y widgets',
+              title: context.l10n.settingsNavNotes,
               onTap: () => _go(SettingsPage.notas),
             ),
           ],
@@ -1456,12 +1452,12 @@ class _SettingsScreenState extends State<SettingsScreen>
             SettingsMenuRow<String>(
               id: 'theme-selector',
               icon: Icons.contrast_rounded,
-              title: 'Apariencia',
+              title: context.l10n.settingsAppearance,
               value: _themeMode,
-              options: const [
-                SettingsOption('sistema', 'Automática'),
-                SettingsOption('claro', 'Clara'),
-                SettingsOption('oscuro', 'Oscura'),
+              options: [
+                SettingsOption('sistema', context.l10n.settingsThemeAuto),
+                SettingsOption('claro', context.l10n.settingsThemeLight),
+                SettingsOption('oscuro', context.l10n.settingsThemeDark),
               ],
               onSelected: _saveThemeMode,
             ),
@@ -1476,7 +1472,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final p = SettingsPalette.of(context);
     return _subpage(
       context,
-      title: 'Acerca de',
+      title: context.l10n.settingsAboutTitle,
       sections: [
         Column(
           children: [
@@ -1489,25 +1485,24 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              'Transcripción de voz a texto con Groq Whisper.',
+              context.l10n.settingsAboutTagline,
               textAlign: TextAlign.center,
               style: kTextSubhead.copyWith(color: p.secondary),
             ),
           ],
         ),
         SettingsSection(
-          footer: 'Sin analytics ni telemetría. El audio sale del teléfono '
-              'solo cuando dictás, y el teclado nunca guarda lo que escribís.',
+          footer: context.l10n.settingsAboutPrivacy,
           children: [
-            const SettingsValueRow(
+            SettingsValueRow(
               key: ValueKey('about-version'),
-              title: 'Versión',
+              title: context.l10n.settingsAboutVersion,
               value: '1.0.0',
             ),
-            const SettingsValueRow(title: 'Motor', value: 'Groq Whisper'),
+            SettingsValueRow(title: context.l10n.settingsAboutEngine, value: 'Groq Whisper'),
             SettingsValueRow(
               key: const ValueKey('about-channel-errors'),
-              title: 'Errores de canal',
+              title: context.l10n.settingsAboutChannelErrors,
               value: '$channelErrorCount',
             ),
           ],

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
 import 'package:voice_bubble_stt/ui/design_tokens.dart';
 import 'package:voice_bubble_stt/widgets/history_list.dart';
+import '../helpers/l10n_app.dart';
 
 void main() {
   group('Color constants (Horizonte)', () {
@@ -255,7 +256,7 @@ void main() {
 
     testWidgets('HistoryList se monta bajo buildLightTheme', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        esMaterialApp(
           theme: buildLightTheme(),
           home: Scaffold(
             body: SizedBox(
@@ -271,7 +272,7 @@ void main() {
 
     testWidgets('HistoryList se monta bajo buildDarkTheme', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        esMaterialApp(
           theme: buildDarkTheme(),
           home: Scaffold(
             body: SizedBox(
@@ -289,7 +290,7 @@ void main() {
         (tester) async {
       for (final theme in [buildLightTheme(), buildDarkTheme()]) {
         await tester.pumpWidget(
-          MaterialApp(
+          esMaterialApp(
             theme: theme,
             home: const Scaffold(
               body: Card(

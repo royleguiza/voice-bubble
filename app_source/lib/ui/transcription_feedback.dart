@@ -17,20 +17,6 @@ String formatTranscriptionTimestamp(DateTime dt) {
   return '$day/$month/${dt.year} $hour:$minute';
 }
 
-/// Etiqueta del botón de copiado (popup + historial).
-const String copyButtonLabel = 'Copiar';
-
-/// Tooltip / anuncio de lector de pantalla del botón de copiado.
-const String copyTooltipMessage = 'Copiar al portapapeles';
-
-/// Confirmación de copiado exitoso (SnackBar).
-const String copiedToClipboardMessage = 'Texto copiado';
-
-/// Aviso de fallo de portapapeles: se muestra clasificado como fallo de
-/// clipboard, NUNCA como "error de red" ni con reintento de transcripción.
-const String clipboardFailureMessage =
-    'No se pudo copiar al portapapeles';
-
 /// Resultado clasificado de un intento de copiado.
 enum ClipboardCopyResult { ok, failed }
 

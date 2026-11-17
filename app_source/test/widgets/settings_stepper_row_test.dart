@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/settings_v2.dart';
 
 import '../helpers/settings_harness.dart' show sliderSpokenValue;
+import '../helpers/l10n_app.dart';
 
 /// [SettingsStepperRow]: deslizador con «−» y «+» de un paso (mantener
 /// apretado repite) y [SettingsOption.enabled] del menú.
@@ -14,7 +15,7 @@ void main() {
     required List<int> changes,
     required List<String> ends,
   }) =>
-      MaterialApp(
+      esMaterialApp(
         home: Scaffold(
           body: SettingsStepperRow(
             id: 'demo',
@@ -58,7 +59,7 @@ void main() {
     final changes = <int>[];
     final ends = <String>[];
     var value = 50;
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(esMaterialApp(
       home: Scaffold(
         body: StatefulBuilder(builder: (context, setState) {
           return SettingsStepperRow(
@@ -101,7 +102,7 @@ void main() {
       (tester) async {
     final changes = <int>[];
     var value = 98;
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(esMaterialApp(
       home: Scaffold(
         body: StatefulBuilder(builder: (context, setState) {
           return SettingsStepperRow(
@@ -196,7 +197,7 @@ void main() {
     testWidgets('una opción deshabilitada se ve pero no se puede elegir',
         (tester) async {
       String? picked;
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: Scaffold(
           body: SettingsMenuRow<String>(
             id: 'menu',

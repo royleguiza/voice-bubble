@@ -6,6 +6,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/ui/design_tokens.dart';
 import 'package:voice_bubble_stt/widgets/record_button.dart';
+import '../helpers/l10n_app.dart';
 
 /// Lienzo que registra, en coordenadas del lienzo de la pastilla, los
 /// círculos (agujero, anillo, halo) y la extensión horizontal de cada
@@ -85,7 +86,7 @@ Widget buildTestWidget({
   RecordButtonState state = RecordButtonState.idle,
   VoidCallback? onPressed,
 }) {
-  return MaterialApp(
+  return esMaterialApp(
     home: Scaffold(
       body: RecordButton(
         key: const ValueKey('recordButton'),
@@ -143,7 +144,7 @@ void main() {
     testWidgets('hold dispara onHoldStart y onHoldEnd', (tester) async {
       var started = 0;
       var ended = 0;
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: Scaffold(
           body: RecordButton(
             key: const ValueKey('recordButton'),
@@ -204,7 +205,7 @@ void main() {
         (tester) async {
       var cancelled = 0;
       var pressed = 0;
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: Scaffold(
           body: RecordButton(
             key: const ValueKey('recordButton'),
@@ -222,7 +223,7 @@ void main() {
 
     testWidgets('modo mantener: sin ✕ ni ■ (el dedo está en la burbuja)',
         (tester) async {
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: Scaffold(
           body: RecordButton(
             key: const ValueKey('recordButton'),
@@ -241,7 +242,7 @@ void main() {
     testWidgets('la onda consulta el nivel real del micrófono mientras graba',
         (tester) async {
       var polls = 0;
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: Scaffold(
           body: RecordButton(
             key: const ValueKey('recordButton'),
@@ -271,7 +272,7 @@ void main() {
       var ended = 0;
       var pressed = 0;
 
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: Scaffold(
           body: RecordButton(
             key: const ValueKey('recordButton'),
@@ -298,7 +299,7 @@ void main() {
         'C-26: Semantics en modo recording hold tiene label Detener grabación',
         (tester) async {
       final handle = tester.ensureSemantics();
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: Scaffold(
           body: RecordButton(
             key: const ValueKey('recordButton'),
@@ -333,7 +334,7 @@ void main() {
       bool disableAnimations = false,
       RecordButtonState state = RecordButtonState.recording,
     }) {
-      return MaterialApp(
+      return esMaterialApp(
         home: MediaQuery(
           data: MediaQueryData(disableAnimations: disableAnimations),
           child: Scaffold(
@@ -446,7 +447,7 @@ void main() {
       Future<double> Function()? level,
       bool holdMode = false,
     }) {
-      return MaterialApp(
+      return esMaterialApp(
         home: Builder(
           builder: (context) => MediaQuery(
             data: MediaQuery.of(context)
@@ -730,7 +731,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
       // Nivel que no llega nunca: el goteo no depende de la primera lectura.
       final never = Completer<double>();
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: Scaffold(
           body: RecordButton(
             key: const ValueKey('recordButton'),

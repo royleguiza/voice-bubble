@@ -11,6 +11,7 @@ import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 
 import '../helpers/mock_channels.dart';
+import '../helpers/l10n_app.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +28,7 @@ void main() {
     TranscriptionService? transcriptionService,
     StorageService? storageService,
   }) {
-    return MaterialApp(
+    return esMaterialApp(
       home: HomeScreen(
         transcriptionService: transcriptionService,
         storageService: storageService,
@@ -181,7 +182,7 @@ void main() {
     testWidgets('floating bubble tap triggers recording start and state updates',
         (tester) async {
       final bubbleService = FloatingBubbleService();
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           floatingBubbleService: bubbleService,
         ),
@@ -203,7 +204,7 @@ void main() {
       await storage.saveFloatingBubbleEnabled(true);
       final bubbleService = FloatingBubbleService();
 
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           storageService: storage,
           floatingBubbleService: bubbleService,

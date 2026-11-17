@@ -8,6 +8,13 @@ import '../models/transcription.dart';
 import '../services/floating_bubble_service.dart';
 import '../services/transcription_service.dart';
 import '../widgets/record_button.dart';
+import '../l10n/app_localizations.dart';
+
+/// El audio pendiente desapareció antes del reintento. La UI lo traduce
+/// (`homePendingAudioGone`); el controlador no conoce el idioma.
+class PendingAudioUnavailable {
+  const PendingAudioUnavailable();
+}
 
 /// Controlador del flujo y máquina de estados de grabación extraído de HomeScreen (C-33).
 ///
@@ -69,11 +76,11 @@ class RecordingController extends ChangeNotifier {
     return RecordButtonState.idle;
   }
 
-  String getStatusText({bool hasResult = false}) {
-    if (_isRecording || _isStartingRecording) return 'Grabando...';
-    if (_isTranscribing || _isStoppingRecording) return 'Procesando...';
-    if (_pendingAudioPath != null) return 'Error, toca para reintentar';
-    if (!hasResult) return 'Listo para transcribir';
+  String getStatusText(AppLocalizations l10n, {bool hasResult = false}) {
+    if (_isRecording || _isStartingRecording) return l10n.recordingStatusRecording;
+    if (_isTranscribing || _isStoppingRecording) return l10n.recordingStatusProcessing;
+    if (_pendingAudioPath != null) return l10n.recordingStatusError;
+    if (!hasResult) return l10n.recordingStatusReady;
     return '';
   }
 
@@ -236,7 +243,7 @@ class RecordingController extends ChangeNotifier {
       _pendingAudioPath = null;
       _isTranscribing = false;
       notifyListeners();
-      onError?.call('El audio pendiente ya no está disponible', canRetry: false);
+      onError?.call(const PendingAudioUnavailable(), canRetry: false);
       return;
     }
 

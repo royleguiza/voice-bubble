@@ -14,6 +14,7 @@ import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
 
 import '../helpers/mock_channels.dart';
+import '../helpers/l10n_app.dart';
 
 /// C-05 en las dos pantallas que abren el microfono: el estado visual se
 /// publica antes del claim y ninguna de las dos llega al recorder con el
@@ -154,7 +155,7 @@ void main() {
       tester.view.physicalSize = const Size(1600, 4800);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           transcriptionService: buildService(gate, recorder),
           storageService: StorageService(),
@@ -180,7 +181,7 @@ void main() {
       tester.view.physicalSize = const Size(1600, 4800);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           transcriptionService: buildService(gate, recorder),
           storageService: StorageService(),
@@ -205,7 +206,7 @@ void main() {
       tester.view.physicalSize = const Size(1600, 4800);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           transcriptionService: buildService(gate, recorder),
           storageService: StorageService(),
@@ -244,7 +245,7 @@ void main() {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       final service = buildService(gate, recorder);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           transcriptionService: service,
           storageService: StorageService(),
@@ -258,7 +259,7 @@ void main() {
       expect(gate.isClaimed, isTrue);
 
       await tester.pumpWidget(
-        const MaterialApp(home: SizedBox.shrink()),
+        esMaterialApp(home: SizedBox.shrink()),
       );
       await tester.pump();
       await tester.pump();
@@ -277,7 +278,7 @@ void main() {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       final service = buildService(gate, recorder);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           transcriptionService: service,
           storageService: StorageService(),
@@ -291,7 +292,7 @@ void main() {
       expect(gate.isClaimed, isTrue);
 
       await tester.pumpWidget(
-        const MaterialApp(home: SizedBox.shrink()),
+        esMaterialApp(home: SizedBox.shrink()),
       );
       await tester.pump();
       await tester.pump();
@@ -308,7 +309,7 @@ void main() {
       tester.view.physicalSize = const Size(1600, 4800);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           transcriptionService: buildService(gate, _OrderRecorder(order)),
           storageService: StorageService(),
@@ -323,7 +324,7 @@ void main() {
       expect(order, ['bubble:recording']);
 
       await tester.pumpWidget(
-        const MaterialApp(home: SizedBox.shrink()),
+        esMaterialApp(home: SizedBox.shrink()),
       );
       bubble.recording.complete(true);
       await tester.pump();
@@ -343,7 +344,7 @@ void main() {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       final service = buildService(gate, recorder);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           transcriptionService: service,
           storageService: StorageService(),
@@ -358,7 +359,7 @@ void main() {
       expect(service.hasMicrophoneClaim, isTrue);
 
       await tester.pumpWidget(
-        const MaterialApp(home: SizedBox.shrink()),
+        esMaterialApp(home: SizedBox.shrink()),
       );
       await tester.pump();
       await tester.pump();
@@ -383,7 +384,7 @@ void main() {
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
       final service = buildService(gate, recorder);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
           transcriptionService: service,
           storageService: StorageService(),

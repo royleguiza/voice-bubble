@@ -12,6 +12,7 @@ import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/pending_note_queue.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/services/transcription_service.dart';
+import '../helpers/l10n_app.dart';
 
 /// Integración del flujo C1–C7: offline → cola → tap → éxito → nota.
 /// Lecciones: 7 (platform mock), 10 (IO sync en fakes), 11 (canales record),
@@ -201,7 +202,7 @@ void main() {
     tester.view.physicalSize = const Size(1600, 4800);
     tester.view.devicePixelRatio = 2.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(esMaterialApp(
       home: KeyedSubtree(
         key: UniqueKey(),
         child: HomeScreen(

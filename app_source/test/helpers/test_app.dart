@@ -4,6 +4,7 @@ import 'package:voice_bubble_stt/screens/settings_screen.dart';
 import 'package:voice_bubble_stt/services/floating_bubble_service.dart';
 import 'package:voice_bubble_stt/services/keyboard_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
+import '../helpers/l10n_app.dart';
 
 /// Configura la superficie de test para permitir ver vistas largas sin cortes de viewport
 /// (lecciones 9.1-17 / 9.1-21).
@@ -27,7 +28,7 @@ Widget buildTestApp({
   if (tester != null) {
     configureTestViewSize(tester, physicalSize: physicalSize);
   }
-  return MaterialApp(
+  return esMaterialApp(
     theme: theme,
     home: home,
   );
@@ -42,7 +43,7 @@ Widget buildTestableSettingsScreen(
   Size physicalSize = const Size(1600, 6400),
 }) {
   configureTestViewSize(tester, physicalSize: physicalSize);
-  return MaterialApp(
+  return esMaterialApp(
     home: SettingsScreen(
       storageService: storageService ?? StorageService(),
       floatingBubbleService: bubbleService ?? FloatingBubbleService(),

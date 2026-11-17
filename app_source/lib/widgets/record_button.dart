@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../ui/design_tokens.dart';
 import 'app_icons.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Burbuja de dictado de la pantalla principal: el micrófono "agujero
 /// negro" de Horizonte (design.md §3 y §8 "Voz").
@@ -178,10 +179,10 @@ class _RecordButtonState extends State<RecordButton>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final motionSafe = !MediaQuery.disableAnimationsOf(context);
     final semanticLabel = _isRecording
-        ? 'Detener grabación'
+        ? context.l10n.recordStop
         : _isTranscribing
-            ? 'Transcribiendo'
-            : (_isHoldMode ? 'Mantené para grabar' : 'Iniciar grabación');
+            ? context.l10n.recordTranscribing
+            : (_isHoldMode ? context.l10n.recordHoldToRecord : context.l10n.recordStart);
     final isPill = _isRecording || _isTranscribing;
     final ember = isDark ? kEmberDark : kEmberLight;
 
@@ -343,7 +344,7 @@ class _PillContent extends StatelessWidget {
                         id: _PillLayout.cancel,
                         child: Semantics(
                           button: true,
-                          label: 'Descartar grabación',
+                          label: context.l10n.recordDiscard,
                           child: InkResponse(
                             key: const ValueKey('recordCancelButton'),
                             onTap: onCancel,

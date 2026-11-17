@@ -5,6 +5,7 @@ import '../../models/snippet.dart';
 import '../../services/storage_service.dart';
 import '../../ui/design_tokens.dart';
 import '../../widgets/settings_v2.dart';
+import '../../l10n/l10n_ext.dart';
 
 /// Página Snippets de Ajustes: buscador, lista agrupada (tocar = editar) y
 /// modo "Ordenar" con flechas. El "+" vive en la barra de la página y llama
@@ -85,15 +86,15 @@ class SnippetsTabState extends State<SnippetsTab> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Eliminar snippet'),
+        title: Text(context.l10n.snippetDelete),
         content: Text(
-          '¿Eliminar "${snippet.nombre}"? Esta acción no se puede deshacer.',
+          context.l10n.snippetDeleteConfirm(snippet.nombre),
         ),
         actions: [
           TextButton(
             key: const ValueKey('snippet-dialog-cancel-delete'),
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
+            child: Text(context.l10n.commonCancel),
           ),
           TextButton(
             key: const ValueKey('snippet-dialog-confirm-delete'),
@@ -101,7 +102,7 @@ class SnippetsTabState extends State<SnippetsTab> {
               foregroundColor: Theme.of(dialogContext).colorScheme.error,
             ),
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Eliminar'),
+            child: Text(context.l10n.snippetDeleteButton),
           ),
         ],
       ),
@@ -192,10 +193,9 @@ class SnippetsTabState extends State<SnippetsTab> {
         ],
         if (_loaded && _snippets.isEmpty)
           SettingsEmptyState(
-            title: 'Sin snippets',
-            message: 'Guardá textos que usás seguido y pegalos con un toque '
-                'desde el teclado.',
-            actionLabel: 'Crear snippet',
+            title: context.l10n.snippetsEmptyTitle,
+            message: context.l10n.snippetsEmptyMessage,
+            actionLabel: context.l10n.snippetsCreate,
             actionKey: const ValueKey('snippets-empty-add'),
             onAction: _openSnippetSheet,
           )
@@ -203,15 +203,14 @@ class SnippetsTabState extends State<SnippetsTab> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             child: Text(
-              'Sin resultados para "$_query".',
+              context.l10n.snippetsNoResults(_query),
               textAlign: TextAlign.center,
               style: kTextSubhead.copyWith(color: p.secondary),
             ),
           )
         else if (visible.isNotEmpty) ...[
           SettingsSection(
-            footer: '${_snippets.length} de ${StorageService.maxSnippets} · '
-                'Se insertan con un toque desde el teclado.',
+            footer: context.l10n.snippetsCountFooter(_snippets.length.toString(), StorageService.maxSnippets.toString()),
             monoFooter: true,
             children: [
               for (final s in visible)
@@ -241,7 +240,7 @@ class SnippetsTabState extends State<SnippetsTab> {
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   textStyle: kTextBody.copyWith(fontWeight: FontWeight.w600),
                 ),
-                child: Text(_reorderMode ? 'Listo' : 'Ordenar'),
+                child: Text(_reorderMode ? context.l10n.snippetsReorderDone : context.l10n.snippetsReorder),
               ),
             ),
           ],
@@ -277,7 +276,7 @@ class _SearchField extends StatelessWidget {
               onChanged: onChanged,
               style: kTextBody.copyWith(color: p.label),
               decoration: InputDecoration(
-                hintText: 'Buscar',
+                hintText: context.l10n.snippetsSearchHint,
                 hintStyle: kTextBody.copyWith(color: p.secondary),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -342,7 +341,7 @@ class _SnippetRow extends StatelessWidget {
               Expanded(
                 child: Semantics(
                   button: !reorderMode,
-                  label: '${snippet.nombre}. $preview',
+                  label: context.l10n.snippetRowSemantics(snippet.nombre, preview),
                   excludeSemantics: true,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,7 +370,7 @@ class _SnippetRow extends StatelessWidget {
                 IconButton(
                   key: ValueKey('snippet-up-${snippet.id}'),
                   icon: const Icon(Icons.arrow_upward_rounded, size: 22),
-                  tooltip: 'Subir ${snippet.nombre}',
+                  tooltip: context.l10n.snippetMoveUp(snippet.nombre),
                   color: p.tintText,
                   constraints:
                       const BoxConstraints.tightFor(width: 44, height: 44),
@@ -380,7 +379,7 @@ class _SnippetRow extends StatelessWidget {
                 IconButton(
                   key: ValueKey('snippet-down-${snippet.id}'),
                   icon: const Icon(Icons.arrow_downward_rounded, size: 22),
-                  tooltip: 'Bajar ${snippet.nombre}',
+                  tooltip: context.l10n.snippetMoveDown(snippet.nombre),
                   color: p.tintText,
                   constraints:
                       const BoxConstraints.tightFor(width: 44, height: 44),
@@ -458,9 +457,9 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
     if (_submitting) return;
     final nombre = _nombreController.text.trim();
     final contenido = _contenidoController.text;
-    final nombreError = nombre.isEmpty ? 'El nombre es obligatorio' : null;
+    final nombreError = nombre.isEmpty ? context.l10n.snippetNameRequired : null;
     final contenidoError = contenido.length > widget.maxContentLength
-        ? 'Máximo ${widget.maxContentLength} caracteres'
+        ? context.l10n.snippetMaxChars(widget.maxContentLength.toString())
         : null;
     setState(() {
       _nombreError = nombreError;
@@ -483,7 +482,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _generalError = 'No se pudo guardar el snippet.';
+        _generalError = context.l10n.snippetSaveFailed;
       });
     } finally {
       if (mounted && !saved) {
@@ -499,9 +498,8 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
       // Un false ya NO implica solo límite: también puede venir de una
       // lectura corrupta del storage (protección anti-pérdida de datos).
       _generalError ??= _isEditing
-          ? 'No se pudo guardar el snippet.'
-          : 'No se pudo guardar el snippet: Límite de ${widget.maxSnippets} '
-              'snippets alcanzado o datos temporales no legibles.';
+          ? context.l10n.snippetSaveFailed
+          : context.l10n.snippetSaveFailedLimit(widget.maxSnippets.toString());
     });
   }
 
@@ -530,7 +528,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
             maxHeight: MediaQuery.sizeOf(context).height * 0.90,
           ),
           child: SettingsSheetFrame(
-            title: _isEditing ? 'Editar snippet' : 'Nuevo snippet',
+            title: _isEditing ? context.l10n.snippetSheetEdit : context.l10n.snippetSheetNew,
             closeKey: const ValueKey('snippet-cancel-button'),
             onClose: () => Navigator.of(context).pop(),
             saveKey: const ValueKey('snippet-save-button'),
@@ -548,16 +546,16 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                         children: [
                           SettingsSheetField(
                             key: const ValueKey('snippet-name-field'),
-                            label: 'Nombre',
-                            hint: 'Ej. Firma',
+                            label: context.l10n.snippetFieldName,
+                            hint: context.l10n.snippetFieldNameHint,
                             controller: _nombreController,
                             textInputAction: TextInputAction.next,
                             errorText: _nombreError,
                           ),
                           SettingsSheetField(
                             key: const ValueKey('snippet-content-field'),
-                            label: 'Texto',
-                            hint: 'Lo que se va a insertar',
+                            label: context.l10n.snippetFieldText,
+                            hint: context.l10n.snippetFieldTextHint,
                             mono: true,
                             controller: _contenidoController,
                             minLines: 3,
@@ -579,7 +577,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                               final overLimit =
                                   length > widget.maxContentLength;
                               return Text(
-                                '$length / ${widget.maxContentLength}',
+                                context.l10n.snippetContentCounter(length.toString(), widget.maxContentLength.toString()),
                                 style: kTextMono.copyWith(
                                   fontSize: 12,
                                   color: overLimit ? p.danger : p.secondary,
@@ -590,9 +588,9 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4),
-                        child: SettingsGroupLabel('Color'),
+                        child: SettingsGroupLabel(context.l10n.snippetColorLabel),
                       ),
                       const SizedBox(height: 6),
                       Padding(
@@ -604,7 +602,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                               key: const ValueKey('snippet-color-none'),
                               selected: _color == null,
                               base: null,
-                              label: 'Sin color',
+                              label: context.l10n.snippetColorNone,
                               onTap: () => setState(() => _color = null),
                             ),
                             for (final id in kSnippetColorIds)
@@ -612,7 +610,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                                 key: ValueKey('snippet-color-$id'),
                                 selected: _color == id,
                                 base: snippetPaletteBase(id, isDark: isDark),
-                                label: id,
+                                label: _snippetColorName(context, id),
                                 onTap: () => setState(() => _color = id),
                               ),
                           ],
@@ -631,7 +629,7 @@ class _SnippetFormSheetState extends State<_SnippetFormSheet> {
                         // "Eliminar snippet" como texto danger, sin caja.
                         SettingsActionRow(
                           key: const ValueKey('snippet-delete-button'),
-                          title: 'Eliminar snippet',
+                          title: context.l10n.snippetDelete,
                           destructive: true,
                           onTap: _delete,
                         ),
@@ -714,5 +712,26 @@ class _ColorSwatch extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Nombre hablado de un color de la paleta (el id guardado no se traduce).
+String _snippetColorName(BuildContext context, String id) {
+  final l10n = context.l10n;
+  switch (id) {
+    case 'azul':
+      return l10n.snippetColorBlue;
+    case 'verde':
+      return l10n.snippetColorGreen;
+    case 'rojo':
+      return l10n.snippetColorRed;
+    case 'naranja':
+      return l10n.snippetColorOrange;
+    case 'violeta':
+      return l10n.snippetColorViolet;
+    case 'gris':
+      return l10n.snippetColorGray;
+    default:
+      return id;
   }
 }

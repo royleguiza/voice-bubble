@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../helpers/island_geometry.dart';
 import '../ui/design_tokens.dart';
 import 'settings_v2.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Maqueta de Ajustes › Ajustar isla: la parte de arriba de la pantalla del
 /// teléfono con la isla en reposo, a ESCALA REAL.
@@ -51,12 +53,15 @@ class IslandMockup extends StatelessWidget {
   );
 
   /// Qué decir en voz alta de la maqueta (la leen los lectores de pantalla).
-  static String describe(Rect pill, bool micOnLeft) {
+  static String describe(AppLocalizations l10n, Rect pill, bool micOnLeft) {
     final cx = (pill.left + pill.width / 2).round();
-    return 'Maqueta de la isla: centro a $cx píxeles del borde izquierdo, '
-        'borde superior a ${pill.top.round()} píxeles, '
-        '${pill.width.round()} de ancho por ${pill.height.round()} de alto. '
-        'Micrófono a la ${micOnLeft ? 'izquierda' : 'derecha'}.';
+    return l10n.islandMockupDescription(
+      cx.toString(),
+      pill.top.round().toString(),
+      pill.width.round().toString(),
+      pill.height.round().toString(),
+      micOnLeft ? l10n.islandMicLeft : l10n.islandMicRight,
+    );
   }
 
   @override
@@ -78,7 +83,7 @@ class IslandMockup extends StatelessWidget {
           child: Semantics(
             container: true,
             image: true,
-            label: describe(pill, micOnLeft),
+            label: describe(context.l10n, pill, micOnLeft),
             child: ExcludeSemantics(
               child: Container(
                 key: const ValueKey('island-mockup'),

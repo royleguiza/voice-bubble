@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/services/pending_note_queue.dart';
 import 'package:voice_bubble_stt/widgets/pending_note_tile.dart';
+import '../helpers/l10n_app.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +24,7 @@ void main() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
-    return MaterialApp(
+    return esMaterialApp(
       home: Scaffold(body: Center(child: SizedBox(width: 360, child: tile))),
     );
   }

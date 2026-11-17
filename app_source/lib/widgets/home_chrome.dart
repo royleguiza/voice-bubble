@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../ui/design_tokens.dart';
 import '../ui/symbol_field.dart';
 import 'app_icons.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Piezas visuales de la pantalla principal (Notas + Historial): selector
 /// de pestañas, buscador, encabezados de sección, estado vacío y menú de
@@ -90,9 +91,9 @@ class HomeSegmented extends StatelessWidget {
       ),
       child: Row(
         children: [
-          tab(0, 'Notas', notesCount, 'home-tab-notas'),
+          tab(0, context.l10n.homeTabNotes, notesCount, 'home-tab-notas'),
           const SizedBox(width: 22),
-          tab(1, 'Historial', historyCount, 'home-tab-historial'),
+          tab(1, context.l10n.homeTabHistory, historyCount, 'home-tab-historial'),
         ],
       ),
     );
@@ -137,7 +138,7 @@ class HomeSearchField extends StatelessWidget {
             builder: (context, value, _) => value.text.isEmpty
                 ? const SizedBox.shrink()
                 : IconButton(
-                    tooltip: 'Borrar búsqueda',
+                    tooltip: context.l10n.homeSearchClear,
                     icon: Icon(Icons.cancel_rounded,
                         size: AppIcons.small, color: secondary),
                     onPressed: () {
@@ -346,14 +347,14 @@ Future<NoteAction?> showNoteActions(
                 ),
               ),
               action(
-                  NoteAction.open, Icons.edit_note_rounded, 'Abrir y editar'),
-              action(NoteAction.copy, Icons.copy_rounded, 'Copiar texto'),
+                  NoteAction.open, Icons.edit_note_rounded, context.l10n.noteActionOpen),
+              action(NoteAction.copy, Icons.copy_rounded, context.l10n.noteActionCopy),
               if (hasAudio)
                 action(NoteAction.deleteAudio, Icons.music_off_rounded,
-                    'Borrar audio, conservar texto',
+                    context.l10n.noteActionDeleteAudio,
                     destructive: true),
               action(NoteAction.delete, Icons.delete_outline_rounded,
-                  'Eliminar nota',
+                  context.l10n.noteActionDelete,
                   destructive: true),
             ],
           ),

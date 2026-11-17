@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/helpers/island_geometry.dart';
 import 'package:voice_bubble_stt/ui/design_tokens.dart';
 import 'package:voice_bubble_stt/widgets/island_mockup.dart';
+import '../helpers/l10n_app.dart';
+import 'package:voice_bubble_stt/l10n/app_localizations_es.dart';
 
 /// Maqueta de Ajustes › Ajustar isla: escala fiel a los píxeles reales.
 void main() {
@@ -17,7 +19,7 @@ void main() {
     Brightness brightness = Brightness.light,
     bool highContrast = false,
   }) =>
-      MaterialApp(
+      esMaterialApp(
         theme: ThemeData(brightness: brightness),
         home: MediaQuery(
           data: MediaQueryData(highContrast: highContrast),
@@ -161,8 +163,8 @@ void main() {
     test('describe la isla con los píxeles reales ya acotados', () {
       final pill = geo.pill(x: -1, y: -1, w: -1, h: -1);
       expect(
-          IslandMockup.describe(pill, true), contains('centro a 540 píxeles'));
-      expect(IslandMockup.describe(pill, true), contains('336 de ancho'));
+          IslandMockup.describe(AppLocalizationsEs(), pill, true), contains('centro a 540 píxeles'));
+      expect(IslandMockup.describe(AppLocalizationsEs(), pill, true), contains('336 de ancho'));
     });
   });
 }

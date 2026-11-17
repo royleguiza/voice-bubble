@@ -25,6 +25,9 @@ Requisitos verificados:
 """
 
 import os
+# l10n (etapa 4): los textos de la UI viven en app_es.arb; ver test_helpers.expand_l10n.
+from test_helpers import install_l10n_reader
+install_l10n_reader()
 import sys
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

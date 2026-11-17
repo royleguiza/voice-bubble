@@ -27,6 +27,7 @@ import '../widgets/home_chrome.dart';
 import '../widgets/note_card.dart';
 import '../widgets/pending_note_tile.dart';
 import 'package:path_provider/path_provider.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Pantalla principal: las notas son la app y la burbuja de dictado flota
 /// abajo (laboratorio_ui/inicio-notas.html).
@@ -322,11 +323,11 @@ class _HomeScreenState extends State<HomeScreen>
   String get _statusText {
     if (_isRecording || _isStartingRecording) {
       return _recordMode == StorageService.recordModeHold
-          ? 'Soltá para terminar'
+          ? context.l10n.homeStatusRelease
           : '';
     }
-    if (_isTranscribing || _isStoppingRecording) return 'Transcribiendo…';
-    if (_pendingAudioPath != null) return 'Error, toca para reintentar';
+    if (_isTranscribing || _isStoppingRecording) return context.l10n.homeStatusTranscribing;
+    if (_pendingAudioPath != null) return context.l10n.homeStatusError;
     return '';
   }
 
@@ -395,7 +396,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al iniciar grabación: $e')),
+          SnackBar(content: Text(context.l10n.homeRecordStartError(e.toString()))),
         );
       }
     }
@@ -443,8 +444,8 @@ class _HomeScreenState extends State<HomeScreen>
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
-            const SnackBar(
-              content: Text(copiedToClipboardMessage),
+            SnackBar(
+              content: Text(context.l10n.copiedToClipboardMessage),
               duration: Duration(seconds: 2),
             ),
           );
@@ -461,7 +462,7 @@ class _HomeScreenState extends State<HomeScreen>
     } catch (_) {}
   }
 
-  void _showClipboardFailure() => _showSnack(clipboardFailureMessage);
+  void _showClipboardFailure() => _showSnack(context.l10n.clipboardFailureMessage);
 
   /// Audio mínimo útil para llamar a Groq (≥8000 bytes). Se exige tanto en
   /// [_stopRecording] como en [_retryPending]: por debajo se limpia el
@@ -557,17 +558,16 @@ class _HomeScreenState extends State<HomeScreen>
       // La tarjeta nueva es el aviso visual; TalkBack necesita oírlo.
       unawaited(SemanticsService.sendAnnouncement(
         View.of(context),
-        'Nota guardada',
+        context.l10n.homeNoteSaved,
         TextDirection.ltr,
       ));
     } else {
       final full = _notesService.notes.length >= NotesService.maxNotes;
       _showSnack(full
-          ? 'Nota no guardada: llegaste a ${NotesService.maxNotes} notas. '
-              'El texto quedó copiado y en Historial.'
+          ? context.l10n.homeNoteNotSavedFull(NotesService.maxNotes.toString())
           : keptPath == null
-              ? 'No se pudo conservar el audio. El texto quedó en Historial.'
-              : 'Nota no guardada; el texto quedó en Historial');
+              ? context.l10n.homeAudioNotKept
+              : context.l10n.homeNoteNotSavedTextKept);
     }
   }
 
@@ -600,10 +600,12 @@ class _HomeScreenState extends State<HomeScreen>
         ..hideCurrentSnackBar()
         ..showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(e is PendingAudioUnavailable
+                ? context.l10n.homePendingAudioGone
+                : context.l10n.homeError(e.toString())),
             action: canRetry
                 ? SnackBarAction(
-                    label: 'Reintentar',
+                    label: context.l10n.homeRetry,
                     onPressed: _retryPending,
                   )
                 : null,
@@ -631,7 +633,7 @@ class _HomeScreenState extends State<HomeScreen>
             _pendingAudioPath = null;
             _isTranscribing = false;
           });
-          _showSnack('Sin conexión · audio guardado en Notas');
+          _showSnack(context.l10n.homeOfflineAudioSaved);
         } else {
           _pendingAudioPath = null;
           _isTranscribing = false;
@@ -761,7 +763,7 @@ class _HomeScreenState extends State<HomeScreen>
           _pendingAudioPath = null;
           _isTranscribing = false;
         });
-        _showSnack('El audio pendiente ya no está disponible');
+        _showSnack(context.l10n.homePendingAudioGone);
       } else {
         _pendingAudioPath = null;
         _isTranscribing = false;
@@ -810,7 +812,7 @@ class _HomeScreenState extends State<HomeScreen>
       if (keptPath == null) {
         if (mounted) {
           setState(() => _isTranscribingPending = false);
-          _showSnack('No se pudo conservar el audio');
+          _showSnack(context.l10n.homeAudioNotKeptShort);
         }
         return;
       }
@@ -822,7 +824,7 @@ class _HomeScreenState extends State<HomeScreen>
         _pendingQueue.deleteKeptAudio(keptPath);
         if (mounted) {
           setState(() => _isTranscribingPending = false);
-          _showSnack('Nota no guardada; el audio se conserva');
+          _showSnack(context.l10n.homeNoteNotSavedAudioKept);
         }
         return;
       }
@@ -835,22 +837,22 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() => _isTranscribingPending = false);
       _revealFreshNote();
       _showSnack(
-        removed ? 'Nota guardada' : 'Nota guardada; el audio queda pendiente',
+        removed ? context.l10n.homeNoteSaved : context.l10n.homeNoteSavedAudioPending,
       );
     } on TranscriptionException catch (e) {
       if (!noteCommitted) _pendingQueue.deleteKeptAudio(keptPath);
       if (!mounted) return;
       setState(() => _isTranscribingPending = false);
       _showSnack(e.kind == TranscriptionErrorKind.auth
-          ? 'Falta la API key. Configurala en Ajustes.'
+          ? context.l10n.homeApiKeyMissing
           : e.isRetryable
-              ? 'Sigue sin red. El audio queda pendiente.'
+              ? context.l10n.homeStillOffline
               : e.message);
     } catch (e) {
       if (!noteCommitted) _pendingQueue.deleteKeptAudio(keptPath);
       if (!mounted) return;
       setState(() => _isTranscribingPending = false);
-      _showSnack('Error: $e');
+      _showSnack(context.l10n.homeError(e.toString()));
     }
   }
 
@@ -872,7 +874,7 @@ class _HomeScreenState extends State<HomeScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancelar'),
+              child: Text(context.l10n.commonCancel),
             ),
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(true),
@@ -887,10 +889,10 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _discardPending(PendingNote item) async {
     final ok = await _confirm(
-      title: 'Descartar audio',
+      title: context.l10n.homeDiscardAudioTitle,
       message:
-          'Se borrará el audio sin transcribir. Esta acción no se puede deshacer.',
-      confirmLabel: 'Descartar',
+          context.l10n.homeDiscardAudioMessage,
+      confirmLabel: context.l10n.homeDiscardConfirm,
     );
     if (!ok) return;
     await _pendingQueue.remove(item.id, deleteAudio: true);
@@ -907,16 +909,16 @@ class _HomeScreenState extends State<HomeScreen>
     if (!mounted) return;
     unawaited(HapticFeedback.selectionClick());
     _showSnack(copy == ClipboardCopyResult.ok
-        ? copiedToClipboardMessage
-        : clipboardFailureMessage);
+        ? context.l10n.copiedToClipboardMessage
+        : context.l10n.clipboardFailureMessage);
   }
 
   /// Borra solo el audio conservado de una nota (el texto permanece).
   Future<void> _deleteNoteAudio(VoiceNote note) async {
     final ok = await _confirm(
-      title: 'Borrar audio',
-      message: 'Se borrará el audio original. La transcripción queda.',
-      confirmLabel: 'Borrar audio',
+      title: context.l10n.homeDeleteAudioTitle,
+      message: context.l10n.homeDeleteAudioMessage,
+      confirmLabel: context.l10n.homeDeleteAudioTitle,
     );
     if (!ok) return;
     await _notesService.updateNote(note.id, clearAudioPath: true);
@@ -929,7 +931,7 @@ class _HomeScreenState extends State<HomeScreen>
     await WidgetService().updateWidgets();
     if (!mounted) return;
     setState(() {});
-    _showSnack(ok ? 'Nota eliminada' : 'No se pudo eliminar la nota');
+    _showSnack(ok ? context.l10n.homeNoteDeleted : context.l10n.homeNoteDeleteFailed);
   }
 
   Future<void> _openNoteActions(VoiceNote note) async {
@@ -1082,7 +1084,7 @@ class _HomeScreenState extends State<HomeScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final labelSecondary = isDark ? kLabelSecondaryDark : kLabelSecondaryLight;
     final bg = isDark ? kBgBaseDark : kBgBaseLight;
-    final title = _tab == 0 ? 'Notas' : 'Historial';
+    final title = _tab == 0 ? context.l10n.homeTabNotes : context.l10n.homeTabHistory;
     final topBarHeight = insets.top + 56;
     final isHold = _recordMode == StorageService.recordModeHold;
 
@@ -1152,8 +1154,8 @@ class _HomeScreenState extends State<HomeScreen>
                   key: const ValueKey('homeSettingsButton'),
                   customBorder: const CircleBorder(),
                   onTap: _openSettings,
-                  child: const Tooltip(
-                    message: 'Configuración',
+                  child: Tooltip(
+                    message: context.l10n.homeSettingsTooltip,
                     child: SizedBox(
                       width: 44,
                       height: 44,
@@ -1225,7 +1227,7 @@ class _HomeScreenState extends State<HomeScreen>
                           unawaited(
                             SemanticsService.sendAnnouncement(
                               View.of(context),
-                              'Mantené para grabar',
+                              context.l10n.recordHoldToRecord,
                               TextDirection.ltr,
                             ),
                           );
@@ -1286,8 +1288,8 @@ class _HomeScreenState extends State<HomeScreen>
           HomeSearchField(
             controller: _searchCtrl,
             hint: _tab == 0
-                ? (notesCount == 0 ? 'Buscar' : 'Buscar en $notesCount notas')
-                : 'Buscar en el historial',
+                ? (notesCount == 0 ? context.l10n.homeSearchNotesEmpty : context.l10n.homeSearchNotes(notesCount.toString()))
+                : context.l10n.homeSearchHistory,
             onChanged: (v) => setState(() => _query = v),
           ),
           const SizedBox(height: 4),
@@ -1326,23 +1328,23 @@ class _HomeScreenState extends State<HomeScreen>
       placeholder = HomeEmptyState(
         key: const ValueKey('notesUnavailable'),
         showGlyph: false,
-        title: _notesLoading ? 'Cargando notas…' : 'Notas no disponibles',
-        message: _notesLoading ? '' : 'No se pudo leer el estado de las notas',
+        title: _notesLoading ? context.l10n.homeNotesLoading : context.l10n.homeNotesUnavailable,
+        message: _notesLoading ? '' : context.l10n.homeNotesUnavailableMessage,
       );
     } else if (rows.isEmpty && !showPending) {
       placeholder = _query.isEmpty
           ? HomeEmptyState(
               key: const ValueKey('notesEmpty'),
-              title: 'Tu primera nota',
+              title: context.l10n.homeEmptyNotesTitle,
               message: _recordMode == StorageService.recordModeHold
-                  ? 'Mantené la burbuja y hablá.\nLo que digas queda escrito acá.'
-                  : 'Tocá la burbuja y hablá.\nLo que digas queda escrito acá.',
+                  ? context.l10n.homeEmptyNotesHold
+                  : context.l10n.homeEmptyNotesTap,
             )
           : HomeEmptyState(
               key: const ValueKey('notesNoResults'),
               showGlyph: false,
-              title: 'Sin resultados',
-              message: 'Nada coincide con “$_query”.',
+              title: context.l10n.homeNoResultsTitle,
+              message: context.l10n.homeNoResultsMessage(_query),
             );
     }
 
@@ -1360,7 +1362,7 @@ class _HomeScreenState extends State<HomeScreen>
               itemBuilder: (context, i) {
                 if (i == 0) {
                   return HomeSectionHeader(
-                    'Pendientes · ${pending.length}',
+                    context.l10n.homePendingHeader(pending.length.toString()),
                     key: const ValueKey('pendingNotesList'),
                   );
                 }
@@ -1368,7 +1370,7 @@ class _HomeScreenState extends State<HomeScreen>
                   return Padding(
                     padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
                     child: Text(
-                      'Sin transcripción local todavía: el audio se guarda en el teléfono y solo sale a la nube cuando tocas Transcribir.',
+                      context.l10n.homePendingInfo,
                       key: const ValueKey('pendingLocalInfo'),
                       style: kTextCaption.copyWith(color: secondary),
                     ),
@@ -1390,7 +1392,7 @@ class _HomeScreenState extends State<HomeScreen>
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
               child: Text(
-                'Cola no disponible',
+                context.l10n.homePendingQueueUnavailable,
                 key: const ValueKey('pendingQueueUnavailable'),
                 style: kTextCaption.copyWith(color: secondary),
               ),
@@ -1453,8 +1455,8 @@ class _HomeScreenState extends State<HomeScreen>
         child: searching
             ? HomeEmptyState(
                 showGlyph: false,
-                title: 'Sin resultados',
-                message: 'Nada coincide con “$_query”.',
+                title: context.l10n.homeNoResultsTitle,
+                message: context.l10n.homeNoResultsMessage(_query),
               )
             : const HistoryList(transcriptions: [], embedded: true),
       );
@@ -1497,8 +1499,7 @@ class _HomeScreenState extends State<HomeScreen>
           child: Padding(
             padding: const EdgeInsets.fromLTRB(28, 16, 28, 0),
             child: Text(
-              'Las últimas ${StorageService.maxItems} transcripciones de la app, '
-              'la burbuja y el teclado. Las más viejas se borran solas.',
+              context.l10n.homeHistoryFooter(StorageService.maxItems.toString()),
               textAlign: TextAlign.center,
               style: kTextFootnote.copyWith(
                 color: isDark ? kLabelSecondaryDark : kLabelSecondaryLight,

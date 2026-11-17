@@ -9,7 +9,7 @@ extension _IslandPage on _SettingsScreenState {
   Widget _buildIslaPage(BuildContext context) {
     return _subpage(
       context,
-      title: 'Ajustar isla',
+      title: context.l10n.islandTitle,
       body: IslandAdjustBody(
         storageService: _storageService,
         floatingBubbleService: _floatingBubbleService,
@@ -219,76 +219,74 @@ class _IslandAdjustBodyState extends State<IslandAdjustBody> {
 
     final notes = <String>[
       if (!widget.pointerReady)
-        'La isla necesita VoiceBubble Puntero activo: sin él se ve como '
-            'burbuja y estos ajustes no se notan.',
+        context.l10n.islandNeedsPointer,
       if (!widget.barOn)
-        'Encendé la barra flotante para ver la isla en tu pantalla.',
+        context.l10n.islandNeedsBar,
     ];
 
     final sections = <Widget>[
       SettingsSection(
-        header: 'Posición',
-        footer: 'Horizontal: el centro de la isla. Vertical: su borde '
-            'superior. En píxeles de la pantalla completa.',
+        header: context.l10n.islandPositionHeader,
+        footer: context.l10n.islandPositionFooter,
         children: [
           stepper(
             id: 'island-x',
-            title: 'Posición horizontal',
+            title: context.l10n.islandPositionX,
             value: centerX,
             min: geo.minCenterX(width),
             max: geo.maxCenterX(width),
             field: _IslandField.x,
-            minusLabel: 'Un píxel a la izquierda',
-            plusLabel: 'Un píxel a la derecha',
+            minusLabel: context.l10n.islandPixelLeft,
+            plusLabel: context.l10n.islandPixelRight,
           ),
           stepper(
             id: 'island-y',
-            title: 'Posición vertical',
+            title: context.l10n.islandPositionY,
             value: top,
             min: 0,
             max: geo.maxTop,
             field: _IslandField.y,
-            minusLabel: 'Un píxel hacia arriba',
-            plusLabel: 'Un píxel hacia abajo',
+            minusLabel: context.l10n.islandPixelUp,
+            plusLabel: context.l10n.islandPixelDown,
           ),
         ],
       ),
       SettingsSection(
-        header: 'Tamaño en reposo',
-        footer: 'Al grabar, la isla se agranda sola.',
+        header: context.l10n.islandSizeHeader,
+        footer: context.l10n.islandSizeFooter,
         children: [
           stepper(
             id: 'island-w',
-            title: 'Ancho',
+            title: context.l10n.islandWidth,
             value: width,
             min: geo.minWidth,
             max: geo.maxWidth,
             field: _IslandField.w,
-            minusLabel: 'Un píxel más angosta',
-            plusLabel: 'Un píxel más ancha',
+            minusLabel: context.l10n.islandNarrower,
+            plusLabel: context.l10n.islandWider,
           ),
           stepper(
             id: 'island-h',
-            title: 'Alto',
+            title: context.l10n.islandHeight,
             value: height,
             min: geo.minHeight,
             max: geo.maxHeight,
             field: _IslandField.h,
-            minusLabel: 'Un píxel más baja',
-            plusLabel: 'Un píxel más alta',
+            minusLabel: context.l10n.islandShorter,
+            plusLabel: context.l10n.islandTaller,
           ),
         ],
       ),
       SettingsSection(
-        footer: 'El puntero va del otro lado.',
+        footer: context.l10n.islandSideFooter,
         children: [
           SettingsMenuRow<String>(
             id: 'island-side-selector',
-            title: 'Lado del micrófono',
+            title: context.l10n.islandSideTitle,
             value: _side,
-            options: const [
-              SettingsOption('left', 'Izquierda'),
-              SettingsOption('right', 'Derecha'),
+            options: [
+              SettingsOption('left', context.l10n.islandSideLeft),
+              SettingsOption('right', context.l10n.islandSideRight),
             ],
             onSelected: _setSide,
           ),
@@ -299,12 +297,12 @@ class _IslandAdjustBodyState extends State<IslandAdjustBody> {
         children: [
           SettingsActionRow(
             key: const ValueKey('island-center-button'),
-            title: 'Centrar arriba',
+            title: context.l10n.islandCenterTop,
             onTap: _centerOnTop,
           ),
           SettingsActionRow(
             key: const ValueKey('island-reset-button'),
-            title: 'Restablecer',
+            title: context.l10n.islandReset,
             onTap: _reset,
           ),
         ],

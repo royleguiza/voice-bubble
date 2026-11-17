@@ -5,6 +5,7 @@ import '../models/voice_note.dart';
 import '../ui/design_tokens.dart';
 import 'app_icons.dart';
 import 'note_audio_row.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Tarjeta de nota de la lista principal (Horizonte: superficie surf con
 /// borde line de 1 px, radio 14, sin sombra).
@@ -75,7 +76,7 @@ class NoteCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(right: 12),
                 child: Text(
-                  untitled ? 'Sin título' : note.titulo,
+                  untitled ? context.l10n.noteUntitled : note.titulo,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: kTextCardTitle.copyWith(
@@ -114,7 +115,7 @@ class NoteCard extends StatelessWidget {
                     if (onCopy != null)
                       IconButton(
                         key: ValueKey('noteCopy-${note.id}'),
-                        tooltip: 'Copiar texto',
+                        tooltip: context.l10n.noteCopyTooltip,
                         icon: Icon(Icons.copy_rounded,
                             size: AppIcons.small, color: secondary),
                         onPressed: onCopy,
@@ -154,8 +155,9 @@ class NoteCard extends StatelessWidget {
 
     return Semantics(
       container: true,
-      label: 'Nota: ${untitled ? 'Sin título' : note.titulo}',
-      hint: 'Mantené presionado para más acciones',
+      label: context.l10n.noteCardSemantics(
+          untitled ? context.l10n.noteUntitled : note.titulo),
+      hint: context.l10n.noteCardHint,
       child: highlighted,
     );
   }

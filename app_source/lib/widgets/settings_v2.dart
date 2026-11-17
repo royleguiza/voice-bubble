@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../ui/design_tokens.dart';
 import '../ui/symbol_field.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Kit visual de Ajustes (Horizonte, maqueta "Ajustes" de
 /// laboratorio_ui/horizonte.html).
@@ -902,7 +903,7 @@ class SettingsSheetFrame extends StatelessWidget {
                 SettingsGlassButton(
                   key: closeKey,
                   icon: Icons.close_rounded,
-                  tooltip: 'Cancelar',
+                  tooltip: context.l10n.commonCancel,
                   onPressed: onClose,
                 ),
                 Expanded(
@@ -916,7 +917,7 @@ class SettingsSheetFrame extends StatelessWidget {
                   SettingsGlassButton(
                     key: saveKey,
                     icon: Icons.check_rounded,
-                    tooltip: 'Guardar',
+                    tooltip: context.l10n.commonSave,
                     prominent: true,
                     onPressed: onSave,
                   )
@@ -1080,8 +1081,8 @@ class SettingsStepperRow extends StatefulWidget {
 
   /// Unidad corta del valor ("px") y su lectura completa para el lector de
   /// pantalla ("píxeles").
-  final String unit;
-  final String unitSpoken;
+  final String? unit;
+  final String? unitSpoken;
   final String minusLabel;
   final String plusLabel;
   final ValueChanged<int> onChanged;
@@ -1098,8 +1099,8 @@ class SettingsStepperRow extends StatefulWidget {
     required this.plusLabel,
     required this.onChanged,
     required this.onChangeEnd,
-    this.unit = 'px',
-    this.unitSpoken = 'píxeles',
+    this.unit,
+    this.unitSpoken,
   });
 
   @override
@@ -1151,7 +1152,7 @@ class _SettingsStepperRowState extends State<SettingsStepperRow> {
                       style: kTextBody.copyWith(color: p.label)),
                 ),
                 Text(
-                  '$_current ${widget.unit}',
+                  '$_current ${widget.unit ?? context.l10n.unitPx}',
                   key: ValueKey('$id-value'),
                   style: kTextMono.copyWith(fontSize: 14, color: p.tintText),
                 ),
@@ -1178,7 +1179,7 @@ class _SettingsStepperRowState extends State<SettingsStepperRow> {
                     max: _hi.toDouble(),
                     divisions: _hi - widget.min,
                     semanticFormatterCallback: (v) =>
-                        '${widget.title}, ${v.round()} ${widget.unitSpoken}',
+                        '${widget.title}, ${v.round()} ${widget.unitSpoken ?? context.l10n.unitPxSpoken}',
                     onChanged: (v) => _set(v.round()),
                     onChangeEnd: (_) => widget.onChangeEnd(),
                   ),

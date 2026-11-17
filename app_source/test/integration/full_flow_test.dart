@@ -7,6 +7,7 @@ import 'package:voice_bubble_stt/screens/settings_screen.dart';
 
 import '../helpers/mock_channels.dart';
 import '../helpers/test_app.dart';
+import '../helpers/l10n_app.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +21,7 @@ void main() {
   tearDown(unregisterAppChannelMocks);
 
   Widget wrapHome({Widget? home}) {
-    return MaterialApp(
+    return esMaterialApp(
       home: home ?? const HomeScreen(),
     );
   }

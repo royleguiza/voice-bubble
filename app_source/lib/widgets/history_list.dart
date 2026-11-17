@@ -5,6 +5,7 @@ import '../helpers/note_groups.dart';
 import '../ui/symbol_field.dart';
 import '../ui/transcription_feedback.dart';
 import 'app_icons.dart';
+import '../l10n/l10n_ext.dart';
 
 class HistoryList extends StatelessWidget {
   final List<Transcription> transcriptions;
@@ -40,7 +41,7 @@ class HistoryList extends StatelessWidget {
             height: constraints.maxHeight,
             child: Center(
               child: Text(
-                'No hay transcripciones aun',
+                context.l10n.historyEmptyMessage,
                 key: const ValueKey('history-empty-message'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -75,7 +76,7 @@ class HistoryList extends StatelessWidget {
             const SymbolField(),
             const SizedBox(height: kSymbolFieldGap),
             Text(
-              'No hay transcripciones aun',
+              context.l10n.historyEmptyMessage,
               key: const ValueKey('history-empty-message'),
               textAlign: TextAlign.center,
               style: kTextSubhead.copyWith(color: secondary),
@@ -160,7 +161,7 @@ class HistoryList extends StatelessWidget {
         key: ValueKey('copy_btn_${t.id}'),
         icon: Icon(Icons.copy_rounded,
             size: AppIcons.small, color: embedded ? secondary : null),
-        tooltip: copyTooltipMessage,
+        tooltip: context.l10n.copyTooltipMessage,
         onPressed: () async {
           // Fallo de clipboard clasificado: avisa de portapapeles, no
           // de red, y nunca deja pendiente/reintento (ver helper).
@@ -169,8 +170,8 @@ class HistoryList extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(copy == ClipboardCopyResult.ok
-                    ? copiedToClipboardMessage
-                    : clipboardFailureMessage),
+                    ? context.l10n.copiedToClipboardMessage
+                    : context.l10n.clipboardFailureMessage),
                 duration: const Duration(seconds: 2),
               ),
             );

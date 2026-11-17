@@ -15,6 +15,7 @@ import 'package:voice_bubble_stt/widgets/history_list.dart';
 import 'package:voice_bubble_stt/widgets/note_card.dart';
 
 import '../helpers/mock_channels.dart';
+import '../helpers/l10n_app.dart';
 
 /// Notas en memoria: sin disco ni locks, con más de las que admite el
 /// servicio real para medir la pereza de la lista.
@@ -125,7 +126,7 @@ void main() {
       (tester) async {
     phone(tester);
     await tester.pumpWidget(
-        MaterialApp(home: HomeScreen(notesService: _MemoryNotes(_notes(60)))));
+        esMaterialApp(home: HomeScreen(notesService: _MemoryNotes(_notes(60)))));
     await tester.pumpAndSettle();
     expect(find.byType(NoteCard), findsWidgets);
 
@@ -153,7 +154,7 @@ void main() {
       'Historial: desplazar no reconstruye la pantalla ni las filas ya '
       'construidas', (tester) async {
     phone(tester);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(storageService: _MemoryHistory(_history(40)))));
     await tester.pumpAndSettle();
     await openHistory(tester);
@@ -179,7 +180,7 @@ void main() {
     phone(tester);
     final notes = _notes(200);
     await tester.pumpWidget(
-        MaterialApp(home: HomeScreen(notesService: _MemoryNotes(notes))));
+        esMaterialApp(home: HomeScreen(notesService: _MemoryNotes(notes))));
     await tester.pumpAndSettle();
 
     final built = find.byType(NoteCard).evaluate().length;
@@ -200,7 +201,7 @@ void main() {
       'visibles', (tester) async {
     phone(tester);
     final items = _history(200);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(storageService: _MemoryHistory(items))));
     await tester.pumpAndSettle();
     await openHistory(tester);
@@ -222,7 +223,7 @@ void main() {
       'Historial: arrastrar sobre una fila de más de dos renglones desplaza '
       'la página (el texto no se desplaza por dentro)', (tester) async {
     phone(tester);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(esMaterialApp(
         home: HomeScreen(
             storageService: _MemoryHistory(_history(20, repeat: 12)))));
     await tester.pumpAndSettle();

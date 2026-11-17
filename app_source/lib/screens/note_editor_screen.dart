@@ -15,6 +15,7 @@ import '../ui/glass_container.dart';
 import '../ui/transcription_feedback.dart';
 import '../widgets/app_icons.dart';
 import '../widgets/note_audio_row.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Editor de una nota: hoja limpia (sin cajas ni etiquetas) con el mismo
 /// lenguaje que Inicio — fondo base, botones de ícono circulares sólidos
@@ -97,7 +98,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   Future<void> _runGemini(String accion) async {
     final texto = _bodyCtrl.text.trim();
     if (texto.isEmpty) {
-      _showSnack('Escribe o dicta una nota primero');
+      _showSnack(context.l10n.noteEditorWriteFirst);
       return;
     }
     final service = await NoteAiResolver().create();
@@ -131,16 +132,16 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     if (error != null) {
       final msg = error is GeminiException
           ? error.message
-          : 'Error inesperado: $error';
+          : context.l10n.noteEditorUnexpectedError(error.toString());
       unawaited(showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Error de IA'),
+          title: Text(context.l10n.noteEditorAiErrorTitle),
           content: SelectableText(msg),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cerrar'),
+              child: Text(context.l10n.noteEditorClose),
             ),
           ],
         ),
@@ -164,12 +165,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     unawaited(showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(accion == 'titulo' ? 'Título sugerido' : 'Resumen de la nota'),
+        title: Text(accion == 'titulo' ? context.l10n.noteEditorAiTitleSuggested : context.l10n.noteEditorAiSummaryTitle),
         content: SingleChildScrollView(child: Text(resultado)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Descartar'),
+            child: Text(context.l10n.noteEditorDiscard),
           ),
           FilledButton(
             key: ValueKey('geminiApply_$accion'),
@@ -182,7 +183,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 await WidgetService().updateWidgets();
               }
             },
-            child: const Text('Reemplazar'),
+            child: Text(context.l10n.noteEditorReplace),
           ),
         ],
       ),
@@ -194,7 +195,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     final titulo = _titleCtrl.text.trim();
     final cuerpo = _bodyCtrl.text.trim();
     if (cuerpo.isEmpty) {
-      _showSnack('Cuerpo requerido');
+      _showSnack(context.l10n.noteEditorBodyRequired);
       return;
     }
     _saving = true;
@@ -219,7 +220,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       Navigator.of(context).pop(true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Limite alcanzado o error')),
+        SnackBar(content: Text(context.l10n.noteEditorLimitOrError)),
       );
     }
   }
@@ -238,7 +239,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     final data = await Clipboard.getData('text/plain');
     final txt = data?.text ?? '';
     if (txt.isEmpty) {
-      if (mounted) _showSnack('El portapapeles está vacío');
+      if (mounted) _showSnack(context.l10n.noteEditorClipboardEmpty);
       return;
     }
     // Pega donde está el cursor (o al final si el cuerpo no tiene foco).
@@ -258,15 +259,15 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     // Copia el contenido (cuerpo) en edición, no el título.
     final txt = _bodyCtrl.text;
     if (txt.isEmpty) {
-      _showSnack('Sin contenido para copiar');
+      _showSnack(context.l10n.noteEditorNothingToCopy);
       return;
     }
     final copy = await copyTranscriptionText(txt);
     if (!mounted) return;
     unawaited(HapticFeedback.selectionClick());
     _showSnack(copy == ClipboardCopyResult.ok
-        ? copiedToClipboardMessage
-        : clipboardFailureMessage);
+        ? context.l10n.copiedToClipboardMessage
+        : context.l10n.clipboardFailureMessage);
   }
 
   Future<void> _delete() async {
@@ -280,14 +281,14 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               Navigator.of(ctx).pop(false),
         },
         child: AlertDialog(
-          title: const Text('Eliminar nota'),
+          title: Text(context.l10n.noteEditorDelete),
           content: Text(note.hasAudio
-              ? 'Se borrarán el texto y el audio. No se puede deshacer.'
-              : 'Esta acción no se puede deshacer.'),
+              ? context.l10n.noteEditorDeleteWithAudio
+              : context.l10n.noteEditorDeleteTextOnly),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancelar'),
+              child: Text(context.l10n.commonCancel),
             ),
             TextButton(
               key: const ValueKey('noteEditorDeleteConfirm'),
@@ -295,7 +296,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 foregroundColor: Theme.of(ctx).colorScheme.error,
               ),
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Eliminar'),
+              child: Text(context.l10n.noteEditorDeleteConfirm),
             ),
           ],
         ),
@@ -318,11 +319,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   String _metaLabel() {
     final note = widget.note;
-    if (note == null) return 'Nueva nota';
+    if (note == null) return context.l10n.noteEditorNewNote;
     final group = noteGroupLabel(note.updatedAt);
     final time = noteTimeLabel(note.updatedAt);
     // Hoy/Ayer muestran la hora; lo más viejo, la fecha corta.
-    return (group == 'Hoy' || group == 'Ayer') ? '$group, $time' : time;
+    return (group == 'Hoy' || group == 'Ayer') ? context.l10n.noteEditorMetaGroupTime(group, time) : time;
   }
 
   @override
@@ -420,7 +421,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                             cursorColor: accent,
                             style: titleStyle,
                             decoration: noBorder.copyWith(
-                              hintText: 'Título',
+                              hintText: context.l10n.noteEditorTitleLabel,
                               hintStyle: titleStyle.copyWith(color: tertiary),
                               contentPadding:
                                   const EdgeInsets.symmetric(vertical: 6),
@@ -434,7 +435,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                             padding: const EdgeInsets.only(left: 8),
                             child: _GlassCircleButton(
                               key: const ValueKey('geminiTituloIcon'),
-                              tooltip: 'Generar título con IA',
+                              tooltip: context.l10n.noteEditorAiTitleButton,
                               onPressed: _geminiBusy
                                   ? null
                                   : () => _runGemini('titulo'),
@@ -477,7 +478,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       cursorColor: accent,
                       style: bodyStyle,
                       decoration: noBorder.copyWith(
-                        hintText: 'Escribí o pegá el texto de la nota',
+                        hintText: context.l10n.noteEditorBodyHint,
                         hintStyle: bodyStyle.copyWith(color: tertiary),
                       ),
                     ),
@@ -489,10 +490,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 top: insets.top + 6,
                 left: 12,
                 child: _GlassCircleButton(
-                  key: const ValueKey('noteEditorBack'),
+                  key: const ValueKey('commonBack'),
                   icon: Icons.chevron_left_rounded,
                   iconSize: AppIcons.large,
-                  tooltip: 'Volver',
+                  tooltip: context.l10n.commonBack,
                   color: primary,
                   onPressed: () => Navigator.of(context).maybePop(),
                 ),
@@ -525,21 +526,21 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                           _ToolButton(
                             key: const ValueKey('noteEditorPasteButton'),
                             icon: Icons.content_paste_rounded,
-                            tooltip: 'Pegar',
+                            tooltip: context.l10n.noteEditorPaste,
                             color: primary,
                             onPressed: _paste,
                           ),
                           _ToolButton(
                             key: const ValueKey('noteEditorCopyButton'),
                             icon: Icons.copy_rounded,
-                            tooltip: 'Copiar texto',
+                            tooltip: context.l10n.noteEditorCopy,
                             color: primary,
                             onPressed: _copy,
                           ),
                           if (_geminiReady)
                             _ToolButton(
                               key: const ValueKey('geminiResumirButton'),
-                              tooltip: 'Resumir con IA',
+                              tooltip: context.l10n.noteEditorAiSummarize,
                               color: primary,
                               custom: _geminiOp == 'resumir'
                                   ? const AiLoader(kind: AiLoaderKind.summary)
@@ -558,7 +559,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                             _ToolButton(
                               key: const ValueKey('noteEditorDeleteButton'),
                               icon: Icons.delete_outline_rounded,
-                              tooltip: 'Eliminar nota',
+                              tooltip: context.l10n.noteEditorDelete,
                               color: isDark ? kDangerDark : kDangerLight,
                               onPressed: _delete,
                             ),
@@ -639,10 +640,10 @@ class _SaveButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: 'Guardar',
+      label: context.l10n.commonSave,
       excludeSemantics: true,
       child: Tooltip(
-        message: 'Guardar',
+        message: context.l10n.commonSave,
         child: AnimatedContainer(
           key: const ValueKey('noteEditorSave'),
           duration:

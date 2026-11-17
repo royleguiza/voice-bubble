@@ -402,6 +402,14 @@ la API de Google salga de alfa.
   uniones: el corte busca una pausa desde los **60 s** y es obligatorio a
   los **90 s** (antes 25/40). Hasta un minuto el dictado es idéntico a antes;
   ≈ 1 pedido por minuto a Groq mientras se habla.
+- **Etapa 4, tanda A (2026-11-17, hecha; sin cambio visible):** Flutter con
+  `gen-l10n` (`app_source/l10n.yaml`, `lib/l10n/app_es.arb` con 448 claves,
+  `.dart` generados versionados, `context.l10n`); solo español por ahora.
+  Material pasa a español (tooltips, copiar/pegar). Tests Dart con
+  `test/helpers/l10n_app.dart`; las suites Python leen los `.dart` con los
+  textos del ARB expandidos (`test_helpers.install_l10n_reader`). Siguen
+  tanda B (Kotlin a `strings.xml`) y C (inglés, portugués, idioma por app).
+  Detalle: `docs/spec-idiomas-etapa4.md`.
 
 ## 12. Plan actualizado por etapas
 

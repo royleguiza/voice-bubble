@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'l10n/app_localizations.dart';
 import 'ui/design_tokens.dart';
 import 'ui/horizon_intro.dart';
 import 'ui/theme_mode.dart';
@@ -31,6 +32,8 @@ class VoiceBubbleApp extends StatelessWidget {
       builder: (_, mode, __) {
         return MaterialApp(
           title: 'VoiceBubble STT',
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           debugShowCheckedModeBanner: false,
           theme: buildLightTheme(),
           darkTheme: buildDarkTheme(),

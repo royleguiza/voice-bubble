@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../ui/design_tokens.dart';
 import 'app_icons.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Pastilla de audio conservado en una nota: "▶ 0:38" (fondo ember-soft,
 /// ícono y duración en ember-t, duración en mono).
@@ -151,8 +152,8 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
     if (_missing || _corrupt) {
       return Text(
         _missing
-            ? 'Audio no encontrado'
-            : 'Audio dañado; borralo y grabalo de nuevo',
+            ? context.l10n.noteAudioNotFound
+            : context.l10n.noteAudioCorrupt,
         style: kTextCaption.copyWith(color: secondary),
       );
     }
@@ -164,8 +165,10 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
     return Semantics(
       button: true,
       label: _playing
-          ? 'Detener audio'
-          : 'Escuchar audio${duration == null ? '' : ', $duration'}',
+          ? context.l10n.noteAudioStop
+          : (duration == null
+              ? context.l10n.noteAudioPlay
+              : context.l10n.noteAudioPlayWithDuration(duration)),
       excludeSemantics: true,
       child: InkResponse(
         key: ValueKey('notePlayAudio-${widget.noteId}'),
@@ -193,7 +196,7 @@ class _NoteAudioRowState extends State<NoteAudioRow> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  duration ?? 'Audio',
+                  duration ?? context.l10n.noteAudioChip,
                   style: kTextMono.copyWith(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,

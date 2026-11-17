@@ -9,6 +9,9 @@ regresión del resto del teclado (capas, toggle ?123, snippets, toolbar).
 """
 
 import os
+# l10n (etapa 4): los textos de la UI viven en app_es.arb; ver test_helpers.expand_l10n.
+from test_helpers import install_l10n_reader
+install_l10n_reader()
 import re
 import sys
 

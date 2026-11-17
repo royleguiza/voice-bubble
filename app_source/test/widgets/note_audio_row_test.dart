@@ -3,12 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/note_audio_row.dart';
+import '../helpers/l10n_app.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Widget wrap(NoteAudioRow row) {
-    return MaterialApp(home: Scaffold(body: row));
+    return esMaterialApp(home: Scaffold(body: row));
   }
 
   group('NoteAudioRow', () {

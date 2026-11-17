@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voice_bubble_stt/widgets/history_list.dart';
 import 'package:voice_bubble_stt/models/transcription.dart';
-import 'package:voice_bubble_stt/ui/transcription_feedback.dart';
+import '../helpers/l10n_app.dart';
+import 'package:voice_bubble_stt/l10n/app_localizations_es.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +29,7 @@ void main() {
   );
 
   Widget wrap(Widget child) {
-    return MaterialApp(
+    return esMaterialApp(
       home: Scaffold(
         body: SizedBox(height: 600, child: child),
       ),
@@ -98,7 +99,7 @@ void main() {
       await tester.tap(find.byIcon(Icons.copy_rounded));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text(copiedToClipboardMessage), findsOneWidget);
+      expect(find.text(AppLocalizationsEs().copiedToClipboardMessage), findsOneWidget);
     });
 
     testWidgets('handles single item list', (tester) async {

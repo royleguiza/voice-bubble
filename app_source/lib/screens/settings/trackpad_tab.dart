@@ -11,14 +11,14 @@ extension _TrackpadPage on _SettingsScreenState {
     final status = _pointerStatus;
     final ready = status == FloatingTrackpadService.pointerReady;
     final statusLabel = switch (status) {
-      FloatingTrackpadService.pointerReady => 'Activo',
-      FloatingTrackpadService.pointerDisabled => 'Activar',
-      _ => 'No instalado',
+      FloatingTrackpadService.pointerReady => context.l10n.trackpadPointerActive,
+      FloatingTrackpadService.pointerDisabled => context.l10n.trackpadPointerEnable,
+      _ => context.l10n.trackpadPointerNotInstalled,
     };
     return [
       SettingsNavRow(
         key: const ValueKey('pointer-companion-row'),
-        title: 'VoiceBubble Puntero',
+        title: context.l10n.settingsPointerCompanionTitle,
         value: statusLabel,
         valueActive: ready,
         valueColor: ready ? null : SettingsPalette.of(context).alert,
@@ -27,7 +27,7 @@ extension _TrackpadPage on _SettingsScreenState {
       if (status == FloatingTrackpadService.pointerDisabled)
         SettingsActionRow(
           key: const ValueKey('pointer-restricted-row'),
-          title: 'Permitir ajustes restringidos',
+          title: context.l10n.trackpadRestrictedRow,
           onTap: _floatingTrackpadService.openCompanionDetails,
         ),
     ];
@@ -37,65 +37,60 @@ extension _TrackpadPage on _SettingsScreenState {
     final status = _pointerStatus;
     final statusFooter = switch (status) {
       FloatingTrackpadService.pointerReady =>
-        'Los clics del puntero llegan a cualquier app. No lee la pantalla '
-            'ni guarda nada.',
+        context.l10n.trackpadFooterReady,
       FloatingTrackpadService.pointerDisabled =>
-        'Activalo en Accesibilidad. Si Android dice «Ajuste restringido», '
-            'tocá Permitir ajustes restringidos y volvé a intentar.',
-      _ => 'Para hacer clic en otras apps hace falta el complemento '
-          'VoiceBubble Puntero. Sin él, el puntero se mueve pero no hace clic.',
+        context.l10n.trackpadFooterDisabled,
+      _ => context.l10n.trackpadFooterMissing,
     };
     return _subpage(
       context,
-      title: 'Trackpad',
+      title: context.l10n.settingsNavTrackpad,
       sections: [
         SettingsSection(
-          header: 'Puntero en otras apps',
+          header: context.l10n.trackpadOtherAppsHeader,
           footer: statusFooter,
           children: _pointerCompanionRows(),
         ),
         SettingsSection(
-          footer: 'Se abre desde la barra flotante. Para cerrarlo, tocá la '
-              'línea de arriba.',
+          footer: context.l10n.trackpadOpenFooter,
           children: [
             SettingsMenuRow<String>(
               id: 'pointer-open-mode-selector',
-              title: 'Se abre como',
+              title: context.l10n.trackpadOpenAs,
               value: _pointerOpenMode,
-              options: const [
-                SettingsOption('panel', 'Panel abajo'),
-                SettingsOption('window', 'Ventana flotante'),
+              options: [
+                SettingsOption('panel', context.l10n.trackpadOpenPanel),
+                SettingsOption('window', context.l10n.trackpadOpenWindow),
               ],
               onSelected: _savePointerOpenMode,
             ),
             SettingsMenuRow<int>(
               id: 'kb-trackpad-auto-return-selector',
-              title: 'Al soltar',
+              title: context.l10n.trackpadAutoReturn,
               value: _trackpadAutoReturn,
-              options: const [
-                SettingsOption(0, 'Queda abierto'),
-                SettingsOption(5, 'Se cierra a los 5 s'),
-                SettingsOption(15, 'Se cierra a los 15 s'),
-                SettingsOption(30, 'Se cierra a los 30 s'),
+              options: [
+                SettingsOption(0, context.l10n.trackpadStaysOpen),
+                SettingsOption(5, context.l10n.trackpadClosesIn5),
+                SettingsOption(15, context.l10n.trackpadClosesIn15),
+                SettingsOption(30, context.l10n.trackpadClosesIn30),
               ],
               onSelected: _saveTrackpadAutoReturn,
             ),
           ],
         ),
         SettingsSection(
-          header: 'En el teclado',
-          footer: 'Un puntero dentro del teclado para mover el cursor con '
-              'precisión.',
+          header: context.l10n.trackpadKeyboardHeader,
+          footer: context.l10n.trackpadKeyboardFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('kb-trackpad-enabled-switch'),
-              title: 'Trackpad en el teclado',
+              title: context.l10n.trackpadKeyboardSwitch,
               value: _trackpadEnabled,
               onChanged: _toggleTrackpadEnabled,
             ),
             SettingsSwitchRow(
               key: const ValueKey('kb-trackpad-toolbar-switch'),
-              title: 'Acceso en la barra del teclado',
+              title: context.l10n.trackpadToolbarSwitch,
               value: _trackpadToolbarVisible,
               onChanged: _toggleTrackpadToolbarVisible,
             ),
@@ -103,7 +98,7 @@ extension _TrackpadPage on _SettingsScreenState {
         ),
         if (_trackpadEnabled || _dockToolPointer) ...[
           SettingsSection(
-            header: 'Puntero',
+            header: context.l10n.settingsToolPointer,
             children: [
               TrackpadSensitivitySection(
                 sensitivity: _trackpadSensitivity,
@@ -111,97 +106,97 @@ extension _TrackpadPage on _SettingsScreenState {
               ),
               SettingsMenuRow<String>(
                 id: 'kb-trackpad-accel-curve-selector',
-                title: 'Aceleración',
+                title: context.l10n.trackpadAcceleration,
                 value: _trackpadAccelCurve,
-                options: const [
-                  SettingsOption('dynamic', 'Dinámica'),
-                  SettingsOption('linear', 'Lineal'),
-                  SettingsOption('precision', 'Precisión'),
+                options: [
+                  SettingsOption('dynamic', context.l10n.trackpadAccelDynamic),
+                  SettingsOption('linear', context.l10n.trackpadAccelLinear),
+                  SettingsOption('precision', context.l10n.trackpadAccelPrecision),
                 ],
                 onSelected: _saveTrackpadAccelCurve,
               ),
               SettingsMenuRow<String>(
                 id: 'kb-trackpad-pointer-style-selector',
-                title: 'Forma',
+                title: context.l10n.settingsDockForm,
                 value: _trackpadPointerStyle,
-                options: const [
-                  SettingsOption('arrow', 'Flecha'),
-                  SettingsOption('dot', 'Punto'),
-                  SettingsOption('cross', 'Cruz'),
+                options: [
+                  SettingsOption('arrow', context.l10n.trackpadShapeArrow),
+                  SettingsOption('dot', context.l10n.trackpadShapeDot),
+                  SettingsOption('cross', context.l10n.trackpadShapeCross),
                 ],
                 onSelected: _saveTrackpadPointerStyle,
               ),
             ],
           ),
           SettingsSection(
-            header: 'Clic',
+            header: context.l10n.trackpadClickHeader,
             children: [
               SettingsSwitchRow(
                 key: const ValueKey('kb-trackpad-tap-to-click-switch'),
-                title: 'Tocar para hacer clic',
+                title: context.l10n.trackpadTapToClick,
                 value: _trackpadTapToClick,
                 onChanged: _toggleTrackpadTapToClick,
               ),
               SettingsMenuRow<String>(
                 id: 'kb-trackpad-secondary-click-selector',
-                title: 'Clic secundario',
+                title: context.l10n.trackpadSecondaryClick,
                 value: _trackpadSecondaryClick,
-                options: const [
-                  SettingsOption('2fingers', 'Dos dedos'),
-                  SettingsOption('button', 'Botón derecho'),
-                  SettingsOption('hold', 'Mantener'),
+                options: [
+                  SettingsOption('2fingers', context.l10n.trackpadTwoFingers),
+                  SettingsOption('button', context.l10n.trackpadRightButton),
+                  SettingsOption('hold', context.l10n.settingsRecordHold),
                 ],
                 onSelected: _saveTrackpadSecondaryClick,
               ),
               SettingsMenuRow<String>(
                 id: 'kb-trackpad-button-layout-selector',
-                title: 'Botones',
+                title: context.l10n.trackpadButtons,
                 value: _trackpadButtonLayout,
-                options: const [
-                  SettingsOption('top', 'Arriba'),
-                  SettingsOption('wings', 'A los lados'),
+                options: [
+                  SettingsOption('top', context.l10n.trackpadButtonsTop),
+                  SettingsOption('wings', context.l10n.trackpadButtonsSides),
                 ],
                 onSelected: _saveTrackpadButtonLayout,
               ),
             ],
           ),
           SettingsSection(
-            header: 'Desplazamiento',
+            header: context.l10n.trackpadScrollHeader,
             children: [
               SettingsMenuRow<String>(
                 id: 'kb-trackpad-scroll-position-selector',
-                title: 'Barra de scroll',
+                title: context.l10n.trackpadScrollBar,
                 value: _trackpadScrollPosition,
-                options: const [
-                  SettingsOption('right', 'Derecha'),
-                  SettingsOption('left', 'Izquierda'),
-                  SettingsOption('disabled', 'Oculta'),
+                options: [
+                  SettingsOption('right', context.l10n.trackpadScrollRight),
+                  SettingsOption('left', context.l10n.trackpadScrollLeft),
+                  SettingsOption('disabled', context.l10n.trackpadScrollHidden),
                 ],
                 onSelected: _saveTrackpadScrollPosition,
               ),
               SettingsMenuRow<String>(
                 id: 'kb-trackpad-scroll-direction-selector',
-                title: 'Dirección',
+                title: context.l10n.trackpadScrollDirection,
                 value: _trackpadScrollDirection,
-                options: const [
-                  SettingsOption('natural', 'Natural'),
-                  SettingsOption('standard', 'Invertida'),
+                options: [
+                  SettingsOption('natural', context.l10n.trackpadScrollNatural),
+                  SettingsOption('standard', context.l10n.trackpadScrollInverted),
                 ],
                 onSelected: _saveTrackpadScrollDirection,
               ),
             ],
           ),
           SettingsSection(
-            header: 'Otros',
+            header: context.l10n.trackpadOtherHeader,
             children: [
               SettingsMenuRow<String>(
                 id: 'kb-trackpad-haptic-selector',
-                title: 'Vibración',
+                title: context.l10n.trackpadHaptics,
                 value: _trackpadHaptic,
-                options: const [
-                  SettingsOption('subtle', 'Sutil'),
-                  SettingsOption('firm', 'Firme'),
-                  SettingsOption('none', 'Ninguna'),
+                options: [
+                  SettingsOption('subtle', context.l10n.trackpadHapticSubtle),
+                  SettingsOption('firm', context.l10n.keyboardIntensityFirm),
+                  SettingsOption('none', context.l10n.keyboardBottomNone),
                 ],
                 onSelected: _saveTrackpadHaptic,
               ),
@@ -277,7 +272,7 @@ class _TrackpadSensitivitySectionState
             children: [
               Expanded(
                 child: Text(
-                  'Velocidad',
+                  context.l10n.trackpadSpeed,
                   style: kTextBody.copyWith(color: p.label),
                 ),
               ),
@@ -289,7 +284,7 @@ class _TrackpadSensitivitySectionState
           ),
           Row(
             children: [
-              Text('Lenta', style: kTextFootnote.copyWith(color: p.secondary)),
+              Text(context.l10n.trackpadSlow, style: kTextFootnote.copyWith(color: p.secondary)),
               Expanded(
                 child: SliderTheme(
                   data: settingsSliderTheme(context),
@@ -301,12 +296,12 @@ class _TrackpadSensitivitySectionState
                     divisions: 20,
                     label: valueLabel,
                     semanticFormatterCallback: (v) =>
-                        'Velocidad ${v.toStringAsFixed(1)}',
+                        context.l10n.trackpadSpeedSemantics(v.toStringAsFixed(1)),
                     onChanged: _onChanged,
                   ),
                 ),
               ),
-              Text('Rápida', style: kTextFootnote.copyWith(color: p.secondary)),
+              Text(context.l10n.trackpadFast, style: kTextFootnote.copyWith(color: p.secondary)),
             ],
           ),
         ],

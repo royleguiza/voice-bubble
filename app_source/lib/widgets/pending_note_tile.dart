@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import '../services/pending_note_queue.dart';
 import '../ui/design_tokens.dart';
+import '../l10n/l10n_ext.dart';
 
 /// Fila de un audio pendiente de transcripción cloud en Notas.
 /// Acciones explícitas del usuario: escuchar, transcribir o descartar.
@@ -149,10 +150,10 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
   String _format(DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inMinutes < 60) return 'hace ${diff.inMinutes}m';
-    if (diff.inHours < 24) return 'hace ${diff.inHours}h';
-    if (diff.inDays == 1) return 'ayer';
-    if (diff.inDays < 7) return 'hace ${diff.inDays}d';
+    if (diff.inMinutes < 60) return context.l10n.pendingAgoMinutes(diff.inMinutes.toString());
+    if (diff.inHours < 24) return context.l10n.pendingAgoHours(diff.inHours.toString());
+    if (diff.inDays == 1) return context.l10n.pendingYesterday;
+    if (diff.inDays < 7) return context.l10n.pendingAgoDays(diff.inDays.toString());
     return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}';
   }
 
@@ -167,7 +168,7 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
     final radius = BorderRadius.circular(kRadiusCard);
     return Semantics(
       container: true,
-      label: 'Audio sin transcribir, ${_format(widget.item.createdAt)}',
+      label: context.l10n.pendingSemantics(_format(widget.item.createdAt)),
       child: Material(
         color: highContrast
             ? (isDark ? kHighContrastSurfaceDark : kHighContrastSurfaceLight)
@@ -199,7 +200,7 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Audio sin transcribir',
+                      context.l10n.pendingTitle,
                       style: kTextCardTitle.copyWith(color: status),
                     ),
                   ),
@@ -213,7 +214,7 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    'No se pudo reproducir este audio',
+                    context.l10n.pendingUnplayable,
                     style: kTextCaption.copyWith(color: secondary),
                   ),
                 ),
@@ -237,7 +238,7 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
                               child: CircularProgressIndicator(
                                   strokeWidth: 2),
                             )
-                          : const Text('Transcribir'),
+                          : Text(context.l10n.pendingTranscribe),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -257,7 +258,7 @@ class _PendingNoteTileState extends State<PendingNoteTile> {
                   const SizedBox(width: 6),
                   IconButton(
                     key: ValueKey('discardPendingButton-${widget.item.id}'),
-                    tooltip: 'Descartar audio',
+                    tooltip: context.l10n.pendingDiscard,
                     icon: Icon(
                       Icons.delete_outline_rounded,
                       size: 18,
@@ -323,7 +324,7 @@ class _PlayerStage extends StatelessWidget {
       children: [
         _RoundButton(
           key: mainKey,
-          tooltip: playing ? 'Pausar' : 'Escuchar audio',
+          tooltip: playing ? context.l10n.pendingPause : context.l10n.pendingPlay,
           icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
           enabled: enabled,
           onPressed: onMain,
@@ -357,7 +358,7 @@ class _PlayerStage extends StatelessWidget {
               opacity: open ? 1 : 0,
               child: _RoundButton(
                 key: closeKey,
-                tooltip: 'Cerrar reproductor',
+                tooltip: context.l10n.pendingClosePlayer,
                 icon: Icons.close_rounded,
                 enabled: enabled && open,
                 onPressed: onClose,

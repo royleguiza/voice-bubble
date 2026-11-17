@@ -9,57 +9,54 @@ extension _GeneralPages on _SettingsScreenState {
     final isHold = _recordMode == StorageService.recordModeHold;
     return _subpage(
       context,
-      title: 'Transcripción',
+      title: context.l10n.settingsNavTranscription,
       sections: [
         SettingsSection(
-          header: 'Clave de API',
-          footer: 'Se guarda cifrada en este teléfono. La conseguís gratis '
-              'en console.groq.com.',
+          header: context.l10n.settingsApiKeyHeader,
+          footer: context.l10n.settingsApiKeyFooter,
           children: [
             SettingsNavRow(
               key: const ValueKey('api-key-row'),
               title: 'Groq',
-              value: _hasApiKey ? _apiKeyTail : 'Agregar',
+              value: _hasApiKey ? _apiKeyTail : context.l10n.settingsAdd,
               valueColor: _hasApiKey ? null : p.tintText,
               onTap: _startApiEdit,
             ),
           ],
         ),
         SettingsSection(
-          header: 'Grabación',
+          header: context.l10n.settingsRecordingHeader,
           footer: isHold
-              ? 'Mantené presionado mientras hablás y soltá para transcribir.'
-              : 'Tocá para empezar y otra vez para transcribir.',
+              ? context.l10n.settingsRecordHoldFooter
+              : context.l10n.settingsRecordTapFooter,
           children: [
             SettingsMenuRow<String>(
               id: 'record-mode-selector',
-              title: 'Botón de grabar',
+              title: context.l10n.settingsRecordButton,
               value: _recordMode,
-              options: const [
-                SettingsOption(StorageService.defaultRecordMode, 'Tocar'),
-                SettingsOption(StorageService.recordModeHold, 'Mantener'),
+              options: [
+                SettingsOption(StorageService.defaultRecordMode, context.l10n.settingsRecordTap),
+                SettingsOption(StorageService.recordModeHold, context.l10n.settingsRecordHold),
               ],
               onSelected: _saveRecordMode,
             ),
           ],
         ),
         SettingsSection(
-          header: 'Motor',
+          header: context.l10n.settingsEngineHeader,
           footer: _sttModel == CloudSttService.preciseModel
-              ? 'Preciso: menos errores y mejor puntuación, apenas más lento. '
-                  'El audio sale del teléfono solo cuando dictás.'
-              : 'Rápido: el de menor espera. '
-                  'El audio sale del teléfono solo cuando dictás.',
+              ? context.l10n.settingsEnginePreciseFooter
+              : context.l10n.settingsEngineFastFooter,
           children: [
             SettingsMenuRow<String>(
               id: 'stt-model-selector',
-              title: 'Modelo',
+              title: context.l10n.settingsModel,
               value: _sttModel,
-              options: const [
+              options: [
                 SettingsOption(CloudSttService.model, 'Whisper v3 Turbo',
-                    detail: 'Rápido'),
+                    detail: context.l10n.settingsModelFast),
                 SettingsOption(CloudSttService.preciseModel, 'Whisper v3',
-                    detail: 'Preciso'),
+                    detail: context.l10n.settingsModelPrecise),
               ],
               onSelected: _saveSttModel,
             ),
@@ -73,23 +70,25 @@ extension _GeneralPages on _SettingsScreenState {
     final p = SettingsPalette.of(context);
     return _subpage(
       context,
-      title: 'Inteligencia artificial',
+      title: context.l10n.settingsNavAi,
       sections: [
         SettingsSection(
-          header: 'Proveedor',
+          header: context.l10n.settingsAiProviderHeader,
           footer: _aiNotesProvider == StorageService.aiNotesProviderGroq
-              ? 'Groq: rápido y gratis, con la misma clave de la transcripción.'
-                  '${_hasApiKey ? '' : ' Falta la clave de Groq (Ajustes › Transcripción).'}'
-              : 'Google: necesita su propia clave (abajo).'
-                  '${_geminiHasApiKey ? '' : ' Mientras no la cargues, se usa Groq.'}',
+              ? (_hasApiKey
+                  ? context.l10n.settingsAiProviderGroqHint
+                  : context.l10n.settingsAiProviderGroqNoKey)
+              : (_geminiHasApiKey
+                  ? context.l10n.settingsAiProviderGoogleHint
+                  : context.l10n.settingsAiProviderGoogleNoKey),
           children: [
             SettingsMenuRow<String>(
               id: 'ai-notes-provider-selector',
-              title: 'Título y resumen con',
+              title: context.l10n.settingsAiProviderTitle,
               value: _aiNotesProvider,
-              options: const [
+              options: [
                 SettingsOption(StorageService.aiNotesProviderGroq, 'Groq',
-                    detail: 'Rápido'),
+                    detail: context.l10n.settingsModelFast),
                 SettingsOption(StorageService.aiNotesProviderGoogle, 'Google',
                     detail: 'Gemini'),
               ],
@@ -98,13 +97,13 @@ extension _GeneralPages on _SettingsScreenState {
           ],
         ),
         SettingsSection(
-          header: 'Clave de Google',
-          footer: 'Opcional. La conseguís en aistudio.google.com.',
+          header: context.l10n.settingsGoogleKeyHeader,
+          footer: context.l10n.settingsGoogleKeyFooter,
           children: [
             SettingsNavRow(
               key: const ValueKey('gemini-key-row'),
               title: 'Google AI Studio',
-              value: _geminiHasApiKey ? _geminiApiKeyTail : 'Agregar',
+              value: _geminiHasApiKey ? _geminiApiKeyTail : context.l10n.settingsAdd,
               valueColor: _geminiHasApiKey ? null : p.tintText,
               onTap: _startGeminiApiEdit,
             ),
@@ -112,54 +111,52 @@ extension _GeneralPages on _SettingsScreenState {
         ),
         if (_hasApiKey || _geminiHasApiKey)
           SettingsSection(
-            footer: 'Título y resumen con un toque en el editor de cada nota.',
+            footer: context.l10n.settingsAiActionsFooter,
             children: [
               SettingsSwitchRow(
                 key: const ValueKey('geminiActionsSwitch'),
-                title: 'Acciones de IA en notas',
+                title: context.l10n.settingsAiActionsSwitch,
                 value: _geminiActionsEnabled,
                 onChanged: _toggleGeminiActions,
               ),
               SettingsActionRow(
                 key: const ValueKey('geminiTestButton'),
-                title: 'Probar conexión',
+                title: context.l10n.settingsAiTestConnection,
                 onTap: _testGeminiConnection,
               ),
             ],
           ),
         SettingsSection(
-          header: 'Traducción',
-          footer: 'Botón «Traducir» del teclado: con texto seleccionado lo '
-              'traduce; sin selección, el próximo dictado sale traducido. '
-              'Toque largo: deshacer. '
-              '${_translateMode == StorageService.translateModeAi ? 'Con IA: el texto se manda al proveedor de arriba para traducirlo.' : 'En el teléfono: el texto no sale del teléfono; la primera vez baja el idioma (unos 30 MB) y después traduce sin internet.'}'
-              ' Nunca en campos de contraseña.',
+          header: context.l10n.settingsTranslateHeader,
+          footer: _translateMode == StorageService.translateModeAi
+              ? context.l10n.settingsTranslateFooterAi
+              : context.l10n.settingsTranslateFooterLocal,
           children: [
             SettingsMenuRow<String>(
               id: 'translate-target-selector',
-              title: 'Traducir a',
+              title: context.l10n.settingsTranslateTo,
               value: _translateTarget,
               options: [
                 for (final e in StorageService.translateTargets.entries)
-                  SettingsOption(e.key, e.value),
+                  SettingsOption(e.key, _translateTargetName(context, e.key, e.value)),
               ],
               onSelected: _saveTranslateTarget,
             ),
             SettingsMenuRow<String>(
               id: 'translate-mode-selector',
-              title: 'Cómo traducir',
+              title: context.l10n.settingsTranslateHow,
               value: _translateMode,
-              options: const [
+              options: [
                 SettingsOption(StorageService.translateModeLocal,
-                    'En el teléfono', detail: 'Privado'),
-                SettingsOption(StorageService.translateModeAi, 'Con IA',
-                    detail: 'Mejor calidad'),
+                    context.l10n.settingsTranslateLocal, detail: context.l10n.settingsTranslateLocalDetail),
+                SettingsOption(StorageService.translateModeAi, context.l10n.settingsTranslateAi,
+                    detail: context.l10n.settingsTranslateAiDetail),
               ],
               onSelected: _saveTranslateMode,
             ),
             SettingsSwitchRow(
               key: const ValueKey('translate-dictation-switch'),
-              title: 'Traducir siempre el dictado del teclado',
+              title: context.l10n.settingsTranslateDictation,
               value: _translateDictation,
               onChanged: _toggleTranslateDictation,
             ),
@@ -176,30 +173,28 @@ extension _GeneralPages on _SettingsScreenState {
         _pointerStatus == FloatingTrackpadService.pointerReady;
     return _subpage(
       context,
-      title: 'Barra flotante',
+      title: context.l10n.settingsNavBubble,
       sections: [
         SettingsSection(
-          footer: 'Dictá y usá el puntero encima de cualquier app. '
-              'Arrastrala hacia el centro para usarla como burbuja; pegala '
-              'a un borde para volver a la barra.',
+          footer: context.l10n.settingsBubbleFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('bubble-active-switch'),
-              title: 'Barra flotante',
+              title: context.l10n.settingsNavBubble,
               value: _isBubbleEnabled,
               onChanged: _toggleBubble,
             ),
             SettingsMenuRow<String>(
               id: 'dock-form-selector',
-              title: 'Forma',
+              title: context.l10n.settingsDockForm,
               value: _dockForm,
               options: [
-                const SettingsOption('edge', 'Barra en el borde'),
-                const SettingsOption('bubble', 'Burbuja'),
+                SettingsOption('edge', context.l10n.settingsDockEdge),
+                SettingsOption('bubble', context.l10n.settingsDockBubble),
                 SettingsOption(
                   'island',
-                  'Isla',
-                  detail: islandAvailable ? null : 'No disponible',
+                  context.l10n.settingsDockIsland,
+                  detail: islandAvailable ? null : context.l10n.settingsDockUnavailable,
                   enabled: islandAvailable,
                 ),
               ],
@@ -208,7 +203,7 @@ extension _GeneralPages on _SettingsScreenState {
             if (_dockForm == 'island')
               SettingsNavRow(
                 key: const ValueKey('island-adjust-row'),
-                title: 'Ajustar isla',
+                title: context.l10n.islandTitle,
                 onTap: () => _go(SettingsPage.isla),
               ),
           ],
@@ -216,52 +211,47 @@ extension _GeneralPages on _SettingsScreenState {
         if (!islandAvailable)
           SettingsSection(
             key: const ValueKey('island-companion-section'),
-            header: 'Isla',
-            footer: 'Necesita VoiceBubble Puntero activo: solo un servicio de '
-                'Accesibilidad puede dibujar sobre la cámara y la barra de '
-                'estado.',
+            header: context.l10n.settingsDockIsland,
+            footer: context.l10n.settingsIslandNeedsFooter,
             children: _pointerCompanionRows(),
           ),
         SettingsSection(
-          header: 'Herramientas',
-          footer: 'Con una sola herramienta, tocar la burbuja la usa '
-              'directo.',
+          header: context.l10n.settingsToolsHeader,
+          footer: context.l10n.settingsToolsFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('dock-tool-mic-switch'),
-              title: 'Micrófono',
+              title: context.l10n.settingsToolMic,
               value: _dockToolMic,
               onChanged: (v) => _toggleDockTool(pointer: false, value: v),
             ),
             SettingsSwitchRow(
               key: const ValueKey('dock-tool-pointer-switch'),
-              title: 'Puntero',
+              title: context.l10n.settingsToolPointer,
               value: _dockToolPointer,
               onChanged: (v) => _toggleDockTool(pointer: true, value: v),
             ),
           ],
         ),
         SettingsSection(
-          footer: 'Mantené presionada la barra o la burbuja para ver lo '
-              'último que dictaste.',
+          footer: context.l10n.settingsBubbleHistoryFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('bubble-history-switch'),
-              title: 'Historial',
+              title: context.l10n.settingsBubbleHistory,
               value: _showBubbleHistory,
               onChanged: _toggleBubbleHistory,
             ),
           ],
         ),
         SettingsSection(
-          header: 'Permiso',
-          footer: 'Android lo pide para mostrar la barra encima de otras '
-              'apps.',
+          header: context.l10n.settingsPermissionHeader,
+          footer: context.l10n.settingsPermissionFooter,
           children: [
             SettingsNavRow(
               key: const ValueKey('burbuja-overlay-permission-row'),
-              title: 'Mostrar sobre otras apps',
-              value: 'Revisar',
+              title: context.l10n.settingsOverlayRow,
+              value: context.l10n.settingsReview,
               onTap: _reviewOverlayPermission,
             ),
           ],
@@ -273,32 +263,30 @@ extension _GeneralPages on _SettingsScreenState {
   Widget _buildNotasPage(BuildContext context) {
     return _subpage(
       context,
-      title: 'Notas y widgets',
+      title: context.l10n.settingsNavNotes,
       sections: [
         SettingsSection(
-          header: 'Notas',
-          footer: 'Sin red, el audio queda en Notas y lo transcribís cuando '
-              'vuelva la conexión. Transcribir sin internet: '
-              'aún no disponible.',
+          header: context.l10n.settingsNotesHeader,
+          footer: context.l10n.settingsNotesQueueFooter,
           children: [
             SettingsSwitchRow(
               key: const ValueKey('notes-deferred-queue-switch'),
-              title: 'Guardar audio sin conexión',
+              title: context.l10n.settingsNotesQueueSwitch,
               value: _notesDeferredQueue,
               onChanged: _toggleNotesDeferredQueue,
             ),
           ],
         ),
         SettingsSection(
-          header: 'Widget de notas',
+          header: context.l10n.settingsWidgetHeader,
           children: [
             SettingsMenuRow<String>(
               id: 'widget-mic-position-selector',
-              title: 'Micrófono',
+              title: context.l10n.settingsToolMic,
               value: _widgetMicPosition,
-              options: const [
-                SettingsOption('left', 'A la izquierda'),
-                SettingsOption('right', 'A la derecha'),
+              options: [
+                SettingsOption('left', context.l10n.commonLeft),
+                SettingsOption('right', context.l10n.commonRight),
               ],
               onSelected: _setWidgetMicPosition,
             ),
@@ -311,15 +299,15 @@ extension _GeneralPages on _SettingsScreenState {
   Widget _buildGroqKeySheet(BuildContext context) {
     return _keySheet(
       context,
-      title: 'Clave de Groq',
+      title: context.l10n.settingsGroqKeyTitle,
       inputKey: const ValueKey('api-key-input-field'),
       saveKey: const ValueKey('api-key-save-button'),
       cancelKey: const ValueKey('api-key-cancel-button'),
       deleteKey: const ValueKey('api-key-delete-button'),
       controller: _apiKeyController,
-      hint: _hasApiKey ? 'Guardada: $_apiKeyTail' : 'gsk_…',
+      hint: _hasApiKey ? context.l10n.settingsKeySavedHint(_apiKeyTail) : 'gsk_…',
       error: _apiKeyError,
-      help: 'Pegala tal cual la copiaste de console.groq.com.',
+      help: context.l10n.settingsGroqKeyHelp,
       onSave: _saveApiKey,
       onCancel: _cancelApiEdit,
       onDelete: _hasApiKey ? _clearApiKey : null,
@@ -329,15 +317,15 @@ extension _GeneralPages on _SettingsScreenState {
   Widget _buildGeminiKeySheet(BuildContext context) {
     return _keySheet(
       context,
-      title: 'Clave de Google AI',
+      title: context.l10n.settingsGoogleKeyTitle,
       inputKey: const ValueKey('gemini-key-input-field'),
       saveKey: const ValueKey('gemini-key-save-button'),
       cancelKey: const ValueKey('gemini-key-cancel-button'),
       deleteKey: const ValueKey('gemini-key-delete-button'),
       controller: _geminiApiKeyController,
-      hint: _geminiHasApiKey ? 'Guardada: $_geminiApiKeyTail' : 'AIza…',
+      hint: _geminiHasApiKey ? context.l10n.settingsGoogleKeySavedHint(_geminiApiKeyTail) : 'AIza…',
       error: _geminiApiKeyError,
-      help: 'Pegala tal cual la copiaste de aistudio.google.com.',
+      help: context.l10n.settingsGoogleKeyHelp,
       onSave: _saveGeminiApiKey,
       onCancel: _cancelGeminiApiEdit,
       onDelete: _geminiHasApiKey ? _clearGeminiApiKey : null,
@@ -372,7 +360,7 @@ extension _GeneralPages on _SettingsScreenState {
           children: [
             SettingsSheetField(
               key: inputKey,
-              label: 'Clave',
+              label: context.l10n.settingsKeyField,
               controller: controller,
               hint: hint,
               obscure: true,
@@ -396,12 +384,34 @@ extension _GeneralPages on _SettingsScreenState {
           // Destructivo como texto danger, sin caja.
           SettingsActionRow(
             key: deleteKey,
-            title: 'Eliminar clave',
+            title: context.l10n.settingsKeyDelete,
             destructive: true,
             onTap: onDelete,
           ),
         ],
       ],
     );
+  }
+}
+
+/// Nombre del idioma destino (el código guardado no se traduce; el nombre
+/// del servicio queda como respaldo para códigos nuevos).
+String _translateTargetName(BuildContext context, String code, String fallback) {
+  final l10n = context.l10n;
+  switch (code) {
+    case 'en':
+      return l10n.translateTargetEn;
+    case 'es':
+      return l10n.translateTargetEs;
+    case 'pt':
+      return l10n.translateTargetPt;
+    case 'fr':
+      return l10n.translateTargetFr;
+    case 'it':
+      return l10n.translateTargetIt;
+    case 'de':
+      return l10n.translateTargetDe;
+    default:
+      return fallback;
   }
 }

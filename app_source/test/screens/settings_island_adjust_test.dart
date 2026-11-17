@@ -7,6 +7,7 @@ import 'package:voice_bubble_stt/services/keyboard_service.dart';
 
 import '../helpers/settings_harness.dart';
 import '../helpers/test_app.dart';
+import '../helpers/l10n_app.dart';
 
 /// Fase 2B: forma «Isla» y pantalla «Ajustar isla» (maqueta + controles al
 /// píxel, aplicados EN VIVO). El arnés monta una vista de 1600 x 6400 px a
@@ -467,7 +468,7 @@ void main() {
       h.setUp(prefs: {'dock_form': 'island'});
       h.pointerStatus = FloatingTrackpadService.pointerReady;
       configureTestViewSize(tester);
-      await tester.pumpWidget(MaterialApp(
+      await tester.pumpWidget(esMaterialApp(
         theme: ThemeData(brightness: Brightness.dark),
         home: SettingsScreen(
           storageService: h.storage,
