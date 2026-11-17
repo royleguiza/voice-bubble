@@ -416,8 +416,33 @@ la API de Google salga de alfa.
   app Flutter en español, inglés y portugués; Ajustes › Idioma con idioma
   por app de Android 13+ (`AppLocale.kt`, `localeConfig`, clave
   `kb_app_locale`, contrato 66). Los avisos del teclado siguen el idioma de
-  la app, no la tecla ES/EN (que solo decide el idioma del dictado).
+  la app, no la tecla ES/EN (que solo cambia la distribución ñ / ;).
   Pendientes en `docs/spec-idiomas-etapa4.md` § «Pendientes de la etapa 4».
+- **Etapa 4, cierre (2026-11-17, r336–r337):** widget en el idioma de la
+  app (`WidgetTexts.kt`: los `@string` de los diseños del widget los
+  resolvía el launcher con el idioma del teléfono), errores de servicios
+  traducidos (Dart `ServiceError` + `serviceErrorText`; Kotlin
+  `GeminiError.Reason` + `localized`) y **«Idioma en que hablo»** (Ajustes
+  › Transcripción, `kb_stt_language`: Automático / es / en / pt, `es` por
+  defecto; en Automático no se manda `language`). El dueño probó r336 OK;
+  r337 («Idioma en que hablo») falta probar en el teléfono. Quedan menores:
+  «Nota sin título» fijo en español, ficha de Play Store por idioma.
+
+## Estado y traspaso (2026-11-17, pausa pedida por el dueño)
+
+- **Plan:** «Ruta IA» (6 etapas, §12). Hechas 1, 2, 3 y 4 (último APK
+  `voice-bubble-arm64-profile-apk-r337`, `main` en `74b3aa9`).
+- **Al retomar:** 1) pedirle al dueño el resultado de r337 (dictar en
+  inglés con «English» y con «Automático», en la app y en el teclado);
+  2) arrancar la **etapa 5** en una sesión nueva: proveedores OpenAI y
+  OpenRouter (mismo formato), Google transcribe y Haiku para notas. Forma
+  de trabajo autorizada para la Ruta IA: yo coordino y audito, y lanzo un
+  worker Sonnet (esfuerzo medio), uno por vez, solo para lo simple y
+  repetitivo; spec corta en `docs/` antes de delegar.
+- **Ojo:** el token de GitHub (`~/.config/voicebubble/gh-workflow-push.token`)
+  vence el **2026-11-29**; renovarlo antes de seguir subiendo.
+- Verificación de referencia: flutter test 793/793, Kotlin JVM 184/0,
+  maestra 101/103 (solo C-34, previo).
 
 ## 12. Plan actualizado por etapas
 
