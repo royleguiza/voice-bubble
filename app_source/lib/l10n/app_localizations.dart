@@ -3022,6 +3022,24 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial.'**
   String get errAiTooLong;
+
+  /// No description provided for @settingsSpokenLanguage.
+  ///
+  /// In es, this message translates to:
+  /// **'Idioma en que hablo'**
+  String get settingsSpokenLanguage;
+
+  /// No description provided for @settingsSpokenLanguageAuto.
+  ///
+  /// In es, this message translates to:
+  /// **'Automático'**
+  String get settingsSpokenLanguageAuto;
+
+  /// No description provided for @settingsSpokenLanguageAutoFooter.
+  ///
+  /// In es, this message translates to:
+  /// **'Automático: Whisper detecta el idioma en cada dictado. Si confunde el idioma, elegí uno fijo.'**
+  String get settingsSpokenLanguageAutoFooter;
 }
 
 class _AppLocalizationsDelegate

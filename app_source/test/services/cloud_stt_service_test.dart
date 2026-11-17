@@ -359,4 +359,43 @@ void main() {
           'whisper-large-v3-turbo');
     });
   });
+
+  group('CloudSttService - idioma en que hablo (Ruta IA, etapa 4)', () {
+    test('español por defecto; auto/en/pt elegibles; lo inválido cae a es', () {
+      expect(CloudSttService.language, 'es');
+      expect(CloudSttService.languages, ['auto', 'es', 'en', 'pt']);
+      expect(CloudSttService.normalizeLanguage(' en '), 'en');
+      expect(CloudSttService.normalizeLanguage('auto'), 'auto');
+      for (final raw in [null, '', 'fr', 'ES']) {
+        expect(CloudSttService.normalizeLanguage(raw), 'es',
+            reason: 'valor: $raw');
+      }
+    });
+
+    Future<String?> sentLanguage(CloudSttService base) async {
+      String? language;
+      final client = MockClient.streaming((request, bodyStream) async {
+        final body = latin1.decode(await bodyStream.toBytes());
+        language = RegExp(r'name="language"\r\n\r\n([^\r]+)')
+            .firstMatch(body)
+            ?.group(1);
+        return http.StreamedResponse(
+            Stream.value(utf8.encode('{"text": "hola"}')), 200);
+      });
+      await base.copyWith(client: client).transcribe(tempAudioFile.path);
+      return language;
+    }
+
+    test('el pedido manda el idioma elegido y nada en automático', () async {
+      expect(await sentLanguage(const CloudSttService(apiKey: 'k')), 'es');
+      expect(
+          await sentLanguage(
+              const CloudSttService(apiKey: 'k', sttLanguage: 'en')),
+          'en');
+      expect(
+          await sentLanguage(const CloudSttService(
+              apiKey: 'k', sttLanguage: CloudSttService.autoLanguage)),
+          isNull);
+    });
+  });
 }

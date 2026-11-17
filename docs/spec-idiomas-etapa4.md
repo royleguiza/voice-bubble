@@ -363,8 +363,12 @@ Quedan en `DictationController.kt` unos 14 pares `if (host.isSpanish()) getStrin
   widget_notes 161/2 (previos), paridad de `strings.xml` 0 problemas.
 
 ### Pendientes de la etapa 4
-- «Idioma en que hablo» (hoy la app manda `es` fijo a Groq y el teclado
-  usa la tecla ES/EN).
+- ~~«Idioma en que hablo»~~ **Hecho (2026-11-17):** Ajustes › Transcripción
+  › Idioma en que hablo (Automático / Español / English / Português, `es`
+  por defecto) en `kb_stt_language`; la app (Dart) y el teclado, el widget
+  y la isla (Kotlin `SpeechToTextClient`) lo releen en cada dictado; en
+  Automático no se manda `language` y Whisper lo detecta. La tecla ES/EN
+  del teclado sigue cambiando solo la distribución (ñ / ;), no el dictado.
 - ~~Mensajes que nacen en servicios~~ **Hecho (2026-11-17):** Dart:
   `TranscriptionException`/`GeminiException` llevan un `ServiceError`
   (`services/service_error.dart`) y las pantallas los muestran con

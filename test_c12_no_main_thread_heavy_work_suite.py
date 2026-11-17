@@ -115,10 +115,10 @@ def run_suite():
     )
     s.check(
         "SpeechToTextClient expone getConfig() sin golpear I/O innecesario",
-        # Usa la config en memoria; solo relee el modelo (prefs en memoria,
-        # sin bóveda) para que el cambio de Ajustes rija ya (Ruta IA etapa 1).
+        # Usa la config en memoria; solo relee modelo e idioma (prefs en memoria,
+        # sin bóveda) para que el cambio de Ajustes rija ya (Ruta IA etapas 1 y 4).
         "val cached = cachedConfig ?: return loadConfig()" in stt_code
-        and "cached.copy(model = model)" in stt_code,
+        and "cached.copy(model = model, language = language)" in stt_code,
     )
     s.check(
         "SpeechToTextClient implementa preloadConfig() en BackgroundWork",

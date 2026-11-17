@@ -1631,4 +1631,14 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get errAiTooLong =>
       'La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial.';
+
+  @override
+  String get settingsSpokenLanguage => 'Idioma en que hablo';
+
+  @override
+  String get settingsSpokenLanguageAuto => 'Automático';
+
+  @override
+  String get settingsSpokenLanguageAutoFooter =>
+      'Automático: Whisper detecta el idioma en cada dictado. Si confunde el idioma, elegí uno fijo.';
 }

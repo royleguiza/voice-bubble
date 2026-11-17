@@ -44,9 +44,13 @@ extension _GeneralPages on _SettingsScreenState {
         ),
         SettingsSection(
           header: context.l10n.settingsEngineHeader,
-          footer: _sttModel == CloudSttService.preciseModel
-              ? context.l10n.settingsEnginePreciseFooter
-              : context.l10n.settingsEngineFastFooter,
+          footer: [
+            _sttModel == CloudSttService.preciseModel
+                ? context.l10n.settingsEnginePreciseFooter
+                : context.l10n.settingsEngineFastFooter,
+            if (_sttLanguage == CloudSttService.autoLanguage)
+              context.l10n.settingsSpokenLanguageAutoFooter,
+          ].join(' '),
           children: [
             SettingsMenuRow<String>(
               id: 'stt-model-selector',
@@ -59,6 +63,19 @@ extension _GeneralPages on _SettingsScreenState {
                     detail: context.l10n.settingsModelPrecise),
               ],
               onSelected: _saveSttModel,
+            ),
+            SettingsMenuRow<String>(
+              id: 'stt-language-selector',
+              title: context.l10n.settingsSpokenLanguage,
+              value: _sttLanguage,
+              options: [
+                SettingsOption(CloudSttService.autoLanguage,
+                    context.l10n.settingsSpokenLanguageAuto),
+                const SettingsOption('es', 'Español'),
+                const SettingsOption('en', 'English'),
+                const SettingsOption('pt', 'Português'),
+              ],
+              onSelected: _saveSttLanguage,
             ),
           ],
         ),

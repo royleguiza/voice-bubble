@@ -3044,7 +3044,7 @@ def test_c12_no_main_thread_heavy_work_contract():
 
     # 2. SpeechToTextClient: Caché de config y preload
     assert "var cachedConfig: Config? = null" in stt, "C-12: falta cachedConfig en SpeechToTextClient"
-    assert "val cached = cachedConfig ?: return loadConfig()" in stt and "cached.copy(model = model)" in stt, "C-12: falta getConfig en SpeechToTextClient"
+    assert "val cached = cachedConfig ?: return loadConfig()" in stt and "cached.copy(model = model, language = language)" in stt, "C-12: falta getConfig en SpeechToTextClient"
     assert "fun preloadConfig()" in stt and "BackgroundWork.execute" in stt, "C-12: falta preloadConfig en SpeechToTextClient"
 
     # 3. DictationController: Toque de mic sin trabajo pesado

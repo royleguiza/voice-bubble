@@ -865,5 +865,8 @@
       }
     }
   },
-  "errAiTooLong": "La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial."
+  "errAiTooLong": "La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial.",
+  "settingsSpokenLanguage": "Idioma en que hablo",
+  "settingsSpokenLanguageAuto": "Automático",
+  "settingsSpokenLanguageAutoFooter": "Automático: Whisper detecta el idioma en cada dictado. Si confunde el idioma, elegí uno fijo."
 }

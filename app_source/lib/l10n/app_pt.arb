@@ -486,5 +486,8 @@
   "errAiLimit": "Limite do {provider} atingido: {detail}",
   "errAiServer": "Erro do servidor ({code}): {detail}",
   "errAiHttp": "Erro {code}: {detail}",
-  "errAiTooLong": "A nota é longa demais para o Groq grátis (uns 20.000 caracteres no máximo). Para notas longas, escolha Google em Ajustes › Inteligência artificial."
+  "errAiTooLong": "A nota é longa demais para o Groq grátis (uns 20.000 caracteres no máximo). Para notas longas, escolha Google em Ajustes › Inteligência artificial.",
+  "settingsSpokenLanguage": "Idioma em que falo",
+  "settingsSpokenLanguageAuto": "Automático",
+  "settingsSpokenLanguageAutoFooter": "Automático: o Whisper detecta o idioma em cada ditado. Se errar o idioma, escolha um fixo."
 }

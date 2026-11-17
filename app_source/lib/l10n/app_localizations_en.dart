@@ -1622,4 +1622,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errAiTooLong =>
       'The note is too long for free Groq (about 20,000 characters at most). For long notes, choose Google in Settings › Artificial intelligence.';
+
+  @override
+  String get settingsSpokenLanguage => 'Language I speak';
+
+  @override
+  String get settingsSpokenLanguageAuto => 'Automatic';
+
+  @override
+  String get settingsSpokenLanguageAutoFooter =>
+      'Automatic: Whisper detects the language in each dictation. If it gets the language wrong, pick a fixed one.';
 }

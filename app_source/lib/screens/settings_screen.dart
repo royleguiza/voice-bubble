@@ -94,6 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _geminiActionsEnabled = true;
   String _recordMode = StorageService.defaultRecordMode;
   String _sttModel = CloudSttService.model;
+  String _sttLanguage = CloudSttService.language;
   String _aiNotesProvider = StorageService.aiNotesProviderGroq;
   String _translateTarget = StorageService.defaultTranslateTarget;
   String _translateMode = StorageService.translateModeLocal;
@@ -230,6 +231,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final themeMode = await s.loadThemeMode();
     final widgetMicPos = await s.getWidgetMicPosition();
     final sttModel = await s.loadSttModel();
+    final sttLanguage = await s.loadSttLanguage();
     final aiNotesProvider = await s.loadAiNotesProvider();
     final appLocaleCode = await s.loadAppLocale();
     final translateTarget = await s.loadTranslateTarget();
@@ -239,6 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     setState(() {
       _recordMode = results.$1;
       _sttModel = sttModel;
+      _sttLanguage = sttLanguage;
       _aiNotesProvider = aiNotesProvider;
       _translateTarget = translateTarget;
       _translateMode = translateMode;
@@ -906,6 +909,14 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (mounted) {
       setState(() => _aiNotesProvider =
           StorageService.normalizeAiNotesProvider(provider));
+    }
+  }
+
+  Future<void> _saveSttLanguage(String language) async {
+    await _storageService.saveSttLanguage(language);
+    if (mounted) {
+      setState(() =>
+          _sttLanguage = CloudSttService.normalizeLanguage(language));
     }
   }
 

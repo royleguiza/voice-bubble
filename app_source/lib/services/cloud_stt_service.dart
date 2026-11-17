@@ -96,7 +96,23 @@ class CloudSttService {
   /// Modelo por defecto (rápido). El elegido en Ajustes vive en
   /// `kb_stt_model` y lo leen la app y el teclado nativo.
   static const String model = _model;
+
+  /// Idioma en que se habla por defecto. El elegido en Ajustes («Idioma en
+  /// que hablo») vive en `kb_stt_language` y lo leen la app y el teclado.
   static const String language = _language;
+
+  /// «Automático»: no se manda `language` y Whisper detecta el idioma.
+  static const String autoLanguage = 'auto';
+
+  /// Idiomas que se pueden elegir en Ajustes (mismo orden que el menú).
+  static const List<String> languages = [autoLanguage, 'es', 'en', 'pt'];
+
+  /// Lo guardado en `kb_stt_language` → un valor válido (desconocido o vacío
+  /// cae a español). Espejo de `SpeechToTextClient.resolveLanguage`.
+  static String normalizeLanguage(String? raw) {
+    final value = raw?.trim();
+    return (value != null && languages.contains(value)) ? value : _language;
+  }
 
   /// Modelo preciso de Groq: un poco más lento, menos errores y mejor
   /// puntuación (error por palabra 10,3 % contra 12 % del turbo).
@@ -271,10 +287,14 @@ class CloudSttService {
   /// Modelo con el que se transcribe (uno de [models]).
   final String sttModel;
 
+  /// Idioma en que se habla (uno de [languages]; `auto` = detectar).
+  final String sttLanguage;
+
   const CloudSttService({
     required this.apiKey,
     this.client,
     this.sttModel = _model,
+    this.sttLanguage = _language,
   });
 
   /// Crea una copia del servicio conservando el [client] (y la clave si no se pasa).
@@ -282,11 +302,13 @@ class CloudSttService {
     String? apiKey,
     http.Client? client,
     String? sttModel,
+    String? sttLanguage,
   }) {
     return CloudSttService(
       apiKey: apiKey ?? this.apiKey,
       client: client ?? this.client,
       sttModel: sttModel ?? this.sttModel,
+      sttLanguage: sttLanguage ?? this.sttLanguage,
     );
   }
 
@@ -373,7 +395,10 @@ class CloudSttService {
     final request = http.MultipartRequest('POST', Uri.parse(_endpoint));
     request.headers[_headerAuthorization] = 'Bearer $apiKey';
     request.fields[_multipartFieldModel] = normalizeModel(sttModel);
-    request.fields[_multipartFieldLanguage] = _language;
+    final spokenLanguage = normalizeLanguage(sttLanguage);
+    if (spokenLanguage != autoLanguage) {
+      request.fields[_multipartFieldLanguage] = spokenLanguage;
+    }
     final http.MultipartFile audioPart;
     if (repaired != null) {
       audioPart = http.MultipartFile.fromBytes(

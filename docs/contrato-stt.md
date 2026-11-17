@@ -12,7 +12,7 @@
 | Presencia key | Prefs planas | `kb_stt_key_configured` (bool) | Dart `saveSttMirror`/`repairSttMirror` | Kotlin fail-fast "sin key" |
 | Endpoint | Prefs planas | `kb_stt_url` | Dart | Kotlin `loadConfig` |
 | Modelo | Prefs planas | `kb_stt_model` (`whisper-large-v3-turbo` por defecto o `whisper-large-v3`; otro valor cae a turbo) | Dart `saveSttModel` (Ajustes › Transcripción); los espejos de la clave solo corrigen un valor inválido | Kotlin `loadConfig` y `getConfig` (relee en cada dictado) |
-| Idioma | Prefs planas | `kb_stt_language` | Dart | Kotlin `loadConfig` |
+| Idioma en que hablo | Prefs planas | `kb_stt_language` (`es` por defecto, `en`, `pt` o `auto` = no se manda `language` y Whisper lo detecta; otro valor cae a `es`) | Dart `saveSttLanguage` (Ajustes › Transcripción › Idioma en que hablo); los espejos de la clave solo corrigen un valor inválido | Dart `TranscriptionService` y Kotlin `loadConfig`/`getConfig` (releen en cada dictado) |
 | Legado plano | Prefs planas | `kb_stt_api_key` | NADIE (prohibido escribir) | Migración única que lo traslada a bóveda y lo borra |
 
 Dart y Kotlin usan la MISMA bóveda (flutter_secure_storage con ESP del

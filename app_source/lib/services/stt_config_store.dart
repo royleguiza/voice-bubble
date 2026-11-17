@@ -131,7 +131,9 @@ class SttConfigStore {
       // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
       final okModel = await prefs.setString(
           sttModelKey, CloudSttService.normalizeModel(prefs.getString(sttModelKey)));
-      final okLang = await prefs.setString(sttLanguageKey, CloudSttService.language);
+      // Respeta el idioma elegido en Ajustes (solo corrige uno inválido).
+      final okLang = await prefs.setString(sttLanguageKey,
+          CloudSttService.normalizeLanguage(prefs.getString(sttLanguageKey)));
 
       try {
         await prefs.remove(sttApiKeyMirrorKey);
@@ -169,7 +171,9 @@ class SttConfigStore {
         // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
       final okModel = await prefs.setString(
           sttModelKey, CloudSttService.normalizeModel(prefs.getString(sttModelKey)));
-        final okLang = await prefs.setString(sttLanguageKey, CloudSttService.language);
+        // Respeta el idioma elegido en Ajustes (solo corrige uno inválido).
+        final okLang = await prefs.setString(sttLanguageKey,
+            CloudSttService.normalizeLanguage(prefs.getString(sttLanguageKey)));
 
         try {
           await prefs.remove(sttApiKeyMirrorKey);

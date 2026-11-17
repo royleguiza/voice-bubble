@@ -458,6 +458,15 @@ class StorageService {
   Future<void> saveSttModel(String model) =>
       _setString(_sttModelKey, CloudSttService.normalizeModel(model));
 
+  /// Idioma en que se habla (`kb_stt_language`, compartido con el teclado
+  /// nativo): `auto`, `es`, `en` o `pt`. Siempre uno de
+  /// [CloudSttService.languages].
+  Future<String> loadSttLanguage() async => CloudSttService.normalizeLanguage(
+      await _getString(_sttLanguageKey, CloudSttService.language));
+
+  Future<void> saveSttLanguage(String language) => _setString(
+      _sttLanguageKey, CloudSttService.normalizeLanguage(language));
+
   /// Proveedor de las acciones de IA en notas (`groq` por defecto o
   /// `google`), compartido con el widget nativo (`NoteAiClients.kt`).
   static const String aiNotesProviderKey = 'kb_ai_notes_provider';
@@ -1174,7 +1183,8 @@ class StorageService {
         // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
         final okModel = await prefs.setString(_sttModelKey,
             CloudSttService.normalizeModel(prefs.getString(_sttModelKey)));
-        final okLang = await prefs.setString(_sttLanguageKey, CloudSttService.language);
+        final okLang = await prefs.setString(_sttLanguageKey,
+            CloudSttService.normalizeLanguage(prefs.getString(_sttLanguageKey)));
 
         try {
           await prefs.remove(sttApiKeyMirrorKey);
@@ -1233,7 +1243,8 @@ class StorageService {
       // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
       final okModel = await prefs.setString(_sttModelKey,
           CloudSttService.normalizeModel(prefs.getString(_sttModelKey)));
-      final okLang = await prefs.setString(_sttLanguageKey, CloudSttService.language);
+      final okLang = await prefs.setString(_sttLanguageKey,
+          CloudSttService.normalizeLanguage(prefs.getString(_sttLanguageKey)));
 
       try {
         await prefs.remove(sttApiKeyMirrorKey);

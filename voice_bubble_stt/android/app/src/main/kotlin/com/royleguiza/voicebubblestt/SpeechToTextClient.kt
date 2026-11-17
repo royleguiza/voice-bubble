@@ -50,6 +50,12 @@ class SpeechToTextClient(
         const val PRECISE_MODEL = "whisper-large-v3"
         val MODELS = listOf(DEFAULT_MODEL, PRECISE_MODEL)
 
+        /** Idioma en que se habla por defecto (`kb_stt_language`). */
+        const val DEFAULT_LANGUAGE = "es"
+        /** «Automático»: no se manda `language` y Whisper lo detecta. */
+        const val AUTO_LANGUAGE = "auto"
+        val LANGUAGES = listOf(AUTO_LANGUAGE, "es", "en", "pt")
+
         fun timeoutForBytes(bytes: Int): Int {
             val seconds = TIMEOUT_BASE_SECONDS + (bytes / TIMEOUT_BYTES_PER_SECOND)
             return seconds.coerceIn(TIMEOUT_MIN_SECONDS, TIMEOUT_MAX_SECONDS)
@@ -201,24 +207,31 @@ class SpeechToTextClient(
         return if (value != null && value in MODELS) value else DEFAULT_MODEL
     }
 
+    /** «Idioma en que hablo» (`kb_stt_language`): `auto`, `es`, `en` o `pt`.
+     *  Otro valor o vacío cae a español. Espejo de
+     *  `CloudSttService.normalizeLanguage` (Dart). */
+    internal fun resolveLanguage(raw: String?): String {
+        val value = raw?.trim()
+        return if (value != null && value in LANGUAGES) value else DEFAULT_LANGUAGE
+    }
+
     @Volatile
     private var cachedConfig: Config? = null
 
     /** C-12: Obtiene la configuración cacheada en memoria si está lista, o carga perezosa. */
     fun getConfig(): Config {
         val cached = cachedConfig ?: return loadConfig()
-        // El modelo se relee en cada dictado (lectura en memoria): el cambio
-        // en Ajustes rige ya, sin reiniciar el teclado.
-        val model = try {
-            resolveModel(
-                context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
-                    .getString("flutter.kb_stt_model", DEFAULT_MODEL)
-            )
+        // Modelo e idioma se releen en cada dictado (lectura en memoria): el
+        // cambio en Ajustes rige ya, sin reiniciar el teclado.
+        val (model, language) = try {
+            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            resolveModel(prefs.getString("flutter.kb_stt_model", DEFAULT_MODEL)) to
+                resolveLanguage(prefs.getString("flutter.kb_stt_language", DEFAULT_LANGUAGE))
         } catch (_: Exception) {
-            cached.model
+            cached.model to cached.language
         }
-        if (model == cached.model) return cached
-        return cached.copy(model = model).also { cachedConfig = it }
+        if (model == cached.model && language == cached.language) return cached
+        return cached.copy(model = model, language = language).also { cachedConfig = it }
     }
 
     /** C-12: Precalentamiento de la configuración STT y bóveda en segundo plano antes del foco. */
@@ -257,7 +270,7 @@ class SpeechToTextClient(
             apiKey = SecureStore.read(context, SecureStore.STT_API_KEY)
                 ?: migrateLegacyMirror(prefs).orEmpty(),
             model = resolveModel(prefs.getString("flutter.kb_stt_model", DEFAULT_MODEL)),
-            language = prefs.getString("flutter.kb_stt_language", "es") ?: "es",
+            language = resolveLanguage(prefs.getString("flutter.kb_stt_language", DEFAULT_LANGUAGE)),
         )
         // C-19: Lectura de presencia de clave configurada en prefs planas
         try {
@@ -590,7 +603,8 @@ class SpeechToTextClient(
                         d.writeBytes("$value\r\n")
                     }
                     field("model", config.model)
-                    field("language", config.language)
+                    // «Automático»: sin `language`, Whisper detecta el idioma.
+                    if (config.language != AUTO_LANGUAGE) field("language", config.language)
                     config.prompt?.takeIf { it.isNotBlank() }?.let { field("prompt", it) }
                     d.writeBytes("--$boundary\r\n")
                     d.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\n")

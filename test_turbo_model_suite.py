@@ -54,8 +54,8 @@ check("Dart: el multipart manda el modelo elegido",
       "request.fields[_multipartFieldModel] = normalizeModel(sttModel);" in dart)
 check("Dart: la transcripción lee el modelo en cada dictado",
       "await _storageService.loadSttModel()" in transcription
-      and "if (model != _cloudService.sttModel)" in transcription
-      and "_cloudService.copyWith(sttModel: model)" in transcription)
+      and "if (model != _cloudService.sttModel ||" in transcription
+      and "_cloudService.copyWith(sttModel: model, sttLanguage: language)" in transcription)
 
 # --- 2. Ajustes + puente ---
 check("Ajustes: menú de modelo en Transcripción",
@@ -82,10 +82,28 @@ check("Kotlin: resolveModel ya no migra large-v3 a turbo",
 check("Kotlin: loadConfig usa resolveModel con turbo por defecto",
       'model = resolveModel(prefs.getString("flutter.kb_stt_model", DEFAULT_MODEL))' in stt)
 check("Kotlin: getConfig relee el modelo (cambio en vivo)",
-      "cached.copy(model = model)" in stt)
+      "cached.copy(model = model, language = language)" in stt)
 check("Kotlin: endpoint Groq intacto",
       "https://api.groq.com/openai/v1/audio/transcriptions" in stt)
 check("Kotlin: idioma es intacto", '"es"' in stt)
+
+# --- 3b. «Idioma en que hablo» (Ruta IA, etapa 4) ---
+import re as _re
+gtab = read("app_source/lib/screens/settings/general_tab.dart")
+check("Dart: idiomas elegibles auto/es/en/pt",
+      "languages = [autoLanguage, 'es', 'en', 'pt']" in dart and "autoLanguage = 'auto'" in dart)
+check("Dart: automático no manda language",
+      "if (spokenLanguage != autoLanguage)" in dart and "normalizeLanguage(sttLanguage)" in dart)
+check("Dart: el idioma se relee en cada dictado", "loadSttLanguage()" in transcription and "sttLanguage: language" in transcription)
+check("Dart: los espejos de la clave NO pisan el idioma elegido",
+      "CloudSttService.language);" not in storage and "CloudSttService.language);" not in config_store
+      and storage.count("normalizeLanguage(prefs.getString(_sttLanguageKey))") == 2
+      and config_store.count("normalizeLanguage(prefs.getString(sttLanguageKey))") == 2)
+check("Ajustes: menú «Idioma en que hablo»", "stt-language-selector" in gtab and "_saveSttLanguage" in gtab)
+check("Kotlin: mismos idiomas que Dart", 'listOf(AUTO_LANGUAGE, "es", "en", "pt")' in stt and 'AUTO_LANGUAGE = "auto"' in stt)
+check("Kotlin: automático no manda language", 'if (config.language != AUTO_LANGUAGE) field("language", config.language)' in stt)
+check("Kotlin: getConfig relee el idioma", "resolveLanguage(prefs.getString(\"flutter.kb_stt_language\", DEFAULT_LANGUAGE))" in stt
+      and "language == cached.language" in stt)
 
 # --- 4. Docs vivos ---
 for doc in ["README.md", "AGENTS.md", "PRODUCT.md"]:
