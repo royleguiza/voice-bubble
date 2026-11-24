@@ -30,6 +30,7 @@ object WidgetReader {
     private const val KEY_BUSY_AT = "busy_at_"
     private const val KEY_STATUS = "status_"
     private const val KEY_SUMMARY = "summary_"
+    private const val KEY_CONFIRM_DELETE = "confirm_delete_"
 
     const val AI_TITLE = "titulo"
     const val AI_SUMMARY = "resumir"
@@ -74,6 +75,7 @@ object WidgetReader {
                 .putString(KEY_OPEN + widgetId, value)
                 .remove(KEY_STATUS + widgetId)
                 .remove(KEY_SUMMARY + widgetId)
+                .remove(KEY_CONFIRM_DELETE + widgetId)
                 .commit()
         } catch (_: Exception) {}
     }
@@ -86,7 +88,22 @@ object WidgetReader {
                 .remove(KEY_SUMMARY + widgetId)
                 .remove(KEY_BUSY + widgetId)
                 .remove(KEY_BUSY_AT + widgetId)
+                .remove(KEY_CONFIRM_DELETE + widgetId)
                 .commit()
+        } catch (_: Exception) {}
+    }
+
+    internal fun confirmingDelete(context: Context, widgetId: Int): Boolean = try {
+        prefs(context).getBoolean(KEY_CONFIRM_DELETE + widgetId, false)
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun setConfirmingDelete(context: Context, widgetId: Int, on: Boolean) {
+        try {
+            val edit = prefs(context).edit()
+            if (on) edit.putBoolean(KEY_CONFIRM_DELETE + widgetId, true) else edit.remove(KEY_CONFIRM_DELETE + widgetId)
+            edit.commit()
         } catch (_: Exception) {}
     }
 
@@ -201,7 +218,7 @@ object WidgetReader {
                 renderPending(context, views, widgetId, pending)
             }
         }
-        views.setRemoteAdapter(R.id.widget_detail_body, bodyIntent(context, widgetId))
+        views.setRemoteAdapter(R.id.widget_detail_body, bodyIntent(context, widgetId, bodyKey(context, widgetId, open, notes)))
         views.setEmptyView(R.id.widget_detail_body, R.id.widget_detail_empty)
         appWidgetManager.updateAppWidget(widgetId, views)
         try {
@@ -213,9 +230,12 @@ object WidgetReader {
     private fun renderNote(context: Context, views: RemoteViews, widgetId: Int, note: VbNote) {
         val summary = summary(context, widgetId)
         val busy = busy(context, widgetId)
-        val status = when (busy) {
-            AI_TITLE -> context.getString(R.string.widget_generating_title)
-            AI_SUMMARY -> context.getString(R.string.widget_summarizing)
+        val confirming = busy == null && summary == null && confirmingDelete(context, widgetId)
+        val status = when {
+            busy == AI_TITLE -> context.getString(R.string.widget_generating_title)
+            busy == AI_SUMMARY -> context.getString(R.string.widget_summarizing)
+            confirming -> context.getString(R.string.widget_delete_title) + " " +
+                context.getString(R.string.widget_delete_body)
             else -> status(context, widgetId)
         }
         views.setTextViewText(R.id.widget_detail_title, note.titulo.ifBlank { context.getString(R.string.widget_untitled) })
@@ -232,8 +252,12 @@ object WidgetReader {
         views.setViewVisibility(R.id.widget_detail_open_pending, View.GONE)
 
         val previewing = summary != null
-        views.setViewVisibility(R.id.widget_detail_actions, if (previewing) View.GONE else View.VISIBLE)
+        views.setViewVisibility(R.id.widget_detail_actions, if (previewing || confirming) View.GONE else View.VISIBLE)
         views.setViewVisibility(R.id.widget_detail_summary_actions, if (previewing) View.VISIBLE else View.GONE)
+        views.setViewVisibility(R.id.widget_detail_delete_actions, if (confirming) View.VISIBLE else View.GONE)
+        views.setOnClickPendingIntent(R.id.widget_detail_delete, actionPi(context, widgetId, WidgetReaderReceiver.ACTION_DELETE_ASK))
+        views.setOnClickPendingIntent(R.id.widget_detail_delete_cancel, actionPi(context, widgetId, WidgetReaderReceiver.ACTION_DELETE_CANCEL))
+        views.setOnClickPendingIntent(R.id.widget_detail_delete_confirm, actionPi(context, widgetId, WidgetReaderReceiver.ACTION_DELETE_CONFIRM))
         views.setOnClickPendingIntent(R.id.widget_detail_copy, actionPi(context, widgetId, WidgetReaderReceiver.ACTION_COPY))
         views.setOnClickPendingIntent(R.id.widget_detail_ai_title, actionPi(context, widgetId, WidgetReaderReceiver.ACTION_AI_TITLE))
         views.setOnClickPendingIntent(R.id.widget_detail_ai_summary, actionPi(context, widgetId, WidgetReaderReceiver.ACTION_AI_SUMMARY))
@@ -254,6 +278,7 @@ object WidgetReader {
         views.setViewVisibility(R.id.widget_detail_edit, View.GONE)
         views.setViewVisibility(R.id.widget_detail_actions, View.GONE)
         views.setViewVisibility(R.id.widget_detail_summary_actions, View.GONE)
+        views.setViewVisibility(R.id.widget_detail_delete_actions, View.GONE)
         views.setViewVisibility(R.id.widget_detail_open_pending, View.VISIBLE)
         val intent = Intent(context, WidgetNoteEditActivity::class.java).apply {
             putExtra("pending_id", pending.id)
@@ -267,11 +292,28 @@ object WidgetReader {
         )
     }
 
-    private fun bodyIntent(context: Context, widgetId: Int): Intent =
+    /**
+     * Clave del contenido que muestra el cuerpo: nota abierta + versión del
+     * texto (o del resumen sugerido). Con una sola dirección por widget el
+     * launcher reusaba la caché de la nota anterior (RemoteViewsAdapter
+     * guarda las filas por Intent unos segundos y las restaura al recrear el
+     * adaptador): abrir «Remote Control» mostraba el cuerpo de otra nota.
+     * Una dirección por contenido obliga a una fábrica nueva.
+     */
+    private fun bodyKey(context: Context, widgetId: Int, open: Open, notes: List<VbNote>): String = when (open) {
+        is Open.Pending -> "p-${open.id}"
+        is Open.Note -> {
+            val note = notes.firstOrNull { it.id == open.id }
+            val text = summary(context, widgetId)?.let { "s$it" } ?: note?.cuerpo.orEmpty()
+            "n-${open.id}-${Integer.toHexString(text.hashCode())}-${text.length}"
+        }
+    }
+
+    private fun bodyIntent(context: Context, widgetId: Int, key: String): Intent =
         Intent(context, WidgetNoteDetailService::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-            // Data única por widget: si no, el launcher reutiliza la misma fábrica.
-            data = Uri.parse("vbwidget://detail/$widgetId")
+            // Data única por widget Y por contenido (ver bodyKey).
+            data = Uri.parse("vbwidget://detail/$widgetId/$key")
         }
 
     private fun editPi(context: Context, widgetId: Int, noteId: String): PendingIntent {
@@ -403,6 +445,42 @@ object WidgetReader {
         if (saved) WidgetNotesProvider.requestListRefresh(context, AppWidgetManager.getInstance(context))
     }
 
+    internal fun askDelete(context: Context, widgetId: Int) {
+        if (busy(context, widgetId) != null || summary(context, widgetId) != null) return
+        if (currentNote(context, widgetId) == null) return
+        setStatus(context, widgetId, null)
+        setConfirmingDelete(context, widgetId, true)
+    }
+
+    internal fun cancelDelete(context: Context, widgetId: Int) {
+        setConfirmingDelete(context, widgetId, false)
+    }
+
+    /**
+     * Borra la nota abierta (y sus audios) sin abrir ninguna ventana, igual
+     * que la hoja de edición. Si sale bien se cierra el lector y vuelve la
+     * lista; si no, queda abierta con el aviso.
+     */
+    internal fun confirmDelete(context: Context, widgetId: Int) {
+        if (!confirmingDelete(context, widgetId)) return
+        val open = openState(context, widgetId) as? Open.Note ?: return
+        setConfirmingDelete(context, widgetId, false)
+        when (val result = NoteStore(context).deleteNote(open.id)) {
+            is NoteDeleteResult.Deleted -> {
+                for (path in result.audioPaths) {
+                    try {
+                        val audio = java.io.File(path)
+                        if (audio.exists()) audio.delete()
+                    } catch (_: Exception) {}
+                }
+                noteCache.remove(open.id)
+                close(context, widgetId)
+                WidgetNotesProvider.requestListRefresh(context, AppWidgetManager.getInstance(context))
+            }
+            else -> setStatus(context, widgetId, context.getString(R.string.widget_delete_failed_kept))
+        }
+    }
+
     internal fun discardSummary(context: Context, widgetId: Int) {
         setSummary(context, widgetId, null)
         setStatus(context, widgetId, null)
@@ -427,6 +505,9 @@ class WidgetReaderReceiver : BroadcastReceiver() {
         const val ACTION_AI_SUMMARY = "com.royleguiza.voicebubblestt.widget.AI_SUMMARY"
         const val ACTION_SUMMARY_APPLY = "com.royleguiza.voicebubblestt.widget.SUMMARY_APPLY"
         const val ACTION_SUMMARY_DISCARD = "com.royleguiza.voicebubblestt.widget.SUMMARY_DISCARD"
+        const val ACTION_DELETE_ASK = "com.royleguiza.voicebubblestt.widget.DELETE_ASK"
+        const val ACTION_DELETE_CANCEL = "com.royleguiza.voicebubblestt.widget.DELETE_CANCEL"
+        const val ACTION_DELETE_CONFIRM = "com.royleguiza.voicebubblestt.widget.DELETE_CONFIRM"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -455,6 +536,9 @@ class WidgetReaderReceiver : BroadcastReceiver() {
                     ACTION_AI_SUMMARY -> WidgetReader.runAi(app, widgetId, WidgetReader.AI_SUMMARY)
                     ACTION_SUMMARY_APPLY -> WidgetReader.applySummary(app, widgetId)
                     ACTION_SUMMARY_DISCARD -> WidgetReader.discardSummary(app, widgetId)
+                    ACTION_DELETE_ASK -> WidgetReader.askDelete(app, widgetId)
+                    ACTION_DELETE_CANCEL -> WidgetReader.cancelDelete(app, widgetId)
+                    ACTION_DELETE_CONFIRM -> WidgetReader.confirmDelete(app, widgetId)
                 }
                 WidgetReader.refresh(app, widgetId)
             } catch (_: Exception) {

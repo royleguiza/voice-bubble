@@ -48,30 +48,36 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <!-- Lista con aire en ambos bordes (primera/ultima tarjeta nunca
-         cortadas) + separacion real entre tarjetas via divider (los margenes
-         en hijos de ListView se ignoran) + difuminado vertical del sistema
-         que avisa que hay mas tarjetas abajo/arriba. -->
-    <ListView
-        android:id="@+id/widget_notes_list"
+    <!-- Cuerpo: la lista ocupa TODO el alto que queda y el + y el micrófono
+         flotan encima (abajo), sin barra ni difuminado: las tarjetas pasan
+         por debajo de los botones y se ven entre ellos. El relleno inferior
+         de la lista (botones 52 + 12 de aire) deja que la última tarjeta
+         suba por encima de los botones al terminar el scroll. La barra es
+         un LinearLayout sin clic: el toque entre los botones cae en la
+         lista de abajo (scroll y abrir nota funcionan igual). -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:layout_marginTop="6dp">
+
+    <ListView
+        android:id="@+id/widget_notes_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:paddingTop="0dp"
+        android:paddingBottom="64dp"
         android:clipToPadding="false"
         android:divider="@android:color/transparent"
         android:dividerHeight="6dp"
-        android:requiresFadingEdge="vertical"
-        android:fadingEdgeLength="24dp"
-        android:scrollbars="vertical" />
+        android:requiresFadingEdge="none"
+        android:scrollbars="none" />
 
     <TextView
         android:id="@+id/widget_notes_empty"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="6dp"
+        android:layout_height="match_parent"
+        android:paddingBottom="64dp"
         android:gravity="center"
         android:text="@string/widget_notes_empty"
         android:textSize="12sp"
@@ -82,8 +88,8 @@
     <LinearLayout
         android:id="@+id/widget_bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_marginTop="8dp"
+        android:layout_height="52dp"
+        android:layout_gravity="bottom"
         android:background="@android:color/transparent"
         android:orientation="horizontal"
         android:gravity="center_vertical">
@@ -293,5 +299,6 @@
                 android:tint="@color/hz_on_hole" />
         </FrameLayout>
     </LinearLayout>
+    </FrameLayout>
 
 </LinearLayout>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Acción destructiva confirmada (Eliminar): misma píldora que
+     widget_primary_bg / widget_secondary_bg (radio 24) en danger, para que
+     Cancelar y Eliminar tengan la misma forma. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <solid android:color="@color/kb_danger_pressed" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <corners android:radius="24dp" />
+            <solid android:color="@color/kb_danger" />
+        </shape>
+    </item>
+</selector>

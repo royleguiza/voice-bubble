@@ -2,9 +2,10 @@
 <!-- Nota abierta dentro del propio widget: leer, copiar, título y resumen
      con IA sin abrir ninguna ventana. Solo "Editar" abre la hoja con teclado.
      Horizonte (design.md §14): volver/editar como botones de ícono
-     circulares sólidos, título Sora, fecha mono, cuerpo Inter; abajo tres
-     botones circulares iguales (copiar · título IA en ember-t · resumen),
-     cada uno centrado en un tercio del ancho. -->
+     circulares sólidos, título Sora, fecha mono, cuerpo Inter; abajo cuatro
+     botones circulares iguales (eliminar en danger · copiar · título IA en
+     ember-t · resumen), cada uno centrado en un cuarto del ancho. Eliminar
+     pide confirmación en el mismo widget (fila Cancelar / Eliminar). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -144,6 +145,27 @@
             android:layout_weight="1">
 
             <FrameLayout
+                android:id="@+id/widget_detail_delete"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:background="@drawable/widget_icon_btn_bg"
+                android:contentDescription="@string/widget_delete_note">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/widget_ic_delete" />
+            </FrameLayout>
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1">
+
+            <FrameLayout
                 android:id="@+id/widget_detail_copy"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
@@ -260,6 +282,45 @@
             android:fontFamily="@font/inter"
             android:textFontWeight="600"
             android:textColor="@color/kb_label_on_accent" />
+    </LinearLayout>
+
+    <!-- Confirmar eliminar (el aviso va en widget_detail_status): las dos
+         píldoras iguales, Cancelar surf2 y Eliminar danger. -->
+    <LinearLayout
+        android:id="@+id/widget_detail_delete_actions"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_detail_delete_cancel"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:background="@drawable/widget_secondary_bg"
+            android:gravity="center"
+            android:text="@string/widget_cancel"
+            android:textSize="13sp"
+            android:fontFamily="@font/inter"
+            android:textFontWeight="500"
+            android:textColor="@color/kb_label" />
+
+        <TextView
+            android:id="@+id/widget_detail_delete_confirm"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/widget_danger_bg"
+            android:gravity="center"
+            android:text="@string/widget_delete"
+            android:textSize="13sp"
+            android:fontFamily="@font/inter"
+            android:textFontWeight="600"
+            android:textColor="@color/kb_label_on_danger" />
     </LinearLayout>
 
     <!-- Audio sin transcribir: se abre la hoja para escucharlo. -->

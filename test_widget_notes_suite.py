@@ -110,9 +110,10 @@ check("Fuentes Horizonte en el widget (Sora títulos, Inter lectura, mono horas)
       and '@font/inter' in (RES / "layout/widget_detail_paragraph.xml").read_text())
 check("Íconos del widget sobre superficie en ember-t (no brasa de relleno)",
       "@color/kb_key_bg_accent" not in xml and "@color/hz_ember_t" in xml)
-check("Lector: copiar · IA · resumen circulares como volver/editar, IA en ember-t",
+check("Lector: eliminar · copiar · IA · resumen circulares como volver/editar, IA en ember-t",
       _detail.split('@+id/widget_detail_actions')[1].split('widget_detail_summary_actions')[0]
-      .count('android:background="@drawable/widget_icon_btn_bg"') == 3
+      .count('android:background="@drawable/widget_icon_btn_bg"') == 4
+      and '@+id/widget_detail_delete"' in _detail
       and "@color/hz_surf2" in (RES / "drawable/widget_secondary_bg.xml").read_text()
       and "@color/hz_ember_t" in (RES / "drawable/widget_ic_title.xml").read_text()
       and 'android:background="@drawable/widget_primary_bg"' in _detail)
@@ -573,19 +574,22 @@ check("CI ejecuta el JUnit real C-04 sin reemplazar C-02",
       and 'WidgetNotesBehaviorTest' in WORKFLOW.read_text()
       and WORKFLOW.read_text().count(':app:testDebugUnitTest') >= 2)
 
-# Lista sin recortes: aire en bordes + separacion real + difuminado
+# Lista bajo botones flotantes: relleno inferior = botones + aire, sin difuminado
 _list_block = xml.split('@+id/widget_notes_list')[1].split('/>')[0] if '@+id/widget_notes_list' in xml else ""
-check("Lista con aire superior/inferior (primera/ultima sin corte)",
-      'android:paddingTop="6dp"' in _list_block and 'android:paddingBottom="6dp"' in _list_block
-      and 'android:clipToPadding="false"' in _list_block)
+check("Lista bajo + y micrófono flotantes (la última tarjeta sube sobre ellos)",
+      'android:paddingBottom="64dp"' in _list_block
+      and 'android:clipToPadding="false"' in _list_block
+      and 'android:layout_height="match_parent"' in _list_block
+      and 'android:layout_gravity="bottom"' in xml.split('@+id/widget_bottom_bar')[1][:400])
 check("Lista sin margen que robe aire (padding manda)",
       'android:layout_marginTop' not in _list_block)
 check("Separacion real entre tarjetas (divider ListView, no margenes muertos)",
       'android:dividerHeight="6dp"' in _list_block
       and 'layout_marginBottom' not in NOTE_ITEM and 'layout_marginBottom' not in PENDING_ITEM)
-check("Difuminado vertical avisa mas tarjetas (fading edge sistema)",
-      'android:requiresFadingEdge="vertical"' in _list_block
-      and 'android:fadingEdgeLength=' in _list_block)
+check("Sin difuminado ni barra: se ven las notas bajo los botones (pedido del dueño)",
+      'android:requiresFadingEdge="none"' in _list_block
+      and 'fadingEdgeLength' not in _list_block
+      and 'android:background="@android:color/transparent"' in xml.split('@+id/widget_bottom_bar')[1][:400])
 # Tap abre la nota DENTRO del widget: plantilla MUTABLE (fill-in) hacia el
 # receptor NO exportado del lector; el resto de PIs siguen IMMUTABLE.
 READER = PROVIDER.parent / "WidgetReader.kt"
@@ -634,10 +638,26 @@ check("Tacho solo en edicion (nota nueva y pendiente sin borrar)",
       and 'setOnClickListener { confirmDelete() }' in act
       and 'deletable = false' in act
       and 'deletable = true' in act)
-check("Borrado con confirmacion en hoja sólida (sin cartel negro generico)",
-      '¿Eliminar nota?' in act and 'confirmDelete' in act and 'requestDelete' in act
-      and 'AlertDialog' not in act and 'widget_sheet_bg' in act
-      and 'kb_key_danger' in act)
+_edit_layout = (RES / "layout/activity_widget_note_edit.xml").read_text()
+_confirm_row = _edit_layout.split('@+id/delete_confirm_row')[1] if '@+id/delete_confirm_row' in _edit_layout else ""
+check("Borrado con confirmacion dentro de la hoja (sin diálogo: no esconde el teclado)",
+      'confirmDelete' in act and 'requestDelete' in act and 'showDeleteConfirm' in act
+      and 'AlertDialog' not in act and 'kb_key_danger' not in act
+      and '¿Eliminar nota?' in act
+      and 'android:background="@drawable/widget_secondary_bg"' in _confirm_row
+      and 'android:background="@drawable/widget_danger_bg"' in _confirm_row)
+check("Cancelar y Eliminar con la misma píldora (radio 24)",
+      '<corners android:radius="24dp" />' in (RES / "drawable/widget_danger_bg.xml").read_text()
+      and 'android:radius="24dp"' in (RES / "drawable/widget_secondary_bg.xml").read_text())
+_detail_now = (RES / "layout/widget_note_detail.xml").read_text()
+check("Lector: eliminar con confirmación en el widget (sin abrir la hoja)",
+      'ACTION_DELETE_ASK' in reader and 'ACTION_DELETE_CONFIRM' in reader
+      and 'NoteStore(context).deleteNote(open.id)' in reader
+      and 'for (path in result.audioPaths)' in reader
+      and '@+id/widget_detail_delete_actions' in _detail_now
+      and 'widget_danger_bg' in _detail_now)
+check("Lector: cuerpo con dirección por nota y contenido (sin texto de otra nota)",
+      'vbwidget://detail/$widgetId/$key' in reader and 'fun bodyKey' in reader)
 check("Borrado solo limpia WAV tras commit NoteStore verificado",
       'when (val result = NoteStore(this).deleteNote(id))' in act
       and 'is NoteDeleteResult.Deleted ->' in act

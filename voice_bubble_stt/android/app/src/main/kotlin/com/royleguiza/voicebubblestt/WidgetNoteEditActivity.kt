@@ -172,6 +172,11 @@ class WidgetNoteEditActivity : Activity() {
         findViewById<View>(R.id.btn_gemini_titulo).setOnClickListener { runGemini(GEMINI_TITULO) }
         findViewById<View>(R.id.btn_gemini_resumir).setOnClickListener { runGemini(GEMINI_RESUMIR) }
         findViewById<View>(R.id.btn_delete).setOnClickListener { confirmDelete() }
+        findViewById<View>(R.id.btn_delete_cancel).setOnClickListener { showDeleteConfirm(false) }
+        findViewById<View>(R.id.btn_delete_confirm).setOnClickListener {
+            showDeleteConfirm(false)
+            requestDelete()
+        }
 
         val editingId = noteId
         if (editingId == null) {
@@ -1116,78 +1121,27 @@ class WidgetNoteEditActivity : Activity() {
         super.onDestroy()
     }
 
+    /**
+     * Confirmar eliminar dentro de la propia hoja: la botonera se cambia por
+     * «Se borra la nota y su audio…» + Cancelar / Eliminar. Antes era un
+     * Dialog aparte: al tomar el foco escondía el teclado, la hoja bajaba de
+     * golpe y Eliminar (esquinas de tecla) no hacía juego con Cancelar
+     * (píldora). Ahora nada salta y las dos son píldoras iguales.
+     */
     private fun confirmDelete() {
-        try {
-            val density = resources.displayMetrics.density
-            val pad = (14 * density).toInt()
-            val dialog = android.app.Dialog(this)
-            dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
-            dialog.window?.setBackgroundDrawable(
-                android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT),
-            )
-            val box = android.widget.LinearLayout(this).apply {
-                orientation = android.widget.LinearLayout.VERTICAL
-                setBackgroundResource(R.drawable.widget_sheet_bg)
-                setPadding(pad, pad, pad, pad)
-            }
-            val title = android.widget.TextView(this).apply {
-                text = getString(R.string.widget_delete_title)
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label))
-                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f)
-                typeface = KbFonts.display(context)
-            }
-            box.addView(title)
-            val description = android.widget.TextView(this).apply {
-                text = getString(R.string.widget_delete_body)
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label_secondary))
-                typeface = KbFonts.body(context)
-                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-                setPadding(0, (8 * density).toInt(), 0, pad)
-            }
-            box.addView(description)
-            val row = android.widget.LinearLayout(this).apply {
-                orientation = android.widget.LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.END
-            }
-            val buttonParams = android.widget.LinearLayout.LayoutParams(
-                0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
-            )
-            val cancel = android.widget.TextView(this).apply {
-                text = getString(R.string.widget_cancel)
-                gravity = android.view.Gravity.CENTER
-                setPadding(pad, pad, pad, pad)
-                setBackgroundResource(R.drawable.widget_secondary_bg)
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label))
-                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-                setOnClickListener { dialog.dismiss() }
-            }
-            val cancelParams = android.widget.LinearLayout.LayoutParams(
-                0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
-            )
-            cancelParams.rightMargin = pad / 2
-            row.addView(cancel, cancelParams)
-            val remove = android.widget.TextView(this).apply {
-                text = getString(R.string.widget_delete)
-                gravity = android.view.Gravity.CENTER
-                setPadding(pad, pad, pad, pad)
-                setBackgroundResource(R.drawable.kb_key_danger)
-                setTextColor(ContextCompat.getColor(context, R.color.kb_label_on_danger))
-                setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13f)
-                typeface = KbFonts.body(context, strong = true)
-                setOnClickListener {
-                    dialog.dismiss()
-                    requestDelete()
-                }
-            }
-            row.addView(remove, buttonParams)
-            box.addView(row)
-            dialog.setContentView(box)
-            dialog.window?.setLayout(
-                resources.displayMetrics.widthPixels - (48 * density).toInt(),
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            )
-            dialog.show()
-        } catch (_: Exception) {}
+        if (!deleteAvailable || mutationInProgress.get()) return
+        showDeleteConfirm(true)
+    }
+
+    private fun showDeleteConfirm(show: Boolean) {
+        findViewById<View>(R.id.classic_row)?.visibility = if (show) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.delete_confirm_row)?.visibility = if (show) View.VISIBLE else View.GONE
+        if (show) {
+            findViewById<android.widget.TextView>(R.id.delete_confirm_text)?.text =
+                getString(R.string.widget_delete_title) + " " + getString(R.string.widget_delete_body)
+            findViewById<View>(R.id.btn_delete_confirm)
+                ?.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_VIEW_FOCUSED)
+        }
     }
 
     private fun requestDelete() {

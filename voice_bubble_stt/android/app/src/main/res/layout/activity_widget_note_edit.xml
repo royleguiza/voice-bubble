@@ -442,5 +442,63 @@
                 </FrameLayout>
             </LinearLayout>
         </LinearLayout>
+
+        <!-- Confirmar eliminar DENTRO de la hoja (reemplaza a la botonera
+             clásica mientras se pregunta): no abre otra ventana, así que el
+             teclado no se esconde y la hoja no salta. Dos píldoras iguales:
+             Cancelar surf2 y Eliminar danger (design.md §14). -->
+        <LinearLayout
+            android:id="@+id/delete_confirm_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/delete_confirm_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="@string/widget_delete_body"
+                android:textSize="13sp"
+                android:fontFamily="@font/inter"
+                android:textColor="@color/kb_label_secondary" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/btn_delete_cancel"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@drawable/widget_secondary_bg"
+                    android:gravity="center"
+                    android:text="@string/widget_cancel"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/inter"
+                    android:textFontWeight="500"
+                    android:textColor="@color/kb_label" />
+
+                <TextView
+                    android:id="@+id/btn_delete_confirm"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/widget_danger_bg"
+                    android:gravity="center"
+                    android:text="@string/widget_delete"
+                    android:textSize="13sp"
+                    android:fontFamily="@font/inter"
+                    android:textFontWeight="600"
+                    android:textColor="@color/kb_label_on_danger" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 </FrameLayout>

@@ -39,11 +39,14 @@ internal object WidgetTexts {
         views.setTextViewText(R.id.widget_detail_title, context.getString(R.string.widget_untitled))
         views.setContentDescription(R.id.widget_detail_edit, context.getString(R.string.widget_edit_note))
         views.setTextViewText(R.id.widget_detail_empty, context.getString(R.string.widget_note_empty))
+        views.setContentDescription(R.id.widget_detail_delete, context.getString(R.string.widget_delete_note))
         views.setContentDescription(R.id.widget_detail_copy, context.getString(R.string.widget_copy_content))
         views.setContentDescription(R.id.widget_detail_ai_title, context.getString(R.string.widget_ai_title))
         views.setContentDescription(R.id.widget_detail_ai_summary, context.getString(R.string.widget_ai_summary))
         views.setTextViewText(R.id.widget_detail_summary_discard, context.getString(R.string.widget_discard))
         views.setTextViewText(R.id.widget_detail_summary_apply, context.getString(R.string.widget_replace))
+        views.setTextViewText(R.id.widget_detail_delete_cancel, context.getString(R.string.widget_cancel))
+        views.setTextViewText(R.id.widget_detail_delete_confirm, context.getString(R.string.widget_delete))
         views.setTextViewText(R.id.widget_detail_open_pending, context.getString(R.string.widget_listen_transcribe))
     }
 
