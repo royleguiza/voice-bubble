@@ -115,22 +115,25 @@ suite.check(
     "onTapUp no debe ejecutarse si se superó el slop"
 )
 
-# 2.3 makeGapTolerant
-gap_chunk = kf_code[kf_code.find("fun makeGapTolerant("):kf_code.find("private fun nearestChild(")]
+# 2.3 T5: filas sin huecos (KeyRow reemplaza a makeGapTolerant)
+import os as _os
+_kr_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "KeyRow.kt")
+kr_code = open(_kr_path, encoding="utf-8").read()
+gap_chunk = kr_code
 suite.check(
-    "KeyFactory.makeGapTolerant es accesible (fun makeGapTolerant)",
-    "fun makeGapTolerant(" in gap_chunk and "private fun makeGapTolerant(" not in kf_code,
-    "makeGapTolerant debe ser accesible para LayoutLayer y SnippetsLayer"
+    "horizontalRow arma KeyRow y el parche viejo no existe",
+    "val row = KeyRow(service)" in kf_code and "makeGapTolerant" not in kf_code and "nearestChild" not in kf_code,
+    "las filas deben ser KeyRow"
 )
 suite.check(
-    "KeyFactory.makeGapTolerant evalúa touchSlopPx en ACTION_MOVE",
-    "scaledTouchSlop" in gap_chunk and "MotionEvent.ACTION_MOVE" in gap_chunk and "slopExceeded = true" in gap_chunk,
-    "makeGapTolerant debe detectar desplazamientos fuera del gap"
+    "KeyRow entrega el gesto entero (DOWN/MOVE/UP/CANCEL) a la tecla más cercana",
+    all(f"forward(ev, MotionEvent.ACTION_{a})" in kr_code for a in ("DOWN", "MOVE", "UP", "CANCEL")),
+    "la tecla debe ver el gesto completo (su propio slop decide el commit)"
 )
 suite.check(
-    "KeyFactory.makeGapTolerant condiciona commit a !slopExceeded",
-    "if (!slopExceeded)" in gap_chunk and "(child.tag as? () -> Unit)?.invoke()" in gap_chunk,
-    "makeGapTolerant no debe commitear si se superó el slop"
+    "KeyRow: toque sobre una tecla sigue el camino normal",
+    "childUnder(ev.x, ev.y) == null" in kr_code and "return super.dispatchTouchEvent(ev)" in kr_code,
+    "solo los huecos se redirigen"
 )
 
 # 2.4 Tags en constructores de teclas
@@ -160,19 +163,9 @@ suite.check(
 
 # --- 3. Verificación de LayoutLayer.kt ---
 suite.check(
-    "LayoutLayer.buildLetterRows aplica makeGapTolerant a row3",
-    "keys.makeGapTolerant(row3)" in layout_code[layout_code.find("fun buildLetterRows()"):layout_code.find("fun buildSymbolRows()")],
-    "row3 de letras debe ser gap-tolerante"
-)
-suite.check(
-    "LayoutLayer.buildSymbolRows aplica makeGapTolerant a row3",
-    "keys.makeGapTolerant(row3)" in layout_code[layout_code.find("fun buildSymbolRows()"):layout_code.find("fun buildCodeRows()")],
-    "row3 de símbolos debe ser gap-tolerante"
-)
-suite.check(
-    "LayoutLayer.buildCodeRows aplica makeGapTolerant a row3",
-    "keys.makeGapTolerant(row3)" in layout_code[layout_code.find("fun buildCodeRows()"):layout_code.find("fun buildBottomBar()")],
-    "row3 de código debe ser gap-tolerante"
+    "LayoutLayer.addRow pasa el hueco entre filas a relleno de KeyRow",
+    "if (row is KeyRow)" in layout_code and "previous is KeyRow" in layout_code,
+    "el hueco vertical debe tener dueño"
 )
 suite.check(
     "LayoutLayer shiftKey tiene tag de acción",
@@ -183,14 +176,9 @@ suite.check(
 # --- 4. Verificación de SnippetsLayer.kt ---
 snippets_rows_chunk = snippets_code[snippets_code.find("fun buildLetterRows()"):snippets_code.find("private fun letterRow(")]
 suite.check(
-    "SnippetsLayer.UiHost declara makeGapTolerant",
-    "fun makeGapTolerant(row: LinearLayout)" in snippets_code,
-    "UiHost de snippets debe exponer makeGapTolerant"
-)
-suite.check(
-    "SnippetsLayer.buildLetterRows aplica makeGapTolerant a r1, r2 y row3",
-    "host.makeGapTolerant(r1)" in snippets_rows_chunk and "host.makeGapTolerant(r2)" in snippets_rows_chunk and "host.makeGapTolerant(row3)" in snippets_rows_chunk,
-    "Todas las filas de letras en snippets deben ser gap-tolerantes"
+    "SnippetsLayer arma sus filas con horizontalRow (KeyRow)",
+    "makeGapTolerant" not in snippets_code and "host.horizontalRow()" in snippets_rows_chunk + snippets_code,
+    "las filas de snippets también deben ser KeyRow"
 )
 suite.check(
     "SnippetsLayer.makeLetterKey guarda commit en key.tag",
@@ -215,9 +203,9 @@ suite.check(
 
 # --- 5. Verificación de VoiceKeyboardService.kt ---
 suite.check(
-    "VKS implementa override fun makeGapTolerant delegando a keys",
-    "override fun makeGapTolerant(row: LinearLayout) = keys.makeGapTolerant(row)" in vks_code,
-    "VKS debe delegar makeGapTolerant a keys"
+    "VKS ya no delega makeGapTolerant",
+    "makeGapTolerant" not in vks_code,
+    "el parche viejo debía borrarse"
 )
 suite.check(
     "VKS implementa deleteBackward(count: Int) delegando a editor",
@@ -318,9 +306,9 @@ suite.check("Batch 3 ASCII: 3 unidades", units_c == 3)
 # --- 8. Verificación de Mutaciones Negativas ---
 print("\n--- Verificación de Mutaciones Negativas ---")
 
-# Mutación 1: LayoutLayer sin makeGapTolerant en row3
-mut1 = layout_code.replace("keys.makeGapTolerant(row3)", "")
-suite.check("Mutación 1 (LayoutLayer sin gapTolerant en row3): detectada", "keys.makeGapTolerant(row3)" not in mut1)
+# Mutación 1: addRow sin pasar el hueco a relleno de KeyRow
+mut1 = layout_code.replace("if (row is KeyRow)", "if (false)")
+suite.check("Mutación 1 (addRow sin hueco con dueño): detectada", "if (row is KeyRow)" not in mut1)
 
 # Mutación 2: fastTap sin comprobación de slopExceeded
 mut2 = fast_tap_chunk.replace("if (!slopExceeded)", "")
@@ -330,13 +318,13 @@ suite.check("Mutación 2 (fastTap sin slop guard): detectada", "if (!slopExceede
 mut3 = long_press_chunk.replace("if (!slopExceeded)", "")
 suite.check("Mutación 3 (longPress sin slop guard): detectada", "if (!slopExceeded)" not in mut3)
 
-# Mutación 4: makeGapTolerant sin comprobación de slopExceeded
-mut4 = gap_chunk.replace("if (!slopExceeded)", "")
-suite.check("Mutación 4 (makeGapTolerant sin slop guard): detectada", "if (!slopExceeded)" not in mut4)
+# Mutación 4: KeyRow sin reenviar el UP (la tecla no confirmaría)
+mut4 = gap_chunk.replace("forward(ev, MotionEvent.ACTION_UP)", "")
+suite.check("Mutación 4 (KeyRow sin UP): detectada", "forward(ev, MotionEvent.ACTION_UP)" not in mut4)
 
-# Mutación 5: SnippetsLayer sin makeGapTolerant en row3
-mut5 = snippets_code.replace("host.makeGapTolerant(row3)", "")
-suite.check("Mutación 5 (SnippetsLayer sin gapTolerant en row3): detectada", "host.makeGapTolerant(row3)" not in mut5)
+# Mutación 5: horizontalRow vuelve a LinearLayout común
+mut5 = kf_code.replace("val row = KeyRow(service)", "val row = LinearLayout(service)")
+suite.check("Mutación 5 (filas sin KeyRow): detectada", "val row = KeyRow(service)" not in mut5)
 
 # Mutación 6: EditEngine handleBackspace sin count
 mut6 = ee_code.replace("fun handleBackspace(count: Int = 1)", "fun handleBackspace()")

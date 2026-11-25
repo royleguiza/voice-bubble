@@ -74,7 +74,8 @@ class KeyFactory(
      * verticalmente para que iconos y texto compartan la misma línea.
      */
     fun horizontalRow(): LinearLayout {
-        val row = LinearLayout(service)
+        // T5: KeyRow entrega los toques de los huecos a la tecla más cercana.
+        val row = KeyRow(service)
         row.orientation = LinearLayout.HORIZONTAL
         row.setBaselineAligned(false)
         row.gravity = Gravity.CENTER_VERTICAL
@@ -344,7 +345,6 @@ class KeyFactory(
         for (c in chars) {
             row.addView(makeLetterKey(c))
         }
-        makeGapTolerant(row)
         return row
     }
 
@@ -353,7 +353,6 @@ class KeyFactory(
         for (c in chars) {
             row.addView(makeSymbolKey(c.toString()))
         }
-        makeGapTolerant(row)
         return row
     }
 
@@ -362,75 +361,7 @@ class KeyFactory(
         for (c in chars) {
             row.addView(makeCodeKey(c))
         }
-        makeGapTolerant(row)
         return row
-    }
-
-    /**
-     * Filas gap-tolerantes (precisión de escritura): la fila captura los
-     * toques que caen en gaps/márgenes (ningún hijo los consume: antes no
-     * escribían nada) y los resuelve a la tecla hija más cercana,
-     * disparando su commit de tap (guardado en `tag`).
-     * C-18: expandido a row3 y subcapas, con detección de touch slop
-     * en ACTION_MOVE para que un deslizamiento fuera de la fila no confirme
-     * un commit erróneo.
-     */
-    fun makeGapTolerant(row: LinearLayout) {
-        var downX = 0f
-        var downY = 0f
-        var slopExceeded = false
-        val touchSlopPx = ViewConfiguration.get(row.context).scaledTouchSlop
-
-        row.setOnTouchListener { _, ev ->
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> true.also {
-                    downX = ev.x
-                    downY = ev.y
-                    slopExceeded = false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = ev.x - downX
-                    val dy = ev.y - downY
-                    if (dx * dx + dy * dy > touchSlopPx * touchSlopPx) {
-                        slopExceeded = true
-                    }
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (!slopExceeded) {
-                        nearestChild(row, ev.x, ev.y)?.let { child ->
-                            host.haptic(child)
-                            child.isPressed = true
-                            handler.postDelayed({ child.isPressed = false }, 80L)
-                            @Suppress("UNCHECKED_CAST")
-                            (child.tag as? () -> Unit)?.invoke()
-                        }
-                    }
-                    true
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    slopExceeded = true
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
-    private fun nearestChild(row: LinearLayout, x: Float, y: Float): View? {
-        var best: View? = null
-        var bestDist = Float.MAX_VALUE
-        for (i in 0 until row.childCount) {
-            val c = row.getChildAt(i)
-            val dx = x - (c.left + c.width / 2f)
-            val dy = y - (c.top + c.height / 2f)
-            val d = dx * dx + dy * dy
-            if (d < bestDist) {
-                bestDist = d
-                best = c
-            }
-        }
-        return best
     }
 
     fun makeLetterKey(base: Char): TextView {

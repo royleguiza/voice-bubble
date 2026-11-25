@@ -86,7 +86,6 @@ class SnippetsLayer(
         fun showAccentsPopup(anchor: View, base: Char)
         fun deleteBackward()
         fun attachBackspaceKey(key: View, action: () -> Unit)
-        fun makeGapTolerant(row: LinearLayout)
     }
 
     private lateinit var store: SnippetStore
@@ -266,11 +265,9 @@ class SnippetsLayer(
      */
     fun buildLetterRows() {
         val r1 = letterRow("qwertyuiop")
-        host.makeGapTolerant(r1)
         host.addContentRow(r1)
 
         val r2 = letterRow(if (host.isSpanish()) "asdfghjklñ" else "asdfghjkl;")
-        host.makeGapTolerant(r2)
         host.addContentRow(r2)
 
         val row3 = host.horizontalRow()
@@ -292,7 +289,6 @@ class SnippetsLayer(
             row3.addView(makeLetterKey(c))
         }
         row3.addView(makeBackspaceKey())
-        host.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 

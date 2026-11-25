@@ -80,7 +80,7 @@ class TestC47NumericKeyboardSuite(unittest.TestCase):
             self.assertIn(f'"{op}"', rows)
         self.assertIn("menos", rows)
         self.assertIn("makeBackspaceKey(weight = NUM_EDGE_W)", rows)
-        self.assertEqual(rows.count("makeGapTolerant("), 3)
+        self.assertEqual(rows.count("keys.horizontalRow()"), 3)  # T5: KeyRow sin huecos
         # Dígitos fondo principal, operadores secundario.
         self.assertIn("makeSymbolKey(c.toString(), weight = NUM_DIGIT_W)", rows)
         self.assertIn("makeAltSymbolKey(", rows)

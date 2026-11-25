@@ -3244,8 +3244,9 @@ def test_c17_single_vibration_contract():
     long_press_chunk = kf[kf.find("fun longPress("):kf.find("fun backspaceGestures(")]
     assert "host.haptic(v)" in long_press_chunk, "C-17: longPress no vibra en ACTION_DOWN"
 
-    gap_chunk = kf[kf.find("fun makeGapTolerant("):kf.find("private fun nearestChild(")]
-    assert "host.haptic(child)" in gap_chunk, "C-17: makeGapTolerant no vibra al resolver tecla"
+    # T5: el hueco ya no vibra aparte: KeyRow le entrega el DOWN a la tecla.
+    kr = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice_bubble_stt", "android", "app", "src", "main", "kotlin", "com", "royleguiza", "voicebubblestt", "KeyRow.kt"), encoding="utf-8").read()
+    assert "forward(ev, MotionEvent.ACTION_DOWN)" in kr and "host.haptic(" not in kr, "C-17: KeyRow debe reenviar el DOWN sin vibrar aparte"
 
 def test_c18_touch_precision_contract():
     base = os.path.dirname(os.path.abspath(__file__))
@@ -3282,10 +3283,9 @@ def test_c18_touch_precision_contract():
     assert ("dx * dx + dy * dy" in long_press_chunk or "hypot" in long_press_chunk) and "touchSlopPx" in long_press_chunk, "C-18: longPress no evalúa touchSlopPx"
     assert "!slopExceeded" in long_press_chunk, "C-18: longPress no protege onTapUp con !slopExceeded"
 
-    # makeGapTolerant
-    assert "fun makeGapTolerant(" in kf, "C-18: makeGapTolerant debe ser accesible a otras capas"
-    gap_chunk = kf[kf.find("fun makeGapTolerant("):kf.find("private fun nearestChild(")]
-    assert "!slopExceeded" in gap_chunk, "C-18: makeGapTolerant no protege resolución con !slopExceeded"
+    # T5: filas sin huecos (KeyRow reemplaza a makeGapTolerant/nearestChild)
+    assert "val row = KeyRow(service)" in kf, "C-18: horizontalRow debe armar KeyRow"
+    assert "makeGapTolerant" not in kf, "C-18: el parche makeGapTolerant debía borrarse"
 
     # key.tag assignments for gap resolution
     assert "key.tag = onClick" in kf, "C-18: KeyFactory no asigna key.tag en makeSpecialKey o makeActionIconKey"
@@ -3297,16 +3297,16 @@ def test_c18_touch_precision_contract():
     assert "deleteBackward(batch)" in backspace_chunk, "C-18: backspaceGestures no delega a deleteBackward(batch)"
 
     # 2. LayoutLayer: gap tolerance en row3
-    assert "keys.makeGapTolerant(row3)" in ll, "C-18: LayoutLayer no aplica makeGapTolerant a row3"
+    assert "if (row is KeyRow)" in ll, "C-18: addRow debe pasar el hueco entre filas a relleno de KeyRow"
     assert "shiftKey.tag = shiftAction" in ll, "C-18: shiftKey no tiene tag para gap tolerance"
 
     # 3. SnippetsLayer: gap tolerance y batching
-    assert "host.makeGapTolerant(row3)" in sl, "C-18: SnippetsLayer no aplica makeGapTolerant a row3"
+    assert "host.horizontalRow()" in sl, "C-18: SnippetsLayer debe armar sus filas con horizontalRow (KeyRow)"
     assert "fun backspaceEditor(count: Int = 1)" in sl, "C-18: backspaceEditor no admite count para lotes"
     assert "fun backspaceQuery(count: Int = 1)" in sl, "C-18: backspaceQuery no admite count para lotes"
 
     # 4. VoiceKeyboardService: delegaciones
-    assert "override fun makeGapTolerant(row: LinearLayout)" in vks, "C-18: VKS no implementa makeGapTolerant"
+    assert "makeGapTolerant" not in vks, "C-18: VKS ya no delega makeGapTolerant"
     assert "override fun deleteBackward(count: Int)" in vks, "C-18: VKS no implementa deleteBackward(count: Int)"
 
     # 5. EditEngine: batch backspace con un único deleteSurroundingText

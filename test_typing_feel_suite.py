@@ -55,17 +55,14 @@ mv = re.search(r'<dimen name="kb_key_gap_v">(\d+)dp</dimen>', dimens)
 if mv:
     check(f"gap vertical chico (actual {mv.group(1)}dp)", int(mv.group(1)) <= 6)
 
-# --- 2. Filas gap-tolerantes ---
-check("makeGapTolerant existe", "fun makeGapTolerant(" in kf)
-for builder in ["fun letterRow(", "fun symbolRow(", "fun codeRow("]:
-    body = kf.split(builder)[1].split("\n    fun ")[0] if builder in kf else ""
-    check(f"{builder} aplica gap-tolerancia", "makeGapTolerant(row)" in body)
-check("Gap: DOWN consume para recibir el UP", "MotionEvent.ACTION_DOWN -> true" in kf)
-check("Gap: UP resuelve tecla más cercana", "nearestChild(row, ev.x, ev.y)" in kf)
-check("Gap: commit vía tag (sin ruta nueva)", "(child.tag as? () -> Unit)?.invoke()" in kf)
-check("Gap: flash pressed de feedback", "child.isPressed = true" in kf)
-check("Gap: sin Log", "Log." not in kf.split("fun makeGapTolerant(")[1].split("\n    ")[0]
-      if "fun makeGapTolerant(" in kf else True)
+# --- 2. Filas sin huecos (T5, KeyRow) ---
+kr = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyRow.kt"), encoding="utf-8").read()
+check("horizontalRow arma KeyRow", "val row = KeyRow(service)" in kf)
+check("Sin el parche viejo (makeGapTolerant/nearestChild)", "makeGapTolerant" not in kf and "nearestChild" not in kf)
+check("KeyRow: el DOWN en un hueco va a la tecla más cercana", "nearestKey(this, ev.x, ev.y)" in kr and "forward(ev, MotionEvent.ACTION_DOWN)" in kr)
+check("KeyRow: MOVE y UP siguen a la misma tecla", "forward(ev, MotionEvent.ACTION_MOVE)" in kr and "forward(ev, MotionEvent.ACTION_UP)" in kr)
+check("KeyRow: segundo dedo confirma el primero y reparte normal", "MotionEvent.ACTION_POINTER_DOWN ->" in kr)
+check("KeyRow: sin Log", "Log." not in kr)
 
 # --- 3. Tags de commit (misma lambda, cero duplicación) ---
 check("Letras guardan commit en tag", "key.tag = commit" in kf)

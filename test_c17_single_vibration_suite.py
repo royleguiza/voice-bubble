@@ -121,11 +121,13 @@ check(
     "backspaceGestures debe vibrar al activar repetición"
 )
 
-gap_chunk = kf_code[kf_code.find("fun makeGapTolerant("):kf_code.find("private fun nearestChild(")]
+# T5: el toque en un hueco llega a la tecla como su propio DOWN (KeyRow), así
+# vibra una sola vez con el gesto de la tecla, igual que un toque directo.
+_kr = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/KeyRow.kt"), encoding="utf-8").read()
 check(
-    "KeyFactory.makeGapTolerant vibra al resolver nearestChild",
-    "nearestChild(row, ev.x, ev.y)?.let { child ->" in gap_chunk and "host.haptic(child)" in gap_chunk,
-    "makeGapTolerant debe vibrar al resolver la tecla"
+    "KeyRow entrega el DOWN del hueco a la tecla (vibra con su propio gesto)",
+    "forward(ev, MotionEvent.ACTION_DOWN)" in _kr and "host.haptic(" not in _kr,
+    "KeyRow debe reenviar el DOWN y no vibrar por su cuenta"
 )
 
 # --- 4. Conteo de Vibraciones (Simulación de Tecla) ---
@@ -190,8 +192,8 @@ class MockKeyGesture:
         self.engine.handleEnter()
 
     def gapTapLetter(self, char):
-        # ACTION_DOWN en gap (sin vibración)
-        # ACTION_UP -> nearestChild -> haptic + commit
+        # T5: KeyRow reenvía el DOWN a la tecla más cercana -> haptic de la
+        # tecla; el UP confirma el commit.
         self.tracker.haptic("gap_resolved_key")
         self.engine.commitLetter(char)
 

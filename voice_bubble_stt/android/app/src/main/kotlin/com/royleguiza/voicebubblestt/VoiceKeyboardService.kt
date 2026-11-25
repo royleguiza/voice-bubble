@@ -862,7 +862,6 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     override fun deleteBackward(count: Int) = editor.handleBackspace(count)
     override fun deleteWord() = editor.deleteWordBeforeCursor()
     override fun attachBackspaceKey(key: View, action: () -> Unit) = keys.backspaceGestures(key, action)
-    override fun makeGapTolerant(row: LinearLayout) = keys.makeGapTolerant(row)
 
     /** Shell SPK-05: el portapapeles vive en ClipboardLayer; aquí solo commit(). */
 

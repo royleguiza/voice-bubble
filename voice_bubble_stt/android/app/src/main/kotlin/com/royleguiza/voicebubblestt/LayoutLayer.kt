@@ -74,7 +74,6 @@ class LayoutLayer(
             row3.addView(keys.makeLetterKey(c))
         }
         row3.addView(keys.makeBackspaceKey())
-        keys.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
@@ -87,7 +86,6 @@ class LayoutLayer(
             row3.addView(keys.makeSymbolKey(c.toString()))
         }
         row3.addView(keys.makeBackspaceKey())
-        keys.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
@@ -101,7 +99,6 @@ class LayoutLayer(
             row3.addView(keys.makeCodeKey(c))
         }
         row3.addView(keys.makeBackspaceKey())
-        keys.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
@@ -121,7 +118,6 @@ class LayoutLayer(
             row1.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
         row1.addView(keys.makeAltSymbolKey("+", keys.getString(R.string.kb_a11y_plus), weight = NUM_EDGE_W))
-        keys.makeGapTolerant(row1)
         host.addContentRow(row1)
 
         val row2 = keys.horizontalRow()
@@ -130,7 +126,6 @@ class LayoutLayer(
             row2.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
         row2.addView(keys.makeAltSymbolKey("%", keys.getString(R.string.kb_a11y_percent), weight = NUM_EDGE_W))
-        keys.makeGapTolerant(row2)
         host.addContentRow(row2)
 
         val row3 = keys.horizontalRow()
@@ -139,7 +134,6 @@ class LayoutLayer(
             row3.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
         }
         row3.addView(keys.makeBackspaceKey(weight = NUM_EDGE_W))
-        keys.makeGapTolerant(row3)
         host.addContentRow(row3)
     }
 
@@ -331,10 +325,26 @@ class LayoutLayer(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
         }
-        if (host.rootView().childCount > 0) {
-            lp.topMargin = host.rowGap()
+        val root = host.rootView()
+        if (root.childCount > 0) {
+            val gap = host.rowGap()
+            val previous = root.getChildAt(root.childCount - 1)
+            if (row is KeyRow) {
+                // T5: el hueco entre filas pasa a ser relleno de las filas
+                // (mitad arriba, mitad abajo de la anterior si también es de
+                // teclas): mismo dibujo, pero el toque ahí tiene dueño.
+                if (previous is KeyRow) {
+                    val half = gap / 2
+                    previous.setPadding(previous.paddingLeft, previous.paddingTop, previous.paddingRight, gap - half)
+                    row.setPadding(row.paddingLeft, half, row.paddingRight, row.paddingBottom)
+                } else {
+                    row.setPadding(row.paddingLeft, gap, row.paddingRight, row.paddingBottom)
+                }
+            } else {
+                lp.topMargin = gap
+            }
         }
-        host.rootView().addView(row, lp)
+        root.addView(row, lp)
     }
 
     /**
