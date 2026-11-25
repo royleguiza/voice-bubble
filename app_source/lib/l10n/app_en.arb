@@ -507,5 +507,9 @@
   "settingsBackupErrorVersion": "This backup comes from a newer version of Orison. Update the app and try again.",
   "settingsBackupErrorBusy": "Notes are busy right now. Try again in a few seconds.",
   "settingsBackupErrorTooBig": "The backup is too large to import.",
-  "settingsBackupErrorIo": "The file could not be read or saved."
+  "settingsBackupErrorIo": "The file could not be read or saved.",
+  "privacyNoticeTitle": "Before you dictate",
+  "privacyNoticeAccept": "Got it",
+  "privacyNoticeBody": "When you dictate, the audio is sent to Groq with your own key to turn it into text. It never goes through Orison servers and is not stored on any server of ours.\n\nIf you use AI title, summary or translation, the text of that note or selection goes to Groq or Google, also with your key.\n\nYour notes, history, snippets and keys stay on your phone. The keyboard never stores or sends what you type.",
+  "settingsAboutPrivacyPolicy": "Privacy policy"
 }

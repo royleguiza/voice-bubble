@@ -568,6 +568,15 @@ class StorageService {
   Future<void> saveAppLocale(String code) =>
       _setValidatedString(appLocaleKey, appLocales, code);
 
+  /// T4: aviso de privacidad aceptado (Dart-only, el IME no la lee). Se
+  /// muestra antes de guardar la clave de Groq, el paso que habilita
+  /// cualquier dictado: explica que el audio va a Groq con la clave propia.
+  static const String privacyNoticeKey = 'privacy_notice_v1';
+
+  Future<bool> loadPrivacyNoticeAccepted() => _getBool(privacyNoticeKey, false);
+
+  Future<void> savePrivacyNoticeAccepted() => _setBool(privacyNoticeKey, true);
+
   static const String themeModeKey = 'theme_mode';
   static const List<String> themeModes = ['sistema', 'claro', 'oscuro'];
   static const String defaultThemeMode = 'sistema';

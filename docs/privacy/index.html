@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orison · Política de privacidad</title>
+<style>
+  :root { --bg:#F6F5F2; --fg:#14151C; --fg2:#5C6072; --line:#D9D9E0; --ember:#B04706; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0B0C12; --fg:#F2F0EC; --fg2:#9A9DAB; --line:#262A38; --ember:#FF9A3D; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:40px 16px 80px; }
+  h1 { font-size:32px; line-height:1.15; margin:0 0 6px; }
+  h2 { font-size:20px; margin:36px 0 6px; }
+  .meta { color:var(--fg2); font-size:14px; }
+  nav a, a { color:var(--ember); }
+  li { margin:4px 0; }
+  hr { border:0; border-top:1px solid var(--line); margin:40px 0; }
+</style>
+</head>
+<body>
+<main>
+<nav class="meta"><a href="#es">Español</a> · <a href="#en">English</a></nav>
+
+<section id="es" lang="es">
+<h1>Política de privacidad de Orison</h1>
+<p class="meta">Vigente desde el 25 de noviembre de 2026 · Se aplica a Orison (teclado de voz y notas) y a Orison Puntero.</p>
+
+<p>Orison no tiene servidores propios, no pide crear una cuenta y no usa analytics, publicidad ni rastreo. Lo que escribís y dictás queda en tu teléfono, salvo lo que vos mismo mandás a un servicio de inteligencia artificial con <strong>tu propia clave</strong>, como se explica abajo.</p>
+
+<h2>1. Qué se graba y adónde va</h2>
+<ul>
+  <li><strong>Audio del dictado.</strong> Solo se graba mientras tocás el micrófono. Al terminar, el audio se envía a <strong>Groq</strong> (api.groq.com) para convertirlo en texto, usando la clave de Groq que cargaste vos. No pasa por ningún servidor nuestro. Sin un dictado en curso, Orison no manda audio a ningún lado.</li>
+  <li><strong>Funciones de IA opcionales.</strong> Si usás «Título», «Resumen» o «Reestructurar» en una nota, el texto de esa nota se envía a Groq o a Google Gemini (generativelanguage.googleapis.com), según el proveedor que elegiste, con tu clave. Si activás la traducción «Con IA», el texto que traducís se envía al mismo proveedor, y solo después de que lo autorizás en Ajustes.</li>
+  <li><strong>Traducción en el teléfono.</strong> Es el modo por defecto: usa ML Kit de Google y traduce sin que el texto salga del teléfono. La primera vez descarga el modelo del idioma desde Google.</li>
+  <li>Groq y Google tratan esos datos según sus propias políticas: <a href="https://groq.com/privacy-policy/">Groq</a> · <a href="https://policies.google.com/privacy">Google</a>.</li>
+</ul>
+
+<h2>2. Qué queda en tu teléfono</h2>
+<ul>
+  <li>Las notas y, si las dictaste, sus audios.</li>
+  <li>El historial de los últimos dictados, los snippets y el portapapeles del teclado.</li>
+  <li>Las claves de Groq y Google y las credenciales que guardes en el teclado, <strong>cifradas</strong> con el almacén seguro de Android. Nunca se suben a ningún lado y no entran en la copia de seguridad.</li>
+  <li>Tus ajustes.</li>
+</ul>
+<p>El teclado <strong>nunca guarda ni envía lo que tecleás</strong>, y no ofrece dictado, snippets ni portapapeles en campos de contraseña. Los registros técnicos de la app no incluyen contenido.</p>
+
+<h2>3. Copia de seguridad</h2>
+<p>«Ajustes › Copia de seguridad» crea un archivo .zip que guardás donde vos elijas (por ejemplo, en Descargas o en tu Drive). Incluye notas, audios, historial, snippets, portapapeles y ajustes; nunca claves ni credenciales. Orison no sube esa copia a ningún lado. El respaldo automático de Android tampoco incluye tus notas ni tus claves.</p>
+
+<h2>4. Permisos</h2>
+<ul>
+  <li><strong>Micrófono:</strong> para dictar. Mientras grabás desde el widget o la barra flotante se muestra una notificación.</li>
+  <li><strong>Internet:</strong> solo para hablar con Groq o Google cuando lo pedís.</li>
+  <li><strong>Mostrar sobre otras apps y notificaciones:</strong> para la barra flotante y el aviso de grabación.</li>
+  <li><strong>Orison Puntero (app aparte)</strong> usa el servicio de Accesibilidad solo para hacer los toques del puntero y dibujar la barra flotante. No lee el contenido de la pantalla ni guarda nada, salvo dónde dejaste la barra.</li>
+</ul>
+
+<h2>5. Compras</h2>
+<p>Si comprás Orison Pro, el pago lo procesa Google Play. Orison solo recibe la confirmación de la compra; no ve tus datos de pago.</p>
+
+<h2>6. Cómo borrar tus datos</h2>
+<ul>
+  <li>Una nota, un dictado o un snippet: se borran desde la app.</li>
+  <li>Las claves: Ajustes › Transcripción o Inteligencia artificial › Eliminar.</li>
+  <li>Todo: Ajustes de Android › Apps › Orison › Almacenamiento › Borrar datos, o desinstalar la app.</li>
+  <li>Lo que enviaste a Groq o a Google se rige por sus políticas; desde sus consolas podés revocar tu clave.</li>
+</ul>
+
+<h2>7. Menores</h2>
+<p>Orison no está dirigida a menores de 13 años.</p>
+
+<h2>8. Cambios y contacto</h2>
+<p>Si esta política cambia, se actualiza esta página y la fecha de arriba. Consultas: <span data-contact>(correo de contacto)</span>.</p>
+</section>
+
+<hr>
+
+<section id="en" lang="en">
+<h1>Orison Privacy Policy</h1>
+<p class="meta">Effective November 25, 2026 · Applies to Orison (voice keyboard and notes) and Orison Pointer.</p>
+
+<p>Orison has no servers of its own, does not ask you to create an account, and uses no analytics, ads or tracking. What you type and dictate stays on your phone, except what you yourself send to an AI service with <strong>your own key</strong>, as explained below.</p>
+
+<h2>1. What is recorded and where it goes</h2>
+<ul>
+  <li><strong>Dictation audio.</strong> Audio is recorded only while you tap the microphone. When you finish, it is sent to <strong>Groq</strong> (api.groq.com) to turn it into text, using the Groq key you entered. It never goes through a server of ours. Without a dictation in progress, Orison sends no audio anywhere.</li>
+  <li><strong>Optional AI features.</strong> If you use “Title”, “Summary” or “Restructure” on a note, that note's text is sent to Groq or Google Gemini (generativelanguage.googleapis.com), depending on the provider you chose, with your key. If you turn on “AI” translation, the text you translate is sent to the same provider, only after you authorize it in Settings.</li>
+  <li><strong>On-device translation.</strong> This is the default: it uses Google ML Kit and translates without the text leaving your phone. The first time, it downloads the language model from Google.</li>
+  <li>Groq and Google handle that data under their own policies: <a href="https://groq.com/privacy-policy/">Groq</a> · <a href="https://policies.google.com/privacy">Google</a>.</li>
+</ul>
+
+<h2>2. What stays on your phone</h2>
+<ul>
+  <li>Your notes and, if you dictated them, their audio.</li>
+  <li>The history of recent dictations, your snippets and the keyboard clipboard.</li>
+  <li>Your Groq and Google keys and any credentials you save in the keyboard, <strong>encrypted</strong> with Android's secure storage. They are never uploaded and are not part of the backup.</li>
+  <li>Your settings.</li>
+</ul>
+<p>The keyboard <strong>never stores or sends what you type</strong>, and it does not offer dictation, snippets or clipboard in password fields. The app's technical logs contain no content.</p>
+
+<h2>3. Backup</h2>
+<p>“Settings › Backup” creates a .zip file that you save wherever you choose (for example, Downloads or your Drive). It includes notes, audio, history, snippets, clipboard and settings; never keys or credentials. Orison does not upload that backup anywhere. Android's automatic backup does not include your notes or keys either.</p>
+
+<h2>4. Permissions</h2>
+<ul>
+  <li><strong>Microphone:</strong> to dictate. A notification is shown while recording from the widget or the floating bar.</li>
+  <li><strong>Internet:</strong> only to talk to Groq or Google when you ask.</li>
+  <li><strong>Display over other apps and notifications:</strong> for the floating bar and the recording notice.</li>
+  <li><strong>Orison Pointer (separate app)</strong> uses the Accessibility service only to perform the pointer's taps and draw the floating bar. It does not read screen content or store anything, except where you left the bar.</li>
+</ul>
+
+<h2>5. Purchases</h2>
+<p>If you buy Orison Pro, Google Play processes the payment. Orison only receives the purchase confirmation; it never sees your payment details.</p>
+
+<h2>6. How to delete your data</h2>
+<ul>
+  <li>A note, a dictation or a snippet: delete it in the app.</li>
+  <li>Keys: Settings › Transcription or Artificial intelligence › Delete.</li>
+  <li>Everything: Android Settings › Apps › Orison › Storage › Clear data, or uninstall the app.</li>
+  <li>What you sent to Groq or Google is governed by their policies; you can revoke your key from their consoles.</li>
+</ul>
+
+<h2>7. Children</h2>
+<p>Orison is not directed to children under 13.</p>
+
+<h2>8. Changes and contact</h2>
+<p>If this policy changes, this page and the date above are updated. Questions: <span data-contact>(contact email)</span>.</p>
+</section>
+</main>
+</body>
+</html>

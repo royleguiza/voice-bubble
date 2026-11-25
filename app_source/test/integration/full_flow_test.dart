@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voice_bubble_stt/screens/home_screen.dart';
 import 'package:voice_bubble_stt/screens/settings_screen.dart';
+import 'package:voice_bubble_stt/services/storage_service.dart';
 
 import '../helpers/mock_channels.dart';
 import '../helpers/test_app.dart';
@@ -13,7 +14,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
+    // T4: aviso de privacidad ya aceptado (su flujo se prueba en settings_screen_test).
+    SharedPreferences.setMockInitialValues({StorageService.privacyNoticeKey: true});
     FlutterSecureStorage.setMockInitialValues({});
     registerAppChannelMocks();
   });

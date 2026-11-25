@@ -507,5 +507,9 @@
   "settingsBackupErrorVersion": "O backup é de uma versão mais nova do Orison. Atualize o app e tente de novo.",
   "settingsBackupErrorBusy": "As notas estão ocupadas agora. Tente de novo em alguns segundos.",
   "settingsBackupErrorTooBig": "O backup é grande demais para importar.",
-  "settingsBackupErrorIo": "Não foi possível ler ou salvar o arquivo."
+  "settingsBackupErrorIo": "Não foi possível ler ou salvar o arquivo.",
+  "privacyNoticeTitle": "Antes de ditar",
+  "privacyNoticeAccept": "Entendi",
+  "privacyNoticeBody": "Quando você dita, o áudio é enviado ao Groq com a sua própria chave para virar texto. Ele não passa por servidores do Orison e não fica guardado em nenhum servidor nosso.\n\nSe você usar título, resumo ou tradução com IA, o texto dessa nota ou seleção vai para o Groq ou o Google, também com a sua chave.\n\nSuas notas, o histórico, os snippets e as chaves ficam no celular. O teclado nunca guarda nem envia o que você digita.",
+  "settingsAboutPrivacyPolicy": "Política de privacidade"
 }

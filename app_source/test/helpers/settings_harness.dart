@@ -43,7 +43,10 @@ class SettingsHarness {
     Map<String, Object> prefs = const {},
   }) {
     FlutterSecureStorage.setMockInitialValues(Map.of(secure));
-    SharedPreferences.setMockInitialValues(Map.of(prefs));
+    // T4: el aviso de privacidad se da por aceptado salvo que el test lo
+    // pida explícito (prefs con privacy_notice_v1: false).
+    SharedPreferences.setMockInitialValues(
+        {StorageService.privacyNoticeKey: true, ...prefs});
     storage = StorageService();
     keyboardEnabled = false;
     keyboardSelected = false;

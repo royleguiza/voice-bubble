@@ -1740,4 +1740,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsBackupErrorIo => 'No se pudo leer o guardar el archivo.';
+
+  @override
+  String get privacyNoticeTitle => 'Antes de dictar';
+
+  @override
+  String get privacyNoticeAccept => 'Entendido';
+
+  @override
+  String get privacyNoticeBody =>
+      'Cuando dictás, el audio se envía a Groq con tu propia clave para convertirlo en texto. No pasa por servidores de Orison y no se guarda en ninguno nuestro.\n\nSi usás título, resumen o traducción con IA, el texto de esa nota o selección va a Groq o a Google, también con tu clave.\n\nTus notas, el historial, los snippets y las claves quedan en el teléfono. El teclado nunca guarda ni envía lo que tecleás.';
+
+  @override
+  String get settingsAboutPrivacyPolicy => 'Política de privacidad';
 }

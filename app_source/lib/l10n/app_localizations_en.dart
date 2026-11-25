@@ -1729,4 +1729,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsBackupErrorIo => 'The file could not be read or saved.';
+
+  @override
+  String get privacyNoticeTitle => 'Before you dictate';
+
+  @override
+  String get privacyNoticeAccept => 'Got it';
+
+  @override
+  String get privacyNoticeBody =>
+      'When you dictate, the audio is sent to Groq with your own key to turn it into text. It never goes through Orison servers and is not stored on any server of ours.\n\nIf you use AI title, summary or translation, the text of that note or selection goes to Groq or Google, also with your key.\n\nYour notes, history, snippets and keys stay on your phone. The keyboard never stores or sends what you type.';
+
+  @override
+  String get settingsAboutPrivacyPolicy => 'Privacy policy';
 }

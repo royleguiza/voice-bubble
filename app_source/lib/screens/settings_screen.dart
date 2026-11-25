@@ -1014,6 +1014,64 @@ class _SettingsScreenState extends State<SettingsScreen>
   /// Guarda la clave de Groq desde el sheet. Éxito = cierra el sheet
   /// (`_isEditingApiKey = false`); error de validación o de guardado = el
   /// sheet sigue abierto con el mensaje.
+  /// T4: resumen de la política dentro de la app (y la dirección pública
+  /// cuando exista).
+  Future<void> _showPrivacySummary() async {
+    final l = context.l10n;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const ValueKey('privacy-summary-dialog'),
+        title: Text(l.settingsAboutPrivacyPolicy),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            AppInfo.privacyPolicyUrl.isEmpty
+                ? l.privacyNoticeBody
+                : '${l.privacyNoticeBody}\n\n${AppInfo.privacyPolicyUrl}',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l.commonOk),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// T4: aviso obligatorio de Play antes de habilitar el dictado. Una vez
+  /// aceptado no vuelve a aparecer.
+  Future<bool> _confirmPrivacyNotice() async {
+    if (await _storageService.loadPrivacyNoticeAccepted()) return true;
+    if (!mounted) return false;
+    final l = context.l10n;
+    final ok = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        key: const ValueKey('privacy-notice-dialog'),
+        title: Text(l.privacyNoticeTitle),
+        content: SingleChildScrollView(child: Text(l.privacyNoticeBody)),
+        actions: [
+          TextButton(
+            key: const ValueKey('privacy-notice-cancel'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.commonCancel),
+          ),
+          FilledButton(
+            key: const ValueKey('privacy-notice-accept'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.privacyNoticeAccept),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return false;
+    await _storageService.savePrivacyNoticeAccepted();
+    return true;
+  }
+
   Future<void> _saveApiKey() async {
     final key = _apiKeyController.text.trim();
     // Validación visible: vacía, incompleta (<10) o sin prefijo gsk_.
@@ -1029,6 +1087,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       if (mounted) setState(() => _apiKeyError = error);
       return;
     }
+    if (!await _confirmPrivacyNotice()) return;
     try {
       await _secureStorage.write(key: 'groq_api_key', value: key);
       final bool ok;
@@ -1627,6 +1686,11 @@ class _SettingsScreenState extends State<SettingsScreen>
               value: AppInfo.version,
             ),
             SettingsValueRow(title: context.l10n.settingsAboutEngine, value: 'Groq Whisper'),
+            SettingsNavRow(
+              key: const ValueKey('about-privacy-row'),
+              title: context.l10n.settingsAboutPrivacyPolicy,
+              onTap: _showPrivacySummary,
+            ),
             SettingsValueRow(
               key: const ValueKey('about-channel-errors'),
               title: context.l10n.settingsAboutChannelErrors,

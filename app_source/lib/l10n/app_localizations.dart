@@ -3148,6 +3148,30 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'No se pudo leer o guardar el archivo.'**
   String get settingsBackupErrorIo;
+
+  /// No description provided for @privacyNoticeTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Antes de dictar'**
+  String get privacyNoticeTitle;
+
+  /// No description provided for @privacyNoticeAccept.
+  ///
+  /// In es, this message translates to:
+  /// **'Entendido'**
+  String get privacyNoticeAccept;
+
+  /// No description provided for @privacyNoticeBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Cuando dictás, el audio se envía a Groq con tu propia clave para convertirlo en texto. No pasa por servidores de Orison y no se guarda en ninguno nuestro.\n\nSi usás título, resumen o traducción con IA, el texto de esa nota o selección va a Groq o a Google, también con tu clave.\n\nTus notas, el historial, los snippets y las claves quedan en el teléfono. El teclado nunca guarda ni envía lo que tecleás.'**
+  String get privacyNoticeBody;
+
+  /// No description provided for @settingsAboutPrivacyPolicy.
+  ///
+  /// In es, this message translates to:
+  /// **'Política de privacidad'**
+  String get settingsAboutPrivacyPolicy;
 }
 
 class _AppLocalizationsDelegate

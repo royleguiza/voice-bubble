@@ -18,6 +18,31 @@ void main() {
 
   const secureStore = FlutterSecureStorage(aOptions: StorageService.espOptions);
 
+  group('Aviso de privacidad (T4)', () {
+    testWidgets('la primera clave de Groq pide aceptar el aviso', (tester) async {
+      h.setUp(prefs: {StorageService.privacyNoticeKey: false});
+      await h.pump(tester);
+      await openPage(tester, 'transcripcion');
+      await tester.tap(byKey('api-key-row'));
+      await tester.pumpAndSettle();
+      await tester.enterText(byKey('api-key-input-field'), 'gsk_clave_de_prueba_1234');
+      await tester.tap(byKey('api-key-save-button'));
+      await tester.pumpAndSettle();
+      expect(byKey('privacy-notice-dialog'), findsOneWidget);
+      await tester.tap(byKey('privacy-notice-cancel'));
+      await tester.pumpAndSettle();
+      expect(await h.storage.loadPrivacyNoticeAccepted(), isFalse);
+      expect(await secureStore.read(key: 'groq_api_key'), isNull);
+
+      await tester.tap(byKey('api-key-save-button'));
+      await tester.pumpAndSettle();
+      await tester.tap(byKey('privacy-notice-accept'));
+      await tester.pumpAndSettle();
+      expect(await h.storage.loadPrivacyNoticeAccepted(), isTrue);
+      expect(await secureStore.read(key: 'groq_api_key'), 'gsk_clave_de_prueba_1234');
+    });
+  });
+
   group('Copia de seguridad (T1)', () {
     const channel = MethodChannel(BackupService.channelName);
     final messenger =

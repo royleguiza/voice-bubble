@@ -5,4 +5,8 @@ abstract final class AppInfo {
   static const String name = 'Orison';
   static const String version = '1.0.0';
   static const String packageId = 'com.royleguiza.orison';
+
+  /// Dirección pública de la política (T4). Vacía hasta que el dueño la
+  /// publique: Acerca de muestra entonces solo el resumen.
+  static const String privacyPolicyUrl = '';
 }
