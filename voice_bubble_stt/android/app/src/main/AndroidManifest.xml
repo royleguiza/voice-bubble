@@ -55,6 +55,26 @@
                 android:name="android.view.im"
                 android:resource="@xml/method"/>
         </service>
+        <!-- T16: importar stickers (desde el teclado o con «Compartir»). Sin
+             ventana propia; solo imágenes. -->
+        <activity
+            android:name=".StickerImportActivity"
+            android:exported="true"
+            android:label="@string/sticker_share_label"
+            android:excludeFromRecents="true"
+            android:noHistory="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.clipboardfileprovider"

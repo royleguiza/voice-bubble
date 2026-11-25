@@ -273,4 +273,16 @@
     <string name="kb_a11y_emoji">Emojis</string>
     <string name="kb_pro_daily_limit">Você usou os 10 ditados grátis de hoje. Com o Orison Pro são ilimitados: toque para ver.</string>
     <string name="dock_msg_pro_limit">Você já usou os 10 ditados de hoje</string>
+    <string name="sticker_share_label">Adicionar aos stickers do Orison</string>
+    <string name="sticker_import_none">Nenhuma imagem pôde ser adicionada.</string>
+    <string name="kb_stickers_tab">Stickers</string>
+    <string name="kb_stickers_add">Adicionar stickers</string>
+    <string name="kb_stickers_delete">Apagar</string>
+    <string name="kb_stickers_deleted">Sticker apagado</string>
+    <string name="kb_stickers_copied">Este app não aceita stickers: copiei, cole lá.</string>
+    <string name="kb_stickers_empty">Ainda não há stickers. Toque em + para adicionar imagens da galeria, ou compartilhe com o Orison de qualquer app.</string>
+    <plurals name="sticker_import_added">
+        <item quantity="one">%d sticker adicionado</item>
+        <item quantity="other">%d stickers adicionados</item>
+    </plurals>
 </resources>

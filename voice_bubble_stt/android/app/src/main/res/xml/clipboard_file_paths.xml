@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <files-path name="clipboard_media" path="clipboard_media/" />
+    <!-- T16: stickers propios (webp 512 × 512) que el teclado manda con commitContent. -->
+    <files-path name="stickers" path="stickers/" />
 </paths>
