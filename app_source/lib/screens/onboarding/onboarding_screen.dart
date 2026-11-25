@@ -53,6 +53,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
   final _tryController = TextEditingController();
 
   int _step = 0;
+  bool _closing = false;
   OnboardingUse? _use;
   bool _hasKey = false;
   String? _keyError;
@@ -126,9 +127,16 @@ class OnboardingScreenState extends State<OnboardingScreen>
     if (_step > 0) setState(() => _step--);
   }
 
+  /// Terminar o saltear. No usa maybePop: el PopScope (Atrás = paso
+  /// anterior) lo interceptaba y «Empezar a usar» volvía al paso 6 en vez
+  /// de cerrar (bug del video del 25/11).
   Future<void> _finish() async {
+    if (_closing) return;
+    _closing = true;
     await _storage.saveOnboardingDone();
-    if (mounted) Navigator.of(context).maybePop();
+    if (!mounted) return;
+    setState(() {});
+    Navigator.of(context).pop();
   }
 
   Future<void> _chooseUse(OnboardingUse use) async {
@@ -213,7 +221,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
     final l = context.l10n;
     final isLast = _step == OnboardingScreen.stepCount - 1;
     return PopScope(
-      canPop: _step == 0,
+      canPop: _step == 0 || _closing,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _back();
       },

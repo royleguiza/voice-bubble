@@ -142,11 +142,12 @@ void main() {
         (tester) async {
       await h.pump(tester, storageService: storage);
       await openPage(tester, 'teclado');
-      expect(switchValue(tester, 'credenciales-key-visible-switch'), isTrue);
+      // Apagada por defecto desde el 25/11: se prende desde Teclado.
+      expect(switchValue(tester, 'credenciales-key-visible-switch'), isFalse);
 
       await tapKey(tester, 'credenciales-key-visible-switch');
 
-      expect((await prefs()).getBool('kb_credentials_key_visible'), isFalse);
+      expect((await prefs()).getBool('kb_credentials_key_visible'), isTrue);
     });
   });
 }

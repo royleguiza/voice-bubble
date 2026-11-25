@@ -65,12 +65,28 @@ void main() {
 
   group('Teclado - teclas visibles', () {
     final cases = <String, Future<bool> Function()>{
-      'kb-terminal-row-switch': () => h.storage.loadKeyboardTerminalRowVisible(),
       'kb-code-key-switch': () => h.storage.loadKeyboardCodeKeyVisible(),
       'kb-language-key-switch': () => h.storage.loadKeyboardLanguageKeyVisible(),
+    };
+    // Desde el 25/11 (pedido del dueño) la fila terminal y la llave de claves
+    // arrancan apagadas: aparecen solo si el usuario las prende.
+    final offByDefault = <String, Future<bool> Function()>{
+      'kb-terminal-row-switch': () => h.storage.loadKeyboardTerminalRowVisible(),
       'credenciales-key-visible-switch': () =>
           h.storage.loadKeyboardCredentialsKeyVisible(),
     };
+    for (final entry in offByDefault.entries) {
+      testWidgets('${entry.key}: apagada por defecto y prender persiste',
+          (tester) async {
+        await openTeclado(tester);
+        expect(switchValue(tester, entry.key), isFalse);
+
+        await tapKey(tester, entry.key);
+
+        expect(switchValue(tester, entry.key), isTrue);
+        expect(await entry.value(), isTrue);
+      });
+    }
     for (final entry in cases.entries) {
       testWidgets('${entry.key}: visible por defecto y apagar persiste',
           (tester) async {
@@ -84,10 +100,10 @@ void main() {
       });
     }
 
-    testWidgets('refleja una tecla oculta guardada antes', (tester) async {
-      h.setUp(prefs: {'kb_terminal_row_visible': false});
+    testWidgets('refleja una tecla prendida guardada antes', (tester) async {
+      h.setUp(prefs: {'kb_terminal_row_visible': true});
       await openTeclado(tester);
-      expect(switchValue(tester, 'kb-terminal-row-switch'), isFalse);
+      expect(switchValue(tester, 'kb-terminal-row-switch'), isTrue);
     });
   });
 
@@ -159,7 +175,9 @@ void main() {
       KeyboardPreview preview() =>
           tester.widget<KeyboardPreview>(byKey('kb-preview'));
       expect(preview().heightProfile, 'media');
-      expect(preview().showTerminalRow, isTrue);
+      // Fila terminal apagada por defecto (25/11).
+      expect(preview().showTerminalRow, isFalse);
+      expect(find.text('esc'), findsNothing);
       expect(preview().invertToolbar, isFalse);
 
       await pickOption(tester, 'kb-height-profile-selector', 'alta');
@@ -167,9 +185,8 @@ void main() {
       await tapKey(tester, 'kb-invert-toolbar-switch');
 
       expect(preview().heightProfile, 'alta');
-      expect(preview().showTerminalRow, isFalse);
+      expect(preview().showTerminalRow, isTrue);
       expect(preview().invertToolbar, isTrue);
-      expect(find.text('esc'), findsNothing);
     });
   });
 

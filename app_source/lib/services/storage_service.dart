@@ -596,10 +596,11 @@ class StorageService {
 
   static const String _keyboardTerminalRowKey = 'kb_terminal_row_visible';
 
-  /// Fila terminal del teclado (TAB, ESC, CTRL, ALT, flechas).
+  /// Fila terminal del teclado (TAB, ESC, CTRL, ALT, flechas). Default false
+  /// desde el 25/11 (pedido del dueño): aparece solo si se prende.
   /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
   Future<bool> loadKeyboardTerminalRowVisible() =>
-      _getBool(_keyboardTerminalRowKey, true);
+      _getBool(_keyboardTerminalRowKey, false);
 
   Future<void> saveKeyboardTerminalRowVisible(bool visible) =>
       _setBool(_keyboardTerminalRowKey, visible);
@@ -630,9 +631,9 @@ class StorageService {
 
   /// Llavecita de credenciales en la barra superior del teclado.
   /// El teclado nativo Kotlin lee esta misma clave con prefijo "flutter.".
-  /// Default true (visible, conducta histórica).
+  /// Default false desde el 25/11 (pedido del dueño): aparece solo si se prende.
   Future<bool> loadKeyboardCredentialsKeyVisible() =>
-      _getBool(_keyboardCredentialsKeyVisibleKey, true);
+      _getBool(_keyboardCredentialsKeyVisibleKey, false);
 
   Future<void> saveKeyboardCredentialsKeyVisible(bool visible) =>
       _setBool(_keyboardCredentialsKeyVisibleKey, visible);
@@ -1241,8 +1242,11 @@ class StorageService {
         // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
         final okModel = await prefs.setString(_sttModelKey,
             CloudSttService.normalizeModel(prefs.getString(_sttModelKey)));
-        final okLang = await prefs.setString(_sttLanguageKey,
-            CloudSttService.normalizeLanguage(prefs.getString(_sttLanguageKey)));
+        // Sin elección del usuario no se escribe nada: el teclado sigue al
+        // idioma de la app (antes quedaba «es» fijo al guardar la clave).
+        final rawLang = prefs.getString(_sttLanguageKey);
+        final okLang = rawLang == null ||
+            await prefs.setString(_sttLanguageKey, CloudSttService.normalizeLanguage(rawLang));
 
         try {
           await prefs.remove(sttApiKeyMirrorKey);
@@ -1301,8 +1305,11 @@ class StorageService {
       // Respeta el modelo elegido en Ajustes (solo corrige uno inválido).
       final okModel = await prefs.setString(_sttModelKey,
           CloudSttService.normalizeModel(prefs.getString(_sttModelKey)));
-      final okLang = await prefs.setString(_sttLanguageKey,
-          CloudSttService.normalizeLanguage(prefs.getString(_sttLanguageKey)));
+      // Sin elección del usuario no se escribe nada: el teclado sigue al
+      // idioma de la app (antes quedaba «es» fijo al guardar la clave).
+      final rawLang = prefs.getString(_sttLanguageKey);
+      final okLang = rawLang == null ||
+          await prefs.setString(_sttLanguageKey, CloudSttService.normalizeLanguage(rawLang));
 
       try {
         await prefs.remove(sttApiKeyMirrorKey);

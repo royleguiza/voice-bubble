@@ -213,6 +213,16 @@ class SpeechToTextClient(
     /** «Idioma en que hablo» (`kb_stt_language`): `auto` o uno de [LANGUAGES].
      *  Otro valor o vacío cae a español. Espejo de
      *  `CloudSttService.normalizeLanguage` (Dart). */
+    /**
+     * Sin elección del usuario, el dictado sigue al idioma de la app (si
+     * Whisper lo tiene en la lista); si no, español. Pedido del 25/11: con
+     * la app en inglés, hablar en inglés se transcribía forzado a español.
+     */
+    internal fun defaultLanguageFor(context: Context): String {
+        val lang = AppLocale.effectiveLanguage(context)
+        return if (lang in LANGUAGES && lang != AUTO_LANGUAGE) lang else DEFAULT_LANGUAGE
+    }
+
     internal fun resolveLanguage(raw: String?): String {
         val value = raw?.trim()
         return if (value != null && value in LANGUAGES) value else DEFAULT_LANGUAGE
@@ -229,7 +239,7 @@ class SpeechToTextClient(
         val (model, language) = try {
             val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
             resolveModel(prefs.getString("flutter.kb_stt_model", DEFAULT_MODEL)) to
-                resolveLanguage(prefs.getString("flutter.kb_stt_language", DEFAULT_LANGUAGE))
+                resolveLanguage(prefs.getString("flutter.kb_stt_language", null) ?: defaultLanguageFor(context))
         } catch (_: Exception) {
             cached.model to cached.language
         }
@@ -273,7 +283,7 @@ class SpeechToTextClient(
             apiKey = SecureStore.read(context, SecureStore.STT_API_KEY)
                 ?: migrateLegacyMirror(prefs).orEmpty(),
             model = resolveModel(prefs.getString("flutter.kb_stt_model", DEFAULT_MODEL)),
-            language = resolveLanguage(prefs.getString("flutter.kb_stt_language", DEFAULT_LANGUAGE)),
+            language = resolveLanguage(prefs.getString("flutter.kb_stt_language", null) ?: defaultLanguageFor(context)),
         )
         // C-19: Lectura de presencia de clave configurada en prefs planas
         try {

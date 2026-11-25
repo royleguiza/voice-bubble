@@ -117,10 +117,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _notesDeferredQueue = false;
   bool _isKeyboardEnabled = false;
   bool _isKeyboardSelected = false;
-  bool _showTerminalRow = true;
+  bool _showTerminalRow = false;
   bool _showCodeKey = true;
   bool _showLanguageKey = true;
-  bool _showCredentialsKey = true;
+  bool _showCredentialsKey = false;
   bool _autoCaps = true;
   bool _topRowNumbers = true;
   bool _showEmojiKey = true;

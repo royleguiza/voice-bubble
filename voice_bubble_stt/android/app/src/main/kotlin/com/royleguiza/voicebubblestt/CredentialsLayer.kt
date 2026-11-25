@@ -60,7 +60,12 @@ class CredentialsLayer(
     }
 
     /** Lista compacta de credenciales: avatar + nombre (+usuario) + pegar. */
-    fun buildRows(parent: LinearLayout) {
+    /**
+     * [heightPx]: alto del área de claves. La capa completa pasa el de dos
+     * filas de teclas + un hueco, así mide igual que las letras y no empuja
+     * el teclado (bug del 25/11); el modo mini usa el alto compacto.
+     */
+    fun buildRows(parent: LinearLayout, heightPx: Int = host.scaledDimen(R.dimen.kb_snippets_grid_height)) {
         val entries = store.getIndex()
         val showUser = store.getShowUser()
         if (entries.isEmpty()) {
@@ -70,10 +75,7 @@ class CredentialsLayer(
                 setTextColor(ContextCompat.getColor(service, R.color.kb_label_secondary))
                 setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13f)
             }
-            val lp = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                host.scaledDimen(R.dimen.kb_snippets_grid_height),
-            )
+            val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, heightPx)
             lp.topMargin = host.rowGap()
             parent.addView(empty, lp)
             return
@@ -88,10 +90,7 @@ class CredentialsLayer(
             list.addView(buildRow(entry, showUser))
         }
         scroll.addView(list)
-        val lp = LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            host.scaledDimen(R.dimen.kb_snippets_grid_height),
-        )
+        val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, heightPx)
         lp.topMargin = host.rowGap()
         parent.addView(scroll, lp)
     }

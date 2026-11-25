@@ -225,10 +225,10 @@ void main() {
   });
 
   group('StorageService - fila terminal del teclado', () {
-    test('default visible cuando no hay clave guardada', () async {
+    test('default oculto cuando no hay clave guardada (25/11)', () async {
       SharedPreferences.setMockInitialValues({});
       final service = StorageService();
-      expect(await service.loadKeyboardTerminalRowVisible(), isTrue);
+      expect(await service.loadKeyboardTerminalRowVisible(), isFalse);
     });
 
     test('persiste oculto y lo recupera', () async {
@@ -324,10 +324,10 @@ void main() {
   });
 
   group('StorageService - llave de credenciales del teclado', () {
-    test('default visible cuando no hay clave guardada', () async {
+    test('default oculto cuando no hay clave guardada (25/11)', () async {
       SharedPreferences.setMockInitialValues({});
       final service = StorageService();
-      expect(await service.loadKeyboardCredentialsKeyVisible(), isTrue);
+      expect(await service.loadKeyboardCredentialsKeyVisible(), isFalse);
     });
 
     test('persiste oculto y lo recupera', () async {
@@ -574,7 +574,8 @@ void main() {
       expect(prefs.getBool('kb_stt_key_configured'), isTrue);
       expect(prefs.getString('kb_stt_url'), CloudSttService.endpoint);
       expect(prefs.getString('kb_stt_model'), CloudSttService.model);
-      expect(prefs.getString('kb_stt_language'), CloudSttService.language);
+      // 25/11: sin elección no se escribe idioma (el teclado sigue a la app).
+      expect(prefs.getString('kb_stt_language'), isNull);
     });
 
     test('saveSttMirror y repairSttMirror respetan URL custom (C-22)', () async {

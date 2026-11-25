@@ -65,4 +65,20 @@ object AppLocale {
         config.setLocale(Locale.forLanguageTag(tag))
         return base.createConfigurationContext(config)
     }
+
+    /**
+     * Idioma en el que se ve la app ahora (código de dos letras): el elegido
+     * en Ajustes o, con «sistema», el del teléfono. Sirve para que el
+     * teclado (Ñ o no) y el dictado sigan a la app mientras el usuario no
+     * elija otra cosa a mano.
+     */
+    fun effectiveLanguage(context: Context): String {
+        val chosen = current(context) ?: stored(context)
+        if (chosen in SUPPORTED) return chosen
+        return try {
+            context.resources.configuration.locales[0].language
+        } catch (_: Exception) {
+            Locale.getDefault().language
+        }
+    }
 }

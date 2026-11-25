@@ -48,6 +48,9 @@ class VoiceKeyboardService : InputMethodService(), EmojiLayer.UiHost, Credential
     @Volatile
     private var spanishMode = true
 
+    /** Último idioma de la app visto: al cambiar, la distribución lo sigue (Ñ solo en español). */
+    private var lastAppLanguage: String? = null
+
     // --- Dictado (K3 + M4 Morph-to-Pill; máquina en DictationController) ---
     private lateinit var dictation: DictationController
     private var currentIsPasswordField = false
@@ -190,6 +193,13 @@ class VoiceKeyboardService : InputMethodService(), EmojiLayer.UiHost, Credential
         // C-12: Precalentamiento de configuración STT en segundo plano antes del foco y toques de usuario
         dictation.preloadSttConfig()
         kbPrefs.load()
+        // Con la app en inglés o portugués, el teclado arranca sin Ñ; la tecla
+        // ES/EN sigue cambiándolo a mano hasta que cambie el idioma de la app.
+        val appLanguage = AppLocale.effectiveLanguage(this)
+        if (appLanguage != lastAppLanguage) {
+            spanishMode = appLanguage == "es"
+            lastAppLanguage = appLanguage
+        }
         if (::miniStore.isInitialized) miniMode = miniStore.load()
         if (currentIsPasswordField && (layer == Layer.TRACKPAD || layer == Layer.SNIPPETS || layer == Layer.CLIPBOARD)) {
             layer = Layer.LETTERS
@@ -741,7 +751,9 @@ class VoiceKeyboardService : InputMethodService(), EmojiLayer.UiHost, Credential
      */
     /** Shell SPK-05: la capa vive en CredentialsLayer; aquí solo el compacto. */
     private fun buildCredentialRows() {
-        credentials.buildRows(root)
+        // Mismo alto que la capa de letras: área = 2 filas + 1 hueco, y abajo
+        // una fila de letras (antes el área fija empujaba el teclado).
+        credentials.buildRows(root, keyHeightPx() * 2 + rowGapPx())
         // Teclado compacto debajo (letras) para no dejar la capa vacia.
         addRow(keys.letterRow("qwertyuiop"))
     }

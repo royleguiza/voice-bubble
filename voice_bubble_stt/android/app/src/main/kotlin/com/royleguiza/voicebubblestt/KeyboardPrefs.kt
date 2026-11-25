@@ -25,10 +25,10 @@ class KeyboardPrefs(private val context: Context) {
     var sttKeyConfigured = false
 
     // AT-A8: cache de visibilidad; rebuild jamas consulta SharedPreferences.
-    var terminalRowVisiblePref = true
+    var terminalRowVisiblePref = false
     var codeKeyVisiblePref = true
     var languageKeyVisiblePref = true
-    var credentialsKeyVisiblePref = true
+    var credentialsKeyVisiblePref = false
 
     /** T6: mayúscula automática (Ajustes › Teclado, encendida por defecto). */
     var autoCaps = true
@@ -105,12 +105,12 @@ class KeyboardPrefs(private val context: Context) {
     /**
      * Preferencia escrita por los Ajustes de la app (Flutter shared_preferences
      * guarda con prefijo "flutter." en el archivo FlutterSharedPreferences).
-     * Parseo tolerante: ante cualquier error se muestra la fila (default true).
+     * Parseo tolerante. Default false desde el 25/11 (pedido del dueño): la fila aparece solo si se prende en Ajustes.
      */
     fun terminalRowVisible(): Boolean = try {
-        prefs().getBoolean("flutter.kb_terminal_row_visible", true)
+        prefs().getBoolean("flutter.kb_terminal_row_visible", false)
     } catch (_: Exception) {
-        true
+        false
     }
 
     /**
@@ -137,12 +137,12 @@ class KeyboardPrefs(private val context: Context) {
 
     /**
      * Llavecita de credenciales en la barra superior del teclado
-     * (Ajustes → Claves). Default true (visible, conducta histórica).
+     * (Ajustes → Claves). Default false desde el 25/11 (pedido del dueño): aparece solo si se prende.
      */
     fun credentialsKeyVisible(): Boolean = try {
-        prefs().getBoolean("flutter.kb_credentials_key_visible", true)
+        prefs().getBoolean("flutter.kb_credentials_key_visible", false)
     } catch (_: Exception) {
-        true
+        false
     }
 
     /**
@@ -239,10 +239,10 @@ class KeyboardPrefs(private val context: Context) {
         } catch (_: Exception) {
             "ios_2d"
         }
-        terminalRowVisiblePref = try { p.getBoolean("flutter.kb_terminal_row_visible", true) } catch (_: Exception) { true }
+        terminalRowVisiblePref = try { p.getBoolean("flutter.kb_terminal_row_visible", false) } catch (_: Exception) { false }
         codeKeyVisiblePref = try { p.getBoolean("flutter.kb_code_key_visible", true) } catch (_: Exception) { true }
         languageKeyVisiblePref = try { p.getBoolean("flutter.kb_language_key_visible", true) } catch (_: Exception) { true }
-        credentialsKeyVisiblePref = try { p.getBoolean("flutter.kb_credentials_key_visible", true) } catch (_: Exception) { true }
+        credentialsKeyVisiblePref = try { p.getBoolean("flutter.kb_credentials_key_visible", false) } catch (_: Exception) { false }
         autoCaps = try { p.getBoolean("flutter.kb_auto_caps", true) } catch (_: Exception) { true }
         topRowNumbers = try { p.getBoolean("flutter.kb_top_row_numbers", true) } catch (_: Exception) { true }
         emojiKeyVisible = try { p.getBoolean("flutter.kb_emoji_key", true) } catch (_: Exception) { true }

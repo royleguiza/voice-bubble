@@ -132,8 +132,11 @@ class SttConfigStore {
       final okModel = await prefs.setString(
           sttModelKey, CloudSttService.normalizeModel(prefs.getString(sttModelKey)));
       // Respeta el idioma elegido en Ajustes (solo corrige uno inválido).
-      final okLang = await prefs.setString(sttLanguageKey,
-          CloudSttService.normalizeLanguage(prefs.getString(sttLanguageKey)));
+      // Sin elección del usuario no se escribe nada: el teclado sigue al
+      // idioma de la app (antes quedaba «es» fijo al guardar la clave).
+      final rawLang = prefs.getString(sttLanguageKey);
+      final okLang = rawLang == null ||
+          await prefs.setString(sttLanguageKey, CloudSttService.normalizeLanguage(rawLang));
 
       try {
         await prefs.remove(sttApiKeyMirrorKey);
@@ -172,8 +175,11 @@ class SttConfigStore {
       final okModel = await prefs.setString(
           sttModelKey, CloudSttService.normalizeModel(prefs.getString(sttModelKey)));
         // Respeta el idioma elegido en Ajustes (solo corrige uno inválido).
-        final okLang = await prefs.setString(sttLanguageKey,
-            CloudSttService.normalizeLanguage(prefs.getString(sttLanguageKey)));
+        // Sin elección del usuario no se escribe nada: el teclado sigue al
+        // idioma de la app (antes quedaba «es» fijo al guardar la clave).
+        final rawLang = prefs.getString(sttLanguageKey);
+        final okLang = rawLang == null ||
+            await prefs.setString(sttLanguageKey, CloudSttService.normalizeLanguage(rawLang));
 
         try {
           await prefs.remove(sttApiKeyMirrorKey);

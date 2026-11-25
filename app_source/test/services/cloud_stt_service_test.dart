@@ -1,3 +1,4 @@
+import 'dart:ui' show Locale;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -5,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
+import 'package:voice_bubble_stt/ui/app_locale.dart';
 
 import '../helpers/wav_fixture.dart';
 
@@ -372,10 +374,23 @@ void main() {
       expect(CloudSttService.normalizeLanguage('ja'), 'ja');
       expect(CloudSttService.normalizeLanguage(' en '), 'en');
       expect(CloudSttService.normalizeLanguage('auto'), 'auto');
+      appLocale.value = const Locale('es');
+      addTearDown(() => appLocale.value = null);
       for (final raw in [null, '', 'xx', 'ES']) {
         expect(CloudSttService.normalizeLanguage(raw), 'es',
             reason: 'valor: $raw');
       }
+    });
+
+    test('sin elección, el dictado sigue al idioma de la app (25/11)', () {
+      addTearDown(() => appLocale.value = null);
+      appLocale.value = const Locale('en');
+      expect(CloudSttService.normalizeLanguage(null), 'en');
+      appLocale.value = const Locale('pt');
+      expect(CloudSttService.normalizeLanguage(null), 'pt');
+      // Lo elegido a mano manda siempre.
+      expect(CloudSttService.normalizeLanguage('es'), 'es');
+      expect(CloudSttService.normalizeLanguage('auto'), 'auto');
     });
 
     Future<String?> sentLanguage(CloudSttService base) async {

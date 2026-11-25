@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../models/transcription.dart';
+import '../ui/app_locale.dart';
 import 'service_error.dart';
 
 export 'service_error.dart';
@@ -135,8 +137,20 @@ class CloudSttService {
   /// cae a español). Espejo de `SpeechToTextClient.resolveLanguage`.
   static String normalizeLanguage(String? raw) {
     final value = raw?.trim();
-    return (value != null && languages.contains(value)) ? value : _language;
+    if (value != null && languages.contains(value)) return value;
+    // Sin elección (o inválida): el idioma de la app, si Whisper lo tiene en
+    // la lista (pedido del 25/11: app en inglés y dictado forzado a español).
+    final app = appLanguageCode();
+    return (app != autoLanguage && languages.contains(app)) ? app : _language;
   }
+
+  /// Idioma en que se ve la app: el elegido en Ajustes o el del teléfono.
+  static String appLanguageCode() {
+    final chosen = appLocale.value?.languageCode;
+    if (chosen != null) return chosen;
+    return ui.PlatformDispatcher.instance.locale.languageCode;
+  }
+
 
   /// Modelo preciso de Groq: un poco más lento, menos errores y mejor
   /// puntuación (error por palabra 10,3 % contra 12 % del turbo).

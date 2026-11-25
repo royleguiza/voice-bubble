@@ -52,15 +52,27 @@ void main() {
     messenger.setMockMethodCallHandler(SystemChannels.platform, null);
   });
 
+  /// Abre el primer uso empujado sobre una pantalla, como en la app.
   Future<void> pumpOnboarding(WidgetTester tester, {bool mic = true}) async {
     configureTestViewSize(tester, physicalSize: const Size(1200, 2600));
     await tester.pumpWidget(esMaterialApp(
-      home: OnboardingScreen(
-        storageService: StorageService(),
-        keyboardService: KeyboardService(channel: keyboardChannel),
-        requestMicrophone: () async => mic,
+      home: Builder(
+        builder: (context) => Center(
+          child: TextButton(
+            key: const ValueKey('open-onb'),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => OnboardingScreen(
+                storageService: StorageService(),
+                keyboardService: KeyboardService(channel: keyboardChannel),
+                requestMicrophone: () async => mic,
+              ),
+            )),
+            child: const Text('abrir'),
+          ),
+        ),
       ),
     ));
+    await tester.tap(find.byKey(const ValueKey('open-onb')));
     await tester.pumpAndSettle();
   }
 
@@ -112,6 +124,8 @@ void main() {
 
     await tap(tester, 'onb-next');
     expect(await StorageService().loadOnboardingDone(), isTrue);
+    // Bug del 25/11: «Empezar a usar» volvía al paso anterior en vez de cerrar.
+    expect(find.byType(OnboardingScreen), findsNothing);
   });
 
   testWidgets('una clave copiada se ofrece para pegar', (tester) async {
@@ -142,5 +156,6 @@ void main() {
     await pumpOnboarding(tester);
     await tap(tester, 'onb-skip-all');
     expect(await StorageService().loadOnboardingDone(), isTrue);
+    expect(find.byType(OnboardingScreen), findsNothing);
   });
 }
