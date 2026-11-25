@@ -3538,6 +3538,138 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Tecla de emojis'**
   String get keyboardEmojiKey;
+
+  /// No description provided for @proTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Orison Pro'**
+  String get proTitle;
+
+  /// No description provided for @proSee.
+  ///
+  /// In es, this message translates to:
+  /// **'Ver Pro'**
+  String get proSee;
+
+  /// No description provided for @proDailyLimit.
+  ///
+  /// In es, this message translates to:
+  /// **'Llegaste a los 10 dictados gratis de hoy. Con Orison Pro son ilimitados.'**
+  String get proDailyLimit;
+
+  /// No description provided for @proStateUnlocked.
+  ///
+  /// In es, this message translates to:
+  /// **'Activo'**
+  String get proStateUnlocked;
+
+  /// No description provided for @proStateTrial.
+  ///
+  /// In es, this message translates to:
+  /// **'Prueba: {days, plural, =1{1 día} other{{days} días}}'**
+  String proStateTrial(int days);
+
+  /// No description provided for @proStateFree.
+  ///
+  /// In es, this message translates to:
+  /// **'Quedan {left} hoy'**
+  String proStateFree(int left);
+
+  /// No description provided for @proStateUnlockedLong.
+  ///
+  /// In es, this message translates to:
+  /// **'Tenés Orison Pro: dictado, traducción e IA en notas sin límite. ¡Gracias por apoyar Orison!'**
+  String get proStateUnlockedLong;
+
+  /// No description provided for @proStateTrialLong.
+  ///
+  /// In es, this message translates to:
+  /// **'Estás en la prueba con todo incluido: {days, plural, =1{queda 1 día} other{quedan {days} días}}. Después, el teclado sigue completo y tenés {free} dictados por día gratis.'**
+  String proStateTrialLong(int days, int free);
+
+  /// No description provided for @proStateFreeLong.
+  ///
+  /// In es, this message translates to:
+  /// **'Terminó la prueba. Te {left, plural, =1{queda 1 dictado} other{quedan {left} dictados}} de {free} hoy. Con Pro son ilimitados.'**
+  String proStateFreeLong(int left, int free);
+
+  /// No description provided for @proIncludesHeader.
+  ///
+  /// In es, this message translates to:
+  /// **'Qué incluye'**
+  String get proIncludesHeader;
+
+  /// No description provided for @proIncludesFooter.
+  ///
+  /// In es, this message translates to:
+  /// **'Pago único: es tuyo para siempre, sin suscripción. Tus notas, snippets y ajustes nunca se bloquean.'**
+  String get proIncludesFooter;
+
+  /// No description provided for @proIncludesDictation.
+  ///
+  /// In es, this message translates to:
+  /// **'Dictados por día'**
+  String get proIncludesDictation;
+
+  /// No description provided for @proIncludesAi.
+  ///
+  /// In es, this message translates to:
+  /// **'Traducción e IA en notas'**
+  String get proIncludesAi;
+
+  /// No description provided for @proIncludesKeyboard.
+  ///
+  /// In es, this message translates to:
+  /// **'Teclado, snippets y emojis'**
+  String get proIncludesKeyboard;
+
+  /// No description provided for @proAlwaysFree.
+  ///
+  /// In es, this message translates to:
+  /// **'Siempre gratis'**
+  String get proAlwaysFree;
+
+  /// No description provided for @proBuy.
+  ///
+  /// In es, this message translates to:
+  /// **'Comprar Orison Pro'**
+  String get proBuy;
+
+  /// No description provided for @proBuyPrice.
+  ///
+  /// In es, this message translates to:
+  /// **'Comprar Orison Pro · {price}'**
+  String proBuyPrice(String price);
+
+  /// No description provided for @proRestore.
+  ///
+  /// In es, this message translates to:
+  /// **'Restaurar compra'**
+  String get proRestore;
+
+  /// No description provided for @proLaunchUntil.
+  ///
+  /// In es, this message translates to:
+  /// **'Precio de lanzamiento hasta el {date}.'**
+  String proLaunchUntil(String date);
+
+  /// No description provided for @proBuyUnavailable.
+  ///
+  /// In es, this message translates to:
+  /// **'La compra no está disponible ahora. Probá de nuevo con la app instalada desde Play.'**
+  String get proBuyUnavailable;
+
+  /// No description provided for @proRestored.
+  ///
+  /// In es, this message translates to:
+  /// **'Listo: Orison Pro está activo.'**
+  String get proRestored;
+
+  /// No description provided for @proNothingToRestore.
+  ///
+  /// In es, this message translates to:
+  /// **'No encontramos una compra de Orison Pro en esta cuenta de Google.'**
+  String get proNothingToRestore;
 }
 
 class _AppLocalizationsDelegate

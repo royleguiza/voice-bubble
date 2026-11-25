@@ -274,6 +274,13 @@ class WidgetDictationService(
 
     private fun startRecording(widgetId: Int) {
         if (isRecording) return
+        // T15: pasada la prueba, 10 dictados por día sin Pro.
+        if (!ProGate.tryStartDictation(this)) {
+            showClipboardNotice(getString(R.string.kb_pro_daily_limit))
+            updateWidgetsState("idle")
+            stopSelf()
+            return
+        }
         updateWidgetsState("recording")
         if (claimMicrophoneForDictation() == 0L) {
             updateWidgetsState("error")

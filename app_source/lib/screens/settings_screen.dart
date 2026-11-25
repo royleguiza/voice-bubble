@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:record/record.dart';
 import '../app_info.dart';
 import '../l10n/l10n_ext.dart';
@@ -10,6 +11,7 @@ import 'onboarding/onboarding_screen.dart';
 import 'settings/snippets_tab.dart';
 import '../helpers/island_geometry.dart';
 import '../services/backup_service.dart';
+import '../services/pro_service.dart';
 import '../services/channel_guard.dart';
 import '../services/cloud_stt_service.dart';
 import '../services/storage_service.dart';
@@ -27,6 +29,7 @@ import '../widgets/island_mockup.dart';
 import '../widgets/settings_v2.dart';
 
 part 'settings/backup_page.dart';
+part 'settings/pro_page.dart';
 part 'settings/general_tab.dart';
 part 'settings/island_page.dart';
 part 'settings/teclado_tab.dart';
@@ -47,6 +50,7 @@ enum SettingsPage {
   claves,
   notas,
   copia,
+  pro,
   acerca,
 }
 
@@ -57,6 +61,9 @@ class SettingsScreen extends StatefulWidget {
   final FloatingTrackpadService? floatingTrackpadService;
   final KeyboardService? keyboardService;
 
+  /// T15: abrir directo en una página (p. ej. Pro desde el aviso del límite).
+  final SettingsPage? initialPage;
+
   const SettingsScreen({
     super.key,
     this.storageService,
@@ -64,6 +71,7 @@ class SettingsScreen extends StatefulWidget {
     this.floatingBubbleService,
     this.floatingTrackpadService,
     this.keyboardService,
+    this.initialPage,
   });
 
   @override
@@ -158,6 +166,9 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   /// Copia de seguridad en curso: `saved` exportando, `imported` importando.
   BackupStatus? _backupBusy;
+
+  /// T15: estado de Orison Pro (prueba, gratis o Pro).
+  ProStatus? _proStatus;
   final BackupService _backupService = BackupService();
   String _themeMode = StorageService.defaultThemeMode;
   String _appLocale = StorageService.defaultAppLocale;
@@ -174,7 +185,11 @@ class _SettingsScreenState extends State<SettingsScreen>
     _floatingTrackpadService =
         widget.floatingTrackpadService ?? FloatingTrackpadService();
     _keyboardService = widget.keyboardService ?? KeyboardService();
+    if (widget.initialPage != null && widget.initialPage != SettingsPage.root) {
+      _stack.add(widget.initialPage!);
+    }
     _loadInitialState();
+    unawaited(_loadProStatus());
     // Sin petición de mic al abrir Ajustes: hasPermission() dispara el
     // prompt del sistema y molesta sin motivo. Se pide solo en intención
     // explícita de usar el mic (activar la burbuja, ver _toggleBubble).
@@ -755,6 +770,42 @@ class _SettingsScreenState extends State<SettingsScreen>
     appLocale.value = localeFromStorage(code);
     if (mounted) setState(() => _appLocale = code);
     await AppLocaleChannel.apply(code);
+  }
+
+  Future<void> _loadProStatus() async {
+    final status = await ProGate.status();
+    if (mounted) setState(() => _proStatus = status);
+  }
+
+  String? _proStatusLabel(BuildContext context) {
+    final st = _proStatus;
+    if (st == null) return null;
+    if (st.unlocked) return context.l10n.proStateUnlocked;
+    if (st.inTrial) return context.l10n.proStateTrial(st.trialDaysLeft);
+    return context.l10n.proStateFree(st.freeLeftToday);
+  }
+
+  Future<void> _buyPro() async {
+    final ok = await ProService.instance.buy();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.proBuyUnavailable)),
+      );
+    }
+  }
+
+  Future<void> _restorePro() async {
+    await ProService.instance.restore();
+    await Future<void>.delayed(const Duration(seconds: 2));
+    await _loadProStatus();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_proStatus?.unlocked == true
+            ? context.l10n.proRestored
+            : context.l10n.proNothingToRestore),
+      ),
+    );
   }
 
   Future<void> _exportBackup() async {
@@ -1412,6 +1463,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         return _buildNotasPage(context);
       case SettingsPage.copia:
         return _buildCopiaPage(context);
+      case SettingsPage.pro:
+        return _buildProPage(context);
       case SettingsPage.acerca:
         return _buildAcercaPage(context);
       case SettingsPage.snippets:
@@ -1572,6 +1625,18 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
             ],
           ),
+        SettingsSection(
+          children: [
+            SettingsNavRow(
+              key: const ValueKey('nav-pro'),
+              icon: Icons.workspace_premium_outlined,
+              title: context.l10n.proTitle,
+              value: _proStatusLabel(context),
+              valueActive: _proStatus?.unlocked ?? false,
+              onTap: () => _go(SettingsPage.pro),
+            ),
+          ],
+        ),
         SettingsAppCard(
           key: const ValueKey('about-open-button'),
           title: AppInfo.name,

@@ -152,6 +152,11 @@ class DockDictationService : Service() {
             fail(DockDictationLogic.MSG_NO_MIC_PERMISSION)
             return
         }
+        // T15: pasada la prueba, 10 dictados por día sin Pro.
+        if (!ProGate.tryStartDictation(this)) {
+            fail(DockDictationLogic.MSG_PRO_LIMIT)
+            return
+        }
         micClaim = BackgroundWork.tryClaimMicrophone()
         if (micClaim == 0L) {
             fail(DockDictationLogic.MSG_MIC_BUSY)

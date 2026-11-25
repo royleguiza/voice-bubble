@@ -59,6 +59,10 @@ kb_translate_mode
 kb_translate_target
 notes_deferred_queue_enabled
 pointer_open_mode
+pro_day
+pro_day_count
+pro_trial_start_ms
+pro_unlocked
 transcriptions
 vb_cred_pass_v1
 vb_cred_show_user

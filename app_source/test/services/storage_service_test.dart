@@ -769,10 +769,14 @@ void main() {
       'kb_auto_caps',
       'kb_top_row_numbers',
       'kb_emoji_key',
+      'pro_unlocked',
+      'pro_trial_start_ms',
+      'pro_day',
+      'pro_day_count',
     };
 
-    test('bridgeKeys cubre exactamente el contrato (69 claves)', () {
-      expect(StorageService.bridgeKeys.length, 69);
+    test('bridgeKeys cubre exactamente el contrato (73 claves)', () {
+      expect(StorageService.bridgeKeys.length, 73);
       expect(Set.of(StorageService.bridgeKeys), expectedBridgeKeys);
       expect(Set.of(StorageService.bridgeKeys), kContractKeysSnapshot);
       final contractFile = File('docs/contract-keys.txt');

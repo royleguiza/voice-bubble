@@ -88,6 +88,7 @@ El complemento no lee lo que hay en pantalla: solo hace el toque donde está el 
 | `SYSTEM_ALERT_WINDOW` | Al activar la burbuja | Mostrar la burbuja flotante sobre otras apps. |
 | `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_MICROPHONE` | Automático (declarados en el manifest) | Mantener la grabación viva como servicio en primer plano, siempre visible vía notificación. |
 | `POST_NOTIFICATIONS` | Android 13+ | Mostrar la notificación del servicio mientras graba. |
+| `com.android.vending.BILLING` | Lo agrega el plugin `in_app_purchase` (T15) | Comprar Orison Pro (pago único) con Google Play. La app no ve datos de pago: solo recibe la confirmación de la compra. |
 | `INTERNET` | Automático (declarado en el manifest) | Enviar el audio al motor de transcripción (Groq) únicamente cuando inicias una transcripción. |
 | `VIBRATE` | Al escribir o interactuar con el trackpad/píldora | Permiso normal para respuesta háptica física en pulsaciones y gestos, sin impacto en privacidad ni advertencias en Play Protect. |
 

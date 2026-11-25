@@ -656,6 +656,13 @@ class StorageService {
   Future<void> saveKeyboardTopRowNumbers(bool enabled) =>
       _setBool(kbTopRowNumbersKey, enabled);
 
+  /// T15: estado de Orison Pro (lo leen el teclado, el widget y la barra);
+  /// la lógica vive en `ProGate` (pro_service.dart), con las mismas claves.
+  static const String proUnlockedKey = 'pro_unlocked';
+  static const String proTrialStartKey = 'pro_trial_start_ms';
+  static const String proDayKey = 'pro_day';
+  static const String proDayCountKey = 'pro_day_count';
+
   /// T14 (K7): tecla de emojis en la fila de abajo del teclado. El teclado
   /// nativo lee `flutter.kb_emoji_key`. Default true.
   static const String kbEmojiKeyKey = 'kb_emoji_key';
@@ -1123,6 +1130,10 @@ class StorageService {
     kbAutoCapsKey,
     kbTopRowNumbersKey,
     kbEmojiKeyKey,
+    proUnlockedKey,
+    proTrialStartKey,
+    proDayKey,
+    proDayCountKey,
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,
     _keyboardCredentialsKeyVisibleKey,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'app_info.dart';
 import 'l10n/app_localizations.dart';
+import 'services/pro_service.dart';
 import 'services/storage_service.dart';
 import 'ui/app_locale.dart';
 import 'ui/design_tokens.dart';
@@ -22,6 +23,10 @@ void main() async {
   } catch (_) {}
   // Android 13+: el idioma pudo cambiarse desde Ajustes del sistema.
   unawaited(_syncAppLocaleFromSystem());
+  // T15: la prueba de 30 días arranca con el primer uso; las compras de
+  // Play se escuchan desde el arranque (también las pendientes).
+  unawaited(ProGate.ensureTrialStarted());
+  unawaited(ProService.instance.init());
   // Arranque en frío del proceso: con la animación Horizonte (una vez).
   runApp(const VoiceBubbleApp(showIntro: true));
 }

@@ -9,6 +9,7 @@
 | **Credenciales** | `StorageService.maxCredentials` | `CredentialStore.MAX_CREDENTIALS` | **50** | Rechazo de nuevas inserciones (`addCredential` retorna `false`) y truncamiento de índice. |
 | **Cola de audios pendientes** | `PendingNoteQueue.maxPending` / `StorageService.maxPendingNotes` | `NoteStore.MAX_PENDING` / `WidgetDictationService.MAX_PENDING_WAVS` | **15** | FIFO (desahucio del audio pendiente más antiguo con borrado seguro de su archivo WAV). |
 | **Notas** | `NotesService.maxNotes` | `NoteStore.MAX_NOTES` | **200** | Rechazo de notas nuevas al llegar al tope (la copia de seguridad nunca desplaza notas locales). |
+| **Orison Pro (T15)** | `ProGate.trialDays` / `ProGate.freeDailyDictations` | `ProGate.TRIAL_DAYS` / `ProGate.FREE_DAILY_DICTATIONS` | **30 días / 10 por día** | Pasada la prueba y sin Pro, el dictado 11 del día no arranca (aviso con enlace a Pro). Ante un error de lectura siempre deja dictar. |
 | **Portapapeles** | `StorageService.maxClips` | `ClipboardStore.MAX_UNPINNED_ITEMS` | **50** | FIFO-50 sobre elementos no anclados (descarta el clip no anclado más antiguo). |
 
 ## Reglas de Coherencia

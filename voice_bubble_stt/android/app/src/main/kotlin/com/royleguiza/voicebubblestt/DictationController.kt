@@ -542,6 +542,17 @@ class DictationController(
             )
             return
         }
+        // T15: pasada la prueba, 10 dictados por día sin Pro.
+        if (!ProGate.tryStartDictation(service)) {
+            abandonAudioFocus()
+            micState = MicState.IDLE
+            refreshMicVisual()
+            host.showNotice(
+                service.getString(R.string.kb_pro_daily_limit),
+                openSettingsOnClick = true,
+            )
+            return
+        }
         val claimToken = BackgroundWork.tryClaimMicrophone()
         if (claimToken == 0L) {
             abandonAudioFocus()

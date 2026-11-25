@@ -18,6 +18,27 @@ void main() {
 
   const secureStore = FlutterSecureStorage(aOptions: StorageService.espOptions);
 
+  group('Orison Pro (T15)', () {
+    testWidgets('la raíz muestra la prueba y la página explica qué incluye',
+        (tester) async {
+      await h.pump(tester);
+      expect(rowShows('nav-pro', 'Prueba: 30 días'), isTrue);
+      await openPage(tester, 'pro');
+      expect(byKey('pro-state'), findsOneWidget);
+      expect(find.textContaining('quedan 30 días'), findsOneWidget);
+      expect(byKey('pro-buy'), findsOneWidget);
+      expect(byKey('pro-restore'), findsOneWidget);
+    });
+
+    testWidgets('con Pro activo no ofrece comprar', (tester) async {
+      h.setUp(prefs: {'pro_unlocked': true});
+      await h.pump(tester);
+      expect(rowShows('nav-pro', 'Activo'), isTrue);
+      await openPage(tester, 'pro');
+      expect(byKey('pro-buy'), findsNothing);
+    });
+  });
+
   group('Aviso de privacidad (T4)', () {
     testWidgets('la primera clave de Groq pide aceptar el aviso', (tester) async {
       h.setUp(prefs: {StorageService.privacyNoticeKey: false});

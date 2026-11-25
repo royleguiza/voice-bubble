@@ -21,6 +21,7 @@ dependencies:
   # Reproducción del WAV conservado en la nota (pedido del dueño
   # 2026-09-23). Solo playback local de archivos propios, sin red.
   audioplayers: ^6.8.1
+  in_app_purchase: ^3.3.1
 
 dev_dependencies:
   flutter_test:

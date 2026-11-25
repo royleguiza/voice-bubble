@@ -108,6 +108,7 @@ internal class DockDictationLogic {
         val MSG_NO_KEY = R.string.dock_msg_no_key
         val MSG_NO_MIC_PERMISSION = R.string.dock_msg_no_mic_permission
         val MSG_MIC_BUSY = R.string.dock_msg_mic_busy
+        val MSG_PRO_LIMIT = R.string.dock_msg_pro_limit
         val MSG_MIC_FAILED = R.string.dock_msg_mic_failed
         val MSG_NO_NETWORK = R.string.dock_msg_no_network
         val MSG_BAD_KEY = R.string.dock_msg_bad_key

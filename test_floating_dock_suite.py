@@ -764,10 +764,10 @@ check("Host: DOCK_CONFIG lleva forma, herramientas, isla y trackpad (prefs de Fl
       all(k in h_dlink for k in ("EXTRA_DOCK_FORM", "EXTRA_TOOL_MIC", "EXTRA_ISLAND_X", "EXTRA_ISLAND_SIDE", "EXTRA_SENSITIVITY", "EXTRA_AUTO_RETURN"))
       and "DockController.PREF_FORM" in h_dlink and "PointerLink.readTrackpadConfig(context, -1, -1)" in h_dlink
       and "setPackage(PointerProtocol.COMPANION_PACKAGE)" in h_dlink and "sendBroadcast(intent, PointerProtocol.PERMISSION_POINTER)" in h_dlink)
-check("Host: las claves de la isla y floating_bubble_enabled se leen con el literal del contrato (fase 2B; 69 claves desde T6)",
+check("Host: las claves de la isla y floating_bubble_enabled se leen con el literal del contrato (fase 2B; 73 claves desde T6)",
       all(f'"flutter.{k}"' in h_dlink for k in ("dock_island_x", "dock_island_y", "dock_island_w", "dock_island_h",
                                                "dock_island_side", "floating_bubble_enabled"))
-      and "FlutterPrefs.key(" not in h_dlink and len(contract) == 69
+      and "FlutterPrefs.key(" not in h_dlink and len(contract) == 73
       and all(k in contract for k in ("dock_island_x", "dock_island_y", "dock_island_w", "dock_island_h",
                                       "dock_island_side", "floating_bubble_enabled")))
 check("Host: el dictado de la app por Flutter también se ve en la barra del complemento",

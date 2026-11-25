@@ -271,4 +271,6 @@
     <string name="kb_history_yesterday">yesterday</string>
     <string name="kb_a11y_history_item">%1$s. %2$s. Tap to paste, hold for more options.</string>
     <string name="kb_a11y_emoji">Emoji</string>
+    <string name="kb_pro_daily_limit">You used today’s 10 free dictations. Orison Pro makes them unlimited: tap to see it.</string>
+    <string name="dock_msg_pro_limit">10 free dictations used today</string>
 </resources>

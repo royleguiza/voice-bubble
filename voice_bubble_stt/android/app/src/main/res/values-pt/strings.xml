@@ -271,4 +271,6 @@
     <string name="kb_history_yesterday">ontem</string>
     <string name="kb_a11y_history_item">%1$s. %2$s. Toque para colar, segure para mais opções.</string>
     <string name="kb_a11y_emoji">Emojis</string>
+    <string name="kb_pro_daily_limit">Você usou os 10 ditados grátis de hoje. Com o Orison Pro são ilimitados: toque para ver.</string>
+    <string name="dock_msg_pro_limit">Você já usou os 10 ditados de hoje</string>
 </resources>

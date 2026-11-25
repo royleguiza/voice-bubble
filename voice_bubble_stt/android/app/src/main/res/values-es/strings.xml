@@ -271,4 +271,6 @@
     <string name="kb_history_yesterday">ayer</string>
     <string name="kb_a11y_history_item">%1$s. %2$s. Tocá para pegar, mantené para más opciones.</string>
     <string name="kb_a11y_emoji">Emojis</string>
+    <string name="kb_pro_daily_limit">Llegaste a los 10 dictados gratis de hoy. Con Orison Pro son ilimitados: tocá para verlo.</string>
+    <string name="dock_msg_pro_limit">Ya usaste los 10 dictados de hoy</string>
 </resources>

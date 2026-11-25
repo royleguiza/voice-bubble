@@ -1963,4 +1963,105 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get keyboardEmojiKey => 'Tecla de emojis';
+
+  @override
+  String get proTitle => 'Orison Pro';
+
+  @override
+  String get proSee => 'Ver Pro';
+
+  @override
+  String get proDailyLimit =>
+      'Llegaste a los 10 dictados gratis de hoy. Con Orison Pro son ilimitados.';
+
+  @override
+  String get proStateUnlocked => 'Activo';
+
+  @override
+  String proStateTrial(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days días',
+      one: '1 día',
+    );
+    return 'Prueba: $_temp0';
+  }
+
+  @override
+  String proStateFree(int left) {
+    return 'Quedan $left hoy';
+  }
+
+  @override
+  String get proStateUnlockedLong =>
+      'Tenés Orison Pro: dictado, traducción e IA en notas sin límite. ¡Gracias por apoyar Orison!';
+
+  @override
+  String proStateTrialLong(int days, int free) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'quedan $days días',
+      one: 'queda 1 día',
+    );
+    return 'Estás en la prueba con todo incluido: $_temp0. Después, el teclado sigue completo y tenés $free dictados por día gratis.';
+  }
+
+  @override
+  String proStateFreeLong(int left, int free) {
+    String _temp0 = intl.Intl.pluralLogic(
+      left,
+      locale: localeName,
+      other: 'quedan $left dictados',
+      one: 'queda 1 dictado',
+    );
+    return 'Terminó la prueba. Te $_temp0 de $free hoy. Con Pro son ilimitados.';
+  }
+
+  @override
+  String get proIncludesHeader => 'Qué incluye';
+
+  @override
+  String get proIncludesFooter =>
+      'Pago único: es tuyo para siempre, sin suscripción. Tus notas, snippets y ajustes nunca se bloquean.';
+
+  @override
+  String get proIncludesDictation => 'Dictados por día';
+
+  @override
+  String get proIncludesAi => 'Traducción e IA en notas';
+
+  @override
+  String get proIncludesKeyboard => 'Teclado, snippets y emojis';
+
+  @override
+  String get proAlwaysFree => 'Siempre gratis';
+
+  @override
+  String get proBuy => 'Comprar Orison Pro';
+
+  @override
+  String proBuyPrice(String price) {
+    return 'Comprar Orison Pro · $price';
+  }
+
+  @override
+  String get proRestore => 'Restaurar compra';
+
+  @override
+  String proLaunchUntil(String date) {
+    return 'Precio de lanzamiento hasta el $date.';
+  }
+
+  @override
+  String get proBuyUnavailable =>
+      'La compra no está disponible ahora. Probá de nuevo con la app instalada desde Play.';
+
+  @override
+  String get proRestored => 'Listo: Orison Pro está activo.';
+
+  @override
+  String get proNothingToRestore =>
+      'No encontramos una compra de Orison Pro en esta cuenta de Google.';
 }

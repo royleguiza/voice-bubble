@@ -20,6 +20,7 @@ import 'settings_screen.dart';
 import 'note_editor_screen.dart';
 import '../models/voice_note.dart';
 import '../services/notes_service.dart';
+import '../services/pro_service.dart';
 import '../services/widget_service.dart';
 import '../controllers/recording_controller.dart';
 import '../widgets/record_button.dart';
@@ -390,6 +391,21 @@ class _HomeScreenState extends State<HomeScreen>
         _isStoppingRecording ||
         _isRecording ||
         _isTranscribing) {
+      return;
+    }
+    // T15: pasada la prueba, 10 dictados por día sin Orison Pro.
+    if (!await ProGate.tryStartDictation()) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(context.l10n.proDailyLimit),
+            action: SnackBarAction(
+              label: context.l10n.proSee,
+              onPressed: () => unawaited(_openSettings(page: SettingsPage.pro)),
+            ),
+          ),
+        );
+      }
       return;
     }
     _isStartingRecording = true;
@@ -1059,11 +1075,12 @@ class _HomeScreenState extends State<HomeScreen>
 
   /// Abre Configuración y, al volver, recarga clave, modo y cola (la app
   /// los cachea para grabar/transcribir sin releer el keystore en cada uso).
-  Future<void> _openSettings() async {
+  Future<void> _openSettings({SettingsPage? page}) async {
     final route = MaterialPageRoute<void>(
       builder: (_) => SettingsScreen(
         storageService: _storageService,
         floatingBubbleService: _floatingBubbleService,
+        initialPage: page,
       ),
     );
     await Navigator.push(context, route);

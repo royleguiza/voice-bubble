@@ -1019,5 +1019,75 @@
   "onbTryDone": "¡Funciona! Ya podés dictar en cualquier app.",
   "onbExtras": "Más adelante podés sumar el widget de notas, la barra flotante y el Puntero desde Ajustes.",
   "settingsAboutOnboarding": "Guía de inicio",
-  "keyboardEmojiKey": "Tecla de emojis"
+  "keyboardEmojiKey": "Tecla de emojis",
+  "proTitle": "Orison Pro",
+  "proSee": "Ver Pro",
+  "proDailyLimit": "Llegaste a los 10 dictados gratis de hoy. Con Orison Pro son ilimitados.",
+  "proStateUnlocked": "Activo",
+  "proStateTrial": "Prueba: {days, plural, =1{1 día} other{{days} días}}",
+  "@proStateTrial": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "proStateFree": "Quedan {left} hoy",
+  "@proStateFree": {
+    "placeholders": {
+      "left": {
+        "type": "int"
+      }
+    }
+  },
+  "proStateUnlockedLong": "Tenés Orison Pro: dictado, traducción e IA en notas sin límite. ¡Gracias por apoyar Orison!",
+  "proStateTrialLong": "Estás en la prueba con todo incluido: {days, plural, =1{queda 1 día} other{quedan {days} días}}. Después, el teclado sigue completo y tenés {free} dictados por día gratis.",
+  "@proStateTrialLong": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "free": {
+        "type": "int"
+      }
+    }
+  },
+  "proStateFreeLong": "Terminó la prueba. Te {left, plural, =1{queda 1 dictado} other{quedan {left} dictados}} de {free} hoy. Con Pro son ilimitados.",
+  "@proStateFreeLong": {
+    "placeholders": {
+      "left": {
+        "type": "int"
+      },
+      "free": {
+        "type": "int"
+      }
+    }
+  },
+  "proIncludesHeader": "Qué incluye",
+  "proIncludesFooter": "Pago único: es tuyo para siempre, sin suscripción. Tus notas, snippets y ajustes nunca se bloquean.",
+  "proIncludesDictation": "Dictados por día",
+  "proIncludesAi": "Traducción e IA en notas",
+  "proIncludesKeyboard": "Teclado, snippets y emojis",
+  "proAlwaysFree": "Siempre gratis",
+  "proBuy": "Comprar Orison Pro",
+  "proBuyPrice": "Comprar Orison Pro · {price}",
+  "@proBuyPrice": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "proRestore": "Restaurar compra",
+  "proLaunchUntil": "Precio de lanzamiento hasta el {date}.",
+  "@proLaunchUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "proBuyUnavailable": "La compra no está disponible ahora. Probá de nuevo con la app instalada desde Play.",
+  "proRestored": "Listo: Orison Pro está activo.",
+  "proNothingToRestore": "No encontramos una compra de Orison Pro en esta cuenta de Google."
 }
