@@ -343,8 +343,18 @@ class WidgetNoteEditActivity : Activity() {
         if (cachedBodyMinPx > 0) return cachedBodyMinPx
         val density = resources.displayMetrics.density
         if (density <= 0) return 0
-        cachedBodyMinPx = (140 * density).toInt()
+        cachedBodyMinPx = snapBody((140 * density).toInt())
         return cachedBodyMinPx
+    }
+
+    /**
+     * T11: alto del cuerpo en renglones enteros (relleno + N × alto de
+     * renglón). Con 140 dp fijos entraban ~4,9 renglones y, al bajar al
+     * final, el primero visible quedaba cortado a la mitad.
+     */
+    private fun snapBody(heightPx: Int): Int {
+        val body = findViewById<EditText>(R.id.edit_body) ?: return heightPx
+        return snapToWholeLines(heightPx, body.paddingTop + body.paddingBottom, body.lineHeight)
     }
 
     private fun recomputeBodyMax() {
@@ -358,10 +368,12 @@ class WidgetNoteEditActivity : Activity() {
             val body = findViewById<View>(R.id.edit_body) ?: return
             if (root.height <= 0 || card.height <= 0 || body.height <= 0) return
             val margin = (12 * density).toInt()
-            bodyMaxPx = computeBodyMaxPx(
-                root.height, root.paddingBottom,
-                card.height - body.height, margin, margin, min,
-            )
+            bodyMaxPx = snapBody(
+                computeBodyMaxPx(
+                    root.height, root.paddingBottom,
+                    card.height - body.height, margin, margin, min,
+                ),
+            ).coerceAtLeast(min)
             val lp = body.layoutParams ?: return
             if (lp.height > 0 && (lp.height < min || lp.height > bodyMaxPx)) {
                 lp.height = clampBodyHeight(lp.height, min, bodyMaxPx)
@@ -382,6 +394,17 @@ class WidgetNoteEditActivity : Activity() {
         } catch (_: Exception) {
             null
         } ?: return
+        // T11: el alto inicial del XML (140 dp) también va en renglones enteros.
+        findViewById<View>(R.id.edit_body)?.let { body ->
+            val lp = body.layoutParams
+            if (lp != null && lp.height > 0) {
+                val snapped = snapBody(lp.height).coerceAtLeast(bodyMinPx())
+                if (snapped != lp.height) {
+                    lp.height = snapped
+                    body.requestLayout()
+                }
+            }
+        }
         recomputeBodyMax()
         handle.setOnTouchListener { _, event ->
             try {
@@ -403,9 +426,9 @@ class WidgetNoteEditActivity : Activity() {
                         val y = yOf(event, dragPointer)
                         if (y.isNaN()) return@setOnTouchListener true
                         val lp = body.layoutParams ?: return@setOnTouchListener false
-                        lp.height = clampBodyHeight(
-                            dragStartH + (dragStartY - y).toInt(), min, bodyMaxPx,
-                        )
+                        lp.height = snapBody(
+                            clampBodyHeight(dragStartH + (dragStartY - y).toInt(), min, bodyMaxPx),
+                        ).coerceAtLeast(min)
                         body.requestLayout()
                         true
                     }

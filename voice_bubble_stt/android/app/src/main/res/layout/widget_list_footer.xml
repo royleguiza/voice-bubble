@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- T11 (C11): espacio vacío al final de la lista del widget, del alto de
+     los botones flotantes (+ y micrófono), para que la última nota se pueda
+     ver entera. Fila propia y no paddingBottom: algunos lanzadores ignoran
+     clipToPadding en las listas de un widget. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_list_footer"
+    android:layout_width="match_parent"
+    android:layout_height="58dp"
+    android:importantForAccessibility="no" />

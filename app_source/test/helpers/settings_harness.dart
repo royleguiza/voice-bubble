@@ -104,6 +104,16 @@ class SettingsHarness {
 
   /// Monta Ajustes con el helper común (superficie alta 800x3200 lógicos
   /// para que las páginas largas queden construidas sin scroll).
+  /// Solo el primer cuadro, antes de que terminen las lecturas lentas (T11).
+  Future<void> pumpFirstFrame(WidgetTester tester) async {
+    await tester.pumpWidget(buildTestableSettingsScreen(
+      tester,
+      storageService: storage,
+      bubbleService: FloatingBubbleService(),
+      keyboardService: KeyboardService(channel: keyboardChannel),
+    ));
+  }
+
   Future<void> pump(WidgetTester tester, {StorageService? storageService}) async {
     await tester.pumpWidget(buildTestableSettingsScreen(
       tester,

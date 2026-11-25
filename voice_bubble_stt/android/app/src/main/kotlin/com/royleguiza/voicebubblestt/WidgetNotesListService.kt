@@ -111,9 +111,14 @@ private class WidgetNotesFactory(
         notes = emptyList()
     }
 
-    override fun getCount(): Int = pendings.size + notes.size
+    // T11 (C11): + 1 fila vacía al final para que los botones flotantes no
+    // tapen la última nota (solo si hay algo que mostrar).
+    override fun getCount(): Int {
+        val items = pendings.size + notes.size
+        return if (items > 0) items + 1 else 0
+    }
 
-    override fun getViewTypeCount(): Int = 2
+    override fun getViewTypeCount(): Int = 3
 
     override fun getItemId(position: Int): Long = position.toLong()
 
@@ -123,8 +128,13 @@ private class WidgetNotesFactory(
 
     override fun getViewAt(position: Int): RemoteViews {
         return try {
-            if (position < pendings.size) pendingView(pendings[position])
-            else noteView(notes[position - pendings.size])
+            if (position >= pendings.size + notes.size) {
+                RemoteViews(context.packageName, R.layout.widget_list_footer)
+            } else if (position < pendings.size) {
+                pendingView(pendings[position])
+            } else {
+                noteView(notes[position - pendings.size])
+            }
         } catch (_: Exception) {
             RemoteViews(context.packageName, R.layout.widget_pending_item)
                 .also { WidgetTexts.pendingItem(context, it) }

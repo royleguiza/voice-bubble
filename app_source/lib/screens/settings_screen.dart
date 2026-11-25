@@ -150,6 +150,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _dockToolPointer = StorageService.defaultDockToolPointer;
   String _pointerOpenMode = StorageService.defaultPointerOpenMode;
   String _pointerStatus = FloatingTrackpadService.pointerMissing;
+  /// T11 (C10): la clave y el estado del teclado ya se leyeron. Hasta
+  /// entonces no se dibuja «Tenés que configurar» (parpadeaba en el video).
+  bool _setupStateKnown = false;
+
   /// Copia de seguridad en curso: `saved` exportando, `imported` importando.
   BackupStatus? _backupBusy;
   final BackupService _backupService = BackupService();
@@ -334,6 +338,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         _isKeyboardEnabled = results.$4.$1;
         _isKeyboardSelected = results.$4.$2;
         _pointerStatus = results.$5;
+        _setupStateKnown = true;
       });
     }
     // Espejo D7 (credenciales del teclado nativo): solo se repara si falta.
@@ -1303,7 +1308,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     final page = _stack.last;
     final sheetOpen = _isEditingApiKey || _geminiIsEditingApiKey;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final slideFrom = _navForward ? 0.12 : -0.12;
     return PopScope(
       canPop: _stack.length == 1 && !sheetOpen,
       onPopInvokedWithResult: (didPop, _) {
@@ -1322,16 +1326,24 @@ class _SettingsScreenState extends State<SettingsScreen>
                       : const Duration(milliseconds: 260),
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: Offset(slideFrom, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    ),
-                  ),
+                  // T11 (video 0:39): deslizamiento de página entera, sin
+                  // fundido encimado. La que entra llega desde el costado con
+                  // fondo opaco y tapa a la que sale, que se corre un poco
+                  // hacia el otro lado y se apaga.
+                  transitionBuilder: (child, animation) {
+                    final incoming = child.key == ValueKey(page);
+                    final dir = _navForward ? 1.0 : -1.0;
+                    final tween = Tween<Offset>(
+                      begin: incoming ? Offset(dir, 0) : Offset(-dir * 0.25, 0),
+                      end: Offset.zero,
+                    );
+                    return SlideTransition(
+                      position: tween.animate(animation),
+                      child: incoming
+                          ? ColoredBox(color: p.background, child: child)
+                          : FadeTransition(opacity: animation, child: child),
+                    );
+                  },
                   child: KeyedSubtree(
                     key: ValueKey(page),
                     child: _buildPage(context, page),
@@ -1507,7 +1519,8 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Widget _buildRootPage(BuildContext context) {
     final p = SettingsPalette.of(context);
-    final needsSetup = !_hasApiKey || !_isKeyboardActive;
+    final needsSetup =
+        _setupStateKnown && (!_hasApiKey || !_isKeyboardActive);
     return _sectionList(
       context,
       storageKey: 'settings_root',

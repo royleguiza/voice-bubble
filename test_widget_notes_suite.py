@@ -576,9 +576,11 @@ check("CI ejecuta el JUnit real C-04 sin reemplazar C-02",
 
 # Lista bajo botones flotantes: relleno inferior = botones + aire, sin difuminado
 _list_block = xml.split('@+id/widget_notes_list')[1].split('/>')[0] if '@+id/widget_notes_list' in xml else ""
-check("Lista bajo + y micrófono flotantes (la última tarjeta sube sobre ellos)",
-      'android:paddingBottom="64dp"' in _list_block
-      and 'android:clipToPadding="false"' in _list_block
+_svc_t11 = (ROOT / "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/WidgetNotesListService.kt").read_text()
+_footer_t11 = ROOT / "voice_bubble_stt/android/app/src/main/res/layout/widget_list_footer.xml"
+check("Lista bajo + y micrófono flotantes: fila vacía al final (T11, C11)",
+      _footer_t11.exists() and 'android:layout_height="58dp"' in _footer_t11.read_text()
+      and "R.layout.widget_list_footer" in _svc_t11 and "items + 1" in _svc_t11
       and 'android:layout_height="match_parent"' in _list_block
       and 'android:layout_gravity="bottom"' in xml.split('@+id/widget_bottom_bar')[1][:400])
 check("Lista sin margen que robe aire (padding manda)",

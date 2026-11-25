@@ -120,6 +120,17 @@ void main() {
       expect(byKey('setup-keyboard-row'), findsOneWidget);
     });
 
+    testWidgets('T11: el primer cuadro no muestra «Tenés que configurar»',
+        (tester) async {
+      h.setUp(secure: {'groq_api_key': 'gsk_lista_1234'});
+      h.keyboardEnabled = true;
+      h.keyboardSelected = true;
+      await h.pumpFirstFrame(tester);
+      expect(byKey('setup-section'), findsNothing);
+      await tester.pumpAndSettle();
+      expect(byKey('setup-section'), findsNothing);
+    });
+
     testWidgets('con clave y teclado activo no muestra la configuración',
         (tester) async {
       h.setUp(secure: {'groq_api_key': 'gsk_lista_1234'});

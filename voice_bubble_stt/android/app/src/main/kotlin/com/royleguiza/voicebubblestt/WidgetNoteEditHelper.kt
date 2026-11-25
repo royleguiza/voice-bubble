@@ -73,3 +73,14 @@ internal fun parseWidgetPending(
         PendingLoadResult(null, true)
     }
 }
+
+/**
+ * T11: redondea hacia abajo un alto a renglones enteros: relleno vertical +
+ * N × alto de renglón, con al menos un renglón. Sin alto de renglón válido
+ * devuelve el alto tal cual.
+ */
+internal fun snapToWholeLines(heightPx: Int, verticalPaddingPx: Int, lineHeightPx: Int): Int {
+    if (lineHeightPx <= 0) return heightPx
+    val inner = (heightPx - verticalPaddingPx).coerceAtLeast(lineHeightPx)
+    return verticalPaddingPx + (inner / lineHeightPx) * lineHeightPx
+}
