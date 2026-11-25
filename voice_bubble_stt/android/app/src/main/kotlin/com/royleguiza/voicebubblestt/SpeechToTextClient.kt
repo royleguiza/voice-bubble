@@ -54,7 +54,10 @@ class SpeechToTextClient(
         const val DEFAULT_LANGUAGE = "es"
         /** «Automático»: no se manda `language` y Whisper lo detecta. */
         const val AUTO_LANGUAGE = "auto"
-        val LANGUAGES = listOf(AUTO_LANGUAGE, "es", "en", "pt")
+        val LANGUAGES = listOf(
+            AUTO_LANGUAGE, "es", "en", "pt", "fr", "de", "it", "nl", "pl", "tr",
+            "ru", "ar", "hi", "id", "zh", "ja", "ko",
+        )
 
         fun timeoutForBytes(bytes: Int): Int {
             val seconds = TIMEOUT_BASE_SECONDS + (bytes / TIMEOUT_BYTES_PER_SECOND)
@@ -207,7 +210,7 @@ class SpeechToTextClient(
         return if (value != null && value in MODELS) value else DEFAULT_MODEL
     }
 
-    /** «Idioma en que hablo» (`kb_stt_language`): `auto`, `es`, `en` o `pt`.
+    /** «Idioma en que hablo» (`kb_stt_language`): `auto` o uno de [LANGUAGES].
      *  Otro valor o vacío cae a español. Espejo de
      *  `CloudSttService.normalizeLanguage` (Dart). */
     internal fun resolveLanguage(raw: String?): String {

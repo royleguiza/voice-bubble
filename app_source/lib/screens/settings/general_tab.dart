@@ -71,9 +71,9 @@ extension _GeneralPages on _SettingsScreenState {
               options: [
                 SettingsOption(CloudSttService.autoLanguage,
                     context.l10n.settingsSpokenLanguageAuto),
-                const SettingsOption('es', 'Español'),
-                const SettingsOption('en', 'English'),
-                const SettingsOption('pt', 'Português'),
+                // Cada idioma con su propio nombre, como en Android.
+                for (final entry in CloudSttService.languageNames.entries)
+                  SettingsOption(entry.key, entry.value),
               ],
               onSelected: _saveSttLanguage,
             ),

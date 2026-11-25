@@ -91,7 +91,7 @@ check("Kotlin: idioma es intacto", '"es"' in stt)
 import re as _re
 gtab = read("app_source/lib/screens/settings/general_tab.dart")
 check("Dart: idiomas elegibles auto/es/en/pt",
-      "languages = [autoLanguage, 'es', 'en', 'pt']" in dart and "autoLanguage = 'auto'" in dart)
+      "autoLanguage, 'es', 'en', 'pt', 'fr'" in dart and "autoLanguage = 'auto'" in dart)
 check("Dart: automático no manda language",
       "if (spokenLanguage != autoLanguage)" in dart and "normalizeLanguage(sttLanguage)" in dart)
 check("Dart: el idioma se relee en cada dictado", "loadSttLanguage()" in transcription and "sttLanguage: language" in transcription)
@@ -100,7 +100,11 @@ check("Dart: los espejos de la clave NO pisan el idioma elegido",
       and storage.count("normalizeLanguage(prefs.getString(_sttLanguageKey))") == 2
       and config_store.count("normalizeLanguage(prefs.getString(sttLanguageKey))") == 2)
 check("Ajustes: menú «Idioma en que hablo»", "stt-language-selector" in gtab and "_saveSttLanguage" in gtab)
-check("Kotlin: mismos idiomas que Dart", 'listOf(AUTO_LANGUAGE, "es", "en", "pt")' in stt and 'AUTO_LANGUAGE = "auto"' in stt)
+import re as _re
+_kt_langs = _re.findall(r'"([a-z]{2})"', stt.split("val LANGUAGES = listOf(")[1].split(")")[0]) if "val LANGUAGES = listOf(" in stt else []
+_dart_langs = _re.findall(r"'([a-z]{2})'", dart.split("static const List<String> languages = [")[1].split("];")[0]) if "static const List<String> languages = [" in dart else []
+check("Kotlin: mismos idiomas que Dart (mismo orden)", _kt_langs == _dart_langs and len(_kt_langs) >= 3
+      and 'AUTO_LANGUAGE = "auto"' in stt)
 check("Kotlin: automático no manda language", 'if (config.language != AUTO_LANGUAGE) field("language", config.language)' in stt)
 check("Kotlin: getConfig relee el idioma", "resolveLanguage(prefs.getString(\"flutter.kb_stt_language\", DEFAULT_LANGUAGE))" in stt
       and "language == cached.language" in stt)

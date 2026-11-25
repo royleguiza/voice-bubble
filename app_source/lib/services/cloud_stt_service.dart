@@ -105,7 +105,31 @@ class CloudSttService {
   static const String autoLanguage = 'auto';
 
   /// Idiomas que se pueden elegir en Ajustes (mismo orden que el menú).
-  static const List<String> languages = [autoLanguage, 'es', 'en', 'pt'];
+  /// Idiomas que se pueden fijar (Whisper entiende ~100; acá van los más
+  /// hablados, plan de lanzamiento §10). Cada uno con su propio nombre.
+  static const Map<String, String> languageNames = {
+    'es': 'Español',
+    'en': 'English',
+    'pt': 'Português',
+    'fr': 'Français',
+    'de': 'Deutsch',
+    'it': 'Italiano',
+    'nl': 'Nederlands',
+    'pl': 'Polski',
+    'tr': 'Türkçe',
+    'ru': 'Русский',
+    'ar': 'العربية',
+    'hi': 'हिन्दी',
+    'id': 'Bahasa Indonesia',
+    'zh': '中文',
+    'ja': '日本語',
+    'ko': '한국어',
+  };
+
+  static const List<String> languages = [
+    autoLanguage, 'es', 'en', 'pt', 'fr', 'de', 'it', 'nl', 'pl', 'tr',
+    'ru', 'ar', 'hi', 'id', 'zh', 'ja', 'ko',
+  ];
 
   /// Lo guardado en `kb_stt_language` → un valor válido (desconocido o vacío
   /// cae a español). Espejo de `SpeechToTextClient.resolveLanguage`.

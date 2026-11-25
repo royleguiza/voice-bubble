@@ -363,10 +363,16 @@ void main() {
   group('CloudSttService - idioma en que hablo (Ruta IA, etapa 4)', () {
     test('español por defecto; auto/en/pt elegibles; lo inválido cae a es', () {
       expect(CloudSttService.language, 'es');
-      expect(CloudSttService.languages, ['auto', 'es', 'en', 'pt']);
+      expect(CloudSttService.languages.take(4), ['auto', 'es', 'en', 'pt']);
+      // Plan de lanzamiento §10: los idiomas más hablados, cada uno con nombre.
+      expect(CloudSttService.languages.length, 17);
+      for (final code in CloudSttService.languages.skip(1)) {
+        expect(CloudSttService.languageNames[code], isNotNull, reason: code);
+      }
+      expect(CloudSttService.normalizeLanguage('ja'), 'ja');
       expect(CloudSttService.normalizeLanguage(' en '), 'en');
       expect(CloudSttService.normalizeLanguage('auto'), 'auto');
-      for (final raw in [null, '', 'fr', 'ES']) {
+      for (final raw in [null, '', 'xx', 'ES']) {
         expect(CloudSttService.normalizeLanguage(raw), 'es',
             reason: 'valor: $raw');
       }
