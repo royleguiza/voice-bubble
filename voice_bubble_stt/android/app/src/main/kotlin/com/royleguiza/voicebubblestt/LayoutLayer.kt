@@ -133,67 +133,66 @@ class LayoutLayer(
      * Total por fila = 5.0, idéntico en las 3 filas y en la inferior.
      */
     fun buildNumericRows() {
-        val es = host.isSpanish()
+        val numText = host.dimenPx(R.dimen.kb_key_text_size_numeric)
+        val opText = host.dimenPx(R.dimen.kb_key_text_size_symbol)
         val row1 = keys.horizontalRow()
-        row1.addView(keys.makeAltSymbolKey("-", keys.getString(R.string.kb_a11y_minus), weight = NUM_EDGE_W))
+        row1.addView(keys.makeAltSymbolKey("-", keys.getString(R.string.kb_a11y_minus), textSizePx = opText, weight = NUM_EDGE_W))
         for (c in "789") {
-            row1.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
+            row1.addView(keys.makeSymbolKey(c.toString(), textSizePx = numText, weight = NUM_DIGIT_W))
         }
-        row1.addView(keys.makeAltSymbolKey("+", keys.getString(R.string.kb_a11y_plus), weight = NUM_EDGE_W))
+        // T8: «=» pasa a la pulsación larga de «+» (la fila de abajo queda pareja).
+        row1.addView(
+            keys.makeAltSymbolKey(
+                "+",
+                keys.getString(R.string.kb_a11y_plus_hold_equals),
+                textSizePx = opText,
+                weight = NUM_EDGE_W,
+                longPressText = "=",
+            ),
+        )
         host.addContentRow(row1)
 
         val row2 = keys.horizontalRow()
-        row2.addView(keys.makeAltSymbolKey("*", keys.getString(R.string.kb_a11y_multiply), weight = NUM_EDGE_W))
+        row2.addView(keys.makeAltSymbolKey("*", keys.getString(R.string.kb_a11y_multiply), textSizePx = opText, weight = NUM_EDGE_W))
         for (c in "456") {
-            row2.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
+            row2.addView(keys.makeSymbolKey(c.toString(), textSizePx = numText, weight = NUM_DIGIT_W))
         }
-        row2.addView(keys.makeAltSymbolKey("%", keys.getString(R.string.kb_a11y_percent), weight = NUM_EDGE_W))
+        row2.addView(keys.makeAltSymbolKey("%", keys.getString(R.string.kb_a11y_percent), textSizePx = opText, weight = NUM_EDGE_W))
         host.addContentRow(row2)
 
         val row3 = keys.horizontalRow()
-        row3.addView(keys.makeAltSymbolKey("/", keys.getString(R.string.kb_a11y_divide), weight = NUM_EDGE_W))
+        row3.addView(keys.makeAltSymbolKey("/", keys.getString(R.string.kb_a11y_divide), textSizePx = opText, weight = NUM_EDGE_W))
         for (c in "123") {
-            row3.addView(keys.makeSymbolKey(c.toString(), weight = NUM_DIGIT_W))
+            row3.addView(keys.makeSymbolKey(c.toString(), textSizePx = numText, weight = NUM_DIGIT_W))
         }
         row3.addView(keys.makeBackspaceKey(weight = NUM_EDGE_W))
         host.addContentRow(row3)
     }
 
     /**
-     * Fila inferior numérica (sin espacio, por pedido): ABC pastilla,
-     * !?# junto a ABC, coma, cero central del ancho de la columna 3,
-     * punto, igual junto al Enter y el mismo Enter accent del resto.
-     * Simetría: bordes ABC/Enter = columnas laterales; !?# e igual
-     * espejados; coma y punto pequeños espejados (ws + wp = dígito).
+     * T8 (K4) · Fila inferior del numérico, propuesta A (elegida por el
+     * dueño): ABC · coma · 0 · punto · Enter, con coma y punto del ancho de
+     * un dígito (antes ~28 dp). «!?#» queda en la pulsación larga de ABC y
+     * «=» en la de «+». Total por fila = 5.0, igual que las de arriba.
      */
     fun buildNumericBottomRow(): LinearLayout {
         val row = keys.horizontalRow()
-        val es = host.isSpanish()
+        val numText = host.dimenPx(R.dimen.kb_key_text_size_numeric)
 
         val btnAbc = keys.makeSpecialKeyWithLongPress(
             "ABC",
             R.drawable.kb_key_alt,
             NUM_EDGE_W,
-            keys.getString(R.string.kb_a11y_letters),
+            keys.getString(R.string.kb_a11y_letters_hold_symbols),
             isBold = true,
             onTap = { host.pressSymbolsKey() },
-            onLongPress = { host.pressSymbolsKey() },
+            onLongPress = { host.pressSymbolsFromNumeric() },
         )
+        btnAbc.text = keys.withCornerHint("ABC", "!?#")
         row.addView(btnAbc)
-        val btnSym = keys.makeSpecialKey(
-            "!?#",
-            R.drawable.kb_key_alt,
-            NUM_SYM_W,
-            keys.getString(R.string.kb_a11y_symbols),
-            isBold = true,
-        ) {
-            host.pressSymbolsFromNumeric()
-        }
-        row.addView(btnSym)
-        row.addView(keys.makeSymbolKey(",", weight = NUM_PUNCT_W))
-        row.addView(keys.makeSymbolKey("0", weight = NUM_DIGIT_W))
-        row.addView(keys.makeSymbolKey(".", weight = NUM_PUNCT_W))
-        row.addView(keys.makeAltSymbolKey("=", keys.getString(R.string.kb_a11y_equals), weight = NUM_SYM_W))
+        row.addView(keys.makeSymbolKey(",", textSizePx = numText, weight = NUM_DIGIT_W))
+        row.addView(keys.makeSymbolKey("0", textSizePx = numText, weight = NUM_DIGIT_W))
+        row.addView(keys.makeSymbolKey(".", textSizePx = numText, weight = NUM_DIGIT_W))
 
         val enter = keys.makeActionIconKey(
             R.drawable.ic_enter,
@@ -226,12 +225,6 @@ class LayoutLayer(
 
         /** Ancho de dígitos (las divas; el 0 iguala la columna 3). */
         const val NUM_DIGIT_W = 1.1f
-
-        /** !?# e igual, espejados. */
-        const val NUM_SYM_W = 0.7f
-
-        /** Coma y punto pequeños, espejados (sym + punct = dígito). */
-        const val NUM_PUNCT_W = 0.4f
     }
 
     fun buildBottomBar(): LinearLayout {

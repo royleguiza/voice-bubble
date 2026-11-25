@@ -393,7 +393,7 @@ class KeyFactory(
      */
     fun makeSymbolKey(
         label: String,
-        textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_small),
+        textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_symbol),
         isBold: Boolean = true,
         weight: Float = 1f,
     ): TextView {
@@ -426,7 +426,7 @@ class KeyFactory(
             1f,
             R.drawable.kb_key_bg,
             R.color.kb_label,
-            host.dimenPx(R.dimen.kb_key_text_size_small),
+            host.dimenPx(R.dimen.kb_key_text_size_symbol),
             isBold = true,
         )
         key.contentDescription = ch.toString()
@@ -524,6 +524,7 @@ class KeyFactory(
         textSizePx: Int = host.dimenPx(R.dimen.kb_key_text_size_small),
         isBold: Boolean = true,
         weight: Float = 1f,
+        longPressText: String? = null,
     ): TextView {
         val key = makeKey(
             label,
@@ -536,8 +537,36 @@ class KeyFactory(
         key.contentDescription = description ?: label
         val commit: () -> Unit = { host.commitSymbolKey(label) }
         key.tag = commit
-        host.attachTap(key, commit)
+        if (longPressText == null) {
+            host.attachTap(key, commit)
+        } else {
+            // T8: el secundario se ve chiquito arriba a la derecha («+ ⁼»).
+            key.text = withCornerHint(label, longPressText)
+            host.attachPress(
+                key,
+                onLongPress = {
+                    host.haptic(key)
+                    host.commitSymbolKey(longPressText)
+                },
+                onTapUp = commit,
+            )
+        }
         return key
+    }
+
+    /** Etiqueta con el secundario de la pulsación larga chico y en el color tenue. */
+    fun withCornerHint(label: String, hint: String): CharSequence {
+        val text = android.text.SpannableString("$label\u2009$hint")
+        val start = label.length + 1
+        text.setSpan(android.text.style.RelativeSizeSpan(0.5f), start, text.length, 0)
+        text.setSpan(android.text.style.SuperscriptSpan(), start, text.length, 0)
+        text.setSpan(
+            android.text.style.ForegroundColorSpan(ContextCompat.getColor(service, R.color.kb_label_secondary)),
+            start,
+            text.length,
+            0,
+        )
+        return text
     }
 
     fun makeActionIconKey(

@@ -261,4 +261,6 @@
     <string name="ai_err_too_long">The note is too long for free Groq (about 20,000 characters at most). For long notes, choose Google in Settings › Artificial intelligence.</string>
     <string name="kb_a11y_symbols_page1">Symbols and numbers</string>
     <string name="kb_a11y_symbols_page2">More symbols</string>
+    <string name="kb_a11y_plus_hold_equals">Plus. Hold for equals</string>
+    <string name="kb_a11y_letters_hold_symbols">Letters. Hold for symbols</string>
 </resources>

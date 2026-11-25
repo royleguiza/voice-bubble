@@ -22,6 +22,10 @@
     <dimen name="kb_surface_radius">16dp</dimen>
     <dimen name="kb_key_text_size">20sp</dimen>
     <dimen name="kb_key_text_size_small">14sp</dimen>
+    <!-- T8 (K5): símbolos y código más grandes (antes 14 sp, perdidos en la tecla). -->
+    <dimen name="kb_key_text_size_symbol">18sp</dimen>
+    <!-- T8 (K5): dígitos, coma y punto del numérico, como una calculadora. -->
+    <dimen name="kb_key_text_size_numeric">22sp</dimen>
     <!-- Glifo interno de la tecla shift (+15% sobre small, tarjeta P3). -->
     <dimen name="kb_key_glyph_shift">16sp</dimen>
     <!-- Glifo ↵ del enter (+14% sobre small, tarjeta P4). -->

@@ -82,47 +82,47 @@ class TestC47NumericKeyboardSuite(unittest.TestCase):
         self.assertIn("makeBackspaceKey(weight = NUM_EDGE_W)", rows)
         self.assertEqual(rows.count("keys.horizontalRow()"), 3)  # T5: KeyRow sin huecos
         # Dígitos fondo principal, operadores secundario.
-        self.assertIn("makeSymbolKey(c.toString(), weight = NUM_DIGIT_W)", rows)
+        self.assertIn("makeSymbolKey(c.toString(), textSizePx = numText, weight = NUM_DIGIT_W)", rows)
         self.assertIn("makeAltSymbolKey(", rows)
 
-    def test_05_fila_inferior_exacta_sin_espacio(self):
+    def test_05_fila_inferior_propuesta_a(self):
+        """T8 (K4): ABC · coma · 0 · punto · Enter; !?# e = en pulsaciones largas."""
         src = read_file(LAYOUT)
         self.assertIn("fun buildNumericBottomRow()", src)
         bottom = src.split("fun buildNumericBottomRow()")[1].split("fun buildBottomBar")[0]
-        for label in ['"ABC"', '"!?#"', '","', '"0"', '"."', '"="']:
-            self.assertIn(label, bottom)
-        # Orden exacto de izquierda a derecha: ABC, !?#, coma, 0, punto, igual.
-        idx = [bottom.index(label) for label in ['"ABC"', '"!?#"', '","', '"0"', '"."', '"="']]
+        order = ['"ABC"', '","', '"0"', '"."', "R.drawable.ic_enter"]
+        idx = [bottom.index(label) for label in order]
         self.assertEqual(idx, sorted(idx))
-        # Mismo Enter que el resto (icono + accent + pressEnter).
-        self.assertIn("R.drawable.ic_enter", bottom)
+        # !?# en la pulsación larga de ABC (con pista visible), sin tecla propia.
+        self.assertIn("onLongPress = { host.pressSymbolsFromNumeric() }", bottom)
+        self.assertIn('withCornerHint("ABC", "!?#")', bottom)
+        self.assertNotIn('makeAltSymbolKey("="', bottom)
+        # «=» en la pulsación larga de «+».
+        rows = src.split("fun buildNumericRows()")[1].split("fun buildNumericBottomRow")[0]
+        self.assertIn('longPressText = "="', rows)
         self.assertIn("R.drawable.kb_key_accent", bottom)
         self.assertIn("host.pressEnter()", bottom)
-        # Sin espacio: ni commit de espacio ni espaciadora ni peso 5.0.
         self.assertNotIn("pressSpace", bottom)
         self.assertNotIn("attachSpacebar", bottom)
-        self.assertNotIn("5.0f", bottom)
 
     def test_05b_simetria_de_pesos(self):
         src = read_file(LAYOUT)
-        for const in ("NUM_EDGE_W = 0.85f", "NUM_DIGIT_W = 1.1f",
-                      "NUM_SYM_W = 0.7f", "NUM_PUNCT_W = 0.4f"):
+        for const in ("NUM_EDGE_W = 0.85f", "NUM_DIGIT_W = 1.1f"):
             self.assertIn(const, src)
-        # Totales: filas 0.85 + 3x1.1 + 0.85 = 5.0; inferior igual.
-        edge, digit, sym, punct = 0.85, 1.1, 0.7, 0.4
+        self.assertNotIn("NUM_PUNCT_W", src)
+        self.assertNotIn("NUM_SYM_W", src)
+        edge, digit = 0.85, 1.1
         self.assertAlmostEqual(edge + 3 * digit + edge, 5.0)
-        self.assertAlmostEqual(edge + sym + punct + digit + punct + sym + edge, 5.0)
-        self.assertAlmostEqual(sym + punct, digit)
         bottom = src.split("fun buildNumericBottomRow()")[1].split("fun buildBottomBar")[0]
         rows = src.split("fun buildNumericRows()")[1].split("fun buildNumericBottomRow")[0]
-        # Bordes y Enter igualan la columna lateral; ⌫ también.
-        self.assertIn("NUM_EDGE_W", bottom)
         self.assertIn("makeBackspaceKey(weight = NUM_EDGE_W)", rows)
-        # El 0 iguala la columna central 3; coma/punto pequeños; !?# e igual espejados.
-        self.assertIn('makeSymbolKey("0", weight = NUM_DIGIT_W)', bottom)
-        self.assertIn('makeSymbolKey(",", weight = NUM_PUNCT_W)', bottom)
-        self.assertIn('makeSymbolKey(".", weight = NUM_PUNCT_W)', bottom)
-        self.assertIn("NUM_SYM_W", bottom)
+        # Coma, 0 y punto del ancho de un dígito (≥ 48 dp en 411 dp) y a 22 sp.
+        for ch in (",", "0", "."):
+            self.assertIn(f'makeSymbolKey("{ch}", textSizePx = numText, weight = NUM_DIGIT_W)', bottom)
+        self.assertIn("kb_key_text_size_numeric", bottom)
+        dimens = read_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), "voice_bubble_stt/android/app/src/main/res/values/dimens.xml"))
+        self.assertIn('<dimen name="kb_key_text_size_numeric">22sp</dimen>', dimens)
+        self.assertIn('<dimen name="kb_key_text_size_symbol">18sp</dimen>', dimens)
 
     def test_06_toggles_bidireccionales(self):
         vks = read_file(VKS)
