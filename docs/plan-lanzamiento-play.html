@@ -345,11 +345,11 @@ footer { margin-top: 64px; font-size: 14px; color: var(--fg2); }
 
 <!-- ESTADO:INICIO -->
 <section class="live" id="estado" aria-label="Estado actual">
-  <span class="tag">Estado en vivo · actualizado 25/11 08:20 UTC</span>
+  <span class="tag">Estado en vivo · actualizado 25/11 14:10 UTC</span>
   <h3>Todo el código del plan está hecho — falta lo que depende de vos y de Play</h3>
-  <p class="now">T1 a T20 hechas y subidas (T20 lista pero apagada a propósito). El CI de la última tanda está corriendo. Lo que queda está en «Te espera a vos».</p>
+  <p class="now">T1 a T20 hechas y subidas (T20 lista pero apagada a propósito). Todo en verde en el CI. Lo que queda está en «Te espera a vos».</p>
   <div class="bar"><i style="width:90%"></i></div>
-  <div class="meta">19 de 21 tareas hechas · T2b espera tus imágenes · T3 y T4 tienen un último paso tuyo · último APK verde: <strong>r353</strong> (con todo hasta T20) · suite maestra <strong>103/103</strong></div>
+  <div class="meta">19 de 21 tareas hechas · T2b espera tus imágenes · T3 y T4 tienen un último paso tuyo · último APK verde: <strong>r355</strong> (todo, más los 16 idiomas) · suite maestra <strong>103/103</strong></div>
   <div class="tchips">
     <span class="d">T1</span><span class="d">T2</span><span class="b">T2b</span><span class="b">T3</span><span class="b">T4</span>
     <span class="d">T5</span><span class="d">T6</span><span class="d">T7</span><span class="d">T8</span><span class="d">T9</span><span class="d">T10</span>
@@ -357,7 +357,7 @@ footer { margin-top: 64px; font-size: 14px; color: var(--fg2); }
     <span class="d">T17</span><span class="d">T18</span><span class="d">T19</span><span class="d">T20</span>
   </div>
   <div class="meta">Verde: hecha y subida · naranja: en curso · amarilla: espera algo tuyo · gris: pendiente</div>
-  <h4>Para probar en el teléfono (APK r353 o posterior)</h4>
+  <h4>Para probar en el teléfono (APK r355)</h4>
   <ul>
     <li><strong>Antes que nada</strong>: en VoiceBubble (r339) Ajustes › Copia de seguridad › Exportar. Después instalá Orison (<code>orison-arm64-profile-apk-rN</code> + <code>orison-puntero-apk-rN</code>), que se instala al lado, e importá la copia. Activá <strong>Orison Puntero</strong> en Accesibilidad si usás la barra.</li>
     <li><strong>Teclado</strong>: tocar en los huecos entre teclas; mayúscula automática (WhatsApp sí, correo no, Termux no); ?123 con ¿ ¡ y la tecla <code>=\&lt;</code>; numérico (coma y punto grandes, mantener + = «=», mantener ABC = !?#); mantener q…p para números; historial nuevo (mantener el micrófono); 😊 emojis y la pestaña Stickers (probá mandar uno en WhatsApp y contame si llega como sticker o como imagen).</li>
@@ -372,8 +372,15 @@ footer { margin-top: 64px; font-size: 14px; color: var(--fg2); }
     <li><strong>Capturas</strong> para la ficha: las 8 de <code>docs/play/ficha.md</code>; yo las enmarco.</li>
     <li><strong>Cuenta de Play</strong> (diciembre) y, ahí: producto <code>pro_lifetime</code>, testers como «testers de licencias», video del micrófono. Los textos de la ficha y los formularios ya están en <code>docs/play/</code> y <code>docs/privacy/</code>.</li>
   </ul>
+  <h4>Anotado para más adelante</h4>
+  <ul>
+    <li><strong>Lupa en el panel de emojis</strong> (pedido del 25/11, no urgente). El selector de Android no trae buscador: hay que sumarlo arriba del panel, buscando por nombre en es/en/pt.</li>
+  </ul>
   <h4>Bitácora</h4>
   <ul>
+    <li>25/11 14:05 — <strong>Arreglos de tu primera prueba</strong> (<code>a50e858</code>): el primer uso ya cierra con «Empezar a usar» (antes volvía al paso anterior); la llave de claves ya no empuja el teclado; la fila terminal y la llave arrancan apagadas; con la app en inglés o portugués el teclado arranca sin Ñ; y el «Idioma en que hablo» sin elegir sigue al idioma de la app (antes quedaba «es» fijo al guardar la clave). <strong>Ojo:</strong> en tu teléfono ya quedó guardado «Español»; para dictar en los dos idiomas elegí <em>Automático</em> en Ajustes › Transcripción.</li>
+    <li>25/11 08:45 — <strong>AAB verificado otra vez</strong> con emojis y compras: pasa firma, bundletool y 16 KB; R8 no rompe nada. Lo que Play le baja a un Moto G05: <strong>20,8 MB</strong>.</li>
+    <li>25/11 08:20 — <strong>Extra</strong> (<code>0096b08</code>, r355): «Idioma en que hablo» con 16 idiomas (los más hablados, plan §10).</li>
     <li>25/11 08:15 — <strong>T18</strong> (<code>3584e12</code>): CI con acciones fijadas por SHA y lockfile estricto; la suite maestra pasa <strong>103/103</strong> (la falla vieja C-34 se arregló). Ordenar la raíz del repo (C12) queda para después del lanzamiento: hay suites que leen esos archivos. Lista viva de testers en <code>docs/play/testers-reportes.md</code>.</li>
     <li>25/11 08:10 — <strong>T19</strong>: ficha del Puntero, declaración de Accesibilidad, guion del video y el cambio a hacer en Orison el día que se publique (<code>docs/play/puntero.md</code>).</li>
     <li>25/11 08:05 — <strong>T17</strong>: textos de la ficha en es/en/pt (límites verificados), cuestionarios, gráfico destacado 1024 × 500 en los tres idiomas y marco para las capturas (<code>docs/play/</code>).</li>
