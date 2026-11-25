@@ -3184,6 +3184,354 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Números al mantener q…p'**
   String get keyboardTopRowNumbers;
+
+  /// No description provided for @onbSkipAll.
+  ///
+  /// In es, this message translates to:
+  /// **'Saltear'**
+  String get onbSkipAll;
+
+  /// No description provided for @onbNext.
+  ///
+  /// In es, this message translates to:
+  /// **'Siguiente'**
+  String get onbNext;
+
+  /// No description provided for @onbNotNow.
+  ///
+  /// In es, this message translates to:
+  /// **'Ahora no'**
+  String get onbNotNow;
+
+  /// No description provided for @onbFinish.
+  ///
+  /// In es, this message translates to:
+  /// **'Empezar a usar'**
+  String get onbFinish;
+
+  /// No description provided for @onbWelcomeTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Bienvenido a {app}'**
+  String onbWelcomeTitle(String app);
+
+  /// No description provided for @onbWelcomeBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Un teclado que escribe lo que decís, en cualquier app. Te llevamos de la mano hasta tu primer dictado: son unos minutos.'**
+  String get onbWelcomeBody;
+
+  /// No description provided for @onbWelcomeCard1Title.
+  ///
+  /// In es, this message translates to:
+  /// **'Dictá en cualquier app'**
+  String get onbWelcomeCard1Title;
+
+  /// No description provided for @onbWelcomeCard1Body.
+  ///
+  /// In es, this message translates to:
+  /// **'Tocá el micrófono del teclado, hablá y el texto aparece donde estás escribiendo.'**
+  String get onbWelcomeCard1Body;
+
+  /// No description provided for @onbWelcomeCard2Title.
+  ///
+  /// In es, this message translates to:
+  /// **'Tus notas por voz'**
+  String get onbWelcomeCard2Title;
+
+  /// No description provided for @onbWelcomeCard2Body.
+  ///
+  /// In es, this message translates to:
+  /// **'Dictá notas largas, ponéles título y resumen con IA, también desde el widget.'**
+  String get onbWelcomeCard2Body;
+
+  /// No description provided for @onbWelcomeCard3Title.
+  ///
+  /// In es, this message translates to:
+  /// **'Para código y para vender'**
+  String get onbWelcomeCard3Title;
+
+  /// No description provided for @onbWelcomeCard3Body.
+  ///
+  /// In es, this message translates to:
+  /// **'Capa de código, snippets con tus respuestas y precios, y traducción con un toque.'**
+  String get onbWelcomeCard3Body;
+
+  /// No description provided for @onbUseTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'¿Para qué lo vas a usar?'**
+  String get onbUseTitle;
+
+  /// No description provided for @onbUseBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Te dejamos algunos snippets de ejemplo para empezar. Los podés editar o borrar cuando quieras.'**
+  String get onbUseBody;
+
+  /// No description provided for @onbUseCode.
+  ///
+  /// In es, this message translates to:
+  /// **'Programar'**
+  String get onbUseCode;
+
+  /// No description provided for @onbUseCodeBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Comandos, prompts para tu IA y la capa de código.'**
+  String get onbUseCodeBody;
+
+  /// No description provided for @onbUseSales.
+  ///
+  /// In es, this message translates to:
+  /// **'Vender'**
+  String get onbUseSales;
+
+  /// No description provided for @onbUseSalesBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Precios, saludos y respuestas a un toque.'**
+  String get onbUseSalesBody;
+
+  /// No description provided for @onbUseWriting.
+  ///
+  /// In es, this message translates to:
+  /// **'Escribir y estudiar'**
+  String get onbUseWriting;
+
+  /// No description provided for @onbUseWritingBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Plantillas y notas largas por voz.'**
+  String get onbUseWritingBody;
+
+  /// No description provided for @onbSnipCode1Name.
+  ///
+  /// In es, this message translates to:
+  /// **'Estado de git'**
+  String get onbSnipCode1Name;
+
+  /// No description provided for @onbSnipCode2Name.
+  ///
+  /// In es, this message translates to:
+  /// **'Entrar al servidor'**
+  String get onbSnipCode2Name;
+
+  /// No description provided for @onbSnipCode3Name.
+  ///
+  /// In es, this message translates to:
+  /// **'Seguir con Claude'**
+  String get onbSnipCode3Name;
+
+  /// No description provided for @onbSnipSales1Name.
+  ///
+  /// In es, this message translates to:
+  /// **'Saludo'**
+  String get onbSnipSales1Name;
+
+  /// No description provided for @onbSnipSales1Body.
+  ///
+  /// In es, this message translates to:
+  /// **'¡Hola! Gracias por escribir. ¿En qué te puedo ayudar?'**
+  String get onbSnipSales1Body;
+
+  /// No description provided for @onbSnipSales2Name.
+  ///
+  /// In es, this message translates to:
+  /// **'Precios'**
+  String get onbSnipSales2Name;
+
+  /// No description provided for @onbSnipSales2Body.
+  ///
+  /// In es, this message translates to:
+  /// **'Te paso los precios actualizados: …'**
+  String get onbSnipSales2Body;
+
+  /// No description provided for @onbSnipSales3Name.
+  ///
+  /// In es, this message translates to:
+  /// **'Envíos'**
+  String get onbSnipSales3Name;
+
+  /// No description provided for @onbSnipSales3Body.
+  ///
+  /// In es, this message translates to:
+  /// **'Hacemos envíos a todo el país. ¿A qué zona sería?'**
+  String get onbSnipSales3Body;
+
+  /// No description provided for @onbSnipWrite1Name.
+  ///
+  /// In es, this message translates to:
+  /// **'Resumen de clase'**
+  String get onbSnipWrite1Name;
+
+  /// No description provided for @onbSnipWrite1Body.
+  ///
+  /// In es, this message translates to:
+  /// **'Tema:\nIdeas principales:\n-\nPreguntas:\n-'**
+  String get onbSnipWrite1Body;
+
+  /// No description provided for @onbSnipWrite2Name.
+  ///
+  /// In es, this message translates to:
+  /// **'Correo formal'**
+  String get onbSnipWrite2Name;
+
+  /// No description provided for @onbSnipWrite2Body.
+  ///
+  /// In es, this message translates to:
+  /// **'Estimado/a:\n\nLe escribo para …\n\nSaludos cordiales,'**
+  String get onbSnipWrite2Body;
+
+  /// No description provided for @onbKeyTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu clave de Groq'**
+  String get onbKeyTitle;
+
+  /// No description provided for @onbKeyBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Orison convierte tu voz en texto con Groq, usando tu propia clave. Es gratis y no pide tarjeta. La página de Groq está en inglés: estos son los botones que vas a ver.'**
+  String get onbKeyBody;
+
+  /// No description provided for @onbKeyStep1.
+  ///
+  /// In es, this message translates to:
+  /// **'Abrí console.groq.com/keys con el botón de abajo.'**
+  String get onbKeyStep1;
+
+  /// No description provided for @onbKeyStep2.
+  ///
+  /// In es, this message translates to:
+  /// **'Entrá con Google, GitHub o tu correo. Si es la primera vez, la cuenta se crea en ese momento.'**
+  String get onbKeyStep2;
+
+  /// No description provided for @onbKeyStep3.
+  ///
+  /// In es, this message translates to:
+  /// **'Tocá «Create API Key», ponéle de nombre «Orison» y confirmá con «Submit».'**
+  String get onbKeyStep3;
+
+  /// No description provided for @onbKeyStep4.
+  ///
+  /// In es, this message translates to:
+  /// **'Copiá la clave: empieza con gsk_ y Groq la muestra una sola vez.'**
+  String get onbKeyStep4;
+
+  /// No description provided for @onbKeyStep5.
+  ///
+  /// In es, this message translates to:
+  /// **'Volvé a Orison: si copiaste la clave, aparece el botón para pegarla.'**
+  String get onbKeyStep5;
+
+  /// No description provided for @onbKeyOpenGroq.
+  ///
+  /// In es, this message translates to:
+  /// **'Abrir la página de Groq'**
+  String get onbKeyOpenGroq;
+
+  /// No description provided for @onbKeyPasteCopied.
+  ///
+  /// In es, this message translates to:
+  /// **'Pegar la clave copiada'**
+  String get onbKeyPasteCopied;
+
+  /// No description provided for @onbKeySaved.
+  ///
+  /// In es, this message translates to:
+  /// **'Clave guardada, cifrada en el teléfono'**
+  String get onbKeySaved;
+
+  /// No description provided for @onbKeyReady.
+  ///
+  /// In es, this message translates to:
+  /// **'Listo: tu clave ya está guardada. El plan gratis alcanza para unos 2.000 dictados por día.'**
+  String get onbKeyReady;
+
+  /// No description provided for @onbMicTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Micrófono'**
+  String get onbMicTitle;
+
+  /// No description provided for @onbMicBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Orison necesita el micrófono solo mientras dictás. No graba nada si no tocás el micrófono.'**
+  String get onbMicBody;
+
+  /// No description provided for @onbMicAllow.
+  ///
+  /// In es, this message translates to:
+  /// **'Permitir el micrófono'**
+  String get onbMicAllow;
+
+  /// No description provided for @onbMicGranted.
+  ///
+  /// In es, this message translates to:
+  /// **'Micrófono permitido'**
+  String get onbMicGranted;
+
+  /// No description provided for @onbKeyboardTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Activá el teclado {app}'**
+  String onbKeyboardTitle(String app);
+
+  /// No description provided for @onbKeyboardBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Primero activalo en la lista de teclados de Android y después elegilo como teclado.'**
+  String get onbKeyboardBody;
+
+  /// No description provided for @onbKeyboardEnable.
+  ///
+  /// In es, this message translates to:
+  /// **'1. Activar {app}'**
+  String onbKeyboardEnable(String app);
+
+  /// No description provided for @onbKeyboardSelect.
+  ///
+  /// In es, this message translates to:
+  /// **'2. Elegir {app}'**
+  String onbKeyboardSelect(String app);
+
+  /// No description provided for @onbTryTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Probalo'**
+  String get onbTryTitle;
+
+  /// No description provided for @onbTryBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Tocá el micrófono del teclado y decí algo. Cuando aparezca el texto, ya está.'**
+  String get onbTryBody;
+
+  /// No description provided for @onbTryHint.
+  ///
+  /// In es, this message translates to:
+  /// **'Tu primer dictado va acá…'**
+  String get onbTryHint;
+
+  /// No description provided for @onbTryDone.
+  ///
+  /// In es, this message translates to:
+  /// **'¡Funciona! Ya podés dictar en cualquier app.'**
+  String get onbTryDone;
+
+  /// No description provided for @onbExtras.
+  ///
+  /// In es, this message translates to:
+  /// **'Más adelante podés sumar el widget de notas, la barra flotante y el Puntero desde Ajustes.'**
+  String get onbExtras;
+
+  /// No description provided for @settingsAboutOnboarding.
+  ///
+  /// In es, this message translates to:
+  /// **'Guía de inicio'**
+  String get settingsAboutOnboarding;
 }
 
 class _AppLocalizationsDelegate

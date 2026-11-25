@@ -15,6 +15,7 @@ import '../ui/glass_container.dart';
 import '../ui/horizon_intro.dart';
 import '../ui/transcription_feedback.dart';
 import '../helpers/note_groups.dart';
+import 'onboarding/onboarding_screen.dart';
 import 'settings_screen.dart';
 import 'note_editor_screen.dart';
 import '../models/voice_note.dart';
@@ -49,6 +50,10 @@ class HomeScreen extends StatefulWidget {
   /// agujero para aterrizar exactamente sobre él. Solo presentación.
   final GlobalKey? holeKey;
 
+  /// T13: abre el primer uso guiado si nunca se hizo y no hay clave de
+  /// Groq. Solo `main()` lo pide (las pruebas de Inicio no lo ven).
+  final bool showOnboarding;
+
   const HomeScreen({
     super.key,
     this.transcriptionService,
@@ -58,6 +63,7 @@ class HomeScreen extends StatefulWidget {
     this.notesService,
     this.pendingQueue,
     this.holeKey,
+    this.showOnboarding = false,
   });
 
   @override
@@ -264,13 +270,49 @@ class _HomeScreenState extends State<HomeScreen>
         }
       }
     } catch (_) {}
+    final onboarding = await _needsOnboarding();
     if (mounted) {
       setState(() {});
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _transcriptionService.requestPermissions();
+        // El primer uso pide el micrófono explicando para qué.
+        if (!onboarding) _transcriptionService.requestPermissions();
         _handleWidgetAction();
       });
     }
+    if (onboarding) unawaited(_openOnboarding(afterIntro: true));
+  }
+
+  /// T13: primer uso pendiente y sin clave. Quien ya tenía clave (usuarios
+  /// de antes) lo da por hecho sin verlo.
+  Future<bool> _needsOnboarding() async {
+    if (!widget.showOnboarding) return false;
+    try {
+      if (await _storageService.loadOnboardingDone()) return false;
+      final key = await _secureStorage.read(key: 'groq_api_key') ?? '';
+      if (key.trim().isNotEmpty) {
+        await _storageService.saveOnboardingDone();
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _openOnboarding({bool afterIntro = false}) async {
+    // Que termine la animación de arranque antes de tapar Inicio.
+    if (afterIntro) await Future<void>.delayed(const Duration(milliseconds: 1600));
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => OnboardingScreen(
+          storageService: _storageService,
+          requestMicrophone: _transcriptionService.requestPermissions,
+        ),
+      ),
+    );
+    await _loadApiKey();
   }
 
   Future<void> _handleWidgetAction() async {

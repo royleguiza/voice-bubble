@@ -577,6 +577,13 @@ class StorageService {
 
   Future<void> savePrivacyNoticeAccepted() => _setBool(privacyNoticeKey, true);
 
+  /// T13: primer uso guiado terminado o salteado (Dart-only).
+  static const String onboardingDoneKey = 'onboarding_done_v1';
+
+  Future<bool> loadOnboardingDone() => _getBool(onboardingDoneKey, false);
+
+  Future<void> saveOnboardingDone() => _setBool(onboardingDoneKey, true);
+
   static const String themeModeKey = 'theme_mode';
   static const List<String> themeModes = ['sistema', 'claro', 'oscuro'];
   static const String defaultThemeMode = 'sistema';

@@ -42,4 +42,7 @@ class KeyboardService {
   /// false con otro teclado (ahí solo queda el portapapeles).
   Future<bool> commitText(String text) =>
       _invokeBool(_mCommitText, {'text': text});
+
+  /// T13: abre una página https en el navegador (la de claves de Groq).
+  Future<bool> openUrl(String url) => _invokeBool('openUrl', {'url': url});
 }

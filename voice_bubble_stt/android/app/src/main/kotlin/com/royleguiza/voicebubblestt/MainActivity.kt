@@ -175,6 +175,23 @@ class MainActivity : FlutterActivity() {
                     val text = call.argument<String>("text") ?: ""
                     result.success(VoiceKeyboardService.commitFromExternal(text))
                 }
+                // T13: el primer uso abre la página de claves de Groq. Solo https.
+                "openUrl" -> {
+                    val url = call.argument<String>("url") ?: ""
+                    if (!url.startsWith("https://")) {
+                        result.success(false)
+                    } else {
+                        try {
+                            startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                            result.success(true)
+                        } catch (_: Exception) {
+                            result.success(false)
+                        }
+                    }
+                }
                 else -> result.notImplemented()
             }
         }

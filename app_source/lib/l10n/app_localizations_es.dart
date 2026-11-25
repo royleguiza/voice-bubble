@@ -1759,4 +1759,205 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get keyboardTopRowNumbers => 'Números al mantener q…p';
+
+  @override
+  String get onbSkipAll => 'Saltear';
+
+  @override
+  String get onbNext => 'Siguiente';
+
+  @override
+  String get onbNotNow => 'Ahora no';
+
+  @override
+  String get onbFinish => 'Empezar a usar';
+
+  @override
+  String onbWelcomeTitle(String app) {
+    return 'Bienvenido a $app';
+  }
+
+  @override
+  String get onbWelcomeBody =>
+      'Un teclado que escribe lo que decís, en cualquier app. Te llevamos de la mano hasta tu primer dictado: son unos minutos.';
+
+  @override
+  String get onbWelcomeCard1Title => 'Dictá en cualquier app';
+
+  @override
+  String get onbWelcomeCard1Body =>
+      'Tocá el micrófono del teclado, hablá y el texto aparece donde estás escribiendo.';
+
+  @override
+  String get onbWelcomeCard2Title => 'Tus notas por voz';
+
+  @override
+  String get onbWelcomeCard2Body =>
+      'Dictá notas largas, ponéles título y resumen con IA, también desde el widget.';
+
+  @override
+  String get onbWelcomeCard3Title => 'Para código y para vender';
+
+  @override
+  String get onbWelcomeCard3Body =>
+      'Capa de código, snippets con tus respuestas y precios, y traducción con un toque.';
+
+  @override
+  String get onbUseTitle => '¿Para qué lo vas a usar?';
+
+  @override
+  String get onbUseBody =>
+      'Te dejamos algunos snippets de ejemplo para empezar. Los podés editar o borrar cuando quieras.';
+
+  @override
+  String get onbUseCode => 'Programar';
+
+  @override
+  String get onbUseCodeBody =>
+      'Comandos, prompts para tu IA y la capa de código.';
+
+  @override
+  String get onbUseSales => 'Vender';
+
+  @override
+  String get onbUseSalesBody => 'Precios, saludos y respuestas a un toque.';
+
+  @override
+  String get onbUseWriting => 'Escribir y estudiar';
+
+  @override
+  String get onbUseWritingBody => 'Plantillas y notas largas por voz.';
+
+  @override
+  String get onbSnipCode1Name => 'Estado de git';
+
+  @override
+  String get onbSnipCode2Name => 'Entrar al servidor';
+
+  @override
+  String get onbSnipCode3Name => 'Seguir con Claude';
+
+  @override
+  String get onbSnipSales1Name => 'Saludo';
+
+  @override
+  String get onbSnipSales1Body =>
+      '¡Hola! Gracias por escribir. ¿En qué te puedo ayudar?';
+
+  @override
+  String get onbSnipSales2Name => 'Precios';
+
+  @override
+  String get onbSnipSales2Body => 'Te paso los precios actualizados: …';
+
+  @override
+  String get onbSnipSales3Name => 'Envíos';
+
+  @override
+  String get onbSnipSales3Body =>
+      'Hacemos envíos a todo el país. ¿A qué zona sería?';
+
+  @override
+  String get onbSnipWrite1Name => 'Resumen de clase';
+
+  @override
+  String get onbSnipWrite1Body => 'Tema:\nIdeas principales:\n-\nPreguntas:\n-';
+
+  @override
+  String get onbSnipWrite2Name => 'Correo formal';
+
+  @override
+  String get onbSnipWrite2Body =>
+      'Estimado/a:\n\nLe escribo para …\n\nSaludos cordiales,';
+
+  @override
+  String get onbKeyTitle => 'Tu clave de Groq';
+
+  @override
+  String get onbKeyBody =>
+      'Orison convierte tu voz en texto con Groq, usando tu propia clave. Es gratis y no pide tarjeta. La página de Groq está en inglés: estos son los botones que vas a ver.';
+
+  @override
+  String get onbKeyStep1 => 'Abrí console.groq.com/keys con el botón de abajo.';
+
+  @override
+  String get onbKeyStep2 =>
+      'Entrá con Google, GitHub o tu correo. Si es la primera vez, la cuenta se crea en ese momento.';
+
+  @override
+  String get onbKeyStep3 =>
+      'Tocá «Create API Key», ponéle de nombre «Orison» y confirmá con «Submit».';
+
+  @override
+  String get onbKeyStep4 =>
+      'Copiá la clave: empieza con gsk_ y Groq la muestra una sola vez.';
+
+  @override
+  String get onbKeyStep5 =>
+      'Volvé a Orison: si copiaste la clave, aparece el botón para pegarla.';
+
+  @override
+  String get onbKeyOpenGroq => 'Abrir la página de Groq';
+
+  @override
+  String get onbKeyPasteCopied => 'Pegar la clave copiada';
+
+  @override
+  String get onbKeySaved => 'Clave guardada, cifrada en el teléfono';
+
+  @override
+  String get onbKeyReady =>
+      'Listo: tu clave ya está guardada. El plan gratis alcanza para unos 2.000 dictados por día.';
+
+  @override
+  String get onbMicTitle => 'Micrófono';
+
+  @override
+  String get onbMicBody =>
+      'Orison necesita el micrófono solo mientras dictás. No graba nada si no tocás el micrófono.';
+
+  @override
+  String get onbMicAllow => 'Permitir el micrófono';
+
+  @override
+  String get onbMicGranted => 'Micrófono permitido';
+
+  @override
+  String onbKeyboardTitle(String app) {
+    return 'Activá el teclado $app';
+  }
+
+  @override
+  String get onbKeyboardBody =>
+      'Primero activalo en la lista de teclados de Android y después elegilo como teclado.';
+
+  @override
+  String onbKeyboardEnable(String app) {
+    return '1. Activar $app';
+  }
+
+  @override
+  String onbKeyboardSelect(String app) {
+    return '2. Elegir $app';
+  }
+
+  @override
+  String get onbTryTitle => 'Probalo';
+
+  @override
+  String get onbTryBody =>
+      'Tocá el micrófono del teclado y decí algo. Cuando aparezca el texto, ya está.';
+
+  @override
+  String get onbTryHint => 'Tu primer dictado va acá…';
+
+  @override
+  String get onbTryDone => '¡Funciona! Ya podés dictar en cualquier app.';
+
+  @override
+  String get onbExtras =>
+      'Más adelante podés sumar el widget de notas, la barra flotante y el Puntero desde Ajustes.';
+
+  @override
+  String get settingsAboutOnboarding => 'Guía de inicio';
 }

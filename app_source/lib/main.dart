@@ -70,4 +70,5 @@ class VoiceBubbleApp extends StatelessWidget {
   }
 }
 
-Widget _homeWithHoleKey(GlobalKey holeKey) => HomeScreen(holeKey: holeKey);
+Widget _homeWithHoleKey(GlobalKey holeKey) =>
+    HomeScreen(holeKey: holeKey, showOnboarding: true);

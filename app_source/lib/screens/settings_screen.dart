@@ -6,6 +6,7 @@ import 'package:record/record.dart';
 import '../app_info.dart';
 import '../l10n/l10n_ext.dart';
 import 'credentials_screen.dart';
+import 'onboarding/onboarding_screen.dart';
 import 'settings/snippets_tab.dart';
 import '../helpers/island_geometry.dart';
 import '../services/backup_service.dart';
@@ -870,12 +871,15 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
-  Future<void> _ensureMicrophonePermission() async {
+  Future<bool> _ensureMicrophonePermission() async {
     try {
       final recorder = AudioRecorder();
-      await recorder.hasPermission();
+      final ok = await recorder.hasPermission();
       await recorder.dispose();
-    } catch (_) {}
+      return ok;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _toggleBubble(bool enable) async {
@@ -1715,6 +1719,18 @@ class _SettingsScreenState extends State<SettingsScreen>
               value: AppInfo.version,
             ),
             SettingsValueRow(title: context.l10n.settingsAboutEngine, value: 'Groq Whisper'),
+            SettingsNavRow(
+              key: const ValueKey('about-onboarding-row'),
+              title: context.l10n.settingsAboutOnboarding,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => OnboardingScreen(
+                    storageService: _storageService,
+                    requestMicrophone: _ensureMicrophonePermission,
+                  ),
+                ),
+              ),
+            ),
             SettingsNavRow(
               key: const ValueKey('about-privacy-row'),
               title: context.l10n.settingsAboutPrivacyPolicy,
