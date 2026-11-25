@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'app_info.dart';
 import 'l10n/app_localizations.dart';
 import 'services/storage_service.dart';
 import 'ui/app_locale.dart';
@@ -52,7 +53,7 @@ class VoiceBubbleApp extends StatelessWidget {
       builder: (_, mode, __) => ValueListenableBuilder<Locale?>(
         valueListenable: appLocale,
         builder: (_, locale, __) => MaterialApp(
-          title: 'VoiceBubble STT',
+          title: AppInfo.name,
           locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,

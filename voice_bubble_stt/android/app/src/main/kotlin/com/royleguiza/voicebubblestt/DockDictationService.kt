@@ -302,7 +302,7 @@ class DockDictationService : Service() {
     private fun copyToClipboard(text: String) {
         try {
             val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
-            cm.setPrimaryClip(ClipData.newPlainText("VoiceBubble", text))
+            cm.setPrimaryClip(ClipData.newPlainText("Orison", text))
         } catch (_: Exception) {}
     }
 
@@ -390,7 +390,7 @@ class DockDictationService : Service() {
             @Suppress("DEPRECATION")
             Notification.Builder(this)
         }
-        return builder.setContentTitle("VoiceBubble")
+        return builder.setContentTitle("Orison")
             .setContentText(text)
             .setSmallIcon(R.drawable.kb_ic_mic)
             .setOngoing(true)

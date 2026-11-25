@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Helpers compartidos de las suites Python de VoiceBubble STT.
+Helpers compartidos de las suites Python de Orison.
 
 Extrae la duplicación exacta que existía en test_clipboard_suite.py,
 test_trackpad_suite.py y test_bubble_history_suite.py: el contador

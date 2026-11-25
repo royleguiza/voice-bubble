@@ -190,7 +190,7 @@ class WidgetDictationService(
         } else {
             @Suppress("DEPRECATION") Notification.Builder(this)
         }
-        return builder.setContentTitle("VoiceBubble")
+        return builder.setContentTitle("Orison")
             .setContentText(text)
             .setSmallIcon(R.drawable.kb_ic_mic)
             .setOngoing(true)

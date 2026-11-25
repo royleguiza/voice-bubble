@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:record/record.dart';
+import '../app_info.dart';
 import '../l10n/l10n_ext.dart';
 import 'credentials_screen.dart';
 import 'settings/snippets_tab.dart';
@@ -1473,7 +1474,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         SettingsAppCard(
           key: const ValueKey('about-open-button'),
-          title: 'VoiceBubble',
+          title: AppInfo.name,
           subtitle: context.l10n.settingsAppSubtitle,
           onTap: () => _go(SettingsPage.acerca),
         ),
@@ -1606,7 +1607,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             const SettingsAppIcon(dimension: 88),
             const SizedBox(height: 14),
             Text(
-              'VoiceBubble',
+              AppInfo.name,
               style: kTextTitle.copyWith(fontSize: 24, color: p.label),
             ),
             const SizedBox(height: 4),
@@ -1623,7 +1624,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             SettingsValueRow(
               key: ValueKey('about-version'),
               title: context.l10n.settingsAboutVersion,
-              value: '1.0.0',
+              value: AppInfo.version,
             ),
             SettingsValueRow(title: context.l10n.settingsAboutEngine, value: 'Groq Whisper'),
             SettingsValueRow(

@@ -530,7 +530,7 @@ abstract class AppLocalizations {
   /// No description provided for @islandNeedsPointer.
   ///
   /// In es, this message translates to:
-  /// **'La isla necesita VoiceBubble Puntero activo: sin él se ve como burbuja y estos ajustes no se notan.'**
+  /// **'La isla necesita Orison Puntero activo: sin él se ve como burbuja y estos ajustes no se notan.'**
   String get islandNeedsPointer;
 
   /// No description provided for @islandNeedsBar.
@@ -1268,19 +1268,19 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPointerNeedsCompanion.
   ///
   /// In es, this message translates to:
-  /// **'Para hacer clic en otras apps, activá VoiceBubble Puntero en Trackpad'**
+  /// **'Para hacer clic en otras apps, activá Orison Puntero en Trackpad'**
   String get settingsPointerNeedsCompanion;
 
   /// No description provided for @settingsPointerCompanionTitle.
   ///
   /// In es, this message translates to:
-  /// **'VoiceBubble Puntero'**
+  /// **'Orison Puntero'**
   String get settingsPointerCompanionTitle;
 
   /// No description provided for @settingsPointerCompanionMessage.
   ///
   /// In es, this message translates to:
-  /// **'Es una app chica que hace los clics del puntero en otras apps. Se descarga junto con VoiceBubble, en el mismo lugar de GitHub. Instalala y volvé acá para activarla.'**
+  /// **'Es una app chica que hace los clics del puntero en otras apps. Se descarga junto con Orison, en el mismo lugar de GitHub. Instalala y volvé acá para activarla.'**
   String get settingsPointerCompanionMessage;
 
   /// No description provided for @settingsPointerCompanionOk.
@@ -1304,7 +1304,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsOverlayMessage.
   ///
   /// In es, this message translates to:
-  /// **'Para mostrar la burbuja sobre otras apps, VoiceBubble necesita el permiso de mostrar sobre otras aplicaciones.'**
+  /// **'Para mostrar la burbuja sobre otras apps, Orison necesita el permiso de mostrar sobre otras aplicaciones.'**
   String get settingsOverlayMessage;
 
   /// No description provided for @settingsOverlayConfigure.
@@ -1328,7 +1328,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsTranslateAiMessage.
   ///
   /// In es, this message translates to:
-  /// **'Cuando traduzcas, el texto seleccionado o dictado se va a mandar a {name} (el proveedor de «Título y resumen con») para traducirlo. VoiceBubble no lo guarda. Nunca se usa en campos de contraseña.\n\nPodés volver a «En el teléfono» cuando quieras.'**
+  /// **'Cuando traduzcas, el texto seleccionado o dictado se va a mandar a {name} (el proveedor de «Título y resumen con») para traducirlo. Orison no lo guarda. Nunca se usa en campos de contraseña.\n\nPodés volver a «En el teléfono» cuando quieras.'**
   String settingsTranslateAiMessage(String name);
 
   /// No description provided for @settingsTranslateAiAuthorize.
@@ -1460,7 +1460,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAppSubtitle.
   ///
   /// In es, this message translates to:
-  /// **'Dictado con Groq Whisper'**
+  /// **'Dictado con IA'**
   String get settingsAppSubtitle;
 
   /// No description provided for @settingsNavTranscription.
@@ -1604,7 +1604,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutTagline.
   ///
   /// In es, this message translates to:
-  /// **'Transcripción de voz a texto con Groq Whisper.'**
+  /// **'Teclado de voz y notas con IA.'**
   String get settingsAboutTagline;
 
   /// No description provided for @settingsAboutPrivacy.
@@ -1886,7 +1886,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsIslandNeedsFooter.
   ///
   /// In es, this message translates to:
-  /// **'Necesita VoiceBubble Puntero activo: solo un servicio de Accesibilidad puede dibujar sobre la cámara y la barra de estado.'**
+  /// **'Necesita Orison Puntero activo: solo un servicio de Accesibilidad puede dibujar sobre la cámara y la barra de estado.'**
   String get settingsIslandNeedsFooter;
 
   /// No description provided for @settingsToolsHeader.
@@ -2294,7 +2294,7 @@ abstract class AppLocalizations {
   /// No description provided for @keyboardActiveTitle.
   ///
   /// In es, this message translates to:
-  /// **'VoiceBubble está activo'**
+  /// **'Orison está activo'**
   String get keyboardActiveTitle;
 
   /// No description provided for @keyboardActiveSubtitle.
@@ -2342,7 +2342,7 @@ abstract class AppLocalizations {
   /// No description provided for @keyboardStep2.
   ///
   /// In es, this message translates to:
-  /// **'2. Elegir VoiceBubble'**
+  /// **'2. Elegir Orison'**
   String get keyboardStep2;
 
   /// No description provided for @keyboardTone1.
@@ -2522,7 +2522,7 @@ abstract class AppLocalizations {
   /// No description provided for @trackpadFooterMissing.
   ///
   /// In es, this message translates to:
-  /// **'Para hacer clic en otras apps hace falta el complemento VoiceBubble Puntero. Sin él, el puntero se mueve pero no hace clic.'**
+  /// **'Para hacer clic en otras apps hace falta el complemento Orison Puntero. Sin él, el puntero se mueve pero no hace clic.'**
   String get trackpadFooterMissing;
 
   /// No description provided for @trackpadOtherAppsHeader.

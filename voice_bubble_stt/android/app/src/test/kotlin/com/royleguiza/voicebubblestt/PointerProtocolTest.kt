@@ -51,9 +51,16 @@ class PointerProtocolTest {
     fun `detecta el servicio activo en la lista de Accesibilidad`() {
         val pkg = PointerProtocol.COMPANION_PACKAGE
         val full = "$pkg/${PointerProtocol.COMPANION_SERVICE_CLASS}"
-        val short = "$pkg/.PunteroService"
         assertTrue(PointerProtocol.isServiceEnabled(full))
-        assertTrue(PointerProtocol.isServiceEnabled(short))
+        // Android abrevia "pkg/.Clase" solo si la clase vive bajo el paquete.
+        // Desde T2 el applicationId (com.royleguiza.orison.puntero) ya no es el
+        // paquete Kotlin del servicio, así que Android escribe la forma larga.
+        val cls = PointerProtocol.COMPANION_SERVICE_CLASS
+        if (cls.startsWith("$pkg.")) {
+            assertTrue(PointerProtocol.isServiceEnabled("$pkg/" + cls.removePrefix(pkg)))
+        } else {
+            assertFalse(PointerProtocol.isServiceEnabled("$pkg/.PunteroService"))
+        }
         assertTrue(PointerProtocol.isServiceEnabled("com.otro/.Svc:$full"))
         assertFalse(PointerProtocol.isServiceEnabled(null))
         assertFalse(PointerProtocol.isServiceEnabled(""))
@@ -105,7 +112,7 @@ class PointerProtocolTest {
 
     @Test
     fun `la respuesta va solo a VoiceBubble`() {
-        assertEquals("com.royleguiza.voicebubblestt", PointerProtocol.HOST_PACKAGE)
+        assertEquals("com.royleguiza.orison", PointerProtocol.HOST_PACKAGE)
         assertTrue(PointerProtocol.ACTION_RESULT.startsWith(PointerProtocol.COMPANION_PACKAGE))
         assertTrue(PointerProtocol.ACK_TIMEOUT_MS in 500L..3000L)
     }

@@ -3,7 +3,7 @@ package com.royleguiza.voicebubble.puntero
 import kotlin.math.abs
 
 /**
- * Protocolo con el complemento "VoiceBubble Puntero" (docs/contrato-trackpad.md).
+ * Protocolo con el complemento "Orison Puntero" (docs/contrato-trackpad.md).
  *
  * VoiceBubble NO declara AccessibilityService (perfil anti-Play-Protect): los
  * clics en otras apps los ejecuta el complemento, que solo recibe órdenes
@@ -26,10 +26,10 @@ import kotlin.math.abs
  * Lógica pura (sin android.*) para testearla en la JVM.
  */
 object PointerProtocol {
-    const val COMPANION_PACKAGE = "com.royleguiza.voicebubble.puntero"
+    const val COMPANION_PACKAGE = "com.royleguiza.orison.puntero"
     const val COMPANION_SERVICE_CLASS = "com.royleguiza.voicebubble.puntero.PunteroService"
-    const val ACTION_POINTER = "com.royleguiza.voicebubble.puntero.ACTION_POINTER"
-    const val PERMISSION_POINTER = "com.royleguiza.voicebubble.puntero.permission.POINTER"
+    const val ACTION_POINTER = "com.royleguiza.orison.puntero.ACTION_POINTER"
+    const val PERMISSION_POINTER = "com.royleguiza.orison.puntero.permission.POINTER"
 
     const val EXTRA_OP = "op"
     const val EXTRA_X = "x"
@@ -53,8 +53,8 @@ object PointerProtocol {
     const val STATUS_READY = "ready"
 
     /** Respuesta del complemento a un clic: confirma que Android lo hizo. */
-    const val HOST_PACKAGE = "com.royleguiza.voicebubblestt"
-    const val ACTION_RESULT = "com.royleguiza.voicebubble.puntero.ACTION_RESULT"
+    const val HOST_PACKAGE = "com.royleguiza.orison"
+    const val ACTION_RESULT = "com.royleguiza.orison.puntero.ACTION_RESULT"
     const val EXTRA_SEQ = "seq"
     const val EXTRA_RESULT = "result"
     const val RESULT_DONE = "done"
@@ -67,13 +67,13 @@ object PointerProtocol {
     // --- v2: el trackpad vive en el complemento ---
 
     /** VoiceBubble → complemento: abrir el trackpad (ancla + configuración). */
-    const val ACTION_OPEN_TRACKPAD = "com.royleguiza.voicebubble.puntero.ACTION_OPEN_TRACKPAD"
+    const val ACTION_OPEN_TRACKPAD = "com.royleguiza.orison.puntero.ACTION_OPEN_TRACKPAD"
 
     /** VoiceBubble → complemento: cerrar el trackpad. */
-    const val ACTION_CLOSE_TRACKPAD = "com.royleguiza.voicebubble.puntero.ACTION_CLOSE_TRACKPAD"
+    const val ACTION_CLOSE_TRACKPAD = "com.royleguiza.orison.puntero.ACTION_CLOSE_TRACKPAD"
 
     /** Complemento → VoiceBubble: el trackpad se abrió o se cerró (extra [EXTRA_OPEN]). */
-    const val ACTION_TRACKPAD_STATE = "com.royleguiza.voicebubble.puntero.ACTION_TRACKPAD_STATE"
+    const val ACTION_TRACKPAD_STATE = "com.royleguiza.orison.puntero.ACTION_TRACKPAD_STATE"
 
     const val EXTRA_ANCHOR_X = "anchor_x"
     const val EXTRA_ANCHOR_Y = "anchor_y"
@@ -111,16 +111,16 @@ object PointerProtocol {
     // --- v3: la barra flotante (borde · burbuja · isla) la dibuja el complemento ---
 
     /** VoiceBubble → complemento: configuración de la barra (ver [DockConfig]). Aplica EN VIVO. */
-    const val ACTION_DOCK_CONFIG = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_CONFIG"
+    const val ACTION_DOCK_CONFIG = "com.royleguiza.orison.puntero.ACTION_DOCK_CONFIG"
 
     /** VoiceBubble → complemento: estado del dictado (ver [MicState]). */
-    const val ACTION_MIC_STATE = "com.royleguiza.voicebubble.puntero.ACTION_MIC_STATE"
+    const val ACTION_MIC_STATE = "com.royleguiza.orison.puntero.ACTION_MIC_STATE"
 
     /** Complemento → VoiceBubble: arrancó (o quiere configuración); el host contesta con DOCK_CONFIG. */
-    const val ACTION_DOCK_HELLO = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_HELLO"
+    const val ACTION_DOCK_HELLO = "com.royleguiza.orison.puntero.ACTION_DOCK_HELLO"
 
     /** Complemento → VoiceBubble: dice si está dibujando la barra ([EXTRA_ACTIVE]) y qué forma tiene. */
-    const val ACTION_DOCK_STATE = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE"
+    const val ACTION_DOCK_STATE = "com.royleguiza.orison.puntero.ACTION_DOCK_STATE"
 
     /**
      * Complemento → VoiceBubble (fase 4): toque largo en la barra o la burbuja;
@@ -128,7 +128,7 @@ object PointerProtocol {
      * [EXTRA_HISTORY_Y]) con lado [EXTRA_HISTORY_SIZE]. El texto dictado nunca
      * pasa por el complemento.
      */
-    const val ACTION_DOCK_HISTORY = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_HISTORY"
+    const val ACTION_DOCK_HISTORY = "com.royleguiza.orison.puntero.ACTION_DOCK_HISTORY"
     const val EXTRA_HISTORY_X = "history_x"
     const val EXTRA_HISTORY_Y = "history_y"
     const val EXTRA_HISTORY_SIZE = "history_size"
@@ -139,7 +139,7 @@ object PointerProtocol {
      * complemento se vela (invisible y sin tomar toques) para no taparlo; si
      * el «cerrado» no llega, vuelve sola a los [VEIL_MAX_MS].
      */
-    const val ACTION_DOCK_VEIL = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_VEIL"
+    const val ACTION_DOCK_VEIL = "com.royleguiza.orison.puntero.ACTION_DOCK_VEIL"
     const val EXTRA_VEILED = "veiled"
     const val VEIL_MAX_MS = 120_000L
 
@@ -192,8 +192,8 @@ object PointerProtocol {
     /** Dictado nativo de la barra (servicio DockDictationService del host): acciones y destino. */
     const val HOST_DICTATION_SERVICE_CLASS = "com.royleguiza.voicebubblestt.DockDictationService"
     const val HOST_TRAMPOLINE_CLASS = "com.royleguiza.voicebubblestt.DockTrampolineActivity"
-    const val ACTION_DICTATION_TOGGLE = "com.royleguiza.voicebubblestt.DOCK_DICTATION_TOGGLE"
-    const val ACTION_DICTATION_CANCEL = "com.royleguiza.voicebubblestt.DOCK_DICTATION_CANCEL"
+    const val ACTION_DICTATION_TOGGLE = "com.royleguiza.orison.DOCK_DICTATION_TOGGLE"
+    const val ACTION_DICTATION_CANCEL = "com.royleguiza.orison.DOCK_DICTATION_CANCEL"
     const val EXTRA_FROM_TRAMPOLINE = "from_trampoline"
 
     data class Command(val op: String, val x: Float, val y: Float, val dy: Float = 0f) {
@@ -267,8 +267,8 @@ object PointerProtocol {
     fun resultMessage(result: String?): String? = when (result) {
         RESULT_DONE -> null
         RESULT_CANCELLED -> "Android interrumpió el clic. Probá de nuevo."
-        RESULT_REJECTED -> "VoiceBubble Puntero no pudo hacer el clic. Apagalo y volvé a prenderlo en Accesibilidad."
-        else -> "VoiceBubble Puntero no responde. Apagalo y volvé a prenderlo en Accesibilidad."
+        RESULT_REJECTED -> "Orison Puntero no pudo hacer el clic. Apagalo y volvé a prenderlo en Accesibilidad."
+        else -> "Orison Puntero no responde. Apagalo y volvé a prenderlo en Accesibilidad."
     }
 
     /**

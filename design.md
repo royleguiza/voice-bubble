@@ -1,4 +1,6 @@
-# DESIGN.md – Sistema de Diseño VoiceBubble STT
+# DESIGN.md – Sistema de Diseño Orison
+
+> La app se llama **Orison** desde el 25/11/2026 (antes VoiceBubble STT; T2 del plan de lanzamiento). Donde este documento dice VoiceBubble, léase Orison.
 
 > **Línea de diseño**: **Horizonte** (reemplaza a Liquid Glass desde la fase 0
 > del rediseño, rama `horizonte`). Toda la interfaz —app Flutter, teclado

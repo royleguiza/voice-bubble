@@ -180,7 +180,7 @@ manifest_txt = read("voice_bubble_stt/android/app/src/main/AndroidManifest.xml")
 # una declaración. Lo prohibido es el elemento <service>/<uses-permission>.
 manifest_decls = re.sub(r"<!--.*?-->", "", manifest_txt, flags=re.DOTALL)
 check("Manifest sin servicio de accesibilidad (perfil anti-Play-Protect)",
-      "VoiceBubbleAccessibilityService" not in manifest_decls
+      "OrisonAccessibilityService" not in manifest_decls
       and "BIND_ACCESSIBILITY_SERVICE" not in manifest_decls)
 
 # --- 9. Rotación con popup abierto: dismiss seguro, sin recreación ---

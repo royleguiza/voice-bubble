@@ -4,7 +4,7 @@ TEST SUITE INTEGRAL: MODO TRACKPAD Y PUNTERO VIRTUAL (MEJ-09)
 Verifica al 100% de certeza:
 1. Paridad de claves de contrato en docs/contract-keys.txt, Dart y Kotlin.
 2. Manifest y permisos: SYSTEM_ALERT_WINDOW y perfil anti-Play-Protect (SIN BIND_ACCESSIBILITY_SERVICE declarado; el servicio queda versionado pero dormido).
-3. VoiceBubbleAccessibilityService: métodos de despacho, sanitización de coordenadas, batching de scroll y canRetrieveWindowContent=false.
+3. OrisonAccessibilityService: métodos de despacho, sanitización de coordenadas, batching de scroll y canRetrieveWindowContent=false.
 4. PointerOverlayManager: TYPE_APPLICATION_OVERLAY, FLAG_NOT_TOUCHABLE, estilos, cinemática y bounds.
 5. VirtualTrackpadView: Opción 2 Split Wings, modos de scroll (right, left, disabled), auto-expansión 100%,
    prevención de doble-click multitáctil, re-anclaje de cursor y clic secundario 'hold'.
@@ -104,7 +104,7 @@ with open(manifest_path, "r", encoding="utf-8") as f:
 
 check("AndroidManifest declara SYSTEM_ALERT_WINDOW", 'android.permission.SYSTEM_ALERT_WINDOW' in manifest_content)
 check("AndroidManifest libre de BIND_ACCESSIBILITY_SERVICE (perfil anti-Play-Protect)", 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in manifest_content)
-check("AndroidManifest no declara VoiceBubbleAccessibilityService (perfil anti-Play-Protect)", 'android:name=".VoiceBubbleAccessibilityService"' not in manifest_content)
+check("AndroidManifest no declara OrisonAccessibilityService (perfil anti-Play-Protect)", 'android:name=".OrisonAccessibilityService"' not in manifest_content)
 # NOTA: la exigencia de FloatingTrackpadService vive en TEST 13 (declarado
 # como servicio normal por otro agente). Aquí solo se conserva el perfil
 # dormido de ACCESIBILIDAD, que sí debe seguir sin declarar.
@@ -117,11 +117,11 @@ keystore_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/debug.keys
 check("Keystore persistente debug.keystore existe en android/app", os.path.isfile(keystore_path))
 check("build.gradle.kts configura signingConfigs con debug.keystore", 'debug.keystore' in gradle_content)
 
-# --- TEST 3: clics en otras apps = complemento VoiceBubble Puntero (2026-10-30) ---
-# VoiceBubble sigue sin Accesibilidad (perfil anti-Play-Protect). El servicio
+# --- TEST 3: clics en otras apps = complemento Orison Puntero (2026-10-30) ---
+# Orison sigue sin Accesibilidad (perfil anti-Play-Protect). El servicio
 # que hace los gestos vive en la app aparte puntero_android/.
-acc_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/VoiceBubbleAccessibilityService.kt")
-check("VoiceBubble ya no trae servicio de Accesibilidad propio", not os.path.isfile(acc_kt_path))
+acc_kt_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/OrisonAccessibilityService.kt")
+check("Orison ya no trae servicio de Accesibilidad propio", not os.path.isfile(acc_kt_path))
 pun_dir = os.path.join(WORKSPACE, "puntero_android/app/src/main/kotlin/com/royleguiza/voicebubble/puntero")
 pun_svc_path = os.path.join(pun_dir, "PunteroService.kt")
 check("PunteroService.kt existe en el complemento", os.path.isfile(pun_svc_path))
@@ -178,7 +178,7 @@ if os.path.isfile(ftp_kt_path):
     check("FloatingTrackpadService mueve la ventana flotante en 2D", "win.moveTo((wx0 + dx)" in ftp_content and "(wy0 + dy)" in ftp_content)
     check("El puntero puede llegar a toda la pantalla (cota inferior liberada)", "pointerManager?.resetBottomLimit()" in ftp_content)
     check("Puntero sobre el panel: el panel se vuelve casi transparente", "fun updateGhost()" in ftp_content)
-    check("Sin complemento avisa una vez cómo activarlo", "fun hintNoCompanion()" in ftp_content and "VoiceBubble Puntero" in ftp_content)
+    check("Sin complemento avisa una vez cómo activarlo", "fun hintNoCompanion()" in ftp_content and "Orison Puntero" in ftp_content)
     check("FloatingTrackpadService escucha la confirmación de clics del complemento", "PointerLink.listen(this)" in ftp_content and "PointerLink.stopListening(this)" in ftp_content)
 
 ftp_dart_path = os.path.join(WORKSPACE, "app_source/lib/services/floating_trackpad_service.dart")
@@ -474,7 +474,7 @@ check("FloatingTrackpadService lee kb_trackpad_haptic como String (sin getBoolea
       "ITEM-INTERFAZ CR-10: FloatingTrackpadService.kt usa getBoolean para una clave String (ClassCastException)")
 
 # --- TEST 15: honestidad de la UI (2026-10-30) ---
-# Los clics en otras apps existen SOLO con el complemento VoiceBubble Puntero
+# Los clics en otras apps existen SOLO con el complemento Orison Puntero
 # activo. La UI lo dice tal cual y no promete nada más; el nativo no despacha
 # si el complemento no está activo y el teclado degrada a teclas locales.
 link_path = os.path.join(WORKSPACE, "voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/PointerLink.kt")
@@ -484,7 +484,7 @@ check("UI del trackpad describe el puntero del teclado",
       "Un puntero dentro del teclado para mover el cursor" in trackpad_combined,
       "Falta el texto del trackpad del teclado")
 check("UI condiciona los clics en otras apps al complemento",
-      "VoiceBubble Puntero" in trackpad_combined
+      "Orison Puntero" in trackpad_combined
       and "Sin él, el puntero se mueve pero no hace clic." in trackpad_combined,
       "La UI promete clics en otras apps sin nombrar el complemento")
 check("UI del trackpad sin promesas de control ajeno",
@@ -589,15 +589,15 @@ p_prefs = _rd(f"{_pk}/DockPrefs.kt")
 p_geo = _rd(f"{_pk}/TrackpadGeometry.kt")
 p_main = _rd(f"{_pk}/MainActivity.kt")
 p_host = _rd(f"{_pk}/HostLink.kt")
-check("Fase 3: pestaña propia = barra del complemento con SOLO el puntero cuando la de VoiceBubble está apagada o no está",
+check("Fase 3: pestaña propia = barra del complemento con SOLO el puntero cuando la de Orison está apagada o no está",
       "private fun effective(): PointerProtocol.DockConfig" in p_dock_mgr
       and "toolMic = false, toolPointer = true" in p_dock_mgr
       and "private fun hostDockOn(): Boolean = config.enabled && HostLink.isHostInstalled(service)" in p_dock_mgr
       and "if (!prefs.ownTab()) return cfg.copy(enabled = false)" in p_dock_mgr
       and "fun isHostInstalled(context: Context): Boolean" in p_host)
-check("Fase 3: la pestaña propia no le cambia la forma a la barra de VoiceBubble",
+check("Fase 3: la pestaña propia no le cambia la forma a la barra de Orison",
       "if (standalone()) return" in p_dock_mgr)
-check("Fase 3: ajustes propios solo sin VoiceBubble (sensibilidad, estilo, forma) y la pantalla los aplica en vivo",
+check("Fase 3: ajustes propios solo sin Orison (sensibilidad, estilo, forma) y la pantalla los aplica en vivo",
       "fun ownTrackpad(): PointerProtocol.TrackpadConfig" in p_prefs
       and "if (HostLink.isHostInstalled(service)) cfg.trackpad else prefs.ownTrackpad()" in p_dock_mgr
       and "ownSettings.visibility = if (hostInstalled) View.GONE else View.VISIBLE" in p_main
@@ -617,7 +617,7 @@ check("Fase 4: un solo puntero — con el complemento listo, el trackpad del tec
       and "PointerLink.openTrackpad(service, dm.widthPixels / 2, anchorY, onNoAnswer" in h_tpb)
 check("Host: si el complemento está instalado pero no dibuja, la notificación avisa y abre Accesibilidad",
       "private fun updateComplementWarning()" in h_fbs and "Settings.ACTION_ACCESSIBILITY_SETTINGS" in h_fbs
-      and "VoiceBubble Puntero no está funcionando" in h_fbs)
+      and "Orison Puntero no está funcionando" in h_fbs)
 
 print("\n============================================================")
 print(f" RESULTADO SUITE TRACKPAD & ISLA: {suite.passed} pasados, {suite.failed} fallidos.")

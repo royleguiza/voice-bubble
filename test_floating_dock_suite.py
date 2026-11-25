@@ -4,7 +4,7 @@ TEST SUITE: BARRA FLOTANTE + VOICEBUBBLE PUNTERO (2026-10-30)
 
 Prototipo "Burbuja de puntero" aprobado por el dueño. Verifica sobre el
 código real:
-1. Perfil anti-Play-Protect intacto: VoiceBubble sin AccessibilityService;
+1. Perfil anti-Play-Protect intacto: Orison sin AccessibilityService;
    la Accesibilidad vive solo en el complemento puntero_android/.
 2. Protocolo idéntico en las dos apps y permiso de firma en las dos.
 3. Complemento mínimo: gestos sí, lectura de pantalla no, sin telemetría.
@@ -27,7 +27,7 @@ código real:
     el complemento como ventanas TYPE_ACCESSIBILITY_OVERLAY con estado en prefs
     propias; protocolo v3; dictado nativo del host (DockDictationService
     exportado SOLO con el permiso de firma, actividad trampolín); la barra de
-    VoiceBubble queda de respaldo y nunca se ven dos.
+    Orison queda de respaldo y nunca se ven dos.
 12. Fase 2B (2026-11-15): Ajustes de Flutter para la isla: forma «Isla»
     (deshabilitada sin el complemento), pantalla «Ajustar isla» con maqueta a
     escala real, deslizadores y ±1 px, lado del micrófono, centrar/restablecer,
@@ -99,10 +99,10 @@ settings = read("app_source/lib/screens/settings_screen.dart")
 contract = read("docs/contract-keys.txt").split()
 
 # --- 1. Perfil anti-Play-Protect ---
-check("VoiceBubble sin BIND_ACCESSIBILITY_SERVICE", "BIND_ACCESSIBILITY_SERVICE" not in manifest)
-check("VoiceBubble sin meta-data de accesibilidad", "android.accessibilityservice" not in manifest)
-check("Sin clase de Accesibilidad en VoiceBubble", not exists(f"{KT}/VoiceBubbleAccessibilityService.kt"))
-check("Ningún Kotlin de VoiceBubble extiende AccessibilityService",
+check("Orison sin BIND_ACCESSIBILITY_SERVICE", "BIND_ACCESSIBILITY_SERVICE" not in manifest)
+check("Orison sin meta-data de accesibilidad", "android.accessibilityservice" not in manifest)
+check("Sin clase de Accesibilidad en Orison", not exists(f"{KT}/OrisonAccessibilityService.kt"))
+check("Ningún Kotlin de Orison extiende AccessibilityService",
       all(": AccessibilityService()" not in read(f"{KT}/{f}")
           for f in os.listdir(os.path.join(WORKSPACE, KT)) if f.endswith(".kt")))
 check("El complemento declara el servicio con BIND_ACCESSIBILITY_SERVICE",
@@ -110,13 +110,13 @@ check("El complemento declara el servicio con BIND_ACCESSIBILITY_SERVICE",
 
 # --- 2. Protocolo y permiso de firma ---
 check("PointerProtocol idéntico en las dos apps", consts(proto) == consts(pun_proto) and len(consts(proto)) >= 15)
-perm = "com.royleguiza.voicebubble.puntero.permission.POINTER"
-for name, m in (("VoiceBubble", manifest), ("Puntero", pun_manifest)):
+perm = "com.royleguiza.orison.puntero.permission.POINTER"
+for name, m in (("Orison", manifest), ("Puntero", pun_manifest)):
     check(f"{name} declara el permiso de firma",
           re.search(r'<permission\s+android:name="' + re.escape(perm) + r'"\s+android:protectionLevel="signature"', m) is not None)
-check("VoiceBubble usa el permiso", f'<uses-permission android:name="{perm}"/>' in manifest)
-check("VoiceBubble puede ver si el complemento está instalado",
-      '<package android:name="com.royleguiza.voicebubble.puntero"/>' in manifest)
+check("Orison usa el permiso", f'<uses-permission android:name="{perm}"/>' in manifest)
+check("Orison puede ver si el complemento está instalado",
+      '<package android:name="com.royleguiza.orison.puntero"/>' in manifest)
 check("El complemento firma con la misma debug.keystore", "../../voice_bubble_stt/android/app/debug.keystore" in pun_gradle)
 check("Broadcast explícito al paquete del complemento", "setPackage(PointerProtocol.COMPANION_PACKAGE)" in link)
 check("El complemento exige el permiso al registrar el receptor",
@@ -128,7 +128,7 @@ check("Gestos sí", 'android:canPerformGestures="true"' in pun_cfg)
 check("Lectura de pantalla no", 'android:canRetrieveWindowContent="false"' in pun_cfg)
 check("Herramienta de accesibilidad declarada", 'android:isAccessibilityTool="true"' in pun_cfg)
 check("Sin telemetría", "Cero telemetría" in pun_svc and "event?." not in pun_svc)
-check("Sin permisos extra en el complemento (solo el de firma propio)", re.findall(r'<uses-permission android:name="([^"]+)"', pun_manifest) == ["com.royleguiza.voicebubble.puntero.permission.POINTER"])
+check("Sin permisos extra en el complemento (solo el de firma propio)", re.findall(r'<uses-permission android:name="([^"]+)"', pun_manifest) == ["com.royleguiza.orison.puntero.permission.POINTER"])
 check("Sin Internet en el complemento", "INTERNET" not in pun_manifest)
 check("Sin dependencias de runtime en el complemento",
       re.search(r'^\s*implementation\(', pun_gradle, re.M) is None)
@@ -222,7 +222,7 @@ for t in (f"{KT_TEST}/DockGeometryTest.kt", f"{KT_TEST}/PointerProtocolTest.kt",
 check("CI corre los tests JVM de la barra", "DockGeometryTest" in ci and "PointerProtocolTest" in ci)
 check("CI verifica la paridad del protocolo", "PointerProtocol difiere" in ci)
 check("CI compila y testea el complemento", "working-directory: puntero_android" in ci and ":app:assembleDebug" in ci)
-check("CI publica el APK del complemento", "voice-bubble-puntero-apk-r" in ci)
+check("CI publica el APK del complemento", "orison-puntero-apk-r" in ci)
 check("Guardia de logs cubre el complemento", "puntero_android/app/src/main/kotlin" in ci)
 
 # --- 8b. Trackpad como el prototipo, puntero fino y clics confirmados (2026-10-30) ---
@@ -252,8 +252,8 @@ check("Puntero en coordenadas de pantalla completa", "FLAG_LAYOUT_IN_SCREEN" in 
 check("Clic en la punta que se ve (posición real dibujada)", "getLocationOnScreen(loc)" in pom and "statusBarHeightPx" not in pom)
 check("Protocolo: respuesta del complemento", all(k in proto for k in ("ACTION_RESULT", "HOST_PACKAGE", "EXTRA_SEQ", "RESULT_DONE", "RESULT_CANCELLED", "RESULT_REJECTED", "ACK_TIMEOUT_MS", "fun resultMessage(")))
 check("Complemento responde cada clic con permiso de firma", "sendBroadcast(intent, PointerProtocol.PERMISSION_POINTER)" in pun_svc and "reply(seq, PointerProtocol.RESULT_REJECTED)" in pun_svc)
-check("Complemento ve a VoiceBubble y tiene el permiso para responder", 'uses-permission android:name="com.royleguiza.voicebubble.puntero.permission.POINTER"' in pun_manifest and '<package android:name="com.royleguiza.voicebubblestt"/>' in pun_manifest)
-check("VoiceBubble espera la respuesta y avisa si no llega", "ackTimeout" in link and "PointerProtocol.resultMessage(result)" in link and "report(null)" in link and "PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED" in link)
+check("Complemento ve a Orison y tiene el permiso para responder", 'uses-permission android:name="com.royleguiza.orison.puntero.permission.POINTER"' in pun_manifest and '<package android:name="com.royleguiza.orison"/>' in pun_manifest)
+check("Orison espera la respuesta y avisa si no llega", "ackTimeout" in link and "PointerProtocol.resultMessage(result)" in link and "report(null)" in link and "PointerProtocol.PERMISSION_POINTER, null, Context.RECEIVER_EXPORTED" in link)
 check("Scroll sin complemento también avisa", "PointerLink.scroll(this@FloatingTrackpadService, pos.first, pos.second, chunk)) {\n                            hintNoCompanion()" in ftp)
 check("Burbuja se esconde con el trackpad abierto y vuelve al cerrarlo", "fun setTrackpadOpen(open: Boolean)" in dock and "!hidden && !trackpadOpen" in dock and "FloatingBubbleService.setTrackpadOpen(true)" in ftp and "FloatingBubbleService.setTrackpadOpen(false)" in ftp)
 check("La flecha nunca tapa el punto del clic", "ARROW_GAP_PX = 3" in pom and "fun originOffset()" in pom)
@@ -266,7 +266,7 @@ check("Mutación: puntero corrido por la barra de estado se detecta", "fitInsets
 
 # --- 9. Mutaciones negativas ---
 mut_manifest = manifest.replace("</application>", '<service android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"/></application>')
-check("Mutación: Accesibilidad en VoiceBubble se detecta", "BIND_ACCESSIBILITY_SERVICE" in mut_manifest)
+check("Mutación: Accesibilidad en Orison se detecta", "BIND_ACCESSIBILITY_SERVICE" in mut_manifest)
 mut_proto = pun_proto.replace('const val MAX_SCROLL_PX = 600f', 'const val MAX_SCROLL_PX = 900f')
 check("Mutación: protocolo divergente se detecta", consts(proto) != consts(mut_proto))
 mut_cfg = pun_cfg.replace('canRetrieveWindowContent="false"', 'canRetrieveWindowContent="true"')
@@ -378,7 +378,7 @@ for c in ("ACTION_OPEN_TRACKPAD", "ACTION_CLOSE_TRACKPAD", "ACTION_TRACKPAD_STAT
 check("Protocolo v2 idéntico (const val) en las dos apps y con más líneas que la v1",
       consts(proto) == consts(pun_proto) and len(consts(proto)) >= 45)
 check("Las acciones v2 son del paquete del complemento",
-      all(f'"com.royleguiza.voicebubble.puntero.{n}"' in proto for n in ("ACTION_OPEN_TRACKPAD", "ACTION_CLOSE_TRACKPAD", "ACTION_TRACKPAD_STATE")))
+      all(f'"com.royleguiza.orison.puntero.{n}"' in proto for n in ("ACTION_OPEN_TRACKPAD", "ACTION_CLOSE_TRACKPAD", "ACTION_TRACKPAD_STATE")))
 check("Configuración de OPEN_TRACKPAD validada con función pura",
       "fun normalizeTrackpadConfig(" in proto and "fun normalizeTrackpadConfig(" in pun_proto and "PointerProtocol.normalizeTrackpadConfig(" in pun_svc)
 check("OP_TAP / OP_LONG_PRESS / OP_SCROLL por broadcast se conservan (trackpad del teclado)",
@@ -387,7 +387,7 @@ check("OP_TAP / OP_LONG_PRESS / OP_SCROLL por broadcast se conservan (trackpad d
 check("El complemento recibe OPEN/CLOSE con el permiso de firma y sigue validando órdenes",
       "addAction(PointerProtocol.ACTION_OPEN_TRACKPAD)" in pun_svc and "addAction(PointerProtocol.ACTION_CLOSE_TRACKPAD)" in pun_svc
       and "registerReceiver(receiver, filter, PointerProtocol.PERMISSION_POINTER" in pun_svc)
-check("TRACKPAD_STATE: al abrir y al cerrar, solo a VoiceBubble y con permiso de firma",
+check("TRACKPAD_STATE: al abrir y al cerrar, solo a Orison y con permiso de firma",
       "setPackage(PointerProtocol.HOST_PACKAGE)" in pun_svc and "PointerProtocol.EXTRA_OPEN" in pun_svc
       and "announce(true)" in pun_ctrl and "announce(false)" in pun_ctrl and "service.sendTrackpadState(open)" in pun_ctrl)
 check("Complemento: accessibility config sin lectura de pantalla ni permisos nuevos",
@@ -422,7 +422,7 @@ check("Host: escucha TRACKPAD_STATE con permiso de firma mientras vive el servic
       and "PointerLink.listenTrackpadState(this)" in fbs and "dock?.setTrackpadOpen(open)" in fbs
       and "PointerLink.stopListeningTrackpadState(this)" in fbs)
 check("Host: <queries> y permiso de firma ya cubren el protocolo v2",
-      '<package android:name="com.royleguiza.voicebubble.puntero"/>' in manifest and f'<uses-permission android:name="{perm}"/>' in manifest)
+      '<package android:name="com.royleguiza.orison.puntero"/>' in manifest and f'<uses-permission android:name="{perm}"/>' in manifest)
 
 # Horizonte en el complemento
 colors_pun_day = read(f"{pun_res}/values/colors.xml")
@@ -432,7 +432,7 @@ colors_host_night = read("voice_bubble_stt/android/app/src/main/res/values-night
 def tok(src, name):
     m = re.search(r'<color name="' + name + r'">([^<]+)</color>', src)
     return m.group(1) if m else None
-check("Complemento: tokens hz_* día y noche con los mismos valores que VoiceBubble",
+check("Complemento: tokens hz_* día y noche con los mismos valores que Orison",
       all(tok(colors_pun_day, t) is not None and tok(colors_pun_day, t) == tok(colors_host_day, t)
           and tok(colors_pun_night, t) is not None and tok(colors_pun_night, t) == tok(colors_host_night, t) for t in HZ_TOKENS))
 check("Complemento: pantalla con tokens Horizonte (brasa con texto on-ember, tarjetas surf + line)",
@@ -472,7 +472,7 @@ check("CI: el complemento corre sus tests JVM y el protocolo se compara",
 # Mutaciones de la fase 1
 mut_overlay = pun_overlay.replace("TYPE_ACCESSIBILITY_OVERLAY", "TYPE_APPLICATION_OVERLAY")
 check("Mutación: puntero del complemento como overlay de app se detecta", "TYPE_ACCESSIBILITY_OVERLAY" not in mut_overlay)
-mut_proto2 = pun_proto.replace('const val ACTION_CLOSE_TRACKPAD = "com.royleguiza.voicebubble.puntero.ACTION_CLOSE_TRACKPAD"', '')
+mut_proto2 = pun_proto.replace('const val ACTION_CLOSE_TRACKPAD = "com.royleguiza.orison.puntero.ACTION_CLOSE_TRACKPAD"', '')
 check("Mutación: protocolo v2 incompleto en el complemento se detecta", consts(proto) != consts(mut_proto2))
 mut_fbs = fbs.replace("if (!PointerLink.openTrackpad(this@FloatingBubbleService, anchorX, anchorY, onNoAnswer = noAnswer)) {", "if (true) {")
 check("Mutación: herramienta Puntero sin el complemento primero se detecta", "PointerLink.openTrackpad(" not in mut_fbs)
@@ -552,12 +552,12 @@ check("Port: una sola barra a la vez en el complemento (DockManager elige la sup
 check("Port: mismo comportamiento de la barra (convertir por gesto, soltar contra el borde, abanico, Atrás protegido, cierre solo)",
       all(k in d_ctrl for k in ("DockGeometry.shouldBecomeBubble(side, dx, d)", "DockGeometry.snapSide(", "openArc()",
                                 "setGestureExclusion(", "EDGE_IDLE_MS", "restartEdgeIdle()", "TapAction.RUN_ONLY_TOOL")))
-check("Fase 4: toque largo en barra y burbuja del complemento pide el historial a VoiceBubble (el texto no pasa por el complemento)",
+check("Fase 4: toque largo en barra y burbuja del complemento pide el historial a Orison (el texto no pasa por el complemento)",
       d_ctrl.count("handler.postDelayed(longPress, LONG_PRESS_MS)") == 2 and "callbacks.onHistoryRequested(" in d_ctrl
       and "HostLink.showHistory(service, x, y, size)" in d_mgr and "if (standalone() || !hostDockOn()) return false" in d_mgr
       and "ACTION_DOCK_HISTORY" in fbs + read(f"{KT}/DockLink.kt") and "fun showHistoryFromComplement(" in fbs
-      and "com.royleguiza.voicebubble.puntero.ACTION_DOCK_HISTORY" in read("voice_bubble_stt/android/app/src/main/AndroidManifest.xml"))
-check("La forma elegida con el dedo se recuerda en el complemento y se le cuenta a VoiceBubble",
+      and "com.royleguiza.orison.puntero.ACTION_DOCK_HISTORY" in read("voice_bubble_stt/android/app/src/main/AndroidManifest.xml"))
+check("La forma elegida con el dedo se recuerda en el complemento y se le cuenta a Orison",
       "callbacks.onFormChanged(form.pref)" in d_ctrl and "prefs.saveForm(form)" in d_mgr
       and "HostLink.state(service, announced ?: true, form)" in d_mgr
       and "PointerProtocol.EXTRA_DOCK_FORM" in d_host_link
@@ -627,12 +627,12 @@ check("Isla: listo muestra una frase corta y se ensancha lo justo (errores con �
       "fun doneWidth(" in d_isl_geo and "ERROR_MS" in d_isl_ctrl and "doneIsError" in d_isl_view)
 check("Isla: accesibilidad en español (cada botón con contentDescription y región polite)",
       all(t in d_isl_view for t in ('"Dictar"', '"Terminar dictado"', '"Cancelar dictado"', '"Abrir el puntero"',
-                                    "Isla de VoiceBubble", "ACCESSIBILITY_LIVE_REGION_POLITE"))
+                                    "Isla de Orison", "ACCESSIBILITY_LIVE_REGION_POLITE"))
       and "AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_DICTATE" in d_isl_view
       and "AccessibilityNodeInfo.AccessibilityAction(DockController.ACTION_POINTER" in d_isl_view)
 check("Barra y burbuja del complemento: acciones de TalkBack Dictar y Abrir el puntero",
       '"Dictar"' in d_ctrl and '"Abrir el puntero"' in d_ctrl and "AccessibilityNodeInfo.AccessibilityAction(" in d_ctrl
-      and 'contentDescription = "Barra flotante de VoiceBubble"' in d_ctrl)
+      and 'contentDescription = "Barra flotante de Orison"' in d_ctrl)
 check("Maqueta de la isla copiada a laboratorio_ui/isla.html", exists(ISLA_HTML) and "Isla VoiceBubble" in read(ISLA_HTML) and "id=\"isla\"" in read(ISLA_HTML))
 
 # Prefs propias y arranque
@@ -640,7 +640,7 @@ check("Estado en prefs PROPIAS del complemento (vb_puntero_dock): configuración
       '"vb_puntero_dock"' in d_prefs and "fun loadConfig()" in d_prefs and "fun saveConfig(" in d_prefs
       and "fun savePosition(" in d_prefs and "PointerProtocol.normalizeDockConfig(" in d_prefs
       and "FlutterSharedPreferences" not in dock_pun_all)
-check("Sin configuración guardada la barra no se dibuja (enabled = false) hasta que VoiceBubble la encienda",
+check("Sin configuración guardada la barra no se dibuja (enabled = false) hasta que Orison la encienda",
       "enabled = false," in d_prefs and "prefs.getBoolean(K_ENABLED, false)" in d_prefs)
 check("Al conectarse el servicio dibuja lo guardado y manda DOCK_HELLO (la barra vuelve sola tras reiniciar)",
       "if (dock == null) dock = DockManager(this)" in pun_svc and "dock?.start()" in pun_svc
@@ -708,8 +708,8 @@ check("DockTrampolineActivity: exportada SOLO con el permiso de firma, translúc
       and "DockTrampolineTheme" in tramp_tag)
 check("Receptor del manifiesto (funciona con la app cerrada) con el permiso de firma: DOCK_HELLO y DOCK_STATE",
       recv_tag != "" and SIGN in recv_tag
-      and 'name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_HELLO"' in manifest
-      and 'name="com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE"' in manifest
+      and 'name="com.royleguiza.orison.puntero.ACTION_DOCK_HELLO"' in manifest
+      and 'name="com.royleguiza.orison.puntero.ACTION_DOCK_STATE"' in manifest
       and "PointerProtocol.ACTION_DOCK_HELLO -> DockLink.onHello(ctx)" in h_dlink)
 check("Todo componente exportado nuevo de la barra exige el permiso de firma",
       all(SIGN in t for t in (dsvc_tag, tramp_tag, recv_tag)))
@@ -742,7 +742,7 @@ check("Complemento: arranca el dictado con startForegroundService y, si Android 
       "context.startForegroundService(intent) != null" in d_host_link and "fun openTrampoline(" in d_host_link
       and "HostLink.toggleDictation(service)" in d_mgr and "HostLink.openTrampoline(service)" in d_mgr
       and "if (ms.needsUi)" in d_mgr and "FLAG_ACTIVITY_NEW_TASK" in d_host_link)
-check("Complemento: no pide el micrófono si VoiceBubble no tiene el permiso",
+check("Complemento: no pide el micrófono si Orison no tiene el permiso",
       "fun hostHasMicPermission(" in d_host_link and "HostLink.hostHasMicPermission(service)" in d_mgr)
 
 # Host: respaldo y «nunca dos barras»
@@ -802,7 +802,7 @@ mut_isl = d_isl_ctrl.replace("DockWindow(windowManager, view, noLimits = true)",
 check("Mutación: isla sin NO_LIMITS (no llega a la cámara) se detecta", "noLimits = true" not in mut_isl)
 mut_geo2 = d_isl_geo.replace("val left = clamp(cx - w / 2, margin, screenW - w - margin)", "val left = cx - w / 2")
 check("Mutación: isla sin recorte a pantalla se detecta", "clamp(cx - w / 2, margin, screenW - w - margin)" not in mut_geo2)
-mut_pun_proto = pun_proto.replace('const val ACTION_DOCK_STATE = "com.royleguiza.voicebubble.puntero.ACTION_DOCK_STATE"', "")
+mut_pun_proto = pun_proto.replace('const val ACTION_DOCK_STATE = "com.royleguiza.orison.puntero.ACTION_DOCK_STATE"', "")
 check("Mutación: protocolo v3 incompleto en el complemento se detecta", consts(proto) != consts(mut_pun_proto))
 mut_dsvc = h_dsvc.replace("BackgroundWork.tryClaimMicrophone()", "1L")
 check("Mutación: dictado sin exclusión del micrófono se detecta", "BackgroundWork.tryClaimMicrophone()" not in mut_dsvc)
@@ -821,7 +821,7 @@ check("Forma Isla en el selector de Ajustes, deshabilitada sin el complemento ac
       "SettingsOption(\n                  'island'" in general and "enabled: islandAvailable" in general
       and "o.enabled ? () => onSelected(o.value) : null" in kit2)
 check("Sin complemento: sección que explica y el mismo acceso que Trackpad",
-      "'island-companion-section'" in general and "Necesita VoiceBubble Puntero activo" in general
+      "'island-companion-section'" in general and "Necesita Orison Puntero activo" in general
       and "_pointerCompanionRows()" in general and "_pointerCompanionRows()" in trackpad_page
       and "'pointer-companion-row'" in trackpad_page)
 check("Elegir Isla sin el complemento activo se rechaza también en el código",

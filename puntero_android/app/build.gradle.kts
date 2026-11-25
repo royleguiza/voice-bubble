@@ -7,12 +7,12 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.royleguiza.voicebubble.puntero"
+        applicationId = "com.royleguiza.orison.puntero"
         minSdk = 28
         targetSdk = 36
         // CI pasa -PbuildNumber=<run_number>: cada APK es una ACTUALIZACIÓN.
         versionCode = (project.findProperty("buildNumber") as String?)?.toIntOrNull() ?: 1
-        versionName = "1.0"
+        versionName = "1.0.0"
     }
 
     compileOptions {

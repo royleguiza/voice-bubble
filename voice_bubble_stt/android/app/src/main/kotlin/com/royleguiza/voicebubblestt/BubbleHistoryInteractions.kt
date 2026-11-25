@@ -24,7 +24,7 @@ object BubbleHistoryInteractions {
     fun copyToClipboard(context: Context, text: String): Boolean {
         return try {
             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-            val clip = ClipData.newPlainText("VoiceBubble STT", text)
+            val clip = ClipData.newPlainText("Orison", text)
             clipboard?.setPrimaryClip(clip)
             true
         } catch (_: Throwable) {

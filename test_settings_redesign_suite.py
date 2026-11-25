@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TEST SUITE: AJUSTES 2026 (prototipo "VoiceBubble · Ajustes 2026", aprobado
+TEST SUITE: AJUSTES 2026 (prototipo "Orison · Ajustes 2026", aprobado
 por el dueño el 2026-10-30; reemplaza a settings-redesign-v2).
 Verifica sobre el código REAL:
 1. Estructura: lista raíz estilo iOS + subpáginas (sin dock de pestañas).
@@ -169,9 +169,9 @@ for k in need_keys:
 
 # --- 6. Acerca de + apariencia ---
 check("Acerca de con descripción de contrato",
-      "Transcripción de voz a texto con Groq Whisper." in screen)
+      "Teclado de voz y notas con IA." in screen)
 check("Acerca de muestra versión y diagnóstico",
-      "'1.0.0'" in screen and "channelErrorCount" in screen)
+      "AppInfo.version" in screen and "channelErrorCount" in screen)
 for mode in ["'sistema'", "'claro'", "'oscuro'"]:
     check(f"Apariencia ofrece modo {mode}", mode in screen)
 

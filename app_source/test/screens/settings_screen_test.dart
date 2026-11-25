@@ -532,7 +532,7 @@ void main() {
       await openPage(tester, 'teclado');
 
       expect(byKey('kb-status-active'), findsOneWidget);
-      expect(find.text('VoiceBubble está activo'), findsOneWidget);
+      expect(find.text('Orison está activo'), findsOneWidget);
     });
 
     testWidgets('al volver de Android relee el estado y abre el selector',

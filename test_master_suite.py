@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MASTER VERIFICATION SUITE - VoiceBubble STT
+MASTER VERIFICATION SUITE - Orison
 Delega cada suite Python vía subprocess (fallo real si fallan) y conserva
 inline SOLO los CI guards propios (contrato de claves, logs limpios y
 retención al desinstalar). La versión NO se congela en un literal: se
@@ -62,7 +62,7 @@ SUITES = [
     ("Nada tapado + scroll que no salta (C-27)", "test_c27_nothing_obscured_and_scroll_suite.py"),
     ("Sheet con scroll + botones 44dp (C-28)", "test_c28_sheet_scroll_and_touch_targets_suite.py"),
     ("Burbuja siempre recuperable (C-29)", "test_c29_bubble_clamping_and_no_limits_suite.py"),
-    ("Barra flotante + VoiceBubble Puntero", "test_floating_dock_suite.py"),
+    ("Barra flotante + Orison Puntero", "test_floating_dock_suite.py"),
     ("Contraste que se lee (C-30)", "test_c30_contrast_and_accessible_tokens_suite.py"),
     ("Transparencia del sistema + tokens (C-31)", "test_c31_system_transparency_and_tokens_suite.py"),
     ("Semántica correcta + teclado físico (C-32)", "test_c32_semantics_and_physical_keyboard_suite.py"),
@@ -2697,7 +2697,7 @@ def test_manifest_retention():
     assert 'android:hasFragileUserData="true"' in content, "Falta android:hasFragileUserData=\"true\""
     assert 'android:allowBackup="true"' in content, "Falta android:allowBackup=\"true\""
     assert 'android.permission.BIND_ACCESSIBILITY_SERVICE' not in content, "Falla de seguridad: AndroidManifest no debe declarar BIND_ACCESSIBILITY_SERVICE (perfil anti-Play-Protect 2026-09-05)"
-    assert 'VoiceBubbleAccessibilityService' not in content, "AndroidManifest no debe registrar VoiceBubbleAccessibilityService (perfil anti-Play-Protect)"
+    assert 'OrisonAccessibilityService' not in content, "AndroidManifest no debe registrar OrisonAccessibilityService (perfil anti-Play-Protect)"
     assert 'android:name=".FloatingTrackpadService"' in content, "ITEM-INTERFAZ: AndroidManifest debe declarar FloatingTrackpadService como servicio normal (otro agente lo declara)"
     assert os.path.isfile("voice_bubble_stt/android/app/debug.keystore"), "Falta voice_bubble_stt/android/app/debug.keystore persistente"
     # Consistencia de versión entre ambos pubspec (sin literal congelado).

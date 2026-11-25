@@ -248,7 +248,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get islandNeedsPointer =>
-      'The island needs VoiceBubble Pointer turned on: without it, it shows as a bubble and these settings have no effect.';
+      'The island needs Orison Pointer turned on: without it, it shows as a bubble and these settings have no effect.';
 
   @override
   String get islandNeedsBar =>
@@ -666,14 +666,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPointerNeedsCompanion =>
-      'To click in other apps, turn on VoiceBubble Pointer in Trackpad';
+      'To click in other apps, turn on Orison Pointer in Trackpad';
 
   @override
-  String get settingsPointerCompanionTitle => 'VoiceBubble Pointer';
+  String get settingsPointerCompanionTitle => 'Orison Pointer';
 
   @override
   String get settingsPointerCompanionMessage =>
-      'It\'s a small app that performs the pointer\'s clicks in other apps. It\'s downloaded with VoiceBubble, from the same GitHub page. Install it and come back here to turn it on.';
+      'It\'s a small app that performs the pointer\'s clicks in other apps. It\'s downloaded with Orison, from the same GitHub page. Install it and come back here to turn it on.';
 
   @override
   String get settingsPointerCompanionOk => 'Got it';
@@ -686,7 +686,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsOverlayMessage =>
-      'To show the bubble over other apps, VoiceBubble needs permission to display over other apps.';
+      'To show the bubble over other apps, Orison needs permission to display over other apps.';
 
   @override
   String get settingsOverlayConfigure => 'Set up';
@@ -700,7 +700,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settingsTranslateAiMessage(String name) {
-    return 'When you translate, the selected or dictated text will be sent to $name (the “Title and summary with” provider) to be translated. VoiceBubble doesn\'t store it. It\'s never used in password fields.\n\nYou can switch back to “On the phone” anytime.';
+    return 'When you translate, the selected or dictated text will be sent to $name (the “Title and summary with” provider) to be translated. Orison doesn\'t store it. It\'s never used in password fields.\n\nYou can switch back to “On the phone” anytime.';
   }
 
   @override
@@ -773,7 +773,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSetupEnableKeyboard => 'Turn on the keyboard';
 
   @override
-  String get settingsAppSubtitle => 'Dictation with Groq Whisper';
+  String get settingsAppSubtitle => 'AI dictation';
 
   @override
   String get settingsNavTranscription => 'Transcription';
@@ -845,8 +845,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAboutTitle => 'About';
 
   @override
-  String get settingsAboutTagline =>
-      'Speech-to-text transcription with Groq Whisper.';
+  String get settingsAboutTagline => 'AI voice keyboard and notes.';
 
   @override
   String get settingsAboutPrivacy =>
@@ -1004,7 +1003,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsIslandNeedsFooter =>
-      'Needs VoiceBubble Pointer turned on: only an Accessibility service can draw over the camera and the status bar.';
+      'Needs Orison Pointer turned on: only an Accessibility service can draw over the camera and the status bar.';
 
   @override
   String get settingsToolsHeader => 'Tools';
@@ -1220,7 +1219,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keyboardClipboardImages => 'Save images';
 
   @override
-  String get keyboardActiveTitle => 'VoiceBubble is active';
+  String get keyboardActiveTitle => 'Orison is active';
 
   @override
   String get keyboardActiveSubtitle => 'It\'s your keyboard in every app.';
@@ -1246,7 +1245,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keyboardStep1 => '1. Turn on in Android';
 
   @override
-  String get keyboardStep2 => '2. Pick VoiceBubble';
+  String get keyboardStep2 => '2. Pick Orison';
 
   @override
   String get keyboardTone1 => 'Tone 1';
@@ -1339,7 +1338,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trackpadFooterMissing =>
-      'To click in other apps you need the VoiceBubble Pointer companion. Without it, the pointer moves but doesn\'t click.';
+      'To click in other apps you need the Orison Pointer companion. Without it, the pointer moves but doesn\'t click.';
 
   @override
   String get trackpadOtherAppsHeader => 'Pointer in other apps';

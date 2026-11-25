@@ -178,7 +178,7 @@ internal fun Context.openAppUi() {
 internal fun Context.copySnippetToClipboard(text: String) {
     try {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        cm.setPrimaryClip(ClipData.newPlainText("VoiceBubble", text))
+        cm.setPrimaryClip(ClipData.newPlainText("Orison", text))
     } catch (_: Exception) {}
 }
 

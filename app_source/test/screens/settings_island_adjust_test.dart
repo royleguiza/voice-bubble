@@ -495,7 +495,7 @@ void main() {
     testWidgets('sin el complemento avisa que se ve como burbuja',
         (tester) async {
       await openIsland(tester, status: FloatingTrackpadService.pointerMissing);
-      expect(find.textContaining('VoiceBubble Puntero activo'), findsOneWidget);
+      expect(find.textContaining('Orison Puntero activo'), findsOneWidget);
     });
 
     testWidgets('cada control tiene etiqueta en español y 48 dp de target',

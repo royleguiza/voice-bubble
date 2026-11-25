@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="ime_name">Teclado VoiceBubble</string>
+    <string name="ime_name">Orison</string>
     <string name="subtype_es">Español</string>
     <string name="subtype_en">English (US)</string>
-    <string name="accessibility_service_name">Trackpad Virtual do VoiceBubble</string>
+    <string name="accessibility_service_name">Trackpad Virtual do Orison</string>
     <string name="accessibility_service_desc">Permite que o trackpad virtual faça toques e rolagens e (somente se você ativar a chave correspondente em Ajustes) cole os ditados da bolha no campo de texto em foco ao usar outros teclados. Não lê nem guarda o conteúdo da tela e nunca age em senhas.</string>
 
     <!-- Etapa 4, tanda B: textos que estaban en el código Kotlin y en los layouts. -->
@@ -14,12 +14,12 @@
     <string name="bubble_dictate">Ditar</string>
     <string name="bubble_history">Histórico</string>
     <string name="bubble_history_title">Histórico de transcrições</string>
-    <string name="bubble_pointer_no_answer">O VoiceBubble Ponteiro não está respondendo. Desative e ative de novo em Acessibilidade.</string>
+    <string name="bubble_pointer_no_answer">O Orison Ponteiro não está respondendo. Desative e ative de novo em Acessibilidade.</string>
     <string name="pointer_click_cancelled">O Android interrompeu o clique. Tente de novo.</string>
-    <string name="pointer_click_rejected">O VoiceBubble Ponteiro não conseguiu clicar. Desative e ative de novo em Acessibilidade.</string>
+    <string name="pointer_click_rejected">O Orison Ponteiro não conseguiu clicar. Desative e ative de novo em Acessibilidade.</string>
     <string name="bubble_snippets">Snippets</string>
-    <string name="dock_bar_desc">Barra flutuante do VoiceBubble</string>
-    <string name="dock_bubble_desc">Bolha do VoiceBubble</string>
+    <string name="dock_bar_desc">Barra flutuante do Orison</string>
+    <string name="dock_bubble_desc">Bolha do Orison</string>
     <string name="dock_dictate">Ditar</string>
     <string name="dock_msg_bad_key">A chave do Groq não é válida</string>
     <string name="dock_msg_copied">Copiado</string>
@@ -138,17 +138,17 @@
     <string name="kb_translate_missing_ai_key">Falta uma chave de IA (Groq ou Google) para traduzir com IA</string>
     <string name="kb_translate_on_device_failed">Não foi possível traduzir no telefone (na primeira vez é preciso internet para baixar o idioma)</string>
     <string name="kb_translate_selection_changed">A seleção mudou: tradução descartada</string>
-    <string name="bubble_mic_permission_needed">O VoiceBubble precisa da permissão de microfone para iniciar a bolha.</string>
+    <string name="bubble_mic_permission_needed">O Orison precisa da permissão de microfone para iniciar a bolha.</string>
     <string name="notif_bubble_active">Bolha flutuante ativa. Toque para transcrever.</string>
     <string name="notif_bubble_channel_desc">Mantém ativa a bolha flutuante de transcrição</string>
-    <string name="notif_bubble_channel_name">VoiceBubble Serviço Ativo</string>
+    <string name="notif_bubble_channel_name">Orison Serviço Ativo</string>
     <string name="notif_close">Fechar</string>
     <string name="notif_dock_channel_desc">Gravação pela barra flutuante</string>
     <string name="notif_dock_channel_name">Ditado da barra</string>
     <string name="notif_dock_recording">Gravando…</string>
     <string name="notif_dock_transcribing">Transcrevendo…</string>
     <string name="notif_pointer_disabled">O Android o desativou (acontece ao atualizar). Toque para ativá-lo em Acessibilidade.</string>
-    <string name="notif_pointer_not_working">O VoiceBubble Ponteiro não está funcionando</string>
+    <string name="notif_pointer_not_working">O Orison Ponteiro não está funcionando</string>
     <string name="notif_pointer_not_working_big">%1$s Enquanto isso, aparece a barra comum (sem a ilha nem o ponteiro por cima de tudo).</string>
     <string name="notif_pointer_stuck">Está ativado, mas não responde. Toque, desative e ative de novo em Acessibilidade.</string>
     <string name="notif_widget_channel_desc">Gravação pelo widget</string>
@@ -156,8 +156,8 @@
     <string name="notif_widget_recording">Gravando...</string>
     <string name="pad_close_trackpad">Fechar trackpad</string>
     <string name="pad_default_hint">Deslize para mover · Toque para clicar</string>
-    <string name="pad_pointer_disabled">Para clicar, ative o VoiceBubble Ponteiro em Acessibilidade. Toque aqui.</string>
-    <string name="pad_pointer_missing">Para clicar, falta o app VoiceBubble Ponteiro: instale o APK “voice-bubble-puntero” do mesmo build.</string>
+    <string name="pad_pointer_disabled">Para clicar, ative o Orison Ponteiro em Acessibilidade. Toque aqui.</string>
+    <string name="pad_pointer_missing">Para clicar, falta o app Orison Ponteiro: instale o APK “orison-puntero” do mesmo build.</string>
     <string name="pad_problem_tap_here">%1$s Toque aqui.</string>
     <string name="pad_surface_desc">Superfície do trackpad. Deslize para mover o ponteiro, toque para clicar.</string>
     <string name="widget_add_note">Adicionar nota</string>

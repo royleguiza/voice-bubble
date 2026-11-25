@@ -331,7 +331,7 @@ class FloatingBubbleService : Service() {
 
         val problem = complementProblem
         if (problem == null) {
-            builder.setContentTitle("VoiceBubble STT")
+            builder.setContentTitle("Orison")
                 .setContentText(getString(R.string.notif_bubble_active))
                 .setContentIntent(pendingOpenApp)
         } else {

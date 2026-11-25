@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test Suite Integral para el Gestor de Portapapeles Multimodal de VoiceBubble IME.
+Test Suite Integral para el Gestor de Portapapeles Multimodal de Orison IME.
 Verifica al 100% de certeza:
 1. FileProvider y Manifest XML
 2. Rutas privadas de clipboard_file_paths.xml

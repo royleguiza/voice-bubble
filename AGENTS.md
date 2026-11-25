@@ -1,4 +1,6 @@
-# AGENTS.md – Guía para Agentes de IA en VoiceBubble STT
+# AGENTS.md – Guía para Agentes de IA en Orison (antes VoiceBubble STT)
+
+> **Marca (T2, 2026-11-25):** la app se llama **Orison** (identificador `com.royleguiza.orison`; complemento **Orison Puntero**, `com.royleguiza.orison.puntero`). El `namespace`, los paquetes Kotlin (`com.royleguiza.voicebubblestt`, `com.royleguiza.voicebubble.puntero`), el nombre del paquete Dart (`voice_bubble_stt`) y los canales `MethodChannel` quedan con el nombre viejo a propósito: son internos y cambiarlos no aporta nada. El permiso de firma y las acciones del protocolo del Puntero sí pasaron a `com.royleguiza.orison.puntero.*`. Plan vigente: `docs/plan-lanzamiento-play.html`.
 
 > ⚠️ **POLÍTICA DE PUSH VIGENTE (sin fechas vencidas)**:
 > - **Ningún push de código sin autorización explícita del dueño** (`app_source/`, `voice_bubble_stt/`, etc.). Tras HB0/B1–B7 en local, el CI solo se dispara con su visto bueno.
@@ -24,7 +26,7 @@
 | Decisión | Valor |
 |---|---|
 | Framework | **Flutter** (Android únicamente) |
-| Package name | `com.royleguiza.voicebubblestt` |
+| Package name | `com.royleguiza.orison` (applicationId; namespace interno `com.royleguiza.voicebubblestt`) |
 | Carpeta del proyecto Flutter | `voice_bubble_stt/` (dentro de este repo) |
 | minSdkVersion | **28** |
 | targetSdkVersion | La más actual disponible al crear el proyecto |

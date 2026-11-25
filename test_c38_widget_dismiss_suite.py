@@ -147,9 +147,9 @@ class TestC38WidgetDismissSuite(unittest.TestCase):
             "android.permission.SYSTEM_ALERT_WINDOW",
             "android.permission.VIBRATE",
             # Barra flotante (2026-10-30): permiso de FIRMA propio para hablar
-            # con el complemento VoiceBubble Puntero. No es un permiso del
+            # con el complemento Orison Puntero. No es un permiso del
             # sistema ni pide nada al usuario.
-            "com.royleguiza.voicebubble.puntero.permission.POINTER",
+            "com.royleguiza.orison.puntero.permission.POINTER",
         ])
         self.assertEqual(got, expected,
                          "C-38 no agrega permisos (conjunto exacto preexistente)")

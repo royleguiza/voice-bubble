@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../app_info.dart';
 import 'channel_guard.dart';
 
 /// Resultado de exportar o importar la copia de seguridad (T1).
@@ -77,7 +78,7 @@ class BackupService {
       : _channel = channel ?? const MethodChannel(channelName);
 
   static const String channelName = 'com.royleguiza.voicebubblestt/backup';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = AppInfo.version;
 
   final MethodChannel _channel;
 

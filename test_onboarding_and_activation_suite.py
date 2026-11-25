@@ -7,7 +7,7 @@ Verifica:
 3. SettingsScreen registra WidgetsBindingObserver para reactivar estado al volver de ajustes.
 4. SettingsScreen dispara automáticamente el modal de selección de teclado al regresar si ya fue habilitado.
 5. SettingsScreen y HomeScreen solicitan el permiso de micrófono al arrancar/abrir.
-6. SettingsScreen ofrece botón para seleccionar VoiceBubble STT directamente sin salir de la app.
+6. SettingsScreen ofrece botón para seleccionar Orison directamente sin salir de la app.
 """
 
 import sys
@@ -50,9 +50,9 @@ def test_settings_screen_lifecycle_and_mic():
     assert "_handleAppResumed" in content, "SettingsScreen no implementa _handleAppResumed"
     assert "_showInputMethodPicker" in content, "SettingsScreen no implementa _showInputMethodPicker"
     assert "_ensureMicrophonePermission" in content, "SettingsScreen no solicita permiso de micrófono"
-    # Ajustes 2026: paso 2 "Elegir VoiceBubble" (o "Cambiar de teclado" si ya
+    # Ajustes 2026: paso 2 "Elegir Orison" (o "Cambiar de teclado" si ya
     # está activo) abre el selector modal sin salir de la app.
-    assert "'2. Elegir VoiceBubble'" in teclado and "onTap: _isKeyboardEnabled ? _showInputMethodPicker : null" in teclado, "Falta botón directo de selección modal"
+    assert "'2. Elegir Orison'" in teclado and "onTap: _isKeyboardEnabled ? _showInputMethodPicker : null" in teclado, "Falta botón directo de selección modal"
     assert "'Cambiar de teclado'" in teclado and "onTap: _showInputMethodPicker," in teclado, "Falta acceso al selector con el teclado activo"
     print("  [PASS] SettingsScreen.dart cuenta con ciclo de vida, modal nativo y petición de micrófono.")
 

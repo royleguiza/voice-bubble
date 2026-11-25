@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="ime_name">VoiceBubble Keyboard</string>
+    <string name="ime_name">Orison</string>
     <string name="subtype_es">Español</string>
     <string name="subtype_en">English (US)</string>
-    <string name="accessibility_service_name">VoiceBubble Virtual Trackpad</string>
+    <string name="accessibility_service_name">Orison Virtual Trackpad</string>
     <string name="accessibility_service_desc">Lets the virtual trackpad perform taps and scrolls, and (only if you turn on the matching switch in Settings) paste the bubble\'s dictations into the focused text field when using other keyboards. It does not read or store the screen content and never acts on passwords.</string>
 
     <!-- Etapa 4, tanda B: textos que estaban en el código Kotlin y en los layouts. -->
@@ -14,12 +14,12 @@
     <string name="bubble_dictate">Dictate</string>
     <string name="bubble_history">History</string>
     <string name="bubble_history_title">Transcription history</string>
-    <string name="bubble_pointer_no_answer">VoiceBubble Pointer is not responding. Turn it off and on again in Accessibility.</string>
+    <string name="bubble_pointer_no_answer">Orison Pointer is not responding. Turn it off and on again in Accessibility.</string>
     <string name="pointer_click_cancelled">Android interrupted the click. Try again.</string>
-    <string name="pointer_click_rejected">VoiceBubble Pointer couldn\'t click. Turn it off and on again in Accessibility.</string>
+    <string name="pointer_click_rejected">Orison Pointer couldn\'t click. Turn it off and on again in Accessibility.</string>
     <string name="bubble_snippets">Snippets</string>
-    <string name="dock_bar_desc">VoiceBubble floating bar</string>
-    <string name="dock_bubble_desc">VoiceBubble bubble</string>
+    <string name="dock_bar_desc">Orison floating bar</string>
+    <string name="dock_bubble_desc">Orison bubble</string>
     <string name="dock_dictate">Dictate</string>
     <string name="dock_msg_bad_key">The Groq key is not valid</string>
     <string name="dock_msg_copied">Copied</string>
@@ -138,17 +138,17 @@
     <string name="kb_translate_missing_ai_key">Add an AI key (Groq or Google) to translate with AI</string>
     <string name="kb_translate_on_device_failed">On-device translation failed (the first time needs internet to download the language)</string>
     <string name="kb_translate_selection_changed">Selection changed: translation discarded</string>
-    <string name="bubble_mic_permission_needed">VoiceBubble needs the microphone permission to start the bubble.</string>
+    <string name="bubble_mic_permission_needed">Orison needs the microphone permission to start the bubble.</string>
     <string name="notif_bubble_active">Floating bubble active. Tap to transcribe.</string>
     <string name="notif_bubble_channel_desc">Keeps the floating transcription bubble active</string>
-    <string name="notif_bubble_channel_name">VoiceBubble Active Service</string>
+    <string name="notif_bubble_channel_name">Orison Active Service</string>
     <string name="notif_close">Close</string>
     <string name="notif_dock_channel_desc">Recording from the floating bar</string>
     <string name="notif_dock_channel_name">Bar dictation</string>
     <string name="notif_dock_recording">Recording…</string>
     <string name="notif_dock_transcribing">Transcribing…</string>
     <string name="notif_pointer_disabled">Android turned it off (it happens when it updates). Tap to turn it on in Accessibility.</string>
-    <string name="notif_pointer_not_working">VoiceBubble Pointer is not working</string>
+    <string name="notif_pointer_not_working">Orison Pointer is not working</string>
     <string name="notif_pointer_not_working_big">%1$s Meanwhile the regular bar is shown (without the island or the pointer above everything).</string>
     <string name="notif_pointer_stuck">It is turned on but not responding. Tap, turn it off and on again in Accessibility.</string>
     <string name="notif_widget_channel_desc">Recording from the widget</string>
@@ -156,8 +156,8 @@
     <string name="notif_widget_recording">Recording...</string>
     <string name="pad_close_trackpad">Close trackpad</string>
     <string name="pad_default_hint">Slide to move · Tap to click</string>
-    <string name="pad_pointer_disabled">To click, turn on VoiceBubble Pointer in Accessibility. Tap here.</string>
-    <string name="pad_pointer_missing">To click, the VoiceBubble Pointer app is needed: install the “voice-bubble-puntero” APK from the same build.</string>
+    <string name="pad_pointer_disabled">To click, turn on Orison Pointer in Accessibility. Tap here.</string>
+    <string name="pad_pointer_missing">To click, the Orison Pointer app is needed: install the “orison-puntero” APK from the same build.</string>
     <string name="pad_problem_tap_here">%1$s Tap here.</string>
     <string name="pad_surface_desc">Trackpad surface. Slide to move the pointer, tap to click.</string>
     <string name="widget_add_note">Add note</string>

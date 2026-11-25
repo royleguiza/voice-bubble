@@ -132,9 +132,9 @@ jobs:
           strip() { grep -E '^\s*const val ' "$1" | sed 's/^\s*//'; }
           diff <(strip voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/PointerProtocol.kt) \
                <(strip puntero_android/app/src/main/kotlin/com/royleguiza/voicebubble/puntero/PointerProtocol.kt) \
-            || { echo '::error::PointerProtocol difiere entre VoiceBubble y VoiceBubble Puntero'; exit 1; }
+            || { echo '::error::PointerProtocol difiere entre Orison y Orison Puntero'; exit 1; }
 
-      - name: Complemento VoiceBubble Puntero (tests + APK)
+      - name: Complemento Orison Puntero (tests + APK)
         working-directory: puntero_android
         # Misma debug.keystore que VoiceBubble: el permiso de firma del
         # puntero exige que las dos apps estén firmadas igual.
@@ -174,16 +174,16 @@ jobs:
       - name: Upload APK arm64
         uses: actions/upload-artifact@v4
         with:
-          name: voice-bubble-arm64-profile-apk-r${{ github.run_number }}
+          name: orison-arm64-profile-apk-r${{ github.run_number }}
           path: voice_bubble_stt/build/app/outputs/flutter-apk/app-arm64-v8a-profile.apk
           if-no-files-found: error
           retention-days: 7
           compression-level: 6
 
-      - name: Upload APK VoiceBubble Puntero
+      - name: Upload APK Orison Puntero
         uses: actions/upload-artifact@v4
         with:
-          name: voice-bubble-puntero-apk-r${{ github.run_number }}
+          name: orison-puntero-apk-r${{ github.run_number }}
           path: puntero_android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7

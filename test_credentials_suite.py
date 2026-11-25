@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CREDENTIALS SUITE - VoiceBubble STT (contrato Claves)
+CREDENTIALS SUITE - Orison (contrato Claves)
 Sección propia de credenciales: dock inferior + pantalla + storage Dart y
 botón llave + capa + relleno en el teclado nativo Kotlin.
 
