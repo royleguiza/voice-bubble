@@ -1,0 +1,1235 @@
+<title>Lanzamiento Orison</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: columna de lectura de ~720px con índice fijo a la izquierda en pantallas anchas; maquetas del teclado en grilla Horizonte. */
+:root {
+  --bg: #EEEEF4;
+  --surf: #FFFFFF;
+  --surf2: #E3E4ED;
+  --line: #D5D7E2;
+  --fg: #10121A;
+  --fg2: #5C6072;
+  --ember: #F27A14;
+  --ember-t: #B04706;
+  --ember-soft: #FBE4CF;
+  --on-ember: #1A0E00;
+  --plasma: #3557C8;
+  --danger: #C8372B;
+  --danger-soft: #F7DEDB;
+  --ok: #1E874A;
+  --ok-soft: #DCF0E3;
+  --hot: #8A5A00;
+  --hot-soft: #FFF0CC;
+  --kb: #D6D8E3;
+  --key: #FFFFFF;
+  --key2: #BFC2D1;
+  --hole: #05060A;
+  --display: "Sora", "Inter", system-ui, sans-serif;
+  --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #08090E; --surf: #12141C; --surf2: #1B1E2A; --line: #262A38;
+    --fg: #F2F0EC; --fg2: #9A9DAB; --ember: #FF8A1F; --ember-t: #FF9A3D;
+    --ember-soft: #3A2410; --on-ember: #1A0E00; --plasma: #8FB0FF;
+    --danger: #FF6A5C; --danger-soft: #3A1714; --ok: #5FD38D; --ok-soft: #10301D;
+    --hot: #FFC766; --hot-soft: #352A10;
+    --kb: #0E1016; --key: #1E212D; --key2: #151821; --hole: #000000;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #08090E; --surf: #12141C; --surf2: #1B1E2A; --line: #262A38;
+  --fg: #F2F0EC; --fg2: #9A9DAB; --ember: #FF8A1F; --ember-t: #FF9A3D;
+  --ember-soft: #3A2410; --on-ember: #1A0E00; --plasma: #8FB0FF;
+  --danger: #FF6A5C; --danger-soft: #3A1714; --ok: #5FD38D; --ok-soft: #10301D;
+  --hot: #FFC766; --hot-soft: #352A10;
+  --kb: #0E1016; --key: #1E212D; --key2: #151821; --hole: #000000;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--body);
+  font-size: 17px;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 80px;
+}
+.layout { display: grid; grid-template-columns: 1fr; gap: 40px; }
+@media (min-width: 1100px) {
+  .layout { grid-template-columns: 230px minmax(0, 1fr); gap: 56px; }
+  .toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; }
+}
+main { min-width: 0; max-width: 760px; }
+
+/* Encabezado */
+.eyebrow { font-family: var(--mono); font-size: 12.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ember-t); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(32px, 5vw, 48px); line-height: 1.08; letter-spacing: -.02em; margin: 10px 0 16px; text-wrap: balance; }
+.lead { font-size: 19px; color: var(--fg2); max-width: 62ch; margin: 0; }
+.mic { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--hole); box-shadow: 0 0 0 3px var(--ember); margin-bottom: 18px; }
+.mic span { width: 10px; height: 16px; border: 2px solid #FFE9CF; border-radius: 6px; }
+
+h2 { font-family: var(--display); font-weight: 650; font-size: 28px; line-height: 1.2; letter-spacing: -.01em; margin: 72px 0 8px; text-wrap: balance; scroll-margin-top: 24px; }
+h2 .num { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--ember-t); display: block; letter-spacing: .06em; margin-bottom: 6px; }
+h3 { font-family: var(--display); font-weight: 600; font-size: 20px; line-height: 1.3; margin: 36px 0 6px; text-wrap: balance; scroll-margin-top: 24px; }
+h4 { font-family: var(--body); font-weight: 700; font-size: 16px; margin: 22px 0 4px; }
+p { margin: 10px 0; max-width: 68ch; }
+ul, ol { padding-left: 22px; margin: 10px 0; max-width: 66ch; }
+li { margin: 5px 0; }
+li::marker { color: var(--fg2); }
+a { color: var(--plasma); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--ember); outline-offset: 2px; border-radius: 4px; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+code { background: var(--surf2); padding: 1px 6px; border-radius: 5px; overflow-wrap: anywhere; }
+strong { font-weight: 650; }
+.muted { color: var(--fg2); }
+.small { font-size: 14.5px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
+
+/* Índice */
+.toc { font-size: 14.5px; }
+.toc .label { font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--fg2); margin-bottom: 10px; }
+.toc ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 2px; }
+.toc a { display: flex; gap: 10px; padding: 6px 10px; border-radius: 8px; color: var(--fg); text-decoration: none; line-height: 1.35; }
+.toc a:hover { background: var(--surf2); }
+.toc a span { font-family: var(--mono); font-size: 12px; color: var(--ember-t); padding-top: 2px; min-width: 18px; }
+@media (max-width: 1099px) {
+  .toc { background: var(--surf); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+  .toc { min-width: 0; }
+  .toc ol { grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); }
+}
+
+/* Bloques */
+.callout { background: var(--surf); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; margin: 22px 0; }
+.callout.key { border-color: var(--ember); background: var(--ember-soft); }
+.callout.key .tag { color: var(--ember-t); }
+.callout .tag { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); margin-bottom: 6px; display: block; }
+.callout p:first-of-type { margin-top: 0; }
+.callout p:last-child { margin-bottom: 0; }
+
+.trio { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 22px 0; }
+@media (min-width: 720px) { .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.panel { background: var(--surf); border: 1px solid var(--line); border-radius: 14px; padding: 18px 18px 14px; min-width: 0; }
+.panel h4 { margin-top: 0; font-family: var(--display); font-weight: 600; font-size: 16px; }
+.panel ol, .panel ul { padding-left: 18px; font-size: 15px; line-height: 1.55; }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
+@media (min-width: 720px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stat { background: var(--surf); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.stat b { display: block; font-family: var(--display); font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13.5px; color: var(--fg2); line-height: 1.4; display: block; }
+
+/* Tablas */
+.tbl { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surf); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; line-height: 1.5; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+th { font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--fg2); background: var(--surf2); white-space: nowrap; }
+td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.w { white-space: nowrap; font-weight: 600; }
+
+/* Estados */
+.pill { display: inline-block; font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+.pill.bad { background: var(--danger-soft); color: var(--danger); }
+.pill.warn { background: var(--hot-soft); color: var(--hot); }
+.pill.good { background: var(--ok-soft); color: var(--ok); }
+.pill.ember { background: var(--ember-soft); color: var(--ember-t); }
+.pill.plain { background: var(--surf2); color: var(--fg2); }
+
+/* Hallazgos */
+.finding { border-top: 1px solid var(--line); padding: 20px 0 6px; }
+.finding:first-of-type { border-top: 0; }
+.finding header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; }
+.finding .id { font-family: var(--mono); font-size: 13px; color: var(--ember-t); font-weight: 600; }
+.finding h4 { margin: 0; font-family: var(--display); font-weight: 600; font-size: 18px; }
+.finding .fix { border-left: 3px solid var(--ember); padding: 2px 0 2px 14px; margin: 10px 0; }
+.finding .fix b { color: var(--ember-t); font-weight: 650; }
+
+/* Maquetas de teclado */
+.mocks { display: grid; grid-template-columns: 1fr; gap: 18px; margin: 22px 0; }
+@media (min-width: 720px) { .mocks.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mocks.three { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+figure { margin: 0; min-width: 0; }
+figcaption { font-size: 14px; color: var(--fg2); margin-top: 8px; line-height: 1.45; }
+figcaption b { color: var(--fg); }
+.kb { background: var(--kb); border-radius: 14px; padding: 7px 5px; display: grid; gap: 5px; max-width: 100%; }
+.row { display: flex; gap: 4px; }
+.k { flex: var(--w, 1) 1 0; min-width: 0; height: 36px; background: var(--key); color: var(--fg); border-radius: 6px; display: grid; place-items: center; font-family: var(--body); font-weight: 600; font-size: 14px; line-height: 1; position: relative; }
+.k.alt { background: var(--key2); font-size: 11.5px; }
+.k.acc { background: var(--ember); color: var(--on-ember); }
+.k.new { box-shadow: inset 0 0 0 2px var(--ember); }
+.k.bad { box-shadow: inset 0 0 0 2px var(--danger); }
+.k.tiny { font-size: 12px; }
+.k sup { position: absolute; top: 3px; right: 4px; font-size: 8.5px; color: var(--fg2); font-weight: 500; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--fg2); margin-top: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; background: var(--key); }
+.legend i.n { box-shadow: inset 0 0 0 2px var(--ember); }
+.legend i.b { box-shadow: inset 0 0 0 2px var(--danger); }
+
+/* Huecos del teclado */
+.gapdemo { background: var(--kb); border-radius: 14px; padding: 8px; display: grid; gap: 7px; }
+.gapdemo .row { gap: 4px; }
+.gapdemo.before { background-image: repeating-linear-gradient(45deg, transparent 0 5px, color-mix(in srgb, var(--danger) 45%, transparent) 5px 7px); }
+.gapdemo.after .row { gap: 0; }
+.gapdemo.after { gap: 0; padding: 4px; }
+.gapdemo.after .k { background: transparent; border-radius: 0; height: 43px; }
+.gapdemo.after .k::before { content: ""; position: absolute; inset: 3.5px 2px; background: var(--key); border-radius: 6px; z-index: 0; box-shadow: 0 0 0 1px color-mix(in srgb, var(--ember) 0%, transparent); }
+.gapdemo.after .k b { position: relative; z-index: 1; font-weight: 600; }
+.gapdemo.after .k { outline: 1px dashed color-mix(in srgb, var(--ember) 70%, transparent); outline-offset: -1px; }
+
+/* Historial */
+.hist { background: var(--kb); border-radius: 14px; padding: 10px; }
+.hist-now { position: relative; height: 250px; }
+.hist-now .pop { position: absolute; right: 0; bottom: 0; width: 78%; background: var(--surf2); border-radius: 12px; padding: 6px; font-size: 12px; }
+.hist-now .pop .t { padding: 6px 8px; color: var(--fg2); font-weight: 600; font-size: 11.5px; border-bottom: 1px solid var(--line); }
+.hist-now .pop .it { padding: 8px; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.hist-new { background: var(--surf); border-radius: 12px; overflow: hidden; }
+.hist-new .top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 2px solid var(--ember); }
+.hist-new .top b { font-family: var(--display); font-weight: 600; font-size: 14px; }
+.hist-new .top .c { font-family: var(--mono); font-size: 11px; color: var(--ember-t); background: var(--ember-soft); padding: 1px 7px; border-radius: 999px; }
+.hist-new .top .sp { flex: 1; }
+.hist-new .top .ic { width: 26px; height: 26px; border-radius: 8px; background: var(--surf2); display: grid; place-items: center; font-size: 12px; color: var(--fg2); }
+.hist-new .it { display: grid; grid-template-columns: 44px minmax(0, 1fr) 22px; gap: 10px; align-items: start; padding: 10px 12px; border-bottom: 1px solid color-mix(in srgb, var(--ember) 30%, var(--line)); font-size: 13px; line-height: 1.4; }
+.hist-new .it:last-child { border-bottom: 0; }
+.hist-new .it .h { font-family: var(--mono); font-size: 11.5px; color: var(--ember-t); padding-top: 1px; }
+.hist-new .it .x { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.hist-new .it .cp { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); }
+.hist-new .it.first { background: color-mix(in srgb, var(--ember-soft) 70%, transparent); }
+
+/* Panel de medios */
+.media { background: var(--kb); border-radius: 14px; padding: 8px 6px; display: grid; gap: 6px; }
+.emo { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; font-size: 20px; text-align: center; line-height: 1.6; }
+.tabs { display: flex; gap: 4px; }
+.tabs span { flex: 1; text-align: center; font-size: 12px; font-weight: 600; padding: 7px 0; border-radius: 8px; color: var(--fg2); background: var(--key2); }
+.tabs span.on { background: var(--ember-soft); color: var(--ember-t); box-shadow: inset 0 -2px 0 var(--ember); }
+
+/* Pasos */
+.steps { counter-reset: s; list-style: none; padding: 0; display: grid; gap: 10px; max-width: none; }
+.steps > li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; background: var(--surf); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0; }
+.steps > li::before { content: counter(s); width: 28px; height: 28px; border-radius: 50%; background: var(--hole); color: #FFE9CF; box-shadow: 0 0 0 2px var(--ember); display: grid; place-items: center; font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.steps > li b { display: block; font-family: var(--display); font-weight: 600; }
+.steps > li p { margin: 2px 0 0; font-size: 15.5px; }
+
+/* Tareas */
+.phase { margin: 34px 0 10px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.phase h3 { margin: 0; }
+.task { background: var(--surf); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 12px 0; }
+.task header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin-bottom: 6px; }
+.task .id { font-family: var(--mono); font-weight: 600; font-size: 13px; color: var(--on-ember); background: var(--ember); padding: 1px 8px; border-radius: 6px; }
+.task h4 { margin: 0; font-family: var(--display); font-weight: 600; font-size: 17px; }
+.task dl { display: grid; grid-template-columns: 1fr; gap: 2px 14px; margin: 8px 0 0; font-size: 15px; line-height: 1.55; }
+@media (min-width: 620px) { .task dl { grid-template-columns: 96px minmax(0, 1fr); } }
+.task dt { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); padding-top: 3px; }
+.task dd { margin: 0 0 6px; min-width: 0; }
+
+.segs { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 18px 0; }
+@media (min-width: 720px) { .segs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.seg { background: var(--surf); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; min-width: 0; }
+.seg h4 { margin: 0 0 4px; font-family: var(--display); font-weight: 600; font-size: 17px; }
+.seg .pitch { font-style: italic; color: var(--ember-t); margin: 0 0 6px; font-size: 15px; }
+.seg p, .seg ul { font-size: 15px; line-height: 1.55; }
+
+.copybox { position: relative; background: var(--hole); color: #F2F0EC; border-radius: 12px; padding: 16px 18px; font-family: var(--mono); font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; margin: 14px 0; }
+.copybtn { position: absolute; top: 10px; right: 10px; font-family: var(--body); font-size: 13px; font-weight: 600; background: var(--ember); color: var(--on-ember); border: 0; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+.copybox .txt { padding-right: 76px; display: block; }
+
+.sources li { font-size: 14.5px; overflow-wrap: anywhere; }
+footer { margin-top: 64px; font-size: 14px; color: var(--fg2); }
+/* Íconos */
+.icons { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 20px 0; }
+@media (min-width: 720px) { .icons { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.icon-card { background: var(--surf); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; }
+.icon-card.pick { border-color: var(--ember); box-shadow: 0 0 0 1px var(--ember); }
+.icon-sizes { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.icon-sizes svg { display: block; flex: none; }
+.icon-sizes span { display: block; font-family: var(--mono); font-size: 10.5px; color: var(--fg2); text-align: center; margin-top: 4px; }
+.icon-card h4 { margin: 12px 0 2px; font-family: var(--display); font-weight: 600; font-size: 16px; }
+.icon-card p { font-size: 14.5px; line-height: 1.5; margin: 4px 0 0; }
+.themed { display: flex; gap: 12px; align-items: center; margin-top: 10px; font-size: 13px; color: var(--fg2); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+@media (max-width: 460px) { body { font-size: 16.5px; } .k { height: 32px; font-size: 12.5px; } .k.alt { font-size: 10px; } h2 { font-size: 25px; } }
+/* Estado en vivo */
+.live { background: var(--surf); border: 2px solid var(--ember); border-radius: 16px; padding: 18px 20px; margin: 26px 0 8px; }
+.live .tag { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ember-t); display: block; margin-bottom: 4px; }
+.live h3 { margin: 0 0 4px; font-size: 22px; }
+.live .now { margin: 4px 0 12px; font-size: 16px; }
+.live .bar { height: 10px; border-radius: 999px; background: var(--surf2); overflow: hidden; margin: 10px 0 4px; }
+.live .bar i { display: block; height: 100%; background: var(--ember); border-radius: 999px; }
+.live .meta { font-size: 13.5px; color: var(--fg2); }
+.tchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.tchips span { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--surf2); color: var(--fg2); }
+.tchips span.d { background: var(--ok-soft); color: var(--ok); }
+.tchips span.w { background: var(--ember); color: var(--on-ember); font-weight: 600; }
+.tchips span.b { background: var(--hot-soft); color: var(--hot); }
+.live ul { font-size: 15px; line-height: 1.55; margin: 6px 0; }
+.live h4 { margin: 14px 0 2px; font-size: 14px; font-family: var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--fg2); font-weight: 500; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<defs>
+  <clipPath id="ic-front"><rect x="-20" y="60" width="160" height="80"/></clipPath>
+  <symbol id="ic-a" viewBox="0 0 120 120">
+    <rect width="120" height="120" rx="28" fill="#0B0C12"/>
+    <path d="M30 68 A30 30 0 0 1 90 68 Z" fill="#000"/>
+    <path d="M30 68 A30 30 0 0 1 90 68" fill="none" stroke="#FF8A1F" stroke-width="4.5" stroke-linecap="round"/>
+    <rect x="16" y="72" width="13" height="11" rx="3" fill="#E9E6E0"/>
+    <rect x="33" y="72" width="54" height="11" rx="3" fill="#FF8A1F"/>
+    <rect x="91" y="72" width="13" height="11" rx="3" fill="#E9E6E0"/>
+  </symbol>
+  <symbol id="ic-a-mono" viewBox="0 0 120 120">
+    <rect width="120" height="120" rx="60" fill="#D7E0F7"/>
+    <path d="M30 68 A30 30 0 0 1 90 68" fill="none" stroke="#1F2B48" stroke-width="5" stroke-linecap="round"/>
+    <rect x="16" y="72" width="13" height="11" rx="3" fill="#1F2B48"/>
+    <rect x="33" y="72" width="54" height="11" rx="3" fill="#1F2B48"/>
+    <rect x="91" y="72" width="13" height="11" rx="3" fill="#1F2B48"/>
+  </symbol>
+  <symbol id="ic-b" viewBox="0 0 120 120">
+    <rect width="120" height="120" rx="28" fill="#0B0C12"/>
+    <g transform="rotate(-8 60 60)"><ellipse cx="60" cy="60" rx="47" ry="11" fill="none" stroke="#FF8A1F" stroke-opacity=".35" stroke-width="5" stroke-dasharray="8 4"/></g>
+    <circle cx="60" cy="60" r="22" fill="#000"/>
+    <circle cx="60" cy="60" r="25" fill="none" stroke="#FF8A1F" stroke-width="2.5"/>
+    <g transform="rotate(-8 60 60)" clip-path="url(#ic-front)"><ellipse cx="60" cy="60" rx="47" ry="11" fill="none" stroke="#FF8A1F" stroke-width="5" stroke-dasharray="8 4"/></g>
+  </symbol>
+  <symbol id="ic-c" viewBox="0 0 120 120">
+    <rect width="120" height="120" rx="28" fill="#0B0C12"/>
+    <rect x="12" y="55" width="11" height="10" rx="2.5" fill="#FF8A1F" fill-opacity=".45"/>
+    <rect x="25" y="55" width="11" height="10" rx="2.5" fill="#FF8A1F" fill-opacity=".75"/>
+    <rect x="84" y="55" width="11" height="10" rx="2.5" fill="#FF8A1F" fill-opacity=".75"/>
+    <rect x="97" y="55" width="11" height="10" rx="2.5" fill="#FF8A1F" fill-opacity=".45"/>
+    <circle cx="60" cy="60" r="23" fill="#000"/>
+    <circle cx="60" cy="60" r="23" fill="none" stroke="#FF8A1F" stroke-width="4"/>
+  </symbol>
+</defs></svg>
+<div class="wrap">
+<div class="layout">
+
+<nav class="toc" aria-label="Índice">
+  <div class="label">Índice</div>
+  <ol>
+    <li><a href="#estado"><span>00</span>Estado en vivo</a></li>
+    <li><a href="#resumen"><span>01</span>Resumen y decisiones</a></li>
+    <li><a href="#calendario"><span>02</span>Calendario</a></li>
+    <li><a href="#teclado"><span>03</span>Auditoría del teclado</a></li>
+    <li><a href="#codigo"><span>04</span>Auditoría del código</a></li>
+    <li><a href="#video"><span>05</span>Lo que se ve en el video</a></li>
+    <li><a href="#nuevas"><span>06</span>Funciones nuevas</a></li>
+    <li><a href="#primeruso"><span>07</span>Primer uso y clave de Groq</a></li>
+    <li><a href="#play"><span>08</span>Play Store e instalación</a></li>
+    <li><a href="#precio"><span>09</span>Precio</a></li>
+    <li><a href="#mercado"><span>10</span>A quién venderle e idiomas</a></li>
+    <li><a href="#ejecucion"><span>11</span>Plan de ejecución</a></li>
+    <li><a href="#despues"><span>12</span>Después del lanzamiento</a></li>
+    <li><a href="#fuentes"><span>13</span>Fuentes</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <div class="mic" aria-hidden="true"><span></span></div>
+  <div class="eyebrow">Orison (antes VoiceBubble) · auditoría y plan · actualizado el 25 de noviembre de 2026</div>
+  <h1>Plan de lanzamiento en Play Store</h1>
+  <p class="lead">Auditoría completa del teclado, del código y de la app, con todo lo que falta para vender Orison en Play Store. VoiceBubble pasa a llamarse <strong>Orison</strong>, por el horizonte de sucesos de un agujero negro. El plan lo armó Opus 5.5 en esfuerzo alto y lo ejecuta Opus 5.5 en esfuerzo medio, tarea por tarea.</p>
+</header>
+
+<!-- ESTADO:INICIO -->
+<section class="live" id="estado" aria-label="Estado actual">
+  <span class="tag">Estado en vivo · actualizado 25/11 08:20 UTC</span>
+  <h3>Todo el código del plan está hecho — falta lo que depende de vos y de Play</h3>
+  <p class="now">T1 a T20 hechas y subidas (T20 lista pero apagada a propósito). El CI de la última tanda está corriendo. Lo que queda está en «Te espera a vos».</p>
+  <div class="bar"><i style="width:90%"></i></div>
+  <div class="meta">19 de 21 tareas hechas · T2b espera tus imágenes · T3 y T4 tienen un último paso tuyo · último APK verde: <strong>r353</strong> (con todo hasta T20) · suite maestra <strong>103/103</strong></div>
+  <div class="tchips">
+    <span class="d">T1</span><span class="d">T2</span><span class="b">T2b</span><span class="b">T3</span><span class="b">T4</span>
+    <span class="d">T5</span><span class="d">T6</span><span class="d">T7</span><span class="d">T8</span><span class="d">T9</span><span class="d">T10</span>
+    <span class="d">T11</span><span class="d">T12</span><span class="d">T13</span><span class="d">T14</span><span class="d">T15</span><span class="d">T16</span>
+    <span class="d">T17</span><span class="d">T18</span><span class="d">T19</span><span class="d">T20</span>
+  </div>
+  <div class="meta">Verde: hecha y subida · naranja: en curso · amarilla: espera algo tuyo · gris: pendiente</div>
+  <h4>Para probar en el teléfono (APK r353 o posterior)</h4>
+  <ul>
+    <li><strong>Antes que nada</strong>: en VoiceBubble (r339) Ajustes › Copia de seguridad › Exportar. Después instalá Orison (<code>orison-arm64-profile-apk-rN</code> + <code>orison-puntero-apk-rN</code>), que se instala al lado, e importá la copia. Activá <strong>Orison Puntero</strong> en Accesibilidad si usás la barra.</li>
+    <li><strong>Teclado</strong>: tocar en los huecos entre teclas; mayúscula automática (WhatsApp sí, correo no, Termux no); ?123 con ¿ ¡ y la tecla <code>=\&lt;</code>; numérico (coma y punto grandes, mantener + = «=», mantener ABC = !?#); mantener q…p para números; historial nuevo (mantener el micrófono); 😊 emojis y la pestaña Stickers (probá mandar uno en WhatsApp y contame si llega como sticker o como imagen).</li>
+    <li><strong>App</strong>: Ajustes › Orison Pro (dice «Prueba: 30 días»); Ajustes › Acerca de › Guía de inicio (el primer uso completo); Ajustes sin el parpadeo de «Tenés que configurar»; widget con la última nota entera.</li>
+  </ul>
+  <h4>Te espera a vos</h4>
+  <ul>
+    <li><strong>Token de GitHub nuevo</strong> antes del 29/11 con los permisos de hoy + <em>Secrets: read and write</em>. Con eso cargo la clave de firma y el CI arma el AAB para Play con un tag (ya probado acá: firma, bundletool y 16 KB OK).</li>
+    <li><strong>Copia de la clave de subida</strong> (<code>~/.config/orison/</code> en el servidor): guardala en un lugar seguro tuyo.</li>
+    <li><strong>Política de privacidad</strong>: elegí dónde publicarla (recomiendo GitHub Pages en un repo público aparte) y pasame el <strong>correo de contacto</strong>; el texto ya está.</li>
+    <li><strong>Imágenes del ícono</strong> (T2b), con la guía de la sección 08.</li>
+    <li><strong>Capturas</strong> para la ficha: las 8 de <code>docs/play/ficha.md</code>; yo las enmarco.</li>
+    <li><strong>Cuenta de Play</strong> (diciembre) y, ahí: producto <code>pro_lifetime</code>, testers como «testers de licencias», video del micrófono. Los textos de la ficha y los formularios ya están en <code>docs/play/</code> y <code>docs/privacy/</code>.</li>
+  </ul>
+  <h4>Bitácora</h4>
+  <ul>
+    <li>25/11 08:15 — <strong>T18</strong> (<code>3584e12</code>): CI con acciones fijadas por SHA y lockfile estricto; la suite maestra pasa <strong>103/103</strong> (la falla vieja C-34 se arregló). Ordenar la raíz del repo (C12) queda para después del lanzamiento: hay suites que leen esos archivos. Lista viva de testers en <code>docs/play/testers-reportes.md</code>.</li>
+    <li>25/11 08:10 — <strong>T19</strong>: ficha del Puntero, declaración de Accesibilidad, guion del video y el cambio a hacer en Orison el día que se publique (<code>docs/play/puntero.md</code>).</li>
+    <li>25/11 08:05 — <strong>T17</strong>: textos de la ficha en es/en/pt (límites verificados), cuestionarios, gráfico destacado 1024 × 500 en los tres idiomas y marco para las capturas (<code>docs/play/</code>).</li>
+    <li>25/11 07:50 — <strong>T20 hecha, apagada</strong> (<code>e59266f</code>): el APK del CI ya sabe salir como «Orison Dev» (<code>com.royleguiza.orison.dev</code>, con su propio Puntero) para convivir con la de Play. Lo dejé apagado para que tu Orison actual siga actualizándose; se prende con una línea cuando empiece la prueba cerrada.</li>
+    <li>25/11 07:45 — <strong>T16 hecha</strong> (<code>d7b2057</code>): pestaña Stickers en el panel de emojis; se agregan con el «+» o con «Compartir › Agregar a stickers de Orison»; se mandan como imagen (si la app no acepta, se copian). Falta probar en WhatsApp si llega como sticker o como imagen.</li>
+    <li>25/11 07:35 — <strong>T15 hecha</strong> (<code>b23bc66</code>, r352): Orison Pro. 30 días con todo desde el primer uso; después 10 dictados por día gratis; Pro de pago único ilimitado (compra con Google Play, Restaurar compra, pantalla en Ajustes). Las compras reales se prueban cuando exista la ficha en Play.</li>
+    <li>25/11 07:45 — <strong>T14 hecha</strong> (<code>431d303</code>): tecla 😊 con el selector oficial de Android (recientes y tonos de piel); ⌫ borra el emoji entero, incluso familias y banderas. Interruptor en Ajustes › Teclado.</li>
+    <li>25/11 07:15 — <strong>T13 hecha</strong> (<code>422c398</code>, r350): primer uso guiado al abrir Orison sin clave: bienvenida, para qué lo vas a usar (snippets de ejemplo), privacidad, clave de Groq paso a paso (abre la página y detecta la clave copiada), micrófono, activar el teclado y probarlo. Se repite desde Ajustes › Acerca de › Guía de inicio.</li>
+    <li>25/11 07:05 — <strong>T12 hecha</strong> (<code>1aa367a</code>): 200 notas, 100 dictados en el historial y 50 recortes en el portapapeles, igual en la app, el teclado y el widget.</li>
+    <li>25/11 06:45 — <strong>T11 hecha</strong> (<code>91b764f</code>, r348): Ajustes ya no parpadea con «Tenés que configurar», la última nota del widget se ve entera, el cuerpo de la hoja del widget no corta renglones y las páginas de Ajustes se deslizan sin encimarse.</li>
+    <li>25/11 05:00 — <strong>T10 hecha</strong> (<code>9762b2e</code>): mantener q…p escribe 1…0 (número chiquito en la esquina); en las vocales el número va primero y siguen las tildes. Interruptor en Ajustes › Teclado.</li>
+    <li>25/11 04:50 — <strong>T9 hecha</strong> (<code>9d4e735</code>): historial de ancho completo que nace del micrófono y vuelve a él; hora, divisiones brasa, el último resaltado, copiar, y mantener para Copiar/Borrar (borrar no resucita el dictado).</li>
+    <li>25/11 04:40 — <strong>T8 hecha</strong> (<code>e38f3e3</code>, r345): numérico propuesta A (ABC · coma · 0 · punto · Enter); símbolos a 18 sp y dígitos a 22 sp.</li>
+    <li>25/11 04:35 — <strong>T7 hecha</strong> (<code>511e75d</code>): ¿ ¡ a la vista en español, segunda página de símbolos, guion en la capa de código y pulsaciones largas nuevas (?→¿, $→€…).</li>
+    <li>25/11 04:30 — <strong>T6 hecha</strong> (<code>f1714b2</code>): mayúscula automática al empezar, después de «. », «? », «! » y de un salto de línea; respeta lo que pide cada campo (Termux no la pide), nunca en contraseñas, correos ni direcciones web. Interruptor en Ajustes › Teclado.</li>
+    <li>25/11 04:00 — <strong>T5 hecha</strong> (<code>120a82a</code>): filas <code>KeyRow</code> sin zonas muertas; el toque en un hueco va entero a la tecla más cercana (se ilumina, admite pulsación larga y deslizamientos). Se borró el parche viejo.</li>
+    <li>25/11 03:56 — <strong>T3 hecha</strong> (<code>8ea064c</code>): clave de subida generada (fuera del repo), workflow <em>Release AAB</em> con tag <code>v*</code> y validador <code>check_aab.py</code>. Probado acá: los dos AAB pasan bundletool, firma y 16 KB. Falta: cargar los secretos con el token nuevo.</li>
+    <li>25/11 03:45 — <strong>T4 hecha</strong> (<code>38e99a9</code>): aviso «Antes de dictar» en es/en/pt antes de guardar la clave de Groq, «Política de privacidad» en Acerca de, política completa y respuestas del formulario de Seguridad de los datos en <code>docs/privacy/</code>. Falta: publicarla y el correo de contacto.</li>
+    <li>25/11 03:25 — <strong>T2 hecha</strong> (<code>9030899</code>, r340): la app se llama Orison (<code>com.royleguiza.orison</code>), complemento Orison Puntero, versión 1.0.0.</li>
+    <li>25/11 03:05 — <strong>T1 hecha</strong> (<code>9321c94</code>, r339): copia de seguridad en .zip, sin claves; importar suma sin duplicar.</li>
+    <li>25/11 — Arranque en modo autónomo. Se llenó el disco del servidor a mitad de la compilación: liberé ~8 GB (caché de npm y copias viejas de compilación).</li>
+  </ul>
+</section>
+<!-- ESTADO:FIN -->
+
+<div class="callout key">
+  <span class="tag">Lo primero que tenés que saber</span>
+  <p><strong>La fecha cambia por una regla de Google.</strong> Si la cuenta de desarrollador es personal y se creó después del 13 de noviembre de 2023, Google exige una <strong>prueba cerrada de 14 días con al menos 12 testers</strong> antes de abrir la app al público. Si la cuenta todavía no existe, entra en esa regla.</p>
+  <p>La cuenta se crea en diciembre, así que el reloj arranca ese día: unos 3 días de verificación y primera revisión, 14 días de prueba cerrada y hasta 7 días de revisión final. <strong>Con la cuenta el 1 de diciembre, el lanzamiento público queda entre el 22 y el 30 de diciembre</strong> (las fiestas pueden demorar la revisión). Cada día que se atrase la cuenta corre la fecha un día.</p>
+  <p>La ventaja: hasta que exista la cuenta, todo el código avanza. Los testers van a recibir la app completa, con cobro y stickers incluidos.</p>
+</div>
+
+<!-- ============ 01 ============ -->
+<h2 id="resumen"><span class="num">01</span>Resumen y decisiones</h2>
+<p>La app funciona y la base es buena. Lo que la separa de un producto que se puede vender son tres cosas: la forma de publicarla, varios detalles del teclado que se notan al escribir y que hoy los datos no se pueden respaldar.</p>
+
+<div class="trio">
+  <div class="panel">
+    <h4>Estado del código</h4>
+    <ul>
+      <li>Privacidad bien resuelta: el contenido no va a los registros, las claves se guardan cifradas y el respaldo de Google no sube secretos.</li>
+      <li>Pocas dependencias y muchas pruebas en verde.</li>
+      <li>Es demasiado grande: 9 archivos de más de 1.000 líneas, unas 1.500 líneas copiadas entre la app y el Puntero y 4 caminos distintos para la barra y el trackpad.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h4>Imprescindible antes de Play</h4>
+    <ol>
+      <li>Exportar e importar una copia de tus datos.</li>
+      <li>Cambio de marca a Orison, con ícono nuevo.</li>
+      <li>Compilación de publicación firmada con tu clave.</li>
+      <li>Política de privacidad y aviso del audio.</li>
+      <li>Toques perdidos, mayúscula automática, ¿ ¡.</li>
+      <li>Primer uso guiado con la clave de Groq.</li>
+      <li>Emojis.</li>
+      <li>Formularios de Play.</li>
+    </ol>
+  </div>
+  <div class="panel">
+    <h4>Decidido el 25/11</h4>
+    <ol>
+      <li>Cuenta de Play personal, en diciembre.</li>
+      <li>Precio: <a href="#precio">gratis 30 días y después Pro</a>.</li>
+      <li>Numérico: <a href="#k4">propuesta A</a>.</li>
+      <li>Historial: <a href="#k6">divisiones brasa, saliendo del micrófono</a>.</li>
+      <li>El Puntero sale después.</li>
+      <li>Nombre: <a href="#nombre">Orison</a>.</li>
+      <li>Testers: familia y amigos.</li>
+      <li>Pendiente: <a href="#guia-icono">generar el ícono</a> con la guía y mandar los favoritos.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="callout">
+  <span class="tag">Para hoy, sin falta</span>
+  <p>El token de GitHub que usa el servidor <strong>vence el 29 de noviembre</strong>. Sin token nuevo no hay CI ni APK. Renovalo con los mismos permisos y sumá <em>Secrets: read and write</em>. Así Opus puede cargar la clave de firma sin que tengas que entrar a la web.</p>
+</div>
+
+<!-- ============ 02 ============ -->
+<h2 id="calendario"><span class="num">02</span>Calendario</h2>
+<p>El código no depende de la cuenta y arranca ya. Lo de Play se cuenta desde el día <strong>D</strong> en que creás la cuenta; la última columna muestra el ejemplo con D = 1 de diciembre. Las tareas de cada fase están en el <a href="#ejecucion">plan de ejecución</a>.</p>
+<div class="tbl"><table>
+  <thead><tr><th>Cuándo</th><th>Qué pasa</th><th>Quién</th><th>Si D = 1/12</th></tr></thead>
+  <tbody>
+    <tr><td class="n">Ya</td><td>Renovar el token de GitHub (vence el 29/11). Pedirles el Gmail a los testers.</td><td>Vos</td><td class="n">25 – 28/11</td></tr>
+    <tr><td class="n">Ya</td><td><strong>Fase 1 · Base de publicación:</strong> exportar e importar (sale primero, en un APK de VoiceBubble, para que respaldes), cambio de marca a Orison con ícono nuevo, AAB firmado, privacidad.</td><td>Opus medio</td><td class="n">26 – 28/11</td></tr>
+    <tr><td class="n">Ya</td><td><strong>Fase 2 · Teclado confiable:</strong> toques sin huecos, mayúscula automática, símbolos, numérico, tamaños, historial.</td><td>Opus medio</td><td class="n">28/11 – 1/12</td></tr>
+    <tr><td class="n">Ya</td><td><strong>Fase 3 · App y primer uso:</strong> primer uso guiado, emojis, más espacio, arreglos del video. Además cobro (Pro) y stickers, que pasan antes de la prueba porque hay tiempo.</td><td>Opus medio</td><td class="n">1 – 5/12</td></tr>
+    <tr><td class="n">D</td><td>Crear la cuenta de Play (US$25) y verificar tu identidad (1 a 3 días, a veces más).</td><td>Vos</td><td class="n">1 – 3/12</td></tr>
+    <tr><td class="n">D+2</td><td><strong>Fase 4 · Play Console:</strong> ficha, capturas, formularios y subida a la prueba cerrada. La primera revisión de Google tarda de horas a unos días; cuando aprueba, aparece el link para los testers.</td><td>Vos + Opus</td><td class="n">3 – 5/12</td></tr>
+    <tr><td class="n">D+4 → D+18</td><td><strong>Fase 5 · Prueba cerrada</strong> (14 días corridos). Arreglos de lo que reporten y fichas traducidas.</td><td>Testers + Opus</td><td class="n">5 – 19/12</td></tr>
+    <tr><td class="n">D+18</td><td>Pedir acceso a producción. Google pregunta cómo fue la prueba: anotá durante esos días qué te reportaron y qué cambiaste.</td><td>Vos</td><td class="n">19/12</td></tr>
+    <tr><td class="n">D+20 → D+28</td><td><strong>Lanzamiento público</strong> con precio de lanzamiento, abierto de a poco (20 % → 100 %).</td><td>Vos</td><td class="n">22 – 30/12</td></tr>
+    <tr><td class="n">Enero</td><td>Versión 1.1: GIFs, Markdown en notas, más idiomas, notas sin tope. Puntero en Play.</td><td>Opus</td><td class="n">enero</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ============ 03 ============ -->
+<h2 id="teclado"><span class="num">03</span>Auditoría del teclado</h2>
+<p>Medí todo en el código y en tus capturas del Moto G05 (720 px, unos 411 dp de ancho, perfil de altura «Alta»). Google recomienda que todo lo que se toca mida al menos 48 × 48 dp.</p>
+
+<div class="tbl"><table>
+  <thead><tr><th>Medida</th><th>Valor hoy</th><th>Veredicto</th></tr></thead>
+  <tbody>
+    <tr><td>Alto de tecla</td><td class="n">48 dp × perfil: Baja 41 · Media 48 · Alta 55 · Muy alta 62</td><td><span class="pill good">bien</span> Baja queda bajo 48; está bien como opción, no como valor por defecto.</td></tr>
+    <tr><td>Ancho de letra</td><td class="n">~40 dp de casilla, ~36 dp visibles</td><td><span class="pill good">bien</span> Igual que Gboard con 10 teclas por fila.</td></tr>
+    <tr><td>Hueco entre filas</td><td class="n">6 dp × perfil (~7 dp en Alta)</td><td><span class="pill bad">falla</span> Un toque en ese hueco no escribe nada.</td></tr>
+    <tr><td>Hueco entre teclas de una fila</td><td class="n">4 dp</td><td><span class="pill warn">a medias</span> Se resuelve al soltar, sin iluminar la tecla.</td></tr>
+    <tr><td>Bordes izquierdo y derecho</td><td class="n">3 dp</td><td><span class="pill bad">falla</span> Toque en el borde de q, a, p o ñ: se pierde.</td></tr>
+    <tr><td>Coma y punto del numérico</td><td class="n">~28 dp de ancho visible</td><td><span class="pill bad">falla</span> Un tercio del ancho de un dígito.</td></tr>
+    <tr><td>Texto de teclas</td><td class="n">letras 20 sp · símbolos y números 14 sp · coma y punto 19 sp</td><td><span class="pill warn">a medias</span> Símbolos y números quedan chicos al lado de las letras.</td></tr>
+    <tr><td>Íconos de la barra</td><td class="n">área de 44 dp</td><td><span class="pill good">bien</span></td></tr>
+  </tbody>
+</table></div>
+
+<div class="finding" id="k1">
+  <header><span class="id">K1</span><h4>Toques que se pierden entre las teclas</h4><span class="pill bad">antes de Play</span></header>
+  <p>Cada tecla es una caja separada y entre caja y caja queda un hueco. Hoy hay un parche (<code>makeGapTolerant</code>) que manda el toque a la tecla más cercana, pero solo dentro de la misma fila, solo al soltar el dedo y sin que la tecla se ilumine. Entre filas y en los bordes el toque no hace nada. Esto explica los toques «que no entran» al escribir rápido.</p>
+  <div class="fix"><b>Arreglo:</b> que cada tecla ocupe su casilla completa, hueco incluido, y dibuje el fondo con un margen interno (así lo hacen los teclados del sistema). El dibujo queda igual, pero no quedan zonas muertas, y el parche de la tecla más cercana se borra. Es menos código y más confiable.</div>
+  <div class="mocks two">
+    <figure>
+      <div class="gapdemo before" aria-label="Teclado actual con huecos rayados">
+        <div class="row"><div class="k">q</div><div class="k">w</div><div class="k">e</div><div class="k">r</div><div class="k">t</div></div>
+        <div class="row"><div class="k">a</div><div class="k">s</div><div class="k">d</div><div class="k">f</div><div class="k">g</div></div>
+      </div>
+      <figcaption><b>Hoy.</b> Lo rayado en rojo no tiene dueño: un toque ahí se pierde.</figcaption>
+    </figure>
+    <figure>
+      <div class="gapdemo after" aria-label="Teclado propuesto sin huecos">
+        <div class="row"><div class="k"><b>q</b></div><div class="k"><b>w</b></div><div class="k"><b>e</b></div><div class="k"><b>r</b></div><div class="k"><b>t</b></div></div>
+        <div class="row"><div class="k"><b>a</b></div><div class="k"><b>s</b></div><div class="k"><b>d</b></div><div class="k"><b>f</b></div><div class="k"><b>g</b></div></div>
+      </div>
+      <figcaption><b>Propuesta.</b> Se ve igual; las líneas punteadas muestran que cada tecla cubre su casilla entera.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<div class="finding" id="k2">
+  <header><span class="id">K2</span><h4>No hay mayúscula automática</h4><span class="pill bad">antes de Play</span></header>
+  <p>Lo confirmé en el código: el teclado nunca se pone en mayúscula solo. Al empezar un mensaje, después de «. », «? », «! » o de un salto de línea, hay que tocar Shift a mano. Todo teclado comercial lo hace y su falta se nota en la primera reseña.</p>
+  <div class="fix"><b>Arreglo:</b> preguntarle a Android en cada cambio de cursor si corresponde mayúscula (el campo lo informa con <code>getCursorCapsMode</code>). Nunca en contraseñas, correos, direcciones web ni en la capa de código. Interruptor en Ajustes › Teclado, encendido por defecto. Opcional: doble espacio escribe «. » (otro interruptor).</div>
+</div>
+
+<div class="finding" id="k3">
+  <header><span class="id">K3</span><h4>Faltan símbolos: ¿ ¡ y otros</h4><span class="pill bad">antes de Play</span></header>
+  <p>Tenías razón, y faltan los dos: <strong>¿ y ¡ no están en ninguna capa</strong>, ni con pulsación larga. Además la capa de código no tiene el guion <code>-</code>, que en programación se usa todo el tiempo (<code>--flag</code>, <code>-&gt;</code>, <code>-=</code>). Tampoco existen € £ ° … « » • en ninguna parte, y para vendedores la moneda importa.</p>
+  <div class="fix"><b>Arreglo:</b> en español, ¿ y ¡ visibles en la primera página de símbolos; una segunda página (tecla <code>=\&lt;</code>, como en Gboard) con lo que falta; el guion en la capa de código en lugar de <code>^</code>, que pasa a la segunda página; y pulsaciones largas: <code>?</code>→¿ · <code>!</code>→¡ · <code>"</code>→« » “ ” · <code>-</code>→– — _ · <code>$</code>→€ £ ¥ ¢ · <code>%</code>→‰ · <code>0</code>→° · <code>*</code>→• ×.</div>
+  <div class="mocks two">
+    <figure>
+      <div class="kb" aria-label="Página 1 de símbolos propuesta">
+        <div class="row"><div class="k">1</div><div class="k">2</div><div class="k">3</div><div class="k">4</div><div class="k">5</div><div class="k">6</div><div class="k">7</div><div class="k">8</div><div class="k">9</div><div class="k">0</div></div>
+        <div class="row"><div class="k">@</div><div class="k">#</div><div class="k">$<sup>€</sup></div><div class="k">%</div><div class="k">&amp;</div><div class="k">-<sup>—</sup></div><div class="k">+</div><div class="k">(</div><div class="k">)</div><div class="k">/</div></div>
+        <div class="row"><div class="k alt new" style="--w:1.3">=\&lt;</div><div class="k">*</div><div class="k">"</div><div class="k">:</div><div class="k">;</div><div class="k new">¿</div><div class="k">?</div><div class="k new">¡</div><div class="k">!</div><div class="k alt" style="--w:1.3">⌫</div></div>
+        <div class="row"><div class="k alt" style="--w:1.5">ABC</div><div class="k">,</div><div class="k" style="--w:5"></div><div class="k">.</div><div class="k acc" style="--w:1.8">↵</div></div>
+      </div>
+      <figcaption><b>Página 1 en español.</b> ¿ y ¡ a la vista. El apóstrofo pasa a la página 2 (en inglés se queda en la 1). El asterisco queda: en WhatsApp sirve para la *negrita*.</figcaption>
+    </figure>
+    <figure>
+      <div class="kb" aria-label="Página 2 de símbolos propuesta">
+        <div class="row"><div class="k new">~</div><div class="k new">`</div><div class="k new">|</div><div class="k new">•</div><div class="k new">√</div><div class="k new">π</div><div class="k new">÷</div><div class="k new">×</div><div class="k new">_</div><div class="k new">°</div></div>
+        <div class="row"><div class="k new">€</div><div class="k new">£</div><div class="k new">¥</div><div class="k new">¢</div><div class="k new">^</div><div class="k new">=</div><div class="k new">{</div><div class="k new">}</div><div class="k new">[</div><div class="k new">]</div></div>
+        <div class="row"><div class="k alt" style="--w:1.3">?123</div><div class="k new">'</div><div class="k new">\</div><div class="k new">&lt;</div><div class="k new">&gt;</div><div class="k new">«</div><div class="k new">»</div><div class="k new">…</div><div class="k alt" style="--w:1.3">⌫</div></div>
+        <div class="row"><div class="k alt" style="--w:1.5">ABC</div><div class="k">,</div><div class="k" style="--w:5"></div><div class="k">.</div><div class="k acc" style="--w:1.8">↵</div></div>
+      </div>
+      <figcaption><b>Página 2, nueva.</b> Monedas, grados, viñetas, comillas latinas y lo de programación que no entra en la 1.</figcaption>
+    </figure>
+  </div>
+  <div class="legend"><span><i class="n"></i>nuevo o movido</span></div>
+</div>
+
+<div class="finding" id="k4">
+  <header><span class="id">K4</span><h4>Coma y punto del teclado numérico</h4><span class="pill bad">antes de Play</span></header>
+  <p>La grilla del numérico tiene 5 columnas: operadores a los costados y 3 columnas de dígitos. En la fila de abajo, la coma y el punto tienen un peso de 0,4 contra 1,1 de cada dígito: miden unos 28 dp de ancho, la mitad de lo recomendado. Además «!?#» e «=» comparten esa fila y la aprietan.</p>
+  <div class="mocks three">
+    <figure>
+      <div class="kb" aria-label="Numérico actual">
+        <div class="row"><div class="k alt" style="--w:.85">-</div><div class="k" style="--w:1.1">7</div><div class="k" style="--w:1.1">8</div><div class="k" style="--w:1.1">9</div><div class="k alt" style="--w:.85">+</div></div>
+        <div class="row"><div class="k alt" style="--w:.85">*</div><div class="k" style="--w:1.1">4</div><div class="k" style="--w:1.1">5</div><div class="k" style="--w:1.1">6</div><div class="k alt" style="--w:.85">%</div></div>
+        <div class="row"><div class="k alt" style="--w:.85">/</div><div class="k" style="--w:1.1">1</div><div class="k" style="--w:1.1">2</div><div class="k" style="--w:1.1">3</div><div class="k alt" style="--w:.85">⌫</div></div>
+        <div class="row"><div class="k alt" style="--w:.85">ABC</div><div class="k alt tiny" style="--w:.7">!?#</div><div class="k bad" style="--w:.4">,</div><div class="k" style="--w:1.1">0</div><div class="k bad" style="--w:.4">.</div><div class="k alt" style="--w:.7">=</div><div class="k acc" style="--w:.85">↵</div></div>
+      </div>
+      <figcaption><b>Hoy.</b> Coma y punto de ~28 dp.</figcaption>
+    </figure>
+    <figure>
+      <div class="kb" aria-label="Numérico propuesta A">
+        <div class="row"><div class="k alt" style="--w:.85">-</div><div class="k" style="--w:1.1">7</div><div class="k" style="--w:1.1">8</div><div class="k" style="--w:1.1">9</div><div class="k alt" style="--w:.85">+<sup>=</sup></div></div>
+        <div class="row"><div class="k alt" style="--w:.85">*</div><div class="k" style="--w:1.1">4</div><div class="k" style="--w:1.1">5</div><div class="k" style="--w:1.1">6</div><div class="k alt" style="--w:.85">%</div></div>
+        <div class="row"><div class="k alt" style="--w:.85">/</div><div class="k" style="--w:1.1">1</div><div class="k" style="--w:1.1">2</div><div class="k" style="--w:1.1">3</div><div class="k alt" style="--w:.85">⌫</div></div>
+        <div class="row"><div class="k alt" style="--w:.85">ABC<sup>!?#</sup></div><div class="k new" style="--w:1.1">,</div><div class="k" style="--w:1.1">0</div><div class="k new" style="--w:1.1">.</div><div class="k acc" style="--w:.85">↵</div></div>
+      </div>
+      <figcaption><b>A · columnas parejas (elegida).</b> Coma y punto del ancho de un dígito, unos 85 dp, como el teclado del teléfono. «=» queda en la pulsación larga de «+» y «!?#» en la pulsación larga de ABC.</figcaption>
+    </figure>
+    <figure>
+      <div class="kb" aria-label="Numérico propuesta B">
+        <div class="row"><div class="k alt" style="--w:.85">-</div><div class="k" style="--w:1.1">7</div><div class="k" style="--w:1.1">8</div><div class="k" style="--w:1.1">9</div><div class="k alt" style="--w:.85">+</div></div>
+        <div class="row"><div class="k alt" style="--w:.85">*</div><div class="k" style="--w:1.1">4</div><div class="k" style="--w:1.1">5</div><div class="k" style="--w:1.1">6</div><div class="k alt" style="--w:.85">%</div></div>
+        <div class="row"><div class="k alt" style="--w:.85">/</div><div class="k" style="--w:1.1">1</div><div class="k" style="--w:1.1">2</div><div class="k" style="--w:1.1">3</div><div class="k alt" style="--w:.85">⌫</div></div>
+        <div class="row"><div class="k alt" style="--w:.85">ABC<sup>!?#</sup></div><div class="k new" style="--w:.75">,</div><div class="k" style="--w:1.1">0</div><div class="k new" style="--w:.75">.</div><div class="k alt" style="--w:.7">=</div><div class="k acc" style="--w:.85">↵</div></div>
+      </div>
+      <figcaption><b>B · conserva el «=».</b> Coma y punto de unos 57 dp. Solo «!?#» pasa a la pulsación larga de ABC.</figcaption>
+    </figure>
+  </div>
+  <p class="small muted">En las dos propuestas los dígitos pasan de 14 a 22 sp y la coma y el punto a 22 sp, para que se lean como en una calculadora.</p>
+</div>
+
+<div class="finding" id="k5">
+  <header><span class="id">K5</span><h4>Símbolos y números chicos</h4><span class="pill warn">antes de Play</span></header>
+  <p>Las letras usan 20 sp, pero los símbolos, la capa de código y los números usan 14 sp, un 30 % menos. En las capturas de ?123 y de código se nota: los signos quedan perdidos en la tecla.</p>
+  <div class="fix"><b>Arreglo:</b> símbolos y código a 18 sp, números del numérico a 22 sp. Revisar que nada se corte en el perfil «Baja».</div>
+</div>
+
+<div class="finding" id="k6">
+  <header><span class="id">K6</span><h4>Historial de transcripciones</h4><span class="pill warn">antes de Play</span></header>
+  <p>Hoy es una ventana de 320 dp pegada a la derecha, porque se alinea con el micrófono, y en tu captura queda contra el borde. Tiene el título chico y gris, líneas casi invisibles, 2 renglones por dictado, sin hora, y solo se puede tocar para pegar.</p>
+  <div class="fix"><b>Arreglo elegido:</b> sigue siendo una ventana que <strong>se abre desde el micrófono</strong> con la pulsación larga, como hoy, pero ahora ocupa todo el ancho, con 16 dp a cada lado, así que queda centrada. La animación crece desde el centro del micrófono (escala y fundido de 200 ms, con el punto de origen en el micrófono) y vuelve a él al cerrarse. Lleva encabezado con línea brasa y contador, la hora en la columna izquierda, divisiones con tinte brasa, 3 renglones y el último dictado resaltado. Tocar pega, el ícono copia y la pulsación larga ofrece copiar o borrar.</div>
+  <div class="mocks two">
+    <figure>
+      <div class="hist"><div class="hist-now" aria-label="Historial actual">
+        <div class="pop">
+          <div class="t">Historial de transcripciones</div>
+          <div class="it">Yo ayer después de que le pusimos la cadena no salió más</div>
+          <div class="it">El jueves recién vamos a hacer eso.</div>
+          <div class="it">Ok, ok, ahí miro el mail</div>
+          <div class="it">Nadie puede tener permiso de edición, solo los jefes y yo vamos a tener permi…</div>
+        </div>
+      </div></div>
+      <figcaption><b>Hoy.</b> Ventana angosta contra el borde derecho, sin hora y con divisiones casi invisibles.</figcaption>
+    </figure>
+    <figure>
+      <div class="hist" aria-label="Historial propuesto">
+        <div class="hist-new">
+          <div class="top"><b>Historial</b><span class="c">20</span><span class="sp"></span><span class="ic" aria-hidden="true">⌕</span><span class="ic" aria-hidden="true">✕</span></div>
+          <div class="it first"><span class="h">22:13</span><span class="x">Yo ayer después de que le pusimos la cadena no salió más</span><span class="cp" aria-hidden="true"></span></div>
+          <div class="it"><span class="h">22:10</span><span class="x">El jueves recién vamos a hacer eso.</span><span class="cp" aria-hidden="true"></span></div>
+          <div class="it"><span class="h">22:08</span><span class="x">Ok, ok, ahí miro el mail</span><span class="cp" aria-hidden="true"></span></div>
+          <div class="it"><span class="h">ayer</span><span class="x">Nadie puede tener permiso de edición, solo los jefes y yo vamos a tener permiso para cambiar los precios.</span><span class="cp" aria-hidden="true"></span></div>
+        </div>
+      </div>
+      <figcaption><b>Elegida.</b> Ventana de ancho completo que crece desde el micrófono, con línea brasa bajo el título, hora en la columna izquierda y el último dictado resaltado.</figcaption>
+    </figure>
+  </div>
+</div>
+
+<div class="finding" id="k7">
+  <header><span class="id">K7</span><h4>No hay emojis</h4><span class="pill bad">antes de Play</span></header>
+  <p>No hay tecla ni panel de emojis. En un teclado que se vende, es lo primero que la gente busca. La propuesta completa está en <a href="#emojis">Funciones nuevas</a>.</p>
+</div>
+
+<div class="finding" id="k8">
+  <header><span class="id">K8</span><h4>Números con pulsación larga en la fila de arriba</h4><span class="pill plain">conviene</span></header>
+  <p>Mantener q…p para escribir 1…0, con el número chiquito en la esquina de cada tecla. Ahorra ir a ?123 para un código o una contraseña. Interruptor en Ajustes, encendido.</p>
+</div>
+
+<div class="finding" id="k9">
+  <header><span class="id">K9</span><h4>Sin sugerencias ni autocorrección</h4><span class="pill plain">versión 1.2</span></header>
+  <p>El teclado no sugiere palabras. Para un teclado pensado para dictar se puede lanzar así si la ficha lo dice claro («teclado de voz primero»). Queda para la 1.2.</p>
+</div>
+
+<!-- ============ 04 ============ -->
+<h2 id="codigo"><span class="num">04</span>Auditoría del código</h2>
+<div class="stats">
+  <div class="stat"><b>25.400</b><span>líneas Kotlin de la app (teclado, widget, servicios)</span></div>
+  <div class="stat"><b>20.600</b><span>líneas Dart de la app, sin contar traducciones</span></div>
+  <div class="stat"><b>7.200</b><span>líneas Kotlin del complemento Puntero</span></div>
+  <div class="stat"><b>67</b><span>suites Python en la raíz que leen el código con expresiones regulares</span></div>
+</div>
+<p><strong>Lo que está bien:</strong> privacidad cuidada (el CI rechaza contenido en los registros, las claves van cifradas y el respaldo de Google excluye secretos), solo 6 dependencias Flutter, 793 pruebas Flutter y 184 de Kotlin en verde, el Puntero con el permiso de Accesibilidad mínimo (solo gestos, sin leer la pantalla) y textos en 3 idiomas.</p>
+
+<div class="tbl"><table>
+  <thead><tr><th>#</th><th>Hallazgo</th><th>Qué hacer</th><th>Cuándo</th></tr></thead>
+  <tbody>
+    <tr><td class="w">C1</td><td>El APK que instalás es de <strong>perfil</strong> (para medir rendimiento) y está firmado con la clave pública de debug. Play no acepta eso.</td><td>Compilación de publicación (AAB) firmada con una clave de subida guardada en los secretos de GitHub.</td><td><span class="pill bad">antes</span></td></tr>
+    <tr><td class="w">C2</td><td>Por privacidad, notas, historial y ajustes no van al respaldo de Google. La versión de Play tiene otra firma, así que Android obliga a desinstalar la de GitHub: <strong>hoy perderías las 28 notas</strong>.</td><td>Ajustes › Copia de seguridad: exportar e importar un archivo, sin claves. Sale primero en un APK de GitHub para que respaldes antes del cambio.</td><td><span class="pill bad">antes</span></td></tr>
+    <tr><td class="w">C3</td><td>Topes chicos: 50 notas, 20 dictados en el historial, 25 recortes. Se guardan como un único JSON en las preferencias, con un espejo en archivo y un candado entre procesos.</td><td>Subir ahora a 200 notas, 100 dictados y 50 recortes (constantes y pruebas espejo). En la 1.1, base de datos SQLite sin tope.</td><td><span class="pill warn">antes</span></td></tr>
+    <tr><td class="w">C4</td><td>Unas 1.500 líneas casi idénticas entre la app y el Puntero (protocolo, gestos, geometría y vistas de la barra).</td><td>Módulo compartido entre los dos proyectos.</td><td><span class="pill plain">1.1</span></td></tr>
+    <tr><td class="w">C5</td><td>Cuatro caminos para lo mismo: burbuja vieja, barra del complemento, trackpad dentro del teclado y trackpad flotante viejo.</td><td>Para lanzar, que se vea una sola opción por función. En la 1.1, borrar los caminos que quedaron de respaldo.</td><td><span class="pill plain">1.1</span></td></tr>
+    <tr><td class="w">C6</td><td>Archivos enormes: <code>storage_service.dart</code> 2.515, <code>settings_screen.dart</code> 1.551, <code>home_screen.dart</code> 1.519, <code>WidgetNoteEditActivity.kt</code> 1.457, <code>SnippetsLayer.kt</code> 1.367 líneas, y 4 más de más de 1.000.</td><td>No tocar antes del lanzamiento. Partirlos cuando haya que cambiarlos.</td><td><span class="pill plain">después</span></td></tr>
+    <tr><td class="w">C7</td><td>67 suites Python en la raíz y 2 fallos que se arrastran (C-34 y dos del widget). Un CI con fallos «conocidos» esconde los nuevos.</td><td>Moverlas a <code>tools/checks/</code>, borrar las que ya cubren Kotlin o Flutter y dejar todo en verde.</td><td><span class="pill warn">durante la prueba</span></td></tr>
+    <tr><td class="w">C8</td><td>Flutter fijado en 3.47.9: la 3.50 declara obsoleto <code>material.dart</code> y el análisis estricto falla.</td><td>No bloquea. Migrar en enero.</td><td><span class="pill plain">1.1</span></td></tr>
+    <tr><td class="w">C9</td><td>Nombre «VoiceBubble STT» en el lanzador y «Dictado con Groq Whisper» en Ajustes.</td><td>Marca única: «Orison», con el subtítulo «Dictado con IA» (tarea T2).</td><td><span class="pill bad">antes</span></td></tr>
+    <tr><td class="w">C10</td><td>Ajustes muestra un instante «Tenés que configurar · Falta» aunque todo esté configurado (video, 0:43). La pantalla arranca suponiendo que no hay clave ni teclado.</td><td>No dibujar esa sección hasta haber leído el estado.</td><td><span class="pill bad">antes</span></td></tr>
+    <tr><td class="w">C11</td><td>Widget: la última nota queda tapada por «+» y el micrófono flotantes (tu captura) y no hay forma de verla entera.</td><td>Espacio vacío al final de la lista, del alto de los botones.</td><td><span class="pill warn">antes</span></td></tr>
+    <tr><td class="w">C12</td><td>La raíz del repositorio tiene unos 15 planes viejos, el laboratorio y <code>__pycache__</code>.</td><td>Ordenar en <code>docs/archive/</code>.</td><td><span class="pill plain">durante la prueba</span></td></tr>
+  </tbody>
+</table></div>
+
+<!-- ============ 05 ============ -->
+<h2 id="video"><span class="num">05</span>Lo que se ve en el video</h2>
+<p>Lo revisé cuadro por cuadro. La app se ve sólida y coherente con Horizonte. Esto es lo que encontré:</p>
+<div class="tbl"><table>
+  <thead><tr><th>Momento</th><th>Qué se ve</th><th>Estado</th></tr></thead>
+  <tbody>
+    <tr><td class="n">0:03 – 0:04</td><td>Agujero de arranque, fluido.</td><td><span class="pill good">bien</span></td></tr>
+    <tr><td class="n">0:05 – 0:16</td><td>Notas, editor y resumen con IA con Descartar y Reemplazar.</td><td><span class="pill good">bien</span></td></tr>
+    <tr><td class="n">0:17</td><td>Historial con 20 dictados: el tope se llena en un día de uso.</td><td><span class="pill warn">C3</span></td></tr>
+    <tr><td class="n">0:39</td><td>Al volver de «Notas y widgets» las dos pantallas se ven encimadas un instante (fundido). Queda mejor un deslizamiento.</td><td><span class="pill plain">menor</span></td></tr>
+    <tr><td class="n">0:43</td><td>Parpadea «Tenés que configurar: Agregar clave de Groq · Falta / Activar el teclado · Falta».</td><td><span class="pill bad">C10</span></td></tr>
+    <tr><td class="n">0:45</td><td>Idioma con Del teléfono, Español, English y Português.</td><td><span class="pill good">bien</span></td></tr>
+    <tr><td class="n">capturas</td><td>Widget: la última tarjeta queda bajo los botones flotantes. Hoja de edición: el primer renglón visible del cuerpo queda cortado a la mitad.</td><td><span class="pill warn">C11</span></td></tr>
+  </tbody>
+</table></div>
+
+<!-- ============ 06 ============ -->
+<h2 id="nuevas"><span class="num">06</span>Funciones nuevas</h2>
+
+<h3 id="emojis">Emojis <span class="pill bad">1.0</span></h3>
+<p>Google tiene una librería oficial para esto (<code>androidx.emoji2:emoji2-emojipicker</code>). Trae categorías, recientes y tonos de piel, y muestra solo los emojis que el teléfono puede dibujar. No hace falta armar nada a mano.</p>
+<p>Dónde va: una tecla 😊 entre ?123 y la coma, que se puede ocultar en Ajustes › Teclado como la tecla de idioma. Al tocarla, el panel ocupa el lugar de las teclas y abajo aparecen pestañas: <strong>ABC · Emojis · Stickers · GIF</strong>. La barra de herramientas no cambia.</p>
+<div class="mocks two">
+  <figure>
+    <div class="kb" aria-label="Fila inferior con tecla de emojis">
+      <div class="row"><div class="k">z</div><div class="k">x</div><div class="k">c</div><div class="k">v</div><div class="k">b</div><div class="k">n</div><div class="k">m</div></div>
+      <div class="row"><div class="k alt" style="--w:1.4">?123</div><div class="k alt new">😊</div><div class="k">,</div><div class="k" style="--w:4.2"></div><div class="k">.</div><div class="k acc" style="--w:1.7">↵</div></div>
+    </div>
+    <figcaption><b>Fila de abajo.</b> La tecla de emojis le quita un poco de ancho a la barra espaciadora, que igual queda grande.</figcaption>
+  </figure>
+  <figure>
+    <div class="media" aria-label="Panel de emojis propuesto">
+      <div class="emo"><span>😀</span><span>😂</span><span>🥹</span><span>😍</span><span>🤔</span><span>😅</span><span>🙌</span><span>👍</span><span>🔥</span><span>✅</span><span>🙏</span><span>❤️</span><span>🎉</span><span>💪</span><span>👀</span><span>😎</span><span>🚀</span><span>💡</span><span>📌</span><span>⚡</span><span>🤝</span><span>😴</span><span>🥲</span><span>👌</span></div>
+      <div class="tabs"><span>ABC</span><span class="on">Emojis</span><span>Stickers</span><span>GIF</span></div>
+    </div>
+    <figcaption><b>Panel de medios.</b> Recientes primero. Stickers y GIF se suman en las etapas siguientes.</figcaption>
+  </figure>
+</div>
+
+<h3>Stickers <span class="pill warn">durante la prueba cerrada</span></h3>
+<ul>
+  <li><strong>Mis stickers:</strong> importar desde la galería o desde archivos (webp, png, gif, varios a la vez), y «Compartir con Orison» desde cualquier app.</li>
+  <li><strong>Desde WhatsApp:</strong> los stickers guardados quedan en <code>Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Stickers</code>. El selector de archivos de Android suele dejar entrar a esa carpeta, así que se pueden importar todos juntos. Hay que confirmarlo en tu Moto G05.</li>
+  <li><strong>Envío:</strong> por la misma vía que ya usa el portapapeles para pegar imágenes (<code>commitContent</code>). Si la app de destino no acepta imágenes, se copia al portapapeles y se avisa.</li>
+  <li><strong>A confirmar:</strong> desde un teclado, WhatsApp puede mostrar el sticker como imagen y no como sticker. Lo probamos con 512 × 512 webp antes de prometerlo en la ficha.</li>
+</ul>
+
+<h3>GIFs <span class="pill plain">1.1</span></h3>
+<p>Tenor, el buscador que usaban casi todos, <strong>cerró su API el 30 de junio de 2026</strong>, y WhatsApp pasó a GIPHY. Quedan dos opciones: <strong>KLIPY</strong> (gratis, pide «Powered by KLIPY» y una aprobación para producción, también tiene stickers) o <strong>GIPHY</strong> (hay que revisar sus condiciones actuales). Lo que la gente busca viaja al proveedor, así que va en la política de privacidad. Recomiendo KLIPY y dejarlo para la 1.1.</p>
+
+<h3>Notas con formato Markdown <span class="pill plain">1.1</span></h3>
+<ul>
+  <li>Al pegar en una nota nueva o al abrirla, si el texto tiene forma de Markdown (títulos <code>#</code>, listas, bloques <code>```</code>, <code>**negrita**</code>), el editor lo muestra con formato.</li>
+  <li>En la barra del editor, un botón discreto <strong>Aa ↔ M↓</strong> alterna entre «Con formato» y «Texto». Lo que se guarda no cambia, solo cómo se ve.</li>
+  <li>«Copiar» ofrece copiar como texto o como Markdown. Así lo que copiás de Claude Code vuelve a salir igual.</li>
+  <li>En el widget: títulos, negrita, listas y código con estilos simples, que los widgets de Android sí soportan.</li>
+  <li>Paquete sugerido: <code>flutter_markdown_plus</code> (el original <code>flutter_markdown</code> quedó discontinuado). Verificar al implementar.</li>
+</ul>
+
+<h3>Más espacio para notas e historial <span class="pill warn">1.0 · sin tope en 1.1</span></h3>
+<p>Ahora: 200 notas, 100 dictados en el historial y 50 recortes. 200 notas ocupan unos 300 KB de texto y se leen al instante. En la 1.1, base de datos SQLite compartida entre la app, el teclado y el widget: sin tope, con búsqueda rápida, y desaparece el candado entre procesos que hoy evita los choques.</p>
+
+<h3>Proveedores de IA <span class="pill plain">si los piden</span></h3>
+<p>Para lanzar alcanza con Groq: una sola clave gratis transcribe, titula, resume, reestructura y traduce (etapas 1 y 2 de la Ruta IA, ya hechas). Google queda como opción para las notas. OpenAI y OpenRouter (etapa 5) se suman solo si los usuarios lo piden. La transcripción en el teléfono, sin internet (etapa 6), es la que más valor agrega después.</p>
+
+<!-- ============ 07 ============ -->
+<h2 id="primeruso"><span class="num">07</span>Primer uso y clave de Groq</h2>
+<p>Hoy, al abrir la app por primera vez, aparece Ajustes con «Falta». Para alguien que pagó, eso es una pared. El primer uso tiene que llevarlo de la mano hasta su primer dictado.</p>
+<ol class="steps">
+  <li><div><b>Bienvenida</b><p>Tres tarjetas: dictá en cualquier app, tus notas por voz, tu teclado para código y para vender.</p></div></li>
+  <li><div><b>¿Para qué lo vas a usar?</b><p>Programar · Vender · Escribir y estudiar. Precarga snippets de ejemplo según la respuesta (comandos, precios y saludos, o plantillas).</p></div></li>
+  <li><div><b>Privacidad</b><p>«Tu voz se envía a Groq con tu propia clave para convertirla en texto. No pasa por servidores nuestros. Las notas y el historial quedan en el teléfono». Este aviso es obligatorio para Play.</p></div></li>
+  <li><div><b>Clave de Groq</b><p>Guía de abajo, con botón para abrir la página de Groq. Al volver, la app detecta la clave copiada y ofrece pegarla.</p></div></li>
+  <li><div><b>Micrófono</b><p>Pedir el permiso explicando para qué.</p></div></li>
+  <li><div><b>Activar el teclado</b><p>Abre la pantalla de teclados de Android, vuelve sola y abre el selector para elegir Orison.</p></div></li>
+  <li><div><b>Probalo</b><p>Un campo de texto con el teclado abierto: «Tocá el micrófono y decí algo». El primer dictado exitoso cierra el recorrido.</p></div></li>
+  <li><div><b>Extras opcionales</b><p>Widget de notas, barra flotante y Puntero, cada uno con un «Ahora no».</p></div></li>
+</ol>
+
+<h3>Guía: de dónde sacar la clave de Groq</h3>
+<p>La página de Groq está en inglés. La guía muestra los botones con el nombre exacto que tienen allá.</p>
+<ol class="steps">
+  <li><div><b>Abrí console.groq.com/keys</b><p>Con el botón de la app. Es gratis y no pide tarjeta.</p></div></li>
+  <li><div><b>Entrá con Google, GitHub o tu correo</b><p>Si es la primera vez, la cuenta se crea en ese momento.</p></div></li>
+  <li><div><b>Tocá «Create API Key»</b><p>Ponele de nombre «Orison» y confirmá con «Submit».</p></div></li>
+  <li><div><b>Copiá la clave</b><p>Empieza con <code>gsk_</code>. Groq la muestra una sola vez; si la perdés, creás otra.</p></div></li>
+  <li><div><b>Volvé a Orison</b><p>La app ve que copiaste una clave <code>gsk_</code> y ofrece «Pegar clave». Se guarda cifrada en el teléfono.</p></div></li>
+  <li><div><b>Listo</b><p>«Probar conexión» lo confirma. El plan gratis da 20 dictados por minuto, 2.000 por día y hasta 8 horas de audio por día: sobra para una persona.</p></div></li>
+</ol>
+
+<!-- ============ 08 ============ -->
+<h2 id="play"><span class="num">08</span>Play Store e instalación</h2>
+<div class="tbl"><table>
+  <thead><tr><th>Requisito</th><th>Hoy</th><th>Qué hacer</th></tr></thead>
+  <tbody>
+    <tr><td>Cuenta de desarrollador (US$25, un solo pago) y verificación de identidad</td><td><span class="pill bad">falta</span></td><td>Vos, en diciembre (día D). Usá tu nombre real: Google lo verifica con un documento.</td></tr>
+    <tr><td>Prueba cerrada: 12 testers durante 14 días corridos</td><td><span class="pill bad">falta</span></td><td>Solo cuentas personales nuevas. Los 12 tienen que seguir anotados el día que pedís producción. Una prueba abierta no cuenta. <a href="#testers">Quiénes pueden ser</a>.</td></tr>
+    <tr><td>AAB firmado + firma de apps de Play</td><td><span class="pill bad">falta</span></td><td>Tarea T3. Google guarda la clave final; vos guardás la de subida.</td></tr>
+    <tr><td>Apuntar a Android 16 (API 36), obligatorio desde el 31/8/2026</td><td><span class="pill good">listo</span></td><td>Flutter 3.47.9 ya lo hace.</td></tr>
+    <tr><td>Páginas de memoria de 16 KB (apps que apuntan a Android 15 o más)</td><td><span class="pill warn">verificar</span></td><td>ML Kit trae librerías nativas: revisar el AAB en la tarea T3.</td></tr>
+    <tr><td>Política de privacidad en una dirección pública</td><td><span class="pill bad">falta</span></td><td>Tarea T4.</td></tr>
+    <tr><td>Formulario «Seguridad de los datos»</td><td><span class="pill bad">falta</span></td><td>Audio enviado a Groq para transcribir (no se comparte con nadie más, no se guarda en servidores nuestros), sin cuentas ni seguimiento. Opus redacta las respuestas.</td></tr>
+    <tr><td>Declaración del servicio en primer plano «micrófono», con video</td><td><span class="pill bad">falta</span></td><td>Grabás 30 s: dictado desde el widget o la barra con la notificación a la vista.</td></tr>
+    <tr><td>Clasificación de contenido y público objetivo</td><td><span class="pill bad">falta</span></td><td>Cuestionarios de 10 minutos. Público: mayores de 18, no dirigida a niños.</td></tr>
+    <tr><td>Ficha: título (30), descripción breve (80), completa (4.000), ícono 512 × 512, gráfico 1024 × 500, 2 a 8 capturas</td><td><span class="pill bad">falta</span></td><td>Opus redacta los textos y arma las capturas. Abajo hay un borrador.</td></tr>
+    <tr><td>Perfil de pagos (para cobrar)</td><td><span class="pill bad">falta</span></td><td>Argentina figura entre los países que pueden vender apps en Play. Consultá con tu contador cómo facturarlo.</td></tr>
+    <tr><td>Puntero: declaración de Accesibilidad</td><td><span class="pill warn">después</span></td><td>Va como app aparte: ver más abajo.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Borrador de la ficha</h3>
+<div class="tbl"><table>
+  <thead><tr><th>Campo</th><th>Español</th><th>Inglés</th></tr></thead>
+  <tbody>
+    <tr><td>Título (≤ 30)</td><td>Orison: teclado de voz y notas <span class="muted small">(30)</span></td><td>Orison: Voice Keyboard &amp; Notes <span class="muted small">(30)</span></td></tr>
+    <tr><td>Breve (≤ 80)</td><td>Dictá en cualquier app con IA: notas, snippets, traducción y teclas de código. <span class="muted small">(78)</span></td><td>Dictate in any app with AI: notes, snippets, translation and a coding layer. <span class="muted small">(76)</span></td></tr>
+  </tbody>
+</table></div>
+<p class="small muted">Antes de fijar el nombre, buscalo en Play para ver que no haya otra app igual.</p>
+
+<h3 id="nombre">El nombre: Orison</h3>
+<p>Busqué en Play Store, en la web y en registros de marcas de Estados Unidos:</p>
+<ul>
+  <li><strong>En Play no hay ningún teclado llamado Orison.</strong> Hay dos apps con el nombre, de otros rubros: «오리슨» (Orison en coreano, registros médicos) y «Orison School V2» (reportes escolares para padres). No compiten con vos, pero el nombre solo no es exclusivo. Por eso conviene que el título siempre lleve el complemento: «Orison: teclado de voz y notas».</li>
+  <li><strong>Marcas en EE. UU.:</strong> ORISON está registrada por Orison Inc. para baterías de almacenamiento de energía (clase 9), y desde abril de 2026 hay una solicitud pendiente de otra empresa para servicios informáticos (clase 42). Ninguna es un teclado ni una app de notas, así que el riesgo de conflicto es bajo. No soy abogado: si la marca va a crecer, conviene registrar «Orison» en el INPI de Argentina para software (clase 9) antes del lanzamiento.</li>
+  <li><strong>Ojo con el inglés:</strong> <em>orison</em> es una palabra literaria que significa «plegaria». En español suena a «horizonte», pero un angloparlante no hace esa asociación. No es un significado negativo, y la ficha y el ícono del agujero negro cuentan la historia del horizonte.</li>
+</ul>
+<p>El cambio de nombre es total: lanzador, teclado, widget, notificaciones, Ajustes, textos en los 3 idiomas y documentos. También conviene cambiar el <strong>identificador interno</strong> de la app (de <code>com.royleguiza.voicebubblestt</code> a <code>com.royleguiza.orison</code>). Ahora es el único momento barato, porque una vez publicada en Play queda fijo para siempre. Además, con otro identificador, Orison se instala <strong>al lado</strong> de tu VoiceBubble actual sin pisarla. Es la tarea T2.</p>
+
+<h3 id="icono">El ícono nuevo</h3>
+<p>El ícono actual tiene muchos detalles, brillos y texturas que se pierden en 48 px y se ven genéricos. El nuevo tiene que leerse en 24 px (barra de notificaciones), funcionar como ícono temático de Android 13 (un solo color) y contar la idea en una forma: <strong>el horizonte de un agujero negro hecho de teclas</strong>.</p>
+<p><strong>Lo generás vos con una IA de imágenes</strong>, con la guía de abajo. Estas tres maquetas son la referencia de la idea, no el ícono final. Los números son el tamaño en píxeles.</p>
+<div class="icons">
+  <div class="icon-card pick">
+    <div class="icon-sizes" role="img" aria-label="Opción A, amanecer en el teclado en tres tamaños">
+        <div><svg width="96" height="96"><use href="#ic-a"/></svg><span>96</span></div>
+        <div><svg width="48" height="48"><use href="#ic-a"/></svg><span>48</span></div>
+        <div><svg width="24" height="24"><use href="#ic-a"/></svg><span>24</span></div>
+      </div>
+    <h4>A · Amanecer en el teclado <span class="pill ember">recomendada</span></h4>
+    <p>El agujero asoma sobre una fila de teclas: la barra espaciadora es el horizonte. Es la silueta más clara en 24 px y no se parece a otro ícono. La barra brasa también es la acción: dictar.</p>
+    <div class="themed"><svg width="40" height="40" aria-hidden="true"><use href="#ic-a-mono"/></svg><span>Versión temática de Android 13, en un solo color.</span></div>
+  </div>
+  <div class="icon-card">
+    <div class="icon-sizes" role="img" aria-label="Opción B, disco de teclas en tres tamaños">
+        <div><svg width="96" height="96"><use href="#ic-b"/></svg><span>96</span></div>
+        <div><svg width="48" height="48"><use href="#ic-b"/></svg><span>48</span></div>
+        <div><svg width="24" height="24"><use href="#ic-b"/></svg><span>24</span></div>
+      </div>
+    <h4>B · Disco de teclas</h4>
+    <p>El disco de acreción hecho de teclas que giran alrededor del agujero. Es el más «agujero negro», pero en tamaño chico se puede confundir con Saturno.</p>
+  </div>
+  <div class="icon-card">
+    <div class="icon-sizes" role="img" aria-label="Opción C, fila en el horizonte en tres tamaños">
+        <div><svg width="96" height="96"><use href="#ic-c"/></svg><span>96</span></div>
+        <div><svg width="48" height="48"><use href="#ic-c"/></svg><span>48</span></div>
+        <div><svg width="24" height="24"><use href="#ic-c"/></svg><span>24</span></div>
+      </div>
+    <h4>C · Fila en el horizonte</h4>
+    <p>El anillo de fotones con una fila de teclas que nace a los costados. Es el más simple y sobrio, pero el que menos dice «teclado».</p>
+  </div>
+</div>
+<h3 id="guia-icono">Guía para generar el ícono</h3>
+<p>Los generadores entienden mejor en inglés, así que los prompts van en inglés. Cada uno pide lo mismo que un ícono de Android necesita: forma plana, pocos colores, el símbolo centrado con aire alrededor y fondo cuadrado a sangre (Android le pone la forma redonda o de gota según el teléfono; si el generador dibuja esquinas redondeadas, quedan bordes raros).</p>
+
+<h4>Prompt A · Amanecer en el teclado (recomendado)</h4>
+<div class="copybox"><button class="copybtn" type="button">Copiar</button><span class="txt">Minimal flat vector app icon. A solid black semicircle rising above a single row of three rounded rectangular keyboard keys: a wide spacebar in the middle in vivid ember orange (#FF8A1F) and one small off-white key (#E9E6E0) on each side. Only the curved edge of the semicircle has a thick ember-orange outline, like the glowing event horizon of a black hole at sunrise, and the flat base of the semicircle rests right on top of the keys. Full-bleed square background in near-black navy (#0B0C12), no rounded corners, no border. The symbol is centered and fills about 60% of the canvas. Geometric shapes, crisp edges, only black, ember orange and off-white. No gradients, no glow, no stars, no particles, no texture, no 3D, no shadows, no text. 1024x1024.</span></div>
+
+<h4>Prompt B · Disco de teclas</h4>
+<div class="copybox"><button class="copybtn" type="button">Copiar</button><span class="txt">Minimal flat vector app icon. A solid black circle with a thin ember-orange ring (#FF8A1F), crossed by a flat, slightly tilted ellipse made of small rectangular keyboard keys in ember orange, like an accretion disk of keys orbiting a black hole. The back half of the ellipse is dimmer and passes behind the circle; the front half passes in front of it. Full-bleed square background in near-black navy (#0B0C12), no rounded corners, no border. The symbol is centered and fills about 65% of the canvas. Geometric, crisp edges, two colors plus black. No gradients, no glow, no stars, no planets, no texture, no 3D, no text. 1024x1024.</span></div>
+
+<h4>Prompt C · Fila en el horizonte</h4>
+<div class="copybox"><button class="copybtn" type="button">Copiar</button><span class="txt">Minimal flat vector app icon. A solid black circle with a thick ember-orange ring (#FF8A1F) in the center. On each side, two small rounded square keyboard keys in ember orange sit on the same horizontal line through the middle of the circle, fading in opacity toward the edges, forming a horizon line made of keys. Full-bleed square background in near-black navy (#0B0C12), no rounded corners, no border. Centered, about 70% of the canvas wide. Geometric, crisp edges. No gradients, no glow, no stars, no texture, no 3D, no text. 1024x1024.</span></div>
+
+<h4>Prompt libre, para explorar</h4>
+<div class="copybox"><button class="copybtn" type="button">Copiar</button><span class="txt">Minimal flat logo mark for "Orison", a voice keyboard app. Concept: the event horizon of a black hole, built from keyboard keys. One bold, simple shape that is still recognizable at 24 pixels. Palette: black, ember orange (#FF8A1F) and off-white (#E9E6E0) on a near-black navy (#0B0C12) full-bleed square background. Flat vector, geometric, crisp edges. No gradients, no glow, no stars, no particles, no 3D, no text, no letters. 1024x1024. Show 4 different variations.</span></div>
+
+<h4>Cómo elegir entre los resultados</h4>
+<ul>
+  <li><strong>Prueba del tamaño chico:</strong> mirá la imagen achicada al tamaño de un ícono de la pantalla de inicio. Si al alejar el teléfono no se entiende la forma, descartala.</li>
+  <li><strong>Prueba del color único:</strong> imaginala toda de un solo color. Si se convierte en una mancha, no va a funcionar como ícono temático.</li>
+  <li><strong>Descartá</strong> las que tengan brillos, degradados, estrellas, texto o detalles finos: es justo lo que hoy hace que el ícono se vea «hecho con IA».</li>
+  <li>Si el generador no respeta los colores exactos, no importa: los colores se corrigen al redibujarlo.</li>
+</ul>
+
+<h4>Qué pasa después</h4>
+<ol class="steps">
+  <li><div><b>Me mandás 2 o 3 favoritos</b><p>Por el chat, como las capturas.</p></div></li>
+  <li><div><b>Opus lo redibuja en vector</b><p>Una imagen generada es un PNG con bordes imperfectos. Se redibuja como SVG limpio, con los colores exactos de Horizonte y la forma corregida. Así se ve nítido en cualquier tamaño.</p></div></li>
+  <li><div><b>Vista previa real</b><p>Una página con el ícono en una pantalla de inicio simulada a tamaño real, en claro, en oscuro y en versión temática, para que lo apruebes.</p></div></li>
+  <li><div><b>Entrega</b><p>Ícono adaptativo de Android (frente, fondo y capa de un color), 512 × 512 para Play, pantalla de arranque y la variante del Puntero. Es la tarea T2b.</p></div></li>
+</ol>
+
+<h3 id="testers">Quiénes pueden ser los testers</h3>
+<p><strong>Sirven usuarios normales:</strong> tu esposa, tus hermanos, tu madre, amigos. No hace falta ninguna cuenta especial. Cada uno necesita:</p>
+<ul>
+  <li>Una cuenta de Google (Gmail) propia, la misma con la que entra a Play Store en su teléfono. Si tiene varias cuentas en el teléfono, tiene que usar la del Gmail que te pasó.</li>
+  <li>Un teléfono Android con Play Store. Un iPhone no sirve.</li>
+</ul>
+<p>Cómo se hace:</p>
+<ol class="steps">
+  <li><div><b>Les pedís el Gmail</b><p>El exacto que usan en Play Store. Ya se los podés pedir ahora.</p></div></li>
+  <li><div><b>Los cargás en Play Console</b><p>Prueba cerrada › Testers › lista de correos. Los cargamos también como «testers de licencias», así el Pro les sale gratis.</p></div></li>
+  <li><div><b>Les mandás el link</b><p>Aparece cuando Google aprueba la primera versión. Cada uno lo abre con su cuenta y toca «Convertirse en tester». Estar en la lista no alcanza: si no aceptan, no cuentan.</p></div></li>
+  <li><div><b>Instalan Orison desde Play</b><p>Desde el mismo link o buscándola en Play.</p></div></li>
+  <li><div><b>La tienen 14 días</b><p>Sin salir del programa. Conviene que la usen de verdad, aunque sea un dictado por día: hay reportes de pedidos rechazados por poco uso.</p></div></li>
+</ol>
+<p class="small muted">Invitá entre 15 y 20 personas por si alguno se borra o se equivoca de cuenta. Tu propia cuenta no la cuentes entre los 12. Pueden ser de cualquier país.</p>
+
+<h3>¿Se siguen descargando dos APK?</h3>
+<p>Hoy GitHub te da dos archivos porque son dos apps: VoiceBubble y el complemento Puntero, que es aparte porque es el único que usa Accesibilidad. Con Play:</p>
+<ul>
+  <li><strong>Para la gente:</strong> instala Orison desde Play, sin archivos, y Play la actualiza sola. Si quiere el Puntero, un botón en la app lleva a su ficha, que es otra app gratis en Play.</li>
+  <li><strong>Firma compartida:</strong> las dos apps se hablan con un permiso que exige la misma firma. Al crear la segunda app en Play Console hay que elegir «usar la misma clave que otra app de esta cuenta».</li>
+  <li><strong>El Puntero sale después</strong> (decidido): Play revisa muy de cerca las apps de Accesibilidad. El tuyo está bien hecho (solo gestos, sin leer la pantalla, marcado como herramienta de accesibilidad), pero se presenta aparte, como ayuda para personas con dificultades motrices, para no arriesgar la aprobación de Orison. Mientras tanto, Orison funciona sin él: el teclado tiene su propio trackpad.</li>
+</ul>
+
+<h3>Cómo vas a instalar de ahora en más</h3>
+<ol>
+  <li>Actualizás VoiceBubble con el APK de GitHub que trae «Exportar copia» y guardás tu copia en Descargas o Drive.</li>
+  <li>Entrás al link de la prueba cerrada, instalás Orison desde Play e importás la copia. VoiceBubble sigue instalada al lado, porque son apps distintas; elegís Orison como teclado.</li>
+  <li>Cuando todo esté bien, desinstalás VoiceBubble y su Puntero de GitHub.</li>
+  <li>Para probar cambios sin esperar a Play, el CI arma <strong>«Orison Dev»</strong>, que se instala al lado de la de Play sin pisarse (tarea T20).</li>
+</ol>
+
+<!-- ============ 09 ============ -->
+<h2 id="precio"><span class="num">09</span>Precio</h2>
+<p>US$10 es un precio razonable para lo que hace. La pregunta es cómo cobrarlo. Como cada persona usa su propia clave de Groq, a vos no te cuesta nada que la usen: todo lo que se vende es ganancia.</p>
+<div class="tbl"><table>
+  <thead><tr><th></th><th>A · Pago único al descargar</th><th>B · Gratis + Pro de pago único <span class="pill ember">elegida</span></th></tr></thead>
+  <tbody>
+    <tr><td class="w">Cómo es</td><td>US$9,99 para bajarla.</td><td><strong>30 días con todo, gratis.</strong> Después: teclado completo y 10 dictados por día. <strong>Orison Pro, US$9,99 una sola vez:</strong> todo ilimitado (dictado, traducción, IA en notas, snippets, stickers).</td></tr>
+    <tr><td class="w">Código</td><td>Nada.</td><td>Cobro con Play (1 o 2 días), antes de la prueba cerrada.</td></tr>
+    <tr><td class="w">Probarla antes</td><td>No. Para un teclado que pide una clave y activarse en Ajustes, es mucha fe.</td><td>Sí: la configuran, dictan y compran cuando ya la usan.</td></tr>
+    <tr><td class="w">Testers de la prueba cerrada</td><td>Probablemente tengan que comprarla (o los cargás como testers de licencias).</td><td>Gratis.</td></tr>
+    <tr><td class="w">Oferta de lanzamiento</td><td>Play tiene «ofertas» para apps pagas: precio fijo o %, solo con la app ya publicada y con 30 días entre una y otra.</td><td>Se arranca con el precio de lanzamiento y se sube después.</td></tr>
+    <tr><td class="w">Cambiar después</td><td>Se puede pasar a gratis, pero nunca volver a cobrar.</td><td>Flexible.</td></tr>
+  </tbody>
+</table></div>
+<div class="callout">
+  <span class="tag">Decidido: opción B con 30 días</span>
+  <p><strong>Un mes entero gratis con todo.</strong> Un teclado se vuelve costumbre en dos o tres semanas: a los 30 días ya escriben y dictan con Orison sin pensarlo, y pasar a 10 dictados por día se siente. Los días quedan en una sola constante, así que se pueden cambiar después sin tocar nada más.</p>
+  <p><strong>Pro a US$9,99, con precio de lanzamiento de US$4,99 (−50 %) durante las primeras 6 semanas.</strong> Son 6 y no 2 para que quien instale el primer mes termine su prueba con el precio de lanzamiento todavía vigente. Durante la prueba, la app muestra «Precio de lanzamiento hasta el …» y deja comprar en cualquier momento. No recomiendo 80 % o 90 %: a US$1–2 te queda alrededor de US$1 por venta y el producto queda anclado como barato.</p>
+  <p>Google se queda entre el 10 % y el 15 % de cada venta hasta el primer millón al año (el esquema cambió en 2026; la consola muestra el tuyo). A US$4,99 te quedan unos US$4,20 antes de impuestos. Play muestra el precio en pesos con su conversión y lo podés ajustar a mano para Argentina.</p>
+</div>
+
+<!-- ============ 10 ============ -->
+<h2 id="mercado"><span class="num">10</span>A quién venderle e idiomas</h2>
+<p>Play permite <strong>fichas personalizadas</strong>: la misma app con textos y capturas distintos según el país o según el link de una campaña. Así se le puede hablar a cada grupo por separado.</p>
+<div class="segs">
+  <div class="seg">
+    <h4>Programadores y vibecoders</h4>
+    <p class="pitch">«Hablale a tu IA desde el teléfono».</p>
+    <p>Dictado largo por tramos para prompts a Claude Code, Cursor o ChatGPT; capa de código con pares; snippets de comandos (ssh, tmux, claude); fila de terminal y trackpad en Termux. Capturas con Termux y Claude.</p>
+  </div>
+  <div class="seg">
+    <h4>Vendedores por WhatsApp</h4>
+    <p class="pitch">«Tus precios y tu speech a un toque».</p>
+    <p>Snippets con precios y respuestas, traducción para clientes de afuera, notas de voz por cliente. Para ellos conviene sumar (1.1): variables en snippets como <code>{nombre}</code> o <code>{fecha}</code>, y un botón de negrita de WhatsApp.</p>
+  </div>
+  <div class="seg">
+    <h4>Estudiantes, periodistas y escritores</h4>
+    <p class="pitch">«Pensá en voz alta, te queda ordenado».</p>
+    <p>Dictados largos, notas con título y resumen por IA, reestructurar con un toque y Markdown (1.1).</p>
+  </div>
+  <div class="seg">
+    <h4>Profesionales que escriben mucho</h4>
+    <p class="pitch">«Informes y mensajes sin tipear».</p>
+    <p>Inmobiliarias, contadores, médicos, abogados: notas por voz y plantillas. No prometer cumplimiento de normas médicas o legales.</p>
+  </div>
+  <div class="seg">
+    <h4>Accesibilidad</h4>
+    <p class="pitch">«Usá todo el teléfono aunque no llegues a toda la pantalla».</p>
+    <p>Personas con dificultades motrices, con una sola mano o con zonas de la pantalla que no responden: dictado + Puntero. Es también el argumento para la declaración de Accesibilidad. Conviene contactar asociaciones.</p>
+  </div>
+  <div class="seg">
+    <h4>Atención al cliente multilingüe</h4>
+    <p class="pitch">«Hablá en tu idioma, mandalo en el suyo».</p>
+    <p>Dictado con traducción y snippets de respuestas frecuentes.</p>
+  </div>
+</div>
+
+<h3>Idiomas</h3>
+<div class="tbl"><table>
+  <thead><tr><th>Etapa</th><th>Qué</th><th>Por qué</th></tr></thead>
+  <tbody>
+    <tr><td class="w">Hoy</td><td>App en español, inglés y portugués. Dictado: Whisper entiende unos 100 idiomas, pero «Idioma en que hablo» solo ofrece Automático, es, en y pt.</td><td>Base hecha.</td></tr>
+    <tr><td class="w">Lanzamiento</td><td>Fichas en es-419, es-ES, en-US y pt-BR. Sumar a «Idioma en que hablo» los 15 idiomas más hablados (es pasar el código, casi gratis).</td><td>El inglés es el mercado más grande y el que más paga. Español y portugués son tu base.</td></tr>
+    <tr><td class="w">1.1</td><td>Francés, alemán e italiano en la app, con las distribuciones AZERTY (francés) y QWERTZ (alemán). Los acentos ya están casi todos.</td><td>Alemania y Francia pagan bien por apps.</td></tr>
+    <tr><td class="w">Después</td><td>Hindi e indonesio con QWERTY. Japonés, chino y coreano no por ahora: necesitan teclados con composición y son mucho trabajo.</td><td>Mucho volumen y poco pago.</td></tr>
+  </tbody>
+</table></div>
+
+<!-- ============ 11 ============ -->
+<h2 id="ejecucion"><span class="num">11</span>Plan de ejecución</h2>
+<p>Lo ejecuta <strong>Opus 5.5 en esfuerzo medio</strong>, en sesiones nuevas, una fase por sesión. Cada tarea dice qué hacer, dónde y cuándo se da por terminada.</p>
+
+<div class="callout">
+  <span class="tag">Reglas para quien ejecuta</span>
+  <ul>
+    <li>Antes de empezar: leer <code>entorno.md</code>, este plan, <code>AGENTS.md</code> y <code>design.md</code>.</li>
+    <li>Una tarea = un commit. Sin subagentes. Push solo con autorización del dueño. Los commits que solo tocan documentación llevan <code>[skip ci]</code>.</li>
+    <li>Verificar cada tarea: <code>flutter analyze</code> y <code>flutter test</code> en <code>app_source</code>; pruebas Kotlin según <code>docs/plan-build-local.md</code> (nunca al mismo tiempo que <code>flutter test</code>: 2 GB de RAM); <code>python3 test_master_suite.py</code>.</li>
+    <li>Claves nuevas: anotarlas en <code>docs/contrato-claves.md</code> (hoy 66). Topes: <code>docs/contract-limits.md</code>, espejados en Dart y Kotlin.</li>
+    <li>Ante una duda de diseño, proponer con una captura antes de improvisar. Al cerrar cada fase, avisar al dueño para que pruebe el APK.</li>
+  </ul>
+</div>
+
+<p>Para arrancar cada sesión, pegá esto (cambiando el número de fase):</p>
+<div class="copybox"><button class="copybtn" type="button" id="copy-start">Copiar</button><span class="txt" id="start-text">Leé /home/ubuntu/entorno.md y el plan proyectos/voice-bubble/docs/plan-lanzamiento-play.html. Ejecutá la Fase 1 de la sección 11, tarea por tarea, respetando las reglas para quien ejecuta. Después de cada tarea corré las pruebas indicadas, commiteá y avisame antes de subir.</span></div>
+
+<div class="phase"><h3>Fase 1 · Base de publicación</h3><span class="pill bad">26 – 28/11</span></div>
+
+<div class="task">
+  <header><span class="id">T1</span><h4>Exportar e importar copia</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Ajustes › «Copia de seguridad». Exportar un <code>.zip</code> con versión de formato: notas con sus audios, historial, snippets, recortes de texto y ajustes. <strong>Nunca</strong> claves de API ni credenciales. Se guarda con el selector de archivos de Android (<code>ACTION_CREATE_DOCUMENT</code>). Importar fusiona por id sin duplicar.</dd>
+    <dt>Dónde</dt><dd><code>storage_service.dart</code>, <code>notes_service.dart</code>, nueva <code>lib/services/backup_service.dart</code>, Ajustes; canal nativo para el selector de archivos si hace falta.</dd>
+    <dt>Listo si</dt><dd>Exportar en un teléfono e importar en una instalación limpia deja las mismas notas, audios y snippets, sin ninguna clave. Pruebas de ida y vuelta. Sale primero, en un APK de GitHub, para que el dueño respalde antes del cambio a Play.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T2</span><h4>Cambio de marca a Orison</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Nombre «Orison» en el lanzador, en la lista de teclados de Android, en el widget, las notificaciones, Ajustes («Orison · Dictado con IA») y en los textos en es, en y pt. Identificador nuevo <code>com.royleguiza.orison</code> y <code>com.royleguiza.orison.puntero</code> para el Puntero; el <code>namespace</code> y los paquetes Kotlin internos pueden quedar como están. Actualizar todo lo que tiene el identificador viejo escrito a mano: el permiso de firma, las acciones del protocolo del Puntero (<code>PointerProtocol.kt</code> en las dos apps), el <code>&lt;queries&gt;</code> del manifiesto y el FileProvider. Versión 1.0.0. Pantalla «Acerca de» con versión, política de privacidad y contacto. <code>AGENTS.md</code> y <code>design.md</code> pasan a decir Orison.</dd>
+    <dt>Dónde</dt><dd><code>build.gradle.kts</code> de las dos apps, los dos <code>AndroidManifest.xml</code>, <code>strings.xml</code> (values, values-es, values-pt), <code>app_*.arb</code>, <code>WidgetTexts.kt</code>, <code>method.xml</code>, <code>pubspec.yaml</code>, CI (nombres de artefactos).</dd>
+    <dt>Listo si</dt><dd>No queda «VoiceBubble» ni «STT» visible en ningún lado (buscarlo en todo el código y en la suite de idiomas); Orison y la VoiceBubble vieja instaladas a la vez, cada una con su Puntero; <code>PointerProtocolTest</code> en verde en las dos apps; importar en Orison una copia exportada desde VoiceBubble.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T2b</span><h4>Ícono nuevo</h4></header>
+  <dl>
+    <dt>Antes</dt><dd>El dueño genera la imagen con su IA de imágenes usando la <a href="#guia-icono">guía de la sección 08</a> y manda sus favoritos. Si todavía no los mandó, esta tarea espera y se sigue con T3.</dd>
+    <dt>Qué</dt><dd>Redibujar la imagen elegida como SVG limpio (no rastrear el PNG: reconstruirla con formas geométricas y los colores de Horizonte) y mostrar una vista previa en una pantalla de inicio simulada, en claro, oscuro y temático, para que el dueño la apruebe. Con eso: ícono adaptativo en vector (<code>ic_launcher_foreground</code> dentro de la zona segura de 66 dp, fondo <code>#0B0C12</code>, capa <code>monochrome</code> para los íconos temáticos de Android 13 o más), ícono redondo, pantalla de arranque de Android 12 o más y la de Android 9 a 11 (hoy usan el agujero), PNG de 512 × 512 para Play y la variante del Puntero (misma familia con una flecha). Se borran las capas de imagen generadas por IA y <code>docs/icono/</code> guarda el SVG fuente. <code>design.md</code> describe el ícono nuevo.</dd>
+    <dt>Dónde</dt><dd><code>res/mipmap-anydpi-v26/</code>, <code>res/drawable/</code>, <code>res/mipmap-*</code> de las dos apps, <code>splash_hole.xml</code>, <code>launch_background.xml</code>, <code>docs/icono/</code>.</dd>
+    <dt>Listo si</dt><dd>Se ve nítido en el lanzador del Moto G05, en ícono temático, en la lista de apps y en Ajustes de Android; el APK pesa menos que hoy (sin las imágenes grandes).</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T3</span><h4>Compilación de publicación firmada</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Generar la clave de subida (<code>keytool</code>) y guardarla fuera del repo en <code>~/.config/orison/</code>; el dueño se baja una copia. Cargarla como secretos de GitHub (<code>KEYSTORE_BASE64</code>, <code>KEYSTORE_PASSWORD</code>, <code>KEY_ALIAS</code>, <code>KEY_PASSWORD</code>). Job de CI que con un tag <code>v*</code> arma <code>flutter build appbundle --release</code> para la app y el AAB release del Puntero, y los sube como artefactos. El APK de prueba sigue igual.</dd>
+    <dt>Dónde</dt><dd><code>.github/workflows/android.yml</code>, <code>build.gradle.kts</code> de la app (ya lee las variables) y del Puntero.</dd>
+    <dt>Listo si</dt><dd>AAB firmado y validado con <code>bundletool</code>; alineación de 16 KB comprobada; un APK universal sacado del AAB anda en el teléfono (R8 no rompe ML Kit, el teclado ni el widget).</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T4</span><h4>Privacidad</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Redactar la política en es y en (qué se graba, que va a Groq o Google con la clave del usuario, que nada pasa por servidores propios, qué queda en el teléfono, cómo borrarlo). Publicarla en una página pública: repositorio público aparte con GitHub Pages o Google Sites (decide el dueño). Pantalla de aviso antes del primer dictado. Redactar las respuestas del formulario de Seguridad de los datos.</dd>
+    <dt>Listo si</dt><dd>URL pública funcionando, aviso en la app en los 3 idiomas y texto listo para pegar en Play Console.</dd>
+  </dl>
+</div>
+
+<div class="phase"><h3>Fase 2 · Teclado confiable</h3><span class="pill bad">28/11 – 1/12</span></div>
+
+<div class="task">
+  <header><span class="id">T5</span><h4>Teclas sin huecos (K1)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Cada tecla ocupa su casilla entera; el fondo se dibuja con margen interno (<code>InsetDrawable</code>: mitad del hueco a cada lado, arriba y abajo). Las filas pierden el margen superior. Se borran <code>makeGapTolerant</code> y <code>nearestChild</code>. Las pulsaciones largas, los deslizamientos y la repetición de ⌫ quedan igual.</dd>
+    <dt>Dónde</dt><dd><code>KeyFactory.kt</code>, <code>LayoutLayer.kt</code> (<code>addRow</code>), <code>kb_key_*.xml</code>, más el numérico y el modo mini.</dd>
+    <dt>Listo si</dt><dd>Tocar en cualquier punto del área de teclas escribe e ilumina una tecla; el aspecto queda igual al píxel (comparar capturas antes y después); suites C-16, C-18 y typing_feel actualizadas y en verde.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T6</span><h4>Mayúscula automática (K2)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>En <code>onStartInputView</code> y <code>onUpdateSelection</code>, consultar <code>getCursorCapsMode</code> con el tipo del campo y activar el Shift de un toque. Respetar las marcas <code>CAP_*</code> del campo. Nunca en contraseñas, correos, URLs ni en la capa de código. Interruptor «Mayúscula automática» (clave <code>kb_auto_caps</code>, encendido). Opcional: «Doble espacio escribe punto» (<code>kb_double_space_period</code>).</dd>
+    <dt>Dónde</dt><dd><code>EditEngine.kt</code>, <code>VoiceKeyboardService.kt</code>, <code>KeyboardPrefs.kt</code>, <code>teclado_tab.dart</code>, contrato de claves.</dd>
+    <dt>Listo si</dt><dd>Mayúscula al empezar, después de «. », «? », «! » y de un salto de línea; minúscula en un campo de correo; prueba en WhatsApp, Chrome y Termux (Termux no pide mayúscula).</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T7</span><h4>Símbolos completos (K3)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Página 1 de ?123 según idioma (español con ¿ y ¡ visibles), página 2 nueva con la tecla <code>=\&lt;</code>, guion en la capa de código en lugar de <code>^</code>, y pulsaciones largas nuevas (lista en K3). Descripciones para TalkBack.</dd>
+    <dt>Dónde</dt><dd><code>LayoutLayer.kt</code>, <code>KeyboardSupport.kt</code> (<code>symbolsFor</code>), <code>AccentLayer.kt</code>, <code>strings.xml</code>.</dd>
+    <dt>Listo si</dt><dd>Se pueden escribir ¿ ¡ € ° … « » - desde el teclado; suites de distribución y de pulsación larga en verde.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T8</span><h4>Numérico y tamaños (K4, K5)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Fila inferior de la propuesta A (elegida): ABC · coma · 0 · punto · Enter, con coma y punto del ancho de un dígito; «=» en la pulsación larga de «+» y «!?#» en la pulsación larga de ABC. Símbolos y código a 18 sp; dígitos, coma y punto del numérico a 22 sp.</dd>
+    <dt>Dónde</dt><dd><code>LayoutLayer.kt</code> (<code>buildNumeric*</code> y constantes <code>NUM_*</code>), <code>dimens.xml</code>, <code>KeyFactory.kt</code>.</dd>
+    <dt>Listo si</dt><dd>Ninguna tecla del numérico mide menos de 48 dp de ancho; nada se corta en el perfil «Baja»; suite C-47 actualizada.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T9</span><h4>Historial nuevo (K6)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Se mantiene la ventana que se abre con la pulsación larga del micrófono y su animación: crece desde el centro del micrófono (<code>pivotX</code> y <code>pivotY</code> en el micrófono, escala 0,8 → 1 y fundido de 200 ms) y se cierra hacia él. Pasa a ancho completo con 16 dp a cada lado. Encabezado con línea brasa y contador, hora a la izquierda, divisiones con tinte brasa, 3 renglones, el último resaltado, ícono de copiar y pulsación larga con copiar o borrar. Estado vacío.</dd>
+    <dt>Dónde</dt><dd><code>HistoryLayer.kt</code> (hoy calcula el ancho en 320 dp y lo alinea al costado del ancla), <code>TranscriptionHistoryRepository.kt</code>, colores <code>hz_*</code>.</dd>
+    <dt>Listo si</dt><dd>Coincide con la maqueta en claro y en oscuro; la animación nace en el micrófono; el contenido no aparece en los registros; tocar pega y cierra.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T10</span><h4>Números con pulsación larga (K8)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>q…p → 1…0 con el número chiquito en la esquina. Interruptor en Ajustes (encendido). Las vocales con acento siguen funcionando: el número va primero en su menú.</dd>
+    <dt>Listo si</dt><dd>Mantener la «w» escribe 2; mantener la «e» muestra 3, é, è…</dd>
+  </dl>
+</div>
+
+<div class="phase"><h3>Fase 3 · App, primer uso y cobro</h3><span class="pill bad">1 – 5/12</span></div>
+
+<div class="task">
+  <header><span class="id">T11</span><h4>Arreglos del video (C10, C11, 0:39)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Ajustes: no dibujar «Tenés que configurar» hasta leer el estado (<code>_buildRootPage</code> en <code>settings_screen.dart</code>). Widget: espacio vacío al final de la lista (<code>WidgetNotesListService.kt</code>, una fila más de otro tipo). Hoja del widget: el cuerpo no arranca con un renglón cortado. Transición de vuelta en Ajustes: deslizamiento en vez de fundido.</dd>
+    <dt>Listo si</dt><dd>Prueba de widget de Flutter sin parpadeo; la última nota del widget se ve entera; <code>WidgetNotesBehaviorTest</code> en verde.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T12</span><h4>Más espacio (C3)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>200 notas, 100 dictados y 50 recortes. Cambiar las constantes en Dart y en Kotlin, <code>docs/contract-limits.md</code> y las pruebas espejo. El widget muestra «28 / 200».</dd>
+    <dt>Listo si</dt><dd>Prueba de carga con 200 notas por debajo de 100 ms en el teléfono; suite de límites en verde.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T13</span><h4>Primer uso y guía de Groq</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>El recorrido de la sección 07 en <code>lib/screens/onboarding/</code>. Detecta una clave <code>gsk_</code> en el portapapeles al volver a la app. Usa los canales que ya existen para abrir los ajustes de teclados y el selector. Clave <code>onboarding_done_v1</code>. Textos en es, en y pt.</dd>
+    <dt>Listo si</dt><dd>Desde una instalación limpia se llega al primer dictado sin entrar a Ajustes; se puede saltear y retomar desde Ajustes; pruebas de widget del recorrido.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T14</span><h4>Emojis (K7)</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Dependencia <code>androidx.emoji2:emoji2-emojipicker</code>, nuevo <code>EmojiLayer.kt</code> como panel con pestañas abajo (ABC · Emojis por ahora), tecla 😊 en la fila inferior con interruptor «Tecla de emojis» (<code>kb_emoji_key</code>, encendido). ⌫ borra el emoji entero.</dd>
+    <dt>Listo si</dt><dd>Se envían emojis en WhatsApp, Chrome y Termux; recientes y tonos de piel andan; medir cuánto crece el AAB.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T15</span><h4>Cobro: Orison Pro</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Plugin <code>in_app_purchase</code>, producto <code>pro_lifetime</code>, 30 días de Pro desde la instalación (una sola constante), banner «Precio de lanzamiento hasta el …» durante la prueba, pantalla «Pro» con «Restaurar compra». El teclado lee el estado guardado (sin red) y la app lo verifica al abrirse. Los testers se cargan como testers de licencias.</dd>
+    <dt>Listo si</dt><dd>Compra de prueba, restauración y fin de la prueba (adelantando el reloj en una versión de depuración) probados en el teléfono; sin red, el teclado no se bloquea por error.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T16</span><h4>Stickers</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Pestaña Stickers: importar desde la galería o archivos (varios a la vez), «Compartir con Orison», enviar con <code>commitContent</code>, convertir a webp de 512 × 512 y respaldo al portapapeles.</dd>
+    <dt>Listo si</dt><dd>Probado en WhatsApp, Telegram y Messages; se documenta qué app lo muestra como sticker y cuál como imagen.</dd>
+  </dl>
+</div>
+
+<div class="phase"><h3>Fase 4 · Play Console</h3><span class="pill bad">D+2</span></div>
+<div class="task">
+  <header><span class="id">T17</span><h4>Ficha, formularios y prueba cerrada</h4></header>
+  <dl>
+    <dt>Opus</dt><dd>Textos de la ficha en es y en; 8 capturas (teclado, dictado, notas, widget, snippets, código, traducción, primer uso) con marco y una frase cada una; gráfico de 1024 × 500; respuestas de Seguridad de los datos, clasificación y público.</dd>
+    <dt>Vos</dt><dd>Cargar todo en Play Console, grabar el video del micrófono, subir el AAB a la prueba cerrada, crear la lista de testers y mandarles el link.</dd>
+    <dt>Listo si</dt><dd>Los 12 testers aceptaron la invitación e instalaron la app. Ese día arrancan los 14 días.</dd>
+  </dl>
+</div>
+
+<div class="phase"><h3>Fase 5 · Durante la prueba cerrada</h3><span class="pill warn">D+4 → D+18</span></div>
+
+
+
+<div class="task">
+  <header><span class="id">T18</span><h4>Arreglos de los testers y orden</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>Lista viva en <code>docs/</code> con lo que reporten y su arreglo; sirve también para el formulario de producción. Ordenar las suites Python en <code>tools/checks/</code> con el CI todo en verde (C7) y la raíz del repo (C12).</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T19</span><h4>Puntero en Play</h4></header>
+  <dl>
+    <dt>Cuándo</dt><dd>Se prepara durante la prueba y se publica después del lanzamiento de Orison (decidido), en enero.</dd>
+    <dt>Qué</dt><dd>Ficha propia, declaración de Accesibilidad (discapacidad motora, función central: mover un puntero y tocar donde la mano no llega), misma clave de firma y video del uso. La app abre su ficha en Play en lugar del APK de GitHub.</dd>
+  </dl>
+</div>
+
+<div class="task">
+  <header><span class="id">T20</span><h4>Orison Dev, lado a lado</h4></header>
+  <dl>
+    <dt>Qué</dt><dd>El APK del CI usa <code>applicationIdSuffix ".dev"</code> y se llama «Orison Dev»; el Puntero, igual. El permiso de firma y las acciones del protocolo que hoy tienen el nombre fijo pasan a armarse con <code>${applicationId}</code>.</dd>
+    <dt>Listo si</dt><dd>Dev y Play instaladas a la vez, cada una hablando con su Puntero; <code>PointerProtocolTest</code> en verde en las dos apps.</dd>
+  </dl>
+</div>
+
+<div class="phase"><h3>Fase 6 · Lanzamiento</h3><span class="pill ember">D+18 → D+28</span></div>
+<ul>
+  <li>D+18 (el 19/12 si la cuenta se crea el 1/12): pedir acceso a producción con la lista de T18 a mano.</li>
+  <li>Cuando Google aprueba: publicar con el precio de lanzamiento y abrir de a poco (20 % el primer día y 100 % si no aparecen errores).</li>
+  <li>Responder cada reseña la primera semana; las respuestas también cuentan para el posicionamiento.</li>
+</ul>
+
+<!-- ============ 12 ============ -->
+<h2 id="despues"><span class="num">12</span>Después del lanzamiento</h2>
+<div class="tbl"><table>
+  <thead><tr><th>Versión</th><th>Qué</th></tr></thead>
+  <tbody>
+    <tr><td class="w">1.1 · enero</td><td>GIFs con KLIPY · notas con Markdown · SQLite sin topes · francés, alemán e italiano con AZERTY y QWERTZ · variables en snippets · módulo compartido con el Puntero · borrar los caminos viejos de la barra y el trackpad · migrar a Flutter 3.50.</td></tr>
+    <tr><td class="w">1.2</td><td>Sugerencias de palabras y autocorrección · Ruta IA etapa 5 (OpenAI y OpenRouter), solo si los piden.</td></tr>
+    <tr><td class="w">1.3</td><td>Ruta IA etapa 6: transcripción en el teléfono, sin internet ni clave (Whisper tiny o base en el Moto G05).</td></tr>
+    <tr><td class="w">Futuro</td><td>Teclado para tablets, pantallas grandes y plegables (detalle abajo).</td></tr>
+    <tr><td class="w">Para pensar</td><td>Plan «sin clave» por suscripción, donde la app transcribe por vos: saca la fricción de Groq para vendedores y gente no técnica, pero tiene costo por uso y necesita un servidor.</td></tr>
+  </tbody>
+</table></div>
+
+
+<h3 id="tablets">Futuro: tablets, pantallas grandes y plegables</h3>
+<p>Hoy el teclado estira las teclas a todo el ancho. En un teléfono vertical está bien, pero en una tablet o en un plegable abierto las teclas quedan enormes, el pulgar no llega al centro y el teclado tapa media pantalla en horizontal. Lo que haría falta:</p>
+<ul>
+  <li><strong>Detectar el tamaño:</strong> a partir de 600 dp de ancho (tablet o plegable abierto), el teclado cambia de forma. Android informa el ancho disponible en cada cambio de configuración.</li>
+  <li><strong>Teclado partido:</strong> dos mitades pegadas a los bordes para escribir con los pulgares, con la barra de herramientas y el micrófono en el centro. Es lo que más se usa en tablets.</li>
+  <li><strong>Teclado flotante:</strong> una versión de teléfono que se mueve por la pantalla y se achica, ideal para pantallas grandes y para quien usa un lápiz.</li>
+  <li><strong>Altura en horizontal:</strong> limitar la altura a un porcentaje de la pantalla para no tapar lo que se escribe.</li>
+  <li><strong>Plegables:</strong> con la librería de Android para ventanas (<code>WindowManager</code>, que informa dónde está la bisagra), en postura «laptop» (medio abierto) el teclado ocupa la mitad de abajo, y nunca se parte una tecla sobre el pliegue.</li>
+  <li><strong>La app:</strong> en pantalla ancha, lista de notas y editor lado a lado, Ajustes en dos columnas y el widget en tamaños más grandes.</li>
+  <li><strong>Play:</strong> capturas de tablet en la ficha para aparecer como «diseñada para tablets».</li>
+</ul>
+<p class="small muted">Mientras tanto, la 1.0 se presenta como app de teléfono. Un arreglo chico y barato, que se puede sumar a T8 si sobra tiempo: en pantallas de 600 dp o más, limitar el ancho del teclado y centrarlo, para que al menos no se vea estirado.</p>
+
+<!-- ============ 13 ============ -->
+<h2 id="fuentes"><span class="num">13</span>Fuentes</h2>
+<ul class="sources">
+  <li><a href="https://support.google.com/googleplay/android-developer/answer/14151465" target="_blank" rel="noopener">Google Play: requisitos de prueba para cuentas personales nuevas</a></li>
+  <li><a href="https://support.google.com/googleplay/android-developer/answer/7271135" target="_blank" rel="noopener">Google Play: ofertas para apps pagas</a></li>
+  <li><a href="https://support.google.com/googleplay/android-developer/answer/9306917" target="_blank" rel="noopener">Google Play: países admitidos para desarrolladores y comerciantes</a></li>
+  <li><a href="https://support.google.com/googleplay/android-developer/answer/112622" target="_blank" rel="noopener">Google Play: cargos por servicio</a> · <a href="https://android-developers.googleblog.com/2026/06/play-expanded-billing.html" target="_blank" rel="noopener">blog de Android, junio de 2026</a></li>
+  <li><a href="https://developer.android.com/google/play/requirements/target-sdk" target="_blank" rel="noopener">Android: nivel de API exigido por Play</a></li>
+  <li><a href="https://support.google.com/googleplay/android-developer/answer/10964491" target="_blank" rel="noopener">Google Play: uso de la API de Accesibilidad</a></li>
+  <li><a href="https://www.revenuecat.com/docs/test-and-launch/sandbox/google-play-store" target="_blank" rel="noopener">RevenueCat: compras de testers en Play</a></li>
+  <li><a href="https://9to5google.com/2026/06/30/google-tenor-api-gif-updates/" target="_blank" rel="noopener">9to5Google: cierre de la API de Tenor</a> · <a href="https://alternativeto.net/news/2026/7/google-discontinues-tenor-gif-api-for-developers-impacting-discord-x-whatsapp-and-bluesky/" target="_blank" rel="noopener">AlternativeTo: WhatsApp pasa a GIPHY</a></li>
+  <li><a href="https://klipy.com/docs" target="_blank" rel="noopener">KLIPY: documentación de la API</a> · <a href="https://developers.giphy.com/docs/" target="_blank" rel="noopener">GIPHY: documentación</a></li>
+  <li><a href="https://www.technetexperts.com/whatsapp-webp-sticker-flattening/" target="_blank" rel="noopener">Stickers webp de teclados en WhatsApp (fuente secundaria)</a></li>
+  <li><a href="https://console.groq.com/docs/rate-limits" target="_blank" rel="noopener">Groq: límites del plan gratis</a> · <a href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq: claves</a></li>
+</ul>
+
+<footer>Actualizado el 25/11 con las decisiones del dueño (cuenta en diciembre, prueba de 30 días, numérico A, historial desde el micrófono, Puntero después, nombre Orison). Auditoría hecha sobre <code>main</code> en <code>a8c6cfa</code> (APK r338), el video del 24/11 y las capturas del 25/11. Copia en el repo: <code>docs/plan-lanzamiento-play.html</code>.</footer>
+</main>
+</div>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('.copybox').forEach(function (box) {
+    var btn = box.querySelector('.copybtn');
+    var txt = box.querySelector('.txt');
+    if (!btn || !txt) return;
+    btn.addEventListener('click', function () {
+      var done = function () { btn.textContent = 'Copiado'; setTimeout(function () { btn.textContent = 'Copiar'; }, 1800); };
+      var fallback = function () {
+        var r = document.createRange(); r.selectNodeContents(txt);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        btn.textContent = 'Seleccionado';
+      };
+      try { navigator.clipboard.writeText(txt.textContent).then(done, fallback); } catch (e) { fallback(); }
+    });
+  });
+})();
+</script>
