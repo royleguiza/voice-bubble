@@ -2,12 +2,12 @@
     <!-- Solo VoiceBubble (misma firma) puede mandar órdenes de clic. Declarado
          también en VoiceBubble: así el orden de instalación no importa. -->
     <permission
-        android:name="com.royleguiza.orison.puntero.permission.POINTER"
+        android:name="${applicationId}.permission.POINTER"
         android:protectionLevel="signature"/>
     <!-- Para confirmarle a VoiceBubble cómo terminó cada clic. -->
-    <uses-permission android:name="com.royleguiza.orison.puntero.permission.POINTER"/>
+    <uses-permission android:name="${applicationId}.permission.POINTER"/>
     <queries>
-        <package android:name="com.royleguiza.orison"/>
+        <package android:name="${hostPackage}"/>
     </queries>
 
     <application

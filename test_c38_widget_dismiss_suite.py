@@ -23,6 +23,7 @@ from test_helpers import install_l10n_reader
 install_l10n_reader()
 
 import os
+from test_helpers_t20 import normalize as _t20_normalize
 import re
 import sys
 import unittest
@@ -46,7 +47,7 @@ MANIFEST = os.path.join(
 
 def read_file(path):
     with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+        return _t20_normalize(str(path), f.read())
 
 
 class TestC38WidgetDismissSuite(unittest.TestCase):

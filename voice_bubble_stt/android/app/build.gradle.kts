@@ -4,10 +4,25 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+/**
+ * T20 · «Orison Dev»: con ORISON_DEV=1 (o -PorisonDev=true) el APK sale como
+ * com.royleguiza.orison.dev con el nombre «Orison Dev» y se instala al lado de
+ * la de Play sin pisarla. Apagado por defecto: se prende en el CI cuando
+ * empiece la prueba cerrada (ver docs/firma-publicacion.md).
+ */
+val orisonDev = System.getenv("ORISON_DEV") == "1" ||
+    (project.findProperty("orisonDev") as String?) == "true"
+
 android {
     namespace = "com.royleguiza.voicebubblestt"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+
+    buildFeatures {
+        // T20: PointerProtocol arma los nombres del protocolo con el applicationId.
+        buildConfig = true
+        resValues = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -16,7 +31,10 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.royleguiza.orison"
+        applicationId = if (orisonDev) "com.royleguiza.orison.dev" else "com.royleguiza.orison"
+        // Nombre en el lanzador y en la lista de teclados (T20: «Orison Dev»).
+        resValue("string", "app_label", if (orisonDev) "Orison Dev" else "Orison")
+        resValue("string", "ime_name", if (orisonDev) "Orison Dev" else "Orison")
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 28

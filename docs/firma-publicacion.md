@@ -53,3 +53,19 @@ done
 `zipalign -c -P 16` OK y todos los `.so` de 64 bits con LOAD ≥ 16 KB.
 AAB de Orison 103 MB (universal 107 MB: incluye las tres ABI y ML Kit; Play
 entrega a cada teléfono solo su parte).
+
+## Orison Dev, lado a lado (T20)
+
+Con `ORISON_DEV=1` en el entorno (o `-PorisonDev=true`) las dos apps salen
+como **Orison Dev** (`com.royleguiza.orison.dev`) y su Puntero
+(`com.royleguiza.orison.dev.puntero`): se instalan al lado de las de Play
+sin pisarlas, cada una hablando con su propio Puntero (el permiso de firma,
+las acciones del protocolo, los `<queries>` y el FileProvider se arman con
+el `applicationId`; `PointerProtocol` usa `BuildConfig`).
+
+**Hoy está apagado** a propósito: el APK del CI sigue siendo
+`com.royleguiza.orison` para que el teléfono del dueño lo actualice encima.
+Cuando empiece la prueba cerrada en Play, en `.github/workflows/android.yml`
+agregar `env: ORISON_DEV: '1'` a los pasos «Complemento Orison Puntero» y
+«Build APK profile». El workflow de publicación (`release.yml`) nunca lo
+prende.

@@ -2,17 +2,29 @@ plugins {
     id("com.android.application")
 }
 
+/** T20: mismo interruptor que la app (ORISON_DEV=1 o -PorisonDev=true). */
+val orisonDev = System.getenv("ORISON_DEV") == "1" ||
+    (project.findProperty("orisonDev") as String?) == "true"
+val hostPackage = if (orisonDev) "com.royleguiza.orison.dev" else "com.royleguiza.orison"
+
 android {
     namespace = "com.royleguiza.voicebubble.puntero"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.royleguiza.orison.puntero"
+        // El Puntero es siempre la app principal + ".puntero" (T20).
+        applicationId = "$hostPackage.puntero"
+        buildConfigField("String", "HOST_PACKAGE", "\"$hostPackage\"")
+        manifestPlaceholders["hostPackage"] = hostPackage
         minSdk = 28
         targetSdk = 36
         // CI pasa -PbuildNumber=<run_number>: cada APK es una ACTUALIZACIÓN.
         versionCode = (project.findProperty("buildNumber") as String?)?.toIntOrNull() ?: 1
         versionName = "1.0.0"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {

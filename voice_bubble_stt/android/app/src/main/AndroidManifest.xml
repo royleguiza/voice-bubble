@@ -13,11 +13,11 @@
          El permiso se declara en las DOS apps (misma firma) para que el orden
          de instalación no importe. Ver docs/contrato-trackpad.md. -->
     <permission
-        android:name="com.royleguiza.orison.puntero.permission.POINTER"
+        android:name="${applicationId}.puntero.permission.POINTER"
         android:protectionLevel="signature"/>
-    <uses-permission android:name="com.royleguiza.orison.puntero.permission.POINTER"/>
+    <uses-permission android:name="${applicationId}.puntero.permission.POINTER"/>
     <application
-        android:label="Orison"
+        android:label="@string/app_label"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -108,7 +108,7 @@
         <service
             android:name=".DockDictationService"
             android:exported="true"
-            android:permission="com.royleguiza.orison.puntero.permission.POINTER"
+            android:permission="${applicationId}.puntero.permission.POINTER"
             android:foregroundServiceType="microphone|shortService" />
         <!-- Respaldo del servicio anterior: si Android no deja arrancar el micrófono
              desde segundo plano, el complemento abre esta actividad translúcida, que lo
@@ -116,7 +116,7 @@
         <activity
             android:name=".DockTrampolineActivity"
             android:exported="true"
-            android:permission="com.royleguiza.orison.puntero.permission.POINTER"
+            android:permission="${applicationId}.puntero.permission.POINTER"
             android:theme="@style/DockTrampolineTheme"
             android:excludeFromRecents="true"
             android:noHistory="true"
@@ -128,11 +128,11 @@
         <receiver
             android:name=".DockLinkReceiver"
             android:exported="true"
-            android:permission="com.royleguiza.orison.puntero.permission.POINTER">
+            android:permission="${applicationId}.puntero.permission.POINTER">
             <intent-filter>
-                <action android:name="com.royleguiza.orison.puntero.ACTION_DOCK_HELLO" />
-                <action android:name="com.royleguiza.orison.puntero.ACTION_DOCK_STATE" />
-                <action android:name="com.royleguiza.orison.puntero.ACTION_DOCK_HISTORY" />
+                <action android:name="${applicationId}.puntero.ACTION_DOCK_HELLO" />
+                <action android:name="${applicationId}.puntero.ACTION_DOCK_STATE" />
+                <action android:name="${applicationId}.puntero.ACTION_DOCK_HISTORY" />
             </intent-filter>
         </receiver>
         <!-- Colección con scroll del widget (pendientes + notas):
@@ -192,7 +192,7 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <!-- Saber si el complemento VoiceBubble Puntero está instalado. -->
-        <package android:name="com.royleguiza.orison.puntero"/>
+        <package android:name="${applicationId}.puntero"/>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

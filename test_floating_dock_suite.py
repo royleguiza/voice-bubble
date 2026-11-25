@@ -35,6 +35,7 @@ código real:
 """
 
 import os
+from test_helpers_t20 import normalize as _t20_normalize
 # l10n (etapa 4): los textos de la UI viven en app_es.arb; ver test_helpers.expand_l10n.
 from test_helpers import install_l10n_reader
 install_l10n_reader()
@@ -56,7 +57,7 @@ PUN_TEST = "puntero_android/app/src/test/kotlin/com/royleguiza/voicebubble/punte
 
 def read(rel):
     with open(os.path.join(WORKSPACE, rel), "r", encoding="utf-8") as f:
-        return f.read()
+        return _t20_normalize(rel, f.read())
 
 
 def exists(rel):

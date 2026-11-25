@@ -129,7 +129,8 @@ jobs:
 
       - name: Protocolo del puntero idéntico en las dos apps
         run: |
-          strip() { grep -E '^\s*const val ' "$1" | sed 's/^\s*//'; }
+          # T20: COMPANION_PACKAGE y HOST_PACKAGE salen del applicationId de cada app.
+          strip() { grep -E '^\s*const val ' "$1" | grep -vE '(COMPANION|HOST)_PACKAGE =' | sed 's/^\s*//'; }
           diff <(strip voice_bubble_stt/android/app/src/main/kotlin/com/royleguiza/voicebubblestt/PointerProtocol.kt) \
                <(strip puntero_android/app/src/main/kotlin/com/royleguiza/voicebubble/puntero/PointerProtocol.kt) \
             || { echo '::error::PointerProtocol difiere entre Orison y Orison Puntero'; exit 1; }

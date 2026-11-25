@@ -15,7 +15,7 @@ import android.widget.Toast
 class StickerImportActivity : Activity() {
 
     companion object {
-        const val ACTION_PICK = "com.royleguiza.orison.PICK_STICKERS"
+        const val ACTION_PICK = "${BuildConfig.APPLICATION_ID}.PICK_STICKERS"
         private const val REQUEST_PICK = 4101
     }
 
