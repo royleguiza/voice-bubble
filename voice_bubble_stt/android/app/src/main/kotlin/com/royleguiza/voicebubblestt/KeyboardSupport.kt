@@ -237,6 +237,15 @@ internal fun accentsFor(c: Char): List<String> = when (c) {
 internal fun symbolsFor(c: Char): List<String> = when (c) {
     '.' -> listOf(";", ":", "...", "!", "?", "/")
     ',' -> listOf(":", ";", "_", "-", "\\")
+    // T7 (K3): signos que faltaban, a mano sin cambiar de página.
+    '?' -> listOf("¿")
+    '!' -> listOf("¡")
+    '"' -> listOf("«", "»", "“", "”")
+    '-' -> listOf("–", "—", "_")
+    '$' -> listOf("€", "£", "¥", "¢")
+    '%' -> listOf("‰")
+    '0' -> listOf("°")
+    '*' -> listOf("•", "×")
     else -> emptyList()
 }
 

@@ -34,6 +34,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
 
     private var layer = Layer.LETTERS
+
+    /** T7: página 2 de símbolos (=\\<). Vuelve a la 1 al entrar a símbolos. */
+    private var symbolsPage2 = false
     private var lastLettersLayer = Layer.LETTERS
     // --- Modo mini (MEJ-12): micro-teclado de 2 filas (toolbar + fila
     // compacta). Estado local del IME con persistencia propia (MiniModeStore,
@@ -759,6 +762,14 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             return
         }
         layer = if (layer == Layer.SYMBOLS) Layer.LETTERS else Layer.SYMBOLS
+        symbolsPage2 = false
+        rebuild()
+    }
+
+    override fun isSymbolsPage2(): Boolean = symbolsPage2
+
+    override fun toggleSymbolsPage() {
+        symbolsPage2 = !symbolsPage2
         rebuild()
     }
 
@@ -786,6 +797,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         }
         lastLettersLayer = Layer.NUMERIC
         layer = Layer.SYMBOLS
+        symbolsPage2 = false
         rebuild()
     }
     override fun toggleLanguage() {

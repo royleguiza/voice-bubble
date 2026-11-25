@@ -259,4 +259,6 @@
     <string name="ai_err_server">Error del servidor (%1$s): %2$s</string>
     <string name="ai_err_http">Error %1$s: %2$s</string>
     <string name="ai_err_too_long">La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial.</string>
+    <string name="kb_a11y_symbols_page1">Símbolos y números</string>
+    <string name="kb_a11y_symbols_page2">Más símbolos</string>
 </resources>

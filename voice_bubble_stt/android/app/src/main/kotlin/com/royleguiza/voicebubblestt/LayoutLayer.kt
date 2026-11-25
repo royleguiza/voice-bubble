@@ -35,6 +35,8 @@ class LayoutLayer(
         fun pressSymbolsKey()
         fun pressNumericKey()
         fun pressSymbolsFromNumeric()
+        fun isSymbolsPage2(): Boolean
+        fun toggleSymbolsPage()
         fun toggleLanguage()
         fun pressSpace()
         fun pressEnter()
@@ -77,12 +79,31 @@ class LayoutLayer(
         host.addContentRow(row3)
     }
 
+    /**
+     * T7 (K3): dos páginas de símbolos. Página 1 con números y, en español,
+     * ¿ y ¡ a la vista; la tecla =\< abre la página 2 (monedas, grados,
+     * viñetas, comillas latinas y lo de programación) y ?123 vuelve.
+     */
     fun buildSymbolRows() {
-        host.addContentRow(keys.symbolRow("1234567890"))
-        host.addContentRow(keys.symbolRow("@#$%&-+()/"))
+        val page2 = host.isSymbolsPage2()
+        if (page2) {
+            host.addContentRow(keys.symbolRow(SYMBOLS2_ROW1))
+            host.addContentRow(keys.symbolRow(SYMBOLS2_ROW2))
+        } else {
+            host.addContentRow(keys.symbolRow("1234567890"))
+            host.addContentRow(keys.symbolRow("@#$%&-+()/"))
+        }
 
         val row3 = keys.horizontalRow()
-        for (c in "=*\"':;!?") {
+        row3.addView(
+            keys.makeSpecialKey(
+                if (page2) "?123" else "=\\<",
+                R.drawable.kb_key_alt,
+                1.3f,
+                keys.getString(if (page2) R.string.kb_a11y_symbols_page1 else R.string.kb_a11y_symbols_page2),
+            ) { host.toggleSymbolsPage() },
+        )
+        for (c in symbolsRow3(host.isSpanish(), page2)) {
             row3.addView(keys.makeSymbolKey(c.toString()))
         }
         row3.addView(keys.makeBackspaceKey())
@@ -95,7 +116,8 @@ class LayoutLayer(
         host.addContentRow(keys.codeRow("'\"`\\|/!?=+"))
 
         val row3 = keys.horizontalRow()
-        for (c in "*&%$#@^~_") {
+        // T7: el guion (--flag, ->, -=) reemplaza al ^, que pasa a la página 2 de símbolos.
+        for (c in "*&%$#@-~_") {
             row3.addView(keys.makeCodeKey(c))
         }
         row3.addView(keys.makeBackspaceKey())
@@ -187,6 +209,18 @@ class LayoutLayer(
     }
 
     companion object {
+        /** T7: página 2 de símbolos. */
+        const val SYMBOLS2_ROW1 = "~`|•√π÷×_°"
+        const val SYMBOLS2_ROW2 = "€£¥¢^={}[]"
+
+        /** Fila 3 de símbolos según idioma y página (sin la tecla de página ni ⌫). */
+        fun symbolsRow3(spanish: Boolean, page2: Boolean): String = when {
+            page2 && spanish -> "'\\<>«»…"
+            page2 -> "¿¡\\<>«»…"
+            spanish -> "*\":;¿?¡!"
+            else -> "*\"':;!?"
+        }
+
         /** Ancho de columnas laterales (operadores, ⌫, ABC, Enter). */
         const val NUM_EDGE_W = 0.85f
 
