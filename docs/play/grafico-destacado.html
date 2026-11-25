@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Orison · gráfico destacado</title>
+<style>
+  @font-face { font-family: Sora; src: url(../../app_source/fonts/Sora-Bold.ttf); font-weight: 700; }
+  @font-face { font-family: Inter; src: url(../../app_source/fonts/Inter-Medium.ttf); font-weight: 500; }
+  @font-face { font-family: Mono; src: url(../../app_source/fonts/JetBrainsMono-Medium.ttf); font-weight: 500; }
+  html, body { margin: 0; background: #0B0C12; }
+  .g { position: relative; width: 1024px; height: 500px; overflow: hidden; background: radial-gradient(120% 90% at 78% 115%, #2a1606 0%, #0B0C12 58%); }
+  .copy { position: absolute; left: 72px; top: 118px; width: 520px; }
+  .eyebrow { font: 500 15px Mono, monospace; letter-spacing: .14em; color: #FF9A3D; text-transform: uppercase; }
+  h1 { margin: 14px 0 12px; font: 700 84px/1 Sora, sans-serif; letter-spacing: -.02em; color: #F2F0EC; }
+  p { margin: 0; font: 500 27px/1.35 Inter, sans-serif; color: #C9CAD3; }
+  .art { position: absolute; right: 40px; bottom: 0; width: 440px; height: 420px; }
+</style>
+</head>
+<body>
+<div class="g" id="g">
+  <div class="copy">
+    <div class="eyebrow" id="eyebrow">Teclado de voz · notas · IA</div>
+    <h1>Orison</h1>
+    <p id="tag">Dictá en cualquier app.<br>Hablá y aparece el texto.</p>
+  </div>
+  <svg class="art" viewBox="0 0 440 420" aria-hidden="true">
+    <defs>
+      <radialGradient id="glow" cx="50%" cy="100%" r="70%">
+        <stop offset="0" stop-color="#FF8A1F" stop-opacity=".35"/>
+        <stop offset="1" stop-color="#FF8A1F" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <ellipse cx="220" cy="300" rx="240" ry="150" fill="url(#glow)"/>
+    <!-- Horizonte: el agujero asoma sobre una fila de teclas -->
+    <path d="M70 290 A150 150 0 0 1 370 290 Z" fill="#000"/>
+    <path d="M70 290 A150 150 0 0 1 370 290" fill="none" stroke="#FF8A1F" stroke-width="10" stroke-linecap="round"/>
+    <g font-family="Mono" font-size="16" fill="#FF8A1F" opacity=".55">
+      <text x="150" y="190">{ }</text><text x="250" y="215">01</text><text x="200" y="250">&lt;/&gt;</text>
+    </g>
+    <rect x="18" y="306" width="62" height="46" rx="10" fill="#E9E6E0"/>
+    <rect x="92" y="306" width="256" height="46" rx="10" fill="#FF8A1F"/>
+    <rect x="360" y="306" width="62" height="46" rx="10" fill="#E9E6E0"/>
+    <rect x="18" y="364" width="404" height="56" rx="12" fill="#1E212D"/>
+  </svg>
+</div>
+<script>
+  const lang = new URLSearchParams(location.search).get('lang');
+  if (lang === 'en') {
+    document.documentElement.lang = 'en';
+    document.getElementById('eyebrow').textContent = 'Voice keyboard · notes · AI';
+    document.getElementById('tag').innerHTML = 'Dictate in any app.<br>Speak, and the text appears.';
+  } else if (lang === 'pt') {
+    document.documentElement.lang = 'pt';
+    document.getElementById('eyebrow').textContent = 'Teclado de voz · notas · IA';
+    document.getElementById('tag').innerHTML = 'Dite em qualquer app.<br>Fale e o texto aparece.';
+  }
+</script>
+</body>
+</html>
