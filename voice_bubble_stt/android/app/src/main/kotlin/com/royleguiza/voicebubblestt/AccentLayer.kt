@@ -38,13 +38,21 @@ class AccentLayer(
         fun dismissPopups()
     }
 
-    /** Letra con tildes: largo abre el popup, tap delega en [onTapUp]. */
-    fun attachAccent(key: TextView, base: Char, onTapUp: () -> Unit) {
+    /**
+     * Letra con pulsación larga: con una sola opción (T10: el número de una
+     * letra sin tildes) la escribe directo; con varias abre el popup. Tap
+     * delega en [onTapUp].
+     */
+    fun attachAccent(key: TextView, options: List<String>, onTapUp: () -> Unit) {
         host.attachPress(
             key,
             onLongPress = {
                 host.haptic(key)
-                showPopup(key, base)
+                if (options.size == 1) {
+                    host.commitText(options[0])
+                } else {
+                    showOptionsPopup(key, options)
+                }
             },
             onTapUp = onTapUp,
         )

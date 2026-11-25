@@ -1756,4 +1756,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get keyboardAutoCaps => 'Mayúscula automática';
+
+  @override
+  String get keyboardTopRowNumbers => 'Números al mantener q…p';
 }

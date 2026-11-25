@@ -620,7 +620,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     // existen arriba y sirven a esta interfaz (misma firma, una sola
     // implementación).
     override fun commitSymbolKey(text: String) = editor.commitSymbolText(text)
-    override fun attachAccentKey(key: TextView, base: Char, onTapUp: () -> Unit) = accents.attachAccent(key, base, onTapUp)
+    override fun attachAccentKey(key: TextView, options: List<String>, onTapUp: () -> Unit) =
+        accents.attachAccent(key, options, onTapUp)
+    override fun letterLongPressOptions(base: Char): List<String> =
+        com.royleguiza.voicebubblestt.letterLongPressOptions(base, kbPrefs.topRowNumbers)
     override fun attachSymbolKey(key: TextView, base: Char, onTapUp: () -> Unit) =
         accents.attachSymbol(key, base, { kbPrefs.longPressSymbolsEnabled }, onTapUp)
     override fun isLongPressSymbolsEnabled(): Boolean = kbPrefs.longPressSymbolsEnabled

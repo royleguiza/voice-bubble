@@ -40,6 +40,7 @@ kb_stt_language
 kb_stt_model
 kb_stt_url
 kb_terminal_row_visible
+kb_top_row_numbers
 kb_trackpad_accel_curve
 kb_trackpad_auto_return
 kb_trackpad_button_layout

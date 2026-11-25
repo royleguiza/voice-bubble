@@ -231,6 +231,22 @@ internal fun accentsFor(c: Char): List<String> = when (c) {
     else -> emptyList()
 }
 
+/** T10 (K8): número de la fila de arriba (q…p → 1…0); null fuera de ella. */
+internal fun topRowDigitFor(c: Char): String? {
+    val i = "qwertyuiop".indexOf(c)
+    return if (i < 0) null else ((i + 1) % 10).toString()
+}
+
+/**
+ * T10 (K8): opciones de la pulsación larga de una letra. Con los números
+ * encendidos, el número va primero (es lo que se escribe al soltar sin
+ * moverse) y después las tildes de siempre.
+ */
+internal fun letterLongPressOptions(c: Char, topRowNumbers: Boolean): List<String> {
+    val digit = if (topRowNumbers) topRowDigitFor(c) else null
+    return listOfNotNull(digit) + accentsFor(c)
+}
+
 /** Menú de pulsación larga de puntuación (MEJ-05): popup glass con
  *  deslizamiento para elegir sin cambiar de capa. La primera opción es el
  *  secundario predeterminado (tap del popup sin mover = esa opción). */

@@ -104,6 +104,12 @@ extension _TecladoPages on _SettingsScreenState {
               value: _autoCaps,
               onChanged: _toggleAutoCaps,
             ),
+            SettingsSwitchRow(
+              key: const ValueKey('kb-top-row-numbers-switch'),
+              title: context.l10n.keyboardTopRowNumbers,
+              value: _topRowNumbers,
+              onChanged: _toggleTopRowNumbers,
+            ),
             SettingsMenuRow<String>(
               id: 'kb-spacebar-trackpad-mode-selector',
               title: context.l10n.keyboardMoveCursor,

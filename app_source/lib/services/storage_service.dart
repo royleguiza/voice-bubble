@@ -639,6 +639,16 @@ class StorageService {
   Future<void> saveKeyboardAutoCaps(bool enabled) =>
       _setBool(kbAutoCapsKey, enabled);
 
+  /// T10 (K8): números con pulsación larga en la fila de arriba (q…p).
+  /// El teclado nativo lee `flutter.kb_top_row_numbers`. Default true.
+  static const String kbTopRowNumbersKey = 'kb_top_row_numbers';
+
+  Future<bool> loadKeyboardTopRowNumbers() =>
+      _getBool(kbTopRowNumbersKey, true);
+
+  Future<void> saveKeyboardTopRowNumbers(bool enabled) =>
+      _setBool(kbTopRowNumbersKey, enabled);
+
   static const String kbClipboardImagesEnabledKey =
       'kb_clipboard_images_enabled';
 
@@ -1095,6 +1105,7 @@ class StorageService {
     aiNotesProviderKey,
     kbBottomElevationDpKey,
     kbAutoCapsKey,
+    kbTopRowNumbersKey,
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,
     _keyboardCredentialsKeyVisibleKey,

@@ -69,7 +69,7 @@ class TestC37HonestTestsSuite(unittest.TestCase):
             for line in txt_content.splitlines()
             if line.strip() and not line.strip().startswith("#")
         )
-        self.assertEqual(len(disk_keys), 67, "Debe haber exactamente 67 claves en contract-keys.txt")
+        self.assertEqual(len(disk_keys), 68, "Debe haber exactamente 68 claves en contract-keys.txt")
 
         fixtures_content = read_file("app_source/test/helpers/kotlin_fixtures.dart")
         self.assertIsNotNone(fixtures_content)
@@ -80,7 +80,7 @@ class TestC37HonestTestsSuite(unittest.TestCase):
         snapshot_raw = match.group(1)
         snapshot_keys = set(re.findall(r"'([^']+)'", snapshot_raw))
 
-        self.assertEqual(len(snapshot_keys), 67, "kContractKeysSnapshot debe contener 67 claves")
+        self.assertEqual(len(snapshot_keys), 68, "kContractKeysSnapshot debe contener 68 claves")
         self.assertEqual(disk_keys, snapshot_keys, "Snapshot debe ser idéntico al archivo de contrato")
 
     def test_04_storage_and_snippet_tests_reference_contract_keys_snapshot(self):

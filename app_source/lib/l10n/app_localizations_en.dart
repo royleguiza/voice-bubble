@@ -1745,4 +1745,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keyboardAutoCaps => 'Auto-capitalization';
+
+  @override
+  String get keyboardTopRowNumbers => 'Numbers on long-press q…p';
 }

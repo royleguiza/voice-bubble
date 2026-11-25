@@ -14,7 +14,7 @@
 - Claves Dart-only (sin puente) no entran al contrato: `_recordModeKey`,
   `groq_api_key` (bóveda, jamás en prefs). `floating_bubble_enabled` dejó de ser
   Dart-only en la fase 2B: `DockLink` la lee para saber si la barra del complemento
-  debe dibujarse (contrato de 67 claves desde T6 del plan de lanzamiento, que suma `kb_auto_caps` (mayúscula automática); 66 desde la etapa 4 de la Ruta IA, que suma `kb_app_locale`, el idioma de la app que leen `AppLocale.kt` y Flutter; 65 desde la etapa 2, que sumó `kb_ai_notes_provider` y `kb_translate_target/_mode/_dictation`; antes 61: las 55 anteriores + `dock_island_x/_y/_w/_h/_side`
+  debe dibujarse (contrato de 68 claves desde T10 del plan de lanzamiento, que suma `kb_top_row_numbers` (números al mantener q…p); 67 desde T6, que sumó `kb_auto_caps` (mayúscula automática); 66 desde la etapa 4 de la Ruta IA, que suma `kb_app_locale`, el idioma de la app que leen `AppLocale.kt` y Flutter; 65 desde la etapa 2, que sumó `kb_ai_notes_provider` y `kb_translate_target/_mode/_dictation`; antes 61: las 55 anteriores + `dock_island_x/_y/_w/_h/_side`
   + `floating_bubble_enabled`). En Kotlin se leen con el literal completo
   (`"flutter.dock_island_x"`…), nunca componiendo el prefijo: así las ve la paridad. En cambio `kb_stt_url/model/
   language` SÍ entran porque el IME los lee (ver `docs/contrato-stt.md`).

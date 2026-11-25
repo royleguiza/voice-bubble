@@ -40,7 +40,8 @@ class KeyFactory(
         fun haptic(view: View)
         fun attachTap(view: View, onTap: () -> Unit)
         fun attachPress(key: View, onLongPress: () -> Unit, onTapUp: () -> Unit)
-        fun attachAccentKey(key: TextView, base: Char, onTapUp: () -> Unit)
+        fun attachAccentKey(key: TextView, options: List<String>, onTapUp: () -> Unit)
+        fun letterLongPressOptions(base: Char): List<String>
         fun attachSymbolKey(key: TextView, base: Char, onTapUp: () -> Unit)
         fun isLongPressSymbolsEnabled(): Boolean
         fun longPressDelayMs(): Long
@@ -376,10 +377,20 @@ class KeyFactory(
         // resolver toques entre teclas (misma lambda, cero duplicación).
         val commit: () -> Unit = { host.commitLetterKey(base) }
         key.tag = commit
-        if (accentsFor(base).isEmpty()) {
+        val options = host.letterLongPressOptions(base)
+        if (options.isEmpty()) {
             host.attachTap(key, commit)
         } else {
-            host.attachAccentKey(key, base, commit)
+            host.attachAccentKey(key, options, commit)
+        }
+        // T10: el número de la pulsación larga, chiquito en la esquina.
+        topRowDigitFor(base)?.takeIf { options.firstOrNull() == it }?.let { digit ->
+            key.foreground = CornerHintDrawable(
+                digit,
+                ContextCompat.getColor(service, R.color.kb_label_secondary),
+                host.dimenPx(R.dimen.kb_key_hint_text_size).toFloat(),
+                KbFonts.body(service),
+            )
         }
         host.trackLetterKey(key, base)
         return key
@@ -698,4 +709,39 @@ class KeyFactory(
         /** Peso de las etiquetas de capa en mono (medium). */
         const val MONO_LABEL_WEIGHT = 500
     }
+}
+
+/**
+ * T10: texto chiquito arriba a la derecha de la tecla (el número de la
+ * pulsación larga). Va como foreground: no mueve la letra ni el fondo.
+ */
+class CornerHintDrawable(
+    private val text: String,
+    color: Int,
+    textSizePx: Float,
+    typeface: android.graphics.Typeface,
+) : android.graphics.drawable.Drawable() {
+    private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = color
+        this.textSize = textSizePx
+        this.typeface = typeface
+        textAlign = android.graphics.Paint.Align.RIGHT
+    }
+
+    override fun draw(canvas: android.graphics.Canvas) {
+        val b = bounds
+        val inset = paint.textSize * 0.45f
+        canvas.drawText(text, b.right - inset, b.top + inset - paint.ascent() * 0.85f, paint)
+    }
+
+    override fun setAlpha(alpha: Int) {
+        paint.alpha = alpha
+    }
+
+    override fun setColorFilter(colorFilter: android.graphics.ColorFilter?) {
+        paint.colorFilter = colorFilter
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun getOpacity(): Int = android.graphics.PixelFormat.TRANSLUCENT
 }

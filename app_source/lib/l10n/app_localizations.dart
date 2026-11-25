@@ -3178,6 +3178,12 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Mayúscula automática'**
   String get keyboardAutoCaps;
+
+  /// No description provided for @keyboardTopRowNumbers.
+  ///
+  /// In es, this message translates to:
+  /// **'Números al mantener q…p'**
+  String get keyboardTopRowNumbers;
 }
 
 class _AppLocalizationsDelegate

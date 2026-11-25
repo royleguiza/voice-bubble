@@ -512,5 +512,6 @@
   "privacyNoticeAccept": "Got it",
   "privacyNoticeBody": "When you dictate, the audio is sent to Groq with your own key to turn it into text. It never goes through Orison servers and is not stored on any server of ours.\n\nIf you use AI title, summary or translation, the text of that note or selection goes to Groq or Google, also with your key.\n\nYour notes, history, snippets and keys stay on your phone. The keyboard never stores or sends what you type.",
   "settingsAboutPrivacyPolicy": "Privacy policy",
-  "keyboardAutoCaps": "Auto-capitalization"
+  "keyboardAutoCaps": "Auto-capitalization",
+  "keyboardTopRowNumbers": "Numbers on long-press q…p"
 }
