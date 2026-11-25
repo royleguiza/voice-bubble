@@ -106,6 +106,10 @@ jobs:
         working-directory: voice_bubble_stt/android
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.WidgetNotesBehaviorTest
 
+      - name: Test Kotlin nativo de la copia de seguridad (T1)
+        working-directory: voice_bubble_stt/android
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.BackupManagerTest
+
       - name: Test Kotlin nativo de exclusion mutua del microfono C-05
         working-directory: voice_bubble_stt/android
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.MicrophoneClaimTest

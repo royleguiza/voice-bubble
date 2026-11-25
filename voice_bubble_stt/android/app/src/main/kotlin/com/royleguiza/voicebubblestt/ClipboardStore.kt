@@ -82,6 +82,33 @@ class ClipboardStore(
         private const val DIR_MEDIA = "clipboard_media"
         const val MAX_UNPINNED_ITEMS = 25
         const val MAX_TEXT_PREVIEW_CHARS = 120
+        const val FILE_HISTORY_NAME = FILE_HISTORY
+        const val DIR_MEDIA_NAME = DIR_MEDIA
+
+        /**
+         * T1: sube cada vez que la copia de seguridad reescribe el archivo
+         * desde afuera; cada instancia descarta su caché si quedó vieja.
+         */
+        @Volatile
+        private var diskGeneration = 0L
+
+        internal fun markDiskChanged() {
+            diskGeneration++
+        }
+    }
+
+    @Volatile
+    private var cacheGeneration = diskGeneration
+
+    /** Descarta la caché en memoria si otro escritor cambió el archivo. */
+    private fun dropStaleCache() {
+        val current = diskGeneration
+        if (cacheGeneration != current) {
+            synchronized(lock) {
+                itemsCache = null
+                cacheGeneration = current
+            }
+        }
     }
 
     private val lock = Any()
@@ -107,6 +134,7 @@ class ClipboardStore(
      * obsoleto si otro hilo pobló la caché mientras leíamos el disco.
      */
     fun loadItems(): List<ClipboardItem> {
+        dropStaleCache()
         itemsCache?.let { return ArrayList(it) }
         val fromDisk = readFromDisk()
         val snapshot: List<ClipboardItem>
@@ -247,6 +275,7 @@ class ClipboardStore(
     }
 
     private fun insertAndPersist(newItem: ClipboardItem) {
+        dropStaleCache()
         // Snapshot de disco fuera del lock (el lock solo protege la
         // memoria); dentro se prefiere la caché vigente por si otro hilo
         // la pobló mientras tanto. Sin llamadas anidadas bajo lock: antes
@@ -405,6 +434,34 @@ class ClipboardStore(
         if (item.mediaFileName == null) return null
         val f = File(mediaDir, item.mediaFileName)
         return if (f.exists()) f else null
+    }
+
+    /**
+     * T1 (copia de seguridad): lista vigente leída del disco (sin caché),
+     * para exportar lo mismo que ve el teclado.
+     */
+    fun readForBackup(): List<ClipboardItem> {
+        val list = readFromDisk()
+        sortAndNormalize(list)
+        return list
+    }
+
+    /** Carpeta de imágenes del portapapeles. */
+    fun mediaDirectory(): File = mediaDir
+
+    /**
+     * T1: reemplaza el archivo por [items] (ya fusionados por quien importa)
+     * y avisa a las demás instancias que descarten su caché.
+     */
+    fun writeImported(items: List<ClipboardItem>) {
+        val list = items.toMutableList()
+        sortAndNormalize(list)
+        synchronized(lock) {
+            itemsCache = list
+        }
+        saveToDisk(list)
+        markDiskChanged()
+        cacheGeneration = diskGeneration
     }
 
     private fun sortAndNormalize(list: MutableList<ClipboardItem>) {

@@ -383,6 +383,23 @@ class NoteStore(
         } ?: NoteSaveResult.UNAVAILABLE
     }
 
+    /**
+     * T1 (copia de seguridad): fusiona notas importadas por id sin duplicar.
+     * Las notas locales nunca se pierden: una nota importada con el mismo id
+     * gana solo si su updatedAt es más nuevo, y las nuevas entran mientras
+     * haya lugar bajo [MAX_NOTES] (las más recientes primero). Devuelve null
+     * si el índice no se pudo leer o escribir.
+     */
+    fun importNotes(incoming: List<VbNote>): BackupFormat.NoteMerge? {
+        return withStoreLock {
+            val snapshot = loadSnapshotLocked()
+            if (!isWritable(snapshot)) return@withStoreLock null
+            val merge = BackupFormat.mergeNotes(snapshot.notes, incoming, MAX_NOTES, ::parseEpoch)
+            if (merge.added == 0 && merge.updated == 0) return@withStoreLock merge
+            if (persistLocked(merge.notes) == NoteMirrorWriteState.SAVED) merge else null
+        }
+    }
+
     fun deleteNote(noteId: String): NoteDeleteResult {
         return withStoreLock {
             val snapshot = loadSnapshotLocked()

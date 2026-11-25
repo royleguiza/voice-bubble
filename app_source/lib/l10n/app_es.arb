@@ -868,5 +868,63 @@
   "errAiTooLong": "La nota es muy larga para Groq gratis (unos 20.000 caracteres como máximo). Para notas largas elegí Google en Ajustes › Inteligencia artificial.",
   "settingsSpokenLanguage": "Idioma en que hablo",
   "settingsSpokenLanguageAuto": "Automático",
-  "settingsSpokenLanguageAutoFooter": "Automático: Whisper detecta el idioma en cada dictado. Si confunde el idioma, elegí uno fijo."
+  "settingsSpokenLanguageAutoFooter": "Automático: Whisper detecta el idioma en cada dictado. Si confunde el idioma, elegí uno fijo.",
+  "commonOk": "Listo",
+  "settingsBackupTitle": "Copia de seguridad",
+  "settingsBackupExport": "Exportar copia",
+  "settingsBackupExporting": "Exportando…",
+  "settingsBackupImport": "Importar copia",
+  "settingsBackupImporting": "Importando…",
+  "settingsBackupFooter": "Guarda en un archivo .zip tus notas con sus audios, el historial, los snippets, el portapapeles y los ajustes. Las claves de API y las credenciales nunca entran: después de importar vas a tener que cargarlas de nuevo. Importar suma lo que falta y no borra nada de lo que ya tenés.",
+  "settingsBackupExported": "Copia guardada: {notes, plural, =1{1 nota} other{{notes} notas}} y {snippets, plural, =1{1 snippet} other{{snippets} snippets}}.",
+  "@settingsBackupExported": {
+    "placeholders": {
+      "notes": {
+        "type": "int"
+      },
+      "snippets": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsBackupImportedTitle": "Copia importada",
+  "settingsBackupImportedNotes": "{added, plural, =0{Ninguna nota nueva} =1{1 nota nueva} other{{added} notas nuevas}}{updated, plural, =0{} =1{ y 1 actualizada} other{ y {updated} actualizadas}}.",
+  "@settingsBackupImportedNotes": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "updated": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsBackupImportedNotesSkipped": "{count, plural, =1{1 nota no entró} other{{count} notas no entraron}} porque se llegó al máximo de notas.",
+  "@settingsBackupImportedNotesSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsBackupImportedRest": "Snippets nuevos: {snippets}. Dictados en el historial: {history}. Recortes: {clips}. Los ajustes quedaron como en la copia.",
+  "@settingsBackupImportedRest": {
+    "placeholders": {
+      "snippets": {
+        "type": "int"
+      },
+      "history": {
+        "type": "int"
+      },
+      "clips": {
+        "type": "int"
+      }
+    }
+  },
+  "settingsBackupImportedKeys": "Las claves de Groq y Google no viajan en la copia: cargalas en Ajustes si todavía no están.",
+  "settingsBackupErrorFormat": "Ese archivo no es una copia de Orison.",
+  "settingsBackupErrorVersion": "La copia es de una versión más nueva de Orison. Actualizá la app y volvé a intentar.",
+  "settingsBackupErrorBusy": "Las notas están ocupadas en este momento. Probá de nuevo en unos segundos.",
+  "settingsBackupErrorTooBig": "La copia es demasiado grande para importarla.",
+  "settingsBackupErrorIo": "No se pudo leer o guardar el archivo."
 }

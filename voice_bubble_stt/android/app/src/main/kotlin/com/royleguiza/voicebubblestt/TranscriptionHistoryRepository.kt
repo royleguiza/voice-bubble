@@ -340,6 +340,32 @@ class TranscriptionHistoryRepository internal constructor(
         }
     }
 
+    /**
+     * T1 (copia de seguridad): suma dictados importados al historial; la
+     * normalización de siempre quita repetidos (misma hora y texto), ordena y
+     * topa en [MAX_ITEMS]. Devuelve false si no se pudo leer o escribir.
+     */
+    fun importTranscriptions(entries: List<JSONObject>): Boolean {
+        return synchronized(REPO_MUTEX) {
+            val incoming = entries.mapIndexedNotNull { index, obj ->
+                recordFromJson(obj, TranscriptionHistorySource.MEMORY, index)
+            }
+            if (incoming.isEmpty()) return true
+            try {
+                withTranscriptionHistoryFileLock(storage.historyDirectory) {
+                    when (val result = loadRecords()) {
+                        is RecordsResult.Failure -> false
+                        is RecordsResult.Success -> saveAtomic(
+                            TranscriptionHistoryLogic.normalize(result.records + incoming),
+                        )
+                    }
+                }
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
     private fun loadRecords(): RecordsResult {
         val fileEntries = readFileEntries()
         if (fileEntries is RecordsResult.Failure) return fileEntries

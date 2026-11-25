@@ -3040,6 +3040,114 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Automático: Whisper detecta el idioma en cada dictado. Si confunde el idioma, elegí uno fijo.'**
   String get settingsSpokenLanguageAutoFooter;
+
+  /// No description provided for @commonOk.
+  ///
+  /// In es, this message translates to:
+  /// **'Listo'**
+  String get commonOk;
+
+  /// No description provided for @settingsBackupTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Copia de seguridad'**
+  String get settingsBackupTitle;
+
+  /// No description provided for @settingsBackupExport.
+  ///
+  /// In es, this message translates to:
+  /// **'Exportar copia'**
+  String get settingsBackupExport;
+
+  /// No description provided for @settingsBackupExporting.
+  ///
+  /// In es, this message translates to:
+  /// **'Exportando…'**
+  String get settingsBackupExporting;
+
+  /// No description provided for @settingsBackupImport.
+  ///
+  /// In es, this message translates to:
+  /// **'Importar copia'**
+  String get settingsBackupImport;
+
+  /// No description provided for @settingsBackupImporting.
+  ///
+  /// In es, this message translates to:
+  /// **'Importando…'**
+  String get settingsBackupImporting;
+
+  /// No description provided for @settingsBackupFooter.
+  ///
+  /// In es, this message translates to:
+  /// **'Guarda en un archivo .zip tus notas con sus audios, el historial, los snippets, el portapapeles y los ajustes. Las claves de API y las credenciales nunca entran: después de importar vas a tener que cargarlas de nuevo. Importar suma lo que falta y no borra nada de lo que ya tenés.'**
+  String get settingsBackupFooter;
+
+  /// No description provided for @settingsBackupExported.
+  ///
+  /// In es, this message translates to:
+  /// **'Copia guardada: {notes, plural, =1{1 nota} other{{notes} notas}} y {snippets, plural, =1{1 snippet} other{{snippets} snippets}}.'**
+  String settingsBackupExported(int notes, int snippets);
+
+  /// No description provided for @settingsBackupImportedTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Copia importada'**
+  String get settingsBackupImportedTitle;
+
+  /// No description provided for @settingsBackupImportedNotes.
+  ///
+  /// In es, this message translates to:
+  /// **'{added, plural, =0{Ninguna nota nueva} =1{1 nota nueva} other{{added} notas nuevas}}{updated, plural, =0{} =1{ y 1 actualizada} other{ y {updated} actualizadas}}.'**
+  String settingsBackupImportedNotes(int added, int updated);
+
+  /// No description provided for @settingsBackupImportedNotesSkipped.
+  ///
+  /// In es, this message translates to:
+  /// **'{count, plural, =1{1 nota no entró} other{{count} notas no entraron}} porque se llegó al máximo de notas.'**
+  String settingsBackupImportedNotesSkipped(int count);
+
+  /// No description provided for @settingsBackupImportedRest.
+  ///
+  /// In es, this message translates to:
+  /// **'Snippets nuevos: {snippets}. Dictados en el historial: {history}. Recortes: {clips}. Los ajustes quedaron como en la copia.'**
+  String settingsBackupImportedRest(int snippets, int history, int clips);
+
+  /// No description provided for @settingsBackupImportedKeys.
+  ///
+  /// In es, this message translates to:
+  /// **'Las claves de Groq y Google no viajan en la copia: cargalas en Ajustes si todavía no están.'**
+  String get settingsBackupImportedKeys;
+
+  /// No description provided for @settingsBackupErrorFormat.
+  ///
+  /// In es, this message translates to:
+  /// **'Ese archivo no es una copia de Orison.'**
+  String get settingsBackupErrorFormat;
+
+  /// No description provided for @settingsBackupErrorVersion.
+  ///
+  /// In es, this message translates to:
+  /// **'La copia es de una versión más nueva de Orison. Actualizá la app y volvé a intentar.'**
+  String get settingsBackupErrorVersion;
+
+  /// No description provided for @settingsBackupErrorBusy.
+  ///
+  /// In es, this message translates to:
+  /// **'Las notas están ocupadas en este momento. Probá de nuevo en unos segundos.'**
+  String get settingsBackupErrorBusy;
+
+  /// No description provided for @settingsBackupErrorTooBig.
+  ///
+  /// In es, this message translates to:
+  /// **'La copia es demasiado grande para importarla.'**
+  String get settingsBackupErrorTooBig;
+
+  /// No description provided for @settingsBackupErrorIo.
+  ///
+  /// In es, this message translates to:
+  /// **'No se pudo leer o guardar el archivo.'**
+  String get settingsBackupErrorIo;
 }
 
 class _AppLocalizationsDelegate

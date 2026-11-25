@@ -7,6 +7,7 @@ import '../l10n/l10n_ext.dart';
 import 'credentials_screen.dart';
 import 'settings/snippets_tab.dart';
 import '../helpers/island_geometry.dart';
+import '../services/backup_service.dart';
 import '../services/channel_guard.dart';
 import '../services/cloud_stt_service.dart';
 import '../services/storage_service.dart';
@@ -23,6 +24,7 @@ import '../services/keyboard_service.dart';
 import '../widgets/island_mockup.dart';
 import '../widgets/settings_v2.dart';
 
+part 'settings/backup_page.dart';
 part 'settings/general_tab.dart';
 part 'settings/island_page.dart';
 part 'settings/teclado_tab.dart';
@@ -42,6 +44,7 @@ enum SettingsPage {
   snippets,
   claves,
   notas,
+  copia,
   acerca,
 }
 
@@ -144,6 +147,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _dockToolPointer = StorageService.defaultDockToolPointer;
   String _pointerOpenMode = StorageService.defaultPointerOpenMode;
   String _pointerStatus = FloatingTrackpadService.pointerMissing;
+  /// Copia de seguridad en curso: `saved` exportando, `imported` importando.
+  BackupStatus? _backupBusy;
+  final BackupService _backupService = BackupService();
   String _themeMode = StorageService.defaultThemeMode;
   String _appLocale = StorageService.defaultAppLocale;
   String _widgetMicPosition = StorageService.defaultWidgetMicPosition;
@@ -720,6 +726,80 @@ class _SettingsScreenState extends State<SettingsScreen>
     await AppLocaleChannel.apply(code);
   }
 
+  Future<void> _exportBackup() async {
+    setState(() => _backupBusy = BackupStatus.saved);
+    final result = await _backupService.export();
+    if (!mounted) return;
+    setState(() => _backupBusy = null);
+    final l = context.l10n;
+    final String? message = switch (result.status) {
+      BackupStatus.saved => l.settingsBackupExported(result.notes, result.snippets),
+      BackupStatus.cancelled => null,
+      _ => _backupErrorText(result.reason),
+    };
+    if (message == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _importBackup() async {
+    setState(() => _backupBusy = BackupStatus.imported);
+    final result = await _backupService.import();
+    if (!mounted) return;
+    setState(() => _backupBusy = null);
+    final l = context.l10n;
+    if (result.status == BackupStatus.cancelled) return;
+    if (result.status != BackupStatus.imported) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_backupErrorText(result.reason))),
+      );
+      return;
+    }
+    // Los ajustes importados se ven ya: se releen y se aplican tema e idioma.
+    final previousTheme = _themeMode;
+    final previousLocale = _appLocale;
+    await _loadPrefsState();
+    try {
+      final theme = await _storageService.loadThemeMode();
+      final locale = await _storageService.loadAppLocale();
+      if (theme != previousTheme) await _saveThemeMode(theme);
+      if (locale != previousLocale) await _saveAppLocale(locale);
+    } catch (_) {
+      recordBackgroundError('Settings.importBackup.apply');
+    }
+    if (!mounted) return;
+    final lines = <String>[
+      l.settingsBackupImportedNotes(result.notes, result.notesUpdated),
+      if (result.notesSkipped > 0) l.settingsBackupImportedNotesSkipped(result.notesSkipped),
+      l.settingsBackupImportedRest(result.snippets, result.history, result.clips),
+      l.settingsBackupImportedKeys,
+    ];
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.settingsBackupImportedTitle),
+        content: Text(lines.join('\n\n')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l.commonOk),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _backupErrorText(String? reason) {
+    final l = context.l10n;
+    return switch (reason) {
+      'format' => l.settingsBackupErrorFormat,
+      'version' => l.settingsBackupErrorVersion,
+      'unavailable' => l.settingsBackupErrorBusy,
+      'busy' => l.settingsBackupErrorBusy,
+      'too_big' => l.settingsBackupErrorTooBig,
+      _ => l.settingsBackupErrorIo,
+    };
+  }
+
   Future<void> _saveThemeMode(String mode) async {
     await _storageService.saveThemeMode(mode);
     appThemeMode.value = themeModeFromStorage(mode);
@@ -1230,6 +1310,8 @@ class _SettingsScreenState extends State<SettingsScreen>
         return _buildTrackpadPage(context);
       case SettingsPage.notas:
         return _buildNotasPage(context);
+      case SettingsPage.copia:
+        return _buildCopiaPage(context);
       case SettingsPage.acerca:
         return _buildAcercaPage(context);
       case SettingsPage.snippets:
@@ -1468,6 +1550,12 @@ class _SettingsScreenState extends State<SettingsScreen>
               icon: Icons.sticky_note_2_outlined,
               title: context.l10n.settingsNavNotes,
               onTap: () => _go(SettingsPage.notas),
+            ),
+            SettingsNavRow(
+              key: const ValueKey('nav-copia'),
+              icon: Icons.archive_outlined,
+              title: context.l10n.settingsBackupTitle,
+              onTap: () => _go(SettingsPage.copia),
             ),
           ],
         ),

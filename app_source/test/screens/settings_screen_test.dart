@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:voice_bubble_stt/services/backup_service.dart';
 import 'package:voice_bubble_stt/services/cloud_stt_service.dart';
 import 'package:voice_bubble_stt/services/storage_service.dart';
 import 'package:voice_bubble_stt/ui/theme_mode.dart';
@@ -16,6 +18,52 @@ void main() {
 
   const secureStore = FlutterSecureStorage(aOptions: StorageService.espOptions);
 
+  group('Copia de seguridad (T1)', () {
+    const channel = MethodChannel(BackupService.channelName);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    tearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+    testWidgets('exportar avisa cuántas notas guardó', (tester) async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        return {'status': 'saved', 'notes': 3, 'snippets': 1};
+      });
+      await h.pump(tester);
+      await openPage(tester, 'copia');
+      expect(byKey('backup-export-row'), findsOneWidget);
+      expect(byKey('backup-import-row'), findsOneWidget);
+      await tester.tap(byKey('backup-export-row'));
+      await tester.pumpAndSettle();
+      expect(find.text('Copia guardada: 3 notas y 1 snippet.'), findsOneWidget);
+    });
+
+    testWidgets('importar un archivo ajeno muestra el error', (tester) async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        return {'status': 'error', 'reason': 'format'};
+      });
+      await h.pump(tester);
+      await openPage(tester, 'copia');
+      await tester.tap(byKey('backup-import-row'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ese archivo no es una copia de Orison.'), findsOneWidget);
+    });
+
+    testWidgets('importar bien muestra el resumen', (tester) async {
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        return {'status': 'imported', 'notes': 2, 'notesUpdated': 0, 'snippets': 1, 'history': 4, 'clips': 0};
+      });
+      await h.pump(tester);
+      await openPage(tester, 'copia');
+      await tester.tap(byKey('backup-import-row'));
+      await tester.pumpAndSettle();
+      expect(find.text('Copia importada'), findsOneWidget);
+      expect(find.textContaining('2 notas nuevas'), findsOneWidget);
+      await tester.tap(find.text('Listo'));
+      await tester.pumpAndSettle();
+      expect(find.text('Copia importada'), findsNothing);
+    });
+  });
+
   group('Ajustes 2026 - raíz y navegación', () {
     testWidgets('la raíz lista todas las secciones como filas', (tester) async {
       await h.pump(tester);
@@ -30,6 +78,7 @@ void main() {
         'snippets',
         'claves',
         'notas',
+        'copia',
       ]) {
         expect(byKey('nav-$page'), findsOneWidget, reason: page);
       }
@@ -71,6 +120,7 @@ void main() {
         'snippets': 'Snippets',
         'claves': 'Claves',
         'notas': 'Notas y widgets',
+        'copia': 'Copia de seguridad',
       };
       for (final entry in pages.entries) {
         await openPage(tester, entry.key);

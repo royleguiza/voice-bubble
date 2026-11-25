@@ -26,6 +26,7 @@ class MainActivity : FlutterActivity() {
     private var methodChannel: MethodChannel? = null
     private var pendingWidgetAction: String? = null
     private var pendingWidgetNoteId: String? = null
+    private val backupChannel by lazy { BackupChannel(this) }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -264,6 +265,10 @@ class MainActivity : FlutterActivity() {
         pendingWidgetAction = intent.getStringExtra("widget_action")
         pendingWidgetNoteId = intent.getStringExtra("note_id")
 
+        // T1: copia de seguridad (exportar e importar un .zip).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BackupChannel.CHANNEL)
+            .setMethodCallHandler(backupChannel)
+
         // Idioma de la app (etapa 4): ver AppLocale.kt.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LOCALE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -314,6 +319,11 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (backupChannel.onActivityResult(requestCode, resultCode, data)) return
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onNewIntent(intent: Intent) {

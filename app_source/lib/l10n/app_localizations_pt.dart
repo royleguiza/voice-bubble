@@ -1639,4 +1639,105 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get settingsSpokenLanguageAutoFooter =>
       'Automático: o Whisper detecta o idioma em cada ditado. Se errar o idioma, escolha um fixo.';
+
+  @override
+  String get commonOk => 'Pronto';
+
+  @override
+  String get settingsBackupTitle => 'Backup';
+
+  @override
+  String get settingsBackupExport => 'Exportar backup';
+
+  @override
+  String get settingsBackupExporting => 'Exportando…';
+
+  @override
+  String get settingsBackupImport => 'Importar backup';
+
+  @override
+  String get settingsBackupImporting => 'Importando…';
+
+  @override
+  String get settingsBackupFooter =>
+      'Salva num arquivo .zip suas notas com os áudios, o histórico, os snippets, a área de transferência e os ajustes. Chaves de API e credenciais nunca entram: depois de importar, você vai precisar digitá-las de novo. Importar soma o que falta e não apaga nada do que você já tem.';
+
+  @override
+  String settingsBackupExported(int notes, int snippets) {
+    String _temp0 = intl.Intl.pluralLogic(
+      notes,
+      locale: localeName,
+      other: '$notes notas',
+      one: '1 nota',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      snippets,
+      locale: localeName,
+      other: '$snippets snippets',
+      one: '1 snippet',
+    );
+    return 'Backup salvo: $_temp0 e $_temp1.';
+  }
+
+  @override
+  String get settingsBackupImportedTitle => 'Backup importado';
+
+  @override
+  String settingsBackupImportedNotes(int added, int updated) {
+    String _temp0 = intl.Intl.pluralLogic(
+      added,
+      locale: localeName,
+      other: '$added notas novas',
+      one: '1 nota nova',
+      zero: 'Nenhuma nota nova',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      updated,
+      locale: localeName,
+      other: ' e $updated atualizadas',
+      one: ' e 1 atualizada',
+      zero: '',
+    );
+    return '$_temp0$_temp1.';
+  }
+
+  @override
+  String settingsBackupImportedNotesSkipped(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count notas não couberam',
+      one: '1 nota não coube',
+    );
+    return '$_temp0 porque o limite de notas foi atingido.';
+  }
+
+  @override
+  String settingsBackupImportedRest(int snippets, int history, int clips) {
+    return 'Snippets novos: $snippets. Ditados no histórico: $history. Recortes: $clips. Os ajustes ficaram como no backup.';
+  }
+
+  @override
+  String get settingsBackupImportedKeys =>
+      'As chaves do Groq e do Google não vão no backup: adicione-as em Ajustes se ainda não estiverem lá.';
+
+  @override
+  String get settingsBackupErrorFormat =>
+      'Esse arquivo não é um backup do Orison.';
+
+  @override
+  String get settingsBackupErrorVersion =>
+      'O backup é de uma versão mais nova do Orison. Atualize o app e tente de novo.';
+
+  @override
+  String get settingsBackupErrorBusy =>
+      'As notas estão ocupadas agora. Tente de novo em alguns segundos.';
+
+  @override
+  String get settingsBackupErrorTooBig =>
+      'O backup é grande demais para importar.';
+
+  @override
+  String get settingsBackupErrorIo =>
+      'Não foi possível ler ou salvar o arquivo.';
 }
