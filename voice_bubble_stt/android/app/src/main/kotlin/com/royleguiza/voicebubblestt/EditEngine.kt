@@ -84,6 +84,9 @@ class EditEngine(
 
     private var shiftState = ShiftState.OFF
 
+    /** T6: el MOMENTARY actual lo puso la mayúscula automática (no el dedo). */
+    private var autoShift = false
+
     /** Uptime del ultimo tap en shift; detecta el doble pulso (caps lock). */
     private var lastShiftTapUptime = 0L
     private var ctrlActive = false
@@ -132,6 +135,7 @@ class EditEngine(
      * tap posterior nunca herede un par fantasma.
      */
     fun toggleShift() {
+        autoShift = false
         val now = SystemClock.uptimeMillis()
         val quickPair = now - lastShiftTapUptime <= SHIFT_DOUBLE_TAP_MILLIS
         lastShiftTapUptime = now
@@ -142,6 +146,20 @@ class EditEngine(
             else -> ShiftState.OFF
         }
         applyCase()
+    }
+
+    /**
+     * T6 (K2): mayúscula automática. [capsMode] es lo que devuelve
+     * `getCursorCapsMode` (≠ 0 = el campo pide mayúscula acá) y [allowed] si
+     * el ajuste, la capa y el tipo de campo la admiten. Nunca pisa un Shift
+     * puesto a mano ni el bloqueo de mayúsculas; solo prende y apaga el suyo.
+     */
+    fun updateAutoCaps(capsMode: Int, allowed: Boolean) {
+        val step = AutoCaps.next(shiftState, autoShift, capsMode, allowed)
+        val changed = step.state != shiftState
+        shiftState = step.state
+        autoShift = step.auto
+        if (changed) applyCase()
     }
 
     /** Estado de caso aplicado por el ciclo de ⇧ (MEJ-02, orden pedido por el dueño). */
@@ -352,6 +370,7 @@ class EditEngine(
 
     /** Apagado por via no-tactil: invalida tambien el par del doble pulso. */
     private fun deactivateShift() {
+        autoShift = false
         shiftState = ShiftState.OFF
         lastShiftTapUptime = 0L
     }

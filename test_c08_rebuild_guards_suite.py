@@ -148,7 +148,7 @@ check(
 # 6. Mutaciones negativas
 def test_mutations():
     # Mutación 1: Eliminar early return de onStartInputView
-    mutated_start = on_start.replace("if (restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField && isNumeric == currentIsNumericField) {\n            return\n        }", "")
+    mutated_start = on_start.replace("if (restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField && isNumeric == currentIsNumericField) {\n            refreshAutoCaps()\n            return\n        }", "")
     check("Mutación 1 (sin early return en onStartInputView): detectada", "if (restarting &&" not in mutated_start)
 
     # Mutación 2: Invertir el orden (cancelar dictado antes de early return)

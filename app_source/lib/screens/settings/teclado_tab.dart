@@ -98,6 +98,12 @@ extension _TecladoPages on _SettingsScreenState {
         SettingsSection(
           header: context.l10n.keyboardTypingHeader,
           children: [
+            SettingsSwitchRow(
+              key: const ValueKey('kb-auto-caps-switch'),
+              title: context.l10n.keyboardAutoCaps,
+              value: _autoCaps,
+              onChanged: _toggleAutoCaps,
+            ),
             SettingsMenuRow<String>(
               id: 'kb-spacebar-trackpad-mode-selector',
               title: context.l10n.keyboardMoveCursor,

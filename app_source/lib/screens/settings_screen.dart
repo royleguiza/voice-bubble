@@ -112,6 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _showCodeKey = true;
   bool _showLanguageKey = true;
   bool _showCredentialsKey = true;
+  bool _autoCaps = true;
   bool _clipboardImagesEnabled = false;
   String _heightProfile = StorageService.defaultHeightProfile;
   String _keySpacing = StorageService.defaultKeySpacing;
@@ -232,6 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final bubbleHistory = await s.loadBubbleHistoryEnabled();
     final notesDeferred = await s.loadNotesDeferredQueueEnabled();
     final credentialsKeyVisible = await s.loadKeyboardCredentialsKeyVisible();
+    final autoCaps = await s.loadKeyboardAutoCaps();
     final clipboardImages = await s.getClipboardImagesEnabled();
     final longPressSymbols = await s.getLongPressSymbolsEnabled();
     final longPressDelay = await s.getLongPressDelay();
@@ -261,6 +263,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _hapticsEnabled = results.$7;
       _geminiActionsEnabled = results.$8;
       _showCredentialsKey = credentialsKeyVisible;
+      _autoCaps = autoCaps;
       _hapticStyle = hapticStyle;
       _micHapticsEnabled = micHapticsEnabled;
       _micHapticStart = micHapticStart;
@@ -428,6 +431,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleKeyboardLanguageKey(bool visible) async {
     await _storageService.saveKeyboardLanguageKeyVisible(visible);
     if (mounted) setState(() => _showLanguageKey = visible);
+  }
+
+  Future<void> _toggleAutoCaps(bool enabled) async {
+    await _storageService.saveKeyboardAutoCaps(enabled);
+    if (mounted) setState(() => _autoCaps = enabled);
   }
 
   Future<void> _toggleKeyboardCredentialsKey(bool visible) async {

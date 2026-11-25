@@ -169,6 +169,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         // evita cancelar dictado, recargar preferencias de disco o reconstruir vistas
         // innecesariamente (ej. commits continuos en WebView/navegadores).
         if (restarting && newPackage != null && newPackage == currentPackageName && isPassword == currentIsPasswordField && isNumeric == currentIsNumericField) {
+            refreshAutoCaps()
             return
         }
 
@@ -212,6 +213,41 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (::clipboard.isInitialized) clipboard.onStartInputView(restarting)
         rebuild()
         root.requestApplyInsets()
+    }
+
+    /** T6: cada movimiento del cursor reevalúa la mayúscula automática. */
+    override fun onUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+        candidatesStart: Int,
+        candidatesEnd: Int,
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        refreshAutoCaps()
+    }
+
+    /**
+     * T6 (K2): pregunta a Android si corresponde mayúscula en el cursor
+     * (respeta las marcas CAP_* del campo). Solo en la capa de letras y
+     * nunca en contraseñas, correos ni direcciones web.
+     */
+    private fun refreshAutoCaps() {
+        if (!::editor.isInitialized) return
+        val info = currentInputEditorInfo
+        val allowed = kbPrefs.autoCaps && !currentIsPasswordField &&
+            layer == Layer.LETTERS && info != null && AutoCaps.fieldAllows(info.inputType)
+        val mode = if (allowed && info != null) {
+            try {
+                currentInputConnection?.getCursorCapsMode(info.inputType) ?: 0
+            } catch (_: Exception) {
+                0
+            }
+        } else {
+            0
+        }
+        editor.updateAutoCaps(mode, allowed)
     }
 
     /** K5-T5: al cerrarse el campo actual, corta dictado y popups vivos. */
@@ -325,6 +361,8 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         if (::editor.isInitialized) editor.applyCase()
         refreshModifiers()
         if (::dictation.isInitialized) dictation.refreshMicVisual()
+        // T6: al volver a letras (ABC) o cambiar de capa, recalcular.
+        refreshAutoCaps()
     }
     // --- ToolbarLayer.UiHost (SPK-05 módulo 12). isSpanish,
     // isPasswordField, currentLayer, dimenPx, horizontalRow, makeIconKey y

@@ -3172,6 +3172,12 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Política de privacidad'**
   String get settingsAboutPrivacyPolicy;
+
+  /// No description provided for @keyboardAutoCaps.
+  ///
+  /// In es, this message translates to:
+  /// **'Mayúscula automática'**
+  String get keyboardAutoCaps;
 }
 
 class _AppLocalizationsDelegate

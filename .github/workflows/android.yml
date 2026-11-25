@@ -106,9 +106,9 @@ jobs:
         working-directory: voice_bubble_stt/android
         run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.WidgetNotesBehaviorTest
 
-      - name: Test Kotlin nativo de la copia de seguridad (T1) y las filas sin huecos (T5)
+      - name: Test Kotlin nativo de la copia de seguridad (T1) y las filas sin huecos (T5) y la mayúscula automática (T6)
         working-directory: voice_bubble_stt/android
-        run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.BackupManagerTest --tests com.royleguiza.voicebubblestt.KeyRowTest
+        run: gradle --no-daemon :app:testDebugUnitTest --tests com.royleguiza.voicebubblestt.BackupManagerTest --tests com.royleguiza.voicebubblestt.KeyRowTest --tests com.royleguiza.voicebubblestt.AutoCapsTest
 
       - name: Test Kotlin nativo de exclusion mutua del microfono C-05
         working-directory: voice_bubble_stt/android

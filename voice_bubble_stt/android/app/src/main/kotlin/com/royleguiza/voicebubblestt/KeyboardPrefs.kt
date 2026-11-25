@@ -30,6 +30,9 @@ class KeyboardPrefs(private val context: Context) {
     var languageKeyVisiblePref = true
     var credentialsKeyVisiblePref = true
 
+    /** T6: mayúscula automática (Ajustes › Teclado, encendida por defecto). */
+    var autoCaps = true
+
     // SPK-10: imágenes del portapapeles opt-in (texto primero). Default OFF.
     var clipboardImagesEnabled = false
 
@@ -234,6 +237,7 @@ class KeyboardPrefs(private val context: Context) {
         codeKeyVisiblePref = try { p.getBoolean("flutter.kb_code_key_visible", true) } catch (_: Exception) { true }
         languageKeyVisiblePref = try { p.getBoolean("flutter.kb_language_key_visible", true) } catch (_: Exception) { true }
         credentialsKeyVisiblePref = try { p.getBoolean("flutter.kb_credentials_key_visible", true) } catch (_: Exception) { true }
+        autoCaps = try { p.getBoolean("flutter.kb_auto_caps", true) } catch (_: Exception) { true }
         clipboardImagesEnabled = try {
             p.getBoolean("flutter.kb_clipboard_images_enabled", false)
         } catch (_: Exception) {

@@ -930,5 +930,6 @@
   "privacyNoticeTitle": "Antes de dictar",
   "privacyNoticeAccept": "Entendido",
   "privacyNoticeBody": "Cuando dictás, el audio se envía a Groq con tu propia clave para convertirlo en texto. No pasa por servidores de Orison y no se guarda en ninguno nuestro.\n\nSi usás título, resumen o traducción con IA, el texto de esa nota o selección va a Groq o a Google, también con tu clave.\n\nTus notas, el historial, los snippets y las claves quedan en el teléfono. El teclado nunca guarda ni envía lo que tecleás.",
-  "settingsAboutPrivacyPolicy": "Política de privacidad"
+  "settingsAboutPrivacyPolicy": "Política de privacidad",
+  "keyboardAutoCaps": "Mayúscula automática"
 }

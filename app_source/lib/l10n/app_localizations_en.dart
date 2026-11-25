@@ -1742,4 +1742,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutPrivacyPolicy => 'Privacy policy';
+
+  @override
+  String get keyboardAutoCaps => 'Auto-capitalization';
 }

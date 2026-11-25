@@ -630,6 +630,15 @@ class StorageService {
   Future<void> saveKeyboardCredentialsKeyVisible(bool visible) =>
       _setBool(_keyboardCredentialsKeyVisibleKey, visible);
 
+  /// T6 (K2): mayúscula automática del teclado. El teclado nativo lee
+  /// `flutter.kb_auto_caps`. Default true.
+  static const String kbAutoCapsKey = 'kb_auto_caps';
+
+  Future<bool> loadKeyboardAutoCaps() => _getBool(kbAutoCapsKey, true);
+
+  Future<void> saveKeyboardAutoCaps(bool enabled) =>
+      _setBool(kbAutoCapsKey, enabled);
+
   static const String kbClipboardImagesEnabledKey =
       'kb_clipboard_images_enabled';
 
@@ -1085,6 +1094,7 @@ class StorageService {
     _floatingBubbleKey,
     aiNotesProviderKey,
     kbBottomElevationDpKey,
+    kbAutoCapsKey,
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,
     _keyboardCredentialsKeyVisibleKey,

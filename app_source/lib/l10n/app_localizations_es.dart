@@ -1753,4 +1753,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsAboutPrivacyPolicy => 'Política de privacidad';
+
+  @override
+  String get keyboardAutoCaps => 'Mayúscula automática';
 }
