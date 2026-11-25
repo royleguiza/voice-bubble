@@ -18,7 +18,7 @@ import androidx.core.view.inputmethod.InputContentInfoCompat
 
 /**
  * Capa Portapapeles (SPK-05, módulo 7 de N): filmstrip multimodal
- * FIFO-25 con imágenes, extraída de VoiceKeyboardService sin cambiar
+ * FIFO-50 con imágenes, extraída de VoiceKeyboardService sin cambiar
  * conducta. Todo lo que necesita del teclado entra por [service]
  * (sistema), [handler] y [host]; el store, la vista y el listener son
  * suyos. Privacidad: los clips sensibles del sistema se ignoran y nada

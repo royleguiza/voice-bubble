@@ -3351,10 +3351,10 @@ def test_c19_bridge_keys_contract():
     # 2. StorageService.dart
     assert "sttKeyConfiguredKey," in dart_content, "C-19: StorageService.bridgeKeys no incluye sttKeyConfiguredKey"
     assert "static const String notesPendingKey = PendingNoteQueue.pendingKey;" in dart_content, "C-19: notesPendingKey debe referenciar PendingNoteQueue.pendingKey"
-    assert "static const int maxItems = 20;" in dart_content, "C-19: StorageService.maxItems debe ser 20"
+    assert "static const int maxItems = 100;" in dart_content, "C-19: StorageService.maxItems debe ser 100"
     assert "static const int maxCredentials = 50;" in dart_content, "C-19: StorageService.maxCredentials debe ser 50"
     assert "static const int maxPendingNotes = PendingNoteQueue.maxPending;" in dart_content, "C-19: StorageService.maxPendingNotes debe ser PendingNoteQueue.maxPending"
-    assert "static const int maxClips = 25;" in dart_content, "C-19: StorageService.maxClips debe ser 25"
+    assert "static const int maxClips = 50;" in dart_content, "C-19: StorageService.maxClips debe ser 50"
     assert ".clamp(0, 64)" in dart_content and "getBottomElevationDp" in dart_content, "C-19: getBottomElevationDp no aplica clamp(0, 64)"
     assert "dp.clamp(0, 64)" in dart_content, "C-19: setBottomElevationDp no aplica clamp(0, 64)"
 

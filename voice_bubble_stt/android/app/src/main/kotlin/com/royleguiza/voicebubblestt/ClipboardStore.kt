@@ -68,7 +68,7 @@ data class ClipboardItem(
 }
 
 /**
- * Portapapeles del IME: JSON atómico + FIFO-25 + imágenes opt-in.
+ * Portapapeles del IME: JSON atómico + FIFO-50 + imágenes opt-in.
  * Detalle: docs/congelamiento-features.md (SPK-09/10).
  */
 class ClipboardStore(
@@ -80,7 +80,7 @@ class ClipboardStore(
         private const val TAG = "VbClipboardStore"
         private const val FILE_HISTORY = "clipboard_history.json"
         private const val DIR_MEDIA = "clipboard_media"
-        const val MAX_UNPINNED_ITEMS = 25
+        const val MAX_UNPINNED_ITEMS = 50
         const val MAX_TEXT_PREVIEW_CHARS = 120
         const val FILE_HISTORY_NAME = FILE_HISTORY
         const val DIR_MEDIA_NAME = DIR_MEDIA

@@ -41,7 +41,7 @@ class _NotesReadResult {
       : _NotesReadState.unavailable;
 }
 
-/// Servicio de notas independientes (50 max) — no toca historial 20.
+/// Servicio de notas independientes (200 max, T12) — no toca el historial (100).
 ///
 /// Persistencia dual idéntica a `StorageService` para historial:
 /// - prefs clave `voice_notes_v1` (string JSON array)
@@ -55,7 +55,7 @@ class NotesService {
   static const int lockStaleMs = 30000;
   static const int lockHeartbeatMs = 5000;
   static const int lockPollMs = 50;
-  static const int maxNotes = 50;
+  static const int maxNotes = 200;
   static const int maxTituloLength = 80;
   static const int maxCuerpoLength = 200000; // antes 2000: bloqueaba dictados largos en el editor.
 

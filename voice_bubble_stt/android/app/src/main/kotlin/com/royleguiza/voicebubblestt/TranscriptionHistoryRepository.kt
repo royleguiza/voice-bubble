@@ -287,7 +287,7 @@ class TranscriptionHistoryRepository internal constructor(
     companion object {
         const val FILE_NAME = "transcription_history.json"
         const val LOCK_FILE_NAME = "$FILE_NAME.lock"
-        const val MAX_ITEMS = 20
+        const val MAX_ITEMS = 100
         const val SHARED_HISTORY_KEY = "flutter.transcriptions"
         const val PREFS_NAME = "FlutterSharedPreferences"
         private val REPO_MUTEX = Any()

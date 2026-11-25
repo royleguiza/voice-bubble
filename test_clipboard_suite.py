@@ -141,8 +141,8 @@ with open(store_path, "r", encoding="utf-8") as f:
 
 check(
     "ClipboardStore declara límite FIFO-25 real",
-    "const val MAX_UNPINNED_ITEMS = 25" in store,
-    "Falta MAX_UNPINNED_ITEMS = 25",
+    "const val MAX_UNPINNED_ITEMS = 50" in store,
+    "Falta MAX_UNPINNED_ITEMS = 50",
 )
 check(
     "ClipboardStore desaloja solo no-fijados (drop/take sobre unpinned)",

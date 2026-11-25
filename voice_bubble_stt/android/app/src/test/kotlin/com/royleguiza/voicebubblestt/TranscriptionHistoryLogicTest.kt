@@ -19,6 +19,9 @@ import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+/** T12: el tope del historial pasó de 20 a 100; las pruebas siguen al valor vigente. */
+private const val CAP = TranscriptionHistoryLogic.MAX_ITEMS
+
 class TranscriptionHistoryLogicTest {
     @Test
     fun mergesFileAndStringListEntries() {
@@ -125,7 +128,7 @@ class TranscriptionHistoryLogicTest {
 
     @Test
     fun appliesFifoAfterMergeAndDeduplication() {
-        val entries = (0..24).map { index ->
+        val entries = (0 until CAP + 5).map { index ->
             record(
                 "item-$index",
                 Instant.ofEpochSecond(1_700_000_000L + index).toString(),
@@ -137,20 +140,20 @@ class TranscriptionHistoryLogicTest {
             entries,
         )
 
-        assertEquals(20, normalized.size)
-        assertEquals("item-24", normalized.first())
+        assertEquals(CAP, normalized.size)
+        assertEquals("item-${CAP + 4}", normalized.first())
         assertEquals("item-5", normalized.last())
     }
 
     @Test
     fun appliesDeterministicFifoToThirtyThreeTiedEntries() {
-        val entries = (0 until 33).map { index ->
+        val entries = (0 until CAP + 13).map { index ->
             record("item-$index", "2026-08-23T10:00:00.000000Z")
         }
 
         val normalized = TranscriptionHistoryLogic.normalize(entries)
 
-        assertEquals((0 until 20).map { "item-$it" }, normalized)
+        assertEquals((0 until CAP).map { "item-$it" }, normalized)
     }
 
     @Test
@@ -167,7 +170,7 @@ class TranscriptionHistoryLogicTest {
                     0,
                 ),
             )
-            for (index in 0 until 16) {
+            for (index in 0 until CAP - 4) {
                 add(
                     TranscriptionHistoryRecord(
                         "file-$index",
@@ -178,7 +181,7 @@ class TranscriptionHistoryLogicTest {
                     ),
                 )
             }
-            for (index in 0 until 16) {
+            for (index in 0 until CAP - 4) {
                 add(
                     TranscriptionHistoryRecord(
                         "prefs-$index",
@@ -195,7 +198,7 @@ class TranscriptionHistoryLogicTest {
 
         assertEquals(
             listOf("memory") +
-                (0 until 16).map { "file-$it" } +
+                (0 until CAP - 4).map { "file-$it" } +
                 (0 until 3).map { "prefs-$it" },
             normalized,
         )
@@ -331,7 +334,7 @@ class TranscriptionHistoryLogicTest {
         try {
             val file = File(directory, TranscriptionHistoryRepository.FILE_NAME)
             val entries = JSONArray()
-            for (index in 0 until 33) {
+            for (index in 0 until CAP + 13) {
                 entries.put(jsonEntry("item-$index", "2026-08-23T10:00:00.000000Z"))
             }
             file.writeText(entries.toString(), Charsets.UTF_8)
@@ -341,7 +344,7 @@ class TranscriptionHistoryLogicTest {
 
             val loaded = repository.loadHistory()
 
-            assertEquals((0 until 20).map { "item-$it" }, loaded.map { it.getString("text") })
+            assertEquals((0 until CAP).map { "item-$it" }, loaded.map { it.getString("text") })
         } finally {
             directory.deleteRecursively()
         }
@@ -538,7 +541,7 @@ class TranscriptionHistoryLogicTest {
             val file = File(directory, TranscriptionHistoryRepository.FILE_NAME)
             val base = Instant.ofEpochSecond(1_700_000_000L)
             val fileEntries = JSONArray()
-            for (index in 0 until 20) {
+            for (index in 0 until CAP) {
                 fileEntries.put(
                     jsonEntry(
                         "item-$index",
@@ -557,11 +560,11 @@ class TranscriptionHistoryLogicTest {
             assertTrue(
                 repository.addTranscription(
                     "nueva",
-                    base.plusSeconds(20).toString(),
+                    base.plusSeconds(CAP.toLong()).toString(),
                 ),
             )
             val texts = repository.loadHistory().map { it.getString("text") }
-            assertEquals(20, texts.size)
+            assertEquals(CAP, texts.size)
             assertEquals("nueva", texts.first())
             assertEquals(1, texts.count { it == "item-10" })
             assertEquals("item-1", texts.last())
@@ -577,11 +580,11 @@ class TranscriptionHistoryLogicTest {
             val file = File(directory, TranscriptionHistoryRepository.FILE_NAME)
             val timestamp = "2026-08-23T10:00:00.000000Z"
             val fileEntries = JSONArray()
-            for (index in 0 until 16) {
+            for (index in 0 until CAP - 4) {
                 fileEntries.put(jsonEntry("file-$index", timestamp))
             }
             file.writeText(fileEntries.toString(), Charsets.UTF_8)
-            val preferenceEntries = Array(16) { index ->
+            val preferenceEntries = Array(CAP - 4) { index ->
                 jsonEntry("prefs-$index", timestamp).toString()
             }
             val repository = TranscriptionHistoryRepository(
@@ -591,7 +594,7 @@ class TranscriptionHistoryLogicTest {
             assertTrue(repository.addTranscription("memory", timestamp))
 
             val expected = listOf("memory") +
-                (0 until 16).map { "file-$it" } +
+                (0 until CAP - 4).map { "file-$it" } +
                 (0 until 3).map { "prefs-$it" }
             assertEquals(
                 expected,

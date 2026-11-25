@@ -72,10 +72,13 @@ void main() {
     });
   });
 
-  group('Punto 4 - FIFO-20 exacto sobre datos sembrados', () {
+  group('Punto 4 - FIFO exacto (maxItems) sobre datos sembrados', () {
     test(
-        'sembrar 25, guardar 1 nueva: quedan exactamente 20, las mas viejas fuera y timestamps descendentes',
+        'sembrar maxItems+5, guardar 1 nueva: quedan exactamente maxItems, las mas viejas fuera y timestamps descendentes',
         () async {
+      // T12: el tope pasó de 20 a 100; la prueba sigue al valor vigente.
+      const cap = StorageService.maxItems;
+      const total = cap + 5;
       final base = DateTime.utc(2026, 8, 23, 10, 0, 0);
       Transcription seeded(int i) => Transcription(
             text: 'seed-$i',
@@ -85,7 +88,7 @@ void main() {
       // Sembrar 25 en prefs, mas-nuevo-primero (orden que escriben la app
       // y el teclado nativo al serializar la lista).
       final seeds = <String>[
-        for (var i = 25; i >= 1; i--) jsonEncode(seeded(i).toJson()),
+        for (var i = total; i >= 1; i--) jsonEncode(seeded(i).toJson()),
       ];
       SharedPreferences.setMockInitialValues({'transcriptions': seeds});
 
@@ -102,20 +105,20 @@ void main() {
           reason: 'seed-$i debe haber sido expulsada por el FIFO-20 al cargar',
         );
       }
-      expect(service.transcriptions.first.text, 'seed-25');
+      expect(service.transcriptions.first.text, 'seed-$total');
       expect(service.transcriptions.last.text, 'seed-6');
 
       final nueva = Transcription(
-        text: 'nueva-26',
-        timestamp: base.add(const Duration(minutes: 26)),
+        text: 'nueva',
+        timestamp: base.add(const Duration(minutes: total + 1)),
       );
       await service.add(nueva);
 
       final history = service.transcriptions;
       // EXACTAMENTE 20.
-      expect(history.length, 20);
+      expect(history.length, cap);
       // La mas nueva queda primera.
-      expect(history.first.text, 'nueva-26');
+      expect(history.first.text, 'nueva');
       // Las 6 mas viejas (seed-1..seed-6) salieron del FIFO.
       for (var i = 1; i <= 6; i++) {
         expect(
@@ -138,8 +141,8 @@ void main() {
       // El recorte persiste: una instancia nueva lee exactamente las 20.
       final fresh = StorageService();
       await fresh.load();
-      expect(fresh.transcriptions.length, 20);
-      expect(fresh.transcriptions.first.text, 'nueva-26');
+      expect(fresh.transcriptions.length, cap);
+      expect(fresh.transcriptions.first.text, 'nueva');
       expect(fresh.transcriptions.last.text, 'seed-7');
     });
   });

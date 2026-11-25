@@ -5,7 +5,7 @@
 /// `cuerpo` (String), `createdAt` (String ISO-8601), `updatedAt` (String
 /// ISO-8601) y `audioPath` opcional (String, ruta del WAV conservado).
 /// El widget nativo lee la misma clave con prefijo `flutter.`.
-/// No toca `transcriptions` (20 FIFO) ni snippets.
+/// No toca `transcriptions` (100 FIFO) ni snippets.
 ///
 /// `audioPath`: WAV original conservado junto a la transcripción (pedido del
 /// dueño 2026-09-23: el audio permanece aunque ya se transcribió). Null =

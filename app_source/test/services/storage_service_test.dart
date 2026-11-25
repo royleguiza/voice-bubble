@@ -139,19 +139,20 @@ void main() {
       expect(service.transcriptions.length, 20);
     });
 
-    test('add() removes oldest when exceeding 20', () async {
+    test('add() removes oldest when exceeding maxItems', () async {
       final service = StorageService();
+      const cap = StorageService.maxItems;
       final transcriptions = <Transcription>[];
-      for (var i = 0; i < 25; i++) {
+      for (var i = 0; i < cap + 5; i++) {
         final t = _makeTranscription('item $i');
         transcriptions.add(t);
         await service.add(t);
       }
 
-      expect(service.transcriptions.length, 20);
-      // Newest first: item 24 down to item 5 (indices 24..5)
-      expect(service.transcriptions[0], transcriptions[24]);
-      expect(service.transcriptions[19], transcriptions[5]);
+      expect(service.transcriptions.length, cap);
+      // Newest first: the last one added down to index 5.
+      expect(service.transcriptions[0], transcriptions[cap + 4]);
+      expect(service.transcriptions[cap - 1], transcriptions[5]);
     });
 
     test('transcriptions getter returns unmodifiable list', () {

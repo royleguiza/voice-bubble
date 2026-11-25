@@ -299,12 +299,12 @@ def test_cross_platform_fifo_real():
     with open(os.path.join(WORKSPACE, KT_LOGIC), "r", encoding="utf-8") as f:
         logic_content = f.read()
 
-    check("Kotlin impone MAX_ITEMS = 20",
-          "const val MAX_ITEMS = 20" in logic_content and
-          "const val MAX_ITEMS = 20" in kt_content,
-          "Kotlin debe capar en 20")
-    check("Dart impone maxItems = 20", "static const int maxItems = 20;" in dart_content,
-          "Dart debe capar en 20")
+    check("Kotlin impone MAX_ITEMS = 100",
+          "const val MAX_ITEMS = 100" in logic_content and
+          "const val MAX_ITEMS = 100" in kt_content,
+          "Kotlin debe capar en 100")
+    check("Dart impone maxItems = 100", "static const int maxItems = 100;" in dart_content,
+          "Dart debe capar en 100")
 
     check("Kotlin ordena por timestamp descendente",
           "compareByDescending" in logic_content and

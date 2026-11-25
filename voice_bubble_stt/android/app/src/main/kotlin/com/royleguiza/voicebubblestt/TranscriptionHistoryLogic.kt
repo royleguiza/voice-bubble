@@ -28,7 +28,7 @@ data class TranscriptionHistoryRecord<T>(
 )
 
 object TranscriptionHistoryLogic {
-    const val MAX_ITEMS = 20
+    const val MAX_ITEMS = 100
     const val JSON_LIST_PREFIX = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu!"
 
     private val timestampPattern = Regex(

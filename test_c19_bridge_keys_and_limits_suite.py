@@ -131,10 +131,10 @@ suite.check("docs/contract-keys.txt está estrictamente ordenado", keys_list == 
 suite.check("docs/contract-keys.txt contiene kb_stt_key_configured", "kb_stt_key_configured" in keys_list)
 
 # --- 3. docs/contract-limits.md: especificación de topes (20/50/15/25) ---
-suite.check("contract-limits.md contiene límite de historial 20", "20" in contract_limits_raw and "maxItems" in contract_limits_raw)
+suite.check("contract-limits.md contiene límite de historial 100", "100" in contract_limits_raw and "maxItems" in contract_limits_raw)
 suite.check("contract-limits.md contiene límite de credenciales 50", "50" in contract_limits_raw and "maxCredentials" in contract_limits_raw)
 suite.check("contract-limits.md contiene límite de notas pendientes 15", "15" in contract_limits_raw and "maxPending" in contract_limits_raw)
-suite.check("contract-limits.md contiene límite de portapapeles 25", "25" in contract_limits_raw and "maxClips" in contract_limits_raw)
+suite.check("contract-limits.md contiene límite de portapapeles 50", "50" in contract_limits_raw and "maxClips" in contract_limits_raw)
 
 # --- 4. StorageService.dart: puente y constantes ---
 suite.check(
@@ -150,11 +150,11 @@ suite.check(
     "static const String notesPendingKey = PendingNoteQueue.pendingKey;" in storage_code
 )
 suite.check(
-    "StorageService define límites espejo maxItems=20, maxCredentials=50, maxPendingNotes, maxClips=25",
-    "static const int maxItems = 20;" in storage_code
+    "StorageService define límites espejo maxItems=100, maxCredentials=50, maxPendingNotes, maxClips=50",
+    "static const int maxItems = 100;" in storage_code
     and "static const int maxCredentials = 50;" in storage_code
     and "static const int maxPendingNotes = PendingNoteQueue.maxPending;" in storage_code
-    and "static const int maxClips = 25;" in storage_code
+    and "static const int maxClips = 50;" in storage_code
 )
 suite.check(
     "StorageService.getBottomElevationDp aplica clamp(0, 64)",
@@ -280,8 +280,8 @@ suite.check(
 
 # --- 8. Paridad espejo de límites Kotlin == Dart ---
 suite.check(
-    "Paridad Historial: Dart maxItems (20) == Kotlin TranscriptionHistoryLogic.MAX_ITEMS (20)",
-    "static const int maxItems = 20;" in storage_code and "const val MAX_ITEMS = 20" in history_code
+    "Paridad Historial: Dart maxItems (100) == Kotlin TranscriptionHistoryLogic.MAX_ITEMS (100)",
+    "static const int maxItems = 100;" in storage_code and "const val MAX_ITEMS = 100" in history_code
 )
 suite.check(
     "Paridad Credenciales: Dart maxCredentials (50) == Kotlin CredentialStore.MAX_CREDENTIALS (50)",
@@ -292,8 +292,8 @@ suite.check(
     "static const int maxPending = 15;" in pending_queue_code and "const val MAX_PENDING = 15" in note_code
 )
 suite.check(
-    "Paridad Portapapeles: Dart maxClips (25) == Kotlin ClipboardStore.MAX_UNPINNED_ITEMS (25)",
-    "static const int maxClips = 25;" in storage_code and "const val MAX_UNPINNED_ITEMS = 25" in clip_code
+    "Paridad Portapapeles: Dart maxClips (50) == Kotlin ClipboardStore.MAX_UNPINNED_ITEMS (50)",
+    "static const int maxClips = 50;" in storage_code and "const val MAX_UNPINNED_ITEMS = 50" in clip_code
 )
 
 # --- 9. Paridad triangular de claves con test_contract_keys ---

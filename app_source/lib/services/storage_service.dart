@@ -276,7 +276,7 @@ class StorageService {
 
   /// Limites y valores de contrato compartidos con screens/tests (F6/F10
   /// importan estos nombres EXACTOS). Fuente unica, sin literales magicos.
-  static const int maxItems = 20;
+  static const int maxItems = 100;
   static const int maxSnippets = 50;
   static const int maxSnippetLength = 2000;
   static const int maxCredentials = 50;
@@ -284,7 +284,7 @@ class StorageService {
   static const int maxCredentialUserLength = 120;
   static const int maxCredentialPassLength = 256;
   static const int maxPendingNotes = PendingNoteQueue.maxPending;
-  static const int maxClips = 25;
+  static const int maxClips = 50;
   static const String recordModeHold = 'hold';
 
   // --- Rangos centralizados (única fuente; la UI no re-clampea) ---

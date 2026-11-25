@@ -79,18 +79,19 @@ void main() {
       );
     });
 
-    test('add respeta el limite de 20 mezclando entradas del teclado',
+    test('add respeta el limite (maxItems) mezclando entradas del teclado',
         () async {
       SharedPreferences.setMockInitialValues({});
       final service = StorageService();
+      const cap = StorageService.maxItems;
 
-      for (var i = 0; i < 20; i++) {
+      for (var i = 0; i < cap; i++) {
         await service.add(keyboardStyleTranscription('item $i', i));
       }
-      // La entrada numero 21 llega desde el teclado.
-      await service.add(keyboardStyleTranscription('nueva', 20));
+      // La entrada siguiente al tope llega desde el teclado.
+      await service.add(keyboardStyleTranscription('nueva', cap));
 
-      expect(service.transcriptions.length, 20);
+      expect(service.transcriptions.length, cap);
       expect(service.transcriptions.first.text, 'nueva');
       // El mas viejo ("item 0") salio del FIFO.
       expect(service.transcriptions.any((t) => t.text == 'item 0'), isFalse);
@@ -374,11 +375,11 @@ void main() {
       expect(service.transcriptions, isEmpty);
     });
 
-    test('desempata 33 entradas al mismo timestamp por fuente e indice',
+    test('desempata maxItems+13 entradas al mismo timestamp por fuente e indice',
         () async {
       final file = File('${tempDir.path}/transcription_history.json');
       file.writeAsStringSync(jsonEncode([
-        for (var index = 0; index < 33; index++)
+        for (var index = 0; index < StorageService.maxItems + 13; index++)
           {'text': 'item-$index', 'timestamp': '2026-08-23T10:00:00.000000Z'},
       ]));
 
@@ -387,7 +388,7 @@ void main() {
 
       expect(
         service.transcriptions.map((t) => t.text).toList(),
-        [for (var index = 0; index < 20; index++) 'item-$index'],
+        [for (var index = 0; index < StorageService.maxItems; index++) 'item-$index'],
       );
     });
 

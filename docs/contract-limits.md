@@ -5,21 +5,25 @@
 
 | Dominio | Constante Dart | Constante Kotlin | Límite | Política ante desborde |
 |---|---|---|---|---|
-| **Historial de transcripciones** | `StorageService.maxItems` | `TranscriptionHistoryLogic.MAX_ITEMS` / `TranscriptionHistoryRepository.MAX_ITEMS` | **20** | FIFO estricto (descarta los registros más antiguos). |
+| **Historial de transcripciones** | `StorageService.maxItems` / `HistoryRepository.maxItems` | `TranscriptionHistoryLogic.MAX_ITEMS` / `TranscriptionHistoryRepository.MAX_ITEMS` | **100** | FIFO estricto (descarta los registros más antiguos). |
 | **Credenciales** | `StorageService.maxCredentials` | `CredentialStore.MAX_CREDENTIALS` | **50** | Rechazo de nuevas inserciones (`addCredential` retorna `false`) y truncamiento de índice. |
 | **Cola de audios pendientes** | `PendingNoteQueue.maxPending` / `StorageService.maxPendingNotes` | `NoteStore.MAX_PENDING` / `WidgetDictationService.MAX_PENDING_WAVS` | **15** | FIFO (desahucio del audio pendiente más antiguo con borrado seguro de su archivo WAV). |
-| **Portapapeles** | `StorageService.maxClips` | `ClipboardStore.MAX_UNPINNED_ITEMS` | **25** | FIFO-25 sobre elementos no anclados (descarta el clip no anclado más antiguo). |
+| **Notas** | `NotesService.maxNotes` | `NoteStore.MAX_NOTES` | **200** | Rechazo de notas nuevas al llegar al tope (la copia de seguridad nunca desplaza notas locales). |
+| **Portapapeles** | `StorageService.maxClips` | `ClipboardStore.MAX_UNPINNED_ITEMS` | **50** | FIFO-50 sobre elementos no anclados (descarta el clip no anclado más antiguo). |
 
 ## Reglas de Coherencia
-1. **Historial (20)**:
-   - Dart: `StorageService.maxItems == 20`.
-   - Kotlin: `TranscriptionHistoryLogic.MAX_ITEMS == 20` y `TranscriptionHistoryRepository.MAX_ITEMS == 20`.
+1. **Historial (100, T12 del plan de lanzamiento; antes 20)**:
+   - Dart: `StorageService.maxItems == 100` y `HistoryRepository.maxItems == 100`.
+   - Kotlin: `TranscriptionHistoryLogic.MAX_ITEMS == 100` y `TranscriptionHistoryRepository.MAX_ITEMS == 100`.
 2. **Credenciales (50)**:
    - Dart: `StorageService.maxCredentials == 50`.
    - Kotlin: `CredentialStore.MAX_CREDENTIALS == 50`.
 3. **Cola de notas pendientes (15)**:
    - Dart: `PendingNoteQueue.maxPending == 15` y `StorageService.maxPendingNotes == 15`.
    - Kotlin: `NoteStore.MAX_PENDING == 15`.
-4. **Portapapeles (25)**:
-   - Dart: `StorageService.maxClips == 25`.
-   - Kotlin: `ClipboardStore.MAX_UNPINNED_ITEMS == 25`.
+4. **Portapapeles (50, T12; antes 25)**:
+   - Dart: `StorageService.maxClips == 50`.
+   - Kotlin: `ClipboardStore.MAX_UNPINNED_ITEMS == 50`.
+5. **Notas (200, T12; antes 50)**:
+   - Dart: `NotesService.maxNotes == 200`.
+   - Kotlin: `NoteStore.MAX_NOTES == 200`.

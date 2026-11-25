@@ -9,7 +9,7 @@ class HistoryRepository {
   static const String key = 'transcriptions';
   static const String historyFileName = 'voice_notes.json';
   static const String historyLockFileName = 'voice_notes.lock';
-  static const int maxItems = 20;
+  static const int maxItems = 100;
   static const String historyTmpSuffix = '.tmp';
 
   static int _historyTempCounter = 0;

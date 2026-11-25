@@ -89,7 +89,7 @@ class NoteStore(
         const val LOCK_FILE_NAME = "$NOTES_FILE.lock"
         const val PENDING_KEY = "flutter.voice_notes_pending_v1"
         const val PENDING_LOCK_FILE_NAME = "$PENDING_KEY.lock"
-        const val MAX_NOTES = 50
+        const val MAX_NOTES = 200
         const val MAX_PENDING = 15
         private const val LOCK_TIMEOUT_MS = 10000L
         private const val LOCK_STALE_MS = 30000L

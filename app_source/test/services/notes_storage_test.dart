@@ -60,7 +60,7 @@ void main() {
   group('NotesService - contrato', () {
     test('expone claves canonicas', () {
       expect(NotesService.notesKey, 'voice_notes_v1');
-      expect(NotesService.maxNotes, 50);
+      expect(NotesService.maxNotes, 200);  // T12 (antes 50)
     });
 
     test('persiste STRING con JSON array de claves exactas', () async {
@@ -133,13 +133,27 @@ void main() {
   });
 
   group('NotesService - limites', () {
-    test('rechaza nota 51', () async {
+    test('rechaza la nota siguiente al tope (maxNotes)', () async {
       final s = NotesService();
-      for (var i = 0; i < 50; i++) {
+      for (var i = 0; i < NotesService.maxNotes; i++) {
         expect(await s.addNote(titulo: 't$i', cuerpo: 'c$i'), isTrue);
       }
       expect(await s.addNote(titulo: 'extra', cuerpo: 'x'), isFalse);
-      expect(s.notes.length, 50);
+      expect(s.notes.length, NotesService.maxNotes);
+    });
+
+    test('T12: 200 notas se leen rápido', () async {
+      final s = NotesService();
+      for (var i = 0; i < NotesService.maxNotes; i++) {
+        await s.addNote(titulo: 't$i', cuerpo: 'Una nota de prueba con texto ' * 8);
+      }
+      final watch = Stopwatch()..start();
+      final fresh = NotesService();
+      expect(await fresh.load(), isTrue);
+      watch.stop();
+      expect(fresh.notes.length, NotesService.maxNotes);
+      // Margen amplio para el servidor de CI; en el teléfono es mucho menos.
+      expect(watch.elapsedMilliseconds, lessThan(1500));
     });
 
     test('rechaza cuerpo 200001', () async {
