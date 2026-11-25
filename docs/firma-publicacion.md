@@ -69,3 +69,11 @@ Cuando empiece la prueba cerrada en Play, en `.github/workflows/android.yml`
 agregar `env: ORISON_DEV: '1'` a los pasos «Complemento Orison Puntero» y
 «Build APK profile». El workflow de publicación (`release.yml`) nunca lo
 prende.
+
+## Segunda verificación (25/11/2026, después de T14–T16)
+
+Con emojis (`emoji2-emojipicker`) y compras (`in_app_purchase`) el AAB pasa
+de 103,2 a 104,7 MB y sigue pasando `check_aab.py` (bundletool, firma,
+16 KB). R8 no rompió la compilación de publicación. Lo que Play descarga en
+un teléfono arm64 en español (como el Moto G05), según
+`bundletool get-size total`: **20,8 MB**.
