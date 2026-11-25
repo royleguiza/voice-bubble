@@ -91,4 +91,7 @@
     <color name="dock_pad">@color/hz_surf2</color>
     <color name="dock_pad_line">@color/hz_line</color>
     <color name="dock_hint">@color/hz_fg2</color>
+    <!-- T9 (K6): historial del teclado, divisiones con tinte brasa y el último dictado resaltado. -->
+    <color name="kb_history_divider">#4DFF8A1F</color>
+    <color name="kb_history_first">#B33A2410</color>
 </resources>

@@ -263,4 +263,11 @@
     <string name="kb_a11y_symbols_page2">Mais símbolos</string>
     <string name="kb_a11y_plus_hold_equals">Mais. Segure para igual</string>
     <string name="kb_a11y_letters_hold_symbols">Letras. Segure para símbolos</string>
+    <string name="kb_history_title_short">Histórico</string>
+    <string name="kb_history_close">Fechar o histórico</string>
+    <string name="kb_history_copy">Copiar</string>
+    <string name="kb_history_copied">Copiado</string>
+    <string name="kb_history_delete">Apagar</string>
+    <string name="kb_history_yesterday">ontem</string>
+    <string name="kb_a11y_history_item">%1$s. %2$s. Toque para colar, segure para mais opções.</string>
 </resources>

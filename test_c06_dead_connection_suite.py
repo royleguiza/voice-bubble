@@ -235,7 +235,7 @@ def test_mutations():
     check("Mutación negativa 3 (DictationController PASTE incondicional): detectada", found_m3)
 
     # Mutación 4: HistoryLayer cierra popups incondicionalmente
-    mutated_hist = hist.replace("if (commitOrWarn(text)) {\n                        host.dismissPopups()\n                    }", "host.dismissPopups()")
+    mutated_hist = hist.replace("if (commitOrWarn(text)) {\n                closeTowardMic(box)\n            }", "closeTowardMic(box)")  # T9: cierre animado hacia el micrófono
     found_m4 = "if (commitOrWarn(text)) {" not in mutated_hist
     check("Mutación negativa 4 (HistoryLayer dismiss incondicional): detectada", found_m4)
 

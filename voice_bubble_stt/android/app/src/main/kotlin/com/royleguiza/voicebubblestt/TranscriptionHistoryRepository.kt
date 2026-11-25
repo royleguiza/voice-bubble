@@ -28,6 +28,9 @@ internal interface TranscriptionHistoryStorage {
     fun readHistoryFile(): TranscriptionHistoryReadResult
     fun readFlutterStringList(): TranscriptionHistoryReadResult
     fun writeHistoryFileAtomically(contents: String)
+
+    /** T9: reescribe `flutter.transcriptions` (formato lista de Flutter). */
+    fun writeFlutterStringList(raw: String) {}
 }
 
 internal const val HISTORY_LOCK_TIMEOUT_MS = 5000L
@@ -154,6 +157,8 @@ internal fun <T> withTranscriptionHistoryFileLock(
 
 internal class FileTranscriptionHistoryStorage(
     private val directory: File,
+    // Antes del lector a propósito: los tests pasan el lector como lambda final.
+    private val preferencesWriter: (String) -> Unit = {},
     private val preferencesReader: () -> TranscriptionHistoryReadResult = {
         TranscriptionHistoryReadResult.Missing
     },
@@ -182,6 +187,8 @@ internal class FileTranscriptionHistoryStorage(
 
     override fun readFlutterStringList(): TranscriptionHistoryReadResult =
         preferencesReader()
+
+    override fun writeFlutterStringList(raw: String) = preferencesWriter(raw)
 
     override fun writeHistoryFileAtomically(contents: String) {
         try {
@@ -244,6 +251,12 @@ private class AndroidTranscriptionHistoryStorage(
                 TranscriptionHistoryReadResult.Error(error)
             }
         },
+        preferencesWriter = { raw ->
+            context.getSharedPreferences(
+                TranscriptionHistoryRepository.PREFS_NAME,
+                Context.MODE_PRIVATE,
+            ).edit().putString(TranscriptionHistoryRepository.SHARED_HISTORY_KEY, raw).commit()
+        },
     )
 
     override val historyDirectory: File
@@ -258,6 +271,8 @@ private class AndroidTranscriptionHistoryStorage(
     override fun writeHistoryFileAtomically(contents: String) {
         fileStorage.writeHistoryFileAtomically(contents)
     }
+
+    override fun writeFlutterStringList(raw: String) = fileStorage.writeFlutterStringList(raw)
 }
 
 class TranscriptionHistoryRepository internal constructor(
@@ -358,6 +373,45 @@ class TranscriptionHistoryRepository internal constructor(
                         is RecordsResult.Success -> saveAtomic(
                             TranscriptionHistoryLogic.normalize(result.records + incoming),
                         )
+                    }
+                }
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
+
+    /**
+     * T9: borra un dictado (mismo texto y misma hora) del archivo y de la
+     * copia en preferencias de Flutter, para que la fusión no lo resucite.
+     * Devuelve false si no se pudo leer o escribir.
+     */
+    fun removeTranscription(text: String, timestampIso: String): Boolean {
+        return synchronized(REPO_MUTEX) {
+            val instant = TranscriptionHistoryLogic.parseHistoryTimestamp(timestampIso, legacyZone)
+                ?: return false
+            val key = TranscriptionHistoryLogic.canonicalTimestamp(instant)
+            try {
+                withTranscriptionHistoryFileLock(storage.historyDirectory) {
+                    when (val result = loadRecords()) {
+                        is RecordsResult.Failure -> false
+                        is RecordsResult.Success -> {
+                            val keep = result.records.filterNot {
+                                it.text == text &&
+                                    TranscriptionHistoryLogic.canonicalTimestamp(it.instant) == key
+                            }
+                            if (keep.size == result.records.size) return@withTranscriptionHistoryFileLock true
+                            val values = keep.map { it.value }
+                            val saved = saveAtomic(values)
+                            if (saved) {
+                                val list = JSONArray()
+                                values.forEach { list.put(it.toString()) }
+                                storage.writeFlutterStringList(
+                                    TranscriptionHistoryLogic.JSON_LIST_PREFIX + list.toString(),
+                                )
+                            }
+                            saved
+                        }
                     }
                 }
             } catch (_: Exception) {

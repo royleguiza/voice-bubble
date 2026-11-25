@@ -263,4 +263,11 @@
     <string name="kb_a11y_symbols_page2">More symbols</string>
     <string name="kb_a11y_plus_hold_equals">Plus. Hold for equals</string>
     <string name="kb_a11y_letters_hold_symbols">Letters. Hold for symbols</string>
+    <string name="kb_history_title_short">History</string>
+    <string name="kb_history_close">Close history</string>
+    <string name="kb_history_copy">Copy</string>
+    <string name="kb_history_copied">Copied</string>
+    <string name="kb_history_delete">Delete</string>
+    <string name="kb_history_yesterday">yesterday</string>
+    <string name="kb_a11y_history_item">%1$s. %2$s. Tap to paste, hold for more options.</string>
 </resources>
