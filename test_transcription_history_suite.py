@@ -632,7 +632,7 @@ def test_native_kotlin_history_guard():
           "TranscriptionHistorySource.FILE" in test_content and
           "TranscriptionHistorySource.PREFERENCES" in test_content and
           "file-" in test_content and "prefs-" in test_content and
-          "memory" in test_content and "0 until 16" in test_content and
+          "memory" in test_content and "0 until CAP - 4" in test_content and
           "0 until 3" in test_content,
           "Falta la mezcla de las tres fuentes con 33 empates")
     check("La prueba nativa cubre duplicado previo al corte, vacío y preservación",
