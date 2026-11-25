@@ -276,3 +276,33 @@ internal fun pairCloseFor(open: Char): Char? = when (open) {
     '`' -> '`'
     else -> null
 }
+
+/** T14: los emojis más largos (familias con ZWJ) ocupan hasta ~11 unidades. */
+internal const val EMOJI_LOOKBACK_FACTOR = 8
+
+/**
+ * T14: cuántas unidades UTF-16 hay que borrar para quitar los últimos
+ * [count] grafemas de [before] (un emoji con tono de piel, una familia o una
+ * bandera cuentan como uno). 0 si no se puede calcular (se usa el conteo
+ * por pares sustitutos de siempre).
+ */
+internal fun graphemeUnitsBefore(before: CharSequence?, count: Int): Int {
+    if (before.isNullOrEmpty() || count <= 0) return 0
+    return try {
+        val text = before.toString()
+        val it = android.icu.text.BreakIterator.getCharacterInstance()
+        it.setText(text)
+        var end = it.last()
+        var pos = end
+        var n = 0
+        while (n < count) {
+            val prev = it.previous()
+            if (prev == android.icu.text.BreakIterator.DONE) break
+            pos = prev
+            n++
+        }
+        end - pos
+    } catch (_: Throwable) {
+        0
+    }
+}

@@ -1018,5 +1018,6 @@
   "onbTryHint": "Tu primer dictado va acá…",
   "onbTryDone": "¡Funciona! Ya podés dictar en cualquier app.",
   "onbExtras": "Más adelante podés sumar el widget de notas, la barra flotante y el Puntero desde Ajustes.",
-  "settingsAboutOnboarding": "Guía de inicio"
+  "settingsAboutOnboarding": "Guía de inicio",
+  "keyboardEmojiKey": "Tecla de emojis"
 }

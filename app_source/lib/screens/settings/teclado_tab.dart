@@ -82,6 +82,12 @@ extension _TecladoPages on _SettingsScreenState {
               onChanged: _toggleKeyboardCodeKey,
             ),
             SettingsSwitchRow(
+              key: const ValueKey('kb-emoji-key-switch'),
+              title: context.l10n.keyboardEmojiKey,
+              value: _showEmojiKey,
+              onChanged: _toggleEmojiKey,
+            ),
+            SettingsSwitchRow(
               key: const ValueKey('kb-language-key-switch'),
               title: context.l10n.keyboardLanguageKey,
               value: _showLanguageKey,

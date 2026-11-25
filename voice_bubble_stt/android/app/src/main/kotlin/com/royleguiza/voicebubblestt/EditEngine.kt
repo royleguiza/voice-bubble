@@ -521,7 +521,7 @@ class EditEngine(
         }
         // AT-A5: mismo criterio sobre el documento via InputConnection.
         // C-18: ventana de lookback para los caracteres solicitados considerando pares sustitutos
-        val lookback = (safeCount * 2).coerceAtLeast(2)
+        val lookback = (safeCount * 2).coerceAtLeast(2) * EMOJI_LOOKBACK_FACTOR
         val before = try {
             ic.getTextBeforeCursor(lookback, 0)
         } catch (_: DeadObjectException) {
@@ -537,6 +537,9 @@ class EditEngine(
             null
         }
 
+        // T14: un emoji compuesto (tono de piel, familia, bandera) se borra
+        // entero: se cuentan grafemas, no puntos de código.
+        val graphemeUnits = graphemeUnitsBefore(before, safeCount)
         var toDeleteUnits = 0
         if (!before.isNullOrEmpty()) {
             var charsFound = 0
@@ -552,7 +555,11 @@ class EditEngine(
                 charsFound++
             }
         }
-        val count = if (toDeleteUnits > 0) toDeleteUnits else safeCount
+        val count = when {
+            graphemeUnits > 0 -> graphemeUnits
+            toDeleteUnits > 0 -> toDeleteUnits
+            else -> safeCount
+        }
 
         val deleted = try {
             ic.deleteSurroundingText(count, 0)

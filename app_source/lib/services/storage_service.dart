@@ -656,6 +656,15 @@ class StorageService {
   Future<void> saveKeyboardTopRowNumbers(bool enabled) =>
       _setBool(kbTopRowNumbersKey, enabled);
 
+  /// T14 (K7): tecla de emojis en la fila de abajo del teclado. El teclado
+  /// nativo lee `flutter.kb_emoji_key`. Default true.
+  static const String kbEmojiKeyKey = 'kb_emoji_key';
+
+  Future<bool> loadKeyboardEmojiKey() => _getBool(kbEmojiKeyKey, true);
+
+  Future<void> saveKeyboardEmojiKey(bool visible) =>
+      _setBool(kbEmojiKeyKey, visible);
+
   static const String kbClipboardImagesEnabledKey =
       'kb_clipboard_images_enabled';
 
@@ -1113,6 +1122,7 @@ class StorageService {
     kbBottomElevationDpKey,
     kbAutoCapsKey,
     kbTopRowNumbersKey,
+    kbEmojiKeyKey,
     kbClipboardImagesEnabledKey,
     _keyboardCodeKeyVisibleKey,
     _keyboardCredentialsKeyVisibleKey,

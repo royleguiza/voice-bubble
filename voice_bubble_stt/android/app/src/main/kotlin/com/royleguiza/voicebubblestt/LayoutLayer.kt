@@ -37,6 +37,8 @@ class LayoutLayer(
         fun pressSymbolsFromNumeric()
         fun isSymbolsPage2(): Boolean
         fun toggleSymbolsPage()
+        fun isEmojiKeyVisible(): Boolean
+        fun openEmojiPanel()
         fun toggleLanguage()
         fun pressSpace()
         fun pressEnter()
@@ -253,7 +255,17 @@ class LayoutLayer(
         val comma = keys.makeSymbolKey(",", host.dimenPx(R.dimen.kb_key_glyph_punct), isBold = true)
         commaView = comma
 
-        val space = keys.makeSpecialKey("", R.drawable.kb_key_bg, 5.0f, keys.getString(R.string.kb_a11y_space)) {
+        // T14: tecla de emojis entre ?123 y la coma (ocultable en Ajustes);
+        // le quita un poco de ancho a la espaciadora, que igual queda grande.
+        val btnEmoji = if (host.isEmojiKeyVisible()) {
+            keys.makeSpecialKey("😊", R.drawable.kb_key_alt, 1f, keys.getString(R.string.kb_a11y_emoji), isBold = false) {
+                host.openEmojiPanel()
+            }
+        } else {
+            null
+        }
+
+        val space = keys.makeSpecialKey("", R.drawable.kb_key_bg, if (btnEmoji != null) 4.2f else 5.0f, keys.getString(R.string.kb_a11y_space)) {
             host.pressSpace()
         }
         spaceView = space
@@ -275,6 +287,9 @@ class LayoutLayer(
         // Orden de la fila inferior segun la preferencia de alineacion.
         // Siempre arranca con Sym/Lang, luego el bloque configurable, y termina con Enter.
         row.addView(btnSym)
+        if (btnEmoji != null) {
+            row.addView(btnEmoji)
+        }
         if (btnLang != null) {
             row.addView(btnLang)
         }

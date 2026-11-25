@@ -15,6 +15,7 @@ kb_bottom_elevation_dp
 kb_clipboard_images_enabled
 kb_code_key_visible
 kb_credentials_key_visible
+kb_emoji_key
 kb_haptic_style
 kb_haptics_enabled
 kb_height_profile

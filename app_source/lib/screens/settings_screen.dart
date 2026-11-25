@@ -115,6 +115,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _showCredentialsKey = true;
   bool _autoCaps = true;
   bool _topRowNumbers = true;
+  bool _showEmojiKey = true;
   bool _clipboardImagesEnabled = false;
   String _heightProfile = StorageService.defaultHeightProfile;
   String _keySpacing = StorageService.defaultKeySpacing;
@@ -241,6 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final credentialsKeyVisible = await s.loadKeyboardCredentialsKeyVisible();
     final autoCaps = await s.loadKeyboardAutoCaps();
     final topRowNumbers = await s.loadKeyboardTopRowNumbers();
+    final emojiKey = await s.loadKeyboardEmojiKey();
     final clipboardImages = await s.getClipboardImagesEnabled();
     final longPressSymbols = await s.getLongPressSymbolsEnabled();
     final longPressDelay = await s.getLongPressDelay();
@@ -272,6 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       _showCredentialsKey = credentialsKeyVisible;
       _autoCaps = autoCaps;
       _topRowNumbers = topRowNumbers;
+      _showEmojiKey = emojiKey;
       _hapticStyle = hapticStyle;
       _micHapticsEnabled = micHapticsEnabled;
       _micHapticStart = micHapticStart;
@@ -450,6 +453,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _toggleTopRowNumbers(bool enabled) async {
     await _storageService.saveKeyboardTopRowNumbers(enabled);
     if (mounted) setState(() => _topRowNumbers = enabled);
+  }
+
+  Future<void> _toggleEmojiKey(bool visible) async {
+    await _storageService.saveKeyboardEmojiKey(visible);
+    if (mounted) setState(() => _showEmojiKey = visible);
   }
 
   Future<void> _toggleKeyboardCredentialsKey(bool visible) async {

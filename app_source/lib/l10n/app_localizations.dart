@@ -3532,6 +3532,12 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'Guía de inicio'**
   String get settingsAboutOnboarding;
+
+  /// No description provided for @keyboardEmojiKey.
+  ///
+  /// In es, this message translates to:
+  /// **'Tecla de emojis'**
+  String get keyboardEmojiKey;
 }
 
 class _AppLocalizationsDelegate

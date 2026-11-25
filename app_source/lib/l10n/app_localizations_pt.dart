@@ -1959,4 +1959,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsAboutOnboarding => 'Guia de início';
+
+  @override
+  String get keyboardEmojiKey => 'Tecla de emojis';
 }

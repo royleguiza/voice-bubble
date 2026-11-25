@@ -1948,4 +1948,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutOnboarding => 'Getting started guide';
+
+  @override
+  String get keyboardEmojiKey => 'Emoji key';
 }

@@ -571,5 +571,6 @@
   "onbTryHint": "Your first dictation goes here…",
   "onbTryDone": "It works! You can now dictate in any app.",
   "onbExtras": "Later you can add the notes widget, the floating bar and the Pointer from Settings.",
-  "settingsAboutOnboarding": "Getting started guide"
+  "settingsAboutOnboarding": "Getting started guide",
+  "keyboardEmojiKey": "Emoji key"
 }

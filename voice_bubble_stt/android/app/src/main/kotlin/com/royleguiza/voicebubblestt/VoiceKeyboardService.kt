@@ -26,7 +26,7 @@ import android.widget.TextView
  * MEJ-09: capa trackpad nativa Split Wings con cursor de mouse virtual.
  * Este teclado JAMAS registra, guarda ni transmite texto tecleado.
  */
-class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost, LayoutLayer.UiHost, SpacebarLayer.UiHost, EditEngine.UiHost {
+class VoiceKeyboardService : InputMethodService(), EmojiLayer.UiHost, CredentialsLayer.UiHost, DictationController.UiHost, TrackpadBridge.UiHost, ClipboardLayer.UiHost, SnippetsLayer.UiHost, HistoryLayer.UiHost, StatusLayer.UiHost, AccentLayer.UiHost, ToolbarLayer.UiHost, KeyFactory.UiHost, LayoutLayer.UiHost, SpacebarLayer.UiHost, EditEngine.UiHost {
 
     // Etapa 4: Android 9–12 toma el idioma elegido en la app (13+ lo pone el sistema).
     override fun attachBaseContext(newBase: android.content.Context) {
@@ -86,6 +86,10 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     private lateinit var transcriptionRepo: TranscriptionHistoryRepository
     // --- Historial (SPK-05 módulo 9: vive en HistoryLayer; aquí solo el shell) ---
     private lateinit var history: HistoryLayer
+    private lateinit var emoji: EmojiLayer
+
+    /** T14: el panel de emojis ocupa el lugar de las letras. */
+    private var emojiPanelOpen = false
     // --- Aviso inline (SPK-05 módulo 10: vive en StatusLayer; aquí solo el shell) ---
     private lateinit var status: StatusLayer
     // --- Acentos y pares (SPK-05 módulo 11: vive en AccentLayer; aquí solo el shell) ---
@@ -136,6 +140,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
         toolbar = ToolbarLayer(this, this)
         keys = KeyFactory(this, handler, this)
         layout = LayoutLayer(keys, this)
+        emoji = EmojiLayer(this, keys, this)
         spacebar = SpacebarLayer(this, handler, this)
         editor = EditEngine(this, { if (::snippets.isInitialized) snippets else null }, this)
         root = KeyboardRootLayout(this)
@@ -210,6 +215,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
                 layer = Layer.LETTERS
             }
             lastLettersLayer = Layer.LETTERS
+            emojiPanelOpen = false
             if (::editor.isInitialized) editor.resetForNewField()
         }
         // Sincronizar clips copiados mientras el teclado estaba cerrado.
@@ -337,8 +343,9 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             if (kbPrefs.terminalRowVisiblePref && layer != Layer.CLIPBOARD && layer != Layer.NUMERIC) {
                 addRow(toolbar.buildTerminalRow())
             }
+            if (layer != Layer.LETTERS) emojiPanelOpen = false
             when (layer) {
-                Layer.LETTERS -> layout.buildLetterRows()
+                Layer.LETTERS -> if (emojiPanelOpen) emoji.buildRows() else layout.buildLetterRows()
                 Layer.SYMBOLS -> layout.buildSymbolRows()
                 Layer.CODE -> layout.buildCodeRows()
                 Layer.NUMERIC -> layout.buildNumericRows()
@@ -352,7 +359,7 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
             }
             if (layer == Layer.NUMERIC) {
                 addRow(layout.buildNumericBottomRow())
-            } else {
+            } else if (!(layer == Layer.LETTERS && emojiPanelOpen)) {
                 addRow(layout.buildBottomBar())
             }
             spaceKeyView = layout.spaceView
@@ -770,6 +777,19 @@ class VoiceKeyboardService : InputMethodService(), CredentialsLayer.UiHost, Dict
     }
 
     override fun isSymbolsPage2(): Boolean = symbolsPage2
+
+    override fun isEmojiKeyVisible(): Boolean = kbPrefs.emojiKeyVisible && !currentIsPasswordField
+
+    override fun openEmojiPanel() {
+        layer = Layer.LETTERS
+        emojiPanelOpen = true
+        rebuild()
+    }
+
+    override fun closeEmojiPanel() {
+        emojiPanelOpen = false
+        rebuild()
+    }
 
     override fun toggleSymbolsPage() {
         symbolsPage2 = !symbolsPage2

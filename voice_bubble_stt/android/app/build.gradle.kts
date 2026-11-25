@@ -117,6 +117,9 @@ dependencies {
     // vez y después traduce sin internet) y detección del idioma de origen.
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.google.mlkit:language-id:17.0.6")
+    // T14 (K7): selector oficial de emojis (categorías, recientes, tonos de piel
+    // y solo los emojis que el teléfono puede dibujar).
+    implementation("androidx.emoji2:emoji2-emojipicker:1.5.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
     testImplementation("org.robolectric:robolectric:4.17")

@@ -270,4 +270,5 @@
     <string name="kb_history_delete">Borrar</string>
     <string name="kb_history_yesterday">ayer</string>
     <string name="kb_a11y_history_item">%1$s. %2$s. Tocá para pegar, mantené para más opciones.</string>
+    <string name="kb_a11y_emoji">Emojis</string>
 </resources>

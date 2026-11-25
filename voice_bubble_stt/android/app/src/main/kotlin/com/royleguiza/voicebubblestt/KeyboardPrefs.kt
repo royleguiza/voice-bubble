@@ -36,6 +36,9 @@ class KeyboardPrefs(private val context: Context) {
     /** T10: números con pulsación larga en q…p (encendido por defecto). */
     var topRowNumbers = true
 
+    /** T14: tecla de emojis en la fila de abajo (visible por defecto). */
+    var emojiKeyVisible = true
+
     // SPK-10: imágenes del portapapeles opt-in (texto primero). Default OFF.
     var clipboardImagesEnabled = false
 
@@ -242,6 +245,7 @@ class KeyboardPrefs(private val context: Context) {
         credentialsKeyVisiblePref = try { p.getBoolean("flutter.kb_credentials_key_visible", true) } catch (_: Exception) { true }
         autoCaps = try { p.getBoolean("flutter.kb_auto_caps", true) } catch (_: Exception) { true }
         topRowNumbers = try { p.getBoolean("flutter.kb_top_row_numbers", true) } catch (_: Exception) { true }
+        emojiKeyVisible = try { p.getBoolean("flutter.kb_emoji_key", true) } catch (_: Exception) { true }
         clipboardImagesEnabled = try {
             p.getBoolean("flutter.kb_clipboard_images_enabled", false)
         } catch (_: Exception) {
