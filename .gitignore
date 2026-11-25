@@ -78,3 +78,7 @@ laboratorio/plan-gemini-ia/
 laboratorio/play-pendiente.html
 *.token
 gh-workflow-push.token
+
+# T3: claves de firma de publicación (viven en ~/.config/orison, nunca en el repo)
+*.jks
+upload-keystore.*

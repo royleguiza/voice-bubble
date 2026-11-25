@@ -33,6 +33,26 @@ android {
                 keyPassword = "android"
             }
         }
+        // T3: publicación con la MISMA clave de subida que Orison (Play exige
+        // que el permiso de firma lo compartan las dos apps). Mismas variables
+        // que la app: KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD.
+        // Sin KEYSTORE_FILE válido queda sin storeFile y el release falla
+        // tarde, jamás firma con la debug.keystore.
+        create("release") {
+            val envStoreFile = System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { file(it) }
+            if (envStoreFile != null && envStoreFile.exists()) {
+                storeFile = envStoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
 }
 
