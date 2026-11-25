@@ -594,5 +594,14 @@
   "proLaunchUntil": "Preço de lançamento até {date}.",
   "proBuyUnavailable": "A compra não está disponível agora. Tente de novo com o app instalado pela Play.",
   "proRestored": "Pronto: o Orison Pro está ativo.",
-  "proNothingToRestore": "Não encontramos uma compra do Orison Pro nesta conta do Google."
+  "proNothingToRestore": "Não encontramos uma compra do Orison Pro nesta conta do Google.",
+  "onbTranslateTitle": "Tradução",
+  "onbTranslateBody": "O Orison pode traduzir o que você dita ou seleciona. Escolha como:",
+  "onbTranslateLocalTitle": "No celular (padrão)",
+  "onbTranslateLocalBody": "O texto não sai do celular. É mais lento e menos natural, e baixa o idioma na primeira vez.",
+  "onbTranslateAiTitle": "Com IA",
+  "onbTranslateAiBody": "Mais rápida e precisa. O texto que você traduz vai para o Groq ou o Google com a sua chave; o Orison não guarda e nunca usa em senhas.",
+  "onbTranslateAiOn": "Tradução com IA autorizada",
+  "onbTranslateKeepLocal": "Continuar no celular",
+  "onbTranslateNeedsKey": "A IA precisa da chave do Groq do passo anterior. Você pode ativar depois em Ajustes › Inteligência artificial."
 }

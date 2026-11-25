@@ -37,7 +37,7 @@ class OnboardingScreen extends StatefulWidget {
     this.requestMicrophone,
   });
 
-  static const int stepCount = 7;
+  static const int stepCount = 8;
   static const String groqKeysUrl = 'https://console.groq.com/keys';
 
   @override
@@ -59,6 +59,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
   String? _keyError;
   String? _clipboardKey;
   bool _micGranted = false;
+  bool _aiTranslate = false;
   bool _keyboardEnabled = false;
   bool _keyboardSelected = false;
 
@@ -286,8 +287,9 @@ class OnboardingScreenState extends State<OnboardingScreen>
     if (_step == 2) return l.privacyNoticeAccept;
     final skipping = (_step == 1 && _use == null) ||
         (_step == 3 && !_hasKey) ||
-        (_step == 4 && !_micGranted) ||
-        (_step == 5 && !_keyboardSelected);
+        (_step == 4 && !_aiTranslate) ||
+        (_step == 5 && !_micGranted) ||
+        (_step == 6 && !_keyboardSelected);
     return skipping ? l.onbNotNow : l.onbNext;
   }
 
@@ -344,6 +346,8 @@ class OnboardingScreenState extends State<OnboardingScreen>
       case 3:
         return _buildKeyStep(context);
       case 4:
+        return _buildTranslateStep(context);
+      case 5:
         return _StepScaffold(
           title: l.onbMicTitle,
           body: l.onbMicBody,
@@ -356,7 +360,7 @@ class OnboardingScreenState extends State<OnboardingScreen>
             ),
           ],
         );
-      case 5:
+      case 6:
         return _StepScaffold(
           title: l.onbKeyboardTitle(AppInfo.name),
           body: l.onbKeyboardBody,
@@ -419,6 +423,64 @@ class OnboardingScreenState extends State<OnboardingScreen>
           ],
         );
     }
+  }
+
+  /// Traducción: «En el teléfono» es lo de siempre (el texto no sale); con
+  /// IA es más rápida y precisa, y se activa solo si el usuario la autoriza
+  /// acá (el mismo consentimiento que Ajustes › Inteligencia artificial).
+  Future<void> _authorizeAiTranslate() async {
+    await _storage.saveTranslateMode(StorageService.translateModeAi);
+    if (mounted) setState(() => _aiTranslate = true);
+  }
+
+  Future<void> _keepLocalTranslate() async {
+    await _storage.saveTranslateMode(StorageService.translateModeLocal);
+    if (mounted) setState(() => _aiTranslate = false);
+    _next();
+  }
+
+  Widget _buildTranslateStep(BuildContext context) {
+    final l = context.l10n;
+    return _StepScaffold(
+      title: l.onbTranslateTitle,
+      body: l.onbTranslateBody,
+      children: [
+        _InfoCard(
+          icon: Icons.phone_android_rounded,
+          title: l.onbTranslateLocalTitle,
+          body: l.onbTranslateLocalBody,
+        ),
+        _InfoCard(
+          icon: Icons.auto_awesome_outlined,
+          title: l.onbTranslateAiTitle,
+          body: l.onbTranslateAiBody,
+        ),
+        if (_aiTranslate)
+          _ActionRow(
+            key: const ValueKey('onb-translate-ai-on'),
+            done: true,
+            label: l.onbTranslateAiOn,
+            onPressed: null,
+          )
+        else ...[
+          _ActionRow(
+            key: const ValueKey('onb-translate-ai'),
+            done: false,
+            label: l.settingsTranslateAiAuthorize,
+            onPressed: _hasKey ? _authorizeAiTranslate : null,
+          ),
+          if (!_hasKey)
+            Text(l.onbTranslateNeedsKey,
+                style: kTextFootnote.copyWith(color: SettingsPalette.of(context).secondary)),
+          const SizedBox(height: 4),
+          TextButton(
+            key: const ValueKey('onb-translate-local'),
+            onPressed: _keepLocalTranslate,
+            child: Text(l.onbTranslateKeepLocal),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _buildKeyStep(BuildContext context) {

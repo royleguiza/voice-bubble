@@ -3670,6 +3670,60 @@ abstract class AppLocalizations {
   /// In es, this message translates to:
   /// **'No encontramos una compra de Orison Pro en esta cuenta de Google.'**
   String get proNothingToRestore;
+
+  /// No description provided for @onbTranslateTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Traducción'**
+  String get onbTranslateTitle;
+
+  /// No description provided for @onbTranslateBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Orison puede traducir lo que dictás o seleccionás. Elegí cómo:'**
+  String get onbTranslateBody;
+
+  /// No description provided for @onbTranslateLocalTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'En el teléfono (así viene)'**
+  String get onbTranslateLocalTitle;
+
+  /// No description provided for @onbTranslateLocalBody.
+  ///
+  /// In es, this message translates to:
+  /// **'El texto no sale del teléfono. Es más lento y menos natural, y la primera vez baja el idioma.'**
+  String get onbTranslateLocalBody;
+
+  /// No description provided for @onbTranslateAiTitle.
+  ///
+  /// In es, this message translates to:
+  /// **'Con IA'**
+  String get onbTranslateAiTitle;
+
+  /// No description provided for @onbTranslateAiBody.
+  ///
+  /// In es, this message translates to:
+  /// **'Más rápida y precisa. El texto que traducís se manda a Groq o a Google con tu clave; Orison no lo guarda y nunca se usa en contraseñas.'**
+  String get onbTranslateAiBody;
+
+  /// No description provided for @onbTranslateAiOn.
+  ///
+  /// In es, this message translates to:
+  /// **'Traducción con IA autorizada'**
+  String get onbTranslateAiOn;
+
+  /// No description provided for @onbTranslateKeepLocal.
+  ///
+  /// In es, this message translates to:
+  /// **'Seguir en el teléfono'**
+  String get onbTranslateKeepLocal;
+
+  /// No description provided for @onbTranslateNeedsKey.
+  ///
+  /// In es, this message translates to:
+  /// **'Para usar la IA hace falta la clave de Groq del paso anterior. Lo podés activar después en Ajustes › Inteligencia artificial.'**
+  String get onbTranslateNeedsKey;
 }
 
 class _AppLocalizationsDelegate

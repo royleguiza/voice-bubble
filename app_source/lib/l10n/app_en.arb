@@ -594,5 +594,14 @@
   "proLaunchUntil": "Launch price until {date}.",
   "proBuyUnavailable": "Purchases are not available right now. Try again with the app installed from Play.",
   "proRestored": "Done: Orison Pro is active.",
-  "proNothingToRestore": "We could not find an Orison Pro purchase on this Google account."
+  "proNothingToRestore": "We could not find an Orison Pro purchase on this Google account.",
+  "onbTranslateTitle": "Translation",
+  "onbTranslateBody": "Orison can translate what you dictate or select. Choose how:",
+  "onbTranslateLocalTitle": "On your phone (default)",
+  "onbTranslateLocalBody": "The text never leaves your phone. It is slower and less natural, and downloads the language the first time.",
+  "onbTranslateAiTitle": "With AI",
+  "onbTranslateAiBody": "Faster and more accurate. The text you translate is sent to Groq or Google with your key; Orison does not store it and it is never used in password fields.",
+  "onbTranslateAiOn": "AI translation authorized",
+  "onbTranslateKeepLocal": "Keep it on the phone",
+  "onbTranslateNeedsKey": "AI needs the Groq key from the previous step. You can turn it on later in Settings › Artificial intelligence."
 }

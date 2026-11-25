@@ -2063,4 +2063,35 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get proNothingToRestore =>
       'Não encontramos uma compra do Orison Pro nesta conta do Google.';
+
+  @override
+  String get onbTranslateTitle => 'Tradução';
+
+  @override
+  String get onbTranslateBody =>
+      'O Orison pode traduzir o que você dita ou seleciona. Escolha como:';
+
+  @override
+  String get onbTranslateLocalTitle => 'No celular (padrão)';
+
+  @override
+  String get onbTranslateLocalBody =>
+      'O texto não sai do celular. É mais lento e menos natural, e baixa o idioma na primeira vez.';
+
+  @override
+  String get onbTranslateAiTitle => 'Com IA';
+
+  @override
+  String get onbTranslateAiBody =>
+      'Mais rápida e precisa. O texto que você traduz vai para o Groq ou o Google com a sua chave; o Orison não guarda e nunca usa em senhas.';
+
+  @override
+  String get onbTranslateAiOn => 'Tradução com IA autorizada';
+
+  @override
+  String get onbTranslateKeepLocal => 'Continuar no celular';
+
+  @override
+  String get onbTranslateNeedsKey =>
+      'A IA precisa da chave do Groq do passo anterior. Você pode ativar depois em Ajustes › Inteligência artificial.';
 }

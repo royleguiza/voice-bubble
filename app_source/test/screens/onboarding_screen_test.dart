@@ -109,6 +109,13 @@ void main() {
     expect(await secure.read(key: 'groq_api_key'), 'gsk_clave_de_prueba_123456');
     expect(key('onb-key-ready'), findsOneWidget);
 
+    // Traducción: en el teléfono por defecto; con IA solo si se autoriza.
+    await tap(tester, 'onb-next');
+    expect(await StorageService().loadTranslateMode(), StorageService.translateModeLocal);
+    await tap(tester, 'onb-translate-ai');
+    expect(await StorageService().loadTranslateMode(), StorageService.translateModeAi);
+    expect(key('onb-translate-ai-on'), findsOneWidget);
+
     await tap(tester, 'onb-next');
     await tap(tester, 'onb-mic-button');
     expect(find.text('Micrófono permitido'), findsOneWidget);
@@ -150,6 +157,18 @@ void main() {
     const secure = FlutterSecureStorage(aOptions: StorageService.espOptions);
     expect(await secure.read(key: 'groq_api_key'), isNull);
     expect(key('onb-key-ready'), findsNothing);
+  });
+
+  testWidgets('sin clave la traducción con IA no se puede autorizar', (tester) async {
+    await pumpOnboarding(tester);
+    for (var i = 0; i < 4; i++) {
+      await tap(tester, 'onb-next');
+    }
+    expect(find.text('Traducción'), findsOneWidget);
+    await tap(tester, 'onb-translate-ai');
+    expect(await StorageService().loadTranslateMode(), StorageService.translateModeLocal);
+    await tap(tester, 'onb-translate-local');
+    expect(find.text('Micrófono'), findsOneWidget);
   });
 
   testWidgets('saltear todo lo da por hecho', (tester) async {
